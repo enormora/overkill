@@ -1,9 +1,6 @@
 import type { DefinedReporter } from '../engine/reporter.ts';
 
-import type {
-    LoadedConfig,
-    ConfigLoadRequest
-} from '../config/config.ts';
+import type { LoadedConfig, ConfigLoadRequest } from '../config/config-loader.ts';
 import type { WitnessReplayHandler } from './witness-replay-cli.ts';
 import type {
     CommandLineConfigDependencies

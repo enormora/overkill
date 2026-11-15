@@ -1,4 +1,4 @@
-import type { ProfileConfig } from '../config/types.ts';
+import { profileFamilyId, type ProfileConfig } from '../config/types.ts';
 import { recordedReplayFiles } from './replay-files.ts';
 import type {
     RunCommand,
@@ -22,12 +22,21 @@ function runCollectionRoot(source: RunCollectionSource, cwd: string): RunCollect
         : { annotations: {}, controls: {}, title: cwd };
 }
 
-type CollectionContext = { readonly root: RunCollectionRoot; readonly replay: ReturnType<typeof currentReplayWire>; };
+type CollectionContext = {
+    readonly testFamily: string;
+    readonly root: RunCollectionRoot;
+    readonly replay: ReturnType<typeof currentReplayWire>;
+};
 export function runCollectionContext(
     source: CollectionSource,
-    cwd: string
+    cwd: string,
+    profile: ProfileConfig
 ): CollectionContext {
-    return { root: runCollectionRoot(source, cwd), replay: source.kind === 'replay' ? source.replay : null };
+    return {
+        testFamily: profileFamilyId(profile),
+        root: runCollectionRoot(source, cwd),
+        replay: source.kind === 'replay' ? source.replay : null
+    };
 }
 
 export function selectedRunCollectionSource(): CollectionSource {

@@ -1,7 +1,6 @@
 import { createDeterministicClock } from '@enormora/clock';
 import { runIfMain } from '#test-runner';
 import { createTimedTestEngine } from '../test-support/create-test-engine.ts';
-import { resolveTestPlanCollectionPolicy } from '../run/run-test-plan.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import {
     createRoot,
@@ -12,6 +11,7 @@ import {
     type TestScope
 } from '../packages/engine/engine.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
+import { resolveTestPlanCollectionPolicy } from '../run/run-selection.ts';
 import { property } from './property-authoring.ts';
 import { gen } from './generators.ts';
 

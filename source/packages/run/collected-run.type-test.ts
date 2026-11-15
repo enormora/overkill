@@ -3,6 +3,7 @@ import type { RunResult } from '../engine/engine.entry-point.ts';
 import type {
     orchestrator,
     RunCommandInput,
+    ConfiguredRunCommand,
     FrozenRunCommand,
     InitializedRun,
     CollectedRun,
@@ -29,7 +30,7 @@ describe('public runner lifecycle', function () {
     });
     test('exposes initialization and collected execution', function () {
         expect<typeof orchestrator.initialize>().type.toBe<
-            (command: FrozenRunCommand | RunCommandInput) => Promise<InitializedRun>
+            (command: ConfiguredRunCommand | FrozenRunCommand | RunCommandInput) => Promise<InitializedRun>
         >();
         expect<InitializedRun['collect']>().type.toBe<() => Promise<CollectedRun>>();
         expect<CollectedRunInvocation>().type.toBe<{ readonly selection: RunSelection; }>();

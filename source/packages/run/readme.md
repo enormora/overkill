@@ -924,16 +924,46 @@ The CLI equivalent is `overkill replay-witness <path>` with `--config`, `--profi
 `--no-capture` is rejected consistently with ordinary property runs. Simulation
 witnesses require an explicit profile and a resource restoration callback.
 
-## Profile adapters
+## Executable family profiles
 
-Adapter preparation returns `{ testPlan, collect }`. The collection closure
-retains backend inputs while the runner selects executable work. Resolution
-collects once, exposes immutable JSON through `RunFacts.adapter`, and retains
-the collection for lowering and execution. Reusable invocations collect their
-selected subset through the original preparation. Adapter result artifacts
-also carry lossless JSON facts; assertion diagnostic budgets do not apply.
+Optional profiles select an imported family definition through `testFamily` and
+put family-specific input in `settings`. `defineConfig` infers each profile's
+settings independently, including configs mixing several families and built-in
+aliases. Common discovery, reporter, execution, timeout, timing, and record
+policy stays at profile level. Unknown top-level fields are rejected.
 
-Adapters can resolve package identity with `packageVersion(moduleUrl)`.
+The runner uses the engine's preparation, exact collection, execution, and
+disposal contract. Each reusable invocation creates a fresh preparation.
+Inspection and empty selections release preparations without executing bodies.
+The former runner adapter hooks are removed; historical adapter facts remain
+readable.
+
+Imported families support their declared process models. Supervised and worker-pool
+execution require an importable configuration or the definition's explicit module
+reference. The CLI supplies configuration provenance automatically. Programmatic
+callers can retain it explicitly:
+
+```ts
+await orchestrator.run({
+    kind: 'configured',
+    command,
+    source: {
+        kind: 'config-file',
+        request: { cwd: projectRoot, configPath },
+        resolvedPath: configPath
+    }
+});
+```
+
+Use the absolute resolved configuration path. Configuration replay takes precedence;
+a mismatch fails without trying another implementation. Definitions without a
+replayable source remain local. Workers validate the exact implementation version,
+normalized settings, preparation facts, and frozen catalog before execution.
+
+`RunFacts.family` retains preparation and selected collection facts. New records
+use version `3`; historical versions `1` and `2` remain inspectable without
+importing family modules. Reproduction requires the recorded implementation
+version and compatible inputs. Changed implementations require a new run.
 
 ### Debug mode
 
@@ -970,17 +1000,31 @@ The corresponding command is `overkill merge-results <paths...>`. Operands may
 be files or directories. Directories contribute immediate regular `*.json` files;
 subdirectories and other extensions are ignored. Repeated paths are read once.
 
-This milestone returns an in-memory aggregate and maps its status to the CLI
-exit code. Callers must supply a complete set of shards. Compatibility checks reject
+The API and CLI persist a non-replayable aggregate under the configured
+`runtimeStateDir/runs/<id>.json` and deliver final-result reporters. Callers must supply a complete set of shards. Compatibility checks reject
 different profiles or test families, seeds, shard totals, selected work identities,
 loader configuration, engine versions, or recorded `@overkill-dev/*` versions.
 Identity evidence covers the complete selection before sharding, including empty
 shards. Older records without this evidence must be regenerated for merging;
 they remain readable for replay. Node, host, and third-party package metadata may differ.
 
-Incomplete aggregates, persisted merged records, compact
-history updates, and final-result reporter delivery remain separate milestones.
-The command currently has no success output.
+Incomplete merges return a failed record when at least one eligible input remains.
+The first eligible record in shard-index/path order supplies the reference;
+incompatible records contribute diagnostics but no counts. Duplicate executed
+identities retain all available outcomes, so incomplete totals can count repeated
+work. Missing or repeated shard indices and unreadable records are merge errors.
+The command exits with status 2 for merge errors, including when a shard exhausted
+resources. Without eligible input, merging fails with a collection error.
+
+Inputs with `kind: 'path'` automatically detect files and directories.
+Directory discovery skips valid merged records; explicitly supplied merged files
+are rejected. Profile reporters override global reporters. Missing profiles use
+global reporters, and no selected final-result reporters triggers brief output.
+Real-time reporters receive no events or completion callbacks.
+
+Aggregate history is committed after reporting. Shards recorded for merging
+remain excluded. Reporter and persistence failures fail the aggregate. Merged
+records carry format version 2 and started/completed/interrupted lifecycle status.
 
 Discovery and definition counts remain global; execution counts sum across
 shards. Timing durations represent cumulative shard time, not elapsed CI time.

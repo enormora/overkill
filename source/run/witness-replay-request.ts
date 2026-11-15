@@ -1,4 +1,4 @@
-import type { ConfigLoadRequest } from '../config/config.ts';
+import type { ConfigLoadRequest } from '../config/config-loader.ts';
 import type {
     DebugRequestInput,
     RunCommand,

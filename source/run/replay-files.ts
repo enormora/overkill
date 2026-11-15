@@ -31,7 +31,10 @@ function emptyReplayFiles(projectRoot: string, record: ReplayRunRecord): ReplayF
     return { projectRoot, files: [ { file, fileSet: null, href: pathToFileURL(filePath).href, path: filePath } ] };
 }
 async function bindRecordedSources(projectRoot: string, record: ReplayRunRecord): Promise<ReplayFiles> {
-    const files = await Promise.all(record.replayPlan.files.map(async function bind(source) {
+    const importedFamily = typeof record.replayProfile === 'object' && record.replayProfile !== null &&
+        Reflect.get(record.replayProfile, 'kind') === 'family';
+    const sources = importedFamily ? record.replayPlan.discoveredFiles : record.replayPlan.files;
+    const files = await Promise.all(sources.map(async function bind(source) {
         const metadata = record.facts.cases.find(function matching(entry) {
             return entry.workId.case.file === source.file;
         });

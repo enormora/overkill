@@ -1,9 +1,12 @@
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type { NormalizedConfig, ProfileConfig } from '../config/types.ts';
-import type { LoadedConfig } from '../config/config.ts';
+import type { LoadedConfig } from '../config/config-loader.ts';
 import type { CommandLineRunTestsRequest } from './command-line-command.ts';
 import { selectProfile } from './test-profile.ts';
-import { selectCommandLineReporterFallback, type CommandLineReporterFallback } from './run-reporter-resolution.ts';
+import {
+    selectCommandLineReporterFallback,
+    type CommandLineReporterFallback
+} from './run-reporter-resolution.ts';
 
 export type CommandLineConfigDependencies = { readonly createDefaultReporter: () => Promise<DefinedReporter>; };
 

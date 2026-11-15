@@ -73,11 +73,15 @@ it is an optimization, not the required cross-CI baseline.
 
 ## Run Record Shape
 
+Version 3 retains executable-family facts and replay settings. Versioned readers
+preserve versions 1 and 2 without inventing implementation versions or loading
+family modules. Earlier generated-input type checks retain their recorded meaning.
+
 ```ts
 type SingleRunRecord = {
     readonly id: string; // ULID
     readonly kind: 'single';
-    readonly version: 2;
+    readonly version: 3;
     readonly replayPlan: CollectedRunPlan | null;
     readonly replayProfile: unknown;
     readonly replayWitness: WitnessFile | null;
@@ -102,6 +106,8 @@ type SingleRunRecord = {
 type MergedRunRecord = {
     readonly id: string; // ULID
     readonly kind: 'merged';
+    readonly version: 2;
+    readonly status: 'started' | 'completed' | 'interrupted';
     readonly facts: RunFacts;
     readonly identities: ReadonlyArray<WorkId>;
     readonly lineage: NonEmptyReadonlyArray<{ readonly id: string; readonly path: string; }>;
@@ -198,7 +204,13 @@ package keys and values; other dependency versions may differ. Host metadata suc
 may differ and is preserved as metadata. Missing shards, duplicate executed
 work identities, unreadable records, or incompatible facts produce a merge
 runner error. The merge still writes an incomplete failure record when it has
-enough valid input to explain what happened.
+enough valid input to explain what happened. The first eligible record in shard-index
+and canonical-path order supplies the reference; incompatible records contribute
+diagnostics rather than counts. Duplicate executions retain all observed outcomes,
+so incomplete totals may include repeated work. Repeated shard indices also fail
+the merge, including empty shards. With no eligible reference, merging fails
+without fabricating aggregate facts. Merge errors select CLI exit status 2 even
+when an input reports process exhaustion.
 
 ## Compact History
 

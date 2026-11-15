@@ -1,5 +1,6 @@
 import {
     isBuiltinTestProfile,
+    profileFamilyId,
     type BenchmarkProfileConfig,
     type BuiltinTestProfileConfig,
     type NormalizedConfig,
@@ -33,7 +34,7 @@ export function selectBenchmarkProfile(profileName: string, config: NormalizedCo
 
     if (profile.testFamily !== 'benchmark') {
         const requirement = 'Benchmark commands require testFamily "benchmark".';
-        return invalidRequest(`Profile "${profileName}" has testFamily "${profile.testFamily}". ${requirement}`);
+        return invalidRequest(`Profile "${profileName}" has testFamily "${profileFamilyId(profile)}". ${requirement}`);
     }
 
     return profile;

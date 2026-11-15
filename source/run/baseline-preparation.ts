@@ -1,13 +1,16 @@
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import type { RunPreparationInput, RunPreparationResult } from './prepared-run-types.ts';
-import { createResultFromResolutionError, reportCollectionErrorResult } from './run-collection-error-result.ts';
+import {
+    createResultFromResolutionError,
+    reportCollectionErrorResult
+} from './run-collection-error-result.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { createOrdinaryBaselineWorkflow } from './baseline-workflow.ts';
 import { createOrdinaryBaselineSession } from './baseline-session.ts';
 
 export async function prepareOrdinaryBaselineRun(options: RunPreparationInput): Promise<RunPreparationResult> {
     const { profile, request } = options.input;
-    if (profile.testFamily === 'benchmark' || profile.testFamily === 'type-test') {
+    if (typeof profile.testFamily !== 'string' || profile.testFamily === 'benchmark') {
         throw new Error('Expected ordinary baseline profile.');
     }
     const limits = profile.testFamily === 'integration' ? profile.attachments : defaultAttachmentLimits;

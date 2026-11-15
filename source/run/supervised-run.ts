@@ -416,6 +416,16 @@ async function reportRunStartForPlannedCases(
     await reportRunStart(runtime, collectedPlan, startedAtMs);
 }
 
+async function dispatchLiveRun(runtime: SupervisedRunRuntime, plan: CollectedRunPlan): Promise<void> {
+    if (runtime.terminalFailure.read()) {
+        return;
+    }
+    if (plan.family !== null) {
+        runtime.timeout.start();
+    }
+    await sendAssignmentForPlan(runtime);
+}
+
 async function executeCollectedLiveRun(liveRun: SupervisedLiveRun, resolvedRun: ResolvedRun): Promise<RunResult> {
     const startedAt = supervisedRunStartTimes(liveRun.dependencies);
     const runtime = await createLiveRunRuntime(liveRun, resolvedRun);
@@ -423,9 +433,7 @@ async function executeCollectedLiveRun(liveRun: SupervisedLiveRun, resolvedRun: 
     liveRun.runtime.write(runtime);
     runtime.state.recordRunnerErrors(resolvedRun.collectionRunnerErrors);
     await reportRunStartForPlannedCases(runtime, collectedPlan, startedAt.epochMilliseconds);
-    if (!liveRun.terminalFailure.read()) {
-        await sendAssignmentForPlan(runtime);
-    }
+    await dispatchLiveRun(runtime, collectedPlan);
     await liveRun.finishedSignal.promise;
 
     return await finishSupervisedRuntime(runtime, startedAt.monotonicMicroseconds);

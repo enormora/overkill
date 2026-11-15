@@ -67,6 +67,7 @@ function resource(
 
 function collectedPlan(cases: readonly CollectedRunCase[]): CollectedRunPlan {
     return {
+        family: null,
         defined: cases.length,
         discoveredFiles: [],
         files: [ { cases, file: filePath } ],

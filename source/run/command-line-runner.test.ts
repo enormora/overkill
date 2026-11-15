@@ -1,5 +1,11 @@
 import { runIfMain } from '#test-runner';
-import { ConfigError, type LoadedConfig } from '../packages/run/config.entry-point.ts';
+import {
+    ConfigError,
+    type LoadedConfig,
+    type ConfiguredRunCommand,
+    type RunCommand,
+    RunResolutionError
+} from '../packages/run/run.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -17,15 +23,16 @@ import {
     testRunExecutionFacts
 } from '../test-support/run-command-factory.ts';
 import { runnerResultFactory } from '../test-support/runner-result-factory.ts';
+import { snapshotRunCommand } from './frozen-run-command.ts';
 
 import {
     createCommandLineRunner,
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
-import type { RunCommand, ConfiguredRunOrchestrator } from './run-types.ts';
-import { RunResolutionError } from './run-errors.ts';
 import { selectTestProfile } from './test-profile.ts';
+
+type ConfiguredRunOrchestrator = CommandLineRunnerDependencies['orchestrator'];
 
 const emptyTestData = { annotations: {}, controls: {} } as const;
 
@@ -101,13 +108,23 @@ function createPassingPlan(): PassingTestPlan {
     });
 }
 
-async function resolveRunCommand(command: RunCommand): ReturnType<ConfiguredRunOrchestrator['resolve']> {
+async function resolveRunCommand(
+    suppliedCommand: ConfiguredRunCommand | RunCommand
+): ReturnType<ConfiguredRunOrchestrator['resolve']> {
+    const { command } = snapshotRunCommand(suppliedCommand);
     const profile = selectTestProfile(command.request.profile, command.config);
 
     return {
         config: command.config,
         cwd: command.cwd,
         facts: {
+            family: {
+                id: testRunExecutionFacts(command, profile).testFamily,
+                version: '1',
+                settings: null,
+                preparation: null,
+                collection: null
+            },
             adapter: null,
             benchmarkHost: null,
             benchmarkCalibration: null,
@@ -145,11 +162,13 @@ async function resolveRunCommand(command: RunCommand): ReturnType<ConfiguredRunO
 function createRunOnlyOrchestrator(run: ConfiguredRunOrchestrator['run']): ConfiguredRunOrchestrator {
     return {
         bench: unexpectedBenchmarkOrchestrator,
-        async resolve(command) {
+        async resolve(suppliedCommand) {
+            const { command } = snapshotRunCommand(suppliedCommand);
             return await resolveRunCommand(command);
         },
         run,
-        async runWithReporterDelivery(command) {
+        async runWithReporterDelivery(suppliedCommand) {
+            const { command } = snapshotRunCommand(suppliedCommand);
             const result = await run(command);
 
             return {
@@ -242,7 +261,7 @@ export const testNode = createOverkillSuite({
                 const dependencies = createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
                         async function runCommand(command) {
-                            receivedCommands.push(command);
+                            receivedCommands.push(snapshotRunCommand(command).command);
                             return runnerResultFactory.build({
                                 perTest: [ { outcome: { kind: 'pass' } } ],
                                 summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
@@ -277,7 +296,7 @@ export const testNode = createOverkillSuite({
                     },
                     orchestrator: createRunOnlyOrchestrator(
                         async function runCommand(command) {
-                            receivedCommands.push(command);
+                            receivedCommands.push(snapshotRunCommand(command).command);
                             return runnerResultFactory.build({
                                 perTest: [ { outcome: { kind: 'pass' } } ],
                                 summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }

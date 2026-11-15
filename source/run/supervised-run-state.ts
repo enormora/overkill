@@ -1,6 +1,7 @@
 import { interruptedPropertyEvidence } from '../engine/property-evidence.ts';
 import {
     caseIdentityKey,
+    workIdentityKey,
     createDefaultWorkId,
     type AttemptId,
     type CaseId,
@@ -16,9 +17,36 @@ import {
     type BoundaryArtifactCapture,
     type SupervisedBoundaryMetadata
 } from './boundary-artifact-capture.ts';
-import type { RunRequest } from './run-types.ts';
+import type { RunRequest, CollectedRunPlan } from './run-types.ts';
 import { createSupervisedOutputCapture } from './supervised-output-capture.ts';
 import { retainedRetryArtifacts } from './retry-artifact-retention.ts';
+
+export function collectedCasesByKey(collectedPlan: CollectedRunPlan): ReadonlyMap<string, SupervisedCase> {
+    const entries: [string, SupervisedCase][] = [];
+
+    for (const file of collectedPlan.files) {
+        for (const testCase of file.cases) {
+            const id = {
+                file: file.file,
+                params: testCase.params,
+                suite: testCase.suitePath.map(function toTitle(suite) {
+                    return suite.title;
+                }),
+                title: testCase.title
+            };
+
+            const workId = testCase.workId ?? createDefaultWorkId(id);
+
+            entries.push([ workIdentityKey(workId), {
+                capture: testCase.controls.capture,
+                id,
+                workId
+            } ]);
+        }
+    }
+
+    return new Map(entries);
+}
 
 export type StoredRunValue<Value> = StoredValue<Value>;
 export const createStoredRunValue: <Value>(value: Value) => StoredRunValue<Value> = createStoredValue;

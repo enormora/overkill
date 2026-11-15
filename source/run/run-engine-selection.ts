@@ -28,6 +28,7 @@ const engineMethodNames = [
     'createTestPlan',
     'createTestPlanFromTestFiles',
     'execute',
+    'prepareFamily',
     'formatCaseId',
     'ownsTestNode'
 ] as const;

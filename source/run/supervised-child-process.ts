@@ -74,6 +74,11 @@ type SupervisedHardTimeoutRuntime = {
 export function replayUsesLocalProcessPolicy(run: ResolvedRun): boolean {
     return run.facts.execution.processModel === 'in-process' && currentReplay() !== null;
 }
+function preparationHardTimeout(run: ResolvedRun): number | null {
+    return run.plan.kind !== 'local' && run.plan.collectedPlan.family !== null
+        ? run.facts.execution.timeoutPolicy.hardMilliseconds
+        : null;
+}
 export function createSupervisedHardTimeout(
     runtime: SupervisedHardTimeoutRuntime
 ): SupervisedChildHardTimeout {
@@ -99,7 +104,7 @@ export function createSupervisedHardTimeout(
                 runtime.state.activeCases.values(),
                 Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds),
                 runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds
-            );
+            ) ?? preparationHardTimeout(runtime.resolvedRun);
 
             if (remainingMilliseconds === null) {
                 return;

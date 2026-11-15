@@ -22,7 +22,7 @@ const supervisedCommand = createSupervisedRunCommand(command, profile, [ {
     fileSet: null,
     href: `virtual:${file}`,
     path: file
-} ], { source: { kind: 'configured-files' }, normalization: null });
+} ], { projectRoot: process.cwd(), source: { kind: 'configured-files' }, normalization: null });
 const collectionError = {
     attributedTo: null,
     attributedToAttempt: null,

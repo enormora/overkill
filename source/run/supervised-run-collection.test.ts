@@ -24,6 +24,7 @@ type SupervisedChildMessageListener = (message: unknown) => void;
 
 function supervisedCollectCommand(): SupervisedCollectCommand {
     return {
+        family: null,
         debug: { mode: 'off', selectors: [] },
         failureArtifacts: defaultFailureArtifactPolicy,
         benchmarkNormalization: null,
@@ -59,6 +60,7 @@ function supervisedCollectCommand(): SupervisedCollectCommand {
 
 function collectedPlan(): CollectedRunPlan {
     return {
+        family: null,
         defined: 0,
         discoveredFiles: [],
         files: [],

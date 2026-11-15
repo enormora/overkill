@@ -29,7 +29,7 @@ function readActiveResourceTypes(): readonly string[] {
 export function createNodeExecutionDependencies(input: NodeExecutionInput): NodeExecutionDependencies {
     function createExecution(
         reporterDispatcher: NodeExecutionInput['reporterDispatcher']
-    ): RunOrchestratorDependencies['execute'] {
+    ): ReturnType<RunOrchestratorDependencies['createExecution']> {
         return createExecute({
             benchmarkEnvironment: null,
             asyncLeakDiagnostics: 'enabled',

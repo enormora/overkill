@@ -3,6 +3,7 @@ import { workIdSchema } from '../engine/identity-schema.ts';
 import { benchmarkHostAssessmentSchema, benchmarkPlacementFactsSchema } from '../bench/benchmark-host-snapshot.ts';
 import { benchmarkNormalizationContextSchema } from '../bench/calibration-evidence.ts';
 import { benchmarkCalibrationSchema } from '../bench/calibration-schema.ts';
+import { familyRunFactsSchema } from './family-transport-schema.ts';
 import type { ReplayPlanningFacts } from './replay-record-types.ts';
 import { runSelectionSchema } from './run-selection-schema.ts';
 import { runShardHashAlgorithm } from './run-shard-hash-algorithm.ts';
@@ -20,7 +21,7 @@ const workerCount = z.strictObject({
     hostMaximum: z.number().int().positive(),
     profileMaximum: z.number().int().positive().nullable(),
     requested: z.number().int().positive().nullable(),
-    resolved: z.number().int().positive()
+    resolved: z.number().int().nonnegative()
 });
 const durationObservation = z.strictObject({
     durationMicroseconds: z.number().nonnegative(),
@@ -34,6 +35,7 @@ const durationObservation = z.strictObject({
     })
 });
 export const replayPlanningFields = {
+    family: familyRunFactsSchema.nullable().default(null),
     reproducibility: z.strictObject({
         selectedIdentities: z.array(workIdSchema).nullable().default(null),
         selection: runSelectionSchema,
@@ -79,4 +81,10 @@ export const replayPlanningFields = {
             .default(null)
     })
 };
-export const replayPlanningSchema: z.ZodType<ReplayPlanningFacts> = z.object(replayPlanningFields);
+export function hasRecordedWorkerCapacity(facts: Pick<ReplayPlanningFacts, 'cases' | 'execution'>): boolean {
+    return facts.execution.workerCount?.resolved !== 0 || facts.cases.length === 0;
+}
+
+export const replayPlanningSchema: z.ZodType<ReplayPlanningFacts> = z
+    .object(replayPlanningFields)
+    .refine(hasRecordedWorkerCapacity);

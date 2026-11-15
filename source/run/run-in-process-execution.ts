@@ -4,11 +4,12 @@ import {
     executeEmptyShardRun
 } from './run-empty-shard.ts';
 import {
-    executeLocalResolvedRun,
-    type LocalExecutionOptions
+    executeLocalResolvedRun
 } from './run-local-execution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { ResolvedRun } from './run-types.ts';
+
+import type { LocalExecutionOptions } from './family-profile-execution.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 type LocalResolvedRun = ResolvedRun & {

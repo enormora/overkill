@@ -26,6 +26,22 @@ function placedRecord(record: ReplayRunRecord, placementPlan: Placement | null):
 function invalidRecords(): readonly InvalidRecord[] {
     return [
         {
+            title: 'selected work without admitted workers',
+            change(record) {
+                const { workerCount } = record.facts.execution;
+                if (workerCount === null) {
+                    throw new Error('Fixture requires worker capacity.');
+                }
+                return {
+                    ...record,
+                    facts: {
+                        ...record.facts,
+                        execution: { ...record.facts.execution, workerCount: { ...workerCount, resolved: 0 } }
+                    }
+                };
+            }
+        },
+        {
             title: 'different retained run identity',
             change(record) {
                 return { ...record, id: 'different' };

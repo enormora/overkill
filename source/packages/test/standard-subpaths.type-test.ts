@@ -29,11 +29,9 @@ import {
 } from './compatibility.entry-point.ts';
 import type {
     defineConfig,
-    Config,
     ProjectIntegrationProfileConfig,
     ProjectMicrotestProfileConfig,
     ProjectPropertyProfileConfig,
-    ProjectAdapterProfileConfig,
     ProjectProfileConfig,
     ProjectBenchmarkProfileConfig,
     ProjectProfileFiles,
@@ -169,14 +167,12 @@ const projectedDatabase = defineResource({
 const typeTestController = new AbortController();
 declare const testScope: TestScope;
 
-type OrdinaryProjectProfile = ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig;
-
 describe('@overkill-dev/test standard subpaths', function () {
     test('exposes config authoring types', function () {
-        expect<typeof defineConfig>().type.toBe<(config: Config) => Config>();
-        expect<Exclude<ProjectProfileConfig, ProjectPropertyProfileConfig>>().type.toBe<
-            OrdinaryProjectProfile | ProjectAdapterProfileConfig | ProjectBenchmarkProfileConfig
-        >();
+        expect<typeof defineConfig>().type.toBeCallableWith({ profiles: { unit: { testFamily: 'microtest' } } });
+        expect<ProjectProfileConfig>().type.toBeAssignableFrom<ProjectIntegrationProfileConfig>();
+        expect<ProjectProfileConfig>().type.toBeAssignableFrom<ProjectMicrotestProfileConfig>();
+        expect<ProjectProfileConfig>().type.toBeAssignableFrom<ProjectBenchmarkProfileConfig>();
         expect<Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>>().type.toBe<
             ProjectPropertyProfileConfig
         >();

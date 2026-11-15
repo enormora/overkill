@@ -102,7 +102,7 @@ function assertReplayPlanSnapshot(scope: TestScope, fixture: CoverageRecordFixtu
     scope.require.defined(frozen);
     scope.assert.equal(started.replayPlan, null);
     scope.assert.deepEqual({ version: frozen.version, status: frozen.status, result: frozen.result }, {
-        version: 2,
+        version: 3,
         status: 'started',
         result: null
     });

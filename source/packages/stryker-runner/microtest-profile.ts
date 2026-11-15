@@ -17,8 +17,9 @@ function namedMicrotestProfile(config: NormalizedConfig, name: string): Selected
     }
 
     if (profile.testFamily !== 'microtest') {
+        const family = typeof profile.testFamily === 'string' ? profile.testFamily : profile.testFamily.id;
         throw new RunResolutionError(
-            `Profile "${name}" has testFamily "${profile.testFamily}". Stryker requires a Node microtest profile.`,
+            `Profile "${name}" has testFamily "${family}". Stryker requires a Node microtest profile.`,
             undefined,
             'invalid-request'
         );

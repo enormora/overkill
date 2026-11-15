@@ -1,10 +1,10 @@
 import path from 'node:path';
+import { profileFamilyId } from '../config/types.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { recordedRunPlan } from './recorded-run-plan.ts';
-import { currentRunRecordVersion } from './run-record-format.ts';
 import { updateCompactHistory } from './history-storage.ts';
 import { createRunRecordStorage } from './run-record-storage.ts';
-import type { RunRecord, RunRecordCoverage } from './run-record-types.ts';
+import type { SingleRunRecord, RunRecordCoverage } from './run-record-types.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import { initialRecord, type RunRecordDependencies } from './run-record-input.ts';
 import type { RunFacts, RunnerResult, CollectedRunPlan, ResolvedRun } from './run-types.ts';
@@ -15,7 +15,7 @@ export type RunRecordSession = {
     readonly id: string;
     readonly interrupt: (error: unknown) => Promise<void>;
     readonly path: string;
-    readonly retainPlacementTrace: (trace: RunRecord['placementTrace']) => void;
+    readonly retainPlacementTrace: (trace: SingleRunRecord['placementTrace']) => void;
     readonly recordResolvedRun: (run: ResolvedRun) => Promise<void>;
     readonly recordFacts: (facts: RunFacts, replayPlan: CollectedRunPlan | null) => Promise<void>;
     readonly start: (coverage: RunRecordCoverage | null) => Promise<void>;
@@ -41,13 +41,13 @@ export function createRunRecordSession(
                 directory,
                 policy: input.config.history,
                 now: now.toISOString(),
-                testFamily: input.profile.testFamily
+                testFamily: profileFamilyId(input.profile)
             });
         }
     });
 
     let releaseOwner: (() => Promise<void>) | null = null;
-    let placementTrace: RunRecord['placementTrace'] = null;
+    let placementTrace: SingleRunRecord['placementTrace'] = null;
     let maintenance: Promise<readonly string[]> | null = null;
     async function completeRecord(result: RunResult): Promise<RunResult> {
         try {
@@ -93,10 +93,10 @@ export function createRunRecordSession(
         async recordFacts(facts, replayPlan) {
             await storage.persist({
                 ...storage.current(),
-                version: currentRunRecordVersion,
+                version: value.version,
                 replayPlan,
-                replayWitness: value.version === currentRunRecordVersion ? value.replayWitness : null,
-                replayProfile: value.version === currentRunRecordVersion ? value.replayProfile : null,
+                replayWitness: value.replayWitness,
+                replayProfile: value.replayProfile,
                 facts,
                 identities: facts.cases.map(function workIdentity(test) {
                     return test.workId;

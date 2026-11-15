@@ -30,6 +30,7 @@ const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds:
 
 function collectedPlan(): CollectedRunPlan {
     return {
+        family: null,
         defined: 2,
         discoveredFiles: [],
         files: [ {

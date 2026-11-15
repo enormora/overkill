@@ -14,7 +14,6 @@ export type {
     ProjectIntegrationExecution,
     ProjectIntegrationProfileConfig,
     ProjectBenchmarkProfileConfig,
-    ProjectAdapterProfileConfig,
     ProjectMeasuredProcessUsage,
     ProjectMicrotestExecution,
     ProjectMicrotestProfileConfig,
@@ -34,7 +33,6 @@ export type {
     ConfigLoadRequest,
     ProfileConfig,
     BenchmarkProfileConfig,
-    AdapterProfileConfig,
     BenchmarkHostLimits,
     BenchmarkHostPolicy,
     TestProfileConfig
@@ -52,3 +50,10 @@ export type {
 } from '../run/config.entry-point.ts';
 
 export type { OrdinaryBaselinePolicy } from '../run/config.entry-point.ts';
+
+export type {
+    FamilySettingsOf,
+    CommonFamilyProfileConfig,
+    ProjectFamilyProfileConfig,
+    DefinedFamilyProfile
+} from '../run/config.entry-point.ts';

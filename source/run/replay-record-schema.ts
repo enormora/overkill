@@ -7,7 +7,7 @@ import { replayTraceSchema } from './replay-trace-schema.ts';
 import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
 import { frozenMicrotestPolicySchema } from './frozen-run-policy-schema.ts';
 import { replayPlanningSchema } from './replay-planning-schema.ts';
-import { currentRunRecordVersion } from './run-record-format.ts';
+import { currentRunRecordVersion, previousRunRecordVersion } from './run-record-format.ts';
 
 const replayRequestSchema = frozenMicrotestPolicySchema.shape.request.extend({
     capture: z.enum([ 'buffered', 'live' ]),
@@ -17,7 +17,7 @@ const replayRequestSchema = frozenMicrotestPolicySchema.shape.request.extend({
 });
 export const replayRecordSchema: z.ZodType<ReplayRunRecord> = z
     .object({
-        version: z.literal(currentRunRecordVersion),
+        version: z.union([ z.literal(previousRunRecordVersion), z.literal(currentRunRecordVersion) ]),
         kind: z.literal('single'),
         id: z.string().min(1),
         seed: z.string().regex(/^\d+$/u),
@@ -38,6 +38,9 @@ export const replayRecordSchema: z.ZodType<ReplayRunRecord> = z
             })
             .nullable(),
         versions: z.object({ node: z.string(), packages: z.record(z.string(), z.string()) })
+    })
+    .refine(function familyRecord(record) {
+        return record.version !== currentRunRecordVersion || record.facts.family !== null;
     })
     .refine(function completedResult(record) {
         return record.status !== 'completed' || record.result !== null;

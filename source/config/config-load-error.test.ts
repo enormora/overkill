@@ -5,9 +5,7 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import {
-    createConfigLoader
-} from './config.ts';
+import { createConfigLoader } from './config-loader.ts';
 import { ConfigError } from './config-error.ts';
 
 const loadConfig = createConfigLoader({

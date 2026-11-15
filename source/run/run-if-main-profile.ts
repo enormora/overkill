@@ -4,10 +4,7 @@ import {
     ProfileFileDiscoveryError,
     type ConfiguredProfileFile
 } from '../config/profile-file-discovery.ts';
-import type {
-    LoadedConfig,
-    ConfigLoader
-} from '../config/config.ts';
+import type { LoadedConfig, ConfigLoader } from '../config/config-loader.ts';
 import { ConfigError } from '../config/config-error.ts';
 import type { ProfileConfig, TestProfileConfig, ProfileFiles } from '../config/types.ts';
 import { selectTestProfile } from './test-profile.ts';

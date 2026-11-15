@@ -96,7 +96,7 @@ export async function collectRun(context: InitializedRunInput): Promise<Collecte
                 'unsupported-request'
             );
         }
-        return createCollectedRun({
+        return await createCollectedRun({
             command,
             dependencies,
             input,

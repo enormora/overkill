@@ -419,6 +419,11 @@ remains explicit. Historical results decode absent timeline evidence as `null`.
 work. Offline HTML reports provide workload, phase, sample, and clock selectors,
 an interactive timeline, and static event tables.
 
+Bare direct engine execution retains summaries and generated budget results.
+Without a runner attachment coordinator, raw samples and timelines report explicit
+omission reasons; `readBenchmarkTimeline` returns `null`. Runner execution retains
+owned attachments for inspection after JSON serialization.
+
 ## Host conditions
 
 Every executing benchmark run records a host snapshot before collection and

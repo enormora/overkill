@@ -1,13 +1,19 @@
+import type {
+    ConfiguredRunCommand,
+    CollectedRun,
+    FrozenRunCommand,
+    InitializedRun,
+    RunCommandInput
+} from './run-types.ts';
 import { collectRun } from './initialized-run-collection.ts';
 import { snapshotRunCommand } from './frozen-run-command.ts';
 import { RunResolutionError } from './run-errors.ts';
 import { readResolvedRunInput } from './run-input-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { freezeValue } from './run-support.ts';
-import type { CollectedRun, FrozenRunCommand, InitializedRun, RunCommandInput } from './run-types.ts';
 
 export async function initializeRun(
-    suppliedCommand: FrozenRunCommand | RunCommandInput,
+    suppliedCommand: ConfiguredRunCommand | FrozenRunCommand | RunCommandInput,
     dependencies: RunOrchestratorDependencies
 ): Promise<InitializedRun> {
     const snapshot = snapshotRunCommand(suppliedCommand);

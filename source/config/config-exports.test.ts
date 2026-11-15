@@ -15,10 +15,7 @@ import {
     configFixtureCwd,
     createSingleConfigModuleLoader
 } from '../test-support/run-config-module-loader.ts';
-import type {
-    LoadedConfig,
-    ConfigLoader
-} from './config.ts';
+import type { LoadedConfig, ConfigLoader } from './config-loader.ts';
 import { ConfigError } from './config-error.ts';
 
 const configFileName = 'overkill.config.js';

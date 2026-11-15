@@ -36,20 +36,28 @@ function executionSource(request: ProjectRequest, selection: string): string {
 engine, root, selection: ${selection},
     projectConfigPath: import.meta.dirname + '/tsconfig.json', compiler: ${JSON.stringify(request.compiler)}});`;
     }
-    const packages = resolvePath(import.meta.dirname, '../packages');
-    const runPath = JSON.stringify(join(packages, 'run/run.entry-point.ts'));
     const path = request.change === 'source' ? 'import.meta.filename' : "import.meta.dirname+'/tsconfig.json'";
     const change = request.change === 'identity'
         ? `plan={...plan,cases:[{...plan.cases[0],workId:{...plan.cases[0].workId,
     familyVariant:{family:'@overkill-dev/type-test',key:'typescript@0.0.0'}}},...plan.cases.slice(1)]};`
         : `await appendFile(${path},'\\n');`;
-    return `const {prepareAdapterPlan,executeAdapterPlan}=await import(${runPath});
-const settings={projectConfigPath:import.meta.dirname+'/tsconfig.json',compiler:{kind:'local'}};
-const preparation=await prepareAdapterPlan(typeTestAdapter,settings,engine.createTestPlan(root));
-let plan=preparation.testPlan;
+    return `const settings={projectConfigPath:import.meta.dirname+'/tsconfig.json',compiler:{kind:'local'}};
+const signal=new AbortController().signal;
+await using prepared=await engine.prepareFamily({testPlan:engine.createTestPlan(root),testFamily:family,settings,
+    projectRoot:import.meta.dirname,signal});
+let plan=prepared.testPlan;
 const {appendFile}=await import('node:fs/promises');
 ${change}
-const result=await executeAdapterPlan(typeTestAdapter,preparation.collect(plan),plan);`;
+let result;
+try {
+const collected=await prepared.collect({workIds:plan.cases.map(c=>c.workId),signal});
+result=await engine.execute(collected,{signal,debug:{mode:'off'},retryPolicy:null,reporters:[],
+    execution:{mode:'serial-in-process'},runFacts:{},startedAt:new Date().toISOString()});
+} catch(error) {
+result=engine.createRunResult(plan,[],[{subtype:'loader',cause:error,message:String(error),attributedTo:null,
+    attributedToAttempt:null,diagnostics:[]}],{startedAtMicroseconds:0,completedAtMicroseconds:0,
+    testExecutionWallTimeMicroseconds:0,processUsage:null,planStatus:'planned'});
+}`;
 }
 
 function fixtureSource(request: ProjectRequest): string {
@@ -58,6 +66,7 @@ function fixtureSource(request: ProjectRequest): string {
     const authoringImport = JSON.stringify(join(packages, 'test/test.entry-point.ts'));
     const assertionImport = JSON.stringify(join(packages, 'type-test/type-test.entry-point.ts'));
     const checkerImport = JSON.stringify(join(packages, 'type-test/check.entry-point.ts'));
+    const compilerImport = JSON.stringify(join(packages, 'type-test/compiler-plan.ts'));
     const resourceImport = JSON.stringify(join(packages, 'test/resources.entry-point.ts'));
     const profileImport = JSON.stringify(join(packages, 'type-test/profile.entry-point.ts'));
     const selection = request.titles === null ? { kind: 'all' } : {
@@ -76,8 +85,9 @@ import {
     callableWith, constructableWith, instantiableWith, hasProperty, raisesTypeError, type _
 } from ${assertionImport};
 import { checkTypeTests } from ${checkerImport};
+import { prepare as prepareCompilerPlan } from ${compilerImport};
 import { defineResource, withResource } from ${resourceImport};
-import { typeTestAdapter } from ${profileImport};
+import { family } from ${profileImport};
 const metadata = { annotations: {}, controls: {}, definitionLocations: [{ kind: 'unknown' }] } as const;
 let bodyCalls = 0;
 ${request.definitions}

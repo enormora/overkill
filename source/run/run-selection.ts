@@ -1,8 +1,8 @@
 import { hasAttachedResourceDescriptors } from '../engine/test-body-resource-attachment.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { createCaseId, createDefaultWorkId, type CaseId } from '../engine/identity.ts';
-import type { RunOrder, ProfileConfig } from '../config/types.ts';
-import { assertCollectedPropertyPolicies } from './property-collection.ts';
+import { profileFamilyId, type RunOrder, type ProfileConfig } from '../config/types.ts';
+import { assertCollectedPropertyPolicies, resolveTestPlanPropertyPolicy } from './property-collection.ts';
 import type {
     ResolvedRun,
     RunRequest,
@@ -11,7 +11,9 @@ import type {
     CollectedRunFile,
     CollectedRunPlan,
     RunSeed,
-    RunTestFamily
+    RunTestFamily,
+    RunFacts,
+    ReplayWire
 } from './run-types.ts';
 import { noTestsCollected, RunCollectionError } from './run-errors.ts';
 import { orderedRunItems } from './run-ordering.ts';
@@ -111,7 +113,7 @@ function isPositiveSafeInteger(value: number): boolean {
 
 function timeoutControlsMessage(timeoutMilliseconds: number, profile: ProfileConfig): string {
     return [
-        `Run profile "${profile.testFamily}" cannot run test case timeoutMilliseconds ${timeoutMilliseconds};`,
+        `Run profile "${profileFamilyId(profile)}" cannot run test case timeoutMilliseconds ${timeoutMilliseconds};`,
         `expected positive safe integer <= ${profile.timeouts.softMilliseconds}.`
     ]
         .join(' ');
@@ -137,14 +139,19 @@ function assertCaseControlsMatchProfile(testCase: ProfileControlledRunCase, prof
     assertCaseTimeoutControls(testCase, profile);
 }
 
-export function assertTestPlanMatchesTestFamily(testPlan: TestPlan, testFamily: RunTestFamily): void {
+export function assertTestPlanMatchesTestFamily(testPlan: TestPlan, profile: ProfileConfig | RunTestFamily): void {
+    const testFamily = typeof profile === 'string' ? profile : profileFamilyId(profile);
     for (const testCase of testPlan.discoveredCases) {
         assertTestFamily(testCase.testFamily, testFamily);
         assertMicrotestCaseHasNoResourceDescriptors(testCase, testFamily);
     }
 }
 
-export function assertCollectedRunPlanMatchesTestFamily(plan: CollectedRunPlan, testFamily: RunTestFamily): void {
+export function assertCollectedRunPlanMatchesTestFamily(
+    plan: CollectedRunPlan,
+    profile: ProfileConfig | RunTestFamily
+): void {
+    const testFamily = typeof profile === 'string' ? profile : profileFamilyId(profile);
     for (const file of plan.discoveredFiles) {
         for (const testCase of file.cases) {
             assertTestFamily(testCase.testFamily, testFamily);
@@ -176,7 +183,7 @@ export function assertCollectedRunPlanCasesMatchProfilePolicy(
         : null;
     if (propertyPolicy !== null) {
         assertCollectedPropertyPolicies(plan, {
-            testFamily: profile.testFamily,
+            testFamily: profileFamilyId(profile),
             propertyPolicy,
             timeoutMilliseconds: profile.timeouts.softMilliseconds
         });
@@ -340,4 +347,41 @@ export function resolveLastFailedSelection(selection: RunSelection, failedCases:
     }
     const failed = any([ first, ...rest ]);
     return { kind: 'filter', filter: selection.kind === 'all' ? failed : all([ selection.filter, failed ]) };
+}
+
+type CollectionPolicy = {
+    readonly testFamily: RunTestFamily;
+    readonly propertyPolicy: RunFacts['execution']['propertyPolicy'];
+    readonly timeoutMilliseconds: number;
+};
+
+type CollectionReplayPolicy = CollectionPolicy & { readonly replay: ReplayWire | null; };
+function hasReplayPolicy(policy: CollectionPolicy): policy is CollectionReplayPolicy {
+    return Object.hasOwn(policy, 'replay');
+}
+
+function requiresPropertyPolicy(testPlan: TestPlan, family: RunTestFamily): boolean {
+    return family === 'property' || testPlan.cases.some(function propertyCase(testCase) {
+        return testCase.execution.kind === 'body' && testCase.execution.bodyMode === 'property';
+    });
+}
+
+export function assertTestPlanCollectionPolicy(testPlan: TestPlan, policy: CollectionPolicy): void {
+    assertTestPlanMatchesTestFamily(testPlan, policy.testFamily);
+    if (policy.propertyPolicy === null && requiresPropertyPolicy(testPlan, policy.testFamily)) {
+        throw new RunCollectionError('Property collection requires profile policy.', { cause: null }, 'loader');
+    }
+}
+
+export function resolveTestPlanCollectionPolicy(
+    testPlan: TestPlan,
+    policy: CollectionPolicy | CollectionReplayPolicy
+): TestPlan {
+    if (hasReplayPolicy(policy) && policy.replay?.kind === 'record') {
+        return testPlan;
+    }
+    assertTestPlanCollectionPolicy(testPlan, policy);
+    return policy.propertyPolicy === null
+        ? testPlan
+        : resolveTestPlanPropertyPolicy(testPlan, { ...policy, propertyPolicy: policy.propertyPolicy });
 }

@@ -1,3 +1,5 @@
+import { BenchmarkCalibrationPlanError } from '../engine/benchmark-calibration-plan.ts';
+import { PropertyPlanError } from '../engine/property-plan.ts';
 import { permissionDeniedRunnerErrorFromThrown, type RunnerError } from '../engine/run-result.ts';
 import type { RuntimeId } from '../engine/identity.ts';
 import type { ProcessModel, WorkerLifecycle } from '../config/types.ts';
@@ -160,6 +162,16 @@ export class RunCollectionError extends Error {
         super(message, options);
         this.name = 'RunCollectionError';
         this.errorSubtype = subtype;
+    }
+
+    public static fromPlan(error: unknown, fallback: string): RunCollectionError {
+        return new RunCollectionError(
+            error instanceof PropertyPlanError || error instanceof BenchmarkCalibrationPlanError
+                ? error.message
+                : fallback,
+            { cause: error },
+            error instanceof BenchmarkCalibrationPlanError ? 'measurement' : 'loader'
+        );
     }
 
     public runnerErrors(): readonly RunnerError[] {

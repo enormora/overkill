@@ -178,6 +178,25 @@ family, and a built-in profile; rejection examples are swapped settings, missing
 required fields, invalid compiler selections, and a string-only optional family.
 `prepareFamily` applies the same `NoInfer` constraint for direct callers.
 
+### Plan Construction With Collection Policy
+
+The existing `engine.createTestPlan(root)` and
+`engine.createTestPlanFromTestFiles(options)` signatures remain available. Each
+also accepts a second `TestPlanCollectionPolicy` argument containing
+`runtimeMatrices`, `benchmarkCalibration`, and `property`. `property` is either `null` or an object with
+`policy` and `timeoutMilliseconds`.
+
+The engine applies these existing collection policies before issuing the plan.
+The runner supplies runtime expansion, calibration capture, and resolved
+property defaults here;
+family preparation receives an engine-owned plan after those transformations.
+Callers do not adopt or relabel transformed plans as engine-owned.
+
+Imported analysis profiles retain the existing local, serial defaults with
+concurrency one and 60-second collection, soft, and hard timeouts. Imported
+runtime profiles use the ordinary common defaults. A family that does not support
+the default placement requires explicit compatible execution policy.
+
 ## Backend Preparation
 
 ```ts
@@ -328,7 +347,10 @@ type FamilyRunFacts = {
     readonly collection: FamilyValue;
 };
 
+type FamilyPreparationFacts = Pick<FamilyRunFacts, 'id' | 'version' | 'settings' | 'preparation'>;
+
 type PreparedFamilyRun = AsyncDisposable & {
+    readonly facts: FamilyPreparationFacts;
     readonly testPlan: TestPlan;
     readonly collect: (input: FamilyCollectionInput) => Promise<CollectedFamilyRun>;
 };
@@ -340,6 +362,10 @@ type CollectedFamilyRun = {
 
 type FamilyExecuteOptions = ExecuteOptions & { readonly signal: AbortSignal; };
 ```
+
+Preparation facts are available through `PreparedFamilyRun.facts` before
+selection. Empty shards retain these facts with null collection facts without
+calling `collect([])`.
 
 `PreparedFamilyRun` and `CollectedFamilyRun` are engine-branded values. Their
 visible shapes above do not permit callers to construct them. Each engine adds

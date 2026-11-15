@@ -1,3 +1,13 @@
+import type {
+    ConfiguredRunCommand,
+    RunnerResult,
+    ResolvedRun,
+    RunCommand,
+    RunCommandInput,
+    FrozenRunCommand,
+    RunReporterDeliveryResult,
+    RunOperations as CommandOperations
+} from './run-types.ts';
 import {
     readResolvedRunInput,
     type RunInvocation
@@ -8,7 +18,7 @@ import {
 import { executeRunCommand, type RunExecutionInvocation } from './run-execution.ts';
 import { prepareRunCommand, withRunCommandModuleBoundary } from './frozen-run-command.ts';
 import { readRunCancellation } from './run-cancellation.ts';
-import { createLocalResolvedRun } from './run-local-resolution.ts';
+import { inspectLocalResolvedRun } from './run-local-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type {
     CollectionSource,
@@ -20,15 +30,6 @@ import {
     type RunInvocationTimingOptions,
     type RunTimingMeasurement
 } from './run-timing-collection.ts';
-import type {
-    RunnerResult,
-    ResolvedRun,
-    RunCommand,
-    RunCommandInput,
-    FrozenRunCommand,
-    RunReporterDeliveryResult,
-    RunOperations as CommandOperations
-} from './run-types.ts';
 
 type RunCollectionSource = CollectionSource;
 type DirectEntrypointRunCollectionSource = DirectEntrypointCollectionSource;
@@ -79,13 +80,14 @@ async function createResolvedRun(
         return await isolatedRun;
     }
 
-    return await (timing?.measureAsync(
+    const resolved = await (timing?.measureAsync(
         'resolution.freeze',
         emptyTimingSpanMetadata(),
         async function createTimedLocalResolvedRun() {
-            return await createLocalResolvedRun(resolvedCommand, dependencies, input, source);
+            return await inspectLocalResolvedRun(resolvedCommand, dependencies, input, source);
         }
-    ) ?? createLocalResolvedRun(resolvedCommand, dependencies, input, source));
+    ) ?? inspectLocalResolvedRun(resolvedCommand, dependencies, input, source));
+    return resolved;
 }
 
 function invocationTiming(
@@ -112,7 +114,7 @@ async function runCommand(
     );
 }
 
-type RunOperations = CommandOperations<FrozenRunCommand | RunCommandInput>;
+type RunOperations = CommandOperations<ConfiguredRunCommand | FrozenRunCommand | RunCommandInput>;
 
 export function createRunOperations(
     dependencies: RunOrchestratorDependencies,

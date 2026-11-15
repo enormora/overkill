@@ -75,6 +75,7 @@ function createEventLog(): EventLog {
 
 function command(): WorkerPoolCommand {
     return {
+        family: null,
         debug: { mode: 'off', selectors: [] },
         failureArtifacts: defaultFailureArtifactPolicy,
         capture: 'buffered',

@@ -1,4 +1,5 @@
 import { appendRunnerErrors } from '../engine/execution-result.ts';
+import { isAnalysisFamilyPlan } from './family-profile-run.ts';
 import type { RunResult } from './run-engine-primitives.ts';
 import type { CollectedInvocationPlan, CollectedRunContext } from './collected-run-planning.ts';
 import { reportCollectionErrorResult } from './run-collection-error-result.ts';
@@ -39,7 +40,7 @@ async function executeObservedCollectedPlan(execution: CollectedPlanExecution): 
             { timing, benchmarkHost: null }
         );
     }
-    if (plan.resolved.facts.execution.testFamily === 'type-test') {
+    if (isAnalysisFamilyPlan(plan.resolved.plan)) {
         return await executeInProcessResolvedRun(plan.resolved, dependencies, {
             finalizeResult,
             runtimePolicy,

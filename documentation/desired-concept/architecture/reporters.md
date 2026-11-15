@@ -257,7 +257,8 @@ completed shard run records and produces a merged `RunResult`; it does not
 replay or synthesize the original event stream. Configured real-time reporters
 are ignored for the merge command. If no final-result reporter is configured
 for the merged profile, the command uses the first-party brief final-result
-fallback.
+fallback. A recorded profile need not still exist in the current configuration;
+when absent, global reporter configuration supplies the fallback list.
 
 ## Registration
 

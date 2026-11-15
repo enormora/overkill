@@ -4,7 +4,7 @@ import { currentReplayWitness } from './replay-context.ts';
 import { currentRunRecordVersion } from './run-record-format.ts';
 import { runRecordVersions } from './run-record-versions.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
-import type { RunRecord, RunRecordVersions } from './run-record-types.ts';
+import type { SingleRunRecord, RunRecordVersions } from './run-record-types.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import { runEngineFacts } from './run-support.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -20,8 +20,20 @@ export type RunRecordDependencies = {
 };
 
 export function recordedReplayProfile(profile: ResolvedRunInput['profile']): unknown {
-    if (profile.testFamily === 'type-test') {
-        return null;
+    if (typeof profile.testFamily !== 'string') {
+        return {
+            kind: 'family',
+            family: {
+                id: profile.testFamily.id,
+                version: profile.testFamily.version,
+                module: profile.testFamily.module
+            },
+            policy: Object.fromEntries(
+                Object.entries(profile).filter(function recordedPolicy([ name ]) {
+                    return name !== 'reporters' && name !== 'testFamily';
+                })
+            )
+        };
     }
     return Object.fromEntries(
         Object
@@ -51,7 +63,7 @@ export function initialRecord(
     cwd: string,
     input: Pick<ResolvedRunInput, 'config' | 'engine' | 'profile' | 'projectRoot' | 'request'>,
     dependencies: RunRecordDependencies
-): RunRecord {
+): Extract<SingleRunRecord, { readonly version: typeof currentRunRecordVersion; }> {
     if (input.request.seed.value === null) {
         throw new Error('Run recording requires a resolved seed.');
     }

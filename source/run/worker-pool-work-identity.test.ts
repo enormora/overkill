@@ -6,6 +6,8 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { WorkDistribution } from '../config/types.ts';
+import { testNode as familyTransportTestNode } from './family-profile-transport.test.ts';
+import { testNode as familyResolutionTestNode } from './family-resolution.test.ts';
 import { testNode as familyIdentityTestNode } from './family-identity.test.ts';
 import { emptyWorkUnitResourceConstraints, type CollectedRunPlan } from './run-types.ts';
 import { type WorkUnitPlanningInput, workUnitsFromCollectedPlan } from './work-unit-planning.ts';
@@ -76,6 +78,7 @@ function collectedCaseWithWorkload(): CollectedRunPlan['files'][number]['cases']
 
 function collectedPlan(files: CollectedRunPlan['files']): CollectedRunPlan {
     return {
+        family: null,
         defined: files.reduce(function sumCases(count, file) {
             return count + file.cases.length;
         }, 0),
@@ -111,6 +114,8 @@ export const testNode = createOverkillSuite({
     title: 'source/run/worker-pool-work-identity.test.ts',
     children: [
         familyIdentityTestNode,
+        familyResolutionTestNode,
+        familyTransportTestNode,
         createOverkillTestCase({
             annotations: {},
             controls: {},

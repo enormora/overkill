@@ -1,6 +1,6 @@
 import { createDeterministicClock, type Clock } from '@enormora/clock';
 import { createEngine, type Engine } from '../engine/engine.ts';
-import { createExecute, type RuntimeExecute } from '../engine/execution.ts';
+import { createExecute, type ExecutionDriver } from '../engine/execution.ts';
 import { createReporterDispatcher, type ReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 
 function ignoreOutputLine(): void {
@@ -14,7 +14,7 @@ function readNoActiveResourceTypes(): readonly string[] {
 export function createTestExecution(
     wallClock: Clock,
     reporterDispatcher: ReporterDispatcher
-): RuntimeExecute {
+): ExecutionDriver {
     return createExecute({
         benchmarkEnvironment: null,
         asyncLeakDiagnostics: 'enabled',

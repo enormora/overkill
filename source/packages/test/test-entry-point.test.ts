@@ -69,6 +69,7 @@ const rootAuthoringExportNames = [
     'defineMacro',
     'defineParameterizedTestBody',
     'doubleUsage',
+    'matches',
     'recordAsyncSink',
     'recordSink',
     'rule',
@@ -373,6 +374,10 @@ function assertRootDoubleUsage(
 }
 
 function rootDoublesBody(testScope: TestScope): ReturnType<TestBody> {
+    const patternedValue = testDouble<LoadValue>({
+        rules: [ rule.when(testRoot.matches('id')).returns('patterned') ]
+    });
+    testScope.assert.equal(patternedValue('id'), 'patterned');
     const loadValue = testDouble.returns<LoadValue>('value');
     const sequencedValue = createSequencedValue();
     const events = testIterator.yields([ 'created' ]);

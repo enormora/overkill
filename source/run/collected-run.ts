@@ -1,3 +1,4 @@
+import { disposeResolvedFamily, observeResolvedFamily } from './family-profile-run.ts';
 import { runnerResult } from './runner-result.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { planCollectedInvocation, type CollectedRunContext } from './collected-run-planning.ts';
@@ -10,7 +11,8 @@ import { executeCollectedInvocation } from './collected-run-invocation.ts';
 
 type RunResult = Awaited<ReturnType<CollectedRun['run']>>;
 
-export function createCollectedRun(context: CollectedRunContext): CollectedRun {
+export async function createCollectedRun(context: CollectedRunContext): Promise<CollectedRun> {
+    await disposeResolvedFamily(context.resolved);
     const activeInvocations = new Set<CollectedRunInvocation>();
     async function run(invocation: CollectedRunInvocation): Promise<RunResult> {
         if (activeInvocations.size > 0) {
@@ -20,12 +22,11 @@ export function createCollectedRun(context: CollectedRunContext): CollectedRun {
         try {
             return await withFileModuleBoundary(context.moduleBoundary, async function executeBoundedPlan() {
                 const timing = createRunTimingMeasurement(context.dependencies.wallClock);
+                const plan = await planCollectedInvocation(context, invocation);
                 return runnerResult(
-                    await executeCollectedInvocation(
-                        context,
-                        await planCollectedInvocation(context, invocation),
-                        timing
-                    )
+                    await observeResolvedFamily(plan.resolved, async function executeInvocation() {
+                        return await executeCollectedInvocation(context, plan, timing);
+                    })
                 );
             });
         } finally {
@@ -40,7 +41,7 @@ export function createCollectedRun(context: CollectedRunContext): CollectedRun {
                 : context.resolved.plan.collectedPlan
         ),
         run,
-        async runWithReporterDelivery(invocation) {
+        async runWithReporterDelivery(invocation: CollectedRunInvocation) {
             const delivery = await context.dependencies.reporterDispatcher.trackRunnerErrorDelivery(
                 async function trackCollectedRun() {
                     return await run(invocation);

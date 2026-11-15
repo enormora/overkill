@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { propertyPolicySchema, propertySettingsDeclarationSchema } from '../config/property-policy.ts';
+import { propertyPolicySchema, propertySettingsDeclarationSchema } from '../engine/property-policy.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import {
     annotationsSchema,
@@ -10,6 +10,7 @@ import {
 } from '../engine/identity-schema.ts';
 import type { WorkloadParameters } from '../engine/workload-input.ts';
 import { snapshotWorkloadParameters } from '../engine/workload-parameters.ts';
+import { collectedFamilyMetadataSchema } from './family-transport-schema.ts';
 import { benchmarkDefinitionSchema } from './benchmark-definition-schema.ts';
 import type { CollectedRunPlan, FrozenWorkloadInput } from './run-types.ts';
 
@@ -117,6 +118,7 @@ const fileSchema = z
         };
     });
 export const collectedRunPlanSchema: z.ZodType<CollectedRunPlan> = z.strictObject({
+    family: collectedFamilyMetadataSchema.nullable().default(null),
     defined: z.number(),
     discoveredFiles: z.array(fileSchema),
     files: z.array(fileSchema),

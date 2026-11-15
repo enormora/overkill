@@ -179,7 +179,6 @@ export const configuration = {
             description: 'Overkill run resolution and orchestration.',
             bundlePeerDependencies: [ '@overkill-dev/engine' ],
             roots: {
-                adapterRun: { javaScript: 'run/adapter-run.js' },
                 attachmentConnection: { javaScript: 'run/attachment-connection.js' },
                 attachmentRun: { javaScript: 'run/attachment-run.js' },
                 baselineCommands: moduleRoot('run/baseline-commands'),
@@ -195,7 +194,7 @@ export const configuration = {
                 propertyCodec: moduleRoot('packages/run/property-codec.entry-point'),
                 corpusCodecChild: { javaScript: 'run/corpus-codec.entry-point.js' },
                 corpusCommands: moduleRoot('run/corpus-commands'),
-                propertyReplayCommand: moduleRoot('run/property-replay-command'),
+                witnessReplayPreparation: moduleRoot('run/witness-replay-preparation'),
                 replayCommands: moduleRoot('run/replay-commands'),
                 replaySelection: moduleRoot('run/replay-command'),
                 replayTerminal: moduleRoot('run/replay-terminal'),
@@ -218,6 +217,7 @@ export const configuration = {
                 localCoverage: { javaScript: 'run/run-local-coverage.js' },
                 main: moduleRoot('packages/run/run.entry-point'),
                 nodeCommandLineRunner: moduleRoot('run/node-command-line-runner'),
+                nodeFamilyResolution: moduleRoot('run/node-family-resolution'),
                 recordedCoverage: { javaScript: 'run/recorded-coverage-run.js' },
                 recordedRun: { javaScript: 'run/recorded-run.js' },
                 resourceLifecycle: moduleRoot('packages/run/resource-lifecycle.entry-point'),
@@ -237,7 +237,6 @@ export const configuration = {
                     './transcript-store': 'transcriptStore'
                 }),
                 privateRoots: [
-                    'adapterRun',
                     'attachmentConnection',
                     'attachmentRun',
                     'baselineCommands',
@@ -253,7 +252,7 @@ export const configuration = {
                     'benchmarkCalibrationChild',
                     'corpusCodecChild',
                     'corpusCommands',
-                    'propertyReplayCommand',
+                    'witnessReplayPreparation',
                     'replayCommands',
                     'replaySelection',
                     'replayTerminal',
@@ -270,6 +269,7 @@ export const configuration = {
                     'historyMaintenance',
                     'localCoverage',
                     'nodeCommandLineRunner',
+                    'nodeFamilyResolution',
                     'recordedCoverage',
                     'recordedRun',
                     'snapshotPreparation',
@@ -316,11 +316,11 @@ export const configuration = {
                 main: moduleRoot('packages/type-test/type-test.entry-point'),
                 profile: moduleRoot('packages/type-test/profile.entry-point'),
                 check: moduleRoot('packages/type-test/check.entry-point'),
-                adapter: { javaScript: 'packages/type-test/adapter.entry-point.js' }
+                backend: { javaScript: 'packages/type-test/family-backend.entry-point.js' }
             },
             packageInterface: {
                 modules: packageModules({ '.': 'main', './profile': 'profile', './check': 'check' }),
-                privateRoots: [ 'adapter' ]
+                privateRoots: [ 'backend' ]
             },
             bundlePeerDependencies: [ '@overkill-dev/engine', '@overkill-dev/run' ]
         },

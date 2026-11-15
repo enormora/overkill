@@ -4,7 +4,7 @@ import type {
 } from '../engine/test-data.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type { DefinedOutputRenderer } from '../engine/reporter-output.ts';
-import type { LoadedConfig } from '../config/config.ts';
+import type { LoadedConfig } from '../config/config-loader.ts';
 import type { TestProfileConfig } from '../config/types.ts';
 import { createDefaultDirectReporter } from './default-direct-reporter.ts';
 

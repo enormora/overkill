@@ -1,3 +1,4 @@
+import { observeResolvedFamily } from './family-profile-run.ts';
 import { createResultFromResolutionError } from './run-collection-error-result.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import {
@@ -47,8 +48,11 @@ export async function createLocalRunResult(
                     options.input,
                     options.source
                 );
-                await options.record?.recordFacts(resolved.facts, resolved.replayPlan);
-                return resolved.run;
+                const retain = async function recordCollection(): Promise<ResolvedRun | RunResult> {
+                    await options.record?.recordFacts(resolved.facts, resolved.replayPlan);
+                    return resolved.run;
+                };
+                return isRunResult(resolved.run) ? await retain() : await observeResolvedFamily(resolved.run, retain);
             }
         );
     };

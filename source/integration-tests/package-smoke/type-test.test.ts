@@ -133,7 +133,7 @@ export const testNode = createSuite({
                 const directory = await isolatedConsumer(scope);
                 const backend = join(
                     directory,
-                    'node_modules/@overkill-dev/type-test/packages/type-test/adapter.entry-point.js'
+                    'node_modules/@overkill-dev/type-test/packages/type-test/family-backend.entry-point.js'
                 );
                 await readFile(backend);
                 await rm(backend);

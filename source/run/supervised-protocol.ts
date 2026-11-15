@@ -9,6 +9,7 @@ import type {
 import type { SnapshotRun } from './snapshot-wire.ts';
 import { assertFrozenAssignmentInputs } from './workload-input-validation.ts';
 import type {
+    FrozenFamilyDefinition,
     ReplayWire,
     FrozenWorkloadInput,
     RunFacts,
@@ -62,6 +63,7 @@ type SupervisedCommandBase = {
     readonly processUsageSamplingIntervalMilliseconds: number;
     readonly root: RunCollectionRoot;
     readonly scheduling: Scheduling;
+    readonly family: FrozenFamilyDefinition | null;
     readonly testFamily: RunTestFamily;
     readonly timeoutMilliseconds: number;
 };

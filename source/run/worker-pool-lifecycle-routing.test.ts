@@ -63,6 +63,7 @@ function collectedCase(title: string): CollectedRunPlan['files'][number]['cases'
 
 function collectedPlan(): CollectedRunPlan {
     return {
+        family: null,
         defined: 2,
         discoveredFiles: [],
         files: [
@@ -83,6 +84,7 @@ function baseResolvedRun(): ResolvedRun {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            family: { id: 'integration', version: '1', settings: null, preparation: null, collection: null },
             adapter: null,
             benchmarkHost: null,
             benchmarkCalibration: null,

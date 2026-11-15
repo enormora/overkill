@@ -1,5 +1,5 @@
 import { suite, test } from '../packages/test/test.entry-point.ts';
-import { defaultPropertyPolicy } from '../config/property-policy.ts';
+import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import { capturePropertyInput, decodePropertyInput } from './property-graph.ts';
 import { defineCodec, type PropertyInputCodec } from './property-codec.ts';
 import { createPropertyWork, propertyExhaustion } from './property-work.ts';

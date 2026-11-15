@@ -3,14 +3,19 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
-import { normalizeConfig, orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
+import {
+    normalizeConfig,
+    orchestrator,
+    parseRunnerResult,
+    type RunCommand
+} from '../../packages/run/run.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { assertModuleBenchmark, assertFailedTimeline } from './module-import-assertions.test.ts';
 
 async function commandFor(
     scope: TestScope,
-    boundary: 'fresh-worker-per-unit' | 'reuse' | 'supervised-process',
+    boundary: 'fresh-worker-per-unit' | 'hosted' | 'reuse' | 'supervised-process',
     filename: string
 ): Promise<RunCommand> {
     const directory = await mkdtemp(join(tmpdir(), 'overkill-module-'));
@@ -26,18 +31,22 @@ async function commandFor(
             profiles: {
                 imports: {
                     testFamily: 'benchmark',
+                    garbageCollection: boundary === 'hosted' ? 'after-sample' : 'off',
                     files: { include: [ filename ] },
                     timeouts: { collectionMilliseconds: 30_000 },
                     execution: boundary === 'supervised-process'
                         ? { processModel: 'supervised-process' }
-                        : { processModel: 'worker-pool', workerLifecycle: boundary }
+                        : {
+                            processModel: 'worker-pool',
+                            workerLifecycle: boundary === 'hosted' ? 'reuse' : boundary
+                        }
                 }
             }
         })
     };
 }
 
-const boundaries = [ 'reuse', 'fresh-worker-per-unit', 'supervised-process' ] as const;
+const boundaries = [ 'reuse', 'fresh-worker-per-unit', 'supervised-process', 'hosted' ] as const;
 export const testNode = suite(
     'cold module imports',
     [
@@ -69,6 +78,8 @@ export const testNode = suite(
                     );
                     const result = await orchestrator.bench.run(command, { timing: null });
                     assertModuleBenchmark(scope, result);
+                    const serialized = JSON.stringify(result);
+                    assertModuleBenchmark(scope, parseRunnerResult(JSON.parse(serialized)));
                     return scope.assert.collect();
                 });
             }

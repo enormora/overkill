@@ -92,6 +92,22 @@ async function captureFixedCalibration(scope: TestScope, binary: string, consume
     await useFasterCalibrationReference(consumerFolder);
 }
 
+async function assertUncapturedCommands(scope: TestScope, binary: string, consumerFolder: string): Promise<void> {
+    const listed = await executeNode(
+        [ binary, 'bench', 'list', '--profile', 'normalized' ],
+        consumerFolder
+    );
+    assertSuccessfulCommand(scope, listed);
+    const files = await readdir(consumerFolder);
+    scope.assert.false(files.includes('references'));
+    const uncaptured = await executeNode(
+        [ binary, 'bench', 'run', '--profile', 'normalized' ],
+        consumerFolder
+    );
+    assertSuccessfulCommand(scope, uncaptured);
+    scope.assert.includes(uncaptured.stdout, '(1 pass, 0 fail');
+}
+
 export const testNode = createSuite({
     annotations: {},
     children: [
@@ -108,6 +124,7 @@ export const testNode = createSuite({
                     consumerFolder,
                     'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
                 );
+                await assertUncapturedCommands(scope, binary, consumerFolder);
                 await captureFixedCalibration(scope, binary, consumerFolder);
                 const measured = await executeNode(
                     [ binary, 'bench', 'run', '--profile', 'normalized' ],

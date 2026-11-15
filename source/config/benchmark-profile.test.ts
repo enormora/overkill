@@ -1,9 +1,10 @@
 import { runIfMain } from '#test-runner';
 import { defaultFailureArtifactPolicy } from '../engine/failure-artifact-policy.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { ConfigError, defineConfig, normalizeConfig } from '../packages/run/config.entry-point.ts';
+import { ConfigError, defineConfig, normalizeConfig, type ProfileConfig } from '../packages/run/config.entry-point.ts';
 import { createSingleConfigModuleLoader, configFixtureCwd } from '../test-support/run-config-module-loader.ts';
 import { benchmarkHostPolicySchema } from './benchmark-host.ts';
+import { validateBenchmarkExecution } from './benchmark-execution.ts';
 
 const benchmarkPolicy = {
     failureArtifacts: defaultFailureArtifactPolicy,
@@ -45,8 +46,86 @@ const benchmarkPolicy = {
 } as const;
 
 const benchmarkFiles = { include: [ 'source/startup.bench.ts' ] } as const;
+const workGroup = {
+    name: 'startup',
+    fileSets: [ 'startup' ],
+    granularity: 'case',
+    order: 'plan',
+    scheduling: 'serial',
+    workerLifecycle: 'reuse'
+} as const;
+const invalidExecutions: readonly { readonly execution: ProfileConfig['execution']; readonly message: string; }[] = [
+    {
+        execution: { ...benchmarkPolicy.execution, scheduling: 'concurrent' },
+        message: 'Benchmark execution requires serial scheduling and maxConcurrency 1.'
+    },
+    {
+        execution: { ...benchmarkPolicy.execution, maxConcurrency: 2 },
+        message: 'Benchmark execution requires serial scheduling and maxConcurrency 1.'
+    },
+    {
+        execution: { processModel: 'in-process', scheduling: 'serial', maxConcurrency: 1 },
+        message: 'Benchmark execution requires supervised-process or worker-pool.'
+    },
+    {
+        execution: {
+            ...benchmarkPolicy.execution,
+            hedging: { mode: 'on', durationMultiplier: 2, minimumDelayMilliseconds: 1 }
+        },
+        message: 'Benchmark execution does not support hedging.'
+    },
+    {
+        execution: {
+            ...benchmarkPolicy.execution,
+            workDistribution: {
+                mode: 'group',
+                unmatched: 'file',
+                groups: [ { ...workGroup, scheduling: 'concurrent' } ]
+            }
+        },
+        message: 'Benchmark work groups do not support concurrent scheduling.'
+    }
+];
 
 export const testNode = suite('benchmark profile configuration', [
+    test('rejects normalized execution policies that invalidate benchmark isolation', function (scope) {
+        for (const { execution, message } of invalidExecutions) {
+            scope.assert.throws(function validateIncompatibleBenchmark() {
+                validateBenchmarkExecution(execution, benchmarkPolicy.timeouts);
+            }, { message });
+        }
+        return scope.assert.collect();
+    }),
+    test('accepts normalized serial work groups', function (scope: TestScope) {
+        const profile = normalizeConfig({
+            profiles: {
+                startup: {
+                    testFamily: 'benchmark',
+                    files: { sets: { startup: benchmarkFiles } },
+                    execution: {
+                        processModel: 'worker-pool',
+                        workDistribution: {
+                            mode: 'group',
+                            unmatched: 'file',
+                            groups: [ workGroup ]
+                        }
+                    }
+                }
+            }
+        })
+            .profiles
+            .startup;
+        scope.require.defined(profile);
+        if (profile.execution.processModel !== 'worker-pool') {
+            throw new Error('Expected a worker-pool benchmark.');
+        }
+        scope.assert.deepEqual(profile.execution.workDistribution, {
+            mode: 'group',
+            unmatched: 'file',
+            groups: [ workGroup ]
+        });
+        return scope.assert.collect();
+    }),
     test('validates GC policy only on benchmark profiles', function (scope: TestScope) {
         const profile = normalizeConfig({
             profiles: {

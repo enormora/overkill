@@ -35,6 +35,7 @@ export function collectedMutationPlan(works: readonly WorkId[]): CollectedRunPla
         }
     );
     return {
+        family: null,
         defined: works.length,
         discoveredFiles: files,
         files,

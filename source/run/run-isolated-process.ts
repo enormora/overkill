@@ -121,6 +121,7 @@ async function createWorkerPoolResolvedRun(
         async function collectTimedWorkerPoolRun() {
             return await collectWorkerPoolRun(
                 createWorkerPoolCommand({
+                    projectRoot: input.projectRoot,
                     benchmarkNormalization: input.benchmarkNormalization,
                     command,
                     definitionLocationCapture: 'enabled',
@@ -134,6 +135,7 @@ async function createWorkerPoolResolvedRun(
         }
     ) ?? collectWorkerPoolRun(
         createWorkerPoolCommand({
+            projectRoot: input.projectRoot,
             benchmarkNormalization: input.benchmarkNormalization,
             command,
             definitionLocationCapture: 'enabled',
@@ -200,6 +202,7 @@ async function executeWorkerPoolRunResult(options: WorkerPoolRunResultInput): Pr
 
     return await runWorkerPoolCommand(
         createWorkerPoolCommand({
+            projectRoot: input.projectRoot,
             benchmarkNormalization: input.benchmarkNormalization,
             command,
             definitionLocationCapture: source.kind === 'direct-entrypoint' ? 'enabled' : 'disabled',

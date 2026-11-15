@@ -1,8 +1,5 @@
 import path from 'node:path';
-import {
-    createConfigLoader,
-    type ConfigLoader
-} from '../config/config.ts';
+import { createConfigLoader, type ConfigLoader } from '../config/config-loader.ts';
 
 export const configFixtureCwd = '/overkill-project';
 

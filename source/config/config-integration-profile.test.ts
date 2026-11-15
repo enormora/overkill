@@ -13,7 +13,7 @@ import {
     configFixtureCwd,
     createSingleConfigModuleLoader
 } from '../test-support/run-config-module-loader.ts';
-import type { LoadedConfig } from './config.ts';
+import type { LoadedConfig } from './config-loader.ts';
 
 async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
     const loadConfig = createSingleConfigModuleLoader('overkill.config.js', { config });

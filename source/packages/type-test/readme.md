@@ -12,22 +12,30 @@ npm install -D @overkill-dev/type-test
 ```ts
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@overkill-dev/test/config';
-import { typeTestProfile } from '@overkill-dev/type-test/profile';
+import { family as typeTests } from '@overkill-dev/type-test';
 
 export const config = defineConfig({
     profiles: {
-        types: typeTestProfile({
+        types: {
+            testFamily: typeTests,
             files: { include: [ 'source/**/*.types.ts' ] },
-            projectConfigPath: fileURLToPath(new URL('./tsconfig.json', import.meta.url)),
-            compiler: { kind: 'local' }
-        })
+            settings: {
+                projectConfigPath: fileURLToPath(new URL('./tsconfig.json', import.meta.url)),
+                compiler: { kind: 'local' }
+            }
+        }
     }
 });
 ```
 
 Run `overkill run --profile types` or `overkill list --profile types`.
-Registration is explicit. Imports do not register commands or change configuration.
+Family selection is explicit. A bare `testFamily: 'type-test'` is rejected.
+`defineConfig` infers settings independently for each imported family. Imports do
+not register commands or change configuration.
 The standard distribution does not bundle or re-export this package.
+The existing `typeTestProfile(...)` helper on the `/profile` subpath returns the
+same imported-family profile. The `typeTestAdapter` export and runner adapter
+hooks have been removed.
 
 ```ts
 import { test } from '@overkill-dev/test';
@@ -41,8 +49,9 @@ export const testNode = test('preserves inference', (scope) => {
 });
 ```
 
-Case bodies are compiler inputs. Checking never executes their side effects,
-acquires resources, or invokes runtime assertions. Coverage and ordinary
+Case bodies are compiler inputs. Checking never executes their side effects
+or invokes runtime assertions. Authored runtime/resource attachments are rejected
+before backend preparation. Coverage and ordinary
 execution controls are unsupported. Ordinary runtime use of these references
 fails clearly; they cannot establish runtime narrowing through `scope.require`.
 
@@ -99,22 +108,42 @@ skipped. Missing checker evidence is inconclusive and fails the run.
 ## Direct engine roots
 
 ```ts
-import { checkTypeTests } from '@overkill-dev/type-test/check';
+import { family as typeTests } from '@overkill-dev/type-test';
 
-const result = await checkTypeTests({
-    engine,
-    root,
-    selection: { kind: 'all' },
-    order: 'plan',
-    seed: { value: null },
-    shard: { index: 1, total: 1 },
-    projectConfigPath,
-    compiler: { kind: 'version', version: '6.0.3' }
+const { signal } = new AbortController();
+await using prepared = await engine.prepareFamily({
+    testPlan: engine.createTestPlan(root),
+    testFamily: typeTests,
+    settings: { projectConfigPath, compiler: { kind: 'local' } },
+    projectRoot: process.cwd(),
+    signal
+});
+const collected = await prepared.collect({
+    workIds: prepared.testPlan.cases.map((testCase) => testCase.workId),
+    signal
+});
+const result = await engine.execute(collected, {
+    signal,
+    debug: { mode: 'off' },
+    execution: { mode: 'serial-in-process' },
+    retryPolicy: null,
+    reporters: [],
+    runFacts: {},
+    startedAt: new Date().toISOString()
 });
 ```
 
-Use the same engine that constructed the root. Roots may be constructed before
-importing the adapter. The engine and first-party composition APIs preserve
+Use the same engine that constructed the root. Relative settings paths resolve
+against the explicit absolute `projectRoot`. Preparations and collections are
+single-use; obtain a fresh preparation for another invocation. Backend disposal
+finishes before final reporter delivery. The `/check` convenience API retains
+runner selection options and delegates to this same engine lifecycle.
+
+Use an in-process profile for this family; compiler deadlines and placement in
+other execution hosts remain separate integration work.
+
+Roots may be constructed before
+importing the family. The engine and first-party composition APIs preserve
 callback provenance without import hooks or source transforms during loading.
 Callback lookup supports direct functions and immutable aliases, including
 parentheses, type assertions, and `satisfies`. Named options require an

@@ -3,10 +3,10 @@ import { caseIdSchema, workIdSchema } from '../engine/identity-schema.ts';
 import { serializedValueSchema } from '../compare/serialized-value-schema.ts';
 import { loaderSchema, integrationExecutionSchema, workGroupSchema } from '../config/schema.ts';
 import { normalizedMicrotestProfileSchema } from '../config/normalized-microtest-schema.ts';
-import { propertyPolicySchema } from '../config/property-policy.ts';
+import { propertyPolicySchema } from '../engine/property-policy.ts';
 import { runDebugRequestSchema } from './run-debug.ts';
-import { replayPlanningFields } from './replay-planning-schema.ts';
-import type { RunFacts } from './run-types.ts';
+import { hasRecordedWorkerCapacity, replayPlanningFields } from './replay-planning-schema.ts';
+import type { MergeRunFacts } from './run-record-types.ts';
 
 const engine = z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('default') }),
@@ -100,4 +100,4 @@ const baseFacts = {
         })
     ])
 };
-export const mergeFactsSchema: z.ZodType<RunFacts> = z.object(baseFacts);
+export const mergeFactsSchema: z.ZodType<MergeRunFacts> = z.object(baseFacts).refine(hasRecordedWorkerCapacity);

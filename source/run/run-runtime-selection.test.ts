@@ -9,6 +9,7 @@ import {
     type TestPlan,
     type TestScope
 } from '../packages/engine/engine.entry-point.ts';
+import { expandRuntimeMatrices } from '../engine/runtime-matrix-expansion.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import type { RunFilter } from './run-request-types.ts';
 import {
@@ -17,7 +18,6 @@ import {
     runtimeVariant
 } from './run-selection-filters.ts';
 import { selectedCollectedRunPlan, selectedTestPlan } from './run-selection.ts';
-import { expandRuntimeMatrices } from './runtime-matrix-expansion.ts';
 
 function runtimeMatrixAttachments(): TestBodyResourceAttachments {
     return {

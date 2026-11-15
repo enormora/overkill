@@ -5,6 +5,7 @@ import type {
     RunOrchestratorDependencies
 } from '../run/run-orchestrator-dependencies.ts';
 import type { WorkerPoolRunRuntime } from '../run/worker-pool-runtime.ts';
+import { createTestExecution } from './create-test-engine.ts';
 import { createMemoryHistoryStorage } from './memory-history-storage.ts';
 import { benchmarkHostSnapshot } from './benchmark-host-snapshot.ts';
 
@@ -35,6 +36,29 @@ const createFakeWorkerPool: RunOrchestratorDependencies['createWorkerPool'] = fu
 };
 
 export function fakeWorkerPoolRuntimeDependencies(): WorkerPoolRunRuntime['dependencies'] {
+    const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+    const reporterDispatcher: RunOrchestratorDependencies['reporterDispatcher'] = {
+        async createDelivery() {
+            return {
+                async disposeReporters() {
+                    return [];
+                },
+                async reportEvent() {
+                    return [];
+                },
+                async reportResult() {
+                    return [];
+                }
+            };
+        },
+        async trackRunnerErrorDelivery(work) {
+            return {
+                deliveredRunnerErrors: [],
+                result: await work(),
+                undeliveredRunnerErrors: []
+            };
+        }
+    };
     return {
         createHistoryStorage: createMemoryHistoryStorage,
         async maintainHistory() {
@@ -57,8 +81,10 @@ export function fakeWorkerPoolRuntimeDependencies(): WorkerPoolRunRuntime['depen
             }
         },
         discoverRunFilesWithProjectRoot: testOnlyDependency,
-        createExecution: testOnlyDependency,
-        execute: defaultRunEngine.execute,
+        createExecution(dispatcher) {
+            return createTestExecution(wallClock, dispatcher);
+        },
+        execute: createTestExecution(wallClock, reporterDispatcher),
         liveOutput: {
             stderr: {
                 write: doNothing
@@ -70,28 +96,7 @@ export function fakeWorkerPoolRuntimeDependencies(): WorkerPoolRunRuntime['depen
         loadRunEngineModule: testOnlyDependency,
         loadRunTestModules: testOnlyDependency,
         node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
-        reporterDispatcher: {
-            async createDelivery() {
-                return {
-                    async disposeReporters() {
-                        return [];
-                    },
-                    async reportEvent() {
-                        return [];
-                    },
-                    async reportResult() {
-                        return [];
-                    }
-                };
-            },
-            async trackRunnerErrorDelivery(work) {
-                return {
-                    deliveredRunnerErrors: [],
-                    result: await work(),
-                    undeliveredRunnerErrors: []
-                };
-            }
-        },
+        reporterDispatcher,
         runtimeCapabilityPolicy: {
             observeIpcListeners() {
                 return doNothing;
@@ -108,6 +113,6 @@ export function fakeWorkerPoolRuntimeDependencies(): WorkerPoolRunRuntime['depen
         },
         startSupervisedChild: testOnlyDependency,
         startWorkerPoolHost: testOnlyDependency,
-        wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
+        wallClock
     };
 }

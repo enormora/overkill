@@ -1255,6 +1255,12 @@ type FreezePolicyInput = {
     readonly source: RunPolicySource;
 };
 
+type ConfiguredRunCommand = {
+    readonly kind: 'configured';
+    readonly command: RunCommand;
+    readonly source: RunPolicySource;
+};
+
 type FrozenRunCommand = {
     readonly kind: 'frozen-policy';
     readonly policy: FrozenMicrotestPolicy;
@@ -1274,6 +1280,7 @@ declare function withFileModuleBoundary<Result>(
 ): Promise<Result>;
 
 type MergeResultsInput =
+    | { readonly kind: 'path'; readonly path: string; }
     | { readonly kind: 'file'; readonly path: string; }
     | { readonly kind: 'directory'; readonly path: string; };
 
@@ -1283,14 +1290,14 @@ type MergeResultsCommand = {
     readonly inputs: NonEmptyReadonlyArray<MergeResultsInput>;
 };
 
-declare function resolveRun(command: FrozenRunCommand | RunCommand): Promise<ResolvedRun>;
-declare function run(command: FrozenRunCommand | RunCommand): Promise<RunResult>;
+declare function resolveRun(command: ConfiguredRunCommand | FrozenRunCommand | RunCommand): Promise<ResolvedRun>;
+declare function run(command: ConfiguredRunCommand | FrozenRunCommand | RunCommand): Promise<RunResult>;
 type RunInvocationOptions = RunInvocationTimingOptions & {
     readonly signal: AbortSignal | null;
 };
 
 declare function run(
-    command: FrozenRunCommand | RunCommand,
+    command: ConfiguredRunCommand | FrozenRunCommand | RunCommand,
     options: RunInvocationOptions
 ): Promise<RunResult>;
 declare function mergeResults(command: MergeResultsCommand): Promise<MergedRunRecord>;
@@ -1785,7 +1792,10 @@ declare function createNodeFileStore(): FileStore;
 type SingleRunRecord = {
     readonly id: string; // ULID
     readonly kind: 'single';
-    readonly version: 1;
+    readonly version: 2;
+    readonly replayPlan: CollectedRunPlan | null;
+    readonly replayProfile: unknown;
+    readonly replayWitness: WitnessFile | null;
     readonly cwd: string;
     readonly request: RunRecordRequest;
     readonly engine: RunExecutionFacts['engine'];
@@ -1807,11 +1817,13 @@ type SingleRunRecord = {
 type MergedRunRecord = {
     readonly id: string; // ULID
     readonly kind: 'merged';
+    readonly version: 2;
+    readonly status: 'started' | 'completed' | 'interrupted';
     readonly facts: RunFacts;
     readonly identities: ReadonlyArray<WorkId>;
     readonly lineage: NonEmptyReadonlyArray<RunRecordLineage>;
     readonly runtime: NonEmptyReadonlyArray<ResolvedRuntime | null>;
-    readonly versions: { engine: string | null; packages: ReadonlyMap<string, string>; };
+    readonly versions: { engine: string | null; packages: Readonly<Record<string, string>>; };
     readonly startedAt: string; // ISO 8601
     readonly result: RunRecordResult;
 };

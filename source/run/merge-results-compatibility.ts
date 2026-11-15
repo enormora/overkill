@@ -3,7 +3,8 @@ import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node
 import { workIdentityKey } from '../engine/identity.ts';
 import type { MergeSource } from './merge-results-input.ts';
 
-type MergeCompatibilityField = 'loader' | 'profile' | 'seed' | 'selected-identities' | 'shard-total' | 'versions';
+type MergeIdentityField = 'family' | 'profile' | 'selected-identities';
+type MergeCompatibilityField = MergeIdentityField | 'loader' | 'seed' | 'shard-total' | 'versions';
 type MergeCompatibilityConflict = {
     readonly field: MergeCompatibilityField;
     readonly referencePath: string;
@@ -27,6 +28,9 @@ function overkillVersions(source: MergeSource): Readonly<Record<string, string>>
 function compatibilityFacts(source: MergeSource): Readonly<Record<MergeCompatibilityField, unknown>> {
     const { facts, versions } = source.record;
     return {
+        family: facts.family === null
+            ? null
+            : { id: facts.family.id, version: facts.family.version, settings: facts.family.settings },
         profile: [ facts.execution.profile, facts.execution.testFamily ],
         seed: BigInt(facts.reproducibility.seed),
         'shard-total': facts.reproducibility.shard.total,
@@ -54,6 +58,11 @@ function selectionEvidence(source: MergeSource): MergeCompatibilityConflict['rea
     return keys.size !== identities.length || unknownWork ? 'invalid-evidence' : null;
 }
 
+function compatibleEvidence(field: MergeCompatibilityField, expected: unknown, actual: unknown): boolean {
+    const unavailable = [ expected, actual ].includes(null);
+    return unavailable && field !== 'family' || isDeepStrictEqual(expected, actual);
+}
+
 function sourceConflicts(reference: MergeSource, source: MergeSource): readonly MergeCompatibilityConflict[] {
     const expected = compatibilityFacts(reference);
     const actual = compatibilityFacts(source);
@@ -64,12 +73,12 @@ function sourceConflicts(reference: MergeSource, source: MergeSource): readonly 
         'shard-total',
         'selected-identities',
         'loader',
-        'versions'
+        'versions',
+        'family'
     ];
     return fields.flatMap(function compare(field): readonly MergeCompatibilityConflict[] {
         const reason = field === 'selected-identities' ? evidence : null;
-        const unavailable = [ expected[field], actual[field] ].includes(null);
-        if (reason === null && (unavailable || isDeepStrictEqual(expected[field], actual[field]))) {
+        if (reason === null && compatibleEvidence(field, expected[field], actual[field])) {
             return [];
         }
         return [ { field, referencePath: reference.path, sourcePath: source.path, reason: reason ?? 'mismatch' } ];

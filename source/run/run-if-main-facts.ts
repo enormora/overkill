@@ -1,8 +1,8 @@
-import type { DefinedReporter } from '../engine/reporter.ts';
-import type { RunResult } from '../engine/run-result.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
-import type { LoadedConfig } from '../config/config.ts';
-import type { NormalizedConfig } from '../config/types.ts';
+import { profileFamilyId, type NormalizedConfig } from '../config/types.ts';
+import type { DefinedReporter, RunResult, TestPlan } from '../packages/engine/engine.entry-point.ts';
+import type { LoadedConfig } from '../config/config-loader.ts';
+import { profileFamilyFacts } from './family-run-facts.ts';
+
 import { runCaseFactsFromTestPlan } from './run-case-facts.ts';
 import { profilePropertyPolicy, resolveProcessUsagePolicy, resolveTimingCollection } from './run-profile-facts.ts';
 import { resultWithTimingCollection } from './run-timing-collection.ts';
@@ -77,6 +77,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
     const profile = selectTestProfile(input.profileName, input.config);
 
     return {
+        family: profileFamilyFacts(profile),
         adapter: null,
         benchmarkHost: null,
         benchmarkCalibration: null,
@@ -113,7 +114,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
             profile: input.profileName,
             processUsagePolicy: resolveProcessUsagePolicy(request, profile),
             scheduling: profile.execution.scheduling,
-            testFamily: profile.testFamily,
+            testFamily: profileFamilyId(profile),
             retries: profile.testFamily === 'integration' ? profile.retries : null,
             runRecords: { persist: false, reasons: [] },
             timingCollection: resolveTimingCollection(request, profile),

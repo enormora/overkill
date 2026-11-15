@@ -1,29 +1,31 @@
+import {
+    profileFamilyId,
+    type NormalizedConfig,
+    type CoveragePolicy,
+    type HostProcess,
+    type IntegrationExecution,
+    type IntegrationProfileConfig,
+    type MicrotestExecution,
+    type MicrotestProfileConfig,
+    type ProfileFiles,
+    type TestProfileConfig,
+    type ProcessBudgets,
+    type ProcessUsagePolicy,
+    type TimingProfilePolicy,
+    type TimeoutPolicy,
+    type WorkDistribution,
+    type WorkerPoolAssignmentPolicy,
+    type WorkerPoolDispatchPolicy,
+    type WorkerPoolHedgingPolicy,
+    type WorkerLifecycle
+} from '../config/types.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { defaultFailureArtifactPolicy } from '../engine/failure-artifact-policy.ts';
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type { BenchmarkOrchestrator, RunCommand, RunExecutionFacts, RunRequest } from '../run/run-types.ts';
-import type {
-    NormalizedConfig,
-    CoveragePolicy,
-    HostProcess,
-    IntegrationExecution,
-    IntegrationProfileConfig,
-    MicrotestExecution,
-    MicrotestProfileConfig,
-    ProfileFiles,
-    TestProfileConfig,
-    ProcessBudgets,
-    ProcessUsagePolicy,
-    TimingProfilePolicy,
-    TimeoutPolicy,
-    WorkDistribution,
-    WorkerPoolAssignmentPolicy,
-    WorkerPoolDispatchPolicy,
-    WorkerPoolHedgingPolicy,
-    WorkerLifecycle
-} from '../config/types.ts';
+
 import { hostProcessFacts } from '../run/run-host-process.ts';
 import { resolveTimingCollection } from '../run/run-profile-facts.ts';
 
@@ -144,7 +146,7 @@ export function testRunExecutionFacts(command: RunCommand, profile: TestProfileC
         profile: command.request.profile,
         processUsagePolicy: profile.processUsage,
         scheduling: profile.execution.scheduling,
-        testFamily: profile.testFamily,
+        testFamily: profileFamilyId(profile),
         runRecords: { persist: false, reasons: [] },
         failureArtifacts: profile.failureArtifacts,
         timingCollection: resolveTimingCollection(command.request, profile),

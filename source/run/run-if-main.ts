@@ -114,6 +114,11 @@ async function executeDirectRun(context: DirectRunContext, dependencies: RunIfMa
         await directRunCommand(context),
         {
             kind: 'direct-entrypoint',
+            configuration: context.config.configPath === null ? { kind: 'memory' } : {
+                kind: 'config-file',
+                request: { cwd: context.projectRoot, configPath: context.config.configPath },
+                resolvedPath: context.config.configPath
+            },
             root: {
                 annotations: rootAnnotations(context.options),
                 controls: rootControls(context.options),

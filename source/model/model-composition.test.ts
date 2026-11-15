@@ -1,13 +1,66 @@
 import { z } from 'zod/v4';
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
+import type { TestScope, PropertyWitnessFile } from '../packages/engine/engine.entry-point.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import {
+    type LengthBounds,
     defineCodec,
     gen,
     withProperties
 } from '../packages/property/property.entry-point.ts';
 import { model, modelScenario, type ModelDefinition } from '../packages/model/model.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
+
+type TraceReplayCase = { readonly length: LengthBounds; readonly repaired: boolean; };
+
+async function verifyStoredTrace(
+    scope: TestScope,
+    definition: ModelDefinition<number, number, number[]>,
+    witness: PropertyWitnessFile,
+    replayCase: TraceReplayCase
+): Promise<void> {
+    const operations: number[] = [];
+    const checks: number[] = [];
+    const replay = await executePropertyNode(
+        model({
+            ...definition,
+            length: replayCase.length,
+            settings: { maxSize: 0 },
+            commands() {
+                throw new Error('No generation');
+            },
+            run(operation, system) {
+                operations.push(operation);
+                system.push(replayCase.repaired ? operation : -operation);
+            },
+            check(state, system, sample) {
+                checks.push(state);
+                sample.assert.equal(
+                    system.reduce(function (total, value) {
+                        return total + value;
+                    }, 0),
+                    state
+                );
+            }
+        }),
+        { ...propertyExecutionDefaults, replay: witness }
+    );
+    scope.assert.equal(replay.summary.failed, replayCase.repaired ? 0 : 1);
+    scope.assert.equal(replay.summary.passed, replayCase.repaired ? 1 : 0);
+    scope.assert.deepEqual(replay.runnerErrors, []);
+    scope.assert.deepEqual(operations, [ 1, 2, 3 ]);
+    scope.assert.deepEqual(checks, [ 0, 1, 3, 6 ]);
+    scope.assert.deepEqual(
+        replay
+            .perTest
+            .flatMap(function (result) {
+                return result.property?.invocations ?? [];
+            })
+            .map(function (invocation) {
+                return invocation.summary?.accounting.phases.witness.executed;
+            }),
+        [ 1 ]
+    );
+}
 
 export const testNode = suite('model composition', [
     test('filters disabled operations before executing generated traces', async function (scope: TestScope) {
@@ -174,19 +227,11 @@ export const testNode = suite('model composition', [
         const witness = result.perTest[0]?.property?.invocations[0]?.confirmedWitness;
         scope.require.defined(witness);
         scope.assert.equal(witness.counterexample.codec.name, 'model-numbers');
-        const replay = await executePropertyNode(
-            model({
-                ...definition,
-                commands() {
-                    throw new Error('No generation');
-                }
-            }),
-            {
-                ...propertyExecutionDefaults,
-                replay: witness
+        for (const length of [ { minLength: 0, maxLength: 0 }, { minLength: 5, maxLength: 6 } ]) {
+            for (const repaired of [ false, true ]) {
+                await verifyStoredTrace(scope, definition, witness, { length, repaired });
             }
-        );
-        scope.assert.equal(replay.summary.failed, 1);
+        }
         return scope.assert.collect();
     })
 ]);

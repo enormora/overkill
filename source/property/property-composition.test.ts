@@ -11,12 +11,17 @@ import {
     type TestScope
 } from '../packages/engine/engine.entry-point.ts';
 import { suite, table, test, createTestFacade } from '../packages/test/test.entry-point.ts';
-import { defineResource, defineRuntime, withResource, withRuntime } from '../packages/test/resources.entry-point.ts';
+import {
+    defineResource,
+    defineRuntime,
+    withResource,
+    withRuntime
+} from '../packages/test/resources.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { unexecutedGenerator } from '../test-support/property-generator.ts';
 import { stampTestNodeFamily } from '../engine/test-node.ts';
-import { resolveTestPlanCollectionPolicy } from '../run/run-test-plan.ts';
-import { defaultPropertyPolicy } from '../config/property-policy.ts';
+import { defaultPropertyPolicy } from '../engine/property-policy.ts';
+import { resolveTestPlanCollectionPolicy } from '../run/run-selection.ts';
 import { property, withProperties } from './property-authoring.ts';
 
 function planFor(node: TestNode): TestPlan {

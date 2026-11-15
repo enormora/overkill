@@ -9,7 +9,7 @@ import {
     createFakeSupervisedChildProcess,
     type FakeSupervisedChildRunContext
 } from './fake-supervised-child-process.ts';
-import { createTestEngine, createTestExecution } from './create-test-engine.ts';
+import { createTestExecution } from './create-test-engine.ts';
 import {
     createDeterministicRunResult,
     createDeterministicProcessUsageTracker,
@@ -260,7 +260,6 @@ function createDeterministicRunCoordinatorWithDependencies(
     createSeed: () => bigint,
     createWorkerPool: RunOrchestratorDependencies['createWorkerPool']
 ): DeterministicRunCoordinator {
-    const engine = createTestEngine();
     const wallClock = createClock();
     const environment: Record<string, string | undefined> = {};
     const reporterDispatcher = createReporterDispatcher({
@@ -307,7 +306,7 @@ function createDeterministicRunCoordinatorWithDependencies(
         createExecution(dispatcher) {
             return createTestExecution(wallClock, dispatcher);
         },
-        execute: engine.execute,
+        execute: createTestExecution(wallClock, reporterDispatcher),
         async loadRunEngineModule() {
             throw new Error('Deterministic test engine module loading is not configured.');
         },

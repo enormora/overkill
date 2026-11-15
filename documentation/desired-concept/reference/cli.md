@@ -90,7 +90,8 @@ does not accept it.
 
 `overkill merge-results` accepts run-record files and directories containing
 run-record files. Directory operands inspect immediate regular `*.json` files
-without recursing into artifact directories. It validates that all inputs are completed shard records for
+without recursing into artifact directories. Valid merged records discovered in
+directories are ignored; explicitly supplied merged files are rejected. It validates that all inputs are completed shard records for
 the same selected profile and planned run, then writes a non-replayable merged
 record under the configured `runtimeStateDir`. The command uses ordinary
 reporter configuration for that profile, delivers only final-result reporters,

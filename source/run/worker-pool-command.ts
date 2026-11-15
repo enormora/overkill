@@ -49,11 +49,27 @@ export function firstPlanUnit(plan: PlacementPlan): WorkUnit {
     return unit;
 }
 
+function workerFamilyDefinition(runtime: WorkerPoolRunRuntime): WorkerPoolCommand['family'] {
+    return runtime.resolvedRun.plan.kind === 'local'
+        ? null
+        : runtime.resolvedRun.plan.collectedPlan.family?.definition ?? null;
+}
+
+function workerSourcePaths(runtime: WorkerPoolRunRuntime, unit: WorkUnit): readonly string[] {
+    if (runtime.resolvedRun.plan.kind === 'local' || runtime.resolvedRun.plan.collectedPlan.family === null) {
+        return unitPaths(unit);
+    }
+    return runtime.resolvedRun.plan.collectedPlan.discoveredFiles.map(function file(entry) {
+        return entry.file;
+    });
+}
+
 export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit): WorkerPoolCommand {
     const execution = workerPoolExecutionFacts(runtime.resolvedRun);
 
     return {
         propertyPolicy: execution.propertyPolicy,
+        family: workerFamilyDefinition(runtime),
         debug: execution.debug,
         capture: execution.capture,
         snapshots: currentSnapshotRun(),
@@ -73,7 +89,7 @@ export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit):
                 nodeArguments: Array.from(execution.hostProcess.nodeArguments)
             },
         maxConcurrency: runtime.resolvedRun.facts.execution.maxConcurrency,
-        paths: unitPaths(unit),
+        paths: workerSourcePaths(runtime, unit),
         processBudgets: runtime.resolvedRun.facts.execution.processUsagePolicy.budgets,
         processUsageSamplingIntervalMilliseconds: runtime
             .resolvedRun

@@ -208,6 +208,7 @@ export const testNode = createOverkillSuite({
                     }
                 };
                 const plan: CollectedRunPlan = {
+                    family: null,
                     defined: 2,
                     discoveredFiles: [
                         {

@@ -1,35 +1,26 @@
 import { ulid } from 'ulid';
 import { createClock } from '@enormora/clock';
-import { mergeCompatibilityConflicts } from './merge-results-compatibility.ts';
-import { RunCollectionError } from './run-errors.ts';
+import type { MergedRecordOutcome } from './merged-record-session.ts';
+import { assessMergeSources } from './merge-results-assessment.ts';
+import { serializeRunDiagnostics } from './run-record-result.ts';
 import { mergedRunResult } from './merged-run-result.ts';
 import type { MergeResultsCommand, MergedRunRecord } from './merge-results-types.ts';
+import { currentRunRecordVersion } from './run-record-format.ts';
 
-function validateMergeSources(sources: Parameters<typeof mergeCompatibilityConflicts>[0]): void {
-    const conflicts = mergeCompatibilityConflicts(sources);
-    if (conflicts.length > 0) {
-        const diagnostics = conflicts.map(function diagnostic(conflict) {
-            const advice = conflict.reason === 'missing-evidence'
-                ? ' Regenerate shard records with selection evidence.'
-                : '';
-            return `${conflict.field}: ${conflict.reason} in ${conflict.sourcePath}` +
-                ` compared with ${conflict.referencePath}.${advice}`;
-        });
-        throw new RunCollectionError(diagnostics.join('\n'), {}, 'merge');
-    }
-}
-
-export async function mergeResults(command: MergeResultsCommand): Promise<MergedRunRecord> {
+async function aggregateMergeResults(command: MergeResultsCommand): Promise<MergedRunRecord> {
     const started = new Date(createClock().currentUnixEpochMilliseconds);
     const startedAt = started.toISOString();
     const { readMergeSources } = await import('./merge-results-input.ts');
-    const sources = await readMergeSources(command);
-    validateMergeSources(sources);
+    const { sources, errors } = assessMergeSources(await readMergeSources(command));
+    const result = mergedRunResult(sources);
+    const diagnostics = serializeRunDiagnostics({ artifacts: [], perTest: [], runnerErrors: errors });
     const [ first, ...remaining ] = sources;
     const { record } = first;
     return {
         id: ulid(),
         kind: 'merged',
+        version: currentRunRecordVersion,
+        status: 'started',
         startedAt,
         facts: {
             ...record.facts,
@@ -55,6 +46,20 @@ export async function mergeResults(command: MergeResultsCommand): Promise<Merged
             })
         ],
         versions: { engine: record.versions.engine, packages: record.versions.packages },
-        result: mergedRunResult(sources)
+        result: {
+            ...result,
+            runnerErrors: [ ...result.runnerErrors, ...diagnostics.runnerErrors ],
+            status: errors.length > 0 ? 'failed' : result.status
+        }
     };
+}
+
+export async function executeMergeResults(command: MergeResultsCommand): Promise<MergedRecordOutcome> {
+    const { executeMergedRecord } = await import('./merged-record-session.ts');
+    return await executeMergedRecord(command, await aggregateMergeResults(command));
+}
+
+export async function mergeResults(command: MergeResultsCommand): Promise<MergedRunRecord> {
+    const outcome = await executeMergeResults(command);
+    return outcome.record;
 }

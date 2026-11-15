@@ -90,10 +90,6 @@ export type {
     ResourceOwnershipPlan
 } from '../../run/resource-ownership-plan.ts';
 export type {
-    LoadedConfig,
-    ConfigLoader,
-    ConfigLoaderDependencies,
-    ConfigLoadRequest,
     ProjectCoverageOutput,
     ProjectCoveragePolicy,
     ProjectCoverageSources,
@@ -115,6 +111,12 @@ export type {
     ProjectTimeoutConfig,
     ProjectUnmeasuredProcessUsage
 } from '../../config/config.ts';
+export type {
+    LoadedConfig,
+    ConfigLoader,
+    ConfigLoaderDependencies,
+    ConfigLoadRequest
+} from '../../config/config-loader.ts';
 export type {
     RunIfMain,
     RunIfMainDependencies
@@ -167,6 +169,7 @@ export type {
     RunCaseFacts,
     RunCommand,
     RunCommandInput,
+    ConfiguredRunCommand,
     RunInvocationOptions,
     RunDebugRequest,
     RunEngineFacts,
@@ -213,7 +216,6 @@ export type {
     ProfileConfig,
     BenchmarkExecution,
     BenchmarkProfileConfig,
-    AdapterProfileConfig,
     TestProfileConfig,
     PropertyProfileConfig,
     ProfileFiles,
@@ -249,6 +251,7 @@ export type {
 export type {
     ResolvedRuntime,
     RunRecord,
+    SingleRunRecord,
     RunRecordCoverage,
     RunRecordRequest,
     RunRecordResult,
@@ -309,17 +312,6 @@ export type {
 
 export type { ReplayWitnessRequest, ReplayWitnessCommand } from '../../run/witness-replay-request.ts';
 
-export type { ProjectAdapterProfileConfig } from '../../config/schema.ts';
-export type {
-    RunAdapterRegistration,
-    AdapterPreparation,
-    AdapterRunFacts,
-    RunProfileAdapter,
-    CollectedAdapterRun,
-    PreparedAdapterRun
-} from '../../config/adapter-profile.ts';
-export { executeAdapterPlan, prepareAdapterPlan } from '../../run/adapter-execution.ts';
-
 export { selectedTestPlan as selectTestPlan } from '../../run/run-selection.ts';
 
 export { isGeneratedTypeTestPath } from '../../generated-input-path.ts';
@@ -353,7 +345,14 @@ export {
     type TestPlanSelection,
     type TestPlanSelectionOptions
 } from '../../run/test-plan-selection.ts';
-export { expandRuntimeMatrices as expandTestPlanRuntimes } from '../../run/runtime-matrix-expansion.ts';
+export { expandRuntimeMatrices as expandTestPlanRuntimes } from '../../engine/runtime-matrix-expansion.ts';
+
+export type {
+    FamilySettingsOf,
+    ProjectFamilyProfileConfig,
+    CommonFamilyProfileConfig
+} from '../../config/profile-config.ts';
+export type { DefinedFamilyProfile } from '../../config/types.ts';
 
 export { mergeResults } from '../../run/merge-results.ts';
 export type { MergeResultsCommand, MergeResultsInput, MergedRunRecord } from '../../run/merge-results-types.ts';

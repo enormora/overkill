@@ -126,7 +126,7 @@ export const testNode = suite('native type-test adapter', [
         export type Placeholder = _;
         void [same,assignableTo,assignableFrom,acceptsProps,applicableTo,callableWith,constructableWith,
             instantiableWith,hasProperty,raisesTypeError,suite,table,defineMacro,defineParameterizedTestBody,
-            defineResource,withResource,typeTestAdapter,metadata];
+            defineResource,withResource,family,prepareCompilerPlan,metadata];
         const nodes=[test('unused imports',scope=>{
             scope.assert(onlyInline<string,string>());return scope.assert.collect();
         })];
@@ -365,14 +365,15 @@ const nodes=[test('foreign',scope=>{
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    test('keeps resource scope types without acquiring resources', async function (scope) {
+    test('rejects runtime resources before static checking', async function (scope) {
         const definitions = `const resource=defineResource({name:'never',scope:'per-case',requirements:[],
     acquire():{value:number}{throw new Error('Do not acquire');},dispose:null});
 const nodes=[test('wrapped',withResource(resource,scope=>{
     bodyCalls++;scope.assert(same<typeof scope.resources.never.value,number>());return scope.assert.collect();
 }))];`;
         const result = await runNativeProject(scope, definitions, null);
-        scope.assert.equal(result.status, 'passed', { message: result.errors.join('\n') });
+        scope.assert.equal(result.status, 'failed');
+        scope.assert.includes(result.errors.join('\n'), 'does not support resources');
         scope.assert.equal(result.bodyCalls, 0);
         return scope.assert.collect();
     }),
@@ -380,7 +381,7 @@ const nodes=[test('wrapped',withResource(resource,scope=>{
         const result = await runChangedTypeProject(scope, basicCases, 'identity');
         scope.assert.equal(result.status, 'failed');
         scope.assert.equal(result.summary.passed, 0);
-        scope.assert.includes(result.errors.join('\n'), 'Compiler work identity does not match');
+        scope.assert.includes(result.errors.join('\n'), 'Family selection contains an unknown or duplicate work ID.');
         return scope.assert.collect();
     }),
     test('revalidates frozen inputs immediately before prepared execution', async function (scope) {
@@ -389,8 +390,7 @@ const nodes=[test('wrapped',withResource(resource,scope=>{
 })];
 const settings={projectConfigPath:import.meta.dirname+'/tsconfig.json',compiler:{kind:'local'}};
 const existing=engine.createRoot({title:'existing',annotations:{},controls:{},children:nodes});
-const backend=await typeTestAdapter.load();
-const preparation=await backend.prepare(engine.createTestPlan(existing),settings);
+const preparation=await prepareCompilerPlan(engine.createTestPlan(existing),settings);
 const collected=await preparation.collect(preparation.testPlan);
 const lowered=await collected.lower();
 const {appendFile}=await import('node:fs/promises');

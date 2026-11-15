@@ -45,6 +45,7 @@ type InvalidOwnedPoolResult = {
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        family: null,
         debug: { mode: 'off', selectors: [] },
         failureArtifacts: defaultFailureArtifactPolicy,
         capture: 'buffered',
@@ -81,6 +82,7 @@ function workerPoolCommand(): WorkerPoolCommand {
 
 function collectedPlan(): WorkerPoolCollection['collectedPlan'] {
     return {
+        family: null,
         defined: 0,
         discoveredFiles: [],
         files: [],

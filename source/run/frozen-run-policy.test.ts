@@ -35,7 +35,7 @@ export const testNode = suite('frozen microtest policy', [
                 baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' }
             },
             policy.files,
-            { source: { kind: 'frozen-policy', policy }, normalization: null }
+            { projectRoot: process.cwd(), source: { kind: 'frozen-policy', policy }, normalization: null }
         );
         const validated = frozenSupervisedCommandSchema.parse(input);
         scope.assert.equal(validated.seed, '42');
@@ -122,7 +122,7 @@ export const testNode = suite('frozen microtest policy', [
                 baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' }
             },
             policy.files,
-            { source: { kind: 'frozen-policy', policy }, normalization: null }
+            { projectRoot: process.cwd(), source: { kind: 'frozen-policy', policy }, normalization: null }
         );
         const wire = JSON.stringify(supervised);
         const transported: unknown = JSON.parse(wire);

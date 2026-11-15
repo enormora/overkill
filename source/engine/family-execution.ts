@@ -34,10 +34,9 @@ async function executeRuntimeWork(input: ExecutionWorkInput): Promise<ExecutedWo
         ...runtime,
         executedTestPlan: {
             ...runtime.executedTestPlan,
-            perTest: family === null ? runtime.executedTestPlan.perTest : completeFamilyResults(
-                testPlan,
-                runtime.executedTestPlan.perTest
-            ),
+            perTest: family === null || runtime.executedTestPlan.stoppedByPolicy && !family.signal.aborted
+                ? runtime.executedTestPlan.perTest
+                : completeFamilyResults(testPlan, runtime.executedTestPlan.perTest),
             artifacts: []
         }
     };
@@ -57,6 +56,7 @@ async function executeUnobservedWork(input: ExecutionWorkInput): Promise<Execute
     );
     return {
         executedTestPlan: {
+            stoppedByPolicy: false,
             ...evidence,
             testExecutionWallTimeMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds) -
                 analysisStarted

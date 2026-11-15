@@ -80,7 +80,7 @@ async function createNativeSessionChild(data: string): Promise<ChildRunFixture> 
             baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' }
         },
         policy.files,
-        { source: { kind: 'frozen-policy', policy }, normalization: null }
+        { projectRoot: process.cwd(), source: { kind: 'frozen-policy', policy }, normalization: null }
     );
     return createChildRun({
         command: { ...command, kind: 'run-session', policy, session: { lifecycle: options.lifecycle, data } },

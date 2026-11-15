@@ -63,12 +63,16 @@ test-property-integration: benchmark-html-browser
     node source/run/property-corpus-execution.test.ts
     node source/run/property-witness-storage.test.ts
     node source/integration-tests/run/runner-replay-witness.test.ts
+    node source/integration-tests/run/runner-model-contracts.test.ts
     node source/integration-tests/run/runner-property-validation.test.ts
     node source/integration-tests/run/runner-property-measurements.test.ts
 
 test-runner-integration: test-mutation-integration
     node source/integration-tests/run/runner-eslint-test.test.ts
     node source/integration-tests/run/runner-eslint-properties.test.ts
+    node source/integration-tests/run/runner-family-transport.test.ts
+    node source/integration-tests/run/runner-family-records.test.ts
+    node source/integration-tests/run/runner-family-selection.test.ts
     node source/integration-tests/run/runner-content-snapshots.test.ts
     node source/integration-tests/run/runner-ordinary-baselines.test.ts
     node source/integration-tests/run/runner-replay-coverage.test.ts
@@ -87,6 +91,7 @@ test-runner-integration: test-mutation-integration
     node source/integration-tests/run/runner-benchmark-placement.test.ts
     node source/integration-tests/run/runner-benchmark-host.test.ts
     node source/integration-tests/run/runner-property-policy.test.ts
+    node source/integration-tests/run/runner-model-contracts.test.ts
     node source/integration-tests/run/runner-property-validation.test.ts
     node source/integration-tests/run/runner-property-measurements.test.ts
     node source/integration-tests/run/runner-benchmark-html.test.ts
@@ -112,6 +117,7 @@ test-runner-integration: test-mutation-integration
     node source/integration-tests/run/runner-output.test.ts
     node source/integration-tests/run/runner-command-line.test.ts
     node source/integration-tests/run/runner-capability-policy.test.ts
+    node source/integration-tests/run/runner-permission-audit.test.ts
     node source/integration-tests/run/runner-process-policy.test.ts
 
 test-unit-with-coverage:
@@ -127,6 +133,17 @@ _pack-smoke-packages packages: compile
     mkdir -p target/package-smoke/node_modules
     NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" PACKTORY_INCLUDED_PACKAGES={{packages}} packtory pack --all --format folder --version 0.0.0 --vendor-dependencies --out target/package-smoke/node_modules
     ln -s ../../../../package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
+
+test-model-package-smoke: compile
+    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+    rm -rf target/model-package-smoke
+    mkdir -p target/model-package-smoke/node_modules/@overkill-dev
+    NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" PACKTORY_INCLUDED_PACKAGES=@overkill-dev/model,@overkill-dev/property,@overkill-dev/engine,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run packtory pack @overkill-dev/model --format folder --version 0.0.0 --vendor-dependencies --out target/model-package-smoke/node_modules/@overkill-dev/model
+    ln -s model/node_modules/@overkill-dev/engine target/model-package-smoke/node_modules/@overkill-dev/engine
+    ln -s model/node_modules/@overkill-dev/property target/model-package-smoke/node_modules/@overkill-dev/property
+    ln -s ../../../../model-package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
+    node target/build/source/integration-tests/package-smoke/model.test.js
+    rm -rf target/build/source/integration-tests/package-smoke/node_modules
 
 test-linearizability-package-smoke: compile
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
@@ -171,6 +188,7 @@ test-package-smoke: (_pack-smoke-packages package-smoke-packages)
     node target/build/source/integration-tests/package-smoke/stryker-accuracy.test.js
     node target/build/source/integration-tests/package-smoke/stryker-persistence.test.js
     node target/build/source/integration-tests/package-smoke/test-binary.test.js
+    node target/build/source/integration-tests/package-smoke/test-binary-permissions.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-attachments.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-coverage.test.js
     rm -rf target/build/source/integration-tests/package-smoke/node_modules

@@ -1,4 +1,4 @@
-import type { ConfigLoader } from '../config/config.ts';
+import type { ConfigLoader } from '../config/config-loader.ts';
 import type { MergeResultsRequest } from './merge-results-command.ts';
 import type { ReplayCommands } from './replay-commands.ts';
 import type { CorpusCommands } from './corpus-commands.ts';

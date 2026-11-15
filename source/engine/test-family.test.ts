@@ -7,6 +7,7 @@ import {
     type FamilyValue,
     type TestFamilyDefinition
 } from '../packages/engine/engine.entry-point.ts';
+import { bindFamilySettings } from './test-family.ts';
 
 function settingsDefinition<Settings extends FamilyValue>(
     parseSettings: (input: unknown) => Settings
@@ -48,7 +49,18 @@ const invalidSettings = [
         })()
     },
     { name: 'negative zero', value: -0 },
-    { name: 'undefined', value: undefined }
+    { name: 'undefined', value: undefined },
+    { name: 'non-enumerable properties', value: Object.defineProperty({}, 'hidden', { value: null }) },
+    { name: 'symbol properties', value: { [Symbol('hidden')]: null } },
+    { name: 'additional array properties', value: Object.assign([ null ], { additional: null }) },
+    {
+        name: 'nonstandard array prototypes',
+        value: (function () {
+            const value = [ null ];
+            Reflect.setPrototypeOf(value, null);
+            return value;
+        })()
+    }
 ];
 
 const invalidDefinitions = [
@@ -68,6 +80,61 @@ const invalidDefinitions = [
 ];
 
 export const testNode = suite('executable family definitions', [
+    test('rejects copied definitions when binding settings', function (scope) {
+        const family = defineTestFamily(settingsDefinition(function () {
+            return null;
+        }));
+        scope.assert.throws(function bindUnissuedDefinition() {
+            bindFamilySettings({ ...family }, null);
+        }, { message: 'Settings require a defined test family.' });
+        return scope.assert.collect();
+    }),
+    test('rejects accessor settings without invoking their getters', function (scope) {
+        let reads = 0;
+        const settings = Object.defineProperty({}, 'value', {
+            enumerable: true,
+            get() {
+                reads += 1;
+                return null;
+            }
+        });
+        const family = defineTestFamily(settingsDefinition(function () {
+            return settings;
+        }));
+        scope.assert.throws(function rejectAccessor() {
+            family.parseSettings(null);
+        }, { message: 'Family settings require lossless, acyclic JSON.' });
+        scope.assert.equal(reads, 0);
+        return scope.assert.collect();
+    }),
+    test('binds normalized settings independently without loading backends', function (scope) {
+        let loads = 0;
+        const family = defineTestFamily({
+            ...settingsDefinition(function (input) {
+                if (typeof input !== 'string') {
+                    throw new TypeError('Expected a project path.');
+                }
+                return { project: input.trim() };
+            }),
+            async load() {
+                loads += 1;
+                throw new Error('Backend loaded');
+            }
+        });
+        const first = bindFamilySettings(family, ' first ');
+        const second = bindFamilySettings(family, ' second ');
+        scope.assert.deepEqual([ JSON.stringify(first.settings), JSON.stringify(second.settings) ], [
+            '{"project":"first"}',
+            '{"project":"second"}'
+        ]);
+        scope.assert.equal(Object.isFrozen(first.settings), true);
+        scope.assert.equal(loads, 0);
+        scope.assert.throws(function rejectInvalidSettings() {
+            bindFamilySettings(family, 42);
+        }, { message: 'Expected a project path.' });
+        scope.assert.equal(loads, 0);
+        return scope.assert.collect();
+    }),
     ...invalidDefinitions.map(function rejectedDefinition(entry) {
         return test(`rejects definitions with ${entry.name}`, function (scope) {
             const definition = settingsDefinition(function () {

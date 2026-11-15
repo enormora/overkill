@@ -34,10 +34,10 @@ import type {
     WorkerPoolHedgingPolicy
 } from '../config/types.ts';
 import type {
-    NonEmptyReadonlyArray,
-    SourceLocation,
-    SerializedValue as SerializedValueShape
-} from '../assertion-protocol/assertion-node-shape.ts';
+    FrozenFamilyDefinition as FrozenFamilyDefinitionShape,
+    CollectedFamilyMetadata
+} from './family-catalog.ts';
+import type { AttachmentCoordinator } from './attachment-coordinator-context.ts';
 import type {
     WorkUnitMode as WorkUnitModeDefinition,
     WorkUnitId as WorkUnitIdDefinition,
@@ -60,8 +60,11 @@ import type {
     RunSelection as SelectedCases,
     RunExecutionLifecycleReference
 } from './run-request-types.ts';
-import type { AttachmentCoordinator } from './attachment-coordinator-context.ts';
 import type {
+    FamilyRunFacts,
+    NonEmptyReadonlyArray,
+    SourceLocation,
+    SerializedValue as SerializedValueShape,
     TestFamilyId,
     PropertyPolicy,
     PropertyCorpusSnapshot,
@@ -81,6 +84,7 @@ import type {
 } from './run-engine-primitives.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
 
+export type FrozenFamilyDefinition = FrozenFamilyDefinitionShape;
 export type SerializedValue = SerializedValueShape;
 export type WorkId = EngineWorkId;
 export type FrozenWorkloadInput = {
@@ -176,17 +180,18 @@ type WitnessRunCommand<Request> = OrdinaryRunCommand<Request> & {
 };
 type RunCommandFor<Request> = OrdinaryRunCommand<Request> | WitnessRunCommand<Request>;
 export type RunCommand = RunCommandFor<RunRequest>;
+export type ConfiguredRunCommand = {
+    readonly kind: 'configured';
+    readonly command: RunCommandInput;
+    readonly source: RunPolicySource;
+};
 export type RunCommandInput = RunCommandFor<DebugRequestInput<RunRequest>>;
 type ReplayRunFacts = OrdinaryRunFacts & { readonly propertyReplay: PropertyCorpusSnapshot['checkedIn'][number]; };
 export type RunFacts = OrdinaryRunFacts | ReplayRunFacts;
 
-type AdapterProfile = Extract<NormalizedConfig['profiles'][string], { readonly testFamily: 'type-test'; }>;
-type AdapterBackend = Awaited<ReturnType<AdapterProfile['adapter']['load']>>;
-type AdapterPreparation = Awaited<ReturnType<AdapterBackend['prepare']>>;
-type AdapterCollection = Awaited<ReturnType<AdapterPreparation['collect']>>;
-
 type OrdinaryRunFacts = {
-    readonly adapter: { readonly id: string; readonly facts: AdapterCollection['facts']; } | null;
+    readonly family: FamilyRunFacts;
+    readonly adapter: { readonly id: string; readonly facts: JsonValue; } | null;
     readonly benchmarkHost: BenchmarkHostAssessment | null;
     readonly benchmarkPlacement: BenchmarkPlacementFacts | null;
     readonly benchmarkCalibration: BenchmarkCalibrationResult | null;
@@ -323,6 +328,7 @@ export type CollectedOrphanedNode = Except<OrphanedNode, 'definitionLocations'> 
 };
 
 export type CollectedRunPlan = {
+    readonly family: CollectedFamilyMetadata | null;
     readonly defined: number;
     readonly discoveredFiles: readonly CollectedRunFile[];
     readonly files: readonly CollectedRunFile[];
@@ -339,10 +345,6 @@ export type ResolvedRunPlan = {
 } | {
     readonly collectedPlan: CollectedRunPlan;
     readonly kind: 'worker-pool';
-} | {
-    readonly kind: 'local';
-    readonly testPlan: TestPlan;
-    readonly adapter: { readonly preparation: AdapterPreparation; readonly collected: AdapterCollection; };
 } | {
     readonly kind: 'local';
     readonly testPlan: TestPlan;
@@ -425,7 +427,7 @@ export type RunOperations<Command> = {
     readonly runWithReporterDelivery: RunOperation<Command, RunReporterDeliveryResult>;
 };
 
-export type ConfiguredRunOrchestrator = RunOperations<RunCommand> & {
+export type ConfiguredRunOrchestrator = RunOperations<ConfiguredRunCommand | RunCommand> & {
     readonly bench: BenchmarkOrchestrator;
 };
 
@@ -443,8 +445,6 @@ export type CollectedRun = {
     readonly run: (invocation: CollectedRunInvocation) => Promise<RunnerResult>;
     readonly runWithReporterDelivery: (invocation: CollectedRunInvocation) => Promise<RunReporterDeliveryResult>;
 };
-
-export type RunRuntimeAttachments = AttachmentCoordinator | null;
 
 export type DiscoveredRunFile = {
     readonly file: string;
@@ -502,15 +502,20 @@ export type FrozenRunCommand = {
 };
 
 export type DirectEntrypointRunCollectionSource = {
+    readonly configuration: RunPolicySource;
     readonly kind: 'direct-entrypoint';
     readonly root: RunCollectionRoot;
     readonly testNode: Parameters<Engine['createTestPlanFromTestFiles']>[0]['files'][number]['testNode'];
 };
 
-export type RunCollectionSource = DirectEntrypointRunCollectionSource | { readonly kind: 'configured-files'; } | {
-    readonly kind: 'frozen-policy';
-    readonly policy: FrozenMicrotestPolicy;
-} | { readonly kind: 'replay'; readonly replay: ReplayWire; };
+type ConfiguredCollectionSource = { readonly kind: 'configured-source'; readonly source: RunPolicySource; };
+type ConfiguredFilesSource = { readonly kind: 'configured-files'; };
+type FrozenPolicySource = { readonly kind: 'frozen-policy'; readonly policy: FrozenMicrotestPolicy; };
+type ReplayCollectionSource = { readonly kind: 'replay'; readonly replay: ReplayWire; };
+type OrdinaryFileCollectionSource = ConfiguredCollectionSource | ConfiguredFilesSource;
+type RestoredFileCollectionSource = FrozenPolicySource | ReplayCollectionSource;
+type FileCollectionSource = OrdinaryFileCollectionSource | RestoredFileCollectionSource;
+export type RunCollectionSource = DirectEntrypointRunCollectionSource | FileCollectionSource;
 
 export type RunSelection = SelectedCases;
 
@@ -531,3 +536,5 @@ export type RunExecutionSessionOptions = {
 };
 
 export type ReplayWire = RecordedRunSource<CollectedRunPlan>;
+
+export type RunRuntimeAttachments = AttachmentCoordinator | null;

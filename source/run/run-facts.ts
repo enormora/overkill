@@ -1,4 +1,11 @@
-import type { NormalizedConfig, ProfileConfig, Scheduling } from '../config/types.ts';
+import {
+    profileFamilyId,
+    type NormalizedConfig,
+    type ProfileConfig,
+    type Scheduling
+} from '../config/types.ts';
+import { profileFamilyFacts } from './family-run-facts.ts';
+
 import { debuggedWork, runHasAttachmentScopes } from './run-diagnostics.ts';
 import {
     profilePropertyPolicy,
@@ -93,7 +100,7 @@ function createRunExecutionFacts(
         profile: input.request.profile,
         processUsagePolicy: resolveProcessUsagePolicy(input.request, profile),
         scheduling: input.scheduling,
-        testFamily: profile.testFamily,
+        testFamily: profileFamilyId(profile),
         failureArtifacts: profile.failureArtifacts,
         timingCollection: resolveTimingCollection(input.request, profile),
         timeoutPolicy: profile.timeouts,
@@ -128,6 +135,7 @@ export function createRunFacts(input: RunFactsInput): RunFacts {
     const profile = selectProfile(input.request.profile, input.config);
 
     return {
+        family: profileFamilyFacts(profile),
         adapter: null,
         benchmarkHost: input.benchmarkHost,
         benchmarkPlacement: input.benchmarkPlacement,

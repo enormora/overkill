@@ -1,5 +1,5 @@
 import { runIfMain } from '#test-runner';
-import { withExecutionObservation } from '../engine/execution-observation.ts';
+import { createExecutionObservation, withExecutionObservation } from '../engine/execution-observation.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -8,6 +8,11 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { createPermissionDenialRuntimePolicy } from './capability-policy.ts';
 import { RunCollectionError } from './run-errors.ts';
+import {
+    createPermissionDiagnosticsSubscriptions,
+    permissionAuditEnabled,
+    type PermissionDiagnosticsOptions
+} from './permission-denial-runtime-policy.ts';
 
 type PermissionDiagnosticChannel = { readonly publish: (message: unknown) => void; };
 
@@ -21,11 +26,11 @@ function firstRunnerError(errors: readonly RunnerError[]): RunnerError {
     return error;
 }
 
-function runnerErrorPhase(runnerError: RunnerError): unknown {
+function runnerErrorCauseField(runnerError: RunnerError, field: string): unknown {
     const { cause } = runnerError;
 
-    return typeof cause === 'object' && cause !== null && Object.hasOwn(cause, 'phase')
-        ? Reflect.get(cause, 'phase')
+    return typeof cause === 'object' && cause !== null && Object.hasOwn(cause, field)
+        ? Reflect.get(cause, field)
         : null;
 }
 
@@ -77,12 +82,91 @@ async function runScopePermissionDiagnostics(): Promise<{
     });
 }
 
+async function recordedPermissionDiagnostics(options: PermissionDiagnosticsOptions): Promise<readonly string[]> {
+    return await withExecutionObservation(async function () {
+        const observation = createExecutionObservation();
+        const errors: RunnerError[] = [];
+        const channel = await readPermissionDiagnosticChannel();
+        let phase: 'body' | 'load' | 'out-of-test' = 'load';
+        createPermissionDiagnosticsSubscriptions(observation, function () {
+            return phase;
+        }, function (error) {
+            errors.push(error);
+        }, options);
+        await observation.run(async function () {
+            for (const currentPhase of [ 'load', 'body', 'out-of-test' ] as const) {
+                phase = currentPhase;
+                publishPermissionDiagnostic(channel, 'FileSystemRead', '/project/input.txt');
+                publishPermissionDiagnostic(channel, 'FileSystemWrite', '/project/output.txt');
+            }
+            await Promise.resolve();
+        });
+        observation.stop();
+        return errors.map(function diagnosticLabel(error) {
+            return `${String(runnerErrorCauseField(error, 'phase'))}:${
+                String(runnerErrorCauseField(error, 'capability'))
+            }`;
+        });
+    });
+}
+
+const enforcedDiagnostics = [
+    'load:fs-read',
+    'load:fs-write',
+    'body:fs-read',
+    'body:fs-write',
+    'out-of-test:fs-read',
+    'out-of-test:fs-write'
+];
+const diagnosticPolicies = [
+    { auditEnabled: true, auditDiagnostics: 'ignore', expected: [] },
+    {
+        auditEnabled: true,
+        auditDiagnostics: 'report',
+        expected: [ 'load:fs-write', 'body:fs-read', 'body:fs-write', 'out-of-test:fs-write' ]
+    },
+    { auditEnabled: false, auditDiagnostics: 'ignore', expected: enforcedDiagnostics },
+    { auditEnabled: false, auditDiagnostics: 'report', expected: enforcedDiagnostics }
+] as const;
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/permission-denial-runtime-policy.test.ts',
     annotations: {},
     controls: {},
     children: [
+        ...diagnosticPolicies.map(function diagnosticPolicy(policy) {
+            return createOverkillTestCase({
+                definitionLocations: [ { kind: 'unknown' } ],
+                title: `audit enabled ${policy.auditEnabled}, audit diagnostics ${policy.auditDiagnostics}`,
+                annotations: {},
+                controls: {},
+                async body(scope: OverkillScope) {
+                    const diagnostics = await recordedPermissionDiagnostics(policy);
+                    scope.assert.deepEqual(diagnostics, policy.expected);
+                    return scope.assert.collect();
+                }
+            });
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'permission audit mode follows Node option quoting and command-line precedence',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                scope.assert.false(permissionAuditEnabled([], ''));
+                scope.assert.true(permissionAuditEnabled([ '--permission-audit' ], ''));
+                scope.assert.true(permissionAuditEnabled([], '"--permission-audit" --trace-warnings'));
+                scope.assert.true(permissionAuditEnabled([ '--permission_audit=false' ], ''));
+                scope.assert.false(permissionAuditEnabled([ '--no-permission-audit' ], '--permission-audit'));
+                scope.assert.true(permissionAuditEnabled([ '--permission-audit' ], '--no-permission-audit'));
+                scope.assert.false(permissionAuditEnabled([ '--permission-audit', '--no-permission-audit' ], ''));
+                scope.assert.false(permissionAuditEnabled([], '--title="example --permission-audit"'));
+                scope.assert.false(permissionAuditEnabled([], '--title="example \\" --permission-audit"'));
+
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'permission denial runtime policy records run-scope Node permission diagnostics',
@@ -92,9 +176,9 @@ export const testNode = createOverkillSuite({
                 const diagnostics = await runScopePermissionDiagnostics();
 
                 scope.assert.equal(diagnostics.loadError.attributedTo, null);
-                scope.assert.equal(runnerErrorPhase(diagnostics.loadError), 'load');
+                scope.assert.equal(runnerErrorCauseField(diagnostics.loadError, 'phase'), 'load');
                 scope.assert.equal(diagnostics.runError.attributedTo, null);
-                scope.assert.equal(runnerErrorPhase(diagnostics.runError), 'out-of-test');
+                scope.assert.equal(runnerErrorCauseField(diagnostics.runError, 'phase'), 'out-of-test');
 
                 return scope.assert.collect();
             }

@@ -190,10 +190,6 @@ export type {
     NodeCommandLineRunnerOptions
 } from '../../run/node-command-line-runner.ts';
 export type {
-    LoadedConfig,
-    ConfigLoader,
-    ConfigLoaderDependencies,
-    ConfigLoadRequest,
     Config,
     ProjectIntegrationExecution,
     ProjectIntegrationProfileConfig,
@@ -210,11 +206,32 @@ export type {
     ProjectTimeoutConfig,
     ProjectUnmeasuredProcessUsage
 } from '../../config/config.ts';
+export type {
+    LoadedConfig,
+    ConfigLoader,
+    ConfigLoaderDependencies,
+    ConfigLoadRequest
+} from '../../config/config-loader.ts';
 
-export type { NormalizedConfig, ProfileConfig, BenchmarkProfileConfig, TestProfileConfig } from '../../config/types.ts';
+export type {
+    NormalizedConfig,
+    ProfileConfig,
+    BenchmarkProfileConfig,
+    TestProfileConfig
+} from '../../config/types.ts';
 
-export type { ProjectBenchmarkProfileConfig, ProjectAdapterProfileConfig } from '../../config/schema.ts';
+export type { ProjectBenchmarkProfileConfig } from '../../config/schema.ts';
 
 export type { CommandLineWitnessReplayRequest } from '../../run/witness-replay-request.ts';
 
-export type { CommandLineBaselineRequest, CommandLineBaselineListRequest } from '../../run/command-line-command.ts';
+export type {
+    CommandLineBaselineRequest,
+    CommandLineBaselineListRequest
+} from '../../run/command-line-command.ts';
+
+export type {
+    FamilySettingsOf,
+    ProjectFamilyProfileConfig,
+    CommonFamilyProfileConfig
+} from '../../config/profile-config.ts';
+export type { DefinedFamilyProfile } from '../../config/types.ts';

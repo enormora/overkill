@@ -121,6 +121,7 @@ export function nativeChildDependencies(): SupervisedChildDependencies {
 
 export function supervisedChildCommand(kind: 'collect' | 'run', path: string): SupervisedChildCommand {
     return {
+        family: null,
         debug: { mode: 'off', selectors: [] },
         failureArtifacts: defaultFailureArtifactPolicy,
         benchmarkNormalization: null,

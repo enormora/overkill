@@ -1,6 +1,5 @@
-import type { BaselineOrchestrator } from './baseline-types.ts';
-import type { ReplayOperations } from './replay-types.ts';
 import type {
+    ConfiguredRunCommand,
     RunCommandInput,
     FrozenRunCommand,
     RunExecutionSessionOptions,
@@ -10,12 +9,18 @@ import type {
     BenchmarkOrchestrator,
     RunOperations
 } from './run-types.ts';
+import type { BaselineOrchestrator } from './baseline-types.ts';
+import type { ReplayOperations } from './replay-types.ts';
 import type { RunExecutionSession } from './execution-session-types.ts';
 
-export type RunOrchestrator = RunOperations<FrozenRunCommand | RunCommandInput> & ReplayOperations & {
+type RunCommandOperations = RunOperations<ConfiguredRunCommand | FrozenRunCommand | RunCommandInput>;
+
+export type RunOrchestrator = RunCommandOperations & ReplayOperations & {
     readonly createExecutionSession: (options: RunExecutionSessionOptions) => RunExecutionSession;
     readonly bench: BenchmarkOrchestrator;
     readonly baseline: BaselineOrchestrator;
     readonly freezePolicy: (input: FreezePolicyInput) => Promise<FrozenMicrotestPolicy>;
-    readonly initialize: (command: FrozenRunCommand | RunCommandInput) => Promise<InitializedRun>;
+    readonly initialize: (
+        command: ConfiguredRunCommand | FrozenRunCommand | RunCommandInput
+    ) => Promise<InitializedRun>;
 };

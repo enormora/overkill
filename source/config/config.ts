@@ -1,14 +1,26 @@
-import path from 'node:path';
 import type { z } from 'zod/v4';
 import { parse } from '@schema-hub/zod-error-formatter';
-import { ordinaryBaselinePolicySchema, resolveStrictBaselines } from './baseline-policy.ts';
 import {
+    normalizeProfilePolicy,
+    normalizeIntegrationExecution,
+    assertValidProfileName,
+    assertValidWorkDistribution,
+    normalizeCoveragePolicy,
+    normalizeProfileFiles,
+    normalizeRequiredProfileFiles
+} from './profile-normalization.ts';
+import {
+    normalizeDefinedFamilyProfile,
+    validateProfileFamilies
+} from './family-profile.ts';
+import {
+    familyProfileSchema,
+    type ProjectDefinedFamilyProfile,
     type ProjectAttachmentLimits as ParsedProjectAttachmentLimits,
     integrationProfileSchema,
     propertyProfileSchema,
+    microtestProfileSchema,
     projectConfigSchema,
-    type ProjectAdapterProfileConfig,
-    workerPoolProjectExecution,
     type Config as ParsedProjectConfig,
     type ProjectBenchmarkProfileConfig,
     type ProjectPropertyProfileConfig as PropertyProfileInput,
@@ -32,52 +44,25 @@ import {
 import type {
     BenchmarkExecution,
     BenchmarkProfileConfig,
-    ConfigLoadRequest as ConfigLoaderRequest,
     IntegrationExecution,
     IntegrationProfileConfig,
     MicrotestProfileConfig,
     NormalizedConfig,
-    ProcessBudgets,
-    ProcessUsagePolicy,
     ProfileConfig,
     ProfilesConfig,
-    PropertyProfileConfig,
-    TimeoutPolicy,
-    WorkerLifecycle,
-    WorkerPoolAssignmentPolicy,
-    WorkerPoolHedgingPolicy
+    PropertyProfileConfig
 } from './types.ts';
-import {
-    normalizeAdapterProfile,
-    assertValidProfileName,
-    assertValidWorkDistribution,
-    normalizeCoveragePolicy,
-    normalizeProfileFiles,
-    normalizeRequiredProfileFiles,
-    normalizeTimings,
-    normalizeTimeouts,
-    normalizedWorkDistribution
-} from './profile-normalization.ts';
+import { ordinaryBaselinePolicySchema, resolveStrictBaselines } from './baseline-policy.ts';
 import { ConfigError } from './config-error.ts';
 import { validateBenchmarkExecution } from './benchmark-execution.ts';
 import {
     defaultBenchmarkTimeoutPolicy,
-    defaultConfigFileNames,
-    defaultIntegrationProcessModel,
-    defaultIntegrationScheduling,
     defaultIntegrationTimeoutPolicy,
     normalizeHistoryPolicy,
     defaultLoader,
     defaultOutputRenderer,
-    defaultProcessUsagePolicy,
-    defaultProcessUsageSamplingIntervalMilliseconds,
     defaultTimeoutPolicy,
-    defaultWorkerLifecycle,
-    defaultWorkerPoolAssignmentPolicy,
-    defaultWorkerPoolDispatchPolicy,
-    defaultWorkerPoolHedgingPolicy,
-    normalizeMicrotestExecution,
-    normalizedMaxConcurrency
+    normalizeMicrotestExecution
 } from './defaults.ts';
 
 type ParsedProfiles = NonNullable<ParsedProjectConfig['profiles']>;
@@ -87,8 +72,6 @@ type ParsedIntegrationProfile = Extract<ParsedProfile, { readonly testFamily: 'i
 
 type ProjectHostProcessGuard = Readonly<Partial<Record<'hostProcess', never>>>;
 type ProjectRetryPolicyGuard = Readonly<Partial<Record<'retries', never>>>;
-
-export type LoadedConfig = NormalizedConfig & { readonly configPath: string | null; };
 
 export type ProjectIntegrationExecution = ParsedProjectIntegrationExecution & ProjectHostProcessGuard;
 type IntegrationPolicySettings = Pick<
@@ -115,8 +98,8 @@ export type ProjectCoverageThresholds = ParsedProjectCoverageThresholds;
 export type ProjectProfileFiles = ParsedProjectProfileFiles;
 export type ProjectPropertyProfileConfig = PropertyProfileInput;
 type StandardTestProfileConfig = ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig;
-type BuiltinProjectTestProfileConfig = ProjectPropertyProfileConfig | StandardTestProfileConfig;
-type ProjectTestProfileConfig = BuiltinProjectTestProfileConfig | ProjectAdapterProfileConfig;
+type BuiltinTestProfileInput = ProjectPropertyProfileConfig | StandardTestProfileConfig;
+type ProjectTestProfileConfig = BuiltinTestProfileInput | ProjectDefinedFamilyProfile;
 export type ProjectProfileConfig = ProjectBenchmarkProfileConfig | ProjectTestProfileConfig;
 export type ProjectProfilesConfig = Readonly<Record<string, ProjectProfileConfig>>;
 export type ProjectProcessBudgets = ParsedProjectProcessBudgets;
@@ -134,194 +117,6 @@ export type Config = {
     readonly runtimeStateDir?: ParsedProjectConfig['runtimeStateDir'];
 };
 
-export type ConfigLoadRequest = ConfigLoaderRequest;
-
-export type ConfigLoaderDependencies = {
-    readonly fileExists: (filePath: string) => Promise<boolean>;
-    readonly importModule: (configPath: string) => Promise<unknown>;
-};
-
-export type ConfigLoader = (request: ConfigLoadRequest) => Promise<LoadedConfig>;
-
-export function defineConfig(config: Config): Config {
-    return config;
-}
-
-async function discoverConfigPath(
-    cwd: string,
-    dependencies: ConfigLoaderDependencies
-): Promise<string | null> {
-    for (const configFileName of defaultConfigFileNames) {
-        const candidate = path.resolve(cwd, configFileName);
-
-        if (await dependencies.fileExists(candidate)) {
-            return candidate;
-        }
-    }
-
-    return null;
-}
-
-async function resolveConfigPath(
-    request: ConfigLoadRequest,
-    dependencies: ConfigLoaderDependencies
-): Promise<string | null> {
-    if (request.configPath !== null) {
-        return path.resolve(request.cwd, request.configPath);
-    }
-
-    return await discoverConfigPath(request.cwd, dependencies);
-}
-
-async function importConfigModule(
-    configPath: string,
-    dependencies: ConfigLoaderDependencies
-): Promise<unknown> {
-    try {
-        return await dependencies.importModule(configPath);
-    } catch (error: unknown) {
-        throw new ConfigError(`Failed to load config file "${configPath}".`, { cause: error });
-    }
-}
-
-type ConfigModuleWithDefaultExport = {
-    readonly default: unknown;
-};
-
-type ConfigModuleWithNamedConfigExport = {
-    readonly config: unknown;
-};
-
-function hasDefaultExport(configModule: unknown): configModule is ConfigModuleWithDefaultExport {
-    return typeof configModule === 'object' && configModule !== null && Object.hasOwn(configModule, 'default');
-}
-
-function hasNamedConfigExport(configModule: unknown): configModule is ConfigModuleWithNamedConfigExport {
-    return typeof configModule === 'object' && configModule !== null && Object.hasOwn(configModule, 'config');
-}
-
-function assertNoExtraConfigExports(configModule: ConfigModuleWithNamedConfigExport, configPath: string): void {
-    const extraExports = Object.keys(configModule).filter(function isExtraExport(exportName) {
-        return exportName !== 'config';
-    });
-
-    if (extraExports.length > 0) {
-        throw new ConfigError(`Config file "${configPath}" must only export a named config value.`);
-    }
-}
-
-function readNamedConfigExport(configModule: unknown, configPath: string): unknown {
-    if (hasDefaultExport(configModule)) {
-        throw new ConfigError(`Config file "${configPath}" must not export a default config.`);
-    }
-
-    if (hasNamedConfigExport(configModule)) {
-        assertNoExtraConfigExports(configModule, configPath);
-
-        return configModule.config;
-    }
-
-    throw new ConfigError(`Config file "${configPath}" must export a named config value.`);
-}
-
-function normalizeBudgetValue(value: number | null | undefined): number | null {
-    return value ?? null;
-}
-
-function normalizeProcessBudgets(processBudgets: ProjectProcessBudgets | undefined): ProcessBudgets {
-    return {
-        activeResourceCount: normalizeBudgetValue(processBudgets?.activeResourceCount),
-        javaScriptEngineHeapBytes: normalizeBudgetValue(processBudgets?.javaScriptEngineHeapBytes),
-        residentSetBytes: normalizeBudgetValue(processBudgets?.residentSetBytes),
-        residentSetGrowthBytesPerSecond: normalizeBudgetValue(processBudgets?.residentSetGrowthBytesPerSecond)
-    };
-}
-
-function disabledProcessBudgets(): ProcessBudgets {
-    return {
-        activeResourceCount: null,
-        javaScriptEngineHeapBytes: null,
-        residentSetBytes: null,
-        residentSetGrowthBytesPerSecond: null
-    };
-}
-
-function copyProcessBudgets(processBudgets: ProcessBudgets): ProcessBudgets {
-    return {
-        activeResourceCount: processBudgets.activeResourceCount,
-        javaScriptEngineHeapBytes: processBudgets.javaScriptEngineHeapBytes,
-        residentSetBytes: processBudgets.residentSetBytes,
-        residentSetGrowthBytesPerSecond: processBudgets.residentSetGrowthBytesPerSecond
-    };
-}
-
-function copyProcessUsagePolicy(policy: ProcessUsagePolicy): ProcessUsagePolicy {
-    return {
-        budgets: copyProcessBudgets(policy.budgets),
-        measure: policy.measure,
-        samplingIntervalMilliseconds: policy.samplingIntervalMilliseconds
-    };
-}
-
-function normalizeUnmeasuredProcessUsage(): ProcessUsagePolicy {
-    return {
-        budgets: disabledProcessBudgets(),
-        measure: false,
-        samplingIntervalMilliseconds: defaultProcessUsageSamplingIntervalMilliseconds
-    };
-}
-
-function normalizeMeasuredProcessUsage(profile: ProjectMeasuredProcessUsage): ProcessUsagePolicy {
-    return {
-        budgets: normalizeProcessBudgets(profile.budgets),
-        measure: true,
-        samplingIntervalMilliseconds: profile.samplingIntervalMilliseconds ??
-            defaultProcessUsageSamplingIntervalMilliseconds
-    };
-}
-
-function normalizeProcessUsage(
-    profile: ProjectProcessUsageConfig | undefined
-): ProcessUsagePolicy {
-    if (profile === undefined) {
-        return copyProcessUsagePolicy(defaultProcessUsagePolicy);
-    }
-
-    if (profile.measure !== true) {
-        return normalizeUnmeasuredProcessUsage();
-    }
-
-    return normalizeMeasuredProcessUsage(profile);
-}
-
-function normalizeWorkerLifecycle(execution: ProjectIntegrationExecution | undefined): WorkerLifecycle {
-    if (execution?.processModel !== 'worker-pool') {
-        return defaultWorkerLifecycle;
-    }
-
-    return execution.workerLifecycle ?? defaultWorkerLifecycle;
-}
-
-function normalizeWorkerPoolAssignmentPolicy(
-    execution: ProjectIntegrationExecution | undefined
-): WorkerPoolAssignmentPolicy {
-    if (execution?.processModel !== 'worker-pool') {
-        return defaultWorkerPoolAssignmentPolicy;
-    }
-
-    return execution.assignmentPolicy ?? defaultWorkerPoolAssignmentPolicy;
-}
-
-function normalizeWorkerPoolHedgingPolicy(
-    execution: ProjectIntegrationExecution | undefined
-): WorkerPoolHedgingPolicy {
-    if (execution?.processModel !== 'worker-pool') {
-        return defaultWorkerPoolHedgingPolicy;
-    }
-
-    return execution.hedging ?? defaultWorkerPoolHedgingPolicy;
-}
-
 function assertValidWorkerPoolHedging(execution: IntegrationExecution): void {
     if (
         execution.processModel === 'worker-pool' &&
@@ -330,58 +125,6 @@ function assertValidWorkerPoolHedging(execution: IntegrationExecution): void {
     ) {
         throw new ConfigError('Invalid worker-pool hedging: hedging requires dynamic-lease dispatch.');
     }
-}
-
-function normalizeWorkerPoolExecution(
-    execution: ProjectIntegrationExecution | undefined,
-    scheduling: IntegrationExecution['scheduling']
-): IntegrationExecution {
-    const workerPoolExecution = workerPoolProjectExecution(execution);
-
-    return {
-        assignmentPolicy: normalizeWorkerPoolAssignmentPolicy(execution),
-        dispatchPolicy: workerPoolExecution?.dispatchPolicy ?? defaultWorkerPoolDispatchPolicy,
-        hedging: normalizeWorkerPoolHedgingPolicy(execution),
-        hostProcess: { kind: 'direct' },
-        maxConcurrency: normalizedMaxConcurrency(workerPoolExecution),
-        maxWorkers: workerPoolExecution?.maxWorkers ?? null,
-        processModel: 'worker-pool',
-        scheduling,
-        workDistribution: normalizedWorkDistribution(execution),
-        workerLifecycle: normalizeWorkerLifecycle(execution)
-    };
-}
-
-function normalizeIntegrationExecution(
-    execution: ProjectIntegrationExecution | undefined
-): IntegrationExecution {
-    const processModel = execution?.processModel ?? defaultIntegrationProcessModel;
-    const scheduling = execution?.scheduling ?? defaultIntegrationScheduling;
-
-    if (processModel === 'worker-pool') {
-        return normalizeWorkerPoolExecution(execution, scheduling);
-    }
-
-    return {
-        maxConcurrency: normalizedMaxConcurrency(execution),
-        processModel,
-        scheduling
-    };
-}
-
-function normalizeProfilePolicy(
-    profile: Exclude<ProjectProfileConfig, ProjectAdapterProfileConfig>,
-    defaults: TimeoutPolicy
-): Pick<ProfileConfig, 'failureArtifacts' | 'processUsage' | 'reporters' | 'runRecords' | 'timeouts' | 'timings'> {
-    const timeouts = normalizeTimeouts(profile.timeouts, defaults);
-    return {
-        reporters: profile.reporters ?? null,
-        processUsage: normalizeProcessUsage(profile.processUsage),
-        runRecords: { persist: profile.runRecords?.persist ?? 'on-demand' },
-        failureArtifacts: integrationProfileSchema.unwrap().shape.failureArtifacts.parse(profile.failureArtifacts),
-        timings: normalizeTimings(profile.timings),
-        timeouts
-    };
 }
 
 function normalizeMicrotestProfile(
@@ -479,8 +222,8 @@ function normalizeProfile(
     profile: ParsedProfile,
     configPath: string | null
 ): ProfileConfig {
-    if (profile.testFamily === 'type-test') {
-        return normalizeAdapterProfile(profile);
+    if (typeof profile.testFamily !== 'string') {
+        return normalizeDefinedFamilyProfile(familyProfileSchema.parse(profile));
     }
     if (profile.testFamily === 'property') {
         return normalizePropertyProfile(profile);
@@ -493,7 +236,7 @@ function normalizeProfile(
         return normalizeIntegrationProfile(profile);
     }
 
-    return normalizeMicrotestProfile(profile, configPath);
+    return normalizeMicrotestProfile(microtestProfileSchema.parse(profile), configPath);
 }
 
 function normalizeConfiguredProfiles(
@@ -503,6 +246,7 @@ function normalizeConfiguredProfiles(
     const normalizedProfiles: Record<string, ProfileConfig> = {};
     const profileEntries = Object.entries(profiles ?? {});
 
+    validateProfileFamilies(profiles ?? {});
     for (const [ profileName, profile ] of profileEntries) {
         assertValidProfileName(profileName);
         normalizedProfiles[profileName] = normalizeProfile(profile, configPath);
@@ -536,23 +280,12 @@ function parseConfig(configValue: unknown, configPath: string | null): ParsedPro
     }
 }
 
-export function normalizeConfig(config: Config): NormalizedConfig {
-    return normalizeConfigForOrigin(parseConfig(config, null), null);
+export function normalizeConfigFromOrigin(config: unknown, configPath: string | null): NormalizedConfig {
+    return normalizeConfigForOrigin(parseConfig(config, configPath), configPath);
 }
 
-export function createConfigLoader(dependencies: ConfigLoaderDependencies): ConfigLoader {
-    return async function loadConfig(request) {
-        const configPath = await resolveConfigPath(request, dependencies);
-
-        if (configPath === null) {
-            return { ...normalizeConfigForOrigin({}, null), configPath: null };
-        }
-
-        const configModule = await importConfigModule(configPath, dependencies);
-        const configValue = readNamedConfigExport(configModule, configPath);
-
-        return { ...normalizeConfigForOrigin(parseConfig(configValue, configPath), configPath), configPath };
-    };
+export function normalizeConfig(config: Config): NormalizedConfig {
+    return normalizeConfigFromOrigin(config, null);
 }
 
 export type ProjectAttachmentLimits = ParsedProjectAttachmentLimits;

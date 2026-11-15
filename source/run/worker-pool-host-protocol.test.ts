@@ -56,6 +56,7 @@ function createChildProcess(): SupervisedChildProcess {
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        family: null,
         debug: { mode: 'off', selectors: [] },
         failureArtifacts: defaultFailureArtifactPolicy,
         capture: 'buffered',
