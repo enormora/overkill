@@ -4,7 +4,7 @@ import type { TestPlan } from '../engine/test-plan.ts';
 import type { LoadedConfig } from '../config/config.ts';
 import type { NormalizedConfig } from '../config/types.ts';
 import { runCaseFactsFromTestPlan } from './run-case-facts.ts';
-import { resolveProcessUsagePolicy, resolveTimingCollection } from './run-profile-facts.ts';
+import { profilePropertyPolicy, resolveProcessUsagePolicy, resolveTimingCollection } from './run-profile-facts.ts';
 import { resultWithTimingCollection } from './run-timing-collection.ts';
 import type { RunFacts, RunRequest } from './run-types.ts';
 import { selectTestProfile } from './test-profile.ts';
@@ -98,7 +98,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
         },
         execution: {
             benchmarkGarbageCollection: null,
-            propertyPolicy: profile.testFamily === 'property' ? profile.property : null,
+            propertyPolicy: profilePropertyPolicy(profile),
             attachments: profile.testFamily === 'integration' ? profile.attachments : null,
             baselineUpdateMode: request.baselineUpdateMode,
             capture: request.capture,

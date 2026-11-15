@@ -26,6 +26,7 @@ const integrationExecution = z.union([
     worker.extend({ maxWorkers: z.number().int().positive().nullable(), hostProcess, workDistribution })
 ]);
 const integration = common.extend({
+    property: propertyPolicySchema.nullable().default(null),
     testFamily: z.literal('integration'),
     files: common.shape.files.unwrap(),
     execution: integrationExecution,

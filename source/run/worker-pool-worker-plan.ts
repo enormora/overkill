@@ -12,7 +12,7 @@ import {
     loadRunTestModules,
     runDiscovery
 } from './node-run-dependencies.entry-point.ts';
-import { createRunTestPlan } from './run-test-plan.ts';
+import { createRunTestPlan, resolveTestPlanCollectionPolicy } from './run-test-plan.ts';
 import { RunCollectionError } from './run-errors.ts';
 import type {
     WorkerPoolCollection,
@@ -75,17 +75,20 @@ export async function runObservedWorkerCollection<Value>(collect: () => Promise<
 }
 
 async function createWorkerPoolTestPlan(command: WorkerPoolCommand): Promise<TestPlan> {
-    return await createRunTestPlan({
-        replay: command.replay,
-        cwd: command.cwd,
-        definitionLocationCapture: command.definitionLocationCapture,
-        discoverRunFiles: runDiscovery.discoverRunFiles,
-        engine: await selectedEngine(command),
-        loadRunTestModules,
-        paths: command.paths,
-        root: command.root,
-        testFamily: command.testFamily
-    });
+    return resolveTestPlanCollectionPolicy(
+        await createRunTestPlan({
+            replay: command.replay,
+            cwd: command.cwd,
+            definitionLocationCapture: command.definitionLocationCapture,
+            discoverRunFiles: runDiscovery.discoverRunFiles,
+            engine: await selectedEngine(command),
+            loadRunTestModules,
+            paths: command.paths,
+            root: command.root,
+            testFamily: command.testFamily
+        }),
+        command
+    );
 }
 
 export async function collectTestPlan(command: WorkerPoolCommand): Promise<CollectedWorkerPoolTestPlan> {

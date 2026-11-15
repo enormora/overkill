@@ -53,6 +53,7 @@ export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit):
     const execution = workerPoolExecutionFacts(runtime.resolvedRun);
 
     return {
+        propertyPolicy: execution.propertyPolicy,
         debug: execution.debug,
         capture: execution.capture,
         snapshots: currentSnapshotRun(),

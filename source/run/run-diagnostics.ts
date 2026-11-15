@@ -39,7 +39,11 @@ export function runHasAttachmentScopes(resolved: ResolvedRun): boolean {
     if (!runSupportsAttachments(resolved)) {
         return false;
     }
-    if (snapshotsEnabled(resolved)) {
+    if (
+        snapshotsEnabled(resolved) || resolved.facts.cases.some(function generatedCase(testCase) {
+            return testCase.propertyPolicy !== null;
+        })
+    ) {
         return true;
     }
     const selected = new Set(resolved.facts.cases.map(function selectedWork(entry) {

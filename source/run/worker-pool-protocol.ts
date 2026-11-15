@@ -41,6 +41,7 @@ import type {
 type RunEngineSelection = RunCommand['engine'];
 
 export type WorkerPoolCommand = {
+    readonly propertyPolicy: RunFacts['execution']['propertyPolicy'];
     readonly snapshots: SnapshotRun | null;
     readonly capture: RunCommand['request']['capture'];
     readonly replay: ReplayWire | null;

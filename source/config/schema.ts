@@ -271,6 +271,7 @@ export type ProjectAttachmentLimits = z.input<typeof attachmentLimitsSchema>;
 
 export const integrationProfileSchema = z
     .strictObject({
+        property: z.optional(propertySettingsSchema),
         baselines: z.optional(ordinaryBaselinePolicySchema),
         attachments: attachmentLimitsSchema,
         execution: z.optional(integrationExecutionSchema),

@@ -159,18 +159,30 @@ export function assertTestPlanCasesMatchProfilePolicy(testPlan: TestPlan, profil
     }
 }
 
-export function assertCollectedRunPlanCasesMatchProfilePolicy(
-    plan: CollectedRunPlan,
-    profile: ProfileConfig
-): void {
-    if (profile.testFamily === 'property') {
-        assertCollectedPropertyPolicies(plan, profile.property, profile.timeouts.softMilliseconds);
-        return;
-    }
+function assertCollectedCaseControls(plan: CollectedRunPlan, profile: ProfileConfig): void {
     for (const file of plan.files) {
         for (const testCase of file.cases) {
             assertCaseControlsMatchProfile(testCase, profile);
         }
+    }
+}
+
+export function assertCollectedRunPlanCasesMatchProfilePolicy(
+    plan: CollectedRunPlan,
+    profile: ProfileConfig
+): void {
+    const propertyPolicy = profile.testFamily === 'property' || profile.testFamily === 'integration'
+        ? profile.property
+        : null;
+    if (propertyPolicy !== null) {
+        assertCollectedPropertyPolicies(plan, {
+            testFamily: profile.testFamily,
+            propertyPolicy,
+            timeoutMilliseconds: profile.timeouts.softMilliseconds
+        });
+    }
+    if (profile.testFamily !== 'property') {
+        assertCollectedCaseControls(plan, profile);
     }
 }
 function selectedCases<Case>(

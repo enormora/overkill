@@ -168,9 +168,12 @@ export type TestCaseOptions = TestCaseDefinition & {
     readonly body: TestBody;
 };
 
-export type PropertyTestCaseOptions = TestCaseOptions & {
+type PropertyCaseDefinition = TestCaseOptions & {
     readonly definition: PropertyTestCaseExecution['definition'];
 };
+
+type IntegrationPropertyCaseDefinition = PropertyCaseDefinition & { readonly testFamily: 'integration'; };
+export type PropertyTestCaseOptions = IntegrationPropertyCaseDefinition | PropertyCaseDefinition;
 
 export type ThrowingTestCaseOptions = TestCaseDefinition & {
     readonly body: ThrowingTestBody;
@@ -500,10 +503,16 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     return {
         createPropertyTestCase(options: PropertyTestCaseOptions): TestCase {
             ensureTestBody(options.body);
+            const family: unknown = Object.hasOwn(options, 'testFamily')
+                ? Reflect.get(options, 'testFamily')
+                : 'property';
+            if (family !== 'property' && family !== 'integration') {
+                throw new TypeError('Property cases require a property or integration test family.');
+            }
             return createExecutableTestCase(
                 options,
                 propertyExecutionForDefinition(options.body, options.definition),
-                'property'
+                family
             );
         },
         createBenchmarkTestCase(options: BenchmarkTestCaseOptions): TestCase {

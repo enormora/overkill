@@ -2,6 +2,7 @@ import {
     createExecutionGlobalErrorObserver,
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
+import { profilePropertyPolicy } from './run-profile-facts.ts';
 import type { prepareAdapterPlan } from './adapter-execution.ts';
 
 import type { ResolvedRunInput } from './run-input-resolution.ts';
@@ -53,7 +54,7 @@ async function createTestPlan(input: LocalTestPlanInput): Promise<LocalTestPlan>
     const testPlan = await readTestPlan(input);
     const collected = resolveTestPlanCollectionPolicy(testPlan, {
         testFamily: input.profile.testFamily,
-        propertyPolicy: input.profile.testFamily === 'property' ? input.profile.property : null,
+        propertyPolicy: profilePropertyPolicy(input.profile),
         timeoutMilliseconds: input.profile.timeouts.softMilliseconds
     });
     if (input.profile.testFamily === 'type-test') {

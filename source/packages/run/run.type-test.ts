@@ -477,6 +477,7 @@ describe('@overkill-dev/run config', function () {
             readonly testFamily: 'integration';
         }>();
         expect<IntegrationProfileConfig>().type.toBeAssignableFrom<{
+            readonly property: null;
             readonly baselines: OrdinaryBaselinePolicy;
             readonly attachments: AttachmentLimits;
             readonly failureArtifacts: FailureArtifactPolicy;

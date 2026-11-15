@@ -109,6 +109,12 @@ function hasReplayPolicy(policy: CollectionPolicy): policy is CollectionReplayPo
     return Object.hasOwn(policy, 'replay');
 }
 
+function requiresPropertyPolicy(testPlan: TestPlan, family: RunTestFamily): boolean {
+    return family === 'property' || testPlan.cases.some(function propertyCase(testCase) {
+        return testCase.execution.kind === 'body' && testCase.execution.bodyMode === 'property';
+    });
+}
+
 export function resolveTestPlanCollectionPolicy(
     testPlan: TestPlan,
     policy: CollectionPolicy | CollectionReplayPolicy
@@ -117,11 +123,11 @@ export function resolveTestPlanCollectionPolicy(
         return testPlan;
     }
     assertTestPlanMatchesTestFamily(testPlan, policy.testFamily);
-    if (policy.testFamily !== 'property') {
+    if (policy.propertyPolicy === null) {
+        if (requiresPropertyPolicy(testPlan, policy.testFamily)) {
+            throw new RunCollectionError('Property collection requires profile policy.', { cause: null }, 'loader');
+        }
         return testPlan;
     }
-    if (policy.propertyPolicy === null) {
-        throw new RunCollectionError('Property collection requires profile policy.', { cause: null }, 'loader');
-    }
-    return resolveTestPlanPropertyPolicy(testPlan, policy.propertyPolicy, policy.timeoutMilliseconds);
+    return resolveTestPlanPropertyPolicy(testPlan, { ...policy, propertyPolicy: policy.propertyPolicy });
 }

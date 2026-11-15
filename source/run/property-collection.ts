@@ -5,7 +5,13 @@ import type { PropertyPolicy, PropertyBodyDefinition } from '../engine/property-
 import { workIdentityKey } from '../engine/identity.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
 import { RunCollectionError } from './run-errors.ts';
-import type { CollectedRunPlan } from './run-types.ts';
+import type { CollectedRunPlan, RunTestFamily } from './run-types.ts';
+
+type PropertyCollectionPolicy = {
+    readonly testFamily: RunTestFamily;
+    readonly propertyPolicy: PropertyPolicy;
+    readonly timeoutMilliseconds: number;
+};
 
 function validatePropertyControls(testCase: Pick<TestPlanCase, 'controls'>, softMilliseconds: number): void {
     const { capture, timeoutMilliseconds } = testCase.controls;
@@ -35,8 +41,7 @@ function requiresPropertyDeclaration(testCase: TestPlanCase): boolean {
     return testCase.testFamily === 'property' && testCase.execution.kind !== 'skip';
 }
 
-function resolvePropertyCase(testCase: TestPlanCase, defaults: PropertyPolicy, softMilliseconds: number): TestPlanCase {
-    validatePropertyControls(testCase, softMilliseconds);
+function resolvePropertyExecution(testCase: TestPlanCase, defaults: PropertyPolicy): TestPlanCase {
     const { execution } = testCase;
     if (execution.kind !== 'body' || execution.bodyMode !== 'property') {
         if (requiresPropertyDeclaration(testCase)) {
@@ -60,23 +65,38 @@ function resolvePropertyCase(testCase: TestPlanCase, defaults: PropertyPolicy, s
     }
 }
 
-export function assertCollectedPropertyPolicies(
-    plan: CollectedRunPlan,
-    defaults: PropertyPolicy,
-    softMilliseconds: number
+function resolvePropertyCase(testCase: TestPlanCase, settings: PropertyCollectionPolicy): TestPlanCase {
+    const { execution } = testCase;
+    const propertyBody = execution.kind === 'body' && execution.bodyMode === 'property';
+    if (settings.testFamily === 'integration' && !propertyBody) {
+        return testCase;
+    }
+    validatePropertyControls(testCase, settings.timeoutMilliseconds);
+    return resolvePropertyExecution(testCase, settings.propertyPolicy);
+}
+
+function assertCollectedPropertyPolicy(
+    testCase: CollectedRunPlan['discoveredFiles'][number]['cases'][number],
+    settings: PropertyCollectionPolicy
 ): void {
+    validatePropertyControls(testCase, settings.timeoutMilliseconds);
+    if (testCase.property !== null) {
+        const expected = resolvePropertyPolicy(settings.propertyPolicy, testCase.property.definition);
+        if (!isDeepStrictEqual(expected, testCase.property.policy)) {
+            throw new RunCollectionError(
+                'Collected property policy does not match profile and declaration settings.',
+                { cause: null },
+                'loader'
+            );
+        }
+    }
+}
+
+export function assertCollectedPropertyPolicies(plan: CollectedRunPlan, settings: PropertyCollectionPolicy): void {
     for (const file of plan.discoveredFiles) {
         for (const testCase of file.cases) {
-            validatePropertyControls(testCase, softMilliseconds);
-            if (testCase.property !== null) {
-                const expected = resolvePropertyPolicy(defaults, testCase.property.definition);
-                if (!isDeepStrictEqual(expected, testCase.property.policy)) {
-                    throw new RunCollectionError(
-                        'Collected property policy does not match profile and declaration settings.',
-                        { cause: null },
-                        'loader'
-                    );
-                }
+            if (settings.testFamily !== 'integration' || testCase.property !== null) {
+                assertCollectedPropertyPolicy(testCase, settings);
             }
         }
     }
@@ -84,14 +104,13 @@ export function assertCollectedPropertyPolicies(
 
 export function resolveTestPlanPropertyPolicy(
     testPlan: TestPlan,
-    defaults: PropertyPolicy,
-    softMilliseconds: number
+    settings: PropertyCollectionPolicy
 ): TestPlan {
     function resolveCases(cases: NonEmptyReadonlyArray<TestPlanCase>): NonEmptyReadonlyArray<TestPlanCase> {
         return [
-            resolvePropertyCase(cases[0], defaults, softMilliseconds),
+            resolvePropertyCase(cases[0], settings),
             ...cases.slice(1).map(function resolveCase(testCase) {
-                return resolvePropertyCase(testCase, defaults, softMilliseconds);
+                return resolvePropertyCase(testCase, settings);
             })
         ];
     }

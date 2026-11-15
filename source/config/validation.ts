@@ -82,6 +82,9 @@ function validateAttachmentLimits(profile: ProfileConfig): void {
 }
 
 function validateIntegrationProfile(profile: ProfileConfig): void {
+    if (profile.testFamily === 'integration' && profile.property !== null) {
+        propertyPolicySchema.parse(profile.property);
+    }
     if (profile.testFamily !== 'benchmark' && profile.testFamily !== 'type-test') {
         ordinaryBaselinePolicySchema.parse(profile.baselines);
     }

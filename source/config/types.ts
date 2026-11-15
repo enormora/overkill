@@ -164,6 +164,7 @@ export type MicrotestProfileConfig = {
 };
 
 export type IntegrationProfileConfig = {
+    readonly property: PropertyPolicy | null;
     readonly baselines: OrdinaryBaselinePolicy;
     readonly attachments: ProfileEvidencePolicy['attachments'];
     readonly retries: IntegrationRetryPolicy | null;

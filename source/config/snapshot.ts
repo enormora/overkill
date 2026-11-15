@@ -15,6 +15,7 @@ import type {
     HostProcess,
     BenchmarkExecution,
     IntegrationExecution,
+    PropertyProfileConfig,
     CoveragePolicy
 } from './types.ts';
 
@@ -197,6 +198,12 @@ function copyBenchmarkExecution(execution: BenchmarkExecution): BenchmarkExecuti
         : { ...execution };
 }
 
+function copyPropertyPolicy(
+    policy: PropertyProfileConfig['property'] | null
+): PropertyProfileConfig['property'] | null {
+    return policy === null ? null : { ...policy };
+}
+
 function copyBuiltinProfileConfig(profile: Exclude<ProfileConfig, AdapterProfileConfig>): ProfileConfig {
     if (profile.testFamily === 'property') {
         return {
@@ -242,6 +249,7 @@ function copyBuiltinProfileConfig(profile: Exclude<ProfileConfig, AdapterProfile
 
     if (profile.testFamily === 'integration') {
         return {
+            property: copyPropertyPolicy(profile.property),
             baselines: { ...profile.baselines, adapters: Array.from(profile.baselines.adapters) },
             attachments: { ...profile.attachments },
             execution: copyIntegrationExecution(profile.execution),
