@@ -193,11 +193,11 @@ disabled. These contracts do not establish semantic equivalence.
 
 Each contract is a separate property case. Applicable fixtures seed properties
 without transferring diagnostic expectations. Async project parsing selects a
-valid input from a batch of eight ordinary generated candidates. Generation uses
-normal work budgets; no accepted candidate is inconclusive. Configuration and
-rule exceptions fail instead of becoming rejected candidates. Profiles own trial
-and shrink budgets. Replays store relative inputs and fixture identities, never
-temporary roots.
+valid input from a batch of eight ordinary generated candidates. Keep `maxSize`
+at least eight to permit the batch. Generation uses normal work budgets; a trial
+with no accepted candidate is inconclusive. Configuration and rule exceptions
+fail instead of becoming rejected candidates. Profiles own trial and shrink
+budgets. Replays store relative inputs and fixture identities, never temporary roots.
 
 Export config properties into a dedicated integration-profile module. They need
 filesystem access to create trial projects and explicit property budgets:
