@@ -4,6 +4,7 @@ import { suite, test } from '../packages/test/test.entry-point.ts';
 import { gen, property, withProperties } from '../packages/property/property.entry-point.ts';
 import { differential } from '../packages/differential/differential.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
+import { testNode as contractTestNode } from './differential-contract.test.ts';
 import { testNode as lifecycleTestNode } from './differential-lifecycle.test.ts';
 
 function confirmedWitness(result: RunResult): PropertyWitnessFile {
@@ -16,6 +17,7 @@ function confirmedWitness(result: RunResult): PropertyWitnessFile {
 
 export const testNode = suite('differential comparisons', [
     lifecycleTestNode,
+    contractTestNode,
     test('rejects malformed JavaScript declarations before executing callbacks', function (scope) {
         const run = function (): number {
             return 1;
@@ -160,6 +162,56 @@ export const testNode = suite('differential comparisons', [
                                 sample.assert.equal(error instanceof Error ? error.message : null, 'expected error');
                             }
                         }
+                        return sample.assert.collect();
+                    }
+                })
+            }),
+            propertyExecutionDefaults
+        );
+        scope.assert.equal(result.summary.passed, 1);
+        return scope.assert.collect();
+    }),
+    test('awaits settlement before starting the next implementation', async function (scope) {
+        const events: string[] = [];
+        let next = 0;
+        async function execute(value: number): Promise<number> {
+            const name = [ 'one', 'two', 'three' ][next % 3];
+            next += 1;
+            events.push(`${name}:start`);
+            const gate = Promise.withResolvers<undefined>();
+            queueMicrotask(function settle() {
+                events.push(`${name}:end`);
+                gate.resolve(undefined);
+            });
+            await gate.promise;
+            return value;
+        }
+        const result = await executePropertyNode(
+            property({
+                title: 'settlement',
+                generator: gen.constant(1),
+                test: differential<number, number>({
+                    implementations: [
+                        { name: 'one', run: execute },
+                        { name: 'two', run: execute },
+                        { name: 'three', run: execute }
+                    ],
+                    check(observations, sample) {
+                        sample.assert.deepEqual(Array.from(events), [
+                            'one:start',
+                            'one:end',
+                            'two:start',
+                            'two:end',
+                            'three:start',
+                            'three:end'
+                        ]);
+                        sample.assert.deepEqual(
+                            observations.map(function name(observation) {
+                                return observation.name;
+                            }),
+                            [ 'one', 'two', 'three' ]
+                        );
+                        events.length = 0;
                         return sample.assert.collect();
                     }
                 })
