@@ -20,6 +20,7 @@ export async function normalizationCommand(scope: TestScope, boundary: Boundary,
             profiles: {
                 bench: {
                     testFamily: 'benchmark',
+                    timeouts: { collectionMilliseconds: 30_000 },
                     baselines: { directory: relative(process.cwd(), directory), adapters: [] },
                     files: { include: [ fixture ] },
                     execution: boundary === 'supervised-process'
