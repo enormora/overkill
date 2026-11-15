@@ -32,8 +32,17 @@ const node = property({ title: 'packed differential', generator: gen.constant(1)
         return sample.assert.collect();
     } }) });
 if (node.title !== 'packed differential') throw new Error('Invalid property node');
+let later = 0;
+const control = property({ title: 'packed control', generator: gen.constant(1),
+    async test(value, sample) {
+        return await differential({ implementations: [
+            { name: 'stop', run() { return sample.inconclusive('expected stop'); } },
+            { name: 'later', run(input) { later += 1; return input; } }
+        ], check(_observations, trial) { later += 1; return trial.assert.collect(); } })(value, sample);
+    }
+});
 const plan = createTestPlan(createRoot({
-    title: 'consumer', annotations: {}, controls: {}, children: [node]
+    title: 'consumer', annotations: {}, controls: {}, children: [node, control]
 }));
 const policy = {
     version: 1, newTrials: 2, maxSize: 10, maxDepth: 2, maxAutomaticEdges: 0,
@@ -45,7 +54,9 @@ const resolveCases = cases => cases.map(selected => ({
 const result = await execute({...plan,
     cases: resolveCases(plan.cases), discoveredCases: resolveCases(plan.discoveredCases)
 });
-if (result.summary.passed !== 1) throw new Error(JSON.stringify(result));
+if (result.summary.passed !== 1 || result.summary.inconclusive !== 1 || later !== 0) {
+    throw new Error(JSON.stringify(result));
+}
 console.log('differential package loaded');
 `;
 

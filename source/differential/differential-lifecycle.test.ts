@@ -81,7 +81,7 @@ export const testNode = suite('differential lifecycle', [
         scope.assert.equal(result.summary.passed, 0);
         return scope.assert.collect();
     }),
-    test('reconstruction errors remain failures before implementation execution', async function (scope) {
+    test('reconstruction exhaustion remains inconclusive before implementation execution', async function (scope) {
         let calls = 0;
         const result = await executePropertyNode(
             property({
@@ -112,8 +112,89 @@ export const testNode = suite('differential lifecycle', [
             { ...propertyExecutionDefaults, policy: { ...propertyExecutionDefaults.policy, maxWork: 1 } }
         );
         scope.assert.equal(calls, 0);
-        scope.assert.equal(result.summary.passed, 0);
+        scope.assert.equal(result.summary.inconclusive, 1);
+        scope.assert.equal(result.summary.failed, 0);
+        scope.assert.equal(result.perTest[0]?.property?.invocations[0]?.summary?.status, 'work-exhausted');
         return scope.assert.collect();
+    }),
+    ...([ 'sync', 'async' ] as const).flatMap(function settlement(mode) {
+        return ([ 'require', 'contract', 'inconclusive', 'permission' ] as const).map(function termination(kind) {
+            return test(`${mode} ${kind} control escapes unchanged`, async function (scope) {
+                let later = 0;
+                let propagated = 0;
+                const result = await executePropertyNode(
+                    property({
+                        title: 'control',
+                        generator: gen.constant<number>(1),
+                        async test(value, sample: PropertySampleScope<number>) {
+                            let original: unknown = null;
+                            function terminate(): never {
+                                if (kind === 'inconclusive') {
+                                    return sample.inconclusive('search incomplete');
+                                }
+                                if (kind === 'permission') {
+                                    throw Object.assign(new Error('denied'), { code: 'ERR_ACCESS_DENIED' });
+                                }
+                                if (kind === 'contract') {
+                                    sample.plan(-1);
+                                }
+                                sample.require.string(1);
+                                throw new Error('Expected control termination.');
+                            }
+                            function stop(): never {
+                                try {
+                                    return terminate();
+                                } catch (error: unknown) {
+                                    original = error;
+                                    throw error;
+                                }
+                            }
+                            const body = differential<number, number>({
+                                implementations: [
+                                    {
+                                        name: 'stop',
+                                        run: mode === 'sync' ? stop : async function stopAsynchronously() {
+                                            await Promise.resolve();
+                                            return stop();
+                                        }
+                                    },
+                                    {
+                                        name: 'later',
+                                        run(input) {
+                                            later += 1;
+                                            return input;
+                                        }
+                                    }
+                                ],
+                                check(_observations, trial) {
+                                    later += 1;
+                                    return trial.assert.collect();
+                                }
+                            });
+                            try {
+                                return await body(value, sample);
+                            } catch (error: unknown) {
+                                scope.assert.equal(error === original, true);
+                                propagated += 1;
+                                throw error;
+                            }
+                        }
+                    }),
+                    propertyExecutionDefaults
+                );
+                scope.assert.equal(later, 0);
+                scope.assert.true(propagated > 0);
+                scope.assert.equal(result.summary.inconclusive, kind === 'inconclusive' ? 1 : 0);
+                if (kind === 'permission') {
+                    scope.assert.true(result.runnerErrors.some(function permission(error) {
+                        return error.subtype === 'permission';
+                    }));
+                } else {
+                    scope.assert.equal(result.summary.failed, kind === 'inconclusive' ? 0 : 1);
+                }
+                return scope.assert.collect();
+            });
+        });
     }),
     test('a comparison without assertions fails its contract', async function (scope) {
         const result = await executePropertyNode(
