@@ -38,7 +38,11 @@ export const testNode = suite('config project contexts', [
                         files: [ '**/*.ts' ],
                         languageOptions: {
                             parser,
-                            parserOptions: { project: './tsconfig.json', tsconfigRootDir: context.root }
+                            parserOptions: {
+                                project: './tsconfig.json',
+                                tsconfigRootDir: context.root,
+                                disallowAutomaticSingleRunInference: true
+                            }
                         },
                         plugins: { typed: { rules: { rule: nativeRule(typedRule) } } },
                         rules: { 'typed/rule': 'error' }

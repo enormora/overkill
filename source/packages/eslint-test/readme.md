@@ -173,6 +173,11 @@ returns `{ filename, code, files }`; `files` contains generated companion files.
 Every trial gets a fresh project and ESLint instance. Source is written before
 parsing so TypeScript project services observe the actual trial.
 
+For `@typescript-eslint/parser`, use `parserOptions.projectService` or set
+`parserOptions.disallowAutomaticSingleRunInference: true` with `project`.
+Config contracts parse and lint each input separately; single-run inference in
+CI otherwise switches later passes to an isolated program without companion types.
+
 Defaults are crash freedom, autofix syntax safety, and suggestion syntax safety.
 Explicit `contracts` replace the defaults:
 
