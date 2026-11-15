@@ -1,7 +1,8 @@
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { runIfMain } from '#test-runner';
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
-import { suite, test, runIfMain, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import {
     type ReplayProject,
