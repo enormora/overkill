@@ -72,9 +72,14 @@ function createActiveScopes(): ActiveScopes {
     };
 }
 
+type ExecutionContext<Context> = {
+    readonly getStore: () => Context | undefined;
+    readonly run: <Value>(context: Context, run: () => Value) => Value;
+};
+
 type ExecutionErrorOwnership = {
-    readonly runScopeStorage: AsyncLocalStorage<RunErrorScope>;
-    readonly activeCaseStorage: AsyncLocalStorage<ActiveCaseContext>;
+    readonly runScopeStorage: ExecutionContext<RunErrorScope>;
+    readonly activeCaseStorage: ExecutionContext<ActiveCaseContext>;
     readonly activeScopes: ActiveScopes;
     readonly processHookListeners: ProcessHookListeners;
 };
