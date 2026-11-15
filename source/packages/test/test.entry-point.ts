@@ -1,3 +1,5 @@
+export { matches } from '../doubles/doubles.entry-point.ts';
+export type { ArgumentMatcher } from '../doubles/doubles.entry-point.ts';
 export {
     defineMacro,
     defineParameterizedTestBody,

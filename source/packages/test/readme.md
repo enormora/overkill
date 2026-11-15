@@ -75,6 +75,7 @@ Current root runtime exports:
 - `recordSink`
 - `recordAsyncSink`
 - `transcriptUsage`
+- `matches` and the `ArgumentMatcher` type for explicit `ts-pattern` arguments
 - `doubleUsage`
 - `rule`
 - `testDouble`

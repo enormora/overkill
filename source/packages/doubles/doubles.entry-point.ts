@@ -1,3 +1,5 @@
+export { matches } from '../../doubles/argument-matcher.ts';
+export type { ArgumentMatcher } from '../../doubles/argument-matcher.ts';
 export { doubleUsage } from '../../doubles/double-usage.ts';
 export { rule } from '../../doubles/double-rule.ts';
 export {
