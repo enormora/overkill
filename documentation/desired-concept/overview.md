@@ -77,8 +77,8 @@ Core package families:
   family for original-source compiler analysis, installed separately from the
   standard distribution
 - a first-party Stryker plugin
-- `@overkill-dev/eslint-rule-test` for ESLint rule-suite authoring rather than
-  raw `RuleTester` as a core primitive
+- `@overkill-dev/eslint-test` for ESLint rule suites, configuration checks,
+  fixture regressions, and generated safety properties
 - `@overkill-dev/eslint-plugin` for Overkill-specific static authoring rules
 - coverage as an explicit, easy-to-enable capability rather than part of
   the default run mode

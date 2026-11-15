@@ -21,6 +21,9 @@ type PropertyExecutionRequest = {
     readonly seed: bigint;
 };
 
+type IntegrationPropertyExecutionRequest = PropertyExecutionRequest & { readonly testFamily: 'integration'; };
+type FamilyPropertyExecutionRequest = IntegrationPropertyExecutionRequest | PropertyExecutionRequest;
+
 export const propertyExecutionDefaults: PropertyExecutionRequest = {
     corpus: emptyPropertyCorpus,
     reporters: [],
@@ -29,15 +32,24 @@ export const propertyExecutionDefaults: PropertyExecutionRequest = {
     seed: 42n
 };
 
+export const integrationPropertyExecutionDefaults = {
+    ...propertyExecutionDefaults,
+    testFamily: 'integration'
+} as const;
+
 function hasReplay(
     request: PropertyExecutionRequest
 ): request is PropertyExecutionRequest & { readonly replay: PropertyWitnessFile; } {
     return Object.hasOwn(request, 'replay');
 }
 
+function propertyFamily(request: FamilyPropertyExecutionRequest): 'integration' | 'property' {
+    return Object.hasOwn(request, 'testFamily') ? 'integration' : 'property';
+}
+
 export async function executePropertyNode(
     node: TestNode,
-    request: PropertyExecutionRequest | PropertyExecutionRequest & { readonly replay: PropertyWitnessFile; }
+    request: FamilyPropertyExecutionRequest | FamilyPropertyExecutionRequest & { readonly replay: PropertyWitnessFile; }
 ): Promise<RunResult> {
     const plan = resolveTestPlanCollectionPolicy(
         createTestPlan(createRoot({
@@ -46,7 +58,11 @@ export async function executePropertyNode(
             controls: {},
             children: [ node ]
         })),
-        { testFamily: 'property', propertyPolicy: request.policy, timeoutMilliseconds: 1000 }
+        {
+            testFamily: propertyFamily(request),
+            propertyPolicy: request.policy,
+            timeoutMilliseconds: 1000
+        }
     );
     return await createTestEngine().execute(plan, {
         debug: { mode: 'off' },

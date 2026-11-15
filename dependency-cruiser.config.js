@@ -68,13 +68,13 @@ const ignoreFromOrphans = [ ...configFiles, ...entryPointFiles, ...testFiles, ..
 export default {
     forbidden: [
         {
-            name: 'eslint-rule-testing-stays-optional',
+            name: 'eslint-testing-stays-optional',
             severity: 'error',
             from: {
                 path: '^source/(engine|assertion-protocol|config|run|property|packages/(engine|run|test|property))/',
                 pathNot: testFiles
             },
-            to: { path: '^source/(eslint-rule-test|packages/eslint-rule-test)/' }
+            to: { path: '^source/(eslint-test|packages/eslint-test)/' }
         },
         {
             name: 'linearizability-stays-optional',

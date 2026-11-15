@@ -1,4 +1,4 @@
-import { testNode as eslintRuleTestNode } from '../../eslint-rule-test/rule-testing-suite.test.ts';
+import { testNode as eslintTestNode } from '../../eslint-test/eslint-testing-suite.test.ts';
 import { testNode as measurementTestNode } from '../../bench/measurement-suite.test.ts';
 import { testNode as workloadTestNode } from '../../bench/workload.test.ts';
 import { testNode as baselinesTestNode } from '../../baselines/baselines-suite.test.ts';
@@ -12,7 +12,7 @@ import { testNode as propertyFamilyTestNode } from './property-family.ts';
 export const testNode = createSuite({
     annotations: {},
     children: [
-        eslintRuleTestNode,
+        eslintTestNode,
         measurementTestNode,
         workloadTestNode,
         baselinesTestNode,

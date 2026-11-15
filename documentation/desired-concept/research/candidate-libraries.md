@@ -1007,7 +1007,7 @@ What it is:
 Pros:
 
 - current
-- directly relevant to the future `@overkill-dev/eslint-rule-test` adapter
+- directly relevant to the future `@overkill-dev/eslint-test` adapter
 - useful reference for typed/parser-heavy rule-test cases
 
 Cons:
@@ -1037,14 +1037,16 @@ Recommended direction:
 - evaluate `@eslint-community/eslint-utils` for the future
   `@overkill-dev/eslint-plugin`
 - study `@typescript-eslint/rule-tester` as the strongest current
-  compatibility reference for `@overkill-dev/eslint-rule-test`
+  compatibility reference for `@overkill-dev/eslint-test`
 - keep Overkill's public rule-test authoring surface macro/suite-based
   rather than exposing raw `RuleTester` as the first-class primitive
 - use public ESLint `Linter` for in-memory example and property execution;
   native `RuleTester` reads source files when formatting failures, while the
   TypeScript wrapper does not expose every ESLint 10 rule-context API in its types
-- use Overkill generators and TypeScript syntax tools for source construction,
-  with Ajv Draft-04 validation for generated rule options
+- use Overkill generators and TypeScript syntax tools for source construction;
+  let ESLint validate generated option candidates
+- use ESLint's project APIs for configuration resolution and fixture execution,
+  with fresh virtual projects for generated type-aware inputs
 
 ## HTML, XML, And Machine-Readable Reporting
 

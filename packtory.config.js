@@ -122,8 +122,8 @@ export const configuration = {
             bundlePeerDependencies: [ '@overkill-dev/engine' ]
         },
         {
-            name: 'eslint-rule-test',
-            description: 'ESLint rule examples and generated properties.',
+            name: 'eslint-test',
+            description: 'ESLint rule and configuration checks, fixtures, and generated properties.',
             packageInterface: { modules: packageModules({ '.': 'main' }) },
             bundleDependencies: [ '@overkill-dev/property' ],
             bundlePeerDependencies: [
