@@ -77,9 +77,8 @@ function moduleBuildToken(url: string): string | null {
     return parsed.searchParams.get('overkill-build');
 }
 
-function deliveryOwns(url: string, build: string): boolean {
-    const parsed = new URL(url);
-    return parsed.searchParams.get('overkill-build') === build;
+function deliveryOwns(url: string | undefined, build: string): boolean {
+    return url !== undefined && URL.canParse(url) && new URL(url).searchParams.get('overkill-build') === build;
 }
 
 function originalModuleUrl(url: string): string {
@@ -253,11 +252,13 @@ function registerDelivery(
 ): ReturnType<typeof registerHooks> {
     return registerHooks({
         resolve(specifier, context, nextResolve) {
-            if (context.parentURL === undefined || !deliveryOwns(context.parentURL, token)) {
+            if (!deliveryOwns(specifier, token) && !deliveryOwns(context.parentURL, token)) {
                 return nextResolve(specifier, context);
             }
             try {
-                const target = resolver.target(specifier, context.parentURL);
+                const target = context.parentURL === undefined || !deliveryOwns(context.parentURL, token)
+                    ? specifier
+                    : resolver.target(specifier, context.parentURL);
                 const resolved = verifiedResolution(target, nextResolve(target, context));
                 return { ...resolved, shortCircuit: true };
             } catch (error: unknown) {
