@@ -139,6 +139,27 @@ export const testNode = suite('linearizability histories', [
         scope.assert.deepEqual(await check([], 1), { kind: 'linearizable', order: [], work: 0 });
         return scope.assert.collect();
     }),
+    test('omits disabled pending operations while including necessary effects', async function (scope) {
+        const unused: Event = { kind: 'invoke', id: 'unused', operation: { kind: 'read' } };
+        const result = await checkLinearizability({
+            history: [ unused, write, read, response('read', 1) ],
+            model: {
+                ...model,
+                transition(state, observation) {
+                    return observation.operation.kind === 'read' && observation.outcome.kind === 'pending'
+                        ? { kind: 'disabled' }
+                        : model.transition(state, observation);
+                }
+            },
+            signal: freshSignal(),
+            maxWork: 100
+        });
+        scope.assert.equal(result.kind, 'linearizable');
+        if (result.kind === 'linearizable') {
+            scope.assert.deepEqual(result.order, [ 'write', 'read' ]);
+        }
+        return scope.assert.collect();
+    }),
     test('backtracks alternative pending effects', async function (scope) {
         const result = await checkLinearizability({
             history: [ write, read, response('read', 2) ],
