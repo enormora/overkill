@@ -9,6 +9,7 @@ import {
     type ResourceGraph
 } from '../resources/resource-graph.ts';
 import {
+    finalizeManagedChecks,
     prepareManagedResources,
     closeManagedFailureStreams,
     disposeAllManagedResources,
@@ -195,7 +196,7 @@ async function acquireComposedResourcesWithLifecycle(
     return composedResourceSession(
         directResources,
         runtimes,
-        managedResourceSession(combinedResources, handles),
+        managedResourceSession(combinedResources, handles, stores.checks),
         testCase.workId
     );
 }
@@ -299,6 +300,7 @@ function createManagedLifecycleState(options: ResourceLifecycleOptions): Managed
                 } finally {
                     await runWithLifecycleCase(testCase, attempt, async function disposeAttemptResources() {
                         await disposeCaseResources(stores, options, testCase);
+                        await finalizeManagedChecks(stores, testCase, attempt);
                         await closeManagedFailureStreams(stores, testCase, attempt);
                     });
                 }

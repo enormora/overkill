@@ -7,7 +7,7 @@ import type { LifecycleBoundary } from './resource-lifecycle-boundaries.ts';
 import type { ResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
 import type { TestPlanCase } from './run-engine-primitives.ts';
 
-type ResourceHandleRequest = {
+export type ResourceHandleRequest = {
     readonly resource: AnyResourceDefinition;
     readonly dependencies: ResourceContext<RuntimeResourceMap>;
     readonly boundary: LifecycleBoundary;

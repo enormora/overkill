@@ -571,6 +571,19 @@ observers use portable implementation references; inline callbacks are limited
 to compatible same-realm execution. This is a shared resource capability, not
 browser-specific test hooks or another assertion language.
 
+Observer installation registers partial cleanup through `context.cleanup.defer`.
+It returns `prepare` and `finalize` callbacks. Finalization drains the adapter's
+documented delivery boundary before checking completeness. Installation has a
+2-second budget; owner closure has one 2-second budget shared by preparation,
+disposal, finalization, and observer cleanup. Earlier supervision deadlines win.
+Direct sessions expose retained ledger snapshots through `resourceChecks()`.
+The lifecycle foundation supplies same-process cancellation and bounded observer
+operations. Persistent cross-process stop, findings, and evidence delivery belong
+to the Resource Check Outcomes And Evidence milestone. Until that integration,
+finalized snapshots are inspected explicitly rather than merged into outcomes.
+`ledger.requestStop` records either a structured failed check or an observation
+error before requesting cancellation; those failure domains remain separate.
+
 An observer can record checks, record observation/enforcement errors, request
 cancellation, prepare live evidence, finalize its interval, and dispose its
 own listeners/infrastructure. Installation follows acquisition and precedes

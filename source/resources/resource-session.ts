@@ -1,8 +1,12 @@
 import type { WorkloadInput } from '../engine/workload-input.ts';
 import { resourceAttachments } from '../attachments/attachment-context.ts';
+import {
+    resourceCheckInstallers,
+    createResourceCheckSession,
+    type ResourceCheckSession
+} from './resource-checks.ts';
 import { projectReferencedResourceHandle } from './resource-reference-projection.ts';
-import { hasWorkloadInput } from './resource-workload-types.ts';
-import { createWorkloadResourceBinding } from './resource-workload-binding.ts';
+import { boundWorkloadResources, type ResourceAcquisitionContext } from './resource-workload-binding.ts';
 import type {
     ResourceSessionContract,
     ResourceSessionDisposalContext as SessionDisposalContext,
@@ -24,7 +28,6 @@ import {
 } from './resource-graph.ts';
 import {
     lifecycleFailures,
-    ResourceLifecycleError,
     resourceLifecycleError,
     type ResourceLifecycleFailure
 } from './resource-lifecycle-error.ts';
@@ -39,12 +42,10 @@ type Mutable<Value> = {
 
 type ResourceAcquisitionResult = {
     readonly ownerHandles: ReadonlyMap<AnyResourceDefinition, unknown>;
+    readonly checks: ReadonlyMap<AnyResourceDefinition, ResourceCheckSession>;
     readonly resourceHandles: ReadonlyMap<AnyResourceDefinition, unknown>;
 };
-type ResourceAcquisitionContext = {
-    readonly acquisitionFailureMessage: string;
-    readonly fallbackResourceName: string;
-};
+
 type ResourceAcquisition = {
     readonly acquire: (graph: ResourceGraph) => Promise<ResourceAcquisitionResult>;
     readonly dependencies: (dependencies: ResourceDependencies) => Promise<ResourceContext<ResourceDependencies>>;
@@ -101,28 +102,46 @@ function disposeResourceHandle(
     return dispose(handle, context);
 }
 
-async function disposeResource(
+type ResourceOwnership = {
+    readonly ownerHandles: ReadonlyMap<AnyResourceDefinition, unknown>;
+    readonly resourceHandles: ReadonlyMap<AnyResourceDefinition, unknown>;
+    readonly checks: ReadonlyMap<AnyResourceDefinition, ResourceCheckSession>;
+};
+async function closeResourceOwner(
     node: ResourceNode,
-    ownerHandles: ReadonlyMap<AnyResourceDefinition, unknown>,
-    resourceHandles: ReadonlyMap<AnyResourceDefinition, unknown>,
+    ownership: ResourceOwnership,
     signal: AbortSignal
-): Promise<ResourceLifecycleFailure | null> {
-    const handle = ownerHandles.get(node.descriptor);
+): Promise<void> {
     const { dispose } = callableResourceDefinition(node.descriptor);
-
-    if (handle === undefined || dispose === null) {
-        return null;
-    }
-
-    try {
-        await disposeResourceHandle(dispose, handle, {
+    async function disposeOwner(cleanupSignal: AbortSignal): Promise<void> {
+        if (dispose === null) {
+            return;
+        }
+        await disposeResourceHandle(dispose, ownership.ownerHandles.get(node.descriptor), {
             attachments: resourceAttachments(node.descriptor.name),
-            dependencies: acquiredDependencyHandles(node.descriptor.dependencies, resourceHandles),
+            dependencies: acquiredDependencyHandles(node.descriptor.dependencies, ownership.resourceHandles),
             scenarios: acquisitionResourceScenarioBindings(node.descriptor),
-            signal,
+            signal: cleanupSignal,
             workload: null
         });
-
+    }
+    const observation = ownership.checks.get(node.descriptor);
+    if (observation === undefined) {
+        await disposeOwner(signal);
+    } else {
+        await observation.close(disposeOwner);
+    }
+}
+async function disposeResource(
+    node: ResourceNode,
+    ownership: ResourceOwnership,
+    signal: AbortSignal
+): Promise<ResourceLifecycleFailure | null> {
+    if (!ownership.ownerHandles.has(node.descriptor)) {
+        return null;
+    }
+    try {
+        await closeResourceOwner(node, ownership, signal);
         return null;
     } catch (error: unknown) {
         return { cause: error, phase: 'dispose', resourceName: node.descriptor.name };
@@ -131,14 +150,13 @@ async function disposeResource(
 
 export async function disposeResources(
     order: readonly ResourceNode[],
-    ownerHandles: ReadonlyMap<AnyResourceDefinition, unknown>,
-    resourceHandles: ReadonlyMap<AnyResourceDefinition, unknown>,
+    ownership: ResourceOwnership,
     signal: AbortSignal
 ): Promise<readonly ResourceLifecycleFailure[]> {
     const failures: ResourceLifecycleFailure[] = [];
 
     for (const node of order.toReversed()) {
-        const failure = await disposeResource(node, ownerHandles, resourceHandles, signal);
+        const failure = await disposeResource(node, ownership, signal);
 
         if (failure !== null) {
             failures.push(failure);
@@ -150,15 +168,38 @@ export async function disposeResources(
 
 async function disposeResourceSession(
     order: readonly ResourceNode[],
-    ownerHandles: ReadonlyMap<AnyResourceDefinition, unknown>,
-    resourceHandles: ReadonlyMap<AnyResourceDefinition, unknown>,
+    ownership: ResourceOwnership,
     signal: AbortSignal
 ): Promise<void> {
-    const failures = await disposeResources(order, ownerHandles, resourceHandles, signal);
+    const failures = await disposeResources(order, ownership, signal);
 
     if (failures.length > 0) {
         throw resourceLifecycleError('Resource disposal failed.', failures, failures[0]?.cause);
     }
+}
+
+type ResourceObservationAdmission = {
+    readonly remember: (resource: AnyResourceDefinition, observation: ResourceCheckSession) => void;
+    readonly signal: AbortSignal;
+    readonly controller: AbortController;
+};
+async function installResourceObservation(
+    resource: AnyResourceDefinition,
+    handle: unknown,
+    admission: ResourceObservationAdmission
+): Promise<void> {
+    if (resourceCheckInstallers(resource).length === 0) {
+        return;
+    }
+    const observation = createResourceCheckSession(resource, handle, {
+        kind: 'standalone',
+        stop(cause) {
+            admission.controller.abort(cause);
+        }
+    });
+    admission.remember(resource, observation);
+    await observation.install(admission.signal);
+    admission.signal.throwIfAborted();
 }
 
 function createResourceAcquisition(
@@ -167,6 +208,7 @@ function createResourceAcquisition(
 ): ResourceAcquisition {
     const abortController = new AbortController();
     const acquisitionSignal = AbortSignal.any([ signal, abortController.signal ]);
+    const checks = new Map<AnyResourceDefinition, ResourceCheckSession>();
     const acquisitions = new Map<AnyResourceDefinition, Promise<unknown>>();
     const ownerHandles = new Map<AnyResourceDefinition, unknown>();
     const resourceHandles = new Map<AnyResourceDefinition, unknown>();
@@ -183,7 +225,7 @@ function createResourceAcquisition(
                 return await acquisition.failStartup(graph, failures);
             }
 
-            return { ownerHandles, resourceHandles };
+            return { ownerHandles, resourceHandles, checks };
         },
         async dependencies(dependencies) {
             const context: Mutable<Record<string, unknown>> = {};
@@ -199,7 +241,11 @@ function createResourceAcquisition(
         async failStartup(graph, failures) {
             abortController.abort(failures[0]?.cause);
 
-            const disposalFailures = await disposeResources(graph.order, ownerHandles, resourceHandles, signal);
+            const disposalFailures = await disposeResources(
+                graph.order,
+                { ownerHandles, resourceHandles, checks },
+                signal
+            );
 
             throw resourceLifecycleError(acquisitionContext.acquisitionFailureMessage, [
                 ...failures,
@@ -231,6 +277,13 @@ function createResourceAcquisition(
                     workload: null
                 });
                 ownerHandles.set(resource, ownerHandle);
+                await installResourceObservation(resource, ownerHandle, {
+                    remember(descriptor, observation) {
+                        checks.set(descriptor, observation);
+                    },
+                    signal: acquisitionSignal,
+                    controller: abortController
+                });
                 const resourceHandle = exposeResourceHandle(
                     resource,
                     projectReferencedResourceHandle(resource, ownerHandle, dependencies)
@@ -285,34 +338,13 @@ function resourceContext<Resources extends ResourceDependencies>(
     ], resources);
 }
 
-function boundWorkloadResources(
-    request: StartResourcesRequest<ResourceDependencies>,
-    context: ResourceAcquisitionContext
-): ResourceDependencies {
-    const workload = hasWorkloadInput(request) ? request.workload : null;
-    try {
-        const binding = createWorkloadResourceBinding(workload);
-        return binding.resources(request.resources);
-    } catch (error: unknown) {
-        if (error instanceof ResourceLifecycleError) {
-            throw error;
-        }
-        throw resourceLifecycleError(
-            `${context.acquisitionFailureMessage} ${
-                error instanceof Error ? error.message : 'Invalid workload input.'
-            }`,
-            [ { cause: error, phase: 'acquire', resourceName: context.fallbackResourceName } ],
-            error
-        );
-    }
-}
-
 export async function acquireResourceGraph<Resources extends ResourceDependencies>(
     request: StartResourcesRequest<Resources>,
     context: ResourceAcquisitionContext
 ): Promise<{
     readonly context: ResourceContext<Resources>;
     readonly ownerHandles: ReadonlyMap<AnyResourceDefinition, unknown>;
+    readonly checks: ReadonlyMap<AnyResourceDefinition, ResourceCheckSession>;
     readonly order: readonly ResourceNode[];
     readonly resourceHandles: ReadonlyMap<AnyResourceDefinition, unknown>;
 }> {
@@ -333,6 +365,7 @@ export async function acquireResourceGraph<Resources extends ResourceDependencie
             )
         ),
         ownerHandles: acquisition.ownerHandles,
+        checks: acquisition.checks,
         order: graph.order,
         resourceHandles: acquisition.resourceHandles
     };
@@ -350,6 +383,7 @@ function hasProjectRoot<Resources extends ResourceDependencies>(
 
 type DisposableSession<Resources extends ResourceDependencies> = {
     readonly context: ResourceContext<Resources>;
+    readonly resourceChecks: ResourceSession<Resources>['resourceChecks'];
     readonly disposeOnce: (context: ResourceSessionDisposalContext) => Promise<void>;
 };
 
@@ -402,14 +436,14 @@ export async function startResources<Resources extends ResourceDependencies>(
     let disposal: Promise<void> | null = null;
     const session = {
         context: acquisition.context,
+        resourceChecks() {
+            return Array.from(acquisition.checks.values()).flatMap(function (check) {
+                return check.snapshots();
+            });
+        },
         async disposeOnce(disposalContext: ResourceSessionDisposalContext): Promise<void> {
             if (disposal === null) {
-                disposal = disposeResourceSession(
-                    acquisition.order,
-                    acquisition.ownerHandles,
-                    acquisition.resourceHandles,
-                    disposalContext.signal
-                );
+                disposal = disposeResourceSession(acquisition.order, acquisition, disposalContext.signal);
             }
 
             await disposal;

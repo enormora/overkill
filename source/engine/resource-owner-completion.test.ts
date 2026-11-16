@@ -9,7 +9,7 @@ import {
     type RunResult,
     type TestScope
 } from '../packages/engine/engine.entry-point.ts';
-import { defineResource, withResource } from '../packages/test/resources.entry-point.ts';
+import { defineResource, withResource, withResourceChecks } from '../packages/test/resources.entry-point.ts';
 import { createResourceLifecycleRuntimePolicy } from '../run/resource-lifecycle.ts';
 import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { createExecute } from './execution.ts';
@@ -19,7 +19,7 @@ function ignoreOutput(): void {
     return undefined;
 }
 
-type ResourceFixtureMode = 'clean' | 'leak' | 'retain' | 'uncertain-body' | 'uncertain-cleanup';
+type ResourceFixtureMode = 'clean' | 'leak' | 'observer' | 'retain' | 'uncertain-body' | 'uncertain-cleanup';
 
 async function executeOwnedFixture(disposal: ResourceFixtureMode, owner: TestScope): Promise<RunResult> {
     const activeResources: string[] = [];
@@ -60,18 +60,37 @@ async function executeOwnedFixture(disposal: ResourceFixtureMode, owner: TestSco
             return handle;
         }
     });
+
     const child = createTestCase({
         title: 'case',
         annotations: {},
         controls: {},
         definitionLocations: [ { kind: 'unknown' } ],
-        body: withResource(fixture, function (scope) {
-            if (disposal === 'uncertain-body') {
-                recordUncertainResource();
+        body: withResource(
+            disposal === 'observer'
+                ? withResourceChecks(fixture, function (context) {
+                    activeResources.push('listener');
+                    context.cleanup.defer(function cleanupObservation() {
+                        activeResources.length = 0;
+                    });
+                    return {
+                        prepare() {
+                            return undefined;
+                        },
+                        finalize() {
+                            return { kind: 'complete' };
+                        }
+                    };
+                })
+                : fixture,
+            function (scope) {
+                if (disposal === 'uncertain-body') {
+                    recordUncertainResource();
+                }
+                scope.assert.equal(scope.resources.registry, 'registry');
+                return scope.assert.collect();
             }
-            scope.assert.equal(scope.resources.registry, 'registry');
-            return scope.assert.collect();
-        })
+        )
     });
     const plan = createTestPlan(createRoot({ title: 'root', annotations: {}, controls: {}, children: [ child ] }));
     const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
@@ -100,6 +119,12 @@ async function executeOwnedFixture(disposal: ResourceFixtureMode, owner: TestSco
 }
 
 export const testNode = suite('resource owner completion', [
+    test('keeps shared observer infrastructure with its resource owner', async function (scope) {
+        const result = await executeOwnedFixture('observer', scope);
+        scope.assert.equal(result.status, 'passed');
+        scope.assert.deepEqual(result.runnerErrors, []);
+        return scope.assert.collect();
+    }),
     ...([ 'uncertain-body', 'uncertain-cleanup' ] as const).map(function uncertainFixture(mode) {
         return test(`${mode} growth fails the run without changing the case verdict`, async function (scope) {
             const result = await executeOwnedFixture(mode, scope);
