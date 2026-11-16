@@ -21,6 +21,7 @@ function preparation(
     file: string,
     realm: ImplementationReference<null>['realm']
 ): ImplementationPreparation<null> {
+    const controller = new AbortController();
     return {
         reference: defineImplementationReference({
             module: { moduleUrl: pathToFileURL(join(directory, file)).href, exportName: 'body' },
@@ -33,7 +34,7 @@ function preparation(
             }
         }),
         context: { projectRoot: directory },
-        signal: new AbortController().signal
+        signal: controller.signal
     };
 }
 
@@ -95,8 +96,9 @@ export const testNode = suite('native implementation admission boundaries', [
             const input = preparation(directory.path, 'body.mjs', 'host');
             const prepared = await prepareImplementation(input);
             const hooks = changedResolution(project[kind], function removeBuildIdentity(url) {
-                url.search = '';
-                return url;
+                const changed = new URL(url);
+                changed.search = '';
+                return changed;
             });
             await scope.assert.rejects(async function changedLoader() {
                 await withModuleLoadingScope(hooks, async function load() {

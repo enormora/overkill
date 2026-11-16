@@ -78,7 +78,7 @@ function moduleBuildToken(url: string): string | null {
 }
 
 function deliveryOwns(url: string | undefined, build: string): boolean {
-    return url !== undefined && URL.canParse(url) && new URL(url).searchParams.get('overkill-build') === build;
+    return url !== undefined && URL.parse(url)?.searchParams.get('overkill-build') === build;
 }
 
 function originalModuleUrl(url: string): string {
@@ -89,7 +89,7 @@ function originalModuleUrl(url: string): string {
 
 type ModuleDeliveryResolver = {
     readonly modules: ReadonlyMap<string, DeliveredModule>;
-    readonly target: (specifier: string, parentURL: string) => string;
+    readonly target: (specifier: string, parentURL: string | undefined) => string;
 };
 
 function declaredModuleTarget(
@@ -108,7 +108,7 @@ function moduleDeliveryResolver(delivery: ModuleDelivery): ModuleDeliveryResolve
     const modules = new Map(delivery.modules.map(function entry(module) {
         return [ module.url, module ];
     }));
-    function target(specifier: string, parentURL: string): string {
+    function importedTarget(specifier: string, parentURL: string): string {
         const parent = originalModuleUrl(parentURL);
         const resolved = declaredModuleTarget(modules, parent, specifier) ?? resolveModuleUrl(specifier, parent);
         if (delivery.builtins.includes(resolved)) {
@@ -120,7 +120,14 @@ function moduleDeliveryResolver(delivery: ModuleDelivery): ModuleDeliveryResolve
         }
         return buildUrl(logical, delivery.build);
     }
-    return { modules, target };
+    return {
+        modules,
+        target(specifier, parentURL) {
+            return parentURL !== undefined && deliveryOwns(parentURL, delivery.build)
+                ? importedTarget(specifier, parentURL)
+                : specifier;
+        }
+    };
 }
 
 type DeliveryLease = { readonly token: string; readonly close: (pending: boolean) => void; };
@@ -256,9 +263,7 @@ function registerDelivery(
                 return nextResolve(specifier, context);
             }
             try {
-                const target = context.parentURL === undefined || !deliveryOwns(context.parentURL, token)
-                    ? specifier
-                    : resolver.target(specifier, context.parentURL);
+                const target = resolver.target(specifier, context.parentURL);
                 const resolved = verifiedResolution(target, nextResolve(target, context));
                 return { ...resolved, shortCircuit: true };
             } catch (error: unknown) {
