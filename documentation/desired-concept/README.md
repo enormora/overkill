@@ -108,6 +108,8 @@ surface.
 - [Browser Testing Landscape](./research/browser-testing-landscape.md)
 - [Unified Browser Integration Proposal](./research/browser-integration-proposal.md)
 - [Candidate Libraries](./research/candidate-libraries.md)
+- [Static Authoring Research](./research/static-authoring-rules.md) - plugin
+  comparisons, additional rule candidates, and runtime implementation audit notes
 
 ## How To Contribute To This Documentation
 

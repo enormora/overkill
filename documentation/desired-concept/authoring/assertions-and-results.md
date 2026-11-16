@@ -1017,6 +1017,104 @@ helpers may wrap built-ins, create composite assertion boundaries, or bridge
 foreign assertion systems later, but this concept does not yet choose that
 wire shape.
 
+### Runtime Assertion Integrity
+
+The engine enforces these contracts for injected assertion contexts and public
+assertion-protocol inputs. ESLint does not duplicate checks enforceable here.
+
+#### Durable Contract Failures
+
+Record a contract failure before throwing its control signal. Catching an
+invalid plan, invalid assertion reference, or other assertion-contract error
+cannot make the attempt pass. Failed `scope.require` checks likewise remain
+fatal after their signal is caught. Error assertions and foreign bridges must
+not reinterpret engine control signals as expected application failures.
+
+`scope.require` gates by throwing on failure, not by returning a boolean for a
+conditional branch. Successful requirements permit the following straight-line
+code to continue and may narrow types.
+
+#### Recording Lifetime
+
+Each injected assertion context belongs to one attempt, property trial, or
+declared nested assertion boundary. Its recording lifetime ends when its owning
+body settles or is interrupted. Reject new assertion activity after that
+boundary. Preserve the originating identity through timeout, cancellation,
+cleanup, and retries; a late callback must never record into a later attempt.
+
+`collect()` returns a snapshot of recorded assert-source nodes. It does not
+extend the recording lifetime or authorize pending asynchronous assertions.
+Before normal completion, every recorded builder assertion must appear in the
+returned result in order, and every asynchronous assertion must be resolved.
+Repeated collection cannot manufacture additional assertion boundaries.
+
+Late activity produces a durable contract failure while the owning result is
+still open. After result publication, emit an attributed runner diagnostic
+rather than silently dropping the activity or changing the published verdict.
+Resource-owned checks retain their separate lifecycle and ledger contracts.
+
+#### Assertion-Time Operand Meaning
+
+Injected builder assertions must preserve the operand state observed when the
+check is performed, or when an asynchronous check settles. Later mutation of
+an application object must not retroactively change an earlier check:
+
+```ts
+const user = { active: false };
+scope.assert.deepEqual(user, { active: false });
+user.active = true;
+scope.assert.deepEqual(user, { active: true });
+return scope.assert.collect();
+```
+
+Both checks above pass. Preserve comparison semantics and corresponding
+diagnostics without freezing or otherwise changing application objects.
+Truncated diagnostic serialization is not an operand snapshot suitable for
+comparison. Public low-level lazy protocol values retain their explicit
+evaluation contract; builder recording must preserve its assertion-time meaning
+before handing results to later outcome normalization.
+
+#### Returned Assertion Ownership
+
+A recorded builder assertion belongs to its originating context. Reject using
+it in another case, retry, or property trial. Returning the same recorded node
+more than once cannot increase the assertion count or satisfy `plan(n)`.
+Distinct authored assertion calls remain distinct boundaries even when their
+operands happen to be equal.
+
+Apply recording-context ownership to builder-owned nodes. Public low-level
+assertion values remain composable under their protocol contract and are not
+rejected merely because a module exports or reuses them.
+
+#### Protocol Validation
+
+Validate assertion structure before evaluation, including supported check
+kinds, required fields, sources, non-empty composite children, and permitted
+child kinds. Reject malformed values and cycles in assertion structure as
+durable test-contract failures, rather than evaluator crashes or unbounded
+recursion. Validate untyped callers as well as typed authoring layers.
+
+Protocol validation must not reject supported cyclic application operands.
+Traversal safeguards must preserve the distinction between one composite
+boundary and its child diagnostics; serialization budgets do not replace
+protocol validation.
+
+#### Nested Context Ownership
+
+Assertions inside a property trial must record against its injected trial
+context, not a captured outer test context. Custom assertion implementations
+use their injected check builder rather than a captured test assertion facade.
+Reject recording into a proven wrong active context and retain the violation
+in the relevant result. Supported asynchronous composition preserves its
+declared context relationships.
+
+Custom assertion implementations may use conditional logic. Their child checks
+remain diagnostics within the enclosing assertion boundary, not extra plan
+units. Conditional assertions in test bodies are a source policy owned by
+[the ESLint plugin](./higher-test-layers.md#conditional-assertions-in-test-bodies):
+runtime cannot infer an assertion call in an untaken branch from invocation or
+collection counts.
+
 ### Assertion Source Locations
 
 `FailedCheck.sourceLocations` identifies the Overkill assertion boundary that

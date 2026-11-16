@@ -71,10 +71,9 @@ collection, and it reports node identities, not just a count. It does
 `test(...)` in a module imported lazily, conditionally, or not at all
 is never constructed, so there is no runtime node to detect. That is
 not a gap in the count: a node that never came into existence is not a
-runtime orphan. The static counterpart is the `no-orphan-test-nodes`
-rule in `@overkill-dev/eslint-plugin` (see
-[Higher Test Layers § Static Authoring Rules](../authoring/higher-test-layers.md#static-authoring-rules)),
-which inspects source rather than a run.
+runtime orphan. ESLint does not duplicate this runtime check; see
+[Higher Test Layers § Static Authoring Rules](../authoring/higher-test-layers.md#static-authoring-rules).
+An unevaluated module does not establish that any test node was constructed.
 
 Collection owns one authoritative catalog and constructed/reached snapshot.
 Browser/worker execution re-import validates frozen selected work; it does not
@@ -454,7 +453,7 @@ numbers and identities, and the developer or CI gate interprets.
 - [Reporters](./reporters.md) - reporter contract and event scope
   precedent
 - [Higher Test Layers § Static Authoring Rules](../authoring/higher-test-layers.md#static-authoring-rules):
-  the `no-orphan-test-nodes` lint rule, the static-source
-  counterpart to runtime orphan detection
+  enforcement ownership; the plugin does not duplicate runtime orphan
+  reporting
 - [Test Debug Mode](../authoring/debug-mode.md) - explicitly _not_
   the home for this concept

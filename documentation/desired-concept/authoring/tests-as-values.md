@@ -75,6 +75,14 @@ const tree: TestNode = mod.testNode;
 await run(tree);
 ```
 
+Discovered test entry modules expose exactly one runtime export, `testNode`,
+owned by the selected engine. Discovery rejects missing or invalid roots and
+additional runtime exports. Support modules may export reusable assertions,
+macros, and suite fragments. Type-only exports are erased and do not participate
+in this runtime check. The source-level restriction on forwarding another
+module's root belongs to
+[the ESLint plugin](./higher-test-layers.md#test-entries-and-runtime-ownership).
+
 That's it. No registry, no hidden cross-file module-load side effects, no
 order dependence on when `test()` happens to be called.
 
