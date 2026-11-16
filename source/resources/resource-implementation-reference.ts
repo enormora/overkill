@@ -49,13 +49,13 @@ export type ResourceConsumerImplementation<Handle, Input extends PortableValue> 
     ) => Handle;
     readonly exposeHandle: ((handle: Handle, context: ExposureContext, input: Input) => Handle) | null;
 };
-export type ResourceOwnerCallbacks<Handle> = {
+type ResourceOwnerCallbacks<Handle> = {
     readonly acquire: (context: CreationContext) => Awaitable<Handle>;
     readonly dispose: ((handle: Handle, context: DisposalContext) => Awaitable<void>) | null;
     readonly exposeHandle: ((handle: Handle, context: ExposureContext) => Handle) | null;
     readonly serializeHandle: ((handle: Handle, context: ProjectionContext) => ResourceProjectionPayload) | null;
 };
-export type ResourceConsumerCallbacks<Handle> = {
+type ResourceConsumerCallbacks<Handle> = {
     readonly deserializeHandle: (payload: ResourceProjectionPayload, context: ProjectionContext) => Handle;
     readonly exposeHandle: ((handle: Handle, context: ExposureContext) => Handle) | null;
 };

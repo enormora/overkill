@@ -23,7 +23,7 @@ export type ImplementationGraph = {
 };
 type SourceIdentity = { readonly url: string; readonly fingerprint: string; };
 type SourceMapIdentity = SourceIdentity & { readonly kind: 'external' | 'inline'; };
-export type ModuleIdentity = Except<ImplementationGraphModule, 'packages' | 'source' | 'sourceMap'> & {
+type ModuleIdentity = Except<ImplementationGraphModule, 'packages' | 'source' | 'sourceMap'> & {
     readonly deliveredFingerprint: string;
     readonly packages: readonly SourceIdentity[];
     readonly sourceMap: SourceMapIdentity | null;

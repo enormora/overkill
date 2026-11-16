@@ -52,7 +52,7 @@ export type PropertyForall = {
 
 type ConfiguredPropertyDefinition<Value> = PropertyDefinitionBody<Value> & { readonly settings: PropertySettings; };
 type InlinePropertyDefinition<Value> = ConfiguredPropertyDefinition<Value> | PropertyDefinitionBody<Value>;
-export type PropertyReferenceScope<Value> = { readonly value: Value; readonly sample: PropertySampleScope<Value>; };
+type PropertyReferenceScope<Value> = { readonly value: Value; readonly sample: PropertySampleScope<Value>; };
 type ReferencedProperty<Value> = Except<InlinePropertyDefinition<Value>, 'test'> & {
     readonly test: BodyReference<PropertyReferenceScope<Value>>;
 };

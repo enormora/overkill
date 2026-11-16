@@ -1,7 +1,7 @@
 import { decodedMappings, encodedMappings, type SourceMapSegment, type TraceMap } from '@jridgewell/trace-mapping';
 import { z } from 'zod/v4';
 
-export const sourceMapVersion = 3;
+const sourceMapVersion = 3;
 export type SourceMapData = {
     readonly version: typeof sourceMapVersion;
     readonly names: readonly string[];

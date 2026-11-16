@@ -367,7 +367,7 @@ function isResourceSession<Resources extends ResourceDependencies>(
     return Reflect.has(session, runtimeAsyncDisposeSymbol());
 }
 
-export function disposableResourceSession<Resources extends ResourceDependencies>(
+function disposableResourceSession<Resources extends ResourceDependencies>(
     session: DisposableSession<Resources>
 ): ResourceSession<Resources> {
     Object.defineProperty(session, runtimeAsyncDisposeSymbol(), {
