@@ -9,10 +9,8 @@ export const testNode = integration.suite('worker pool crash fixture', [
 
         return scope.assert.collect();
     }),
-    integration.test('exits worker', function exitsWorker(scope) {
-        process.exit(9);
-
-        return scope.assert.collect();
+    integration.test('exits worker', function exitsWorker() {
+        return process.exit(9);
     }),
     integration.test('runs after crash', function runsAfterCrash(scope) {
         scope.assert.true(true);

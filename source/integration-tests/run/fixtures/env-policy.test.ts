@@ -6,7 +6,7 @@ export const testNode = createSuite({
         createTestCase({
                 definitionLocations: [ { kind: 'unknown' } ],
             body(scope) {
-                process.env.OVERKILL_CASE_POLICY_FIXTURE = 'changed';
+                process.env['OVERKILL_CASE_POLICY_FIXTURE'] = 'changed';
 
                 return scope.assert.collect();
             },

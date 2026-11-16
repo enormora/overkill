@@ -101,17 +101,17 @@ function projectRootFromRunFacts(facts: unknown): string | null {
         return null;
     }
     const { environment } = facts;
-    if (!isRecord(environment) || typeof environment.projectRoot !== 'string') {
+    if (!isRecord(environment) || typeof environment['projectRoot'] !== 'string') {
         return null;
     }
-    return environment.projectRoot.trim().length === 0 ? null : environment.projectRoot;
+    return environment['projectRoot'].trim().length === 0 ? null : environment['projectRoot'];
 }
 
 function policyFromRunFacts(facts: unknown): FailureArtifactPolicy {
-    if (!isRecord(facts) || !isRecord(facts.execution)) {
+    if (!isRecord(facts) || !isRecord(facts['execution'])) {
         return currentFailureArtifactPolicy();
     }
-    const policy = facts.execution.failureArtifacts;
+    const policy = facts['execution']['failureArtifacts'];
     return policy === undefined ? currentFailureArtifactPolicy() : resolvedFailureArtifactPolicySchema.parse(policy);
 }
 

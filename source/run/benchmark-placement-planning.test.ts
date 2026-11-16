@@ -21,7 +21,7 @@ function benchmarkProfile(): Extract<PlanningInput['profile'], { readonly testFa
             }
         }
     });
-    const profile = config.profiles.sizes;
+    const profile = config.profiles['sizes'];
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Missing benchmark profile.');
     }

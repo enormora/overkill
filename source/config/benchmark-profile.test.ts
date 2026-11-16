@@ -113,8 +113,7 @@ export const testNode = suite('benchmark profile configuration', [
                 }
             }
         })
-            .profiles
-            .startup;
+            .profiles['startup'];
         scope.require.defined(profile);
         if (profile.execution.processModel !== 'worker-pool') {
             throw new Error('Expected a worker-pool benchmark.');
@@ -132,8 +131,7 @@ export const testNode = suite('benchmark profile configuration', [
                 bench: { testFamily: 'benchmark', files: benchmarkFiles, garbageCollection: 'after-sample' }
             }
         })
-            .profiles
-            .bench;
+            .profiles['bench'];
         scope.require.defined(profile);
         if (profile.testFamily !== 'benchmark') {
             throw new Error('Expected benchmark profile.');
@@ -154,10 +152,10 @@ export const testNode = suite('benchmark profile configuration', [
             } as const;
             const normalized = normalizeConfig(defineConfig(authored));
 
-            scope.require.defined(normalized.profiles.startup);
-            scope.require.defined(normalized.profiles.benchmark);
+            scope.require.defined(normalized.profiles['startup']);
+            scope.require.defined(normalized.profiles['benchmark']);
             scope.assert.deepEqual(
-                normalized.profiles.startup,
+                normalized.profiles['startup'],
                 {
                     ...benchmarkPolicy,
                     testFamily: 'benchmark',
@@ -165,7 +163,7 @@ export const testNode = suite('benchmark profile configuration', [
                 } as const
             );
             scope.assert.deepEqual(
-                normalized.profiles.benchmark,
+                normalized.profiles['benchmark'],
                 {
                     ...benchmarkPolicy,
                     testFamily: 'benchmark',
@@ -173,9 +171,9 @@ export const testNode = suite('benchmark profile configuration', [
                 } as const
             );
             scope.assert.deepEqual({
-                unit: normalized.profiles.unit?.testFamily,
-                service: normalized.profiles.service?.testFamily,
-                microtest: normalized.profiles.microtest?.testFamily
+                unit: normalized.profiles['unit']?.testFamily,
+                service: normalized.profiles['service']?.testFamily,
+                microtest: normalized.profiles['microtest']?.testFamily
             }, { unit: 'microtest', service: 'integration', microtest: 'microtest' } as const);
             scope.assert.deepEqual({
                 reporters: normalized.reporters,
@@ -194,16 +192,16 @@ export const testNode = suite('benchmark profile configuration', [
                 config: defineConfig({ profiles: { startup: { testFamily: 'benchmark', files: benchmarkFiles } } })
             });
             const loaded = await load({ configPath: null, cwd: configFixtureCwd });
-            scope.require.defined(loaded.profiles.startup);
+            scope.require.defined(loaded.profiles['startup']);
             scope.assert.deepEqual(
-                loaded.profiles.startup,
+                loaded.profiles['startup'],
                 {
                     ...benchmarkPolicy,
                     testFamily: 'benchmark',
                     files: { include: [ 'source/startup.bench.ts' ], exclude: [] }
                 } as const
             );
-            scope.assert.equal(loaded.profiles.microtest?.testFamily, 'microtest');
+            scope.assert.equal(loaded.profiles['microtest']?.testFamily, 'microtest');
         }
         return scope.assert.collect();
     }),

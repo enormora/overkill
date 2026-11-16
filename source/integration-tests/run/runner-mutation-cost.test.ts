@@ -39,7 +39,7 @@ function assertCostMetric(scope: TestScope, reading: CostMetrics[string] | undef
 }
 
 function assertHostBootstrap(scope: TestScope, metrics: CostMetrics, mode: MutationMode): void {
-    const reading: CostMetrics[string] | undefined = metrics.freshHostEntryToLifecycleMicroseconds;
+    const reading: CostMetrics[string] | undefined = metrics['freshHostEntryToLifecycleMicroseconds'];
     scope.require.defined(reading);
     scope.assert.equal(reading.count, mode.freshState || mode.processModel === 'supervised-process' ? 2 : 0);
 }

@@ -69,7 +69,7 @@ function choose(values: readonly unknown[], context: Context): PropertyGenerator
 }
 
 function reference(schema: Schema, context: Context): PropertyGenerator<unknown> {
-    const ref = schema.$ref;
+    const ref = schema['$ref'];
     if (typeof ref !== 'string' || !ref.startsWith('#/')) {
         throw new TypeError('Only local schema references are supported; supply generation.input.');
     }
@@ -86,9 +86,13 @@ function reference(schema: Schema, context: Context): PropertyGenerator<unknown>
 }
 
 function numericBounds(schema: Schema): NumberRange {
-    const maximum = typeof schema.maximum === 'number' ? schema.maximum : numericWindow;
-    const min = typeof schema.minimum === 'number' ? schema.minimum : Math.min(-numericWindow, maximum - numericWindow);
-    const max = typeof schema.maximum === 'number' ? schema.maximum : Math.max(numericWindow, min + numericWindow);
+    const maximum = typeof schema['maximum'] === 'number' ? schema['maximum'] : numericWindow;
+    const min = typeof schema['minimum'] === 'number'
+        ? schema['minimum']
+        : Math.min(-numericWindow, maximum - numericWindow);
+    const max = typeof schema['maximum'] === 'number'
+        ? schema['maximum']
+        : Math.max(numericWindow, min + numericWindow);
     return { min, max };
 }
 
@@ -96,15 +100,15 @@ function numberGenerator(
     schema: Schema,
     bounds: NumberRange
 ): PropertyGenerator<number> {
-    if (typeof schema.multipleOf === 'number' && schema.multipleOf > 0) {
-        const factor = schema.multipleOf;
+    if (typeof schema['multipleOf'] === 'number' && schema['multipleOf'] > 0) {
+        const factor = schema['multipleOf'];
         return gen.integer({ min: Math.ceil(bounds.min / factor), max: Math.floor(bounds.max / factor) }).map(
             function multiple(value) {
                 return value * factor;
             }
         );
     }
-    if (schema.type === 'integer') {
+    if (schema['type'] === 'integer') {
         return gen.integer({ min: Math.ceil(bounds.min), max: Math.floor(bounds.max) });
     }
     return gen.number(bounds);
@@ -112,12 +116,12 @@ function numberGenerator(
 
 function numeric(schema: Schema): PropertyGenerator<unknown> {
     const range = numericBounds(schema);
-    const offset = schema.type === 'integer'
+    const offset = schema['type'] === 'integer'
         ? 1
         : Number.EPSILON * Math.max(1, Math.abs(range.min), Math.abs(range.max));
     const bounds = {
-        min: range.min + (schema.exclusiveMinimum === true ? offset : 0),
-        max: range.max - (schema.exclusiveMaximum === true ? offset : 0)
+        min: range.min + (schema['exclusiveMinimum'] === true ? offset : 0),
+        max: range.max - (schema['exclusiveMaximum'] === true ? offset : 0)
     };
     return numberGenerator(schema, bounds).map(function number(value): unknown {
         return value;
@@ -127,9 +131,9 @@ function numeric(schema: Schema): PropertyGenerator<unknown> {
 function stringGenerator(schema: Schema): PropertyGenerator<unknown> {
     return gen
         .string({
-            minLength: typeof schema.minLength === 'number' ? schema.minLength : 0,
-            maxLength: typeof schema.maxLength === 'number'
-                ? schema.maxLength
+            minLength: typeof schema['minLength'] === 'number' ? schema['minLength'] : 0,
+            maxLength: typeof schema['maxLength'] === 'number'
+                ? schema['maxLength']
                 : maximumStringLength
         })
         .map(function string(value): unknown {
@@ -138,35 +142,35 @@ function stringGenerator(schema: Schema): PropertyGenerator<unknown> {
 }
 
 function primitive(schema: Schema): PropertyGenerator<unknown> {
-    if (schema.type === 'null') {
+    if (schema['type'] === 'null') {
         return scalar(null);
     }
-    if (schema.type === 'boolean') {
+    if (schema['type'] === 'boolean') {
         return gen.boolean().map(function boolean(value): unknown {
             return value;
         });
     }
-    if (schema.type === 'integer' || schema.type === 'number') {
+    if (schema['type'] === 'integer' || schema['type'] === 'number') {
         return numeric(schema);
     }
     return stringGenerator(schema);
 }
 
 function typed(schema: Schema, context: Context): PropertyGenerator<unknown> {
-    if (Array.isArray(schema.type)) {
+    if (Array.isArray(schema['type'])) {
         return choose(
-            schema.type.map(function type(value: unknown) {
+            schema['type'].map(function type(value: unknown) {
                 return { ...schema, type: value };
             }),
             context
         );
     }
-    if (schema.type === 'array' || schema.type === 'object') {
+    if (schema['type'] === 'array' || schema['type'] === 'object') {
         return collectionSchema(schema, function child(value) {
             return context.build(readSchema(value), context);
         });
     }
-    if (schema.type === undefined) {
+    if (schema['type'] === undefined) {
         return jsonValue();
     }
     return primitive(schema);
@@ -181,17 +185,17 @@ function enumeration(values: readonly unknown[]): PropertyGenerator<unknown> {
 }
 
 function alternatives(schema: Schema): readonly unknown[] | null {
-    const branches: unknown = schema.anyOf ?? schema.oneOf ?? schema.allOf;
+    const branches: unknown = schema['anyOf'] ?? schema['oneOf'] ?? schema['allOf'];
     return Array.isArray(branches) ? Array.from<unknown>(branches) : null;
 }
 
 function build(schema: Schema, context: Context): PropertyGenerator<unknown> {
     validateKeywords(schema);
-    if (schema.$ref !== undefined) {
+    if (schema['$ref'] !== undefined) {
         return reference(schema, context);
     }
-    if (Array.isArray(schema.enum)) {
-        return enumeration(Array.from<unknown>(schema.enum));
+    if (Array.isArray(schema['enum'])) {
+        return enumeration(Array.from<unknown>(schema['enum']));
     }
     const branches = alternatives(schema);
     return branches === null ? typed(schema, context) : choose(branches, context);

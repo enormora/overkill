@@ -8,11 +8,11 @@ function pathBase(options: TypeScript.CompilerOptions): string {
     if (baseUrl !== undefined) {
         return baseUrl;
     }
-    if (typeof options.pathsBasePath === 'string') {
-        return options.pathsBasePath;
+    if (typeof options['pathsBasePath'] === 'string') {
+        return options['pathsBasePath'];
     }
-    if (typeof options.configFilePath === 'string') {
-        return dirname(options.configFilePath);
+    if (typeof options['configFilePath'] === 'string') {
+        return dirname(options['configFilePath']);
     }
     throw new Error('Cannot establish the original project path mapping base.');
 }

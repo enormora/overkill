@@ -72,7 +72,7 @@ async function assertGenericCoverageReports(scope: TestScope, reportDirectory: s
     const lcov = await readFile(path.join(reportDirectory, 'lcov.info'), 'utf8');
     scope.assert.deepEqual(
         Array.from(lcov.matchAll(/^BRDA:3,0,[01],(?<count>\d+)$/gmu), function branchCount(match) {
-            return Number(match.groups?.count);
+            return Number(match.groups?.['count']);
         }),
         [ 2, 1 ]
     );

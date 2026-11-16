@@ -50,10 +50,10 @@ function readThrowingTestDefinition(value: unknown): RuntimeThrowingTestDefiniti
     const definition = readAuthoringRecord(value, throwingTestArgumentsError);
 
     return {
-        annotations: readAuthoringAnnotations(definition.annotations ?? {}),
-        body: readAuthoringThrowingTestBody(definition.body),
-        controls: readAuthoringControls(definition.controls ?? {}),
-        title: readAuthoringString(definition.title, throwingTestArgumentsError)
+        annotations: readAuthoringAnnotations(definition['annotations'] ?? {}),
+        body: readAuthoringThrowingTestBody(definition['body']),
+        controls: readAuthoringControls(definition['controls'] ?? {}),
+        title: readAuthoringString(definition['title'], throwingTestArgumentsError)
     };
 }
 

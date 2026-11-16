@@ -36,7 +36,7 @@ function assertFirstWorkload(scope: TestScope, result: RunResult): void {
         throw new Error('Missing benchmark summary.');
     }
     scope.assert.equal(first.benchmark.samples, 128);
-    scope.assert.equal(first.benchmark.metrics.size?.median, 1);
+    scope.assert.equal(first.benchmark.metrics['size']?.median, 1);
     scope.assert.equal(first.attempts[0].benchmark?.status, 'complete');
 }
 
@@ -116,7 +116,7 @@ export const testNode = suite('benchmark authoring and sampling', [
         }));
         scope.assert.equal(result.summary.passed, 1);
         scope.assert.equal(result.perTest[0]?.benchmark?.samples, 2);
-        scope.assert.equal(result.perTest[0]?.benchmark?.metrics.diagnostic?.median, 0);
+        scope.assert.equal(result.perTest[0]?.benchmark?.metrics['diagnostic']?.median, 0);
         return scope.assert.collect();
     }),
     benchmarkEvidenceTestNode,

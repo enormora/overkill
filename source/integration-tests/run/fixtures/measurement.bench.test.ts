@@ -8,7 +8,7 @@ function fixtureHandle(size: number): FixtureHandle { return { size, active: fal
 const fixture = defineResource({
     name: 'workload-fixture', scope: 'per-run', requirements: [],
     workload(parameters) {
-        const size = parameters.size;
+        const size = parameters['size'];
         if (typeof size !== 'number') { throw new TypeError('Fixture requires workload size.'); }
         return { size };
     },

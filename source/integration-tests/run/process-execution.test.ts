@@ -222,7 +222,7 @@ export const testNode = suite('external-process ownership', [
         if (result.value.output.kind !== 'pipes') {
             throw new Error('Expected pipe output.');
         }
-        const child = /child=(?<pid>\d+)/u.exec(result.value.output.stdout.text)?.groups?.pid;
+        const child = /child=(?<pid>\d+)/u.exec(result.value.output.stdout.text)?.groups?.['pid'];
         scope.require.defined(child);
         await assertStopped(scope, Number(child));
         return scope.assert.collect();

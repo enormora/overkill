@@ -38,7 +38,7 @@ export async function normalizationCommand(scope: TestScope, boundary: Boundary,
     };
 }
 export async function normalizationReferences(command: RunCommand): Promise<CalibrationReferenceStore> {
-    const profile = command.config.profiles.bench;
+    const profile = command.config.profiles['bench'];
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Expected benchmark profile.');
     }

@@ -25,10 +25,10 @@ function assertChartScales(scope: TestScope, result: RunResult): void {
 function assertNormalizedResult(scope: TestScope, result: RunResult): void {
     const measured = result.perTest[0]?.benchmark;
     scope.require.defined(measured);
-    scope.assert.equal(measured.metrics.value?.median, 100);
+    scope.assert.equal(measured.metrics['value']?.median, 100);
     const { normalization } = measured;
     scope.require.defined(normalization);
-    const metric = normalization.metrics.value;
+    const metric = normalization.metrics['value'];
     scope.require.defined(metric);
     scope.assert.equal(metric.summary?.median, 50);
     scope.assert.equal(measured.budgets[0]?.estimate, 0.5);
@@ -42,7 +42,7 @@ function assertAutomaticResult(scope: TestScope, result: RunResult): void {
     const { normalization } = measured;
     scope.require.defined(normalization);
     scope.assert.equal(measured.budgets[0]?.estimate, 0.5);
-    scope.assert.equal(normalization.metrics.value?.source, 'canonical');
+    scope.assert.equal(normalization.metrics['value']?.source, 'canonical');
 }
 async function captureFixedReference(
     scope: TestScope,
@@ -80,8 +80,8 @@ function retainedNormalization(scope: TestScope, result: RunResult): BenchmarkNo
 function assertCaptureScales(scope: TestScope, canonical: RunResult, captured: RunResult): void {
     const before = retainedNormalization(scope, canonical);
     const after = retainedNormalization(scope, captured);
-    scope.assert.equal(before.metrics.value?.summary?.median, 0.5);
-    scope.assert.equal(after.metrics.value?.summary?.median, 50);
+    scope.assert.equal(before.metrics['value']?.summary?.median, 0.5);
+    scope.assert.equal(after.metrics['value']?.summary?.median, 50);
 }
 function assertCaptureInvariant(scope: TestScope, canonical: RunResult, captured: RunResult): void {
     const before = canonical.perTest[0];

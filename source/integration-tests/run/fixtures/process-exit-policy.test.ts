@@ -5,10 +5,8 @@ export const testNode = createSuite({
     children: [
         createTestCase({
                 definitionLocations: [ { kind: 'unknown' } ],
-            body(scope) {
-                process.exit(0);
-
-                return scope.assert.collect();
+            body() {
+                return process.exit(0);
             },
             annotations: {},
             controls: {},

@@ -203,11 +203,11 @@ export const testNode = suite('benchmark host evidence', [
         const readings = parseDarwinCpuLimits(
             'CPU_Speed_Limit = 80\nNote: No performance warning level has been recorded\n'
         );
-        scope.require.defined(readings.CPU_Speed_Limit);
-        scope.require.defined(readings.CPU_Scheduler_Limit);
-        scope.assert.partialDeepEqual(readings.CPU_Speed_Limit, { availability: 'available', value: 80 });
-        scope.assert.partialDeepEqual(readings.CPU_Scheduler_Limit, { availability: 'unavailable' });
-        const invalid = parseDarwinCpuLimits('CPU_Speed_Limit = 101').CPU_Speed_Limit;
+        scope.require.defined(readings['CPU_Speed_Limit']);
+        scope.require.defined(readings['CPU_Scheduler_Limit']);
+        scope.assert.partialDeepEqual(readings['CPU_Speed_Limit'], { availability: 'available', value: 80 });
+        scope.assert.partialDeepEqual(readings['CPU_Scheduler_Limit'], { availability: 'unavailable' });
+        const invalid = parseDarwinCpuLimits('CPU_Speed_Limit = 101')['CPU_Speed_Limit'];
         scope.require.defined(invalid);
         scope.assert.partialDeepEqual(invalid, {
             availability: 'unavailable'

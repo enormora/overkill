@@ -312,7 +312,7 @@ function createDeterministicRunCoordinatorWithDependencies(
         },
         loadRunTestModules: createDeterministicRunTestModuleLoader({
             recordLoadEnvironmentMutation() {
-                environment.OVERKILL_LOAD_POLICY_FIXTURE = 'after';
+                environment['OVERKILL_LOAD_POLICY_FIXTURE'] = 'after';
             }
         }),
         liveOutput: {

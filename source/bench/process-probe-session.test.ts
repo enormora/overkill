@@ -31,7 +31,7 @@ async function probePeer(scope: TestScope): Promise<ProbePeer> {
         exited.resolve(undefined);
     });
     probe.identify(process.pid);
-    const socket = connect({ host: '127.0.0.1', port: Number(probe.environment.OVERKILL_BENCH_PROBE_PORT) });
+    const socket = connect({ host: '127.0.0.1', port: Number(probe.environment['OVERKILL_BENCH_PROBE_PORT']) });
     scope.cleanup(function closePeer() {
         socket.destroy();
     });
@@ -42,8 +42,8 @@ async function probePeer(scope: TestScope): Promise<ProbePeer> {
     return {
         probe,
         socket,
-        token: String(probe.environment.OVERKILL_BENCH_PROBE_TOKEN),
-        reportPath: String(probe.environment.OVERKILL_BENCH_PROBE_REPORT),
+        token: String(probe.environment['OVERKILL_BENCH_PROBE_TOKEN']),
+        reportPath: String(probe.environment['OVERKILL_BENCH_PROBE_REPORT']),
         exited: exited.promise
     };
 }

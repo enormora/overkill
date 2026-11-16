@@ -97,10 +97,10 @@ function statement(value: string, kind: number, generation: RuleGeneration, mode
 function modernSyntax(config: readonly Linter.Config[]): boolean {
     const version = config
         .findLast(function explicitVersion(layer) {
-            return layer.languageOptions?.ecmaVersion !== undefined;
+            return layer.languageOptions?.['ecmaVersion'] !== undefined;
         })
         ?.languageOptions
-        ?.ecmaVersion ?? 'latest';
+        ?.['ecmaVersion'] ?? 'latest';
     return version === 'latest' || typeof version === 'number' && version >= modernLanguageVersion;
 }
 

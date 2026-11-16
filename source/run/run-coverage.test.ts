@@ -15,7 +15,7 @@ import { coverageExecutionCompleted, microtestCoveragePolicy, startCoverageSessi
 
 async function withCoverageEnvironment<Value>(work: () => Promise<Value>): Promise<Value> {
     const environment: Record<string, string | undefined> = Reflect.get(process, 'env');
-    const previous = environment.NODE_V8_COVERAGE;
+    const previous = environment['NODE_V8_COVERAGE'];
     Reflect.set(environment, 'NODE_V8_COVERAGE', 'previous-coverage-root');
     try {
         return await work();
@@ -54,7 +54,7 @@ export const testNode = createOverkillSuite({
                             const session = await createCoverageSession(attempt.sessionRequest);
                             await session.dispose();
                             const environment: Record<string, string | undefined> = Reflect.get(process, 'env');
-                            scope.assert.equal(environment.NODE_V8_COVERAGE, 'previous-coverage-root');
+                            scope.assert.equal(environment['NODE_V8_COVERAGE'], 'previous-coverage-root');
                             return scope.assert.collect();
                         }
                     );

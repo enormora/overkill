@@ -31,7 +31,7 @@ export const testNode = suite('mutation coverage delivery', [
                     : structuredClone(coverage)
             );
             coverage.static.mutant = 99;
-            scope.assert.equal(result.mutantCoverage.static.mutant, mode === 'all' ? 7 : 4);
+            scope.assert.equal(result.mutantCoverage.static['mutant'], mode === 'all' ? 7 : 4);
             return scope.assert.collect();
         });
     }),
