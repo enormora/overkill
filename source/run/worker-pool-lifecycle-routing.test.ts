@@ -40,6 +40,8 @@ const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds:
 
 function collectedCase(title: string): CollectedRunPlan['files'][number]['cases'][number] {
     return {
+        implementationDeclaration: null,
+
         skipReason: null,
         property: null,
         benchmark: null,
@@ -63,6 +65,8 @@ function collectedCase(title: string): CollectedRunPlan['files'][number]['cases'
 
 function collectedPlan(): CollectedRunPlan {
     return {
+        implementations: null,
+
         family: null,
         defined: 2,
         discoveredFiles: [],
@@ -84,6 +88,8 @@ function baseResolvedRun(): ResolvedRun {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            implementations: null,
+
             family: { id: 'integration', version: '1', settings: null, preparation: null, collection: null },
             adapter: null,
             benchmarkHost: null,

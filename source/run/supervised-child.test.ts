@@ -36,6 +36,8 @@ const policyFixturePath = 'source/integration-tests/run/fixtures/load-env-policy
 
 function assignment(title: string): SupervisedAssignmentCommand {
     return {
+        implementations: null,
+
         attachmentEndpoint: null,
         assignedCases: [
             {
@@ -51,6 +53,8 @@ function assignment(title: string): SupervisedAssignmentCommand {
 
 function emptyAssignment(): SupervisedAssignmentCommand {
     return {
+        implementations: null,
+
         attachmentEndpoint: null,
         assignedCases: [],
         kind: 'assign'

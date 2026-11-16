@@ -1,5 +1,6 @@
 import asyncHooks from 'node:async_hooks';
 import diagnosticsChannel from 'node:diagnostics_channel';
+import { isDeliveredModuleImport } from '../module-loading-scope.ts';
 import { workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import {
     createExecutionObservation,
@@ -228,8 +229,11 @@ function createDiagnosticsSubscriptions(
 ): readonly Subscription[] {
     return Object.entries(diagnosticsCapabilities).map(function subscribeToChannel([ name, capability ]) {
         const channel = diagnosticsChannel.channel(name);
-        const listener = function recordDiagnostic(): void {
-            if (recordReporterConsoleDiagnostic(name)) {
+        const listener = function recordDiagnostic(event: unknown): void {
+            if (
+                recordReporterConsoleDiagnostic(name) ||
+                capability === runtimePolicyCapabilities.dynamicModuleLoad && isDeliveredModuleImport(event)
+            ) {
                 return;
             }
 

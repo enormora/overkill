@@ -135,6 +135,7 @@ export function createRunFacts(input: RunFactsInput): RunFacts {
     const profile = selectProfile(input.request.profile, input.config);
 
     return {
+        implementations: null,
         family: profileFamilyFacts(profile),
         adapter: null,
         benchmarkHost: input.benchmarkHost,

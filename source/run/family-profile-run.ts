@@ -7,7 +7,7 @@ import { prepareDefinedFamily, type Engine } from '../engine/engine.ts';
 import { familySettings, type ProfileConfig } from '../config/types.ts';
 import { builtinTestFamily } from '../engine/builtin-test-families.ts';
 import { bindFamilySettings, type BoundFamilySettings } from '../engine/test-family.ts';
-import { preparedFamilyMetadata, selectedPreparedPlan } from './prepared-family-plan.ts';
+import { collectedFamilyPlan, preparedFamilyMetadata, selectedPreparedPlan } from './prepared-family-plan.ts';
 import { validateRecordedFamilyFacts } from './replay-family-validation.ts';
 import type { LocalFamilyRunPlan, RunnerFamilyPreparation } from './family-profile-types.ts';
 import type {
@@ -71,19 +71,31 @@ export async function prepareProfileFamily(
     return await prepareFamilyBinding(engine, testPlan, binding, context);
 }
 
+async function collectRemoteFamily(preparation: RunnerFamilyPreparation, run: ResolvedRun): Promise<ResolvedRun> {
+    if (run.plan.kind === 'local') {
+        throw new TypeError('Expected isolated family collection.');
+    }
+    const { implementations } = run.facts;
+    const facts = { ...preparation.prepared.facts, collection: null };
+    validateRecordedFamilyFacts(facts);
+    await disposePreparedFamily(preparation.prepared);
+    return {
+        ...run,
+        facts: { ...run.facts, implementations, family: facts },
+        plan: {
+            ...run.plan,
+            collectedPlan: {
+                ...run.plan.collectedPlan,
+                implementations,
+                family: preparedFamilyMetadata(preparation, facts)
+            }
+        }
+    };
+}
+
 async function collectSelectedFamily(preparation: RunnerFamilyPreparation, run: ResolvedRun): Promise<ResolvedRun> {
     if (run.plan.kind !== 'local') {
-        const facts = { ...preparation.prepared.facts, collection: null };
-        validateRecordedFamilyFacts(facts);
-        await disposePreparedFamily(preparation.prepared);
-        return {
-            ...run,
-            facts: { ...run.facts, family: facts },
-            plan: {
-                ...run.plan,
-                collectedPlan: { ...run.plan.collectedPlan, family: preparedFamilyMetadata(preparation, facts) }
-            }
-        };
+        return await collectRemoteFamily(preparation, run);
     }
     const { testPlan } = run.plan;
     const collected = await withFamilySetupDiagnostics(async function collectBackend(): Promise<CollectedFamilyRun> {
@@ -95,8 +107,12 @@ async function collectSelectedFamily(preparation: RunnerFamilyPreparation, run: 
         });
     });
     validateRecordedFamilyFacts(collected.facts);
-    const plan: LocalFamilyRunPlan = { ...run.plan, family: { preparation, collected } };
-    return { ...run, facts: { ...run.facts, family: collected.facts }, plan };
+    const selection = collectedFamilyPlan(run.plan, { preparation, collected });
+    return {
+        ...run,
+        facts: { ...run.facts, implementations: selection.implementations, family: collected.facts },
+        plan: selection.plan
+    };
 }
 
 async function preparationCleanup(prepared: PreparedFamilyRun): Promise<readonly unknown[]> {

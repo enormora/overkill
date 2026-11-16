@@ -78,6 +78,8 @@ import type {
     RunResult,
     TestPlan,
     TestPlanCase,
+    ImplementationCatalog,
+    ImplementationDeclaration,
     Engine,
     TestPlanRootOptions,
     WorkId as EngineWorkId
@@ -190,6 +192,7 @@ type ReplayRunFacts = OrdinaryRunFacts & { readonly propertyReplay: PropertyCorp
 export type RunFacts = OrdinaryRunFacts | ReplayRunFacts;
 
 type OrdinaryRunFacts = {
+    readonly implementations: ImplementationCatalog | null;
     readonly family: FamilyRunFacts;
     readonly adapter: { readonly id: string; readonly facts: JsonValue; } | null;
     readonly benchmarkHost: BenchmarkHostAssessment | null;
@@ -306,6 +309,7 @@ type CollectedSuitePathEntry = {
 };
 
 export type CollectedRunCase = {
+    readonly implementationDeclaration: ImplementationDeclaration | null;
     readonly skipReason: string | null;
     readonly property: { readonly definition: PropertyBodyDefinition; readonly policy: PropertyPolicy; } | null;
     readonly benchmark: BenchmarkDefinitionSummary | null;
@@ -328,6 +332,7 @@ export type CollectedOrphanedNode = Except<OrphanedNode, 'definitionLocations'> 
 };
 
 export type CollectedRunPlan = {
+    readonly implementations: ImplementationCatalog | null;
     readonly family: CollectedFamilyMetadata | null;
     readonly defined: number;
     readonly discoveredFiles: readonly CollectedRunFile[];

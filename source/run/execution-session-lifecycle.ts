@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { withRunnerInfrastructure } from '../engine/execution-observation.ts';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { withCaseExecutionLifecycle } from '../engine/case-execution-lifecycle.ts';
 import type { RunExecutionLifecycle, RunExecutionLifecycleFactory, FileModuleBoundary } from './run-types.ts';
 import { withExecutionSession, type RunExecutionTransport } from './execution-session-context.ts';

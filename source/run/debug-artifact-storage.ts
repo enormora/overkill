@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { appendRunnerErrors } from '../engine/execution-result.ts';
 import { recordUndeliveredRunnerError } from '../engine/reporter-error-delivery-tracking.ts';
-import { withRunnerInfrastructure } from '../engine/execution-observation.ts';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { workIdentityKey } from '../engine/identity.ts';
 import { isTestDebugArtifact, type RunArtifact, type RunnerError, type RunResult } from '../engine/run-result.ts';
 import type { TestDebugArtifact } from '../engine/run-artifact.ts';

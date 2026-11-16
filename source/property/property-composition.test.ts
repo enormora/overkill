@@ -97,7 +97,10 @@ export const testNode = suite('property composition', [
             generator: unexecutedGenerator<number>(),
             test: unexpectedBody
         });
-        if (firstClass.execution.kind !== 'body' || firstClass.execution.bodyMode !== 'property') {
+        if (
+            firstClass.execution.kind !== 'body' || firstClass.execution.bodyMode !== 'property' ||
+            typeof firstClass.execution.body !== 'function'
+        ) {
             throw new Error('Expected a property body.');
         }
         const bodies: readonly TestBody[] = [

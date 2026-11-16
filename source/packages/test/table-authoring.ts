@@ -4,6 +4,7 @@ import {
     type Table,
     type TableOptions,
     type TestAnnotationsInput,
+    type BodyReference,
     type TestBody,
     type TestControlsInput,
     forwardTestBodyResources,
@@ -22,7 +23,7 @@ import {
     definitionLocationsForAuthoringCall,
     runWithForwardedSourceLocations
 } from './authoring-source-locations.ts';
-import { readAuthoringRecord, readAuthoringString, readAuthoringTestBody } from './authoring-input.ts';
+import { readAuthoringRecord, readAuthoringString, readAuthoringTestImplementation } from './authoring-input.ts';
 import { attachComposedResourceActions } from './resource-wrapper-composition.ts';
 import {
     scopeWrapperStep,
@@ -43,12 +44,12 @@ export type TableTestBody<
     scope: ParameterizedTestScope<Row, Scope>
 ) => ReturnType<TestBody>;
 
-type AnyTableTestBody = (scope: never) => ReturnType<TestBody>;
+type AnyTableTestBody = BodyReference<never> | ((scope: never) => ReturnType<TestBody>);
 
 export type TableDefinition<
     Row,
     ControlsType extends TestControlsInput = AuthoringControls,
-    Body extends AnyTableTestBody = TableTestBody<Row>
+    Body extends AnyTableTestBody = BodyReference<ParameterizedTestScope<Row>> | TableTestBody<Row>
 > = {
     readonly annotations?: AuthoringAnnotations;
     readonly caseTitle?: (parameters: Row, index: number) => string;
@@ -94,7 +95,7 @@ function tableCaseBody<Row>(
     parameters: Row,
     sourceLocations: readonly ResolvableSourceLocation[],
     facadeActions: readonly ResourceWrapperAction[]
-): TestBody {
+): BodyReference | TestBody {
     const caseBody = attachComposedResourceActions<TestScope>(
         [
             ...facadeActions,
@@ -123,7 +124,7 @@ function ensureTableDefinitionShape(definition: Readonly<Record<string, unknown>
         throw new TypeError(tableArgumentsError);
     }
 
-    readAuthoringTestBody(definition.test);
+    readAuthoringTestImplementation(definition.test);
 }
 
 function readTableDefinition<

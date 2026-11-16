@@ -394,6 +394,7 @@ export const runSubpathImportScript = [
 const expectedRootExportNames = [
     'createTestFacade',
     'createTranscript',
+    'defineBodyReference',
     'defineHarness',
     'defineMacro',
     'defineParameterizedTestBody',
@@ -453,7 +454,7 @@ export const expectedStandardSubpathImportOutput = [
     '["createBenchmarkHtmlReporter","createBriefFinalResultReporter","createBriefReporter","createDotReporter","createGithubActionsOutputRenderer","createLineProgressReporter","createLineReporter","createLineTreeReporter"]',
     '["defineCompositeAssertion","defineNarrowingCompositeAssertion"]',
     '["throwingTest"]',
-    '["ResourceLifecycleError","composeRuntimeContext","composeRuntimes","createLocalHttpServiceResource","createLocalProcessServiceResource","createSimulatedHttpServerResource","createTemporaryDirectoryResource","defineLocalServiceResource","defineResource","defineRuntime","defineRuntimeMatrix","startRuntime","withFailureArtifacts","withResource","withResources","withRuntime","withWitnessReplay"]',
+    '["ResourceLifecycleError","composeRuntimeContext","composeRuntimes","createLocalHttpServiceResource","createLocalProcessServiceResource","createSimulatedHttpServerResource","createTemporaryDirectoryResource","defineImplementationReference","defineLocalServiceResource","defineResource","defineResourceConsumerReference","defineResourceOwnerReference","defineResourceReference","defineRuntime","defineRuntimeMatrix","startRuntime","withFailureArtifacts","withResource","withResources","withRuntime","withWitnessReplay"]',
     '["defineSimulatedHttpServer","defineSimulation","isDefinedSimulatedHttpServer","isDefinedSimulation"]',
     'function',
     'function',

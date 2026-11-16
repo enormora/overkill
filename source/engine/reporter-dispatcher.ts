@@ -1,5 +1,5 @@
 import type { Clock } from '@enormora/clock';
-import { withRunnerInfrastructure } from './execution-observation.ts';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import {
     createReporterDisposal as createReporterDisposalFromCallback,
     type ReporterDisposal as CoreReporterDisposal

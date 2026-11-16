@@ -22,6 +22,7 @@ type BenchmarkPlacementFacts = NonNullable<RunFacts['benchmarkPlacement']>;
 type CollectedPlanKind = 'supervised' | 'worker-pool';
 
 export type CollectedExecutionPlanInput = {
+    readonly projectRoot: string;
     readonly benchmarkHost: ResolvedRunInput['benchmarkHost'];
     readonly collectedPlan: WorkerPoolPlacementPlanInput['selectedPlan'];
     readonly dependencies: RunOrchestratorDependencies;

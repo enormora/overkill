@@ -7,8 +7,10 @@ import {
     unknownSourceLocation,
     type NonEmptyReadonlyArray,
     type ResolvableSourceLocation,
+    type BodyReference,
     type TestBody,
     type TestScope,
+    type ThrowingTestScope,
     type ThrowingTestBody
 } from '../engine/engine.entry-point.ts';
 
@@ -122,7 +124,10 @@ export function definitionLocationsForAuthoringCall(): NonEmptyReadonlyArray<Res
     );
 }
 
-export function assertionBodyForActiveMacro(body: TestBody): TestBody {
+export function assertionBodyForActiveMacro(body: TestBody): TestBody;
+export function assertionBodyForActiveMacro(body: BodyReference): BodyReference;
+export function assertionBodyForActiveMacro(body: BodyReference | TestBody): BodyReference | TestBody;
+export function assertionBodyForActiveMacro(body: BodyReference | TestBody): BodyReference | TestBody {
     const sourceLocations = activeMacroSourceLocations();
 
     if (sourceLocations.length === 0) {
@@ -138,7 +143,9 @@ export function assertionBodyForActiveMacro(body: TestBody): TestBody {
     });
 }
 
-export function throwingBodyForActiveMacro(body: ThrowingTestBody): ThrowingTestBody {
+export function throwingBodyForActiveMacro(
+    body: BodyReference<ThrowingTestScope, ReturnType<ThrowingTestBody>> | ThrowingTestBody
+): BodyReference<ThrowingTestScope, ReturnType<ThrowingTestBody>> | ThrowingTestBody {
     const sourceLocations = activeMacroSourceLocations();
 
     if (sourceLocations.length === 0) {

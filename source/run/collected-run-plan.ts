@@ -1,3 +1,4 @@
+import { implementationDeclarations, implementationPlan } from '../engine/body-reference-plan.ts';
 import { resolveSourceLocations } from '../assertion-protocol/source-location.ts';
 import { createCaseId, createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import {
@@ -11,8 +12,7 @@ import { summaryRunTimings } from '../engine/run-timings.ts';
 import { familyCatalog } from './family-catalog.ts';
 import type { NonEmptyReadonlyArray, RunProcessUsage, TestPlan } from './run-engine-primitives.ts';
 import { selectedCollectedRunPlan } from './run-selection.ts';
-import { testCasePropertySummary } from './property-collection.ts';
-import { caseDataFacts } from './run-case-facts.ts';
+import { caseDataFacts, collectedCaseExecutionFacts } from './run-case-facts.ts';
 import type {
     FrozenWorkloadInput,
     CollectedRunCase,
@@ -173,15 +173,17 @@ function countOutcomes(plan: CollectedRunPlan, perTest: readonly PerTestResult[]
     };
 }
 
-function collectRunPlanFile(file: string, cases: readonly TestPlan['cases'][number][]): CollectedRunFile {
+function collectRunPlanFile(
+    file: string,
+    cases: readonly TestPlan['cases'][number][],
+    plan: TestPlan
+): CollectedRunFile {
     return {
         cases: cases.map(function collectCase(testCase): CollectedRunCase {
             return {
-                skipReason: testCase.execution.kind === 'skip' ? testCase.execution.reason : null,
-                property: testCasePropertySummary(testCase),
-                benchmark: testCase.execution.kind === 'body' && testCase.execution.bodyMode === 'benchmark'
-                    ? testCase.execution.definition
-                    : null,
+                implementationDeclaration: implementationDeclarations(plan).get(workIdentityKey(testCase.workId)) ??
+                    null,
+                ...collectedCaseExecutionFacts(testCase),
                 annotations: testCase.annotations,
                 controls: testCase.controls,
                 definitionLocations: resolveSourceLocations(testCase.definitionLocations),
@@ -198,7 +200,10 @@ function collectRunPlanFile(file: string, cases: readonly TestPlan['cases'][numb
     };
 }
 
-function collectedRunFilesFromCases(cases: readonly TestPlan['cases'][number][]): readonly CollectedRunFile[] {
+function collectedRunFilesFromCases(
+    cases: readonly TestPlan['cases'][number][],
+    plan: TestPlan
+): readonly CollectedRunFile[] {
     const files = new Map<string, TestPlan['cases'][number][]>();
 
     for (const testCase of cases) {
@@ -207,7 +212,7 @@ function collectedRunFilesFromCases(cases: readonly TestPlan['cases'][number][])
     }
 
     return Array.from(files, function collectFile([ file, fileCases ]) {
-        return collectRunPlanFile(file, fileCases);
+        return collectRunPlanFile(file, fileCases, plan);
     });
 }
 
@@ -261,10 +266,11 @@ export function collectedRunPlanFromTestPlanCases(
     cases: readonly TestPlan['cases'][number][]
 ): CollectedRunPlan {
     return {
+        implementations: implementationPlan(testPlan)?.catalog ?? null,
         family: familyCatalog(testPlan),
         defined: testPlan.defined,
-        discoveredFiles: collectedRunFilesFromCases(testPlan.discoveredCases),
-        files: collectedRunFilesFromCases(cases),
+        discoveredFiles: collectedRunFilesFromCases(testPlan.discoveredCases, testPlan),
+        files: collectedRunFilesFromCases(cases, testPlan),
         orphans: collectedOrphanedNodes(testPlan),
         root: {
             annotations: testPlan.root.annotations,

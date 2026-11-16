@@ -45,6 +45,9 @@ type InvalidOwnedPoolResult = {
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        implementations: null,
+        implementationContext: { projectRoot: process.cwd() },
+
         family: null,
         debug: { mode: 'off', selectors: [] },
         failureArtifacts: defaultFailureArtifactPolicy,
@@ -82,6 +85,8 @@ function workerPoolCommand(): WorkerPoolCommand {
 
 function collectedPlan(): WorkerPoolCollection['collectedPlan'] {
     return {
+        implementations: null,
+
         family: null,
         defined: 0,
         discoveredFiles: [],

@@ -13,7 +13,11 @@ export const historyWork = {
 
 export const historyTimestamp = '2026-10-29T00:00:00.000Z';
 
-export function completedHistoryRecord(id: string): Extract<HistoryRecord, { readonly status: 'completed'; }> {
+export type CompletedHistoryFixture = Extract<HistoryRecord, { readonly status: 'completed'; }> & {
+    readonly facts: { readonly implementations: null; };
+};
+
+export function completedHistoryRecord(id: string): CompletedHistoryFixture {
     return {
         id,
         kind: 'single',
@@ -26,7 +30,7 @@ export function completedHistoryRecord(id: string): Extract<HistoryRecord, { rea
         startedAt: historyTimestamp,
         request: { profile: 'unit', recordForMerge: false },
         execution: { processModel: 'in-process', scheduling: 'serial' },
-        facts: { execution: { testFamily: 'microtest' } },
+        facts: { execution: { testFamily: 'microtest' }, implementations: null },
         result: {
             runnerErrors: [],
             summary: { failed: 0, crashed: 0, processExhausted: 0, runtimePolicy: 0, inconclusive: 0 },

@@ -87,6 +87,7 @@ export const testNode = createSuite({
                 };
                 scope.assert.deepEqual(supervisedParentMessageSchema.parse(assignment), {
                     ...assignment,
+                    implementations: null,
                     corpus: { checkedIn: [], localCache: [], diagnostics: [] }
                 });
                 scope.assert.false(

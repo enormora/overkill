@@ -1,4 +1,11 @@
+import type {
+    ImplementationReference,
+    ImplementationInputContext,
+    ImplementationFacts
+} from '../implementation-reference.ts';
+import type { PortableValue } from '../portable-value.ts';
 import type { WorkloadParameters } from '../engine/workload-input.ts';
+import type { ResourceWorkload } from './resource-workload-types.ts';
 import type { ResourceScenarioSlots } from './resource-scenario.ts';
 
 export type Awaitable<Value> = Promise<Value> | Value;
@@ -35,12 +42,21 @@ export type ExecutionRequirement = PlacementRequirement | SchedulingRequirement;
 
 export type ResourceScope = 'per-case' | 'per-file' | 'per-run' | 'per-suite' | 'shared-per-worker';
 
-export type AnyResourceDefinition = {
+type ResourceCallbacks = {
     readonly acquire: (context: never) => Awaitable<unknown>;
-    readonly dependencies: ResourceDependencies;
-    readonly deserializeHandle?: (payload: never, context: never) => unknown;
     readonly dispose: ((handle: never, context: never) => Awaitable<void>) | null;
     readonly exposeHandle: ((handle: never, context: never) => unknown) | null;
+};
+type ReferenceCallbacks = {
+    readonly kind: 'resource-reference';
+    readonly acquire: null;
+    readonly dispose: null;
+    readonly exposeHandle: null;
+    readonly implementation: ReferencedResourceImplementation;
+};
+export type AnyResourceDefinition = (ReferenceCallbacks | ResourceCallbacks) & {
+    readonly dependencies: ResourceDependencies;
+    readonly deserializeHandle?: (payload: never, context: never) => unknown;
     readonly name: string;
     readonly requirements: readonly ExecutionRequirement[];
     readonly scenarios: ResourceScenarioSlots;
@@ -57,3 +73,34 @@ type ResourceProjectionObject = { readonly [key: string]: ResourceProjectionPayl
 type ResourceProjectionScalar = boolean | number | string | null;
 type ResourceProjectionCollection = ResourceProjectionObject | readonly ResourceProjectionPayload[];
 export type ResourceProjectionPayload = ResourceProjectionCollection | ResourceProjectionScalar;
+
+export type ReferenceAdmission = {
+    readonly namespace: unknown;
+    readonly facts: ImplementationFacts;
+    readonly context: ImplementationInputContext;
+};
+
+type NativeOwnerCallbacks = {
+    readonly exposeHandle: ((handle: never, context: never) => unknown) | null;
+    readonly acquire: (context: never) => Awaitable<unknown>;
+    readonly dispose: ((handle: never, context: never) => Awaitable<void>) | null;
+    readonly serializeHandle: ((handle: never, context: never) => ResourceProjectionPayload) | null;
+};
+type NativeConsumerCallbacks = {
+    readonly deserializeHandle: (payload: never, context: never) => unknown;
+    readonly exposeHandle: ((handle: never, context: never) => unknown) | null;
+};
+export type ResourceOwnerBinding = {
+    readonly reference: ImplementationReference<PortableValue>;
+    readonly bind: (admission: ReferenceAdmission) => NativeOwnerCallbacks;
+};
+export type ResourceConsumerBinding = {
+    readonly reference: ImplementationReference<PortableValue>;
+    readonly bind: (admission: ReferenceAdmission) => NativeConsumerCallbacks;
+};
+
+export type ReferencedResourceImplementation = {
+    readonly workload: ResourceWorkload<WorkloadParameters> | null;
+    readonly owner: ResourceOwnerBinding;
+    readonly consumer: ResourceConsumerBinding | null;
+};

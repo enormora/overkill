@@ -3,6 +3,8 @@ import {
     type TestAnnotationsInput,
     type TestCase,
     type TestControlsInput,
+    type BodyReference,
+    type ThrowingTestScope,
     type ThrowingTestBody
 } from '../engine/engine.entry-point.ts';
 import {
@@ -22,21 +24,21 @@ import { definitionLocationsForAuthoringCall, throwingBodyForActiveMacro } from 
 
 export type ThrowingTestDefinition = {
     readonly annotations?: AuthoringAnnotations;
-    readonly body: ThrowingTestBody;
+    readonly body: BodyReference<ThrowingTestScope, ReturnType<ThrowingTestBody>> | ThrowingTestBody;
     readonly controls?: AuthoringControls;
     readonly title: string;
 };
 
 type RuntimeThrowingTestDefinition = {
     readonly annotations: TestAnnotationsInput;
-    readonly body: ThrowingTestBody;
+    readonly body: BodyReference<ThrowingTestScope, ReturnType<ThrowingTestBody>> | ThrowingTestBody;
     readonly controls: TestControlsInput;
     readonly title: string;
 };
 
 export type ThrowingTestAuthor = {
     (definition: Readonly<ThrowingTestDefinition>): TestCase;
-    (title: string, body: ThrowingTestBody): TestCase;
+    (title: string, body: BodyReference<ThrowingTestScope, ReturnType<ThrowingTestBody>> | ThrowingTestBody): TestCase;
 };
 
 const singleArgumentCount = 1;
@@ -89,7 +91,12 @@ function createAuthoredThrowingTest(...input: readonly unknown[]): TestCase {
 }
 
 export function throwingTest(...input: readonly [definition: Readonly<ThrowingTestDefinition>]): TestCase;
-export function throwingTest(...input: readonly [title: string, body: ThrowingTestBody]): TestCase;
+export function throwingTest(
+    ...input: readonly [
+        title: string,
+        body: BodyReference<ThrowingTestScope, ReturnType<ThrowingTestBody>> | ThrowingTestBody
+    ]
+): TestCase;
 export function throwingTest(...input: readonly unknown[]): TestCase {
     return createAuthoredThrowingTest(...input);
 }

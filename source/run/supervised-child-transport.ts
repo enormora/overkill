@@ -174,6 +174,7 @@ export async function sendAssignmentForPlan(runtime: SupervisedRunRuntime): Prom
     const corpus = await resolvedPropertyCorpus(runtime.resolvedRun);
     sendSupervisedCommand(runtime.child, {
         corpus,
+        implementations: runtime.resolvedRun.facts.implementations,
         assignedWork: runtime.resolvedRun.facts.cases.map(function toWorkId(testCase) {
             return testCase.workId;
         }),

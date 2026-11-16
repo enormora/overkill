@@ -1,5 +1,5 @@
+import { declareImplementations } from '../engine/body-reference-plan.ts';
 import type { Engine, TestPlan, TestPlanCollectionPolicy } from '../packages/engine/engine.entry-point.ts';
-import { isBuiltinFamilyId } from '../engine/builtin-test-families.ts';
 import { bindWireReplayPlan } from './replay-wire.ts';
 import type { ReplayWire } from './run-types.ts';
 import { defaultRunEngine, calibrationCapturePlan } from './default-run-engine.ts';
@@ -8,10 +8,9 @@ import { resolveTestPlanCollectionPolicy, assertTestPlanCollectionPolicy } from 
 import type { RunEngineModuleLoader } from './run-engine-selection.ts';
 import type { SupervisedChildCommand } from './supervised-protocol.ts';
 
-type HostPlanCommand = Pick<
-    SupervisedChildCommand,
-    'benchmarkNormalization' | 'cwd' | 'family' | 'propertyPolicy' | 'replay' | 'testFamily' | 'timeoutMilliseconds'
->;
+type HostFamilyFields = 'family' | 'implementationContext' | 'implementations' | 'testFamily';
+type HostPolicyFields = 'benchmarkNormalization' | 'propertyPolicy' | 'replay' | 'timeoutMilliseconds';
+type HostPlanCommand = Pick<SupervisedChildCommand, HostFamilyFields | HostPolicyFields | 'cwd'>;
 type HostPlanInput = {
     readonly processModel: 'supervised-process' | 'worker-pool';
     readonly command: HostPlanCommand;
@@ -79,16 +78,25 @@ export async function createHostTestPlan(input: HostPlanInput): Promise<TestPlan
     if (input.command.family !== null) {
         return await createImportedHostTestPlan(input);
     }
-    const plan = await input.collect(hostCollectionPolicy(input.command), input.command.replay);
+    const source = await input.collect(hostCollectionPolicy(input.command), input.command.replay);
+    const { signal } = new AbortController();
+    const plan = await declareImplementations(
+        source,
+        input.command.implementationContext,
+        signal
+    );
     if (input.command.replay?.kind === 'record') {
         return calibrationCapturePlan(
             resolveTestPlanCollectionPolicy(plan, input.command),
             input.command.benchmarkNormalization
         );
     }
-    if (!isBuiltinFamilyId(input.command.testFamily)) {
-        throw new TypeError('Imported families require explicit host resolution.');
-    }
     assertTestPlanCollectionPolicy(plan, input.command);
-    return registerHostFamilyPlan(plan, input.engine, input.command.testFamily, input.command.cwd);
+    registerHostFamilyPlan(
+        source,
+        input.engine,
+        input.command.testFamily,
+        input.command.implementationContext.projectRoot
+    );
+    return transferHostFamilyPlan(source, plan);
 }

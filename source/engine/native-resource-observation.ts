@@ -1,4 +1,4 @@
-import { currentAttemptIdentity, observingInfrastructure } from './execution-observation.ts';
+import { currentAttemptIdentity, observingInfrastructure } from '../execution-ownership.ts';
 
 type NativeResourceOwnership = {
     readonly kind: 'infrastructure';

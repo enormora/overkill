@@ -1,18 +1,40 @@
-import type { Engine } from '../../engine/engine.ts';
 import { defaultEngine } from '../../engine/standard-engine.ts';
-import type {
-    PropertyTestCaseOptions,
-    BenchmarkTestCaseOptions,
-    RootOptions,
-    SkippedTestCaseOptions,
-    SuiteOptions,
-    TableOptions,
-    TestCaseOptions,
-    TestNode,
-    ThrowingTestCaseOptions,
-    WorkloadTestCaseOptions
-} from '../../engine/test-node.ts';
 
+export const {
+    createPropertyTestCase,
+    createBenchmarkTestCase,
+    createRoot,
+    createSuite,
+    createSkippedTestCase,
+    createTable,
+    createTestCase,
+    createThrowingTestCase,
+    createWorkloadTestCase,
+    createTestPlan,
+    createTestPlanFromTestFiles,
+    execute,
+    prepareFamily,
+    ownsTestNode
+} = defaultEngine;
+export { defineBodyReference } from '../../engine/body-reference.ts';
+export { isBodyReference, mapBodyReference } from '../../engine/test-body.ts';
+export type { BodyReference } from '../../engine/body-reference.ts';
+export type { BodyImplementation } from '../../engine/test-body.ts';
+export { defineImplementationReference } from '../../implementation-reference.ts';
+export type {
+    ImplementationReference,
+    ImplementationFacts,
+    ImplementationInputContext,
+    ImplementationExport,
+    ImplementationRealm,
+    ModuleReference
+} from '../../implementation-reference.ts';
+export { prepareImplementation, withPreparedImplementation } from '../../implementation-preparation.ts';
+export type {
+    PreparedImplementation,
+    ImplementationPreparation,
+    ImplementationAdmission
+} from '../../implementation-preparation.ts';
 export type {
     AttachmentMetadata,
     AttachmentWriter,
@@ -37,16 +59,6 @@ export type {
     PropertyBodyDefinition,
     PropertyPolicyResolution
 } from '../../engine/property-node.ts';
-
-export function createPropertyTestCase(options: PropertyTestCaseOptions): ReturnType<Engine['createPropertyTestCase']> {
-    return defaultEngine.createPropertyTestCase(options);
-}
-
-export function createBenchmarkTestCase(
-    options: BenchmarkTestCaseOptions
-): ReturnType<Engine['createBenchmarkTestCase']> {
-    return defaultEngine.createBenchmarkTestCase(options);
-}
 
 export { attachBenchmarkCalibrationBody, readBenchmarkCalibrationBody } from '../../engine/benchmark-node.ts';
 export type { BenchmarkCalibrationBody } from '../../engine/benchmark-node.ts';
@@ -81,42 +93,6 @@ export type {
     SamplingPolicy
 } from '../../engine/benchmark-result.ts';
 
-export function createRoot(options: RootOptions): ReturnType<Engine['createRoot']> {
-    return defaultEngine.createRoot(options);
-}
-
-export function createSuite(options: SuiteOptions): ReturnType<Engine['createSuite']> {
-    return defaultEngine.createSuite(options);
-}
-
-export function createSkippedTestCase(options: SkippedTestCaseOptions): ReturnType<Engine['createSkippedTestCase']> {
-    return defaultEngine.createSkippedTestCase(options);
-}
-
-export function createTable(options: TableOptions): ReturnType<Engine['createTable']> {
-    return defaultEngine.createTable(options);
-}
-
-export function createTestCase(options: TestCaseOptions): ReturnType<Engine['createTestCase']> {
-    return defaultEngine.createTestCase(options);
-}
-
-export function createThrowingTestCase(options: ThrowingTestCaseOptions): ReturnType<Engine['createThrowingTestCase']> {
-    return defaultEngine.createThrowingTestCase(options);
-}
-
-export function createWorkloadTestCase(options: WorkloadTestCaseOptions): ReturnType<Engine['createWorkloadTestCase']> {
-    return defaultEngine.createWorkloadTestCase(options);
-}
-
-export const createTestPlan: Engine['createTestPlan'] = defaultEngine.createTestPlan;
-
-export const createTestPlanFromTestFiles: Engine['createTestPlanFromTestFiles'] =
-    defaultEngine.createTestPlanFromTestFiles;
-
-export const execute: Engine['execute'] = defaultEngine.execute;
-export const prepareFamily: Engine['prepareFamily'] = defaultEngine.prepareFamily;
-
 export type {
     CollectedFamilyRun,
     FamilyExecuteOptions,
@@ -125,10 +101,6 @@ export type {
     PrepareFamilyRequest,
     PreparedFamilyRun
 } from '../../engine/family-run.ts';
-
-export function ownsTestNode(value: unknown): value is TestNode {
-    return defaultEngine.ownsTestNode(value);
-}
 
 export type { Engine, TestPlanFactory, TestPlanFromTestFilesFactory } from '../../engine/engine.ts';
 export type {
@@ -531,3 +503,7 @@ export type {
 export type { TestPlanCollectionPolicy } from '../../engine/plan-collection-policy.ts';
 
 export type { TestRoot } from '../../engine/test-node.ts';
+
+export type { PortableValue } from '../../portable-value.ts';
+
+export type { ImplementationCatalog, ImplementationDeclaration } from '../../implementation-catalog.ts';

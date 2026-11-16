@@ -69,6 +69,8 @@ export const testNode = createTestCase({
     async body(scope: TestScope) {
         const child = createChildRun({
             assignment: {
+                implementations: null,
+
                 attachmentEndpoint: null,
                 assignedCases: [ { file, params: null, suite: [ 'fixture' ], title: 'passes' } ],
                 kind: 'assign'

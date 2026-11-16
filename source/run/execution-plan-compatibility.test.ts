@@ -30,12 +30,16 @@ const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds:
 
 function collectedPlan(): CollectedRunPlan {
     return {
+        implementations: null,
+
         family: null,
         defined: 2,
         discoveredFiles: [],
         files: [ {
             cases: [ 'first', 'second' ].map(function collectedCase(title) {
                 return {
+                    implementationDeclaration: null,
+
                     skipReason: null,
                     property: null,
                     benchmark: null,

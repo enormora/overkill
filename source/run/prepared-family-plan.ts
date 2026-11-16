@@ -1,9 +1,11 @@
+import { implementationPlan, withImplementationPlan } from '../engine/body-reference-plan.ts';
+import type { ImplementationCatalog } from '../implementation-catalog.ts';
 import type { FamilyRunFacts, PreparedFamilyRun } from '../engine/family-run.ts';
 import { workIdentityKey } from '../engine/identity.ts';
-import type { RunnerFamilyPreparation } from './family-profile-types.ts';
+import type { LocalFamilyRunPlan, RunnerFamilyPreparation } from './family-profile-types.ts';
+import { familyWorkCatalog } from './family-work-catalog.ts';
 import type { CollectedFamilyMetadata } from './family-catalog.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
-import { familyValueSchema } from './family-transport-schema.ts';
 
 type TestPlan = RunnerFamilyPreparation['sourcePlan'];
 
@@ -15,7 +17,7 @@ export function preparedFamilyMetadata(
         return null;
     }
     const { prepared, definition } = preparation;
-    const catalog = familyValueSchema.parse({ ...collectedRunPlanFromTestPlan(prepared.testPlan), family: null });
+    const catalog = familyWorkCatalog(collectedRunPlanFromTestPlan(prepared.testPlan));
     return {
         definition: { ...definition, checkpoint: { preparation: prepared.facts, catalog } },
         facts
@@ -34,4 +36,23 @@ export function selectedPreparedPlan(prepared: PreparedFamilyRun, selection: Tes
         return current;
     }
     return { ...prepared.testPlan, cases: [ select(selection.cases[0]), ...selection.cases.slice(1).map(select) ] };
+}
+
+type CollectedFamilySelection = {
+    readonly plan: LocalFamilyRunPlan;
+    readonly implementations: ImplementationCatalog | null;
+};
+export function collectedFamilyPlan(
+    plan: Pick<LocalFamilyRunPlan, 'kind' | 'testPlan'>,
+    family: LocalFamilyRunPlan['family']
+): CollectedFamilySelection {
+    const state = implementationPlan(family.collected.testPlan);
+    return {
+        plan: {
+            ...plan,
+            testPlan: state === null ? plan.testPlan : withImplementationPlan(plan.testPlan, state),
+            family
+        },
+        implementations: state?.catalog ?? null
+    };
 }

@@ -1,5 +1,6 @@
 import type { WorkloadInput } from '../../engine/workload-input.ts';
 import {
+    isDefinedResource,
     createWorkloadResourceBinding,
     bindRuntimeWorkload,
     isDefinedRuntimeGraph,
@@ -65,8 +66,10 @@ function hasResourceGraphData(value: Readonly<Record<string, unknown>>): boolean
 }
 
 function hasResourceLifecycle(value: Readonly<Record<string, unknown>>): boolean {
-    return typeof value.acquire === 'function' &&
+    const referenced = isDefinedResource(value) && value.acquire === null;
+    const inline = typeof value.acquire === 'function' &&
         (typeof value.dispose === 'function' || value.dispose === null);
+    return referenced || inline;
 }
 
 function isResourceDescriptor(value: unknown): value is AnyResourceDefinition {

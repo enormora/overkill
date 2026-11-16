@@ -1,4 +1,4 @@
-import { withRunnerInfrastructure } from '../engine/execution-observation.ts';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import {
     createInvocationBudget,

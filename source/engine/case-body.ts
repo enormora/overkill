@@ -100,7 +100,11 @@ async function runThrowingCaseBody(
             throw new TypeError('Non-throwing test cases do not have throwing bodies.');
         }
 
-        await testCase.execution.body(createThrowingTestScope(
+        const { body } = testCase.execution;
+        if (typeof body !== 'function') {
+            throw new TypeError('Throwing implementation was not admitted.');
+        }
+        await body(createThrowingTestScope(
             recorder,
             options.controller.signal,
             { seed: options.seed, work: testCase.workId }

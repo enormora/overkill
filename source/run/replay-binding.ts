@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import { withImplementationPlan } from '../engine/body-reference-plan.ts';
 import { workIdentityKey, caseIdentityKey, runtimeIdentitiesKey } from '../engine/identity.ts';
 import type { TestPlan, TestPlanCase, TestPlanCaseExecution } from '../engine/test-plan.ts';
 import { collectedRunCaseEntries, type CollectedRunCaseEntry } from './collected-run-plan.ts';
@@ -106,12 +107,12 @@ export function bindRecordedTestPlan(current: TestPlan, saved: CollectedRunPlan)
         return selectRecordedCase(current, candidates, entry);
     });
     const [ first = current.cases[0], ...rest ] = cases;
-    return {
+    return withImplementationPlan({
         ...current,
         defined: saved.defined,
         cases: [ first, ...rest ],
         orphans: saved.orphans,
         discoveredCases: restoredDiscovery(first, saved),
         root: { ...current.root, ...saved.root }
-    };
+    }, { catalog: saved.implementations, admission: 'all' });
 }

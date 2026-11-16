@@ -5,11 +5,8 @@ import { suite, test, type TestScope } from '../packages/test/test.entry-point.t
 import { createRuntimeCapabilityPolicy, type RuntimeCapabilityPolicy } from '../run/capability-policy.ts';
 import { observeProcessIpcListeners } from '../run/node-process-policy-observation.ts';
 import { createAsyncLeakMonitor } from '../engine/async-leak-diagnostics.ts';
-import {
-    registerExecutionDisposal,
-    withExecutionObservation,
-    withRunnerInfrastructure
-} from '../engine/execution-observation.ts';
+import { withExecutionObservation } from '../engine/execution-observation.ts';
+import { registerExecutionDisposal, withRunnerInfrastructure } from '../execution-ownership.ts';
 import { createTestEngine } from './create-test-engine.ts';
 
 const timerLifetimeMilliseconds = 60_000;

@@ -85,6 +85,8 @@ async function createNativeSessionChild(data: string): Promise<ChildRunFixture> 
     return createChildRun({
         command: { ...command, kind: 'run-session', policy, session: { lifecycle: options.lifecycle, data } },
         assignment: {
+            implementations: null,
+
             kind: 'assign',
             attachmentEndpoint: null,
             assignedCases: [ {

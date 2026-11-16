@@ -1,6 +1,8 @@
-import type { Clock } from '@enormora/clock';
+import { createClock, type Clock } from '@enormora/clock';
 import type { RuntimeExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
+import type { RunProcessUsageTracker } from './run-engine-primitives.ts';
+import { createNodeProcessUsageTracker } from './process-usage.ts';
 import { createHostExecutionDriver, type HostExecutionInput } from './host-family-execution.ts';
 import { snapshotRuntimePolicy } from './snapshot-runtime.ts';
 import { withReplayWire, wirePropertyCorpus } from './replay-wire.ts';
@@ -35,4 +37,10 @@ export async function createWorkerExecute(
             });
         });
     };
+}
+
+export function createWorkerProcessUsageTracker(command: WorkerPoolCommand): RunProcessUsageTracker {
+    return createNodeProcessUsageTracker(createClock(), {
+        samplingIntervalMilliseconds: command.processUsageSamplingIntervalMilliseconds
+    });
 }

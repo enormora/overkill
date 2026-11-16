@@ -1,3 +1,4 @@
+import { implementationPlan } from '../engine/body-reference-plan.ts';
 import { profileFamilyId, type NormalizedConfig } from '../config/types.ts';
 import type { DefinedReporter, RunResult, TestPlan } from '../packages/engine/engine.entry-point.ts';
 import type { LoadedConfig } from '../config/config-loader.ts';
@@ -68,6 +69,10 @@ export function runConfig(
     };
 }
 
+function directImplementationCatalog(plan: DirectRunFactsInput['testPlan']): RunFacts['implementations'] {
+    return implementationPlan(plan)?.catalog ?? null;
+}
+
 export function directRunFacts(input: DirectRunFactsInput): RunFacts {
     const request = defaultRunRequest(input.profileName, input.seed);
     if (!Object.hasOwn(input.config.profiles, input.profileName)) {
@@ -77,6 +82,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
     const profile = selectTestProfile(input.profileName, input.config);
 
     return {
+        implementations: directImplementationCatalog(input.testPlan),
         family: profileFamilyFacts(profile),
         adapter: null,
         benchmarkHost: null,

@@ -1,3 +1,6 @@
+import type { Except } from 'type-fest';
+import type { BodyReference } from '../engine/body-reference.ts';
+import type { BodyImplementation } from '../engine/test-body.ts';
 import type {
     AssertionResult,
     DefinitionLocations,
@@ -48,7 +51,12 @@ export type PropertyForall = {
 };
 
 type ConfiguredPropertyDefinition<Value> = PropertyDefinitionBody<Value> & { readonly settings: PropertySettings; };
-type PurePropertyDefinition<Value> = ConfiguredPropertyDefinition<Value> | PropertyDefinitionBody<Value>;
+type InlinePropertyDefinition<Value> = ConfiguredPropertyDefinition<Value> | PropertyDefinitionBody<Value>;
+type PropertyReferenceScope<Value> = { readonly value: Value; readonly sample: PropertySampleScope<Value>; };
+type ReferencedProperty<Value> = Except<InlinePropertyDefinition<Value>, 'test'> & {
+    readonly test: BodyReference<PropertyReferenceScope<Value>>;
+};
+type PurePropertyDefinition<Value> = InlinePropertyDefinition<Value> | ReferencedProperty<Value>;
 type IntegrationPropertyDefinition<Value> = PurePropertyDefinition<Value> & { readonly testFamily: 'integration'; };
 export type PropertyDefinition<Value> = IntegrationPropertyDefinition<Value> | PurePropertyDefinition<Value>;
 
@@ -56,7 +64,7 @@ export type PropertyCaseScope = TestScope & {
     readonly forall: PropertyForall;
 };
 
-export type PropertyCaseBody = (scope: PropertyCaseScope) => AssertionResult | Promise<AssertionResult>;
+export type PropertyCaseBody = BodyImplementation<PropertyCaseScope, AssertionResult | Promise<AssertionResult>>;
 
 export type PropertyDeclaration<Value> = PropertyBodyDefinition & {
     readonly examples: readonly PropertyExample<Value>[];

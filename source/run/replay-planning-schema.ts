@@ -1,10 +1,10 @@
 import { z } from 'zod/v4';
+import { implementationCatalogSchema } from '../implementation-catalog.ts';
 import { workIdSchema } from '../engine/identity-schema.ts';
 import { benchmarkHostAssessmentSchema, benchmarkPlacementFactsSchema } from '../bench/benchmark-host-snapshot.ts';
 import { benchmarkNormalizationContextSchema } from '../bench/calibration-evidence.ts';
 import { benchmarkCalibrationSchema } from '../bench/calibration-schema.ts';
 import { familyRunFactsSchema } from './family-transport-schema.ts';
-import type { ReplayPlanningFacts } from './replay-record-types.ts';
 import { runSelectionSchema } from './run-selection-schema.ts';
 import { runShardHashAlgorithm } from './run-shard-hash-algorithm.ts';
 import { replayPlacementPlanSchema } from './replay-placement-schema.ts';
@@ -35,6 +35,7 @@ const durationObservation = z.strictObject({
     })
 });
 export const replayPlanningFields = {
+    implementations: implementationCatalogSchema.nullable().default(null),
     family: familyRunFactsSchema.nullable().default(null),
     reproducibility: z.strictObject({
         selectedIdentities: z.array(workIdSchema).nullable().default(null),
@@ -81,10 +82,14 @@ export const replayPlanningFields = {
             .default(null)
     })
 };
-export function hasRecordedWorkerCapacity(facts: Pick<ReplayPlanningFacts, 'cases' | 'execution'>): boolean {
+type RecordedCapacity = {
+    readonly cases: readonly unknown[];
+    readonly execution: { readonly workerCount: { readonly resolved: number; } | null; };
+};
+export function hasRecordedWorkerCapacity(facts: RecordedCapacity): boolean {
     return facts.execution.workerCount?.resolved !== 0 || facts.cases.length === 0;
 }
 
-export const replayPlanningSchema: z.ZodType<ReplayPlanningFacts> = z
+export const replayPlanningSchema = z
     .object(replayPlanningFields)
     .refine(hasRecordedWorkerCapacity);

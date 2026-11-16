@@ -1,5 +1,7 @@
+import type { ImplementationCarrier } from '../implementation-participant.ts';
 import type { ResolvableSourceLocation, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { captureSourceLocation, resolveSourceLocation } from '../assertion-protocol/source-location.ts';
+import { isBodyReferenceDescriptor, type BodyReference } from './body-reference.ts';
 
 import {
     isPropertyBodyDefinition,
@@ -8,6 +10,33 @@ import {
 } from './property-node.ts';
 import type { TestFamilyId } from './identity.ts';
 import type { WorkloadInput } from './workload-input.ts';
+
+type ReferencedBody<Value> = unknown extends Value ? BodyReference<never, unknown>
+    : Extract<Value, BodyReference<never, unknown>>;
+export function isBodyReference<Value>(value: Value): value is ReferencedBody<Value> & Value {
+    return isBodyReferenceDescriptor(value) && typeof value.bind === 'function';
+}
+
+export type BodyImplementation<Scope, Result> = BodyReference<Scope, Result> | ((scope: Scope) => Result);
+
+export function executableBody<Scope, Result>(body: BodyImplementation<Scope, Result>): (scope: Scope) => Result {
+    if (isBodyReference(body)) {
+        throw new TypeError('Referenced body was not admitted before execution.');
+    }
+    return body;
+}
+
+export function mapBodyReference<Scope, Result, TargetScope, TargetResult>(
+    source: BodyReference<Scope, Result>,
+    forward: (body: (scope: Scope) => Result) => (scope: TargetScope) => TargetResult
+): BodyReference<TargetScope, TargetResult> {
+    return {
+        ...source,
+        bind(namespace, facts, context) {
+            return forward(source.bind(namespace, facts, context));
+        }
+    };
+}
 
 type SourceBody = (...arguments_: readonly never[]) => unknown;
 
@@ -32,11 +61,11 @@ type OriginAttachedBody = SourceBody & {
     readonly [bodyOriginBrand]: TestBodyOrigin;
 };
 
-function hasBodyOrigin(body: SourceBody): body is OriginAttachedBody {
-    return Object.hasOwn(body, bodyOriginBrand);
+function hasBodyOrigin(body: unknown): body is OriginAttachedBody {
+    return typeof body === 'function' && Object.hasOwn(body, bodyOriginBrand);
 }
 
-export function readTestBodyOrigin(body: SourceBody): TestBodyOrigin | null {
+export function readTestBodyOrigin(body: unknown): TestBodyOrigin | null {
     return hasBodyOrigin(body) ? body[bodyOriginBrand] : null;
 }
 
@@ -103,24 +132,35 @@ type FamilyAttachedBody<Body, Definition> = Body & {
 };
 
 function hasTestBodyFamily(value: unknown): value is FamilyAttachedBody<unknown, unknown> {
-    return typeof value === 'function' && Object.hasOwn(value, testBodyFamilyBrand);
+    return (typeof value === 'function' || isBodyReference(value)) && Object.hasOwn(value, testBodyFamilyBrand);
 }
 
 export function readTestBodyFamily(value: unknown): TestBodyFamilyAttachment<unknown> | null {
     return hasTestBodyFamily(value) ? value[testBodyFamilyBrand] : null;
 }
 
-export function attachTestBodyFamily<Body extends (scope: never) => unknown, Definition>(
+export function withReferencedBodyFamily<Body extends BodyReference<never, unknown>, Definition>(
     body: Body,
     attachment: TestBodyFamilyAttachment<Definition>
 ): FamilyAttachedBody<Body, Definition> {
-    if (typeof body !== 'function') {
+    return { ...body, [testBodyFamilyBrand]: Object.freeze({ ...attachment }) };
+}
+export function attachTestBodyFamily<Body extends ImplementationCarrier, Definition>(
+    body: Body,
+    attachment: TestBodyFamilyAttachment<Definition>
+): FamilyAttachedBody<Body, Definition> {
+    if (typeof body !== 'function' && !isBodyReference(body)) {
         throw new TypeError('Test body family metadata requires a body function.');
     }
     if (hasTestBodyFamily(body)) {
         throw new TypeError('Test body already has family metadata.');
     }
-    return Object.assign(body, { [testBodyFamilyBrand]: Object.freeze({ ...attachment }) });
+    if (isBodyReference(body)) {
+        return withReferencedBodyFamily(body, attachment);
+    }
+    return Object.assign(body, {
+        [testBodyFamilyBrand]: Object.freeze({ ...attachment })
+    });
 }
 
 export function forwardTestBodyFamily<Body extends (scope: never) => unknown>(
@@ -158,7 +198,7 @@ type WorkloadResolvedBody<Body> = Body & {
 };
 
 function hasWorkloadResolver<Body>(body: Body): body is WorkloadResolvedBody<Body> {
-    return typeof body === 'function' && Object.hasOwn(body, workloadResolverBrand);
+    return (typeof body === 'function' || isBodyReference(body)) && Object.hasOwn(body, workloadResolverBrand);
 }
 
 export function attachTestBodyWorkloadResolver<Body>(
@@ -173,23 +213,39 @@ export function resolveTestBodyWorkload<Body>(body: Body, workload: WorkloadInpu
     return hasWorkloadResolver(body) ? body[workloadResolverBrand](workload) : body;
 }
 
-export function forwardTestBodyResources<Scope, Result>(
-    source: (scope: Scope) => Result,
-    forward: (body: (scope: Scope) => Result) => (scope: Scope) => Result
-): (scope: Scope) => Result {
-    const body = forward(source);
+function forwardBodyDescriptors(source: ImplementationCarrier, body: ImplementationCarrier): void {
     for (const symbol of Object.getOwnPropertySymbols(source)) {
         const descriptor = Object.getOwnPropertyDescriptor(source, symbol);
         if (symbol !== workloadResolverBrand && descriptor !== undefined) {
             Object.defineProperty(body, symbol, descriptor);
         }
     }
+}
+
+export function forwardTestBodyResources<Scope, Result>(
+    source: (scope: Scope) => Result,
+    forward: (body: (scope: Scope) => Result) => (scope: Scope) => Result
+): (scope: Scope) => Result;
+export function forwardTestBodyResources<Scope, Result>(
+    source: BodyReference<Scope, Result>,
+    forward: (body: (scope: Scope) => Result) => (scope: Scope) => Result
+): BodyReference<Scope, Result>;
+export function forwardTestBodyResources<Scope, Result>(
+    source: BodyImplementation<Scope, Result>,
+    forward: (body: (scope: Scope) => Result) => (scope: Scope) => Result
+): BodyImplementation<Scope, Result>;
+export function forwardTestBodyResources<Scope, Result>(
+    source: BodyImplementation<Scope, Result>,
+    forward: (body: (scope: Scope) => Result) => (scope: Scope) => Result
+): BodyImplementation<Scope, Result> {
+    const body = isBodyReference(source) ? mapBodyReference(source, forward) : forward(source);
+    forwardBodyDescriptors(source, body);
     if (hasWorkloadResolver(source)) {
         attachTestBodyWorkloadResolver(body, function resolveForwardedBody(workload) {
             return forwardTestBodyResources(resolveTestBodyWorkload(source, workload), forward);
         });
     }
-    return forwardTestBodyOrigin(source, body);
+    return isBodyReference(body) ? body : forwardTestBodyOrigin(source, body);
 }
 
 export type PropertyBodyExecution<Body> = {

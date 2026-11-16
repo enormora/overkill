@@ -1,12 +1,6 @@
 import { createStoredValue } from '../stored-value.ts';
 import { debugBodyStarted, debugBodyCompleted } from './test-debug-recording.ts';
-import type { PerTestResult, RunnerError } from './run-result.ts';
-
-export type ExecutedCase = {
-    readonly result: PerTestResult;
-    readonly runnerErrors: readonly RunnerError[];
-    readonly durationMicroseconds: number;
-};
+import type { ExecutedCase } from './run-result.ts';
 
 type CaseBodyCompletion<Value> = {
     readonly kind: 'interrupted';

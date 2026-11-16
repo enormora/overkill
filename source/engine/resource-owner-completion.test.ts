@@ -11,9 +11,9 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { defineResource, withResource } from '../packages/test/resources.entry-point.ts';
 import { createResourceLifecycleRuntimePolicy } from '../run/resource-lifecycle.ts';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { createExecute } from './execution.ts';
 import { createReporterDispatcher } from './reporter-dispatcher.ts';
-import { withRunnerInfrastructure } from './execution-observation.ts';
 
 function ignoreOutput(): void {
     return undefined;

@@ -145,6 +145,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(structuredClone<unknown>(resolvedRun.facts), {
                     family: { id: 'microtest', version: '1', settings: null, preparation: null, collection: null },
                     adapter: null,
+                    implementations: null,
                     cases: [
                         expectedCase
                     ],
@@ -362,6 +363,7 @@ export const testNode = createOverkillSuite({
                     {
                         family: { id: 'microtest', version: '1', settings: null, preparation: null, collection: null },
                         adapter: null,
+                        implementations: null,
                         cases: [
                             expectedCase
                         ],

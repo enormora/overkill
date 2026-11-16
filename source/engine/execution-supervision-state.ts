@@ -1,18 +1,17 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Clock } from '@enormora/clock';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { createBoundaryFailureArtifact, type BoundaryFailure } from './run-artifact.ts';
 import {
     boundaryArtifacts,
     currentProcessUsageSamplingInterval,
-    recordBoundaryArtifact,
-    withRunnerInfrastructure
+    recordBoundaryArtifact
 } from './execution-observation.ts';
 import { currentCaseExecutionLifecycle, type CaseExecutionLifecycle } from './case-execution-lifecycle.ts';
-import type { PerTestResult, RunnerError } from './run-result.ts';
+import type { PerTestResult, RunnerError, ExecutedCase } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 import type { AttemptId, WorkId } from './identity.ts';
-import type { ExecutedCase } from './case-interruption.ts';
 
 export function scheduleSupervisionTimeout(
     wallClock: Clock,

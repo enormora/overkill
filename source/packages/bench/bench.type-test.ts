@@ -4,17 +4,18 @@ import * as standard from '../test/bench.entry-point.ts';
 import * as bench from './bench.entry-point.ts';
 
 const parameterValue = 3;
+declare const referencedBody: ordinary.BodyReference;
 
 type TestCallSignatures = {
     (
         ...input: readonly [definition: {
             readonly annotations?: bench.AuthoringAnnotations;
-            readonly body: bench.TestBody;
+            readonly body: bench.TestBody | ordinary.BodyReference;
             readonly controls?: bench.AuthoringControls;
             readonly title: string;
         }]
     ): bench.TestCase;
-    (...input: readonly [title: string, body: bench.TestBody]): bench.TestCase;
+    (...input: readonly [title: string, body: bench.TestBody | ordinary.BodyReference]): bench.TestCase;
 };
 type SkippedTestCallSignatures = {
     (
@@ -50,6 +51,8 @@ describe('@overkill-dev/bench', function () {
     });
     test('preserves object and positional overloads', function () {
         expect<typeof bench.test>().type.toBe<TestCallSignatures>();
+        expect(bench.test).type.toBeCallableWith('referenced', referencedBody);
+        expect(bench.test).type.toBeCallableWith({ title: 'referenced', body: referencedBody });
         expect<typeof bench.skippedTest>().type.toBe<SkippedTestCallSignatures>();
         expect<typeof bench.suite>().type.toBe<SuiteCallSignatures>();
     });

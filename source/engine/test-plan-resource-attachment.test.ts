@@ -2,10 +2,10 @@ import {
     attachTestBodyResourceAttachments,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
+    type TestBody,
     type TestBodyResourceAttachments
 } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
-import type { TestCaseOptions } from './test-node.ts';
 
 function plainDataShape(value: unknown): unknown {
     const { parse } = JSON;
@@ -32,7 +32,7 @@ function resourceAttachments(): TestBodyResourceAttachments {
     };
 }
 
-function attachedBody(attachments: TestBodyResourceAttachments): TestCaseOptions['body'] {
+function attachedBody(attachments: TestBodyResourceAttachments): TestBody {
     return attachTestBodyResourceAttachments(function resourceAttachedBody(testScope) {
         testScope.assert.true(true);
 

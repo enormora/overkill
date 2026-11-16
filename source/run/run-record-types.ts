@@ -4,7 +4,7 @@ import type { RuntimeId, WorkId } from '../engine/identity.ts';
 import type { RunnerError, RunResult } from '../engine/run-result.ts';
 import type { SerializedValue } from '../compare/serialized-value.ts';
 import type { CoveragePolicy, LoaderConfig, ProfileConfig } from '../config/types.ts';
-import type { currentRunRecordVersion, previousRunRecordVersion } from './run-record-format.ts';
+import type { currentRunRecordVersion, previousRunRecordVersion, familyRunRecordVersion } from './run-record-format.ts';
 import type { RunRecordArtifact, RunRecordTestAttempt, RunRecordTestOutcome } from './run-record-outcomes.ts';
 import type { PlacementTrace } from './placement-trace.ts';
 import type { RunEngineFacts, RunEnvironmentFacts, RunFacts, RunRequest, CollectedRunPlan } from './run-types.ts';
@@ -70,10 +70,17 @@ type ReplayableRecordFormat<Version extends number> = {
     readonly replayProfile: unknown;
     readonly replayWitness: WitnessFile | null;
 };
-type LegacyRecordFormat = ReplayableRecordFormat<typeof previousRunRecordVersion> | { readonly version: 1; };
+type LegacyRecordFormat = ReplayableRecordFormat<typeof previousRunRecordVersion> | {
+    readonly version: 1;
+};
 type CurrentRecordFormat = ReplayableRecordFormat<typeof currentRunRecordVersion>;
 type CurrentRecordInputs = CurrentRecordFormat & RunRecordInputs<RunFacts>;
-type LegacyRecordInputs = LegacyRecordFormat & RunRecordInputs<Except<RunFacts, 'family'>>;
+type HistoricalFamilyFacts = Except<RunFacts, 'implementations'>;
+type FamilyRecordFormat = ReplayableRecordFormat<typeof familyRunRecordVersion>;
+type HistoricalFamilyRecord = FamilyRecordFormat & RunRecordInputs<HistoricalFamilyFacts>;
+type LegacyFacts = Except<RunFacts, 'family' | 'implementations'>;
+type LegacyPlainRecord = LegacyRecordFormat & RunRecordInputs<LegacyFacts>;
+type LegacyRecordInputs = HistoricalFamilyRecord | LegacyPlainRecord;
 type VersionedRecordInputs = CurrentRecordInputs | LegacyRecordInputs;
 
 type CompletedRunRecord = VersionedRecordInputs & {
@@ -106,7 +113,13 @@ type MergedRunFields = {
 
 type MergedLifecycle = { readonly status: 'completed'; } | { readonly status: 'interrupted' | 'started'; };
 export type MergedRunRecord = MergedLifecycle & MergedRunFields;
-type LegacyMergedRunRecord = Except<MergedRunRecord, 'facts' | 'version'> & {
+type LegacyMergedFields = Except<MergedRunRecord, 'facts' | 'version'>;
+type LegacyMergedWithoutFamily = LegacyMergedFields & {
     readonly version: typeof previousRunRecordVersion;
-    readonly facts: Except<RunFacts, 'family'>;
+    readonly facts: Except<RunFacts, 'family' | 'implementations'>;
 };
+type HistoricalFamilyMerge = LegacyMergedFields & {
+    readonly version: typeof familyRunRecordVersion;
+    readonly facts: Except<RunFacts, 'implementations'>;
+};
+type LegacyMergedRunRecord = HistoricalFamilyMerge | LegacyMergedWithoutFamily;

@@ -22,6 +22,8 @@ const defaultRunSeed = 0n;
 type IsolatedCommandEngine = Exclude<RunCommand['engine'], { readonly kind: 'instance'; }>;
 
 type SupervisedCommandBase = {
+    readonly implementations: SupervisedRunCommand['implementations'];
+    readonly implementationContext: SupervisedRunCommand['implementationContext'];
     readonly snapshots: SupervisedRunCommand['snapshots'];
     readonly benchmarkNormalization: SupervisedRunCommand['benchmarkNormalization'];
     readonly benchmarkGarbageCollection: SupervisedRunCommand['benchmarkGarbageCollection'];
@@ -152,6 +154,8 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
         snapshots: currentSnapshotRun(),
         collectionTimeoutMilliseconds: input.profile.timeouts.collectionMilliseconds,
         cwd: input.command.cwd,
+        implementationContext: { projectRoot: input.projectRoot },
+        implementations: null,
         definitionLocationCapture: input.definitionLocationCapture,
         engine: isolatedEngine(input.command),
         hardTimeoutMilliseconds: input.profile.timeouts.hardMilliseconds,
@@ -255,6 +259,8 @@ export function createWorkerPoolCommand(
         retryPolicy: input.profile.testFamily === 'integration' ? input.profile.retries : null,
         collectionTimeoutMilliseconds: input.profile.timeouts.collectionMilliseconds,
         cwd: input.command.cwd,
+        implementationContext: { projectRoot: input.projectRoot },
+        implementations: null,
         definitionLocationCapture: input.definitionLocationCapture,
         engine: isolatedEngine(input.command),
         hardTimeoutMilliseconds: input.profile.timeouts.hardMilliseconds,

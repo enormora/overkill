@@ -3,6 +3,7 @@ package-smoke-packages := '@overkill-dev/eslint-test,@overkill-dev/linearizabili
 eslint-smoke-packages := '@overkill-dev/eslint-test,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/property,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run'
 mutation-smoke-packages := '@overkill-dev/engine,@overkill-dev/run,@overkill-dev/stryker-runner,@overkill-dev/reporter-line'
 packtory-node-options := '--max-old-space-size-percentage=75'
+eslint-node-options := '--max-old-space-size-percentage=75'
 
 default:
     @just --list
@@ -15,7 +16,7 @@ benchmark-html-browser:
     node build-benchmark-html.js
 
 eslint *OPTIONS:
-    eslint . --cache --cache-location './target/.eslintcache' --cache-strategy content --max-warnings 0 {{OPTIONS}}
+    NODE_OPTIONS="${NODE_OPTIONS:-} {{eslint-node-options}}" eslint . --cache --cache-location './target/.eslintcache' --cache-strategy content --max-warnings 0 {{OPTIONS}}
 
 eslint-fix: (eslint '--fix')
 

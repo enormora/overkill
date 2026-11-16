@@ -50,6 +50,7 @@ function planningInput(): PlanningInput {
         throw new Error('Missing benchmark files.');
     }
     return {
+        projectRoot: '/project',
         benchmarkHost: quietHost(),
         collectedPlan: { ...collectedPlan, discoveredFiles: collectedPlan.files },
         dependencies: { ...fakeWorkerPoolRuntimeDependencies(), availableParallelism: 8 },

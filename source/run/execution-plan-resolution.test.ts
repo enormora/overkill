@@ -32,6 +32,8 @@ function collectedCase(
     suitePath: CollectedRunPlan['files'][number]['cases'][number]['suitePath']
 ): CollectedRunPlan['files'][number]['cases'][number] {
     return {
+        implementationDeclaration: null,
+
         skipReason: null,
         property: null,
         benchmark: null,
@@ -49,6 +51,8 @@ function collectedCase(
 
 function createCollectedPlan(): CollectedRunPlan {
     return {
+        implementations: null,
+
         family: null,
         defined: 2,
         discoveredFiles: [],
@@ -241,6 +245,7 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const error = await captureAsyncPlanError(async function resolveIncompatiblePlan() {
                     await createCollectedExecutionPlan({
+                        projectRoot: '/project',
                         benchmarkHost: null,
                         collectedPlan: createResourcePlan('projected', true, 'per-run'),
                         dependencies: fakeWorkerPoolRuntimeDependencies(),

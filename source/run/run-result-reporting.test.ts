@@ -29,6 +29,8 @@ const pending: PerTestResult = {
     } ]
 };
 const emptyPlan: CollectedRunPlan = {
+    implementations: null,
+
     family: null,
     defined: 0,
     discoveredFiles: [],

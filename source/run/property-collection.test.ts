@@ -48,7 +48,10 @@ function integrationPropertyBody(): TestBody {
         test: unexpectedBody
     }))
         .cases[0];
-    if (selected.execution.kind !== 'body' || selected.execution.bodyMode !== 'property') {
+    if (
+        selected.execution.kind !== 'body' || selected.execution.bodyMode !== 'property' ||
+        typeof selected.execution.body !== 'function'
+    ) {
         throw new TypeError('Expected an executable property.');
     }
     return selected.execution.body;

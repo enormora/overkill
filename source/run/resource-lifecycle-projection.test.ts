@@ -1,3 +1,4 @@
+import { z } from 'zod/v4';
 import { runIfMain } from '#test-runner';
 import {
     createSuite as createOverkillSuite,
@@ -31,6 +32,33 @@ export const testNode = createOverkillSuite({
     ...testCaseMetadata,
     title: 'source/run/resource-lifecycle-projection.test.ts',
     children: [
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'resource lifecycle projection preserves null payloads',
+            body(scope: OverkillScope) {
+                const projected = defineResource({
+                    name: 'null-projection',
+                    scope: 'per-run',
+                    requirements: [],
+                    dispose: null,
+                    acquire() {
+                        return 'owner';
+                    },
+                    serializeHandle() {
+                        return null;
+                    },
+                    deserializeHandle() {
+                        return 'consumer';
+                    }
+                });
+                scope.assert.deepEqual(
+                    z.strictObject({ payload: z.null() }).parse(serializeProjectedHandle(projected, 'owner', {})),
+                    { payload: null }
+                );
+                scope.assert.equal(projectedHandle(projected, 'owner', {}), 'consumer');
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             ...testCaseMetadata,
             title: 'resource lifecycle projection preserves local resources',

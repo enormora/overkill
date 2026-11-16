@@ -1,3 +1,5 @@
+import { resourceReferenceCallbacks } from '../resources/resource-reference-binding.ts';
+import { snapshotPortableValue } from '../portable-value.ts';
 import { resourceAttachments } from '../packages/resources/attachment-context.entry-point.ts';
 import type {
     AnyResourceDefinition,
@@ -12,6 +14,8 @@ type ResourceProjectionRecord = {
     readonly boundaryKey: string;
     readonly payload: ResourceProjectionPayload;
 };
+
+type SerializedProjection = { readonly payload: ResourceProjectionPayload; };
 
 export type ResourceProjectionRecords = {
     readonly resources: readonly ResourceProjectionRecord[];
@@ -28,28 +32,11 @@ type ProjectedResourceDefinition = AnyResourceDefinition & {
     ) => ResourceProjectionPayload;
 };
 
-function isProjectionScalar(value: unknown): value is ResourceProjectionPayload {
-    return value === null ||
-        typeof value === 'string' ||
-        typeof value === 'boolean' ||
-        typeof value === 'number' && Number.isFinite(value);
-}
-
-function isProjectionObject(value: unknown): value is Readonly<Record<string, unknown>> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isProjectionPayload(value: unknown): value is ResourceProjectionPayload {
-    if (isProjectionScalar(value)) {
-        return true;
-    }
-
-    if (Array.isArray(value)) {
-        return value.every(isProjectionPayload);
-    }
-
-    return isProjectionObject(value) &&
-        Object.values(value).every(isProjectionPayload);
+type ConsumerResource = AnyResourceDefinition & {
+    readonly deserializeHandle: ProjectedResourceDefinition['deserializeHandle'];
+};
+function hasConsumerProjection(resource: AnyResourceDefinition): resource is ConsumerResource {
+    return typeof resource.deserializeHandle === 'function';
 }
 
 function resourceHasProjection(resource: AnyResourceDefinition): resource is ProjectedResourceDefinition {
@@ -62,14 +49,15 @@ export function deserializeProjectedHandle(
     payload: ResourceProjectionPayload,
     dependencyContext: ResourceContext<ResourceMap>
 ): unknown {
-    if (!resourceHasProjection(resource)) {
+    const resolved = resourceReferenceCallbacks(resource);
+    if (!hasConsumerProjection(resolved)) {
         throw resourceWrapperLifecycleError(
             `Resource "${resource.name}" requires a projection for worker-pool per-run ownership.`,
             resource
         );
     }
 
-    return resource.deserializeHandle(payload, {
+    return resolved.deserializeHandle(snapshotPortableValue(payload), {
         attachments: resourceAttachments(resource.name),
         dependencies: dependencyContext
     });
@@ -79,22 +67,23 @@ export function serializeProjectedHandle(
     resource: AnyResourceDefinition,
     ownerHandle: unknown,
     dependencyContext: ResourceContext<ResourceMap>
-): ResourceProjectionPayload | null {
-    if (!resourceHasProjection(resource)) {
+): SerializedProjection | null {
+    const resolved = resourceReferenceCallbacks(resource);
+    if (!resourceHasProjection(resolved)) {
         return null;
     }
 
     const context = { attachments: resourceAttachments(resource.name), dependencies: dependencyContext };
-    const payload = resource.serializeHandle(ownerHandle, context);
+    const payload = resolved.serializeHandle(ownerHandle, context);
 
-    if (!isProjectionPayload(payload)) {
+    try {
+        return { payload: snapshotPortableValue(payload) };
+    } catch (error: unknown) {
         throw resourceWrapperLifecycleError(
             `Resource "${resource.name}" returned a non-JSON projection payload.`,
-            payload
+            error
         );
     }
-
-    return payload;
 }
 
 export function projectedHandle(
@@ -106,5 +95,5 @@ export function projectedHandle(
 
     return payload === null
         ? ownerHandle
-        : deserializeProjectedHandle(resource, payload, dependencyContext);
+        : deserializeProjectedHandle(resource, payload.payload, dependencyContext);
 }

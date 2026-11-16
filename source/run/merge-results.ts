@@ -1,5 +1,6 @@
 import { ulid } from 'ulid';
 import { createClock } from '@enormora/clock';
+import { mergeImplementationCatalogs } from '../implementation-catalog.ts';
 import type { MergedRecordOutcome } from './merged-record-session.ts';
 import { assessMergeSources } from './merge-results-assessment.ts';
 import { serializeRunDiagnostics } from './run-record-result.ts';
@@ -24,6 +25,9 @@ async function aggregateMergeResults(command: MergeResultsCommand): Promise<Merg
         startedAt,
         facts: {
             ...record.facts,
+            implementations: mergeImplementationCatalogs(sources.map(function catalog(source) {
+                return source.record.facts.implementations;
+            })),
             cases: sources.flatMap(function cases(source) {
                 return source.record.facts.cases;
             }),

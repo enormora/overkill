@@ -97,6 +97,7 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
     }
 
     const {
+        implementations,
         benchmarkPlacement,
         durationHistory,
         hostProcess,
@@ -106,7 +107,7 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
         workerCount,
         recordedFacts
     } = await createCollectedExecutionPlan(input);
-    const plannedCollectedPlan = collectedRunPlanFromEntries(input.collectedPlan, orderedCases);
+    const plannedCollectedPlan = { ...collectedRunPlanFromEntries(input.collectedPlan, orderedCases), implementations };
     const facts = freezeValue({
         ...propertyReplayContext(input.command),
         ...createRunFacts({
@@ -130,6 +131,7 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
             scheduling,
             workerCount
         }),
+        implementations,
         ...input.collectedPlan.family === null ? {} : { family: input.collectedPlan.family.facts },
         ...recordedFacts === null ? {} : { reproducibility: recordedFacts.reproducibility }
     });

@@ -13,6 +13,7 @@ function differencePath(expected: CollectedRunPlan, actual: CollectedRunPlan): s
 
 function normalizedCollectedPlan(plan: CollectedRunPlan): CollectedRunPlan {
     return {
+        implementations: plan.implementations,
         family: plan.family,
         defined: plan.defined,
         discoveredFiles: structuredClone(plan.discoveredFiles),

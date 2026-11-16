@@ -1,4 +1,6 @@
+import type { ImplementationInputContext } from '../implementation-reference.ts';
 import type { WorkloadInput } from '../engine/workload-input.ts';
+import { startResourceReferenceSession } from './resource-reference-session.ts';
 import { hasWorkloadInput } from './resource-workload-types.ts';
 import {
     isDefinedRuntime,
@@ -33,7 +35,7 @@ const runtimeResourceAcquisitionContext = {
     fallbackResourceName: 'runtime'
 };
 
-export type StartRuntimeRequest<Runtime extends RuntimeDefinition> = {
+type RuntimeInput<Runtime extends RuntimeDefinition> = {
     readonly runtime: Runtime;
     readonly signal: AbortSignal;
     readonly workload: WorkloadInput;
@@ -41,6 +43,9 @@ export type StartRuntimeRequest<Runtime extends RuntimeDefinition> = {
     readonly runtime: Runtime;
     readonly signal: AbortSignal;
 };
+
+type RootedRuntime<Runtime extends RuntimeDefinition> = ImplementationInputContext & RuntimeInput<Runtime>;
+export type StartRuntimeRequest<Runtime extends RuntimeDefinition> = RootedRuntime<Runtime> | RuntimeInput<Runtime>;
 
 export type RuntimeSessionDisposalContext = {
     readonly signal: AbortSignal;
@@ -177,22 +182,9 @@ async function disposeRuntimeResources(
     }
 }
 
-function runtimeSession<Runtime extends RuntimeDefinition>(
-    context: RuntimeContext<Runtime>,
-    acquisition: Awaited<ReturnType<typeof acquireResourceGraph>>
+function disposableRuntimeSession<Runtime extends RuntimeDefinition>(
+    session: RuntimeSessionBase<Runtime>
 ): RuntimeSession<Runtime> {
-    let disposal: Promise<void> | null = null;
-    const session = {
-        context,
-        async disposeOnce(disposalContext: RuntimeSessionDisposalContext): Promise<void> {
-            if (disposal === null) {
-                disposal = disposeRuntimeResources(acquisition, disposalContext.signal);
-            }
-
-            await disposal;
-        }
-    };
-
     Object.defineProperty(session, runtimeAsyncDisposeSymbol(), {
         value: async function disposeRuntimeWithInternalSignal(): Promise<void> {
             await session.disposeOnce({ signal: internalDisposalSignal() });
@@ -209,11 +201,50 @@ function runtimeSession<Runtime extends RuntimeDefinition>(
     ], session);
 }
 
+function runtimeSession<Runtime extends RuntimeDefinition>(
+    context: RuntimeContext<Runtime>,
+    acquisition: Awaited<ReturnType<typeof acquireResourceGraph>>
+): RuntimeSession<Runtime> {
+    let disposal: Promise<void> | null = null;
+    const session = {
+        context,
+        async disposeOnce(disposalContext: RuntimeSessionDisposalContext): Promise<void> {
+            if (disposal === null) {
+                disposal = disposeRuntimeResources(acquisition, disposalContext.signal);
+            }
+
+            await disposal;
+        }
+    };
+
+    return disposableRuntimeSession<Runtime>(session);
+}
+
+function hasRuntimeProjectRoot<Runtime extends RuntimeDefinition>(
+    request: StartRuntimeRequest<Runtime>
+): request is ImplementationInputContext & StartRuntimeRequest<Runtime> {
+    return Object.hasOwn(request, 'projectRoot');
+}
 export async function startRuntime<Runtime extends RuntimeDefinition>(
     request: StartRuntimeRequest<Runtime>
 ): Promise<RuntimeSession<Runtime>> {
     assertRuntimeDefinition(request.runtime);
     const resources = boundRuntimeResources(request.runtime);
+    if (hasRuntimeProjectRoot(request)) {
+        return await startResourceReferenceSession({
+            resources,
+            context: { projectRoot: request.projectRoot },
+            signal: request.signal,
+            async start() {
+                return await startRuntime<Runtime>(
+                    hasWorkloadInput(request)
+                        ? { runtime: request.runtime, signal: request.signal, workload: request.workload }
+                        : { runtime: request.runtime, signal: request.signal }
+                );
+            },
+            finish: disposableRuntimeSession<Runtime>
+        });
+    }
     const acquisition = await acquireResourceGraph({
         resources,
         signal: request.signal,

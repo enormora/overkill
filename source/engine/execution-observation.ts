@@ -1,38 +1,20 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import {
+    currentExecutionOwner,
+    withExecutionOwner,
+    type ObservationLifetime,
+    type RunOwner,
+    type AttemptOwner,
+    type ObservationOwner
+} from '../execution-ownership.ts';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { withSerializationBudget } from '../compare/serialization-context.ts';
 import { type TestDebugArtifact, artifactsForAttempt, type BoundaryFailureArtifact } from './run-artifact.ts';
 import { defaultFailureArtifactPolicy, type FailureArtifactPolicy } from './failure-artifact-policy.ts';
 
-import type { AttemptId, CaseId, WorkId } from './identity.ts';
+import type { AttemptId, WorkId } from './identity.ts';
 import type { RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
-
-type ObservationLifetime = {
-    readonly open: () => boolean;
-    readonly close: () => void;
-    readonly register: (dispose: () => void) => () => void;
-};
-
-type RunOwner = ObservationLifetime & { readonly identity: symbol; };
-type AttemptOwner = ObservationLifetime & {
-    readonly identity: symbol;
-    readonly caseId: CaseId;
-    readonly workId: WorkId;
-    readonly attempt: AttemptId;
-};
-
-type ObservationOwner = {
-    readonly kind: 'attempt';
-    readonly run: RunOwner;
-    readonly attempt: AttemptOwner;
-} | {
-    readonly kind: 'infrastructure';
-    readonly run: RunOwner | null;
-} | {
-    readonly kind: 'run';
-    readonly run: RunOwner;
-};
 
 export type ExecutionObservation = {
     readonly accepts: () => boolean;
@@ -48,24 +30,6 @@ export type ExecutionObservation = {
     ) => Promise<Value>;
     readonly stop: () => void;
 };
-
-const observationKey = Symbol.for('@overkill-dev/engine/executionObservation');
-
-function isObservationStorage(value: unknown): value is AsyncLocalStorage<ObservationOwner> {
-    return value instanceof AsyncLocalStorage;
-}
-
-function sharedObservationStorage(): AsyncLocalStorage<ObservationOwner> {
-    const existing: unknown = Reflect.get(globalThis, observationKey);
-    if (isObservationStorage(existing)) {
-        return existing;
-    }
-    const created = new AsyncLocalStorage<ObservationOwner>();
-    Reflect.set(globalThis, observationKey, created);
-    return created;
-}
-
-const ownership = sharedObservationStorage();
 
 function disposeObservations(disposers: readonly (() => void)[]): void {
     const errors: unknown[] = [];
@@ -114,33 +78,6 @@ function createRunOwner(): RunOwner {
     return { ...createLifetime(), identity: Symbol('execution run') };
 }
 
-export function observingInfrastructure(): boolean {
-    return ownership.getStore()?.kind === 'infrastructure';
-}
-
-export function currentAttemptIdentity(): symbol | null {
-    const owner = ownership.getStore();
-    if (owner?.kind !== 'attempt' || !owner.run.open() || !owner.attempt.open()) {
-        return null;
-    }
-    const identity: unknown = Reflect.get(owner.attempt, 'identity');
-    return typeof identity === 'symbol' ? identity : null;
-}
-
-export function registerExecutionDisposal(dispose: () => void): () => void {
-    const run = ownership.getStore()?.run;
-    if (run === null || run === undefined) {
-        return function unregisterUnownedDisposal() {
-            return undefined;
-        };
-    }
-    return run.register(dispose);
-}
-
-export function withRunnerInfrastructure<Value>(operation: () => Value): Value {
-    return ownership.run({ kind: 'infrastructure', run: ownership.getStore()?.run ?? null }, operation);
-}
-
 function closeFailedObservation(run: RunOwner, error: unknown): never {
     try {
         run.close();
@@ -153,13 +90,13 @@ function closeFailedObservation(run: RunOwner, error: unknown): never {
 }
 
 export async function withExecutionObservation<Value>(operation: () => Promise<Value>): Promise<Value> {
-    const current = ownership.getStore();
+    const current = currentExecutionOwner();
     if (current?.kind === 'run' && current.run.open()) {
         return await operation();
     }
     const run = createRunOwner();
     try {
-        const result = await ownership.run({ kind: 'run', run }, operation);
+        const result = await withExecutionOwner({ kind: 'run', run }, operation);
         run.close();
         return result;
     } catch (error: unknown) {
@@ -186,7 +123,7 @@ function lateObservation(
 }
 
 function attributeObservation(error: RunnerError, run: RunOwner): RunnerError {
-    const owner = ownership.getStore();
+    const owner = currentExecutionOwner();
     if (owner?.kind === 'attempt') {
         if (!owner.run.open() || !owner.attempt.open()) {
             return lateObservation(error, owner);
@@ -223,7 +160,7 @@ async function runOwnedAttempt<Value>(
     attempt: AttemptId,
     operation: () => Promise<Value>
 ): Promise<Value> {
-    const current = ownership.getStore();
+    const current = currentExecutionOwner();
     if (
         current?.kind === 'attempt' && current.run === run && current.attempt.open() &&
         matchesAttempt(current.attempt, testCase, attempt)
@@ -238,14 +175,14 @@ async function runOwnedAttempt<Value>(
         attempt
     };
     try {
-        return await ownership.run({ kind: 'attempt', run, attempt: owner }, operation);
+        return await withExecutionOwner({ kind: 'attempt', run, attempt: owner }, operation);
     } finally {
         owner.close();
     }
 }
 
 export function createExecutionObservation(): ExecutionObservation {
-    const current = ownership.getStore();
+    const current = currentExecutionOwner();
     const inherited = current?.kind === 'run' && current.run.open();
     const run = inherited ? current.run : createRunOwner();
     const lifetime = createLifetime();
@@ -253,10 +190,10 @@ export function createExecutionObservation(): ExecutionObservation {
     return {
         open: lifetime.open,
         accepts() {
-            return lifetime.open() && ownsObservation(run, ownership.getStore());
+            return lifetime.open() && ownsObservation(run, currentExecutionOwner());
         },
         hasActiveAttempt() {
-            const owner = ownership.getStore();
+            const owner = currentExecutionOwner();
             return owner?.kind === 'attempt' && owner.run === run && owner.run.open() && owner.attempt.open();
         },
         attribute(error) {
@@ -264,7 +201,7 @@ export function createExecutionObservation(): ExecutionObservation {
         },
         register: lifetime.register,
         async run(operation) {
-            return await ownership.run({ kind: 'run', run }, operation);
+            return await withExecutionOwner({ kind: 'run', run }, operation);
         },
         async runAttempt(testCase, attempt, operation) {
             return await runOwnedAttempt(run, testCase, attempt, operation);

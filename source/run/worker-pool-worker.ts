@@ -1,23 +1,22 @@
-import { resolveDebugSelection } from './run-debug.ts';
-import { withReplayWire, wirePropertyCorpus } from './replay-wire.ts';
-import { createWorkerExecute } from './worker-execution-engine.ts';
 import {
     prepareLocalOwnerResources,
     withProjectedFailurePreparation,
     acquireWorkerRunResources,
     completeWorkerResourceOwnerWork,
-    createWorkerProcessUsageTracker,
     disposeWorkerLaneLifecycle,
     disposeWorkerRunResources,
     laneResourceSession
 } from './worker-pool-worker-resources.ts';
+import { resolveDebugSelection } from './run-debug.ts';
+import { withReplayWire, wirePropertyCorpus } from './replay-wire.ts';
+import { createWorkerExecute, createWorkerProcessUsageTracker } from './worker-execution-engine.ts';
 import {
     composeRunRuntimePolicies,
     createRunPermissionRuntimePolicy,
     engineExecution,
     runWithWorkerAttachments
 } from './run-support.ts';
-import { resolvedTestPlanDefinitionLocations } from './collected-run-plan.ts';
+import { withWorkerImplementations } from './worker-implementation-plan.ts';
 import {
     captureOutput,
     createWorkerPoolReporter,
@@ -41,7 +40,7 @@ import {
     collectTestPlan,
     createEmptyAssignmentResult,
     runObservedWorkerCollection,
-    selectedAssignedWork,
+    selectedWorkerPlan,
     sendCollectedPlan,
     type CollectedWorkerPoolTestPlan
 } from './worker-pool-worker-plan.ts';
@@ -107,9 +106,7 @@ async function runAssignment(
         workerId: workerPoolWorkerId()
     }, []);
     const startedAtMicroseconds = Number(wallClock.currentMonotonicMicroseconds);
-    const testPlan = resolvedTestPlanDefinitionLocations(
-        selectedAssignedWork(collectedPlan.testPlan, assignedUnit.work, task.workloadInputs)
-    );
+    const testPlan = selectedWorkerPlan(collectedPlan.testPlan, assignedUnit.work, task);
     const resourceSession = laneResourceSession(
         task,
         collectedPlan,
@@ -120,32 +117,38 @@ async function runAssignment(
         wallClock,
         'worker.assign-work',
         async function executeTimedWorkerAssignment() {
-            return await execute(testPlan, {
-                debug: resolveDebugSelection(task.command.debug, testPlan.cases),
-                seed: BigInt(task.command.seed),
-                execution: engineExecution(task.command.scheduling, task.command.maxConcurrency),
-                reporters: [ createWorkerPoolReporter(task) ],
-                failureArtifacts: task.command.failureArtifacts,
-                processUsageSamplingIntervalMilliseconds: task.command.processUsageSamplingIntervalMilliseconds,
-                retryPolicy: task.command.retryPolicy,
-                processBudgets: workerProcessBudgets(task.command),
-                processUsageTracker: createWorkerProcessUsageTracker(task.command),
-                runtimePolicy: composeRunRuntimePolicies(
-                    createRunPermissionRuntimePolicy(),
-                    withProjectedFailurePreparation(resourceSession.runtimePolicy, task)
-                ),
-                propertyRun: {
-                    corpus: wirePropertyCorpus(task.command.replay),
-                    seed: BigInt(task.command.seed),
-                    projectRoot: task.command.cwd
-                },
-                runFacts: {},
-                startedAt: startedAtIso(task.startedAtMilliseconds),
-                timeoutPolicy: {
-                    hardTimeoutMilliseconds: task.command.hardTimeoutMilliseconds,
-                    timeoutMilliseconds: task.command.timeoutMilliseconds
+            return await withWorkerImplementations(
+                `${task.lifecycle.token}:${task.lane}`,
+                testPlan,
+                async function executeAdmitted(resolved) {
+                    return await execute(resolved, {
+                        debug: resolveDebugSelection(task.command.debug, testPlan.cases),
+                        seed: BigInt(task.command.seed),
+                        execution: engineExecution(task.command.scheduling, task.command.maxConcurrency),
+                        reporters: [ createWorkerPoolReporter(task) ],
+                        failureArtifacts: task.command.failureArtifacts,
+                        processUsageSamplingIntervalMilliseconds: task.command.processUsageSamplingIntervalMilliseconds,
+                        retryPolicy: task.command.retryPolicy,
+                        processBudgets: workerProcessBudgets(task.command),
+                        processUsageTracker: createWorkerProcessUsageTracker(task.command),
+                        runtimePolicy: composeRunRuntimePolicies(
+                            createRunPermissionRuntimePolicy(),
+                            withProjectedFailurePreparation(resourceSession.runtimePolicy, task)
+                        ),
+                        propertyRun: {
+                            corpus: wirePropertyCorpus(task.command.replay),
+                            seed: BigInt(task.command.seed),
+                            projectRoot: task.command.cwd
+                        },
+                        runFacts: {},
+                        startedAt: startedAtIso(task.startedAtMilliseconds),
+                        timeoutPolicy: {
+                            hardTimeoutMilliseconds: task.command.hardTimeoutMilliseconds,
+                            timeoutMilliseconds: task.command.timeoutMilliseconds
+                        }
+                    });
                 }
-            });
+            );
         }
     );
     const completedAtMicroseconds = Number(wallClock.currentMonotonicMicroseconds);

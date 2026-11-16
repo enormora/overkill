@@ -730,13 +730,20 @@ before runner-owned imports. Artifact-only recording starts after collection
 identifies attachment scopes, before resources or cases execute. Reusable
 collection is read-only; each execution receives a fresh record ID.
 
-Version 2 records retain a bodyless replay plan and normalized profile policy
+Version 4 records retain portable implementation inputs, realm, version, and
+module/build/source-map identity. Executors revalidate this evidence before
+acquisition or case execution. Source code, input parsers, callbacks, and native
+handles are not record or dispatch payloads. Replay rejects implementation drift;
+merge checks overlapping module and input identities across shards.
+
+Versions 2 and 3 retain a bodyless replay plan and normalized profile policy
 alongside resolved facts before execution. They preserve collection counts,
 orphan metadata, selected identities, and case controls when execution is
 interrupted. Witness replay records retain their concrete input for subsequent replay.
 Reporter callbacks come from the current configuration. Version 1
 records remain readable by history; records without replay snapshots are unavailable
-for replay.
+for replay. Historical records do not gain implementation provenance when read.
+They can replay inline work, but cannot introduce referenced implementations.
 
 Required write failures fail the command. Completed records include reporter
 and cleanup errors; escaping exceptions leave interrupted records.
@@ -961,7 +968,7 @@ replayable source remain local. Workers validate the exact implementation versio
 normalized settings, preparation facts, and frozen catalog before execution.
 
 `RunFacts.family` retains preparation and selected collection facts. New records
-use version `3`; historical versions `1` and `2` remain inspectable without
+use version `4`; historical versions `1`, `2`, and `3` remain inspectable without
 importing family modules. Reproduction requires the recorded implementation
 version and compatible inputs. Changed implementations require a new run.
 
@@ -1024,7 +1031,7 @@ Real-time reporters receive no events or completion callbacks.
 
 Aggregate history is committed after reporting. Shards recorded for merging
 remain excluded. Reporter and persistence failures fail the aggregate. Merged
-records carry format version 2 and started/completed/interrupted lifecycle status.
+records carry format version 4 and started/completed/interrupted lifecycle status.
 
 Discovery and definition counts remain global; execution counts sum across
 shards. Timing durations represent cumulative shard time, not elapsed CI time.

@@ -1,3 +1,5 @@
+export { defineBodyReference } from '../engine/engine.entry-point.ts';
+export type { BodyReference } from '../engine/engine.entry-point.ts';
 export { matches } from '../doubles/doubles.entry-point.ts';
 export type { ArgumentMatcher } from '../doubles/doubles.entry-point.ts';
 export {

@@ -1,8 +1,11 @@
 import type { WorkloadInput } from '../engine/workload-input.ts';
 import { resourceAttachments } from '../attachments/attachment-context.ts';
+import { projectReferencedResourceHandle } from './resource-reference-projection.ts';
 import { hasWorkloadInput } from './resource-workload-types.ts';
 import { createWorkloadResourceBinding } from './resource-workload-binding.ts';
 import type {
+    ResourceSessionContract,
+    ResourceSessionDisposalContext as SessionDisposalContext,
     AnyResourceDefinition,
     Awaitable,
     ResourceContext,
@@ -49,16 +52,12 @@ type ResourceAcquisition = {
     readonly resource: (resource: AnyResourceDefinition) => Promise<unknown>;
     readonly start: (resource: AnyResourceDefinition) => Promise<unknown>;
 };
-type ResourceSessionBase<Resources extends ResourceDependencies> = {
-    readonly context: ResourceContext<Resources>;
-    readonly disposeOnce: (context: ResourceSessionDisposalContext) => Promise<void>;
-};
 const directResourceAcquisitionContext: ResourceAcquisitionContext = {
     acquisitionFailureMessage: 'Resource acquisition failed.',
     fallbackResourceName: 'resource'
 };
 
-export type StartResourcesRequest<Resources extends ResourceDependencies> = {
+type SessionInput<Resources extends ResourceDependencies> = {
     readonly resources: Resources;
     readonly signal: AbortSignal;
     readonly workload: WorkloadInput;
@@ -67,14 +66,12 @@ export type StartResourcesRequest<Resources extends ResourceDependencies> = {
     readonly signal: AbortSignal;
 };
 
-export type ResourceSessionDisposalContext = {
-    readonly signal: AbortSignal;
-};
+export type StartResourcesRequest<Graph extends ResourceDependencies> = RootedInput<Graph> | SessionInput<Graph>;
 
-export type ResourceSession<Resources extends ResourceDependencies> = AsyncDisposable & {
-    readonly context: ResourceContext<Resources>;
-    readonly disposeOnce: (context: ResourceSessionDisposalContext) => Promise<void>;
-};
+export type ResourceSessionDisposalContext = SessionDisposalContext;
+export type ResourceSession<Resources extends ResourceDependencies> = ResourceSessionContract<
+    ResourceContext<Resources>
+>;
 
 function acquiredDependencyHandles(
     dependencies: ResourceDependencies,
@@ -234,7 +231,10 @@ function createResourceAcquisition(
                     workload: null
                 });
                 ownerHandles.set(resource, ownerHandle);
-                const resourceHandle = exposeResourceHandle(resource, ownerHandle);
+                const resourceHandle = exposeResourceHandle(
+                    resource,
+                    projectReferencedResourceHandle(resource, ownerHandle, dependencies)
+                );
 
                 resourceHandles.set(resource, resourceHandle);
 
@@ -283,28 +283,6 @@ function resourceContext<Resources extends ResourceDependencies>(
     throw resourceLifecycleError('Resource context is incomplete.', [
         { cause: resources, phase: 'graph', resourceName: 'resource' }
     ], resources);
-}
-
-function internalDisposalSignal(): AbortSignal {
-    const controller = new AbortController();
-
-    return controller.signal;
-}
-
-export function runtimeAsyncDisposeSymbol(): symbol {
-    const value = Reflect.get(Symbol, 'asyncDispose');
-
-    if (typeof value !== 'symbol') {
-        throw new TypeError('Runtime does not provide Symbol.asyncDispose.');
-    }
-
-    return value;
-}
-
-function isResourceSession<Resources extends ResourceDependencies>(
-    session: ResourceSessionBase<Resources>
-): session is ResourceSession<Resources> {
-    return Reflect.has(session, runtimeAsyncDisposeSymbol());
 }
 
 function boundWorkloadResources(
@@ -360,9 +338,66 @@ export async function acquireResourceGraph<Resources extends ResourceDependencie
     };
 }
 
+type RootedInput<Resources extends ResourceDependencies> = SessionInput<Resources> & {
+    readonly projectRoot: string;
+};
+
+function hasProjectRoot<Resources extends ResourceDependencies>(
+    request: StartResourcesRequest<Resources>
+): request is RootedInput<Resources> {
+    return Object.hasOwn(request, 'projectRoot');
+}
+
+type DisposableSession<Resources extends ResourceDependencies> = {
+    readonly context: ResourceContext<Resources>;
+    readonly disposeOnce: (context: ResourceSessionDisposalContext) => Promise<void>;
+};
+
+export function runtimeAsyncDisposeSymbol(): symbol {
+    const value = Reflect.get(Symbol, 'asyncDispose');
+    if (typeof value !== 'symbol') {
+        throw new TypeError('Runtime does not provide Symbol.asyncDispose.');
+    }
+    return value;
+}
+
+function isResourceSession<Resources extends ResourceDependencies>(
+    session: DisposableSession<Resources>
+): session is ResourceSession<Resources> {
+    return Reflect.has(session, runtimeAsyncDisposeSymbol());
+}
+
+function disposableResourceSession<Resources extends ResourceDependencies>(
+    session: DisposableSession<Resources>
+): ResourceSession<Resources> {
+    Object.defineProperty(session, runtimeAsyncDisposeSymbol(), {
+        value: async function disposeResourcesWithInternalSignal(): Promise<void> {
+            const controller = new AbortController();
+            await session.disposeOnce({ signal: controller.signal });
+        }
+    });
+    if (!isResourceSession(session)) {
+        throw new TypeError('Resource session is incomplete.');
+    }
+    return Object.freeze(session);
+}
+
 export async function startResources<Resources extends ResourceDependencies>(
     request: StartResourcesRequest<Resources>
 ): Promise<ResourceSession<Resources>> {
+    if (hasProjectRoot(request)) {
+        const { startResourceReferenceSession } = await import('./resource-reference-session.ts');
+        return await startResourceReferenceSession({
+            finish: disposableResourceSession,
+            resources: request.resources,
+            context: { projectRoot: request.projectRoot },
+            signal: request.signal,
+            async start() {
+                const { projectRoot: _projectRoot, ...local } = request;
+                return await startResources(local);
+            }
+        });
+    }
     const acquisition = await acquireResourceGraph(request, directResourceAcquisitionContext);
     let disposal: Promise<void> | null = null;
     const session = {
@@ -381,18 +416,5 @@ export async function startResources<Resources extends ResourceDependencies>(
         }
     };
 
-    Object.defineProperty(session, runtimeAsyncDisposeSymbol(), {
-        value: async function disposeResourcesWithInternalSignal(): Promise<void> {
-            await session.disposeOnce({ signal: internalDisposalSignal() });
-        }
-    });
-    const frozenSession = Object.freeze(session);
-
-    if (isResourceSession(frozenSession)) {
-        return frozenSession;
-    }
-
-    throw resourceLifecycleError('Resource session is incomplete.', [
-        { cause: session, phase: 'graph', resourceName: 'resource' }
-    ], session);
+    return disposableResourceSession<Resources>(session);
 }

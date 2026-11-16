@@ -2,7 +2,14 @@ import type { AssertionResult } from '../assertion-protocol/assertion-node.ts';
 import type { ResolvableSourceLocations } from '../assertion-protocol/assertion-node-shape.ts';
 import type { BenchmarkBody, BenchmarkScope } from '../engine/test-node.ts';
 import { mapComposedResourceBody } from '../packages/test/resource-wrapper-composition.ts';
-import { readTestBodyFamily, resolveTestBodyWorkload } from '../engine/test-body.ts';
+import {
+    isBodyReference,
+    mapBodyReference,
+    executableBody,
+    type BodyImplementation,
+    readTestBodyFamily,
+    resolveTestBodyWorkload
+} from '../engine/test-body.ts';
 import { directBenchmarkEnvironment, benchmarkLifecyclePolicy } from './benchmark-execution-context.ts';
 import { collectBenchmarkNormalization } from './benchmark-normalization.ts';
 import { workload } from './workload.ts';
@@ -43,10 +50,15 @@ function measurementContext(context: Readonly<Record<string, unknown>>): Readonl
 }
 
 export function benchmarkResourceEnvelope(
-    measure: (scope: never) => unknown,
+    measure: BodyImplementation<never, unknown>,
     definition: ResolvedBenchmarkDefinition,
     locations: ResolvableSourceLocations
-): BenchmarkBody {
+): BodyImplementation<BenchmarkScope, ReturnType<BenchmarkBody>> {
+    if (isBodyReference(measure)) {
+        return mapBodyReference(measure, function envelope(bound) {
+            return executableBody(benchmarkResourceEnvelope(bound, definition, locations));
+        });
+    }
     return async function executeBenchmark(original: BenchmarkScope): Promise<AssertionResult> {
         const scope = directBenchmarkEnvironment(original);
         const selected = definition.summary.workloads.find(function selectedWorkload(work) {

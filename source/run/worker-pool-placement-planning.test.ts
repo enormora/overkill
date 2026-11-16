@@ -63,6 +63,8 @@ function collectedCase(
     suitePath: CollectedRunPlan['files'][number]['cases'][number]['suitePath']
 ): CollectedRunPlan['files'][number]['cases'][number] {
     return {
+        implementationDeclaration: null,
+
         skipReason: null,
         property: null,
         benchmark: null,
@@ -84,6 +86,8 @@ function collectedCase(
 
 export function createCollectedPlan(): CollectedRunPlan {
     return {
+        implementations: null,
+
         family: null,
         defined: 2,
         discoveredFiles: [],
@@ -179,6 +183,8 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            implementations: null,
+
             family: { id: 'integration', version: '1', settings: null, preparation: null, collection: null },
             adapter: null,
             benchmarkHost: null,
@@ -450,6 +456,7 @@ export const testNode = createOverkillSuite({
                     execution: { processModel: 'supervised-process', scheduling: 'concurrent' }
                 });
                 const executionPlan = await createCollectedExecutionPlan({
+                    projectRoot: '/project',
                     benchmarkHost: null,
                     collectedPlan: createConstrainedPlan([ { kind: 'serial' } ]),
                     dependencies,

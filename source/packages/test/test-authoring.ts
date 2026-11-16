@@ -1,5 +1,6 @@
 import type {
     TestAnnotationsInput,
+    BodyImplementation,
     TestBody,
     TestControlsInput,
     TestNode,
@@ -119,7 +120,7 @@ function createTestFacadeFromDefinition<
             tableDefinition: TableDefinition<
                 Row,
                 AuthoringControls,
-                (scope: ParameterizedTestScope<Row, Scope>) => ReturnType<TestBody>
+                BodyImplementation<ParameterizedTestScope<Row, Scope>, ReturnType<TestBody>>
             >
         ) {
             return createAuthoredTable(

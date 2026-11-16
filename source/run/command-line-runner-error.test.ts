@@ -108,6 +108,8 @@ async function resolvePassingRun(
         config: command.config,
         cwd: command.cwd,
         facts: {
+            implementations: null,
+
             family: {
                 id: testRunExecutionFacts(command, profile).testFamily,
                 version: '1',

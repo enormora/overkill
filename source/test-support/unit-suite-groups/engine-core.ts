@@ -4,10 +4,10 @@ import { testNode as assertionExecutionCompositeTestNode } from '../../engine/as
 import { testNode as assertionExecutionTestNode } from '../../engine/assertion-execution.test.ts';
 import { testNode as assertionFacadeTestNode } from '../../engine/assertion-facade.test.ts';
 import { testNode as deepAssertionOperandsTestNode } from '../../engine/deep-assertion-operands.test.ts';
-import { testNode as engineTestNode } from '../../engine/engine.test.ts';
 import { testNode as errorAssertionExecutionTestNode } from '../../engine/error-assertion-execution.test.ts';
 import { testNode as executionTestNode } from '../../engine/execution-suite.test.ts';
 import { testNode as requireAssertionFacadeTestNode } from '../../engine/require-assertion-facade.test.ts';
+import { testNode as engineTestNode } from './engine-implementations.ts';
 
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],

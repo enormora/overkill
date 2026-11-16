@@ -1,4 +1,6 @@
 import type {
+    BodyImplementation,
+    BodyReference,
     RuntimeAttachments,
     ResourceAttachedTestBody,
     TestBody,
@@ -39,12 +41,27 @@ export {
     createTemporaryDirectoryResource,
     defineLocalServiceResource,
     defineResource,
+    defineResourceReference,
+    defineResourceOwnerReference,
+    defineResourceConsumerReference,
+    defineImplementationReference,
     defineRuntime,
     defineRuntimeMatrix,
     ResourceLifecycleError,
     startRuntime
 } from '../resources/resources.entry-point.ts';
 export type {
+    ImplementationReference,
+    ImplementationFacts,
+    ImplementationInputContext,
+    ModuleReference,
+    PortableValue,
+    ResourceReference,
+    ResourceReferenceDeclaration,
+    ResourceOwnerReference,
+    ResourceConsumerReference,
+    ResourceOwnerImplementation,
+    ResourceConsumerImplementation,
     AnyResourceDefinition,
     ComposedRuntimeGraph,
     ExecutionRequirement,
@@ -240,7 +257,30 @@ export function withRuntime<
 >(
     runtimeGraph: Graph,
     body: RuntimeTestBody<Graph, Scope, Result>
-): RuntimeWrappedTestBody<Graph, Scope, Result> {
+): RuntimeWrappedTestBody<Graph, Scope, Result>;
+export function withRuntime<
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
+>(
+    runtimeGraph: RuntimeGraph,
+    body: BodyReference<never, Result>
+): ResourceAttachedTestBody<BodyReference<Scope, Promise<WrappedBodyResult<Result>>>>;
+export function withRuntime<
+    Graph extends RuntimeGraph,
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
+>(
+    runtimeGraph: Graph,
+    body: BodyReference<never, Result> | RuntimeTestBody<Graph, Scope, Result>
+): ResourceAttachedTestBody<BodyImplementation<Scope, Promise<WrappedBodyResult<Result>>>>;
+export function withRuntime<
+    Graph extends RuntimeGraph,
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
+>(
+    runtimeGraph: Graph,
+    body: BodyReference<never, Result> | RuntimeTestBody<Graph, Scope, Result>
+): ResourceAttachedTestBody<BodyImplementation<Scope, Promise<WrappedBodyResult<Result>>>> {
     const runtime = ensureRuntimeGraph(runtimeGraph);
 
     return attachComposedResourceBody<Scope, WrappedBodyResult<Result>>(
@@ -257,7 +297,30 @@ export function withResource<
 >(
     resource: Resource,
     body: ResourceTestBody<Record<Resource['name'], Resource>, Scope, Result>
-): ResourceWrappedTestBody<Record<Resource['name'], Resource>, Scope, Result> {
+): ResourceWrappedTestBody<Record<Resource['name'], Resource>, Scope, Result>;
+export function withResource<
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
+>(
+    resource: AnyResourceDefinition,
+    body: BodyReference<never, Result>
+): ResourceAttachedTestBody<BodyReference<Scope, Promise<WrappedBodyResult<Result>>>>;
+export function withResource<
+    const Resource extends AnyResourceDefinition,
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
+>(
+    resource: Resource,
+    body: BodyReference<never, Result> | ResourceTestBody<Record<Resource['name'], Resource>, Scope, Result>
+): ResourceAttachedTestBody<BodyImplementation<Scope, Promise<WrappedBodyResult<Result>>>>;
+export function withResource<
+    const Resource extends AnyResourceDefinition,
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
+>(
+    resource: Resource,
+    body: BodyReference<never, Result> | ResourceTestBody<Record<Resource['name'], Resource>, Scope, Result>
+): ResourceAttachedTestBody<BodyImplementation<Scope, Promise<WrappedBodyResult<Result>>>> {
     const descriptor = ensureResource(resource, 'withResource');
 
     return attachComposedResourceBody<Scope, WrappedBodyResult<Result>>(
@@ -274,7 +337,30 @@ export function withResources<
 >(
     resources: Resources,
     body: ResourceTestBody<Resources, Scope, Result>
-): ResourceWrappedTestBody<Resources, Scope, Result> {
+): ResourceWrappedTestBody<Resources, Scope, Result>;
+export function withResources<
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
+>(
+    resources: ResourceMap,
+    body: BodyReference<never, Result>
+): ResourceAttachedTestBody<BodyReference<Scope, Promise<WrappedBodyResult<Result>>>>;
+export function withResources<
+    const Resources extends ResourceMap,
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
+>(
+    resources: Resources,
+    body: BodyReference<never, Result> | ResourceTestBody<Resources, Scope, Result>
+): ResourceAttachedTestBody<BodyImplementation<Scope, Promise<WrappedBodyResult<Result>>>>;
+export function withResources<
+    const Resources extends ResourceMap,
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
+>(
+    resources: Resources,
+    body: BodyReference<never, Result> | ResourceTestBody<Resources, Scope, Result>
+): ResourceAttachedTestBody<BodyImplementation<Scope, Promise<WrappedBodyResult<Result>>>> {
     readResources(resources);
 
     return attachComposedResourceBody<Scope, WrappedBodyResult<Result>>(

@@ -63,6 +63,8 @@ function recordedSource(definition: FrozenFamilyDefinition | null): RunCollectio
             kind: 'record',
             witness: null,
             plan: {
+                implementations: null,
+
                 defined: 0,
                 discoveredFiles: [],
                 files: [],

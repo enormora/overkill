@@ -3,10 +3,10 @@ import {
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
 import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
+import { workerImplementationPlan } from './worker-implementation-plan.ts';
 import { createHostTestPlan, resolveHostEngine } from './host-test-plan.ts';
-import type { RunnerError, TestPlan } from './run-engine-primitives.ts';
 import { assertFrozenWorkloadInputs } from './workload-input-validation.ts';
-import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
+import { collectedRunPlanFromTestPlan, resolvedTestPlanDefinitionLocations } from './collected-run-plan.ts';
 import {
     loadRunEngineModule,
     loadRunTestModules,
@@ -20,6 +20,9 @@ import type {
     WorkerPoolCommand,
     WorkerPoolRunOutput
 } from './worker-pool-protocol.ts';
+
+type RunnerError = ReturnType<ExecutionGlobalErrorObserver['takeErrors']>[number];
+type TestPlan = Awaited<ReturnType<typeof createHostTestPlan>>;
 
 export type CollectedWorkerPoolTestPlan = {
     readonly runnerErrors: readonly RunnerError[];
@@ -138,4 +141,10 @@ export function createEmptyAssignmentResult(): WorkerPoolRunOutput {
     return {
         results: []
     };
+}
+
+export function selectedWorkerPlan(plan: TestPlan, work: readonly WorkId[], task: WorkerPoolRunTask): TestPlan {
+    return resolvedTestPlanDefinitionLocations(
+        workerImplementationPlan(selectedAssignedWork(plan, work, task.workloadInputs), task)
+    );
 }

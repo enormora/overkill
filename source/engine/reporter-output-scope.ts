@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { withRunnerInfrastructure } from './execution-observation.ts';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 
 export type ReporterConsoleMethod = 'debug' | 'error' | 'info' | 'log' | 'warn';
 

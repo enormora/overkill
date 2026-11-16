@@ -281,6 +281,40 @@ define projection hooks when their owner handle is not the same value that
 test code should consume. `per-case` and `shared-per-worker` resources are
 local to their execution owner and do not use projection hooks.
 
+Portable owners use `defineResourceOwnerReference<Handle, Input>(reference)`.
+Pass a `defineImplementationReference(...)` descriptor containing the module URL,
+named export, realm, version, input parser, input, and dynamic candidates. The
+versioned export's `implementation` contains `acquire(context, input)`,
+`dispose(handle, context, input)`, `exposeHandle(handle, context, input)`, and
+`serializeHandle(handle, context, input)`. Use `null` for unused callbacks.
+
+`defineResourceConsumerReference<Handle, Input>(reference)` resolves a separate
+consumer with `deserializeHandle(payload, context, input)` and nullable
+`exposeHandle(handle, context, input)`. Projection payloads must be lossless JSON.
+Native owner and consumer handles stay local.
+
+Declare metadata with `defineResourceReference({ name, owner, consumer,
+dependencies, requirements, scenarios, scope, workload })`. Set `consumer: null`
+for local resources. Projection scopes follow the same rules as inline resources.
+
+Standalone referenced sessions require an absolute `projectRoot`:
+
+```ts
+await using session = await startResources({
+    resources: { server },
+    projectRoot,
+    signal
+});
+```
+
+For runtime sessions, pass the same explicit root with
+`startRuntime({ runtime, projectRoot, signal })`. The implementation admission
+stays active through disposal.
+
+Prepare and collect a family before executing engine wrappers containing resource
+references. Selected implementations preload before acquisition. Verified source
+snapshots remain active through disposal, including later dynamic imports.
+
 Execution requirements describe placement pressure for the runner:
 `serial`, `single-worker`, `exclusive-resource`, `capacity-weight`,
 `affinity-key`, `fault-domain`, `duplicate-execution`, and

@@ -1,3 +1,4 @@
+import { withImplementationPlan } from '../engine/body-reference-plan.ts';
 import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import type {
     BenchmarkProfileConfig,
@@ -30,7 +31,6 @@ import type {
     TestPlan
 } from './run-engine-primitives.ts';
 import type { AttachmentEndpoint } from './attachment-protocol.ts';
-import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import {
     childProcessEnvelope,
     type ChildProcessEnvelope
@@ -39,6 +39,8 @@ import {
 type RunEngineSelection = RunCommand['engine'];
 
 type SupervisedCommandBase = {
+    readonly implementations: RunFacts['implementations'];
+    readonly implementationContext: { readonly projectRoot: string; };
     readonly snapshots: SnapshotRun | null;
     readonly replay: ReplayWire | null;
     readonly seed: string;
@@ -54,7 +56,7 @@ type SupervisedCommandBase = {
     readonly capture: RunRequest['capture'];
     readonly collectionTimeoutMilliseconds: number;
     readonly cwd: string;
-    readonly definitionLocationCapture: DefinitionLocationCapture;
+    readonly definitionLocationCapture: FrozenFamilyDefinition['definitionLocationCapture'];
     readonly engine: Exclude<RunEngineSelection, { readonly kind: 'instance'; }>;
     readonly paths: readonly string[];
     readonly hardTimeoutMilliseconds: number;
@@ -95,6 +97,7 @@ export type SupervisedChildCommand = SupervisedCollectCommand | SupervisedRunCom
 export const supervisedChildCorrelationId = 'supervised-run';
 
 type WorkAssignmentCommand = {
+    readonly implementations: RunFacts['implementations'];
     readonly corpus: PropertyCorpusSnapshot;
     readonly propertyPolicies: readonly { readonly work: WorkId; readonly policy: PropertyPolicy; }[];
     readonly workloadInputs: readonly FrozenWorkloadInput[];
@@ -104,6 +107,7 @@ type WorkAssignmentCommand = {
 };
 
 type LegacyCaseAssignmentCommand = {
+    readonly implementations: RunFacts['implementations'];
     readonly attachmentEndpoint: AttachmentEndpoint | null;
     readonly assignedCases: readonly CaseId[];
     readonly kind: 'assign';
@@ -210,5 +214,5 @@ export function supervisedAssignedPlan(testPlan: TestPlan, assignment: Supervise
         isWorkAssignment(assignment) ? assignment.workloadInputs : [],
         isWorkAssignment(assignment) ? assignment.propertyPolicies : []
     );
-    return selected;
+    return withImplementationPlan(selected, { catalog: assignment.implementations, admission: 'all' });
 }

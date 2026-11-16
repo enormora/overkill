@@ -150,6 +150,8 @@ export function createResolvedRun(
         cwd: command.cwd,
         engine: command.engine,
         facts: {
+            implementations: null,
+
             family: {
                 id: testRunExecutionFacts(command, profile).testFamily,
                 version: '1',
@@ -203,6 +205,8 @@ async function createResolvedRunWithOrphanLocation(
         ...resolvedRun,
         plan: {
             collectedPlan: {
+                implementations: null,
+
                 family: null,
                 defined: 1,
                 discoveredFiles: [],

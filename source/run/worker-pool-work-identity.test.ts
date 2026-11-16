@@ -42,6 +42,8 @@ function secondCaseId(): CaseId {
 
 function collectedCase(testCase: CaseId): CollectedRunPlan['files'][number]['cases'][number] {
     return {
+        implementationDeclaration: null,
+
         skipReason: null,
         property: null,
         benchmark: null,
@@ -78,6 +80,8 @@ function collectedCaseWithWorkload(): CollectedRunPlan['files'][number]['cases']
 
 function collectedPlan(files: CollectedRunPlan['files']): CollectedRunPlan {
     return {
+        implementations: null,
+
         family: null,
         defined: files.reduce(function sumCases(count, file) {
             return count + file.cases.length;

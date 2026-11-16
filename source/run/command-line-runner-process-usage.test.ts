@@ -111,6 +111,8 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                 config: command.config,
                 cwd: command.cwd,
                 facts: {
+                    implementations: null,
+
                     family: {
                         id: testRunExecutionFacts(command, profile).testFamily,
                         version: '1',
