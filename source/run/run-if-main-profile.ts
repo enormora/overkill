@@ -178,7 +178,7 @@ async function configuredMicrotest(
     cwd: string,
     dependencies: RunIfMainProfileResolverDependencies
 ): Promise<MatchedDirectProfile> {
-    const profile = config.profiles.microtest;
+    const profile = config.profiles['microtest'];
 
     if (profile?.testFamily !== 'microtest') {
         throw new ConfigError('runIfMain() requires the configured "microtest" profile.');

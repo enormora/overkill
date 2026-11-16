@@ -22,7 +22,7 @@ function hostedRuntimeConfig(): NormalizedConfig {
             }
         }
     });
-    const profile = config.profiles.custom;
+    const profile = config.profiles['custom'];
     if (profile === undefined || !isDefinedFamilyProfile(profile) || profile.execution.processModel !== 'worker-pool') {
         throw new Error('Missing worker-pool profile.');
     }

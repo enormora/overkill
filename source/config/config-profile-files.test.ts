@@ -59,8 +59,8 @@ export const testNode = createOverkillSuite({
                         }
                     }
                 });
-                const microtestProfile = config.profiles.microtest;
-                const safeProfile = config.profiles.safe;
+                const microtestProfile = config.profiles['microtest'];
+                const safeProfile = config.profiles['safe'];
 
                 scope.require.defined(microtestProfile);
                 scope.require.defined(safeProfile);
@@ -125,7 +125,7 @@ export const testNode = createOverkillSuite({
                         }
                     }
                 });
-                const microtestProfile = config.profiles.microtest;
+                const microtestProfile = config.profiles['microtest'];
 
                 scope.require.defined(microtestProfile);
                 scope.require.notNull(microtestProfile.files);

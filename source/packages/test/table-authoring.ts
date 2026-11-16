@@ -116,15 +116,15 @@ function tableCaseBody<Row>(
 }
 
 function ensureTableDefinitionShape(definition: Readonly<Record<string, unknown>>): void {
-    if (definition.caseTitle !== undefined && typeof definition.caseTitle !== 'function') {
+    if (definition['caseTitle'] !== undefined && typeof definition['caseTitle'] !== 'function') {
         throw new TypeError(tableArgumentsError);
     }
 
-    if (!Array.isArray(definition.cases)) {
+    if (!Array.isArray(definition['cases'])) {
         throw new TypeError(tableArgumentsError);
     }
 
-    readAuthoringTestImplementation(definition.test);
+    readAuthoringTestImplementation(definition['test']);
 }
 
 function readTableDefinition<
@@ -138,12 +138,12 @@ function readTableDefinition<
     ensureTableDefinitionShape(runtimeDefinition);
 
     return {
-        annotations: readAuthoringAnnotations(runtimeDefinition.annotations ?? {}),
+        annotations: readAuthoringAnnotations(runtimeDefinition['annotations'] ?? {}),
         caseTitle: definition.caseTitle ?? null,
         cases: definition.cases,
-        controls: readAuthoringControls(runtimeDefinition.controls ?? {}),
+        controls: readAuthoringControls(runtimeDefinition['controls'] ?? {}),
         test: definition.test,
-        title: readAuthoringString(runtimeDefinition.title, tableArgumentsError)
+        title: readAuthoringString(runtimeDefinition['title'], tableArgumentsError)
     };
 }
 

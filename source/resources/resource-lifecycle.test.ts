@@ -440,7 +440,7 @@ async function assertSharedDependencies(scope: TestScope): Promise<void> {
     const session = await startRuntime({ runtime: scenario.runtime, signal: testSignal() });
 
     scope.assert.equal(scenario.acquisitions(), 1);
-    scope.assert.equal(session.context.store, scenario.database);
+    scope.assert.equal(session.context['store'], scenario.database);
     scope.assert.deepEqual(scenario.events.values().toSorted(compareText), [ 'server', 'worker' ]);
     await session.disposeOnce({ signal: testSignal() });
     scope.assert.deepEqual(scenario.events.values().slice(2), [

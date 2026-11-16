@@ -84,7 +84,7 @@ export const testNode = suite('mutation microtest profile selection', [
             const selected = selectMicrotestProfile(config, 'browser');
 
             scope.assert.equal(selected.name, 'browser');
-            scope.assert.equal(selected.profile, config.profiles.browser);
+            scope.assert.equal(selected.profile, config.profiles['browser']);
             scope.assert.equal(selected.profile.execution.processModel, processModel);
             scope.assert.equal(selected.profile.execution.scheduling, 'concurrent');
             scope.assert.deepEqual(config.loader, { sourceMaps: true, stripMode: 'strip-only' });

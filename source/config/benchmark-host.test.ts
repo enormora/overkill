@@ -21,7 +21,7 @@ function hostConfig(): NormalizedConfig {
 export const testNode = suite('benchmark host configuration', [
     test('requires every limit in direct normalized configuration', function (scope: TestScope) {
         const config = copyConfig(hostConfig());
-        const profile = config.profiles.startup;
+        const profile = config.profiles['startup'];
         if (profile?.testFamily !== 'benchmark') {
             throw new Error('Missing benchmark profile.');
         }
@@ -32,7 +32,7 @@ export const testNode = suite('benchmark host configuration', [
         return scope.assert.collect();
     }),
     test('normalizes relative limits and leaves omitted checks disabled', function (scope: TestScope) {
-        const profile = hostConfig().profiles.startup;
+        const profile = hostConfig().profiles['startup'];
         if (profile?.testFamily !== 'benchmark') {
             throw new Error('Missing benchmark profile.');
         }
@@ -43,8 +43,8 @@ export const testNode = suite('benchmark host configuration', [
     }),
     test('copies host policy independently when snapshotting configuration', function (scope: TestScope) {
         const config = hostConfig();
-        const profile = config.profiles.startup;
-        const copied = copyConfig(config).profiles.startup;
+        const profile = config.profiles['startup'];
+        const copied = copyConfig(config).profiles['startup'];
         if (profile?.testFamily !== 'benchmark' || copied?.testFamily !== 'benchmark') {
             throw new Error('Missing benchmark profile.');
         }
@@ -54,7 +54,7 @@ export const testNode = suite('benchmark host configuration', [
     }),
     test('rejects invalid direct normalized policy', function (scope: TestScope) {
         const config = hostConfig();
-        const profile = config.profiles.startup;
+        const profile = config.profiles['startup'];
         if (profile?.testFamily !== 'benchmark') {
             throw new Error('Missing benchmark profile.');
         }

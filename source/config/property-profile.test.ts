@@ -10,7 +10,7 @@ import type { NormalizedConfig, IntegrationProfileConfig } from './types.ts';
 const files = { include: [ 'source/**/*.property.ts' ] } as const;
 
 function integrationProfile(config: NormalizedConfig): IntegrationProfileConfig {
-    const profile = config.profiles.projects;
+    const profile = config.profiles['projects'];
     if (profile?.testFamily !== 'integration') {
         throw new TypeError('Expected an integration profile.');
     }
@@ -46,7 +46,7 @@ export const testNode = suite('property profile', [
     test('validates normalized policy and rejects added capability fields', function (scope) {
         const config = normalizeConfig({ profiles: { laws: { testFamily: 'property', files } } });
         validateNormalizedConfig(config);
-        const profile = config.profiles.laws;
+        const profile = config.profiles['laws'];
         if (profile?.testFamily !== 'property') {
             throw new TypeError('Expected a property profile.');
         }
@@ -58,7 +58,7 @@ export const testNode = suite('property profile', [
     }),
     test('rejects invalid normalized exploration budgets', function (scope) {
         const config = normalizeConfig({ profiles: { laws: { testFamily: 'property', files } } });
-        const profile = config.profiles.laws;
+        const profile = config.profiles['laws'];
         if (profile?.testFamily !== 'property') {
             throw new TypeError('Expected a property profile.');
         }
@@ -73,7 +73,7 @@ export const testNode = suite('property profile', [
     }),
     test('normalizes property defaults without adding coverage or attachments', function (scope) {
         const config = normalizeConfig({ profiles: { laws: { testFamily: 'property', files } } });
-        const profile = config.profiles.laws;
+        const profile = config.profiles['laws'];
         if (profile?.testFamily !== 'property') {
             throw new TypeError('Expected a property profile.');
         }
@@ -97,7 +97,7 @@ export const testNode = suite('property profile', [
         const config = normalizeConfig({ profiles: { laws: { testFamily: 'property', files } } });
         const copied = copyConfig(config);
         scope.assert.deepEqual(copied, config);
-        scope.assert.notEqual(copied.profiles.laws, config.profiles.laws);
+        scope.assert.notEqual(copied.profiles['laws'], config.profiles['laws']);
         return scope.assert.collect();
     }),
     test('supports named property profiles and finite overrides above defaults', function (scope) {
@@ -111,7 +111,7 @@ export const testNode = suite('property profile', [
                 }
             }
         });
-        const profile = config.profiles.laws;
+        const profile = config.profiles['laws'];
         if (profile?.testFamily !== 'property') {
             throw new TypeError('Expected a property profile.');
         }

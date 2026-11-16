@@ -95,8 +95,8 @@ export const testNode = suite('automatic benchmark normalization', [
             const measured = firstBenchmark(result);
             scope.assert.deepEqual(result.runnerErrors, []);
             scope.assert.equal(result.status, 'passed');
-            scope.assert.equal(measured.normalization?.metrics.durationMicroseconds?.source, 'canonical');
-            scope.assert.equal(measured.metrics.durationMicroseconds?.provenance.collector, 'module-import-v1');
+            scope.assert.equal(measured.normalization?.metrics['durationMicroseconds']?.source, 'canonical');
+            scope.assert.equal(measured.metrics['durationMicroseconds']?.provenance.collector, 'module-import-v1');
             scope.assert.equal(measured.lifecycle?.warmup.samples, 1);
             scope.assert.equal(measured.timeline?.status, 'omitted');
             return scope.assert.collect();
@@ -112,7 +112,7 @@ export const testNode = suite('automatic benchmark normalization', [
             const measured = firstBenchmark(result);
             scope.assert.deepEqual(result.runnerErrors, []);
             scope.assert.equal(result.status, 'passed');
-            scope.assert.equal(measured.normalization?.metrics.durationMicroseconds?.source, 'canonical');
+            scope.assert.equal(measured.normalization?.metrics['durationMicroseconds']?.source, 'canonical');
             scope.assert.equal(measured.normalization?.calibrations[0]?.identity.workload.name, 'integer-mix');
             return scope.assert.collect();
         }
@@ -134,7 +134,10 @@ export const testNode = suite('automatic benchmark normalization', [
             scope.assert.deepEqual(result.runnerErrors, []);
             scope.assert.equal(result.status, 'passed');
             scope.assert.equal(collections, 128);
-            scope.assert.equal(firstBenchmark(result).normalization?.metrics.durationMicroseconds?.source, 'canonical');
+            scope.assert.equal(
+                firstBenchmark(result).normalization?.metrics['durationMicroseconds']?.source,
+                'canonical'
+            );
             return scope.assert.collect();
         }
     ),
@@ -146,8 +149,8 @@ export const testNode = suite('automatic benchmark normalization', [
             }),
             [ 'durationMicroseconds', 'operationsPerSecond', 'processCpuTotalMicroseconds' ]
         );
-        scope.assert.equal(resolved.normalization.durationMicroseconds?.calibration, cpuCalibration());
-        scope.assert.equal(resolved.normalization.operationsPerSecond?.scaling, 'inverse');
+        scope.assert.equal(resolved.normalization['durationMicroseconds']?.calibration, cpuCalibration());
+        scope.assert.equal(resolved.normalization['operationsPerSecond']?.scaling, 'inverse');
         scope.assert.false(Object.hasOwn(resolved.normalization, 'bytes'));
         return scope.assert.collect();
     }),
@@ -169,7 +172,7 @@ export const testNode = suite('automatic benchmark normalization', [
         function (scope: TestScope) {
             const normalized = definition(processMeasurement({ instrumentation: 'node' }));
             const raw = definition(rawMeasurement(wallClockMeasurement()));
-            scope.assert.equal(normalized.normalization.processCpuTotalMicroseconds?.scaling, 'proportional');
+            scope.assert.equal(normalized.normalization['processCpuTotalMicroseconds']?.scaling, 'proportional');
             scope.assert.deepEqual(raw.normalization, {});
             return scope.assert.collect();
         }
@@ -183,7 +186,7 @@ export const testNode = suite('automatic benchmark normalization', [
         });
         const resolved = definition(strategy);
         scope.assert.deepEqual(Object.keys(resolved.normalization), [ 'durationMicroseconds' ]);
-        scope.assert.equal(resolved.normalization.durationMicroseconds?.calibration, calibration);
+        scope.assert.equal(resolved.normalization['durationMicroseconds']?.calibration, calibration);
         return scope.assert.collect();
     }),
     test(
@@ -196,10 +199,10 @@ export const testNode = suite('automatic benchmark normalization', [
             const measured = firstBenchmark(result);
             scope.assert.equal(result.status, 'passed');
             scope.assert.equal(samples, 128);
-            scope.assert.equal(measured.normalization?.metrics.value?.source, 'canonical');
+            scope.assert.equal(measured.normalization?.metrics['value']?.source, 'canonical');
             scope.assert.equal(measured.normalization?.calibrations.length, 1);
             scope.assert.equal(measured.budgets[0]?.estimate, 10);
-            scope.assert.equal(measured.metrics.value?.median, 1000);
+            scope.assert.equal(measured.metrics['value']?.median, 1000);
             return scope.assert.collect();
         }
     ),
@@ -215,8 +218,8 @@ export const testNode = suite('automatic benchmark normalization', [
         scope.assert.deepEqual([ fast.status, slow.status ], [ 'passed', 'passed' ]);
         scope.assert.deepEqual(first.budgets, second.budgets);
         scope.assert.equal(second.budgets[0]?.estimate, 10);
-        scope.assert.equal(second.normalization?.metrics.value?.budgetReference.machineClass, 'reference-workload');
-        scope.assert.equal(second.metrics.value?.median, 4000);
+        scope.assert.equal(second.normalization?.metrics['value']?.budgetReference.machineClass, 'reference-workload');
+        scope.assert.equal(second.metrics['value']?.median, 4000);
         return scope.assert.collect();
     }),
     test('still detects a real regression on the slower machine', async function (scope: TestScope) {

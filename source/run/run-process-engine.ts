@@ -28,10 +28,8 @@ function modulePath(moduleUrl: string): string {
     try {
         return fileURLToPath(moduleUrl);
     } catch {
-        invalidRequest('Supervised custom engine moduleUrl must be a file URL under cwd.');
+        return invalidRequest('Supervised custom engine moduleUrl must be a file URL under cwd.');
     }
-
-    throw new Error('Unreachable module URL validation state.');
 }
 
 function insideCwd(cwd: string, filePath: string): boolean {

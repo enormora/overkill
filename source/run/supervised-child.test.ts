@@ -190,7 +190,7 @@ export const testNode = createOverkillSuite({
                     },
                     discoverRunFiles: createDiscovery([ policyFixturePath ]),
                     async loadRunTestModules(files, engine) {
-                        environment.OVERKILL_LOAD_POLICY_FIXTURE = 'after';
+                        environment['OVERKILL_LOAD_POLICY_FIXTURE'] = 'after';
 
                         return await loadDeterministicRunTestModules(files, engine);
                     },

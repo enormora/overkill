@@ -24,7 +24,7 @@ function verifyProject(
         return !derived.fileNames.includes(file);
     });
     if (
-        original.options.configFilePath === derived.options.configFilePath || missing ||
+        original.options['configFilePath'] === derived.options['configFilePath'] || missing ||
         !isDeepStrictEqual(
             comparableCompilerOptions(compiler, original.options),
             comparableCompilerOptions(compiler, derived.options)

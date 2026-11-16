@@ -29,7 +29,7 @@ function retainedFixture(scope: TestScope): RetainedFixture {
     scope.require.defined(testResult);
     const { benchmark } = testResult;
     scope.require.defined(benchmark);
-    const provenance = benchmark.metrics.latency?.provenance;
+    const provenance = benchmark.metrics['latency']?.provenance;
     scope.require.defined(provenance);
     return { result, measured: { ...testResult, benchmark }, artifact: retainedAttachment(result), provenance };
 }

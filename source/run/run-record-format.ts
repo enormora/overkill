@@ -16,17 +16,17 @@ function requireImplementationEvidence(value: unknown, context: Readonly<z.Refin
     }
 }
 function evidenceMatches(value: Readonly<Record<string, unknown>>): boolean {
-    return !hasImplementationEvidence(value.facts) || !hasImplementationEvidence(value.replayPlan) ||
-        isDeepStrictEqual(value.facts.implementations, value.replayPlan.implementations);
+    return !hasImplementationEvidence(value['facts']) || !hasImplementationEvidence(value['replayPlan']) ||
+        isDeepStrictEqual(value['facts'].implementations, value['replayPlan'].implementations);
 }
 export function validateImplementationRecord(value: unknown, context: Readonly<z.RefinementCtx>): void {
     if (!recordFields(value)) {
         return;
     }
-    if (value.version === currentRunRecordVersion) {
-        requireImplementationEvidence(value.facts, context);
+    if (value['version'] === currentRunRecordVersion) {
+        requireImplementationEvidence(value['facts'], context);
         if (Object.hasOwn(value, 'replayPlan')) {
-            requireImplementationEvidence(value.replayPlan, context);
+            requireImplementationEvidence(value['replayPlan'], context);
         }
     }
     if (

@@ -12,10 +12,10 @@ import { testNode as workloadResourceValidationTestNode } from './workload-resou
 type PackageParameters = { readonly packages: number; };
 
 function parsePackages(parameters: WorkloadParameters): PackageParameters {
-    if (typeof parameters.packages !== 'number' || parameters.packages < 1) {
+    if (typeof parameters['packages'] !== 'number' || parameters['packages'] < 1) {
         throw new TypeError('Expected a positive package count.');
     }
-    return { packages: parameters.packages };
+    return { packages: parameters['packages'] };
 }
 
 function workloadPlan(engine: Engine, input: WorkloadInput, body: TestBody): TestPlan {
@@ -169,7 +169,7 @@ export const testNode = suite('workload resources', [
                 return parameters;
             },
             acquire({ workload: input }) {
-                return input.parameters.text;
+                return input.parameters['text'];
             }
         });
         const input = workload('unicode', { text: 'e\u{301}' });

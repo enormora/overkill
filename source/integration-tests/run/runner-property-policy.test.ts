@@ -116,7 +116,7 @@ export const testNode = suite('property runner policy', [
     }),
     test('supervised property profile attributes process budget exhaustion to the active case', async function (scope) {
         const command = propertyCommand(scope, 'property-heap-pressure', 'supervised-process');
-        const profile = command.config.profiles.laws;
+        const profile = command.config.profiles['laws'];
         if (profile?.testFamily !== 'property') {
             throw new TypeError('Expected a property profile.');
         }
@@ -152,7 +152,7 @@ export const testNode = suite('property runner policy', [
     }),
     test('supervised property profile aborts a cooperative body at its soft deadline', async function (scope) {
         const command = propertyCommand(scope, 'property-wait-for-abort', 'supervised-process');
-        const profile = command.config.profiles.laws;
+        const profile = command.config.profiles['laws'];
         if (profile?.testFamily !== 'property') {
             throw new TypeError('Expected a property profile.');
         }
@@ -185,7 +185,7 @@ export const testNode = suite('property runner policy', [
     ...[ 'property-generator-hang', 'property-codec-hang' ].map(function hangingCallback(fixture) {
         return test(`supervision terminates ${fixture}`, async function (scope) {
             const command = propertyCommand(scope, fixture, 'supervised-process');
-            const profile = command.config.profiles.laws;
+            const profile = command.config.profiles['laws'];
             if (profile?.testFamily !== 'property') {
                 throw new TypeError('Expected property profile.');
             }
@@ -208,7 +208,7 @@ export const testNode = suite('property runner policy', [
     }),
     test('supervised property profile terminates a CPU-bound body', async function (scope) {
         const command = propertyCommand(scope, 'endless-loop', 'supervised-process');
-        const profile = command.config.profiles.laws;
+        const profile = command.config.profiles['laws'];
         if (profile?.testFamily !== 'property') {
             throw new TypeError('Expected a property profile.');
         }

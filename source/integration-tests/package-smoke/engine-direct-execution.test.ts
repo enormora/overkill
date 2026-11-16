@@ -93,7 +93,7 @@ const smokeResult = defineCompositeAssertion({
         const failingCaseId = { file: null, title: 'fails', params: null, suite: [] };
         const location = failedAssertionLocation(result);
         const packagedFile = packagedSourceFile(location);
-        const rootCounts = result.bySuite.root ?? null;
+        const rootCounts = result.bySuite['root'] ?? null;
         const perTestShape = plainDataShape(
             result.perTest.map(function toPublicResultShape(testResult) {
                 return {

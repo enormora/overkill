@@ -167,7 +167,7 @@ export const testNode = suite('benchmark baseline commands', [
             const defaults = normalizeConfig({
                 profiles: { startup: { testFamily: 'benchmark', files: { include: [ fixture ] } } }
             });
-            const profile = defaults.profiles.startup;
+            const profile = defaults.profiles['startup'];
             if (profile?.testFamily !== 'benchmark') {
                 throw new Error('Missing benchmark profile.');
             }

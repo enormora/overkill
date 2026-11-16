@@ -17,7 +17,7 @@ type StoredFixture = {
     readonly file: string;
 };
 function integrationProfile(data: OrdinaryBaselineFixture): IntegrationProfileConfig {
-    const profile = data.command.config.profiles.unit;
+    const profile = data.command.config.profiles['unit'];
     if (profile?.testFamily !== 'integration') {
         throw new Error('Expected integration fixture.');
     }

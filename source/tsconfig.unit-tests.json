@@ -2,20 +2,39 @@
     "extends": "../tsconfig.base.json",
     "compilerOptions": {
         "paths": {
-            "@overkill-dev/assert": ["./packages/assert/assert.entry-point.ts"],
-            "@overkill-dev/doubles": ["./packages/doubles/doubles.entry-point.ts"],
-            "@overkill-dev/engine": ["./packages/engine/engine.entry-point.ts"],
-            "@overkill-dev/engine/*": ["./*"],
-            "@overkill-dev/reporter-line": ["./packages/reporter-line/reporter-line.entry-point.ts"]
+            "@overkill-dev/assert": [
+                "./packages/assert/assert.entry-point.ts"
+            ],
+            "@overkill-dev/doubles": [
+                "./packages/doubles/doubles.entry-point.ts"
+            ],
+            "@overkill-dev/engine": [
+                "./packages/engine/engine.entry-point.ts"
+            ],
+            "@overkill-dev/engine/*": [
+                "./*"
+            ],
+            "@overkill-dev/reporter-line": [
+                "./packages/reporter-line/reporter-line.entry-point.ts"
+            ]
         },
         "tsBuildInfoFile": "../target/buildcache/unit-tests.tsbuildinfo",
-        "rootDir": "..",
-        "types": ["node"]
+        "rootDir": ".."
     },
     "references": [
-        { "path": "./tsconfig.sources.json" },
-        { "path": "./tsconfig.integration-tests.json" }
+        {
+            "path": "./tsconfig.sources.json"
+        },
+        {
+            "path": "./tsconfig.integration-tests.json"
+        }
     ],
-    "include": ["./**/*.test.ts", "./test-support/**/*.ts"],
-    "exclude": ["./**/*.type-test.ts", "./integration-tests/**/*.ts"]
+    "include": [
+        "./**/*.test.ts",
+        "./test-support/**/*.ts"
+    ],
+    "exclude": [
+        "./**/*.type-test.ts",
+        "./integration-tests/**/*.ts"
+    ]
 }

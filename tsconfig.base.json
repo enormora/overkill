@@ -1,34 +1,12 @@
 {
+    "extends": "@enormora/tsconfig-node/tsconfig.json",
     "compilerOptions": {
-        "target": "ES2025",
-        "module": "NodeNext",
-        "moduleResolution": "NodeNext",
-        "lib": ["ES2025", "ESNext.Array", "ESNext.Disposable"],
-        "types": [],
+        "lib": [
+            "ES2025",
+            "ESNext.Array",
+            "ESNext.Disposable"
+        ],
         "importHelpers": true,
-        "sourceMap": true,
-        "declaration": true,
-        "declarationMap": true,
-        "composite": true,
-        "strict": true,
-        "erasableSyntaxOnly": true,
-        "isolatedModules": true,
-        "verbatimModuleSyntax": true,
-        "resolveJsonModule": true,
-        "rewriteRelativeImportExtensions": true,
-        "moduleDetection": "force",
-        "noUncheckedSideEffectImports": true,
-        "strictBuiltinIteratorReturn": true,
-        "skipLibCheck": false,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "noImplicitReturns": true,
-        "noFallthroughCasesInSwitch": true,
-        "allowSyntheticDefaultImports": true,
-        "esModuleInterop": true,
-        "noUncheckedIndexedAccess": true,
-        "exactOptionalPropertyTypes": true,
-        "forceConsistentCasingInFileNames": true,
         "outDir": "./target/build"
     }
 }

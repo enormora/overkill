@@ -37,7 +37,7 @@ export const testNode = suite('runtime health boundaries', [
         blockRuntime(50);
         await nextTurn();
         const after = await session.complete();
-        scope.assert.equal(before.eventLoopDelayMaximumMicroseconds?.availability, 'available');
+        scope.assert.equal(before['eventLoopDelayMaximumMicroseconds']?.availability, 'available');
         scope.assert.deepEqual(loopReadings(after), loopReadings(before));
         return scope.assert.collect();
     }),
@@ -48,7 +48,7 @@ export const testNode = suite('runtime health boundaries', [
         session.start();
         session.stop();
         const readings = await session.complete();
-        scope.assert.equal(readings.eventLoopDelayMaximumMicroseconds?.availability, 'unavailable');
+        scope.assert.equal(readings['eventLoopDelayMaximumMicroseconds']?.availability, 'unavailable');
         return scope.assert.collect();
     })
 ]);
