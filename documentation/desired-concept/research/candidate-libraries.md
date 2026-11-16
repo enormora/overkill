@@ -1493,16 +1493,16 @@ The executable fixture catalog is in
 `source/test-support/type-test-relation-project.ts`. Its observations
 are evidence about the compiler surface, not equality verdicts:
 
-| Fixture requirements | Evidence and focused comparison work |
-| --- | --- |
-| `Any`, `Never`, `Unknown`, `AnyUnknown`, `NeverString`, `Literal` | Public type queries and assignability are available. Equality must distinguish special types and literal widening; native assignability is insufficient. |
-| `Union`, `Intersection` | Both directions are assignable; intersection properties are observable. Implement order-independent union matching and normalized structural intersections. |
-| `Optional`, `Readonly` | Properties and assignability are observable. Compare optionality and readonly semantics explicitly, including instantiated mapped members; declaration spelling alone is insufficient. |
-| `Nominal`, `Protected`, `Symbol` | Distinct nominal declarations reject assignability. Preserve private/protected origins and unique-symbol identity within the original program. |
-| `Parameter`, `Generic` | Call signatures are observable. Compare signatures modulo parameter and bound-type-parameter names. |
+| Fixture requirements                                                                         | Evidence and focused comparison work                                                                                                                                                                                      |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Any`, `Never`, `Unknown`, `AnyUnknown`, `NeverString`, `Literal`                            | Public type queries and assignability are available. Equality must distinguish special types and literal widening; native assignability is insufficient.                                                                  |
+| `Union`, `Intersection`                                                                      | Both directions are assignable; intersection properties are observable. Implement order-independent union matching and normalized structural intersections.                                                               |
+| `Optional`, `Readonly`                                                                       | Properties and assignability are observable. Compare optionality and readonly semantics explicitly, including instantiated mapped members; declaration spelling alone is insufficient.                                    |
+| `Nominal`, `Protected`, `Symbol`                                                             | Distinct nominal declarations reject assignability. Preserve private/protected origins and unique-symbol identity within the original program.                                                                            |
+| `Parameter`, `Generic`                                                                       | Call signatures are observable. Compare signatures modulo parameter and bound-type-parameter names.                                                                                                                       |
 | `This`, `Rest`, `OptionalParameter`, `Constraint`, `Default`, `Const`, `NoInfer`, `Overload` | The original symbolic signatures are available. Determine public access to each inference-relevant modifier and ordered overload, then validate comparisons independently. Mutual assignability cannot prove these equal. |
-| `Recursive`, `Symbolic` | Original recursive and generic aliases are queryable. Implement cycle-safe pair tracking and symbolic binder correspondence; report inconclusive for unestablished relationships. |
-| `Imported`, `Self`, `Inference` | Original module resolution, self-imports and inferred literal types remain compiler-owned. Do not reconstruct inference or declaration identity. |
+| `Recursive`, `Symbolic`                                                                      | Original recursive and generic aliases are queryable. Implement cycle-safe pair tracking and symbolic binder correspondence; report inconclusive for unestablished relationships.                                         |
+| `Imported`, `Self`, `Inference`                                                              | Original module resolution, self-imports and inferred literal types remain compiler-owned. Do not reconstruct inference or declaration identity.                                                                          |
 
 The later **Original-Source Relations** milestone owns these comparison
 algorithms and their semantic acceptance tests. Unsupported forms require
