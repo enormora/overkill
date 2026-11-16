@@ -12,6 +12,7 @@ import {
     type TestPlan,
     type TestBody
 } from '../packages/engine/engine.entry-point.ts';
+import { withImplementationPlan } from './body-reference-plan.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 
 const nodeMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
@@ -90,6 +91,16 @@ function replacedBody(source: TestPlan, body: TestBody): TestPlan {
     return { ...source, cases: [ { ...first, execution: { kind: 'body', bodyMode: 'builder', body } }, ...rest ] };
 }
 export const testNode = suite('referenced body execution', [
+    test('rejects references introduced into a historical plan without provenance', async function (scope) {
+        await fixture(scope.signal, async function execute(directory) {
+            const engine = createTestEngine();
+            const frozen = withImplementationPlan(plan(engine, directory), { catalog: null, admission: 'all' });
+            await scope.assert.rejects(async function withoutProvenance() {
+                await engine.execute(frozen);
+            }, { message: 'Frozen execution has no implementation provenance; prepare a new run.' });
+        });
+        return scope.assert.collect();
+    }),
     test('rejects removing a recorded reference before executing its replacement', async function (scope) {
         await fixture(scope.signal, async function verify(directory) {
             const engine = createTestEngine();

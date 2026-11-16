@@ -67,6 +67,60 @@ async function project(scope: TestScope, use: (root: string) => Promise<void>): 
     }
 }
 export const testNode = suite('worker implementation lifetimes', [
+    test('keeps older scopes usable when a later assignment fails', async function (scope) {
+        await project(scope, async function verify(root) {
+            const older = await referencePlan(root, 'retained', scope.signal);
+            await withWorkerImplementations(root, older, async function execute() {
+                return undefined;
+            });
+            const olderProbe = importProbe();
+            const newer = await referencePlan(root, 'rejected', scope.signal);
+            await scope.assert.rejects(async function failedAssignment() {
+                await withWorkerImplementations(root, newer, async function execute() {
+                    throw new Error('later assignment failed');
+                });
+            }, { message: 'later assignment failed' });
+            scope.assert.equal(z.object({ value: z.number() }).parse(await olderProbe('./late.mjs')).value, 42);
+            await closeWorkerImplementations(root);
+            await scope.assert.rejects(async function afterClose() {
+                await olderProbe('./late.mjs');
+            }, { message: 'Implementation delivery is closed.' });
+        });
+        return scope.assert.collect();
+    }),
+    test('preserves work and cleanup failures together', async function (scope: TestScope) {
+        await project(scope, async function verify(root) {
+            const plan = await referencePlan(root, 'cleanup-failure', scope.signal);
+            const primary = new Error('work failed');
+            const failure: unknown = await withWorkerImplementations(root, plan, async function execute() {
+                await scope.assert.rejects(async function deniedImport() {
+                    await importProbe()('./outside.mjs');
+                }, { message: 'Implementation import is outside the frozen graph: ./outside.mjs' });
+                throw primary;
+            })
+                .catch(function capture(error: unknown) {
+                    return error;
+                });
+            scope.require.instanceOf(failure, AggregateError);
+            scope.assert.equal(failure.message, 'Implementation execution and cleanup failed.');
+            scope.assert.equal(failure.errors.length, 2);
+            scope.assert.equal(failure.errors[0], primary);
+            scope.require.instanceOf(failure.errors[1], AggregateError);
+        });
+        return scope.assert.collect();
+    }),
+    test('retains a work failure when shutdown already closed its scope', async function (scope) {
+        await project(scope, async function verify(root) {
+            const plan = await referencePlan(root, 'closed-during-work', scope.signal);
+            await scope.assert.rejects(async function shutdownFailure() {
+                await withWorkerImplementations(root, plan, async function execute() {
+                    await closeWorkerImplementations(root);
+                    throw new Error('work interrupted after shutdown');
+                });
+            }, { message: 'work interrupted after shutdown' });
+        });
+        return scope.assert.collect();
+    }),
     test('closes a newly admitted scope when work fails', async function (scope) {
         await project(scope, async function verify(root) {
             const plan = await referencePlan(root, 'failed', scope.signal);

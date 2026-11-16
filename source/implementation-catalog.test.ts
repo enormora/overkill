@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from './packages/test/test.entry-point.ts';
+import { suite, test, testDouble, doubleUsage, type TestScope } from './packages/test/test.entry-point.ts';
 import {
     createRoot,
     createTestPlan,
@@ -76,6 +76,86 @@ async function fixture(scope: TestScope, use: (catalog: ImplementationCatalog) =
     await use(catalog);
 }
 export const testNode = suite('portable implementation catalogs', [
+    test('retains non-Error parser failures and does not repeat declaration parsing', async function (scope) {
+        await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-invalid-catalog-'));
+        const body = defineBodyReference({
+            module: { moduleUrl: pathToFileURL(join(directory.path, 'absent.mjs')).href, exportName: 'body' },
+            realm: 'host',
+            version: '1',
+            input: null,
+            dynamicModules: [],
+            parseInput: testDouble.throws<() => null>('input rejected')
+        });
+        const source = createTestPlan(createRoot({
+            ...metadata,
+            title: 'invalid input',
+            children: [ createTestCase({ ...metadata, title: 'invalid input', body }) ]
+        }));
+        const declared = await declareImplementations(source, { projectRoot: directory.path }, scope.signal);
+        scope.assert.deepEqual(Array.from(implementationDeclarations(declared).values()), [ {
+            kind: 'invalid',
+            failure: {
+                name: 'Error',
+                message: 'input rejected',
+                detail: { kind: 'string', truncation: null, value: 'input rejected' }
+            }
+        } ]);
+        scope.assert.throws(function selectedInvalidInput() {
+            catalogFromDeclarations(Array.from(implementationDeclarations(declared).values()), directory.path);
+        }, { message: 'input rejected' });
+        await declareImplementations(declared, { projectRoot: directory.path }, scope.signal);
+        scope.assert(doubleUsage.calledOnce, body.reference.parseInput);
+        return scope.assert.collect();
+    }),
+    test('rejects merging catalogs prepared under different project roots', async function (scope) {
+        await fixture(scope, async function conflict(catalog) {
+            scope.assert.throws(function mergeRoots() {
+                mergeImplementationCatalogs([ catalog, {
+                    ...catalog,
+                    projectRoot: join(catalog.projectRoot, 'other')
+                } ]);
+            }, { message: 'Implementation project roots differ.' });
+        });
+        return scope.assert.collect();
+    }),
+    test('rejects merging catalogs from different native runtimes', async function (scope) {
+        await fixture(scope, async function conflict(catalog) {
+            const changed = {
+                ...catalog,
+                builds: catalog.builds.map(function runtime(build) {
+                    return { ...build, graph: { ...build.graph, runtime: { ...build.graph.runtime, node: 'v0.0.0' } } };
+                })
+            };
+            scope.assert.throws(function mergeRuntimes() {
+                mergeImplementationCatalogs([ catalog, changed ]);
+            }, { message: 'Implementation runtimes differ.' });
+        });
+        return scope.assert.collect();
+    }),
+    test('rejects catalogs that resolve the same entry to different modules', async function (scope) {
+        await fixture(scope, async function conflict(catalog) {
+            const changed = {
+                ...catalog,
+                builds: catalog.builds.map(function entryResolution(build) {
+                    return {
+                        ...build,
+                        graph: {
+                            ...build.graph,
+                            entries: Object.fromEntries(
+                                Object.entries(build.graph.entries).map(function redirect([ key, url ]) {
+                                    return [ key, new URL('other.mjs', url).href ];
+                                })
+                            )
+                        }
+                    };
+                })
+            };
+            scope.assert.throws(function mergeEntries() {
+                mergeImplementationCatalogs([ catalog, changed ]);
+            }, { message: 'Implementation entry resolutions differ.' });
+        });
+        return scope.assert.collect();
+    }),
     test(
         'collects data-only identity without evaluating modules or admitting excluded invalid work',
         async function (scope) {

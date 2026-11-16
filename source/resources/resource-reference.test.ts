@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { z } from 'zod/v4';
 import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import {
     createTemporaryDirectoryResource,
     defineImplementationReference,
@@ -14,7 +14,8 @@ import {
     startRuntime,
     defineRuntime,
     type ResourceOwnerReference,
-    type ResourceConsumerReference
+    type ResourceConsumerReference,
+    ResourceLifecycleError
 } from '../packages/resources/resources.entry-point.ts';
 
 const declaration = { dependencies: {}, requirements: [], scenarios: {}, scope: 'per-case', workload: null } as const;
@@ -73,16 +74,21 @@ async function fixture<Value>(
         join(directory, 'consumer.mjs'),
         [
             "export const consumer={version:'1',implementation:{",
-            'deserializeHandle(payload){return {address:payload.url}},exposeHandle:null}};'
+            'deserializeHandle(payload){return {address:payload.url}},exposeHandle:null}};',
+            "export const exposed={version:'1',implementation:{",
+            'deserializeHandle(payload){return {address:payload.url}},',
+            'exposeHandle(handle,context){return {address:handle.address+"#"+context.scenarios.mode}}}};',
+            "export const invalid={version:'1',implementation:{",
+            'deserializeHandle(payload){return {address:payload.url}},exposeHandle:42}};'
         ]
             .join('\n')
     );
     return await use(directory);
 }
 
-function consumerReference(directory: string): ResourceConsumerReference<ConsumerHandle> {
+function consumerReference(directory: string, exportName: string): ResourceConsumerReference<ConsumerHandle> {
     return defineResourceConsumerReference<ConsumerHandle, null>(defineImplementationReference({
-        module: { moduleUrl: pathToFileURL(join(directory, 'consumer.mjs')).href, exportName: 'consumer' },
+        module: { moduleUrl: pathToFileURL(join(directory, 'consumer.mjs')).href, exportName },
         realm: 'host',
         version: '1',
         dynamicModules: [],
@@ -94,6 +100,141 @@ function consumerReference(directory: string): ResourceConsumerReference<Consume
 }
 
 export const testNode = suite('referenced resource sessions', [
+    test('requires a consumer projection for per-run resources', function (scope) {
+        scope.assert.throws(function missingConsumer() {
+            defineResourceReference({
+                ...declaration,
+                name: 'unprojected',
+                scope: 'per-run',
+                owner: ownerReference('/project', 'owner'),
+                consumer: null
+            });
+        }, { message: 'Per-run resource references require a consumer projection.' });
+        return scope.assert.collect();
+    }),
+    ...([ 'per-case', 'shared-per-worker' ] as const).map(function localScope(resourceScope) {
+        return test(`rejects consumer projections for ${resourceScope} resources`, function (scope) {
+            scope.assert.throws(function incompatibleConsumer() {
+                defineResourceReference({
+                    ...declaration,
+                    name: 'local',
+                    scope: resourceScope,
+                    owner: ownerReference('/project', 'owner'),
+                    consumer: consumerReference('/project', 'consumer')
+                });
+            }, { message: 'Resource projections require per-run, per-file, or per-suite scope.' });
+            return scope.assert.collect();
+        });
+    }),
+    test('requires an owner projection before admitting a consumer', async function (scope) {
+        await fixture(scope.signal, async function execute(directory) {
+            const resource = defineResourceReference({
+                ...declaration,
+                name: 'missing-projection',
+                scope: 'per-file',
+                owner: ownerReference(directory, 'exposed'),
+                consumer: consumerReference(directory, 'consumer')
+            });
+            await scope.assert.rejects(async function missingProjection() {
+                await startResources({ projectRoot: directory, resources: { resource }, signal: scope.signal });
+            }, { message: 'Resource "missing-projection" requires an owner projection.' });
+        });
+        return scope.assert.collect();
+    }),
+    ...([ 'owner', 'consumer' ] as const).map(function scenarioExposure(role) {
+        return test(`requires ${role} exposure for request-routed scenarios`, async function (scope) {
+            await fixture(scope.signal, async function execute(directory) {
+                const resource = defineResourceReference({
+                    ...declaration,
+                    name: 'missing-view',
+                    scope: role === 'owner' ? 'per-case' : 'per-file',
+                    owner: ownerReference(directory, 'owner'),
+                    consumer: role === 'owner' ? null : consumerReference(directory, 'consumer'),
+                    scenarios: { mode: { default: 'first', timing: 'request-routed', values: [ 'first', 'second' ] } }
+                });
+                await scope.assert.rejects(async function missingExposure() {
+                    await startResources({ projectRoot: directory, resources: { resource }, signal: scope.signal });
+                }, {
+                    message: `Request-routed resource scenarios require ${
+                        role === 'owner' ? 'an owner' : 'a consumer'
+                    } handle exposure.`
+                });
+                scope.assert.equal(await readFile(join(directory, 'events.txt'), 'utf8'), '');
+            });
+            return scope.assert.collect();
+        });
+    }),
+    test('exposes consumer handles through request-routed scenario views', async function (scope) {
+        await fixture(scope.signal, async function execute(directory) {
+            const resource = defineResourceReference({
+                ...declaration,
+                name: 'consumer-view',
+                scope: 'per-file',
+                owner: ownerReference(directory, 'owner'),
+                consumer: consumerReference(directory, 'exposed'),
+                scenarios: { mode: { default: 'first', timing: 'request-routed', values: [ 'first', 'second' ] } }
+            });
+            await using session = await startResources({
+                projectRoot: directory,
+                resources: { resource },
+                signal: scope.signal
+            });
+            scope.assert.equal(session.context.resource.address, 'file:///owner#first');
+        });
+        return scope.assert.collect();
+    }),
+    test('rejects invalid consumer callbacks before acquiring owner handles', async function (scope) {
+        await fixture(scope.signal, async function execute(directory) {
+            const resource = defineResourceReference({
+                ...declaration,
+                name: 'invalid-consumer',
+                scope: 'per-file',
+                owner: ownerReference(directory, 'owner'),
+                consumer: consumerReference(directory, 'invalid')
+            });
+            await scope.assert.rejects(async function invalidConsumer() {
+                await startResources({ projectRoot: directory, resources: { resource }, signal: scope.signal });
+            }, { message: /Invalid input/u });
+            scope.assert.equal(await readFile(join(directory, 'events.txt'), 'utf8'), '');
+        });
+        return scope.assert.collect();
+    }),
+    test('preserves owner disposal failures after closing implementation delivery', async function (scope: TestScope) {
+        await fixture(scope.signal, async function execute(directory) {
+            await writeFile(
+                join(directory, 'dispose.mjs'),
+                'export async function close(){throw new Error("dispose failed")}'
+            );
+            const resource = defineResourceReference({
+                ...declaration,
+                name: 'failing-disposal',
+                owner: ownerReference(directory, 'owner'),
+                consumer: null
+            });
+            const session = await startResources({
+                projectRoot: directory,
+                resources: { resource },
+                signal: scope.signal
+            });
+            const failure: unknown = await session.disposeOnce({ signal: scope.signal }).catch(
+                function capture(error: unknown) {
+                    return error;
+                }
+            );
+            scope.require.instanceOf(failure, ResourceLifecycleError);
+            scope.assert.deepEqual(
+                failure.failures().map(function describe(entry) {
+                    return {
+                        phase: entry.phase,
+                        resourceName: entry.resourceName,
+                        message: entry.cause instanceof Error ? entry.cause.message : String(entry.cause)
+                    };
+                }),
+                [ { phase: 'dispose', resourceName: 'failing-disposal', message: 'dispose failed' } ]
+            );
+        });
+        return scope.assert.collect();
+    }),
     test('starts a rooted runtime with referenced native handles', async function (scope) {
         await fixture(scope.signal, async function execute(directory) {
             const resource = defineResourceReference({
@@ -161,7 +302,7 @@ export const testNode = suite('referenced resource sessions', [
                 name: 'projected',
                 scope: 'per-file',
                 owner: ownerReference(directory, 'owner'),
-                consumer: consumerReference(directory)
+                consumer: consumerReference(directory, 'consumer')
             });
             await using session = await startResources({
                 projectRoot: directory,
@@ -180,7 +321,7 @@ export const testNode = suite('referenced resource sessions', [
                 name: 'invalid',
                 scope: 'per-file',
                 owner: ownerReference(directory, 'invalid'),
-                consumer: consumerReference(directory)
+                consumer: consumerReference(directory, 'consumer')
             });
             await scope.assert.rejects(async function projectInvalidHandle() {
                 await startResources({ projectRoot: directory, resources: { resource }, signal: scope.signal });

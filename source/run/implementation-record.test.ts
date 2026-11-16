@@ -30,6 +30,27 @@ function implementationEvidence(): NonNullable<ReplayRunRecord['facts']['impleme
     };
 }
 export const testNode = suite('recorded implementation provenance', [
+    test('reports incompatible implementation catalogs as merge conflicts', function (scope) {
+        const current = mergeRecordFixture('current', 1, 1);
+        const implementations = implementationEvidence();
+        const conflicts = mergeCompatibilityConflicts([ {
+            path: 'current',
+            record: { ...current, facts: { ...current.facts, implementations } }
+        }, {
+            path: 'other',
+            record: {
+                ...current,
+                facts: { ...current.facts, implementations: { ...implementations, projectRoot: '/other' } }
+            }
+        } ]);
+        scope.assert.deepEqual(conflicts, [ {
+            field: 'implementations',
+            reason: 'mismatch',
+            referencePath: 'current',
+            sourcePath: 'other'
+        } ]);
+        return scope.assert.collect();
+    }),
     test('rejects legacy shard evidence when another shard records implementations', function (scope) {
         const current = mergeRecordFixture('current', 1, 1);
         const historical = mergeRecordFixture('historical', 2, 1);

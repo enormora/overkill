@@ -3,9 +3,15 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runIfMain } from '#test-runner';
+import convertSourceMap from 'convert-source-map';
 import { createTemporaryDirectoryResource, startResources } from './packages/resources/resources.entry-point.ts';
-import { suite, test } from './packages/test/test.entry-point.ts';
+import { suite, test, type TestScope } from './packages/test/test.entry-point.ts';
 import { deliverImplementationSource } from './implementation-source-map.ts';
+import {
+    defineImplementationReference,
+    prepareImplementation,
+    type PreparedImplementation
+} from './packages/engine/engine.entry-point.ts';
 
 const probeTimeoutMilliseconds = 30_000;
 
@@ -50,13 +56,77 @@ function templateWithDirective(value: string): string {
     return `${value} //# sourceMappingURL=missing.map`;
 }
 
+const inlineMap = {
+    version: 3,
+    sources: [ 'original.ts' ],
+    sourcesContent: [ 'export const original = 42;' ],
+    names: [],
+    mappings: 'AAAA'
+} as const;
+const inlineMapContent = JSON.stringify(inlineMap);
+function inlineMapUrl(encoding: 'base64' | 'percent-encoded'): string {
+    return encoding === 'base64'
+        ? `data:application/json;base64,${Buffer.from(inlineMapContent).toString('base64')}`
+        : `data:application/json,${encodeURIComponent(inlineMapContent)}`;
+}
+async function prepareInlineImplementation(
+    directory: string,
+    reference: string,
+    signal: AbortSignal
+): Promise<PreparedImplementation> {
+    await writeFile(
+        join(directory, 'body.mjs'),
+        [
+            'export const body={version:"1",implementation:42};',
+            `/*# sourceMappingURL=${reference} */`
+        ]
+            .join('\n')
+    );
+    return await prepareImplementation({
+        reference: defineImplementationReference({
+            module: { moduleUrl: pathToFileURL(join(directory, 'body.mjs')).href, exportName: 'body' },
+            realm: 'host',
+            version: '1',
+            input: null,
+            dynamicModules: [],
+            parseInput() {
+                return null;
+            }
+        }),
+        context: { projectRoot: directory },
+        signal
+    });
+}
+
 export const testNode = suite('immutable source-map delivery', [
-    test('ignores map directives embedded in template literals', async function (scope) {
-        const source = templateWithDirective.toString();
+    test('ignores ordinary comments and map directives embedded in template literals', async function (scope) {
+        const source = `// ordinary comment\n${templateWithDirective.toString()}\n/* ordinary block comment */`;
         const delivered = await deliverImplementationSource(source, 'file:///project/body.mjs');
         scope.assert.equal(delivered.source, source);
         scope.assert.equal(delivered.sourceMap, null);
         return scope.assert.collect();
+    }),
+    ...([ 'base64', 'percent-encoded' ] as const).map(function inlineEncoding(encoding) {
+        return test(`freezes ${encoding} inline maps with original source contents`, async function (scope: TestScope) {
+            await using session = await startResources({
+                resources: { directory: createTemporaryDirectoryResource('directory') },
+                signal: scope.signal
+            });
+            const reference = inlineMapUrl(encoding);
+            const prepared = await prepareInlineImplementation(session.context.directory.path, reference, scope.signal);
+            const module = prepared.graph.modules[0];
+            scope.require.defined(module);
+            scope.require.notNull(module.sourceMap);
+            scope.assert.deepEqual(module.sourceMap, { url: reference, source: inlineMapContent });
+            const delivered: unknown = convertSourceMap.fromSource(module.source)?.toObject();
+            scope.assert.deepEqual(delivered, {
+                ...inlineMap,
+                ignoreList: [],
+                sourceRoot: '',
+                sources: [ new URL('original.ts', module.url).href ]
+            });
+            return scope.assert.collect();
+        });
     }),
     test('renders the frozen map when external map bytes change after admission', async function (scope) {
         await using session = await startResources({

@@ -1,3 +1,4 @@
+import { implementationFingerprint } from './implementation-fingerprint.ts';
 import { z } from 'zod/v4';
 import { runIfMain } from '#test-runner';
 import { suite, test } from './packages/test/test.entry-point.ts';
@@ -22,6 +23,15 @@ function reference(): ImplementationReference<{ readonly expected: number; }> {
 }
 
 export const testNode = suite('portable implementation references', [
+    test('preserves canonically equivalent object keys in lossless input identity', function (scope) {
+        const composed = '\u00e9';
+        const decomposed = 'e\u0301';
+        const identity = implementationFingerprint({ [composed]: 1, [decomposed]: 2 });
+        scope.assert.equal(identity, implementationFingerprint({ [decomposed]: 2, [composed]: 1 }));
+        scope.assert.notEqual(identity, implementationFingerprint({ [composed]: 1 }));
+        scope.assert.notEqual(identity, implementationFingerprint({ [decomposed]: 2 }));
+        return scope.assert.collect();
+    }),
     test('snapshots inputs without loading the named implementation', function (scope) {
         const declaration = reference();
         const facts = implementationFacts(declaration, { projectRoot: '/project' });
