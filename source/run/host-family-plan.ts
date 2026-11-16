@@ -1,13 +1,17 @@
 import { isDeepStrictEqual } from 'node:util';
+import { implementationPlan, setImplementationPlan } from '../engine/body-reference-plan.ts';
 import { preparePlacedFamily, executePreparedFamilyWithDriver, type Engine } from '../engine/engine.ts';
-import { builtinTestFamily, type BuiltinFamilyId } from '../engine/builtin-test-families.ts';
+import { builtinTestFamily, isBuiltinFamilyId } from '../engine/builtin-test-families.ts';
 import type { ExecuteOptions, ExecutionDriver } from '../engine/execution.ts';
 import { bindFamilySettings, type BoundFamilySettings, type FamilyValue } from '../engine/test-family.ts';
-import type { RunResult, TestPlan, FamilyPreparationFacts } from '../packages/engine/engine.entry-point.ts';
+import { familyWorkCatalog } from './family-work-catalog.ts';
 import { familyCatalog, setFamilyCatalog, type FrozenFamilyDefinition } from './family-catalog.ts';
-import { familyValueSchema } from './family-transport-schema.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { assertFrozenFamilyPreparation } from './family-resolution.ts';
+
+type TestPlan = ReturnType<Engine['createTestPlan']>;
+type RunResult = Awaited<ReturnType<Engine['execute']>>;
+type FamilyPreparationFacts = Awaited<ReturnType<typeof preparePlacedFamily>>['facts'];
 
 const families = new WeakMap<TestPlan, {
     readonly placement: 'in-process' | 'supervised-process' | 'worker-pool';
@@ -20,7 +24,7 @@ const families = new WeakMap<TestPlan, {
 }>();
 
 function familyCatalogSnapshot(plan: TestPlan): FamilyValue {
-    return familyValueSchema.parse({ ...collectedRunPlanFromTestPlan(plan), family: null });
+    return familyWorkCatalog(collectedRunPlanFromTestPlan(plan));
 }
 
 function analysisHostOptions(options: ExecuteOptions): ExecuteOptions {
@@ -67,9 +71,12 @@ function validateDefinitionCheckpoint(
 export function registerHostFamilyPlan(
     plan: TestPlan,
     engine: Engine,
-    id: BuiltinFamilyId,
+    id: string,
     projectRoot: string
 ): TestPlan {
+    if (!isBuiltinFamilyId(id)) {
+        throw new TypeError('Imported families require explicit host resolution.');
+    }
     families.set(plan, {
         source: plan,
         engine,
@@ -94,7 +101,9 @@ export async function executeHostFamily(
     }
     const { signal } = new AbortController();
     await using prepared = await preparePlacedFamily(family.engine, {
-        testPlan: family.source,
+        testPlan: implementationPlan(selected) === null
+            ? family.source
+            : setImplementationPlan(family.source, implementationPlan(selected) ?? { catalog: null, admission: 'all' }),
         testFamily: family.binding.testFamily,
         binding: family.binding,
         projectRoot: family.projectRoot,

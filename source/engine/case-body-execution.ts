@@ -1,3 +1,4 @@
+import { isImplementationLoadError } from '../implementation-load-error.ts';
 import { createThrownErrorRecord, type ThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
 import { isPropertyInconclusiveSignalError } from './property-inconclusive.ts';
 import {
@@ -8,6 +9,7 @@ import {
 } from './assertion-recorder.ts';
 import { isNodeAssertionError, nodeAssertionErrorFailure } from './node-assertion-error.ts';
 import {
+    CaseRunnerError,
     type TestContractFailure,
     isCaseRunnerError,
     permissionDeniedRunnerErrorFromThrown,
@@ -22,6 +24,10 @@ type FinishedCaseCleanup = {
     readonly runnerErrors: readonly RunnerError[];
 };
 function caseRunnerError(testCase: TestPlanCase, error: unknown): RunnerError | null {
+    if (isImplementationLoadError(error)) {
+        const failure = new CaseRunnerError(error.message, { cause: error, subtype: 'loader' });
+        return failure.runnerError(testCase.id, testCase.workId);
+    }
     if (isCaseRunnerError(error)) {
         return error.runnerError(testCase.id, testCase.workId);
     }

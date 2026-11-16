@@ -1,3 +1,4 @@
+import { observingInfrastructure } from '../execution-ownership.ts';
 import {
     executionErrorOwnership,
     type HookKind,
@@ -8,10 +9,7 @@ import {
     type ActiveCaseContext,
     type RunErrorScope
 } from './execution-error-ownership.ts';
-import {
-    createExecutionObservation,
-    observingInfrastructure
-} from './execution-observation.ts';
+import { createExecutionObservation } from './execution-observation.ts';
 import type { AttemptId, CaseId, WorkId } from './identity.ts';
 import { permissionDeniedRunnerErrorFromThrown, type RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';

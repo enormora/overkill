@@ -1,3 +1,4 @@
+import { executableBody, type BodyImplementation } from '../engine/test-body.ts';
 import {
     attachBenchmarkCalibrationBody,
     type BenchmarkBody,
@@ -13,9 +14,9 @@ import { collectBenchmarkNormalization, calibrationResourceKey } from './benchma
 import type { MetricNormalization } from './calibration-definition.ts';
 
 export function attachCalibrationResources(
-    body: (scope: never) => unknown,
+    body: BodyImplementation<never, unknown>,
     rules: Readonly<Record<string, MetricNormalization>>
-): (scope: never) => unknown {
+): BodyImplementation<never, unknown> {
     if (Object.keys(rules).length === 0) {
         return body;
     }
@@ -77,13 +78,13 @@ function calibrationCaptureBody(
                 'calibrationCapture',
                 null
             );
-            return await envelope(scope);
+            return await executableBody(envelope)(scope);
         }
     };
 }
 
 export function attachCalibrationExecution(
-    body: BenchmarkBody,
+    body: BodyImplementation<Parameters<BenchmarkBody>[0], ReturnType<BenchmarkBody>>,
     definition: ResolvedBenchmarkDefinition,
     locations: ResolvableSourceLocations
 ): void {

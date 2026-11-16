@@ -37,6 +37,8 @@ const invalidGroupNameMessage = 'Invalid profile work group name "invalid/group"
 
 function collectedCase(title: string): CollectedRunPlan['files'][number]['cases'][number] {
     return {
+        implementationDeclaration: null,
+
         skipReason: null,
         property: null,
         benchmark: null,
@@ -60,6 +62,8 @@ function collectedCase(title: string): CollectedRunPlan['files'][number]['cases'
 
 function collectedPlan(): CollectedRunPlan {
     return {
+        implementations: null,
+
         family: null,
         defined: 2,
         discoveredFiles: [],

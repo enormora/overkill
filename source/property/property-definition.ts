@@ -1,3 +1,6 @@
+import type { Except } from 'type-fest';
+import type { BodyReference } from '../engine/body-reference.ts';
+import type { BodyImplementation } from '../engine/test-body.ts';
 import type {
     AssertionResult,
     DefinitionLocations,
@@ -48,13 +51,18 @@ export type PropertyForall = {
 };
 
 type ConfiguredPropertyDefinition<Value> = PropertyDefinitionBody<Value> & { readonly settings: PropertySettings; };
-export type PropertyDefinition<Value> = ConfiguredPropertyDefinition<Value> | PropertyDefinitionBody<Value>;
+type InlinePropertyDefinition<Value> = ConfiguredPropertyDefinition<Value> | PropertyDefinitionBody<Value>;
+export type PropertyReferenceScope<Value> = { readonly value: Value; readonly sample: PropertySampleScope<Value>; };
+type ReferencedProperty<Value> = Except<InlinePropertyDefinition<Value>, 'test'> & {
+    readonly test: BodyReference<PropertyReferenceScope<Value>>;
+};
+export type PropertyDefinition<Value> = InlinePropertyDefinition<Value> | ReferencedProperty<Value>;
 
 export type PropertyCaseScope = TestScope & {
     readonly forall: PropertyForall;
 };
 
-export type PropertyCaseBody = (scope: PropertyCaseScope) => AssertionResult | Promise<AssertionResult>;
+export type PropertyCaseBody = BodyImplementation<PropertyCaseScope, AssertionResult | Promise<AssertionResult>>;
 
 export type PropertyDeclaration<Value> = PropertyBodyDefinition & {
     readonly examples: readonly PropertyExample<Value>[];

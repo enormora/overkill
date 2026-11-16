@@ -1,3 +1,4 @@
+import { withPreparedBodyPlan } from './body-reference-plan.ts';
 import { executeFamilyWork } from './family-execution.ts';
 import {
     disposeFamily,
@@ -196,6 +197,22 @@ function validateRuntimePlan(plan: TestPlan): void {
     }
 }
 
+async function executeResolvedPlan(
+    dependencies: ExecuteDependencies,
+    testPlan: TestPlan,
+    family: FamilyExecutionRequest | null,
+    options: ExecuteOptions | undefined
+): Promise<RunResult> {
+    return await withPreparedExecution(
+        dependencies,
+        family === null ? options : familyExecuteOptions(family, options),
+        testPlan,
+        async function deliver(prepared) {
+            return await executeWithReporterDelivery(prepared, testPlan, family);
+        }
+    );
+}
+
 export function createExecute(dependencies: ExecuteDependencies): ExecutionDriver {
     return async function execute(input, options) {
         const { family, testPlan } = isFamilyExecution(input)
@@ -204,16 +221,11 @@ export function createExecute(dependencies: ExecuteDependencies): ExecutionDrive
         if (family === null) {
             validateRuntimePlan(testPlan);
         }
+
         async function executeResolved(): Promise<RunResult> {
-            const resolvedOptions = family === null ? options : familyExecuteOptions(family, options);
-            return await withPreparedExecution(
-                dependencies,
-                resolvedOptions,
-                testPlan,
-                async function executePrepared(prepared) {
-                    return await executeWithReporterDelivery(prepared, testPlan, family);
-                }
-            );
+            return await withPreparedBodyPlan(testPlan, family?.signal ?? null, async function executeBodies(resolved) {
+                return await executeResolvedPlan(dependencies, resolved, family, options);
+            });
         }
         try {
             return await executeResolved();

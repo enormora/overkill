@@ -7,7 +7,12 @@ import { replayTraceSchema } from './replay-trace-schema.ts';
 import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
 import { frozenMicrotestPolicySchema } from './frozen-run-policy-schema.ts';
 import { replayPlanningSchema } from './replay-planning-schema.ts';
-import { currentRunRecordVersion, previousRunRecordVersion } from './run-record-format.ts';
+import {
+    currentRunRecordVersion,
+    previousRunRecordVersion,
+    familyRunRecordVersion,
+    validateImplementationRecord
+} from './run-record-format.ts';
 
 const replayRequestSchema = frozenMicrotestPolicySchema.shape.request.extend({
     capture: z.enum([ 'buffered', 'live' ]),
@@ -15,9 +20,13 @@ const replayRequestSchema = frozenMicrotestPolicySchema.shape.request.extend({
     seed: z.strictObject({ value: z.string().regex(/^\d+$/u) }),
     workers: z.number().int().positive().nullable()
 });
-export const replayRecordSchema: z.ZodType<ReplayRunRecord> = z
+const replayRecordData = z
     .object({
-        version: z.union([ z.literal(previousRunRecordVersion), z.literal(currentRunRecordVersion) ]),
+        version: z.union([
+            z.literal(previousRunRecordVersion),
+            z.literal(familyRunRecordVersion),
+            z.literal(currentRunRecordVersion)
+        ]),
         kind: z.literal('single'),
         id: z.string().min(1),
         seed: z.string().regex(/^\d+$/u),
@@ -40,8 +49,13 @@ export const replayRecordSchema: z.ZodType<ReplayRunRecord> = z
         versions: z.object({ node: z.string(), packages: z.record(z.string(), z.string()) })
     })
     .refine(function familyRecord(record) {
-        return record.version !== currentRunRecordVersion || record.facts.family !== null;
+        return record.version < familyRunRecordVersion || record.facts.family !== null;
     })
     .refine(function completedResult(record) {
         return record.status !== 'completed' || record.result !== null;
     });
+
+export const replayRecordSchema: z.ZodType<ReplayRunRecord> = z
+    .unknown()
+    .superRefine(validateImplementationRecord)
+    .pipe(replayRecordData);

@@ -1,3 +1,4 @@
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import type { RunResult } from './run-engine-primitives.ts';
 import { currentExecutionSession } from './execution-session-context.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -12,7 +13,9 @@ export type RunAttachmentRecord = RunRecordSession | null;
 const propertyAttachments = createStoredRunValue<Promise<typeof AttachmentRun> | null>(null);
 
 export async function preparePropertyAttachments(): Promise<void> {
-    const loaded = propertyAttachments.read() ?? import('./attachment-run.ts');
+    const loaded = propertyAttachments.read() ?? withRunnerInfrastructure(async function load() {
+        return await import('./attachment-run.ts');
+    });
     propertyAttachments.write(loaded);
     await loaded;
 }
@@ -33,6 +36,8 @@ export async function executeWithRuntimeAttachments(
     const loaded = propertyAttachments.read();
     const { executeWithAttachments } = resolved.facts.execution.testFamily === 'property' && loaded !== null
         ? await loaded
-        : await import('./attachment-run.ts');
+        : await withRunnerInfrastructure(async function load() {
+            return await import('./attachment-run.ts');
+        });
     return await executeWithAttachments(resolved, dependencies, run, record);
 }

@@ -54,6 +54,8 @@ function firstCaseId(): CaseId {
 
 function createCollectedPlan(): WorkerPoolRunRuntime['collectedPlan'] {
     return {
+        implementations: null,
+
         family: null,
         defined: 1,
         discoveredFiles: [],
@@ -62,6 +64,8 @@ function createCollectedPlan(): WorkerPoolRunRuntime['collectedPlan'] {
                 file: integrationPath,
                 cases: [
                     {
+                        implementationDeclaration: null,
+
                         skipReason: null,
                         property: null,
                         benchmark: null,
@@ -196,6 +200,8 @@ function workerPoolResolvedRun(placement: PlacementPlan): WorkerPoolRunRuntime['
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            implementations: null,
+
             family: { id: 'integration', version: '1', settings: null, preparation: null, collection: null },
             adapter: null,
             benchmarkHost: null,

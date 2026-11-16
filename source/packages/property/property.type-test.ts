@@ -1,13 +1,25 @@
 import { describe, expect, test } from 'tstyche';
-import type { AssertionResult, TestBody, TestCase, TestScope } from '../engine/engine.entry-point.ts';
+import type {
+    AssertionResult,
+    BodyImplementation,
+    BodyReference,
+    TestBody,
+    TestCase,
+    TestScope
+} from '../engine/engine.entry-point.ts';
 import * as standard from '../test/property.entry-point.ts';
 import * as leaf from './property.entry-point.ts';
 
 declare const namedGenerator: leaf.Generator<{ readonly name: string; }>;
 declare const numberGenerator: leaf.Generator<number>;
 declare const booleanGenerator: leaf.Generator<boolean>;
+declare const propertyBody: BodyImplementation<leaf.PropertyCaseScope, ReturnType<TestBody>>;
 
 describe('property authoring types', function () {
+    test('accepts property body unions', function () {
+        expect(leaf.withProperties(propertyBody)).type.toBe<BodyReference | TestBody>();
+        expect(standard.withProperties(propertyBody)).type.toBe<BodyReference | TestBody>();
+    });
     test('infers custom codec values on both entry points', function () {
         const codec = leaf.defineCodec({
             name: 'numeric',

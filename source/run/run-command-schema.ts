@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { implementationCatalogSchema } from '../implementation-catalog.ts';
 import {
     defaultFailureArtifactPolicy,
     resolvedFailureArtifactPolicySchema
@@ -16,6 +17,8 @@ export const hostProcessSchema = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('child'), nodeArguments: z.array(z.string()) })
 ]);
 export const executionCommandFields = {
+    implementations: implementationCatalogSchema.nullable().default(null),
+    implementationContext: z.strictObject({ projectRoot: z.string() }),
     debug: runDebugRequestSchema.default({ mode: 'off', selectors: [] }),
     snapshots: snapshotRunSchema.nullable().default(null),
     replay: replayWireSchema.nullable().default(null),

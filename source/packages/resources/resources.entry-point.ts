@@ -187,3 +187,34 @@ export { bindRuntimeWorkload } from '../../resources/runtime-workload-binding.ts
 
 export { withWitnessReplay } from '../../resources/witness-replay.ts';
 export type { ResourceWitnessReplay } from '../../resources/witness-replay.ts';
+
+export { defineImplementationReference } from '../../implementation-reference.ts';
+export type {
+    ImplementationReference,
+    ImplementationFacts,
+    ImplementationInputContext,
+    ImplementationExport,
+    ImplementationRealm,
+    ModuleReference
+} from '../../implementation-reference.ts';
+export { prepareImplementation, withPreparedImplementation } from '../../implementation-preparation.ts';
+export type {
+    PreparedImplementation,
+    ImplementationPreparation,
+    ImplementationAdmission
+} from '../../implementation-preparation.ts';
+export type { PortableValue } from '../../portable-value.ts';
+
+export { defineResourceReference } from '../../resources/resource-reference.ts';
+export type { ResourceReference, ResourceReferenceDeclaration } from '../../resources/resource-reference.ts';
+export {
+    defineResourceOwnerReference,
+    defineResourceConsumerReference
+} from '../../resources/resource-implementation-reference.ts';
+export type {
+    ResourceOwnerReference,
+    ResourceConsumerReference,
+    ResourceOwnerImplementation,
+    ResourceConsumerImplementation
+} from '../../resources/resource-implementation-reference.ts';
+export { resourceImplementationParticipants } from '../../resources/resource-implementation-participants.ts';

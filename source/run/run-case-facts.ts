@@ -1,6 +1,6 @@
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
-import { testCasePropertyPolicy } from './property-collection.ts';
+import { testCasePropertyPolicy, testCasePropertySummary } from './property-collection.ts';
 import type { CollectedRunCase, RunCaseFacts } from './run-types.ts';
 
 export type RunCaseFileSet = (file: RunCaseFacts['id']['file']) => string | null;
@@ -42,4 +42,16 @@ export function collectedRunCaseFactsFromEntries(
             workId: entry.workId
         };
     });
+}
+
+export function collectedCaseExecutionFacts(
+    testCase: TestPlanCase
+): Pick<CollectedRunCase, 'benchmark' | 'property' | 'skipReason'> {
+    return {
+        skipReason: testCase.execution.kind === 'skip' ? testCase.execution.reason : null,
+        property: testCasePropertySummary(testCase),
+        benchmark: testCase.execution.kind === 'body' && testCase.execution.bodyMode === 'benchmark'
+            ? testCase.execution.definition
+            : null
+    };
 }

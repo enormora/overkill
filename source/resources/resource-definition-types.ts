@@ -48,10 +48,33 @@ export type ResourceHandleExposureContext<
     readonly scenarios: ResourceScenarioBindingsForTiming<Scenarios, 'request-routed'>;
 };
 
-export type ResourceHandle<Resource extends AnyResourceDefinition> = Resource extends {
-    readonly deserializeHandle?: ((payload: never, context: never) => infer ConsumerHandle) | undefined;
-} ? ConsumerHandle
-    : Awaited<ReturnType<Resource['acquire']>>;
+type ReferencedResource<Owner, Consumer> = {
+    readonly implementation: { readonly owner: Owner; readonly consumer: Consumer; };
+};
+type ResourceAcquisition = { readonly acquire: unknown; };
+type AcquirableResource<Handle> = { readonly acquire: (...parameters: readonly never[]) => Handle; };
+
+type BoundRole<Callbacks> = { readonly bind: (...parameters: readonly never[]) => Callbacks; };
+type DeserializableResource<Handle> = { readonly deserializeHandle: (...parameters: readonly never[]) => Handle; };
+type FallbackOwnerHandle<Resource> = Resource extends ResourceAcquisition ? ResourceAcquiredHandle<Resource> : never;
+type ReferencedConsumerHandle<Resource, Consumer> = Consumer extends BoundRole<DeserializableResource<infer Handle>>
+    ? Handle
+    : FallbackOwnerHandle<Resource>;
+type InlineResourceHandle<Resource> = Resource extends {
+    readonly deserializeHandle?: ((payload: never, context: never) => infer Handle) | undefined;
+} ? Handle
+    : FallbackOwnerHandle<Resource>;
+type ReferencedOwnerHandle<Owner> = Owner extends BoundRole<AcquirableResource<infer Handle>> ? Awaited<Handle> : never;
+type AcquiredInlineHandle<Resource> = Resource extends AcquirableResource<infer Handle> ? Awaited<Handle> : never;
+type SelectedResourceHandle<Resource> = Resource extends ReferencedResource<unknown, infer Consumer>
+    ? ReferencedConsumerHandle<Resource, Consumer>
+    : InlineResourceHandle<Resource>;
+type SelectedOwnerHandle<Resource> = Resource extends ReferencedResource<infer Owner, unknown>
+    ? ReferencedOwnerHandle<Owner>
+    : AcquiredInlineHandle<Resource>;
+
+export type ResourceHandle<Resource extends AnyResourceDefinition> = SelectedResourceHandle<Resource>;
+export type ResourceAcquiredHandle<Resource extends ResourceAcquisition> = SelectedOwnerHandle<Resource>;
 
 export type ResourceContext<Resources extends ResourceDependencies> = {
     readonly [Key in keyof Resources]: ResourceHandle<Resources[Key]>;
@@ -372,4 +395,10 @@ export type ResourceDefinition<
         context: ResourceProjectionContext<Dependencies>
     ) => ResourceProjectionPayload;
     readonly [resourceDefinitionBrand]: true;
+};
+
+export type ResourceSessionDisposalContext = { readonly signal: AbortSignal; };
+export type ResourceSessionContract<Context> = AsyncDisposable & {
+    readonly context: Context;
+    readonly disposeOnce: (context: ResourceSessionDisposalContext) => Promise<void>;
 };

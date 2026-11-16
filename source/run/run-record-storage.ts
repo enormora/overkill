@@ -1,6 +1,6 @@
 import { join, dirname } from 'node:path';
 import { recordUndeliveredRunnerError } from '../engine/reporter-error-delivery-tracking.ts';
-import { withRunnerInfrastructure } from '../engine/execution-observation.ts';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { createDebugArtifactStore, persistDebugResult } from './debug-artifact-storage.ts';
 import { createResultFromResolutionError } from './run-collection-error-result.ts';

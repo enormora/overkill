@@ -1,3 +1,5 @@
+import { hasResourceImplementation } from './resource-reference.ts';
+import { resourceReferenceCallbacks } from './resource-reference-binding.ts';
 import {
     type AnyResourceDefinition,
     type Awaitable,
@@ -97,10 +99,22 @@ function hasCallableResourceCallbacks(resource: AnyResourceDefinition): resource
 }
 
 export function callableResourceDefinition(resource: AnyResourceDefinition): CallableResourceDefinition {
-    if (hasCallableResourceCallbacks(resource)) {
-        return resource;
+    const resolved = resourceReferenceCallbacks(resource);
+    if (hasCallableResourceCallbacks(resolved)) {
+        return resolved;
     }
 
+    throw resourceLifecycleError('Resource descriptor is invalid.', [
+        { cause: resource, phase: 'graph', resourceName: 'resource' }
+    ], resource);
+}
+
+function declaredResourceDefinition(resource: AnyResourceDefinition): AnyResourceDefinition {
+    if (
+        isDefinedResource(resource) && (typeof resource.acquire === 'function' || hasResourceImplementation(resource))
+    ) {
+        return resource;
+    }
     throw resourceLifecycleError('Resource descriptor is invalid.', [
         { cause: resource, phase: 'graph', resourceName: 'resource' }
     ], resource);
@@ -168,7 +182,7 @@ function createResourceGraphBuilder(): ResourceGraphBuilder {
             return node;
         },
         visit(resource, path) {
-            const callableResource = callableResourceDefinition(resource);
+            const callableResource = declaredResourceDefinition(resource);
             const existingNode = nodesByDescriptor.get(callableResource);
 
             builder.assertUniqueName(callableResource);

@@ -1,3 +1,5 @@
+export { defineBodyReference } from '../engine/engine.entry-point.ts';
+export type { BodyReference } from '../engine/engine.entry-point.ts';
 export {
     defineMacro,
     defineParameterizedTestBody,

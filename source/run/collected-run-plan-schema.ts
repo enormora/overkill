@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { implementationCatalogSchema, implementationDeclarationSchema } from '../implementation-catalog.ts';
 import { propertyPolicySchema, propertySettingsDeclarationSchema } from '../engine/property-policy.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import {
@@ -71,6 +72,7 @@ const attachmentsSchema = z.strictObject({
 const fileSchema = z
     .strictObject({
         cases: z.array(z.strictObject({
+            implementationDeclaration: implementationDeclarationSchema.nullable().default(null),
             skipReason: z.string().nullable().default(null),
             property: z
                 .strictObject({
@@ -118,6 +120,7 @@ const fileSchema = z
         };
     });
 export const collectedRunPlanSchema: z.ZodType<CollectedRunPlan> = z.strictObject({
+    implementations: implementationCatalogSchema.nullable().default(null),
     family: collectedFamilyMetadataSchema.nullable().default(null),
     defined: z.number(),
     discoveredFiles: z.array(fileSchema),

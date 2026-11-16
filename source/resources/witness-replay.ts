@@ -1,9 +1,10 @@
 import type { SimulationWitnessFile } from '../engine/witness-file.ts';
+import type { ResourceAcquiredHandle } from './resource-definition-types.ts';
 import type { AnyResourceDefinition, Awaitable } from './resource-definition-shape.ts';
 
 type ReplayResource = Pick<AnyResourceDefinition, 'acquire'>;
 export type ResourceWitnessReplay<Resource extends ReplayResource> = {
-    readonly handle: Awaited<ReturnType<Resource['acquire']>>;
+    readonly handle: ResourceAcquiredHandle<Resource>;
     readonly witness: SimulationWitnessFile;
     readonly seed: bigint | null;
     readonly signal: AbortSignal;

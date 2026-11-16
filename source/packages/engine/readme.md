@@ -369,3 +369,65 @@ active work, and is a no-op after engine cleanup. Prepare again for each rerun.
 Runtime families use ordinary body execution. Analysis families supply evidence
 through the engine and never invoke test bodies. Both use the same reporters.
 The top-level functions use the default engine.
+
+## Portable body implementations
+
+`defineBodyReference` creates an explicit descriptor for the `body` of
+`engine.createTestCase`, tables, workload cases, and throwing bodies. Property
+`test` references receive `{ value, sample }`; `withProperties` references receive
+the property case scope. Benchmark `measure` references receive the normal
+measurement context. Their modules export versioned implementations:
+
+```js
+export const body = {
+    version: '1',
+    implementation(scope, expected) {
+        scope.assert.equal(expected, 42);
+        return scope.assert.collect();
+    }
+};
+```
+
+```ts
+const body = defineBodyReference({
+    module: {
+        moduleUrl: new URL('./body.mjs', import.meta.url).href,
+        exportName: 'body'
+    },
+    realm: 'host',
+    version: '1',
+    input: 42,
+    parseInput(input: unknown) {
+        if (typeof input !== 'number') {
+            throw new TypeError('Expected a number.');
+        }
+        return input;
+    },
+    dynamicModules: []
+});
+```
+
+Execute referenced bodies through `prepareFamily`, `prepared.collect`, and
+`engine.execute`, with an explicit absolute `projectRoot`. Input parsers are pure
+and synchronous. Only lossless JSON inputs become frozen facts; parsers,
+closures, and acquired handles remain local.
+
+Preparation reads declaration graphs without evaluating modules. Excluded invalid
+declarations do not prevent selecting valid work. Collection freezes the selected
+implementation identity; execution revalidates it and preloads implementations
+before running cases. Export, version, input, dependency, package-resolution, or source-map
+drift requires fresh preparation and collection. Preloading failures are setup
+errors. Delivered source maps retain their frozen build and original source URLs.
+
+The native delivery path supports host ESM, native stripped TypeScript, JSON,
+and Node builtins. CommonJS, native addons, and browser placement are rejected.
+Computed imports must resolve within the frozen graphs named by `dynamicModules`.
+Ordinary inline execution retains its existing loader behavior.
+
+`defineImplementationReference`, `prepareImplementation`, and
+`withPreparedImplementation` expose the same version and input validation to
+standalone module consumers. Preparation requires a project-root context and an
+abort signal. Admission also requires a parser for the exported implementation;
+the implementation stays inside the admission callback and is never transport data.
+This also supports standalone observer factories. Observer installation and
+finalization remain the caller's responsibility.

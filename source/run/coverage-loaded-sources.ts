@@ -1,10 +1,11 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { TraceMap } from '@jridgewell/trace-mapping';
+import { normalizedSourceMap } from '../source-map-data.ts';
 import { isPathInside } from './path-containment.ts';
 import type { CoverageNativeBatch } from './coverage-native-data.ts';
 import { isSupportedCoverageSource, type CoverageSourceCache } from './coverage-runtime-source.ts';
-import { normalizedCoverageSourceMap, readCoverageSourceMap, type CoverageMap } from './coverage-source-map.ts';
+import { readCoverageSourceMap, type CoverageMap } from './coverage-source-map.ts';
 
 type LoadedCoverageEntry = {
     readonly filePath: string;
@@ -151,7 +152,7 @@ async function selectLoadedEntry(
     }));
 
     return {
-        map: normalizedCoverageSourceMap(
+        map: normalizedSourceMap(
             map,
             originals.map(function originalContent(original) {
                 return original.content;

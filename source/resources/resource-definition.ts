@@ -10,6 +10,7 @@ import {
     type ResourceScenarioSlotsFromInputs
 } from './resource-scenario.ts';
 import type {
+    AnyResourceDefinition,
     EmptyResourceDependencies,
     ResourceDependencies,
     ResourceProjectionPayload,
@@ -99,7 +100,7 @@ export function normalizeResourceDefinition(definition: Readonly<Record<string, 
     });
 }
 
-function isDefinedResource(resource: unknown): resource is ResourceDefinition {
+function isDefinedResource(resource: unknown): resource is AnyResourceDefinition {
     return typeof resource === 'object' &&
         resource !== null &&
         Reflect.get(resource, resourceDefinitionBrand) === true;

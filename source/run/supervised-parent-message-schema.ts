@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { implementationCatalogSchema } from '../implementation-catalog.ts';
 import { caseIdSchema, workIdSchema } from '../engine/identity-schema.ts';
 import { frozenSupervisedCommandSchema, sessionSupervisedCommandSchema } from './frozen-supervised-command-schema.ts';
 import type {
@@ -26,6 +27,7 @@ const commandSchema: z.ZodType<SupervisedChildCommand> = z.union([
 const assignmentSchema: z.ZodType<SupervisedAssignmentCommand> = z.union([
     z.strictObject({
         kind: z.literal('assign'),
+        implementations: implementationCatalogSchema.nullable().default(null),
         corpus: propertyCorpusSnapshotSchema,
         assignedWork: z.array(workIdSchema),
         propertyPolicies: assignedPropertyPoliciesSchema.default([]),
@@ -34,6 +36,7 @@ const assignmentSchema: z.ZodType<SupervisedAssignmentCommand> = z.union([
     }),
     z.strictObject({
         kind: z.literal('assign'),
+        implementations: implementationCatalogSchema.nullable().default(null),
         assignedCases: z.array(caseIdSchema),
         attachmentEndpoint: attachmentEndpointSchema.nullable()
     })

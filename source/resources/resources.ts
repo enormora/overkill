@@ -36,6 +36,8 @@ import type {
 } from './resource-definition-shape.ts';
 import { resourceDefinitionApi } from './resource-definition.ts';
 import type {
+    ResourceSessionContract as ResourceSessionContractShape,
+    ResourceSessionDisposalContext as ResourceSessionDisposalContextShape,
     ResourceContext as ResourceContextShape,
     ResourceCreationContext as ResourceCreationContextShape,
     ResourceDefinition as ResourceDefinitionShape,
@@ -352,3 +354,6 @@ export function runtimeGraphLeaves(runtime: RuntimeGraph): readonly RuntimeGraph
 
 export type ResourceWorkload<Parameters extends WorkloadParameters> = ResourceWorkloadShape<Parameters>;
 export type ResourceWorkloadParser<Parameters extends WorkloadParameters> = ResourceWorkloadParserShape<Parameters>;
+
+export type ResourceSessionContract<Context> = ResourceSessionContractShape<Context>;
+export type ResourceSessionDisposalContext = ResourceSessionDisposalContextShape;

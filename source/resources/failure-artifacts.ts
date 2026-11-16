@@ -1,6 +1,7 @@
 import type { JsonValue, ReadonlyDeep } from 'type-fest';
 import type { AttemptId, WorkId } from '../engine/identity.ts';
 import type { RuntimeAttachmentArtifact, RuntimeAttachments } from '../engine/runtime-attachment.ts';
+import type { ResourceAcquiredHandle } from './resource-definition-types.ts';
 import type { AnyResourceDefinition, Awaitable } from './resource-definition-shape.ts';
 
 export type SimulationWitnessInput = {
@@ -24,7 +25,7 @@ type FailureSubject = Pick<
 >;
 
 type CaptureHandle<Resource extends FailureSubject> = {
-    readonly handle: Awaited<ReturnType<Resource['acquire']>>;
+    readonly handle: ResourceAcquiredHandle<Resource>;
     readonly resource: string;
     readonly scenarios: Readonly<Record<string, string>>;
     readonly signal: AbortSignal;

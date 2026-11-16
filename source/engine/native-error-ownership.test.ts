@@ -3,14 +3,10 @@ import { extname } from 'node:path';
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
+import { registerExecutionDisposal, withRunnerInfrastructure } from '../execution-ownership.ts';
 import type { TestPlanCase } from './test-plan.ts';
 import { createExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
-import {
-    createExecutionObservation,
-    registerExecutionDisposal,
-    withExecutionObservation,
-    withRunnerInfrastructure
-} from './execution-observation.ts';
+import { createExecutionObservation, withExecutionObservation } from './execution-observation.ts';
 
 function guardCase(): TestPlanCase {
     const engine = createTestEngine();
@@ -68,7 +64,7 @@ async function copiedObserverProbe(): Promise<string> {
         copiedUrl.search = '?ownership-copy';
         const second = await import(copiedUrl.href);
         const ownership = await import(process.argv[2]);
-        const copiedOwnershipUrl = new URL(process.argv[2]);
+        const copiedOwnershipUrl = new URL(process.argv[3]);
         copiedOwnershipUrl.search = '?ownership-copy';
         const copiedOwnership = await import(copiedOwnershipUrl.href);
         const observation = ownership.createExecutionObservation();
@@ -91,7 +87,11 @@ async function copiedObserverProbe(): Promise<string> {
         result.remainingListeners = process.listenerCount('unhandledRejection');
         process.stdout.write(JSON.stringify(result));
     `;
-    return await executeOwnershipProbe(script, [ observer, ownership ]);
+    return await executeOwnershipProbe(script, [
+        observer,
+        ownership,
+        new URL(`../execution-ownership${extension}`, import.meta.url)
+    ]);
 }
 
 async function lateHookProbe(): Promise<string> {

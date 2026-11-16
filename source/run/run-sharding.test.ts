@@ -61,6 +61,7 @@ function runCaseEntry(title: string): CollectedRunCaseEntry {
         file: 'source/example.test.ts',
         id,
         testCase: {
+            implementationDeclaration: null,
             skipReason: null,
             property: null,
             benchmark: null,
@@ -208,6 +209,8 @@ export const testNode = createOverkillSuite({
                     }
                 };
                 const plan: CollectedRunPlan = {
+                    implementations: null,
+
                     family: null,
                     defined: 2,
                     discoveredFiles: [

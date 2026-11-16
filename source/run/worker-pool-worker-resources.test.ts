@@ -19,6 +19,7 @@ import {
     type ResourceDefinition
 } from '../packages/test/resources.entry-point.ts';
 import type { EmptyResourceDependencies } from '../resources/resources.ts';
+import { createWorkerProcessUsageTracker } from './worker-execution-engine.ts';
 import type {
     WorkerPoolCommand,
     WorkerPoolLifecycleIdentity,
@@ -26,7 +27,6 @@ import type {
 } from './worker-pool-protocol.ts';
 import {
     acquireWorkerRunResources,
-    createWorkerProcessUsageTracker,
     disposeWorkerLaneLifecycle,
     disposeWorkerRunResources,
     laneResourceSession
@@ -75,6 +75,9 @@ function createEventLog(): EventLog {
 
 function command(): WorkerPoolCommand {
     return {
+        implementations: null,
+        implementationContext: { projectRoot: '/project' },
+
         family: null,
         debug: { mode: 'off', selectors: [] },
         failureArtifacts: defaultFailureArtifactPolicy,

@@ -8,13 +8,14 @@ import { createAssertionRecorder, type AssertionRecorder } from './assertion-rec
 import {
     singleAttemptResult,
     type PerTestResult,
+    type ExecutedCase,
     type TestContractFailure,
     type TestFailure,
     type TestOutcome,
     verdictFromOutcome
 } from './run-result.ts';
-import { createCaseInterruption, type ExecutedCase } from './case-interruption.ts';
-import type { TestPlanCase } from './test-plan.ts';
+import { createCaseInterruption } from './case-interruption.ts';
+import type { TestPlanCase, TestPlanCaseExecution } from './test-plan.ts';
 
 export type RunTestCaseOptions = CaseExecutionOptions & {
     readonly interruption: Promise<ExecutedCase> | null;
@@ -92,6 +93,13 @@ function completedCaseOutcome(
     return { outcome, verdict: outcome === null ? 'runtime-policy' : verdictFromOutcome(outcome) };
 }
 
+function caseBodyMode(execution: TestPlanCaseExecution): string {
+    if (execution.kind !== 'body') {
+        throw new TypeError('Referenced body was not admitted before case execution.');
+    }
+    return execution.bodyMode;
+}
+
 export async function runTestCase(
     testCase: TestPlanCase,
     wallClock: Clock,
@@ -121,13 +129,13 @@ export async function runTestCase(
         execution.recorder,
         executedBody,
         execution.interruption.result(),
-        testCase.execution.bodyMode === 'benchmark'
+        caseBodyMode(testCase.execution) === 'benchmark'
     );
     const durationMicroseconds = Number(wallClock.currentMonotonicMicroseconds) - startedAtMicroseconds;
 
     return {
         result: singleAttemptResult({
-            property: testCase.execution.bodyMode === 'property'
+            property: caseBodyMode(testCase.execution) === 'property'
                 ? { invocations: execution.recorder.propertyEvidence() }
                 : null,
             benchmark: execution.interruption.result()?.result.benchmark ?? execution.benchmark.result(),

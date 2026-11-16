@@ -2,7 +2,7 @@ import { AsyncResource } from 'node:async_hooks';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { activeResourceLeakError, createAsyncLeakMonitor } from '../engine/async-leak-diagnostics.ts';
 import { settleAsyncWork } from '../engine/async-control.ts';
-import { withRunnerInfrastructure } from '../engine/execution-observation.ts';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { observeCaseResourceOwners, type ObservedCase } from '../engine/resource-owner-observation.ts';
 import { createNativeWriteProbe, type NativeWriteProbe } from './native-write-probe.ts';
 

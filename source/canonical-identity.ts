@@ -1,8 +1,18 @@
+type StringIdentity = 'exact' | 'unicode';
 type CanonicalJsonValue = boolean | number | string | readonly CanonicalJsonValue[] | {
     readonly [key: string]: CanonicalJsonValue;
 } | null;
 
-function sortedObjectKeys(value: Readonly<Record<string, unknown>>): readonly string[] {
+function sortedObjectKeys(value: Readonly<Record<string, unknown>>, strings: StringIdentity): readonly string[] {
+    if (strings === 'exact') {
+        return Object.keys(value).toSorted(function compareExact(left, right) {
+            const ordering = left.localeCompare(right, 'en');
+            if (ordering !== 0 || left === right) {
+                return ordering;
+            }
+            return left < right ? -1 : 1;
+        });
+    }
     return Object.keys(value).toSorted(function compareKeys(left, right) {
         return left.localeCompare(right);
     });
@@ -16,7 +26,7 @@ function canonicalNumber(value: number): number {
     throw new TypeError('Cannot serialize number value for shard partitioning.');
 }
 
-function canonicalScalar(value: unknown): boolean | number | string | undefined {
+function canonicalScalar(value: unknown, strings: StringIdentity): boolean | number | string | undefined {
     if (typeof value === 'boolean') {
         return value;
     }
@@ -26,7 +36,7 @@ function canonicalScalar(value: unknown): boolean | number | string | undefined 
     }
 
     if (typeof value === 'string') {
-        return value.normalize('NFC');
+        return strings === 'unicode' ? value.normalize('NFC') : value;
     }
 
     return undefined;
@@ -45,17 +55,18 @@ function canonicalArray(
 
 function canonicalRecord(
     value: Readonly<Record<string, unknown>>,
-    canonicalize: (item: unknown) => CanonicalJsonValue
+    canonicalize: (item: unknown) => CanonicalJsonValue,
+    strings: StringIdentity
 ): CanonicalJsonValue {
     return Object.fromEntries(
-        sortedObjectKeys(value).map(function toCanonicalEntry(key) {
-            return [ key.normalize('NFC'), canonicalize(value[key]) ];
+        sortedObjectKeys(value, strings).map(function toCanonicalEntry(key) {
+            return [ strings === 'unicode' ? key.normalize('NFC') : key, canonicalize(value[key]) ];
         })
     );
 }
 
-function canonicalJsonValue(value: unknown): CanonicalJsonValue {
-    const scalar = canonicalScalar(value);
+function canonicalJsonValue(value: unknown, strings: StringIdentity): CanonicalJsonValue {
+    const scalar = canonicalScalar(value, strings);
 
     if (scalar !== undefined) {
         return scalar;
@@ -66,16 +77,24 @@ function canonicalJsonValue(value: unknown): CanonicalJsonValue {
     }
 
     if (Array.isArray(value)) {
-        return canonicalArray(value, canonicalJsonValue);
+        return canonicalArray(value, function canonicalize(item) {
+            return canonicalJsonValue(item, strings);
+        });
     }
 
     if (isRecord(value)) {
-        return canonicalRecord(value, canonicalJsonValue);
+        return canonicalRecord(value, function canonicalize(item) {
+            return canonicalJsonValue(item, strings);
+        }, strings);
     }
 
     throw new TypeError(`Cannot serialize ${typeof value} value for shard partitioning.`);
 }
 
 export function canonicalIdentityJson(value: unknown): string {
-    return JSON.stringify(canonicalJsonValue(value));
+    return JSON.stringify(canonicalJsonValue(value, 'unicode'));
+}
+
+export function canonicalJson(value: unknown): string {
+    return JSON.stringify(canonicalJsonValue(value, 'exact'));
 }

@@ -1,5 +1,10 @@
 import { isAbsolute } from 'node:path';
-import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import {
+    prepareBodyReferences,
+    declareImplementations,
+    implementationPlan,
+    withImplementationPlan
+} from './body-reference-plan.ts';
 import { familyRunnerError } from './family-completion.ts';
 import type { RunnerError } from './run-result.ts';
 import { createFamilyLifetime, rejectWithFamilyCleanup, type FamilyLifetime } from './family-lifetime.ts';
@@ -16,8 +21,8 @@ import {
     type FamilyCollection,
     type FamilyCollectionInput,
     type FamilyPreparation,
+    type FamilyPreparationInput,
     type FamilyValue,
-    type FamilyVariant,
     type TestFamily
 } from './test-family.ts';
 import type { TestPlan, TestPlanCase } from './test-plan.ts';
@@ -92,7 +97,7 @@ function validateCase(testCase: TestPlanCase, family: DefinedTestFamily): void {
     validateCasePolicy(testCase, family);
 }
 
-function nonEmptyCases(cases: readonly TestPlanCase[]): NonEmptyReadonlyArray<TestPlanCase> {
+function nonEmptyCases(cases: readonly TestPlanCase[]): TestPlan['cases'] {
     const [ first, ...rest ] = cases;
     if (first === undefined) {
         throw new TypeError('Family selection must contain at least one work item.');
@@ -146,13 +151,15 @@ function snapshotPlan(testPlan: TestPlan): TestPlan {
     const discoveredCases = nonEmptyCases(testPlan.discoveredCases.map(function snapshotDiscovered(testCase) {
         return byIdentity.get(workIdentityKey(testCase.workId)) ?? snapshotCase(testCase);
     }));
-    return Object.freeze({ ...testPlan, cases, discoveredCases, root: Object.freeze({ ...testPlan.root }) });
+    const snapshot = { ...testPlan, cases, discoveredCases, root: Object.freeze({ ...testPlan.root }) };
+    const state = implementationPlan(testPlan);
+    return Object.freeze(state === null ? snapshot : withImplementationPlan(snapshot, state));
 }
 
 function expandPlan(
     testPlan: TestPlan,
     family: DefinedTestFamily,
-    input: NonEmptyReadonlyArray<FamilyVariant>
+    input: Parameters<FamilyPreparationInput<FamilyValue>['expandVariants']>[0]
 ): TestPlan {
     const variants = snapshotFamilyValue(input);
     const keys = new Set<string>();
@@ -201,14 +208,21 @@ async function collectFamily(
     };
 }
 
-function collectPreparedFamily(
-    preparation: FamilyPreparation,
+type PreparedFamilyInputs = {
+    readonly backend: FamilyPreparation;
+    readonly projectRoot: string;
+    readonly signal: AbortSignal;
+};
+
+async function collectPreparedFamily(
+    prepared: PreparedFamilyInputs,
     family: DefinedTestFamily,
     settings: FamilyValue,
     executions: WeakMap<CollectedFamilyRun, FamilyExecution>
-): PreparedFamilyRun {
+): Promise<PreparedFamilyRun> {
+    const { backend: preparation, projectRoot } = prepared;
     const preparationFacts = snapshotFamilyValue(preparation.facts);
-    const preparedPlan = preparation.testPlan;
+    const preparedPlan = await declareImplementations(preparation.testPlan, { projectRoot }, prepared.signal);
     const lifetime = createFamilyLifetime(preparation.dispose.bind(preparation));
     return Object.freeze<PreparedFamilyRun>({
         [preparedBrand]: true,
@@ -220,9 +234,9 @@ function collectPreparedFamily(
             const signal = AbortSignal.any([ input.signal, lifetime.signal ]);
             async function collect(): Promise<CollectedFamilyRun> {
                 signal.throwIfAborted();
-                const testPlan = selectCases(preparedPlan, input);
+                const selectedPlan = selectCases(preparedPlan, input);
                 const workIds = Object.freeze(
-                    testPlan
+                    selectedPlan
                         .cases
                         .filter(function executable(testCase) {
                             return testCase.execution.kind !== 'skip';
@@ -236,6 +250,7 @@ function collectPreparedFamily(
                     { workIds, signal },
                     family.features.execution
                 );
+                const testPlan = await prepareBodyReferences(selectedPlan, { projectRoot }, signal);
                 const run = Object.freeze<CollectedFamilyRun>({
                     [collectedBrand]: true,
                     testPlan,
@@ -282,11 +297,11 @@ function validatePreparationPlan(plan: TestPlan, family: DefinedTestFamily): voi
     indexCases(plan);
 }
 
-function requireIssuedPlan(
+async function requireIssuedPlan(
     testPlan: TestPlan,
     issued: WeakSet<TestPlan>,
-    complete: () => PreparedFamilyRun
-): PreparedFamilyRun {
+    complete: () => Promise<PreparedFamilyRun>
+): Promise<PreparedFamilyRun> {
     if (!issued.has(testPlan)) {
         throw new TypeError('Backend preparation returned a plan the engine did not issue.');
     }
@@ -296,10 +311,10 @@ function requireIssuedPlan(
 async function acceptPreparation(
     preparation: FamilyPreparation,
     issued: WeakSet<TestPlan>,
-    complete: () => PreparedFamilyRun
+    complete: () => Promise<PreparedFamilyRun>
 ): Promise<PreparedFamilyRun> {
     try {
-        return requireIssuedPlan(preparation.testPlan, issued, complete);
+        return await requireIssuedPlan(preparation.testPlan, issued, complete);
     } catch (error: unknown) {
         return await rejectWithFamilyCleanup(error, createFamilyLifetime(preparation.dispose.bind(preparation)));
     }
@@ -343,9 +358,14 @@ async function prepareFamilyRun(
             return expanded;
         }
     });
-    return await acceptPreparation(preparation, issued, function accept() {
+    return await acceptPreparation(preparation, issued, async function accept() {
         request.signal.throwIfAborted();
-        return collectPreparedFamily(preparation, testFamily, binding.settings, executions);
+        return collectPreparedFamily(
+            { backend: preparation, projectRoot: request.projectRoot, signal: request.signal },
+            testFamily,
+            binding.settings,
+            executions
+        );
     });
 }
 

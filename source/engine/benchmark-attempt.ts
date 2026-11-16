@@ -1,3 +1,4 @@
+import { executableBody } from './test-body.ts';
 import type { BenchmarkExecutionEnvironment } from './benchmark-environment.ts';
 import type { BenchmarkExecutionResult } from './benchmark-result.ts';
 import type { CaseRunnerError, RunnerError } from './run-result.ts';
@@ -55,14 +56,14 @@ export function builderBodyForAttempt(
         throw new TypeError('Test case does not have a builder body.');
     }
     if (execution.bodyMode === 'builder' || execution.bodyMode === 'property') {
-        return execution.body;
+        return executableBody(execution.body);
     }
     const { workload } = testCase.workId;
     if (workload === null) {
         throw new TypeError('Benchmark execution requires a selected workload.');
     }
     return async function runBenchmark(scope) {
-        return execution.body({
+        return executableBody(execution.body)({
             workId: testCase.workId,
             benchmarkEnvironment: attempt.benchmarkEnvironment,
             reportCleanupError: attempt.reportCleanupError,

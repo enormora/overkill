@@ -1,3 +1,5 @@
+import { isBodyReference, mapBodyReference, executableBody, withReferencedBodyFamily } from '../engine/test-body.ts';
+import type { BodyReference } from '../engine/body-reference.ts';
 import {
     attachTestBodyFamily,
     readPropertyExecutionHost,
@@ -31,7 +33,10 @@ import type {
 } from './property-definition.ts';
 
 function ensurePropertyDefinition(value: unknown): void {
-    if (typeof value !== 'object' || value === null || typeof Reflect.get(value, 'test') !== 'function') {
+    if (
+        typeof value !== 'object' || value === null ||
+        typeof Reflect.get(value, 'test') !== 'function' && !isBodyReference(Reflect.get(value, 'test'))
+    ) {
         throw new TypeError('property() requires ({ title, generator, test }).');
     }
 }
@@ -51,7 +56,11 @@ function hasPropertySettings<Value>(
 
 export function property<Value>(definition: PropertyDefinition<Value>): TestCase {
     ensurePropertyDefinition(definition);
-    const invocation = normalizePropertyInvocation(definition);
+    const referenced = isBodyReference(definition.test) ? definition.test : null;
+    const ordinary = typeof definition.test === 'function' ? definition.test : function unavailableImplementation() {
+        throw new TypeError('Property implementation was not admitted.');
+    };
+    const invocation = normalizePropertyInvocation({ ...definition, test: ordinary });
     const definitionLocations = definitionLocationsForAuthoringCall();
     const declaration: PropertyDeclaration<Value> = Object.freeze<PropertyDeclaration<Value>>({
         kind: 'property',
@@ -62,17 +71,27 @@ export function property<Value>(definition: PropertyDefinition<Value>): TestCase
         ]),
         examples: invocation.examples,
         generator: invocation.generator,
-        test: definition.test,
+        test: ordinary,
         definitionLocations
     });
-    const body = attachTestBodyFamily(async function executeDeclaredProperty(scope: TestScope) {
-        return await runPropertyInvocation(invocation, {
-            scope,
-            signal: scope.signal,
-            identity: 'declared-property',
-            locations: definitionLocations
-        });
-    }, { family: 'property', definition: declaration });
+    function execution(test: typeof ordinary) {
+        return async function executeDeclaredProperty(scope: TestScope) {
+            return await runPropertyInvocation({ ...invocation, test }, {
+                scope,
+                signal: scope.signal,
+                identity: 'declared-property',
+                locations: definitionLocations
+            });
+        };
+    }
+    const body = attachTestBodyFamily(
+        referenced === null ? execution(ordinary) : mapBodyReference(referenced, function bindProperty(bound) {
+            return execution(async function executeSample(value, sample) {
+                return bound({ value, sample });
+            });
+        }),
+        { family: 'property', definition: declaration }
+    );
     return createPropertyTestCase({
         definition: declaration,
         annotations: {},
@@ -129,7 +148,7 @@ async function runNestedPropertyBody(
 ): Promise<AssertionResult> {
     let completed = false;
     try {
-        const result = await body({ ...scope, forall: session.forall });
+        const result = await executableBody(body)({ ...scope, forall: session.forall });
         completed = true;
         return result;
     } finally {
@@ -140,10 +159,33 @@ async function runNestedPropertyBody(
     }
 }
 
+type InlinePropertyCaseBody = Extract<PropertyCaseBody, (scope: never) => unknown>;
+type ReferencedPropertyCaseBody = BodyReference<
+    Parameters<InlinePropertyCaseBody>[0],
+    ReturnType<InlinePropertyCaseBody>
+>;
+export function withProperties(
+    body: InlinePropertyCaseBody,
+    ...settings: readonly [] | readonly [PropertySettings]
+): TestBody;
+export function withProperties(
+    body: ReferencedPropertyCaseBody,
+    ...settings: readonly [] | readonly [PropertySettings]
+): BodyReference;
+export function withProperties(
+    body: InlinePropertyCaseBody | ReferencedPropertyCaseBody,
+    ...settings: readonly [] | readonly [PropertySettings]
+): BodyReference | TestBody;
 export function withProperties(
     body: PropertyCaseBody,
     ...settings: readonly [] | readonly [PropertySettings]
-): TestBody {
+): BodyReference | TestBody {
+    if (isBodyReference(body)) {
+        const mapped = mapBodyReference(body, function bound(source) {
+            return withProperties(source, ...settings);
+        });
+        return withReferencedBodyFamily(mapped, propertyFamilyAttachment(body, settings));
+    }
     if (typeof body !== 'function') {
         throw new TypeError('withProperties() requires a body function.');
     }

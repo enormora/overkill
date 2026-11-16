@@ -6,6 +6,7 @@ import type {
 import { serializeValueWithBudget, defaultSerializationBudget } from '../compare/serialized-value.ts';
 import type { WorkloadInput, WorkloadParameters } from './workload-input.ts';
 import {
+    isBodyReference,
     readTestBodyOrigin,
     testBodyLocation,
     type TestBodyOrigin,
@@ -244,7 +245,7 @@ function collectTestCase(
                 annotations,
                 controls,
                 definitionLocations: testCase.definitionLocations,
-                bodyOrigin: testCase.execution.kind === 'body'
+                bodyOrigin: testCase.execution.kind === 'body' && !isBodyReference(testCase.execution.body)
                     ? testCase.bodyOrigin ?? readTestBodyOrigin(testCase.execution.body) ?? {
                         body: testCase.execution.body,
                         location: testCase.definitionLocations.at(-1) ?? testCase.definitionLocations[0]
@@ -294,12 +295,12 @@ function collectTable(
                 annotations,
                 controls,
                 definitionLocations: table.definitionLocations,
-                bodyOrigin: {
+                bodyOrigin: isBodyReference(tableCase.body) ? null : {
                     body: readTestBodyOrigin(tableCase.body)?.body ?? tableCase.body,
                     location: function tableLocation() {
                         const origin = Object.hasOwn(table, 'bodyOrigins') ? table.bodyOrigins[tableIndex] : undefined;
                         return testBodyLocation(
-                            origin,
+                            origin ?? undefined,
                             table.definitionLocations.at(-1) ?? table.definitionLocations[0]
                         );
                     },

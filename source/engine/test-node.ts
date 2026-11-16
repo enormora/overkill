@@ -1,10 +1,11 @@
+import type { Except } from 'type-fest';
 import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
 import { captureSourceLocation, ensureDefinitionLocations } from '../assertion-protocol/source-location.ts';
 import type { TestFamilyId } from './identity.ts';
-import type { TestBody, ThrowingTestBody } from './test-scope.ts';
+import type { TestBody, TestScope, ThrowingTestBody, ThrowingTestScope } from './test-scope.ts';
 import type {
     BenchmarkScope as MeasurementScope,
     BenchmarkBody as MeasurementBody,
@@ -13,6 +14,8 @@ import type {
 } from './benchmark-node.ts';
 import { readWorkloadTestCaseVariants, type WorkloadVariant } from './workload-test-case.ts';
 import {
+    isBodyReference,
+    type BodyImplementation,
     captureTestBodyOrigin,
     readTestBodyOrigin,
     type TestBodyOrigin,
@@ -41,11 +44,14 @@ const defaultTestNodeOwnerKey = Symbol.for('@overkill-dev/engine/defaultTestNode
 
 export type DefinitionLocations = NonEmptyReadonlyArray<ResolvableSourceLocation>;
 
-export type BuilderTestCaseExecution = Extract<FamilyBodyExecution<TestBody>, { readonly bodyMode: 'builder'; }>;
-export type PropertyTestCaseExecution = Extract<FamilyBodyExecution<TestBody>, { readonly bodyMode: 'property'; }>;
+type BuilderBody = BodyImplementation<TestScope, ReturnType<TestBody>>;
+type ThrowingBody = BodyImplementation<ThrowingTestScope, ReturnType<ThrowingTestBody>>;
+
+export type BuilderTestCaseExecution = Extract<FamilyBodyExecution<BuilderBody>, { readonly bodyMode: 'builder'; }>;
+export type PropertyTestCaseExecution = Extract<FamilyBodyExecution<BuilderBody>, { readonly bodyMode: 'property'; }>;
 
 export type ThrowingTestCaseExecution = {
-    readonly body: ThrowingTestBody;
+    readonly body: ThrowingBody;
     readonly bodyMode: 'throwing';
     readonly kind: 'body';
 };
@@ -58,21 +64,21 @@ export type SkippedTestCaseExecution = {
 type AssertionBodyExecution = BuilderTestCaseExecution | PropertyTestCaseExecution | ThrowingTestCaseExecution;
 export type BodyTestCaseExecution = AssertionBodyExecution | BenchmarkTestCaseExecution;
 
-type WorkloadId = WorkloadVariant<TestBody>['id'];
+type WorkloadId = WorkloadVariant<BuilderBody>['id'];
 type WorkloadParameters = NonNullable<WorkloadVariant<TestBody>['parameters']>;
 
 export type WorkloadTestCaseVariant = {
     readonly id: WorkloadId;
-    readonly body: TestBody;
+    readonly body: BuilderBody;
 } | {
     readonly id: WorkloadId;
     readonly parameters: WorkloadParameters;
-    readonly body: TestBody;
+    readonly body: BuilderBody;
 };
 
 export type WorkloadTestCaseExecution = {
     readonly kind: 'workloads';
-    readonly workloads: NonEmptyReadonlyArray<WorkloadVariant<TestBody>>;
+    readonly workloads: NonEmptyReadonlyArray<WorkloadVariant<BuilderBody>>;
 };
 
 export type TestCaseExecution = BodyTestCaseExecution | SkippedTestCaseExecution | WorkloadTestCaseExecution;
@@ -104,14 +110,14 @@ export type Suite = {
 
 export type TableCase = {
     readonly annotations: TestAnnotationsInput;
-    readonly body: TestBody;
+    readonly body: BuilderBody;
     readonly controls: TestControlsInput;
     readonly parameters: unknown;
     readonly title: string;
 };
 
 export type Table = {
-    readonly bodyOrigins: readonly TestBodyOrigin[];
+    readonly bodyOrigins: readonly (TestBodyOrigin | null)[];
     readonly [testNodeBrand]: true;
     readonly [testNodeFamilyBrand]: TestFamilyId | null;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
@@ -165,15 +171,16 @@ export type TestCaseDefinition = {
 };
 
 export type TestCaseOptions = TestCaseDefinition & {
-    readonly body: TestBody;
+    readonly body: BuilderBody;
 };
 
-export type PropertyTestCaseOptions = TestCaseOptions & {
+export type PropertyTestCaseOptions = Except<TestCaseOptions, 'body'> & {
+    readonly body: BuilderBody;
     readonly definition: PropertyTestCaseExecution['definition'];
 };
 
 export type ThrowingTestCaseOptions = TestCaseDefinition & {
-    readonly body: ThrowingTestBody;
+    readonly body: ThrowingBody;
 };
 
 export type WorkloadTestCaseOptions = TestCaseDefinition & {
@@ -205,7 +212,7 @@ export type SuiteOptions = {
 
 export type TableCaseOptions = {
     readonly annotations: TestAnnotationsInput;
-    readonly body: TestBody;
+    readonly body: BuilderBody;
     readonly controls: TestControlsInput;
     readonly parameters: unknown;
     readonly title: string;
@@ -254,7 +261,7 @@ function ensureTitleValue(title: unknown): asserts title is string {
 }
 
 function ensureTestBody(body: unknown): void {
-    if (typeof body !== 'function') {
+    if (typeof body !== 'function' && !isBodyReference(body)) {
         throw new TypeError('Test case body must be a function.');
     }
 }
@@ -391,7 +398,9 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
         validateNodeMetadata(options);
 
         const testCase: TestCase = {
-            bodyOrigin: execution.kind === 'body' ? captureTestBodyOrigin(execution.body) : null,
+            bodyOrigin: execution.kind === 'body' && !isBodyReference(execution.body)
+                ? captureTestBodyOrigin(execution.body)
+                : null,
             [testNodeBrand]: true,
             [testNodeFamilyBrand]: family,
             [testNodeOwnerBrand]: owner,
@@ -479,7 +488,9 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
 
         const table: Table = {
             bodyOrigins: options.cases.map(function caseOrigin(entry) {
-                return readTestBodyOrigin(entry.body) ?? { body: entry.body, location };
+                return isBodyReference(entry.body)
+                    ? null
+                    : readTestBodyOrigin(entry.body) ?? { body: entry.body, location };
             }),
             [testNodeBrand]: true,
             [testNodeFamilyBrand]: null,
@@ -547,9 +558,12 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
         createWorkloadTestCase(options: WorkloadTestCaseOptions): TestCase {
             return createExecutableTestCase(options, {
                 kind: 'workloads',
-                workloads: readWorkloadTestCaseVariants(options.workloads, function isBody(value): value is TestBody {
-                    return typeof value === 'function';
-                })
+                workloads: readWorkloadTestCaseVariants(
+                    options.workloads,
+                    function isBody(value): value is BuilderBody {
+                        return typeof value === 'function' || isBodyReference(value);
+                    }
+                )
             }, null);
         }
     };

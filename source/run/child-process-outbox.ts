@@ -1,4 +1,4 @@
-import { withRunnerInfrastructure } from '../engine/execution-observation.ts';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { childProcessEnvelope, type ChildProcessEnvelope } from './child-process-protocol.ts';
 
 export type ChildProcessOutbox = {

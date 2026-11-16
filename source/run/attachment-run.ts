@@ -1,4 +1,4 @@
-import type { RunResult } from '../engine/run-result.ts';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { createAttachmentStorageSession } from './attachment-storage-session.ts';
 import { createAttachmentRecord, type AttachmentRecord } from './attachment-record.ts';
 import { createAttachmentRunCoordinator, type AttachmentRunCoordinator } from './attachment-coordinator.ts';
@@ -8,6 +8,8 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 import type { ResolvedRun } from './run-types.ts';
 import { runHasAttachmentScopes } from './run-diagnostics.ts';
 import { executeWithPropertyWitnesses } from './property-witness-storage.ts';
+
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 
 type AttachmentCompletion = {
     readonly complete: (result: RunResult) => Promise<RunResult>;
@@ -58,8 +60,12 @@ export async function executeWithAttachments(
     if (!runHasAttachmentScopes(resolved)) {
         return await run();
     }
-    const record = await createAttachmentRecord(resolved, dependencies, session);
-    const coordinator = createAttachmentRunCoordinator(await createAttachmentStorageSession(resolved, record));
+    const record = await withRunnerInfrastructure(async function recordRun() {
+        return await createAttachmentRecord(resolved, dependencies, session);
+    });
+    const coordinator = await withRunnerInfrastructure(async function coordinate() {
+        return createAttachmentRunCoordinator(await createAttachmentStorageSession(resolved, record));
+    });
     const completion = session === null ? record.session : {
         complete: record.session.checkpointResult,
         async interrupt() {

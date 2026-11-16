@@ -41,6 +41,8 @@ const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds:
 
 export function createCollectedPlan(): CollectedRunPlan {
     return {
+        implementations: null,
+
         family: null,
         defined: 1,
         discoveredFiles: [],
@@ -49,6 +51,8 @@ export function createCollectedPlan(): CollectedRunPlan {
                 file: integrationPath,
                 cases: [
                     {
+                        implementationDeclaration: null,
+
                         skipReason: null,
                         property: null,
                         benchmark: null,
@@ -121,6 +125,8 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            implementations: null,
+
             family: { id: 'integration', version: '1', settings: null, preparation: null, collection: null },
             adapter: null,
             benchmarkHost: null,

@@ -1,4 +1,5 @@
 import { resourceAttachments } from '../attachments/attachment-context.ts';
+import { resourceReferenceCallbacks } from './resource-reference-binding.ts';
 import type { AnyResourceDefinition, ResourceDependencies } from './resource-definition-shape.ts';
 import {
     defaultScenarioBindings,
@@ -209,11 +210,12 @@ function requestRoutedResourceScenarioBindings(
 }
 
 export function exposeResourceHandle(resource: AnyResourceDefinition, handle: unknown): unknown {
-    if (resource.exposeHandle === null) {
+    const { exposeHandle } = resourceReferenceCallbacks(resource);
+    if (exposeHandle === null) {
         return handle;
     }
 
-    return Reflect.apply(resource.exposeHandle, undefined, [ handle, {
+    return Reflect.apply(exposeHandle, undefined, [ handle, {
         attachments: resourceAttachments(resource.name),
         scenarios: requestRoutedResourceScenarioBindings(resource)
     } ]);

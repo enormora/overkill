@@ -1,7 +1,8 @@
 import type { Except } from 'type-fest';
 import { z } from 'zod/v4';
+import type { ModuleReference } from '../implementation-reference.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import { snapshotValidatedJson } from '../attachments/json-snapshot.ts';
+import { snapshotPortableValue, type PortableValue } from '../portable-value.ts';
 import type { TestPlan } from './test-plan.ts';
 import type { WorkId, TestFamilyId } from './identity.ts';
 import type { PerTestResult, RunArtifact, RunnerError } from './run-result.ts';
@@ -66,15 +67,9 @@ export function bindFamilySettings(family: DefinedTestFamily, input: unknown): B
     return binding;
 }
 
-type FamilyScalar = boolean | number | string | null;
-type FamilyArray = readonly FamilyValue[];
-type FamilyRecord = { readonly [key: string]: FamilyValue; };
-export type FamilyValue = FamilyArray | FamilyRecord | FamilyScalar;
+export type FamilyValue = PortableValue;
 
-export type FamilyModuleReference = {
-    readonly moduleUrl: string;
-    readonly exportName: string;
-};
+export type FamilyModuleReference = ModuleReference;
 
 export type FamilyFeatures = {
     readonly execution: 'analysis' | 'runtime';
@@ -156,60 +151,12 @@ export type FamilyAnalysisContext = {
     readonly report: (event: FamilyEvent) => Promise<void>;
 };
 
-function validateDataProperty(value: unknown, key: PropertyKey): void {
-    const descriptor = Object.getOwnPropertyDescriptor(value, key);
-    if (typeof key !== 'string' || descriptor?.enumerable !== true || !Object.hasOwn(descriptor, 'value')) {
-        throw new TypeError('Family settings require enumerable string data properties.');
-    }
-}
-
-function validateArrayProperty(value: readonly unknown[], key: PropertyKey): void {
-    if (key === 'length') {
-        return;
-    }
-    validateDataProperty(value, key);
-    if (typeof key !== 'string' || !/^(?:0|[1-9]\d*)$/v.test(key) || Number(key) >= value.length) {
-        throw new TypeError('Family arrays cannot contain additional properties.');
-    }
-}
-
-function validateFamilyValue(value: unknown): void {
-    if (Object.is(value, -0)) {
-        throw new TypeError('Family settings require lossless JSON numbers.');
-    }
-    if (typeof value !== 'object' || value === null) {
-        return;
-    }
-    if (Array.isArray(value)) {
-        if (Object.getPrototypeOf(value) !== Array.prototype) {
-            throw new TypeError('Family settings require ordinary JSON arrays.');
-        }
-        Reflect.ownKeys(value).forEach(function validateKey(key) {
-            validateArrayProperty(value, key);
-        });
-        return;
-    }
-    Reflect.ownKeys(value).forEach(function validateKey(key) {
-        validateDataProperty(value, key);
-    });
-}
-
-function freezeFamilyValue(value: FamilyValue): void {
-    if (typeof value === 'object' && value !== null) {
-        Object.values(value).forEach(freezeFamilyValue);
-        Object.freeze(value);
-    }
-}
-
 export function snapshotFamilyValue<Value extends FamilyValue>(value: Value): Value {
     try {
-        snapshotValidatedJson(value, validateFamilyValue);
+        return snapshotPortableValue(value);
     } catch (error: unknown) {
         throw new TypeError('Family settings require lossless, acyclic JSON.', { cause: error });
     }
-    const snapshot = structuredClone(value);
-    freezeFamilyValue(snapshot);
-    return snapshot;
 }
 
 const metadataSchema = z.object({

@@ -1,6 +1,6 @@
 import asyncHooks, { AsyncLocalStorage, type AsyncHook } from 'node:async_hooks';
 import { createStoredValue } from '../stored-value.ts';
-import { registerExecutionDisposal } from './execution-observation.ts';
+import { registerExecutionDisposal } from '../execution-ownership.ts';
 import {
     recordNativeResource,
     completeNativeWriteRequest,

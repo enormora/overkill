@@ -6,6 +6,8 @@ import {
     type Suite,
     type Table,
     type TestAnnotationsInput,
+    type BodyReference,
+    type BodyImplementation,
     type TestBody,
     type TestCase,
     type TestControlsInput,
@@ -29,7 +31,7 @@ import {
 import {
     readAuthoringRecord,
     readAuthoringString,
-    readAuthoringTestBody
+    readAuthoringTestImplementation
 } from '../packages/test/authoring-input.ts';
 import {
     createAuthoredTable,
@@ -46,14 +48,14 @@ type TestDefinition<
     Scope extends TestScope = TestScope
 > = {
     readonly annotations?: AuthoringAnnotations;
-    readonly body: (scope: Scope) => ReturnType<TestBody>;
+    readonly body: BodyReference<Scope> | ((scope: Scope) => ReturnType<TestBody>);
     readonly controls?: ControlsType;
     readonly title: string;
 };
 
 type RuntimeTestDefinition = {
     readonly annotations: TestAnnotationsInput;
-    readonly body: TestBody;
+    readonly body: BodyReference | TestBody;
     readonly controls: TestControlsInput;
     readonly title: string;
 };
@@ -106,7 +108,7 @@ type ObjectScopedTestAuthorInput<
 ];
 type PositionalTestAuthorInput<Scope extends TestScope> = readonly [
     title: string,
-    body: (scope: Scope) => ReturnType<TestBody>
+    body: BodyReference<Scope> | ((scope: Scope) => ReturnType<TestBody>)
 ];
 type DefaultTestAuthor = {
     (...input: ObjectScopedTestAuthorInput<AuthoringControls, TestScope>): TestCase;
@@ -137,7 +139,11 @@ export type TableAuthor<
     ControlsType extends TestControlsInput,
     Scope extends TestScope
 > = <Row>(
-    definition: TableDefinition<Row, ControlsType, (scope: ParameterizedTestScope<Row, Scope>) => ReturnType<TestBody>>
+    definition: TableDefinition<
+        Row,
+        ControlsType,
+        BodyImplementation<ParameterizedTestScope<Row, Scope>, ReturnType<TestBody>>
+    >
 ) => Table;
 
 const singleArgumentCount = 1;
@@ -174,7 +180,7 @@ function readTestDefinition(value: unknown): RuntimeTestDefinition {
 
     return {
         annotations: readAuthoringAnnotations(definition.annotations ?? {}),
-        body: readAuthoringTestBody(definition.body),
+        body: readAuthoringTestImplementation(definition.body),
         controls: readAuthoringControls(definition.controls ?? {}),
         title: readAuthoringString(definition.title, testArgumentsError)
     };
@@ -204,8 +210,8 @@ function readSuiteDefinition(value: unknown): RuntimeSuiteDefinition {
 
 function composeFacadeBody(
     facadeActions: readonly ResourceWrapperAction[],
-    body: TestBody
-): TestBody {
+    body: BodyReference | TestBody
+): BodyReference | TestBody {
     return facadeActions.length === 0
         ? body
         : attachComposedResourceActions(facadeActions, body, 'createTestFacade');
@@ -231,7 +237,7 @@ export function createAuthoredTest(
 
     if (input.length === positionalArgumentCount) {
         const [ name, body ] = input;
-        const testBody = readAuthoringTestBody(body);
+        const testBody = readAuthoringTestImplementation(body);
 
         return createTestCase({
             annotations: createAuthoringAnnotations(facadeAnnotations, {}),

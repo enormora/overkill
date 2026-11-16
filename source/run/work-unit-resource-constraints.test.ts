@@ -23,6 +23,8 @@ function collectedCaseWithControls(
     caseControls: CollectedRunCase['controls']
 ): CollectedRunCase {
     return {
+        implementationDeclaration: null,
+
         skipReason: null,
         property: null,
         benchmark: null,
@@ -67,6 +69,8 @@ function resource(
 
 function collectedPlan(cases: readonly CollectedRunCase[]): CollectedRunPlan {
     return {
+        implementations: null,
+
         family: null,
         defined: cases.length,
         discoveredFiles: [],

@@ -1,3 +1,6 @@
+import { isBodyReference, type BodyImplementation } from './test-body.ts';
+import type { BodyReference } from './body-reference.ts';
+
 const testBodyResourceAttachmentsBrand = Symbol.for('@overkill-dev/engine/TestBodyResourceAttachments');
 
 export type TestBodyExecutionRequirementSummary = Readonly<Record<string, unknown>>;
@@ -239,15 +242,32 @@ function freezeAttachments(attachments: TestBodyResourceAttachments): TestBodyRe
     });
 }
 
-export function hasTestBodyResourceAttachments(value: unknown): value is ResourceAttachedTestBody<AttachedTestBody> {
-    return typeof value === 'function' && Object.hasOwn(value, testBodyResourceAttachmentsBrand);
+export function hasTestBodyResourceAttachments(
+    value: unknown
+): value is ResourceAttachedTestBody<AttachedTestBody | BodyReference<never, unknown>> {
+    return (typeof value === 'function' || isBodyReference(value)) &&
+        Object.hasOwn(value, testBodyResourceAttachmentsBrand);
 }
 
+function referencedResourceBody<Scope, Result>(
+    body: BodyReference<Scope, Result>,
+    attachments: TestBodyResourceAttachments
+): ResourceAttachedTestBody<BodyReference<Scope, Result>> {
+    return { ...body, [testBodyResourceAttachmentsBrand]: freezeAttachments(attachments) };
+}
 export function attachTestBodyResourceAttachments<Scope, Result>(
     body: (scope: Scope) => Result,
     attachments: TestBodyResourceAttachments
-): ResourceAttachedTestBody<(scope: Scope) => Result> {
-    if (typeof body !== 'function') {
+): ResourceAttachedTestBody<(scope: Scope) => Result>;
+export function attachTestBodyResourceAttachments<Scope, Result>(
+    body: BodyReference<Scope, Result>,
+    attachments: TestBodyResourceAttachments
+): ResourceAttachedTestBody<BodyReference<Scope, Result>>;
+export function attachTestBodyResourceAttachments<Scope, Result>(
+    body: BodyImplementation<Scope, Result>,
+    attachments: TestBodyResourceAttachments
+): ResourceAttachedTestBody<BodyImplementation<Scope, Result>> {
+    if (typeof body !== 'function' && !isBodyReference(body)) {
         throw new TypeError('Resource attachments require a test body function.');
     }
 
@@ -261,6 +281,9 @@ export function attachTestBodyResourceAttachments<Scope, Result>(
 
     validateAttachments(attachments);
 
+    if (isBodyReference(body)) {
+        return referencedResourceBody(body, attachments);
+    }
     return Object.assign(body, {
         [testBodyResourceAttachmentsBrand]: freezeAttachments(attachments)
     });

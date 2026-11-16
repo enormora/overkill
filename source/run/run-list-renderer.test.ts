@@ -121,6 +121,8 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            implementations: null,
+
             family: { id: profile.testFamily, version: '1', settings: null, preparation: null, collection: null },
             adapter: null,
             benchmarkHost: null,

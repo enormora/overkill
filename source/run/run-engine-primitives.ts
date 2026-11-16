@@ -7,6 +7,8 @@ import type {
     WorkloadId as WorkloadIdDefinition
 } from '../engine/identity.ts';
 import type {
+    ImplementationCatalog as ImplementationCatalogDefinition,
+    ImplementationDeclaration as ImplementationDeclarationDefinition,
     Engine as EngineDefinition,
     FamilyRunFacts as FamilyRunFactsDefinition,
     NonEmptyReadonlyArray as NonEmptyReadonlyArrayDefinition,
@@ -82,3 +84,6 @@ export type FamilyRunFacts = FamilyRunFactsDefinition;
 export type NonEmptyReadonlyArray<Value> = NonEmptyReadonlyArrayDefinition<Value>;
 export type SourceLocation = SourceLocationDefinition;
 export type SerializedValue = SerializedValueDefinition;
+
+export type ImplementationCatalog = ImplementationCatalogDefinition;
+export type ImplementationDeclaration = ImplementationDeclarationDefinition;

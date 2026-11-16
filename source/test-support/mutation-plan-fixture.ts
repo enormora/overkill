@@ -14,6 +14,8 @@ export function collectedMutationPlan(works: readonly WorkId[]): CollectedRunPla
                 file,
                 cases: entries.map(function collectedCase(entry) {
                     return {
+                        implementationDeclaration: null,
+
                         annotations,
                         controls,
                         definitionLocations,
@@ -35,6 +37,8 @@ export function collectedMutationPlan(works: readonly WorkId[]): CollectedRunPla
         }
     );
     return {
+        implementations: null,
+
         family: null,
         defined: works.length,
         discoveredFiles: files,

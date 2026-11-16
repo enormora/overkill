@@ -6,8 +6,8 @@ import type {
     RuntimeResourceMap as ResourceMap
 } from '../resources/resources.ts';
 import {
-    sourceResourceDefinition,
-    exposeResourceHandle
+    exposeResourceHandle,
+    sourceResourceDefinition
 } from '../resources/resource-scenario-binding.ts';
 import { acquireManagedResourceHandle } from './resource-handle-acquisition.ts';
 import { replayAcquiredResource, replayResourceDefinition } from './replay-resource.ts';
@@ -51,7 +51,7 @@ type ManagedResourceAcquisition = Promise<ManagedResourceRecord>;
 export type ManagedLifecycleStores = {
     readonly deleteAcquisition: (boundaryKey: string) => void;
     readonly deleteRecord: (boundaryKey: string) => void;
-    readonly existingAcquisition: (boundaryKey: string) => Promise<ManagedResourceRecord | null>;
+    readonly existingAcquisition: (boundaryKey: string) => Promise<ManagedResourceRecord> | null;
     readonly existingRecord: (boundaryKey: string) => ManagedResourceRecord | undefined;
     readonly recordCaseError: (testCase: TestPlanCase, message: string, cause: unknown) => void;
     readonly remainingBoundaryUses: (boundaryKey: string) => number;
@@ -103,8 +103,8 @@ export function createManagedStores(options: ResourceLifecycleStoreOptions): Man
         deleteRecord(boundaryKey) {
             records.delete(boundaryKey);
         },
-        async existingAcquisition(boundaryKey) {
-            return await (acquisitions.get(boundaryKey) ?? Promise.resolve(null));
+        existingAcquisition(boundaryKey): Promise<ManagedResourceRecord> | null {
+            return acquisitions.get(boundaryKey) ?? null;
         },
         existingRecord(boundaryKey) {
             return records.get(boundaryKey);
@@ -167,7 +167,7 @@ export function resourceProjectionRecordsFromStores(stores: ManagedLifecycleStor
 
             return payload === null
                 ? []
-                : [ { boundaryKey: record.boundary.key, payload } ];
+                : [ { boundaryKey: record.boundary.key, payload: payload.payload } ];
         })
     };
 }
@@ -344,7 +344,7 @@ export function createManagedResourceAcquirer(
             return existingRecord;
         }
 
-        const externalRecord = boundary.scope === 'per-run'
+        const externalRecord = externalProjections.has(boundary.key)
             ? await startExternalResource(resource, boundary, testCase, signal)
             : null;
 
@@ -352,8 +352,8 @@ export function createManagedResourceAcquirer(
             return externalRecord;
         }
 
-        return await stores.existingAcquisition(boundary.key) ??
-            await acquireNewResource(resource, boundary, testCase, signal);
+        return await (stores.existingAcquisition(boundary.key) ??
+            acquireNewResource(resource, boundary, testCase, signal));
     }
 
     acquireResource = acquire;

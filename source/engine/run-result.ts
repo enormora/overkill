@@ -467,11 +467,7 @@ export function runStatusFromSummary(
     summary: RunSummary,
     runnerErrors: readonly RunnerError[]
 ): RunStatus {
-    if (failingRunConditions(summary, runnerErrors).includes(true)) {
-        return 'failed';
-    }
-
-    return 'passed';
+    return failingRunConditions(summary, runnerErrors).includes(true) ? 'failed' : 'passed';
 }
 
 export function runStatusFromPlan(
@@ -573,3 +569,9 @@ export type RunResult = {
 export function verdictFromOutcome(outcome: TestOutcome): TestVerdict {
     return outcome.kind;
 }
+
+export type ExecutedCase = {
+    readonly result: PerTestResult;
+    readonly runnerErrors: readonly RunnerError[];
+    readonly durationMicroseconds: number;
+};

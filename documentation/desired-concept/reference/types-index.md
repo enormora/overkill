@@ -2746,6 +2746,60 @@ type ExecutionRequirement =
 
 Canonical: [Deterministic Simulation Testing](../authoring/deterministic-simulation.md).
 
+## Portable Implementation References
+
+Shared module references preserve the existing family-reference shape. Input
+parsers stay in the declaration environment and are reconstructed at execution
+boundaries; only their validated lossless JSON output enters frozen facts.
+
+```ts
+type ModuleReference = {
+    readonly moduleUrl: string;
+    readonly exportName: string;
+};
+
+type PortableValue = boolean | number | string | null | readonly PortableValue[] | {
+    readonly [key: string]: PortableValue;
+};
+
+type ImplementationInputContext = { readonly projectRoot: string; };
+
+type ImplementationReference<Input extends PortableValue> = {
+    readonly kind: 'implementation-reference';
+    readonly module: ModuleReference;
+    readonly realm: 'browser' | 'host';
+    readonly version: string;
+    readonly input: PortableValue;
+    readonly parseInput: (input: unknown, context: ImplementationInputContext) => Input;
+    readonly dynamicModules: readonly ModuleReference[];
+};
+
+type ImplementationExport<Implementation> = {
+    readonly version: string;
+    readonly implementation: Implementation;
+};
+```
+
+`defineImplementationReference` creates immutable declarations.
+`defineBodyReference` creates an opaque body descriptor for
+`engine.createTestCase`; its named export contains a version and an
+implementation receiving the ordinary scope and validated input.
+
+Resources use `defineResourceOwnerReference` and `defineResourceConsumerReference`
+for role-specific callbacks. `defineResourceReference` retains scope, dependency,
+scenario, requirement, and workload declarations. Standalone referenced sessions
+supply an explicit project root and retain verified delivery through disposal.
+
+`prepareImplementation` freezes a native host graph without evaluating its
+implementations. `withPreparedImplementation` verifies the frozen input and
+graph, validates the named export through the caller's implementation parser,
+and keeps module delivery active throughout the admission callback. Computed
+imports require declared candidate graphs. Native host delivery supports ESM,
+stripped TypeScript, JSON, and Node builtins; unsupported realms and formats
+fail compatibility validation. Browser harnesses own their delivery path.
+
+Canonical: [Portable Implementation References](../architecture/package-architecture.md#portable-implementation-references).
+
 ## Resource And Runtime Descriptors
 
 Runtime descriptors carry body-target requirements separately from resource

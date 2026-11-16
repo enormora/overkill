@@ -1,3 +1,4 @@
+import { collectImplementationCatalog } from './run-implementation-catalog.ts';
 import { replayExecutionPlan } from './replay-context.ts';
 import type { RunFacts, RunWorkerCountFacts, RunHostProcessFacts } from './run-types.ts';
 import { createRunShardHasher, shardCollectedRunPlanCases } from './run-sharding.ts';
@@ -98,8 +99,10 @@ async function createCurrentCollectedExecutionPlan(
     };
 }
 
+type CollectedImplementationPlan = CollectedExecutionPlan & { readonly implementations: RunFacts['implementations']; };
 export async function createCollectedExecutionPlan(
     input: CollectedExecutionPlanInput
-): Promise<CollectedExecutionPlan> {
-    return replayExecutionPlan(input.collectedPlan) ?? await createCurrentCollectedExecutionPlan(input);
+): Promise<CollectedImplementationPlan> {
+    const plan = replayExecutionPlan(input.collectedPlan) ?? await createCurrentCollectedExecutionPlan(input);
+    return { ...plan, implementations: collectImplementationCatalog(plan.orderedCases, input.projectRoot) };
 }

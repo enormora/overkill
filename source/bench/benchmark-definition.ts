@@ -1,3 +1,4 @@
+import type { BodyImplementation } from '../engine/test-body.ts';
 import type { WorkloadParameters } from '../engine/workload-parameters.ts';
 import type { BenchmarkScope } from '../engine/test-node.ts';
 import type { BenchmarkLifecyclePolicy, MetricReading, SamplingPolicy } from '../engine/benchmark-result.ts';
@@ -36,9 +37,10 @@ export type BenchmarkDefinition<
     readonly kind: BenchmarkKind;
     readonly workloads: readonly Workload<string, Parameters>[];
     readonly measurement: Strategy;
-    readonly measure: (
-        context: BenchmarkMeasureContext<Parameters, Sample>
-    ) => BenchmarkMetrics | Promise<BenchmarkMetrics>;
+    readonly measure: BodyImplementation<
+        BenchmarkMeasureContext<Parameters, Sample>,
+        BenchmarkMetrics | Promise<BenchmarkMetrics>
+    >;
     readonly diagnosticMetrics: readonly string[];
     readonly budgets: Readonly<Record<string, Readonly<Record<string, MetricBudget | readonly MetricBudget[]>>>>;
 };

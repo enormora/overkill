@@ -1,3 +1,4 @@
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createNodeFileStore } from '../file-store.ts';
 import { createNodeHistoryStorage } from './node-history-storage.ts';
@@ -42,8 +43,10 @@ export function createNodeExecutionDependencies(input: NodeExecutionInput): Node
         createExecution,
         createHistoryStorage: createNodeHistoryStorage,
         async maintainHistory(options) {
-            const { maintainHistory } = await import('./history-maintenance.ts');
-            return await maintainHistory(options);
+            return await withRunnerInfrastructure(async function maintain() {
+                const { maintainHistory } = await import('./history-maintenance.ts');
+                return await maintainHistory(options);
+            });
         },
         createProcessUsageTracker(options) {
             return createNodeProcessUsageTracker(input.wallClock, options);

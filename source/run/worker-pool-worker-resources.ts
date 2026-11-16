@@ -1,7 +1,16 @@
-import { createClock } from '@enormora/clock';
 import { workIdentityKey, type AttemptId, type WorkId } from '../engine/identity.ts';
+import {
+    workerImplementationPlan,
+    withWorkerImplementations,
+    runWithWorkerImplementations,
+    closeWorkerImplementations
+} from './worker-implementation-plan.ts';
+import type {
+    TestRuntimePolicy,
+    RunnerError,
+    TestPlanCase
+} from './run-engine-primitives.ts';
 import { resourcePreparationError } from './resource-failure-preparation.ts';
-import type { TestRuntimePolicy, RunnerError, RunProcessUsageTracker, TestPlanCase } from './run-engine-primitives.ts';
 import {
     acquireResourceLifecycleScopes,
     createResourceLifecycleSession,
@@ -10,10 +19,8 @@ import {
 } from './resource-lifecycle.ts';
 import { resourceLifecycleBoundaryUseCounts } from './resource-lifecycle-boundaries.ts';
 import type { ResourceWrapperStep } from './resource-lifecycle-composition.ts';
-import { createNodeProcessUsageTracker } from './process-usage.ts';
 import type {
     WorkerPoolAcquireRunResourcesTask,
-    WorkerPoolCommand,
     WorkerPoolCompleteResourceOwnerWorkTask,
     WorkerPoolDisposeLaneLifecycleTask,
     WorkerPoolDisposeResourceOutput,
@@ -35,14 +42,9 @@ type WorkerPoolLifecycleSessionKeyInput = Pick<WorkerPoolRunTask, 'lane' | 'life
 const composedResourceBodyBrand = Symbol.for('@overkill-dev/test/ComposedResourceBody');
 const externallyOwnedResourceScopes: ReadonlySet<string> = new Set([ 'per-file', 'per-run', 'per-suite' ]);
 const laneDisposalScopes = new Set([ 'per-case', 'per-file', 'per-suite' ] as const);
+
 const runResourceOwners = new Map<string, ResourceLifecycleSession>();
 const laneResourceSessions = new Map<string, ResourceLifecycleSession>();
-
-export function createWorkerProcessUsageTracker(command: WorkerPoolCommand): RunProcessUsageTracker {
-    return createNodeProcessUsageTracker(createClock(), {
-        samplingIntervalMilliseconds: command.processUsageSamplingIntervalMilliseconds
-    });
-}
 
 function lifecycleSessionKey(task: WorkerPoolLifecycleSessionKeyInput): string {
     return `${task.lifecycle.token}:${task.lane}`;
@@ -53,7 +55,8 @@ function isComposedResourceBody(value: unknown): value is {
         readonly actions: readonly ResourceWrapperAction[];
     };
 } {
-    return typeof value === 'function' && Object.hasOwn(value, composedResourceBodyBrand);
+    return (typeof value === 'function' || typeof value === 'object' && value !== null) &&
+        Object.hasOwn(value, composedResourceBodyBrand);
 }
 
 function resourceWrapperSteps(testCase: TestPlanCase): readonly ResourceWrapperStep[] {
@@ -123,28 +126,35 @@ export async function acquireWorkerRunResources(
     collectedPlan: CollectedWorkerPoolTestPlan,
     timing: ManagedResourceLifecycleTiming
 ): Promise<WorkerPoolRunResourceOutput> {
-    const testPlan = selectedAssignedWork(collectedPlan.testPlan, task.assignedWork, task.workloadInputs);
+    const testPlan = workerImplementationPlan(
+        selectedAssignedWork(collectedPlan.testPlan, task.assignedWork, task.workloadInputs),
+        task
+    );
 
     try {
-        const session = await acquireResourceLifecycleScopes({
-            boundaryKeys: new Set(task.boundaryKeys),
-            options: {
-                testCases: testPlan.cases,
-                boundaryUseCounts: resourceLifecycleBoundaryUseCounts(testPlan.cases),
-                caseDisposalScopes: new Set(),
-                projectedResources: { resources: [] },
-                timing
-            },
-            scopes: externallyOwnedResourceScopes,
-            signal: freshSignal(),
-            stepsForCase: resourceWrapperSteps,
-            testCases: testPlan.cases
+        const session = await withWorkerImplementations(task.lifecycle.token, testPlan, async function acquire() {
+            return await acquireResourceLifecycleScopes({
+                boundaryKeys: new Set(task.boundaryKeys),
+                options: {
+                    testCases: testPlan.cases,
+                    boundaryUseCounts: resourceLifecycleBoundaryUseCounts(testPlan.cases),
+                    caseDisposalScopes: new Set(),
+                    projectedResources: { resources: [] },
+                    timing
+                },
+                scopes: externallyOwnedResourceScopes,
+                signal: freshSignal(),
+                stepsForCase: resourceWrapperSteps,
+                testCases: testPlan.cases
+            });
         });
 
         runResourceOwners.set(task.lifecycle.token, session);
 
         return {
-            projectedResources: session.projectionRecords(),
+            projectedResources: await runWithWorkerImplementations(task.lifecycle.token, async function project() {
+                return session.projectionRecords();
+            }),
             runnerErrors: []
         };
     } catch (error: unknown) {
@@ -161,10 +171,25 @@ export async function completeWorkerResourceOwnerWork(
     const session = runResourceOwners.get(task.lifecycle.token);
 
     return {
-        runnerErrors: session === undefined ? [] : await session.completeBoundaries(task.boundaryKeys)
+        runnerErrors: session === undefined
+            ? []
+            : await runWithWorkerImplementations(task.lifecycle.token, async function complete() {
+                return await session.completeBoundaries(task.boundaryKeys);
+            })
     };
 }
 
+async function disposeImplementationSession(
+    key: string,
+    session: ResourceLifecycleSession | undefined
+): Promise<readonly RunnerError[]> {
+    if (session === undefined) {
+        return [];
+    }
+    return await runWithWorkerImplementations(key, async function dispose() {
+        return await session.disposeAll(freshSignal());
+    });
+}
 export async function disposeWorkerRunResources(
     task: WorkerPoolDisposeRunResourcesTask
 ): Promise<WorkerPoolDisposeResourceOutput> {
@@ -172,7 +197,13 @@ export async function disposeWorkerRunResources(
 
     runResourceOwners.delete(task.lifecycle.token);
 
-    return { runnerErrors: session === undefined ? [] : await session.disposeAll(freshSignal()) };
+    try {
+        return {
+            runnerErrors: await disposeImplementationSession(task.lifecycle.token, session)
+        };
+    } finally {
+        await closeWorkerImplementations(task.lifecycle.token);
+    }
 }
 
 export async function disposeWorkerLaneLifecycle(
@@ -183,7 +214,13 @@ export async function disposeWorkerLaneLifecycle(
 
     laneResourceSessions.delete(key);
 
-    return { runnerErrors: session === undefined ? [] : await session.disposeAll(freshSignal()) };
+    try {
+        return {
+            runnerErrors: await disposeImplementationSession(key, session)
+        };
+    } finally {
+        await closeWorkerImplementations(key);
+    }
 }
 
 export async function prepareLocalOwnerResources(
@@ -192,7 +229,9 @@ export async function prepareLocalOwnerResources(
     attempt: AttemptId
 ): Promise<readonly RunnerError[] | null> {
     const session = runResourceOwners.get(lifecycle.token);
-    return session === undefined ? null : await session.prepareAttempt(work, attempt);
+    return session === undefined ? null : await runWithWorkerImplementations(lifecycle.token, async function prepare() {
+        return await session.prepareAttempt(work, attempt);
+    });
 }
 
 function observePreparationReplies(

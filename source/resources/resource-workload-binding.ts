@@ -1,11 +1,11 @@
 import type { WorkloadId } from '../engine/identity.ts';
-import { snapshotWorkloadInput, type WorkloadInput } from '../engine/workload-input.ts';
+import { snapshotWorkloadInput, type WorkloadInput, type WorkloadParameters } from '../engine/workload-input.ts';
 import { snapshotWorkloadParameters } from '../engine/workload-parameters.ts';
+import { withWorkloadCallbacks } from './resource-workload-callbacks.ts';
 import { createResourceGraph } from './resource-graph.ts';
 import type { AnyResourceDefinition, ResourceDependencies } from './resource-definition-shape.ts';
-import type { ResourceCreationContext, ResourceDisposalContext } from './resource-definition-types.ts';
-import type { ResourceScenarioSlots } from './resource-scenario.ts';
 import { inheritResourceDefinition, parentResourceDefinition } from './resource-scenario-binding.ts';
+import type { ResourceWorkload } from './resource-workload-types.ts';
 
 const resourceWorkloads = new WeakMap<AnyResourceDefinition, WorkloadInput>();
 
@@ -41,6 +41,20 @@ function withBoundDependencies(
     return bound;
 }
 
+type BoundWorkload = ResourceWorkload<WorkloadParameters>;
+
+function withResourceWorkload(resource: AnyResourceDefinition, workload: BoundWorkload): AnyResourceDefinition {
+    return resource.acquire === null
+        ? {
+            ...resource,
+            implementation: {
+                ...resource.implementation,
+                workload
+            }
+        }
+        : withWorkloadCallbacks(resource, workload);
+}
+
 function bindRequiredWorkload(
     resource: AnyResourceDefinition,
     dependencies: ResourceDependencies,
@@ -52,30 +66,7 @@ function bindRequiredWorkload(
     const parameters = resource.workload(workload.parameters);
     snapshotWorkloadParameters(parameters);
     const context = Object.freeze({ id: workload.id, parameters });
-    const { dispose } = resource;
-    const bound = Object.freeze({
-        ...resource,
-        dependencies,
-        acquire(acquisition: ResourceCreationContext<ResourceDependencies, ResourceScenarioSlots>) {
-            const handle: unknown = Reflect.apply(resource.acquire, undefined, [ {
-                ...acquisition,
-                workload: context
-            } ]);
-            return handle;
-        },
-        dispose: dispose === null
-            ? null
-            : async function disposeWorkloadResource(
-                handle: unknown,
-                disposal: ResourceDisposalContext<ResourceDependencies, ResourceScenarioSlots>
-            ) {
-                const completion: unknown = Reflect.apply(dispose, undefined, [ handle, {
-                    ...disposal,
-                    workload: context
-                } ]);
-                await completion;
-            }
-    });
+    const bound = Object.freeze({ ...withResourceWorkload(resource, context), dependencies });
     inheritResourceDefinition(bound, resource);
     resourceWorkloads.set(bound, workload);
     return bound;

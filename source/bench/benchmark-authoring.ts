@@ -1,3 +1,4 @@
+import { isBodyReference } from '../engine/test-body.ts';
 import {
     createBenchmarkTestCase,
     type TestCase
@@ -26,7 +27,7 @@ export function benchmark<
     definition: AuthoredBenchmark<Workloads, Measurement>,
     ...configuration: readonly [] | readonly [BenchmarkOptions]
 ): TestCase {
-    if (typeof definition.measure !== 'function') {
+    if (typeof definition.measure !== 'function' && !isBodyReference(definition.measure)) {
         throw new TypeError('Benchmark requires a measure function.');
     }
     const options = configuration[0] ?? { annotations: {}, controls: {}, sampling: defaultSamplingPolicy };
