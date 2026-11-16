@@ -82,7 +82,8 @@
         "dependency-cruiser": "18.7.2",
         "jscpd": "5.4.3",
         "knip": "6.45.1",
-        "rust-just": "1.59.0"
+        "rust-just": "1.59.0",
+        "typescript-beta": "npm:typescript@7.1.0-beta"
     },
     "engines": {
         "node": "^26.9.0"

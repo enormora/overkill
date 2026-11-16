@@ -1452,11 +1452,10 @@ without invoking its source recognizer is not established. Do not import those
 private modules or treat a structural comparator as a trivial replacement for
 the compiler's relation API.
 
-Next dependency evaluation: check the exact supported release for a public
-original-program comparison interface, consider an upstream extraction or
-extension, and compare that maintenance cost with a focused implementation
-using public TypeScript APIs. Reuse remains preferred where it fits. Neither
-TSTyche retention nor removal is a prerequisite in the product contract.
+The executable assessment below evaluates the exact release and records the
+focused comparison work and extraction requirements. Reuse remains preferred
+where it fits. Neither TSTyche retention nor removal is a prerequisite in the
+product contract.
 
 ### TypeScript 7.1 API
 
@@ -1471,6 +1470,87 @@ exposes type-node queries and assignability. Validate the exact prerelease's
 method surface, configuration/reference loading, diagnostics, and object
 lifetimes before promising compatibility. A pinned beta can test the design
 without becoming the required production compiler.
+
+### Executable Compiler API Assessment
+
+Assessment date: 2026-11-16. Run `npx just test-type-test-api` after `npm ci`.
+The only executable target is the development alias `typescript-beta`, pinned
+and integrity-locked to `typescript@7.1.0-beta`. This is an API feasibility
+assessment, not production support or a compiler matrix.
+
+The probe loads actual project configuration with `API.parseConfigFile` and
+`API.createSnapshot({ openProjects })` from the published `typescript/sync`
+entry point. It queries original type aliases through `getTypeFromTypeNode`,
+queries the original inferred call expression with `getTypeAtLocation`,
+reads properties and signatures, and calls `isTypeAssignableTo` in both
+directions. Compiler diagnostics invalidate the project. Snapshots and clients
+are disposed on both success and failure. No compiler objects escape the probe.
+Fixtures are authored project inputs created before analysis, never translations
+or replacements of another source project. Repeated checks verify unchanged
+source bytes and directory entries. There is no emission or reference build.
+
+The executable fixture catalog is in
+`source/test-support/type-test-relation-project.ts`. Its observations
+are evidence about the compiler surface, not equality verdicts:
+
+| Fixture requirements | Evidence and focused comparison work |
+| --- | --- |
+| `Any`, `Never`, `Unknown`, `AnyUnknown`, `NeverString`, `Literal` | Public type queries and assignability are available. Equality must distinguish special types and literal widening; native assignability is insufficient. |
+| `Union`, `Intersection` | Both directions are assignable; intersection properties are observable. Implement order-independent union matching and normalized structural intersections. |
+| `Optional`, `Readonly` | Properties and assignability are observable. Compare optionality and readonly semantics explicitly, including instantiated mapped members; declaration spelling alone is insufficient. |
+| `Nominal`, `Protected`, `Symbol` | Distinct nominal declarations reject assignability. Preserve private/protected origins and unique-symbol identity within the original program. |
+| `Parameter`, `Generic` | Call signatures are observable. Compare signatures modulo parameter and bound-type-parameter names. |
+| `This`, `Rest`, `OptionalParameter`, `Constraint`, `Default`, `Const`, `NoInfer`, `Overload` | The original symbolic signatures are available. Determine public access to each inference-relevant modifier and ordered overload, then validate comparisons independently. Mutual assignability cannot prove these equal. |
+| `Recursive`, `Symbolic` | Original recursive and generic aliases are queryable. Implement cycle-safe pair tracking and symbolic binder correspondence; report inconclusive for unestablished relationships. |
+| `Imported`, `Self`, `Inference` | Original module resolution, self-imports and inferred literal types remain compiler-owned. Do not reconstruct inference or declaration identity. |
+
+The later **Original-Source Relations** milestone owns these comparison
+algorithms and their semantic acceptance tests. Unsupported forms require
+reasoned inconclusive evidence, including under negation. This assessment does
+not implement or claim passing `sameType` results.
+
+#### Dependency Decision
+
+TSTyche `7.2.5` publishes the root, `/api`, `/tag`, and `/package.json` exports.
+The [release API source](https://github.com/tstyche/tstyche/blob/v7.2.5/source/api.ts)
+exports runner infrastructure, not an original-program comparator.
+The TypeScript 7 support revision linked above likewise keeps `Structure` and
+its checker abstraction private. Runner reuse would retain source recognition
+and generated-input coupling, which does not satisfy the original-source
+boundary. No private import is used by the assessment.
+
+Recommend focused comparison against public compiler APIs. An upstream
+extraction remains a possible alternative, but would need a supported export
+accepting caller-owned program types, a public compiler adaptation boundary,
+explicit lifetime rules, and parity tests for the complete relation contract.
+Extraction must account for checker dependencies and semantic differences,
+not just export the comparator class. The repository's MIT license permits
+reuse subject to its notice requirements; copying source would also introduce
+ongoing adaptation and semantic maintenance. No comparator source is copied.
+Retain the current production dependency until its replacement milestone.
+
+#### Stable API Review And Limits
+
+The repository pins TypeScript `6.0.3`, whose
+[published compiler declarations](https://github.com/microsoft/TypeScript/blob/v6.0.3/src/compiler/types.ts)
+expose `Program`, `TypeChecker`, original-node queries and assignability.
+The [stable `7.0.2` package](https://registry.npmjs.org/typescript/7.0.2)
+exports compiler clients under `unstable/*`;
+that export status does not establish supported stable integration.
+The beta exposes public `sync`, `async`, and AST entry points, but its program
+and snapshot model differs from the older in-process API. Stable releases are
+reviewed only, not executed by this assessment. Production compatibility needs
+its own validation in the later compiler-selection and acceptance milestones.
+
+Configuration inheritance and unavailable referenced declarations are exercised
+without building reference outputs. The reference diagnostic fixture explicitly
+sets `disableSourceOfProjectReferenceRedirect: true`; with default source
+redirection, the beta accepts the available referenced sources instead. Future
+integration must preserve the actual project policy rather than force this flag.
+Remaining feasibility limits: per-modifier metadata, cancellation and hard deadlines, and cross-snapshot misuse still need
+focused validation. Diagnostics, error types and missing symbols must never
+be interpreted as authored `any`. The public beta `Type.isErrorType` provides
+a recovery-type check; project diagnostics are checked before relation work.
 
 ### Family Boundary Comparison
 

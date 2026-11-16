@@ -95,6 +95,8 @@ jobs:
                   node-version-file: package.json
             - name: Install dependencies
               run: npm ci
+            - name: Assess TypeScript beta public API
+              run: npx just test-type-test-api
             - name: Run runner integration tests
               run: npx just test-runner-integration
 

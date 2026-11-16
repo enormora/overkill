@@ -21,6 +21,9 @@
     ],
     "include": [
         "./integration-tests/**/*.ts",
+        "./test-support/type-test-api-assessment.ts",
+        "./test-support/type-test-relation-project.ts",
+        "./test-support/frozen-type-project.ts",
         "./test-support/run-command-factory.ts",
         "./test-support/replay-project-fixture.ts",
         "./test-support/property-generator.ts",
