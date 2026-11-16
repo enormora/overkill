@@ -1,6 +1,6 @@
 import type { ExecutedBody } from './body-result.ts';
 import { runPropertyCaseBody } from './property-trial.ts';
-import { testBodyExecutionError } from './case-policy.ts';
+import { testBodyExecutionError, runCaseBodyWithCancellation } from './case-policy.ts';
 import { builderBodyForAttempt, type BenchmarkAttempt } from './benchmark-attempt.ts';
 import {
     bodyResultContext,
@@ -146,7 +146,9 @@ export async function runCaseBody(
         return bodyErrorResult({ cleanupErrors: [], contractFailures: [], recorder, runnerErrors: [] }, executionError);
     }
 
-    return testCase.execution.bodyMode === 'throwing'
-        ? await runThrowingCaseBody(testCase, recorder, options)
-        : await runBuilderCaseBody(testCase, recorder, options, benchmarkAttempt);
+    return await runCaseBodyWithCancellation(testCase, options, async function () {
+        return testCase.execution.kind === 'body' && testCase.execution.bodyMode === 'throwing'
+            ? await runThrowingCaseBody(testCase, recorder, options)
+            : await runBuilderCaseBody(testCase, recorder, options, benchmarkAttempt);
+    });
 }

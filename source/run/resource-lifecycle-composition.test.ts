@@ -271,7 +271,9 @@ export const testNode = createSuite({
 
                 try {
                     scope.assert.throws(function createInvalidManagedSession() {
-                        managedResourceSession(resources, new Map());
+                        managedResourceSession(resources, new Map(), function () {
+                            return [];
+                        });
                     }, { message: 'Runtime does not provide Symbol.asyncDispose.' });
                 } finally {
                     restore();
@@ -301,7 +303,9 @@ export const testNode = createSuite({
 
                 try {
                     scope.assert.throws(function createInvalidManagedSession() {
-                        managedResourceSession(resources, new Map());
+                        managedResourceSession(resources, new Map(), function () {
+                            return [];
+                        });
                     }, { message: 'Resource scope composition failed.' });
                 } finally {
                     restore();
@@ -317,7 +321,9 @@ export const testNode = createSuite({
             title: 'managed resource sessions expose managed handles without disposal',
             async body(scope: TestScope) {
                 const handles = new Map([ [ databaseResource, 'database handle' ] ]);
-                const session = managedResourceSession(resources, handles);
+                const session = managedResourceSession(resources, handles, function () {
+                    return [];
+                });
                 const dispose: unknown = Reflect.get(session, runtimeAsyncDisposeSymbol());
 
                 scope.assert.equal(session.context.database, 'database handle');

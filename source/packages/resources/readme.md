@@ -214,6 +214,19 @@ transcripts, process stdout/stderr, and simulated HTTP scenario witnesses.
 Passing attempts discard this prepared evidence; explicit attachments retain
 their existing behavior.
 
+`withResourceChecks(resource, install)` installs observers on the acquired owner
+before exposing its consumer handle. Register cleanup immediately with
+`context.cleanup.defer(signal => stopObserver(signal))`, then return `prepare`
+and `finalize` callbacks. Observers remain active through owner disposal;
+`finalize` drains pending observations and returns `{ kind: 'complete' }` or
+`{ kind: 'incomplete', reasons }` before observer cleanup runs.
+
+Write findings through `context.ledger` with an explicit lifetime or attempt
+interval. `session.resourceChecks()` retains snapshots after disposal.
+Installation and total owner closure each have a two-second budget. Persistent
+cross-process stop and evidence delivery, and automatic finding-to-result
+merging, are reserved for the outcomes and evidence milestone.
+
 `withFailureArtifacts(resource, prepare)` adds custom evidence preparation.
 The callback receives the owner handle, including for projected resources.
 An `attempt` capture includes the exact work identity, retry attempt, and an

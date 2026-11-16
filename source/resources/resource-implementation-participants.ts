@@ -1,4 +1,4 @@
-import type { ImplementationParticipant } from '../implementation-participant.ts';
+import { readImplementationParticipants, type ImplementationParticipant } from '../implementation-participant.ts';
 import type { ResourceDependencies } from './resource-definition-shape.ts';
 import { createResourceGraph } from './resource-graph.ts';
 import { hasResourceImplementation } from './resource-reference.ts';
@@ -9,10 +9,10 @@ export function resourceImplementationParticipants(
 ): readonly ImplementationParticipant[] {
     return createResourceGraph(resources).order.flatMap(function resourceParticipants({ descriptor: resource }) {
         if (!hasResourceImplementation(resource)) {
-            return [];
+            return readImplementationParticipants(resource);
         }
         const { owner, consumer } = resource.implementation;
-        const participants: ImplementationParticipant[] = [ {
+        const participants: ImplementationParticipant[] = [ ...readImplementationParticipants(resource), {
             role: 'resource-owner',
             scope: resource.scope,
             binding: resource.implementation.workload,

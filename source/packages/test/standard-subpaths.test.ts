@@ -150,6 +150,7 @@ function assertResourcesSubpathExports(scope: TestScope): void {
         'defineImplementationReference',
         'defineLocalServiceResource',
         'defineResource',
+        'defineResourceCheckObserverReference',
         'defineResourceConsumerReference',
         'defineResourceOwnerReference',
         'defineResourceReference',
@@ -159,6 +160,7 @@ function assertResourcesSubpathExports(scope: TestScope): void {
         'startRuntime',
         'withFailureArtifacts',
         'withResource',
+        'withResourceChecks',
         'withResources',
         'withRuntime',
         'withWitnessReplay'

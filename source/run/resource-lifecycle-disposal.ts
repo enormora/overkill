@@ -38,7 +38,7 @@ async function disposeResourceRecord(
         return;
     }
 
-    const disposeHandle = async function disposeResourceHandle(): Promise<void> {
+    const disposeHandle = async function disposeResourceHandle(cleanupSignal: AbortSignal): Promise<void> {
         if (dispose === null) {
             return;
         }
@@ -46,24 +46,27 @@ async function disposeResourceRecord(
             attachments: resourceAttachments(record.descriptor.name),
             dependencies: record.dependencyContext,
             scenarios: lifecycleScenarioBindings(record.descriptor),
-            signal,
+            signal: cleanupSignal,
             workload: null
         });
     };
 
-    const finishDisposal = async function disposeWithTiming(): Promise<void> {
+    const finishDisposal = async function disposeWithTiming(cleanupSignal: AbortSignal): Promise<void> {
         if (timing === null || dispose === null) {
-            await disposeHandle();
+            await disposeHandle(cleanupSignal);
         } else {
             await timing.measure({
                 phase: 'dispose',
                 resource: { name: record.descriptor.name, scope: record.descriptor.scope },
-                signal
-            }, disposeHandle);
+                signal: cleanupSignal
+            }, async function disposeTimedOwner() {
+                await disposeHandle(cleanupSignal);
+            });
         }
     };
+    const disposal = record.checks === null ? finishDisposal(signal) : record.checks.close(finishDisposal);
     try {
-        await finishDisposal();
+        await disposal;
     } finally {
         record.releaseOwner();
     }
@@ -148,6 +151,22 @@ export async function disposeCompletedBoundaries(
     }
 }
 
+async function prepareObservedResource(
+    record: ManagedResourceRecord,
+    testCase: TestPlanCase,
+    attempt: AttemptId
+): Promise<void> {
+    await record.checks?.prepare({ kind: 'attempt', work: testCase.workId, attempt });
+    await prepareAttemptResource(record, testCase, attempt);
+}
+async function finalizeResourceAttempt(
+    record: ManagedResourceRecord,
+    testCase: TestPlanCase,
+    attempt: AttemptId
+): Promise<void> {
+    await record.checks?.finalize({ kind: 'attempt', work: testCase.workId, attempt });
+}
+
 export async function prepareManagedResources(
     stores: ManagedLifecycleStores,
     testCase: TestPlanCase,
@@ -157,7 +176,7 @@ export async function prepareManagedResources(
     for (const record of stores.records()) {
         if (boundaries.includes(record.boundary.key)) {
             try {
-                await prepareAttemptResource(record, testCase, attempt);
+                await prepareObservedResource(record, testCase, attempt);
             } catch (error: unknown) {
                 stores.recordCaseError(
                     testCase,
@@ -220,4 +239,21 @@ export async function completeManagedBoundaries(
     }
 
     return errors;
+}
+
+export async function finalizeManagedChecks(
+    stores: ManagedLifecycleStores,
+    testCase: TestPlanCase,
+    attempt: AttemptId
+): Promise<void> {
+    const boundaries = caseResourceBoundaryKeys(testCase, new Set(resourceScopes));
+    for (const record of stores.records()) {
+        if (boundaries.includes(record.boundary.key)) {
+            try {
+                await finalizeResourceAttempt(record, testCase, attempt);
+            } catch (error: unknown) {
+                stores.recordCaseError(testCase, 'Resource observation finalization failed.', error);
+            }
+        }
+    }
 }
