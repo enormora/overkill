@@ -64,6 +64,8 @@ test-property-integration: benchmark-html-browser
     node source/integration-tests/run/runner-replay-witness.test.ts
     node source/integration-tests/run/runner-model-contracts.test.ts
     node source/integration-tests/run/runner-differential-contracts.test.ts
+    node source/integration-tests/run/runner-linearizability-contracts.test.ts
+    node source/integration-tests/run/runner-linearizability-lifecycle.test.ts
     node source/integration-tests/run/runner-property-validation.test.ts
     node source/integration-tests/run/runner-property-measurements.test.ts
 

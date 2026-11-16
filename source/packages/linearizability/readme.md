@@ -107,3 +107,9 @@ Use ordinary property generators, examples, codecs, corpora, and nested `forall`
 Witnesses preserve lane inputs, not event-loop timing. Replay reruns current code;
 property confirmation reports failures that do not reproduce. Property profile
 capability and resource restrictions remain unchanged.
+
+A failed history is confirmed with a fresh system and the same lane inputs.
+If confirmation produces a valid history, the property stays failed and reports
+`non-reproducible`, without a confirmed witness or automatic corpus entry.
+Use supervised execution for blocking callbacks; forced process termination
+cannot guarantee in-process cleanup.
