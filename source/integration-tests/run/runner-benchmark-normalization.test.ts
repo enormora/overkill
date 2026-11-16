@@ -6,6 +6,7 @@ import { createLineReporter } from '../../packages/reporter-line/reporter-line.e
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { orchestrator, parseRunnerResult, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import { createBenchmarkHtmlReport } from '../../reporters/benchmark-html-model.ts';
+import type { BenchmarkNormalizationEvidence } from '../../packages/bench/bench.entry-point.ts';
 import { testNode as baselineTests } from './normalization-baseline.test.ts';
 
 function assertChartScales(scope: TestScope, result: RunResult): void {
@@ -71,8 +72,38 @@ async function runNormalizedBenchmark(
     scope.assert.equal(result.status, 'passed');
     return result;
 }
+function retainedNormalization(scope: TestScope, result: RunResult): BenchmarkNormalizationEvidence {
+    const normalization = result.perTest[0]?.benchmark?.normalization;
+    scope.require.defined(normalization);
+    return normalization;
+}
+function assertCaptureScales(scope: TestScope, canonical: RunResult, captured: RunResult): void {
+    const before = retainedNormalization(scope, canonical);
+    const after = retainedNormalization(scope, captured);
+    scope.assert.equal(before.metrics.value?.summary?.median, 0.5);
+    scope.assert.equal(after.metrics.value?.summary?.median, 50);
+}
+function assertCaptureInvariant(scope: TestScope, canonical: RunResult, captured: RunResult): void {
+    const before = canonical.perTest[0];
+    const after = captured.perTest[0];
+    scope.require.defined(before);
+    scope.require.defined(after);
+    scope.require.defined(before.benchmark);
+    scope.require.defined(after.benchmark);
+    scope.assert.deepEqual(after.workId, before.workId);
+    scope.assert.deepEqual(after.benchmark.budgets, before.benchmark.budgets);
+    assertCaptureScales(scope, canonical, captured);
+}
 export const testNode = suite('benchmark normalization process boundaries', [
     baselineTests,
+    test('display captures preserve logical identity and canonical budget decisions', async function (scope) {
+        const command = await normalizationCommand(scope, 'reuse', 'normalized metric');
+        const canonical = await runNormalizedBenchmark(scope, command);
+        await captureFixedReference(scope, command);
+        const captured = await runNormalizedBenchmark(scope, command);
+        assertCaptureInvariant(scope, canonical, captured);
+        return scope.assert.collect();
+    }),
     ...([ 'supervised-process', 'reuse', 'fresh-worker-per-unit' ] as const).map(function boundaryTest(boundary) {
         return test(`captures and normalizes through ${boundary}`, async function (scope: TestScope) {
             const command = await normalizationCommand(scope, boundary, 'normalized metric');

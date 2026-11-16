@@ -2,6 +2,44 @@ import { expect, test } from 'tstyche';
 import * as standard from '../test/bench.entry-point.ts';
 import * as bench from './bench.entry-point.ts';
 
+const calibration = bench.cpuCalibration();
+const strategies = [
+    standard.timelineMeasurement(standard.rawMeasurement(standard.moduleMeasurement()), { maximumEvents: 64 }),
+    standard.timelineMeasurement(
+        standard.calibratedMeasurement(standard.moduleMeasurement(), {
+            durationMicroseconds: { calibration, scaling: 'proportional' }
+        }),
+        { maximumEvents: 64 }
+    ),
+    standard.calibratedMeasurement(standard.timelineMeasurement(standard.moduleMeasurement(), { maximumEvents: 64 }), {
+        durationMicroseconds: { calibration, scaling: 'proportional' }
+    })
+] as const;
+
+for (const measurement of strategies) {
+    test('preserves module sample inference through composed standard exports', function () {
+        standard.benchmark('composed import', {
+            kind: 'startup',
+            workloads: [ standard.workload('one', {}) ],
+            measurement,
+            async measure({ sample }) {
+                expect(sample).type.toBe<bench.BenchmarkSample<bench.ModuleSample>>();
+                expect(sample).type.not.toHaveProperty('measure');
+                expect(sample).type.not.toHaveProperty('process');
+                const imported = await sample.importModule({
+                    url: new URL('./entry.js', import.meta.url),
+                    cwd: '.',
+                    env: null,
+                    nodeArguments: []
+                });
+                return { durationMicroseconds: imported.metrics.durationMicroseconds };
+            },
+            diagnosticMetrics: [],
+            budgets: { one: { durationMicroseconds: { maximum: 1 } } }
+        });
+    });
+}
+
 test('preserves module samples and authored timeline return types through wrappers', function () {
     bench.benchmark('cold import', {
         kind: 'startup',

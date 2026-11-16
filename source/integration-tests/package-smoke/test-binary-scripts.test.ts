@@ -398,6 +398,7 @@ const expectedRootExportNames = [
     'defineMacro',
     'defineParameterizedTestBody',
     'doubleUsage',
+    'matches',
     'recordAsyncSink',
     'recordSink',
     'rule',

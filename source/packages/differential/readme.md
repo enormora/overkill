@@ -37,6 +37,10 @@ reconstruction failures, and cancellation retain normal execution semantics.
 
 Property owns settings, examples, coverage, shrinking, confirmation, codecs,
 corpora, witnesses, cleanup, and supervision. One differential property is one
-case and one boundary assertion. Replay reruns current implementations on stored
-inputs. Shared external state remains the author's responsibility. Use
+case and one boundary assertion. Shared external state remains the author's responsibility. Use
 `sample.failureKey(...)` for comparisons needing a stable semantic failure key.
+
+Witness replay restores the input and reruns the current implementations and
+comparison. A corrected implementation can therefore pass an earlier failing
+witness. Observation containers are shallow-frozen; their input and output
+graphs remain available for inspection.

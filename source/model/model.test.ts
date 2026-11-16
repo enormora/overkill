@@ -1,3 +1,4 @@
+import { decodePropertyInput } from '../property/property-graph.ts';
 import type { TestScope, RunResult, PropertyWitnessFile } from '../packages/engine/engine.entry-point.ts';
 import { runIfMain, suite, test } from '../packages/test/test.entry-point.ts';
 import { gen, property } from '../packages/property/property.entry-point.ts';
@@ -38,6 +39,17 @@ function counter(): ModelScenarioDefinition<number, number, { readonly value: nu
             sample.assert.equal(system.value, state);
         }
     };
+}
+
+function assertPristineOperations(scope: TestScope, value: unknown): void {
+    scope.require.array(value);
+    scope.assert.between(value.length, 1, 2);
+    for (const operation of value) {
+        scope.require.object(operation);
+        scope.require.hasProperty(operation, 'value');
+        scope.require.number(operation.value);
+        scope.assert.between(operation.value, 1, 5);
+    }
 }
 
 export const testNode = suite('model-based testing', [
@@ -194,6 +206,12 @@ export const testNode = suite('model-based testing', [
             propertyExecutionDefaults
         );
         scope.assert.equal(result.summary.failed, 1);
+        assertPristineOperations(
+            scope,
+            decodePropertyInput(modelWitness(scope, result).counterexample, null, function () {
+                return undefined;
+            })
+        );
         return scope.assert.collect();
     }),
     test('checks terminal empty traces and supports scenario composition', async function (scope) {
