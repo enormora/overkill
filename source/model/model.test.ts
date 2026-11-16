@@ -47,8 +47,8 @@ function assertPristineOperations(scope: TestScope, value: unknown): void {
     for (const operation of value) {
         scope.require.object(operation);
         scope.require.hasProperty(operation, 'value');
-        scope.require.number(operation['value']);
-        scope.assert.between(operation['value'], 1, 5);
+        scope.require.number(operation.value);
+        scope.assert.between(operation.value, 1, 5);
     }
 }
 

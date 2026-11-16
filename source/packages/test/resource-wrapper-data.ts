@@ -56,19 +56,19 @@ function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
 }
 
 function hasResourceIdentity(value: Readonly<Record<string, unknown>>): boolean {
-    return typeof value['name'] === 'string' && value['name'].trim().length > 0;
+    return typeof value.name === 'string' && value.name.trim().length > 0;
 }
 
 function hasResourceGraphData(value: Readonly<Record<string, unknown>>): boolean {
-    return isRecord(value['dependencies']) &&
-        Array.isArray(value['requirements']) &&
-        typeof value['scope'] === 'string';
+    return isRecord(value.dependencies) &&
+        Array.isArray(value.requirements) &&
+        typeof value.scope === 'string';
 }
 
 function hasResourceLifecycle(value: Readonly<Record<string, unknown>>): boolean {
     const referenced = isDefinedResource(value) && value.acquire === null;
-    const inline = typeof value['acquire'] === 'function' &&
-        (typeof value['dispose'] === 'function' || value['dispose'] === null);
+    const inline = typeof value.acquire === 'function' &&
+        (typeof value.dispose === 'function' || value.dispose === null);
     return referenced || inline;
 }
 

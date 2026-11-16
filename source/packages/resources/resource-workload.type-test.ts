@@ -13,10 +13,10 @@ const packageCount = 5;
 type PackageParameters = { readonly packages: number; };
 
 function parsePackages(parameters: WorkloadParameters): PackageParameters {
-    if (typeof parameters['packages'] !== 'number') {
+    if (typeof parameters.packages !== 'number') {
         throw new TypeError('Expected a package count.');
     }
-    return { packages: parameters['packages'] };
+    return { packages: parameters.packages };
 }
 
 test('infers workload parameters alongside dependency handles', function () {

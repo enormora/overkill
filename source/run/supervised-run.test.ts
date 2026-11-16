@@ -136,11 +136,11 @@ function isRecord(value: unknown): value is Readonly<Record<PropertyKey, unknown
 function runnerErrorCapability(error: RunnerError): string | null {
     const { cause } = error;
 
-    if (!isRecord(cause) || typeof cause['capability'] !== 'string') {
+    if (!isRecord(cause) || typeof cause.capability !== 'string') {
         return null;
     }
 
-    return cause['capability'];
+    return cause.capability;
 }
 
 function runnerErrorCapabilityCount(result: Awaited<ReturnType<RunOrchestrator['run']>>, capability: string): number {

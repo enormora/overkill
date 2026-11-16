@@ -44,7 +44,7 @@ function permissionDiagnosticsPhase(loadComplete: boolean): PermissionDeniedRunn
 }
 
 export function readPermissionAuditEnabled(): boolean {
-    return permissionAuditEnabled(process.execArgv, readProcessEnvironment(process)['NODE_OPTIONS'] ?? '');
+    return permissionAuditEnabled(process.execArgv, readProcessEnvironment(process).NODE_OPTIONS ?? '');
 }
 
 function isAuditedBootstrapRead(error: PermissionDeniedRunnerError, auditEnabled: boolean): boolean {

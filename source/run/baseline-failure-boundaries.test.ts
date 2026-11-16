@@ -77,7 +77,7 @@ export const testNode = suite('ordinary baseline failure boundaries', [
     }),
     test('blocks successful case proposals when another case fails', async function (scope: TestScope) {
         const fixture = await createOrdinaryBaselineFixture(scope, 'in-process', 'text');
-        const profile = fixture.command.config.profiles['unit'];
+        const profile = fixture.command.config.profiles.unit;
         scope.require.defined(profile);
         const command: RunCommand = {
             ...fixture.command,

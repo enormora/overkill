@@ -40,7 +40,7 @@ function configuredProfile(baselineAdapter: OrdinaryBaselineAdapter): MicrotestP
     const config = normalizeConfig({
         profiles: { unit: { testFamily: 'microtest', baselines: { adapters: [ baselineAdapter ] } } }
     });
-    const profile = config.profiles['unit'];
+    const profile = config.profiles.unit;
     if (profile?.testFamily !== 'microtest') {
         throw new Error('Missing profile fixture.');
     }

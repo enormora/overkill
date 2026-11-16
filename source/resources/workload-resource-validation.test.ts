@@ -28,7 +28,7 @@ export const testNode = suite('workload resource validation', [
             },
             start({ workload: input }) {
                 inputs.push(input);
-                return { count: input.parameters['count'] };
+                return { count: input.parameters.count };
             },
             ready() {
                 throw failures.ready;

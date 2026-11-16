@@ -42,7 +42,7 @@ export const testNode = createOverkillSuite({
                 const orchestrator = createDeterministicRunOrchestrator();
                 const profile: Record<string, unknown> = { ...defaultMicrotestProfile() };
 
-                delete profile['testFamily'];
+                delete profile.testFamily;
 
                 await scope.assert.rejects(async function resolveInvalidProfile() {
                     await orchestrator.resolve(createRunCommand(

@@ -326,7 +326,7 @@ export const testNode = createSuite({
                 });
                 const dispose: unknown = Reflect.get(session, runtimeAsyncDisposeSymbol());
 
-                scope.assert.equal(session.context['database'], 'database handle');
+                scope.assert.equal(session.context.database, 'database handle');
                 await session.disposeOnce({ signal: disposalSignal() });
                 scope.assert.equal(typeof dispose, 'function');
                 if (typeof dispose !== 'function') {

@@ -179,7 +179,7 @@ export const testNode = suite('invocation instrumentation ownership', [
         const context = staleContext(scope);
         const staticCounters = context.mutantCoverage.static;
         Object.defineProperty(staticCounters, 'blocked', { value: 7, enumerable: true, configurable: false });
-        staticCounters['later'] = 8;
+        staticCounters.later = 8;
         scope.assert.throws(createInvocationInstrumentation, {
             message: 'Stryker instrumentation cannot reset "blocked".'
         });

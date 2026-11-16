@@ -54,7 +54,7 @@ function assertCoverageDiagnostics(scope: TestScope, stderr: string): void {
 function assertGenericBranches(scope: TestScope, sourceCoverage: string): void {
     scope.assert.deepEqual(
         Array.from(sourceCoverage.matchAll(/^BRDA:3,0,[01],(?<count>\d+)$/gmu), function branchCount(match) {
-            return Number(match.groups?.['count']);
+            return Number(match.groups?.count);
         }),
         [ 2, 1 ]
     );

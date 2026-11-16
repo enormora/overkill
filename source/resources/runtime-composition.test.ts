@@ -244,7 +244,7 @@ async function assertScenarioBindingsReachNestedOwners(scope: TestScope): Promis
 
     scope.assert.equal(owners.get('api')?.path.join('.'), 'server');
     scope.assert.equal(owners.get('database')?.path.join('.'), 'server.database');
-    scope.assert.equal(session.context['server'], 'empty:outage');
+    scope.assert.equal(session.context.server, 'empty:outage');
 
     await session.disposeOnce({ signal: controller.signal });
 

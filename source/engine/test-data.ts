@@ -100,11 +100,11 @@ function ensureTestAnnotationsInput(value: unknown): asserts value is TestAnnota
     assertKnownFields(value, annotationFields, 'Unknown annotation field');
 
     if (Object.hasOwn(value, 'ownership')) {
-        assertStringArray(value['ownership'], 'ownership');
+        assertStringArray(value.ownership, 'ownership');
     }
 
     if (Object.hasOwn(value, 'tags')) {
-        assertStringArray(value['tags'], 'tags');
+        assertStringArray(value.tags, 'tags');
     }
 }
 
@@ -116,15 +116,15 @@ function ensureTestControlsInput(value: unknown): asserts value is TestControlsI
     assertKnownFields(value, controlFields, 'Unknown control field');
 
     if (Object.hasOwn(value, 'capture')) {
-        assertCaptureMode(value['capture']);
+        assertCaptureMode(value.capture);
     }
 
     if (Object.hasOwn(value, 'duplicateExecution')) {
-        assertDuplicateExecutionControl(value['duplicateExecution']);
+        assertDuplicateExecutionControl(value.duplicateExecution);
     }
 
     if (Object.hasOwn(value, 'timeoutMilliseconds')) {
-        assertTimeoutMilliseconds(value['timeoutMilliseconds']);
+        assertTimeoutMilliseconds(value.timeoutMilliseconds);
     }
 }
 

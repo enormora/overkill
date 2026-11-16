@@ -93,7 +93,7 @@ export const testNode = createOverkillSuite({
             body(scope: OverkillScope) {
                 const symbolKey = Symbol('id');
                 const plainObject = Object.create(null) as Record<PropertyKey, unknown>;
-                plainObject['name'] = 'Ada';
+                plainObject.name = 'Ada';
                 plainObject[symbolKey] = 1;
 
                 scope.assert.equal(isPlainObject(plainObject), true);

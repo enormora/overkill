@@ -85,7 +85,7 @@ export const testNode = suite('calibration contracts', [
             throw new Error('Expected benchmark execution.');
         }
         scope.assert.equal(execution.definition.measurement.mode, 'process');
-        scope.assert.equal(execution.definition.normalization['value']?.scaling, 'proportional');
+        scope.assert.equal(execution.definition.normalization.value?.scaling, 'proportional');
         return scope.assert.collect();
     }),
     ...invalidObservations.map(function invalidObservationCase(input) {
@@ -225,8 +225,8 @@ export const testNode = suite('calibration contracts', [
         const calibration = defineCalibrationResource(referenceDefinition('1', 'ticks'));
         const rules: Record<string, MetricNormalization> = { value: { calibration, scaling: 'proportional' } };
         const measurement = calibratedMeasurement(wallClockMeasurement(), rules);
-        rules['value'] = { calibration, scaling: 'inverse' };
-        scope.assert.equal(measurement.normalization['value']?.scaling, 'proportional');
+        rules.value = { calibration, scaling: 'inverse' };
+        scope.assert.equal(measurement.normalization.value?.scaling, 'proportional');
         return scope.assert.collect();
     }),
     test('rejects distinct resource definitions sharing one calibration identity', function (scope: TestScope) {

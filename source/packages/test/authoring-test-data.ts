@@ -243,9 +243,9 @@ export function readAuthoringAnnotations(value: unknown): TestAnnotationsInput {
 
     return {
         ...Object.hasOwn(annotations, 'ownership')
-            ? { ownership: readStringArray(annotations['ownership'], 'ownership') }
+            ? { ownership: readStringArray(annotations.ownership, 'ownership') }
             : {},
-        ...Object.hasOwn(annotations, 'tags') ? { tags: readStringArray(annotations['tags'], 'tags') } : {}
+        ...Object.hasOwn(annotations, 'tags') ? { tags: readStringArray(annotations.tags, 'tags') } : {}
     };
 }
 
@@ -253,12 +253,12 @@ export function readAuthoringControls(value: unknown): TestControlsInput {
     const controls = readRecord(value, 'Test node controls must be an object.');
 
     return {
-        ...Object.hasOwn(controls, 'capture') ? { capture: readCapture(controls['capture']) } : {},
+        ...Object.hasOwn(controls, 'capture') ? { capture: readCapture(controls.capture) } : {},
         ...Object.hasOwn(controls, 'duplicateExecution')
-            ? { duplicateExecution: readDuplicateExecution(controls['duplicateExecution']) }
+            ? { duplicateExecution: readDuplicateExecution(controls.duplicateExecution) }
             : {},
         ...Object.hasOwn(controls, 'timeoutMilliseconds')
-            ? { timeoutMilliseconds: readTimeoutMilliseconds(controls['timeoutMilliseconds']) }
+            ? { timeoutMilliseconds: readTimeoutMilliseconds(controls.timeoutMilliseconds) }
             : {}
     };
 }
@@ -336,25 +336,25 @@ export function createAuthoringControls(
 
 function readFacadeAnnotations(definition: Readonly<Record<string, unknown>>): TestAnnotationsInput {
     return Object.hasOwn(definition, 'annotations')
-        ? readAuthoringAnnotations(definition['annotations'])
+        ? readAuthoringAnnotations(definition.annotations)
         : {};
 }
 
 function readFacadeControls(definition: Readonly<Record<string, unknown>>): TestControlsInput {
     return Object.hasOwn(definition, 'controls')
-        ? readAuthoringControls(definition['controls'])
+        ? readAuthoringControls(definition.controls)
         : {};
 }
 
 function readOptionalFacadeRuntime(definition: Readonly<Record<string, unknown>>): RuntimeGraph | null {
     return Object.hasOwn(definition, 'runtime')
-        ? readFacadeRuntime(definition['runtime'])
+        ? readFacadeRuntime(definition.runtime)
         : null;
 }
 
 function readOptionalFacadeResources(definition: Readonly<Record<string, unknown>>): ResourceMap | null {
     return Object.hasOwn(definition, 'resources')
-        ? readFacadeResources(definition['resources'])
+        ? readFacadeResources(definition.resources)
         : null;
 }
 
@@ -362,7 +362,7 @@ function readOptionalFacadeMapScope(
     definition: Readonly<Record<string, unknown>>
 ): ((scope: TestScope) => Readonly<Record<string, unknown>>) | null {
     return Object.hasOwn(definition, 'mapScope')
-        ? readFacadeMapScope(definition['mapScope'])
+        ? readFacadeMapScope(definition.mapScope)
         : null;
 }
 

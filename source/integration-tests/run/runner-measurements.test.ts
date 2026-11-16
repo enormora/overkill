@@ -59,7 +59,7 @@ function measurementCommand(
         reporters: [ reporter ],
         runtimeStateDir: directory
     });
-    const profile = config.profiles['measurements'];
+    const profile = config.profiles.measurements;
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Missing benchmark profile.');
     }

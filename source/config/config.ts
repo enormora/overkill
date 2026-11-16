@@ -252,8 +252,8 @@ function normalizeConfiguredProfiles(
         normalizedProfiles[profileName] = normalizeProfile(profile, configPath);
     }
 
-    if (normalizedProfiles['microtest'] === undefined) {
-        normalizedProfiles['microtest'] = normalizeMicrotestProfile({ testFamily: 'microtest' }, null);
+    if (normalizedProfiles.microtest === undefined) {
+        normalizedProfiles.microtest = normalizeMicrotestProfile({ testFamily: 'microtest' }, null);
     }
 
     return normalizedProfiles;

@@ -129,8 +129,8 @@ function isRunnerError(value: unknown): value is RunnerError {
     return isInspectableObject(value) &&
         Object.hasOwn(value, 'message') &&
         Object.hasOwn(value, 'subtype') &&
-        typeof value['message'] === 'string' &&
-        typeof value['subtype'] === 'string';
+        typeof value.message === 'string' &&
+        typeof value.subtype === 'string';
 }
 
 function aggregateEntries(error: AggregateError): readonly unknown[] {

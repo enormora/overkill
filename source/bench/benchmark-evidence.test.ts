@@ -29,10 +29,10 @@ export const testNode = suite('benchmark evidence contracts', [
         const changedArray = workload('large', { values: values.with(100, 2), text: 'a'.repeat(9000) });
         const changedText = workload('large', { values, text: `${'a'.repeat(9000)}b` });
         scope.assert.notEqual(
-            workloadIdentity(first).params['values'],
-            workloadIdentity(changedArray).params['values']
+            workloadIdentity(first).params.values,
+            workloadIdentity(changedArray).params.values
         );
-        scope.assert.notEqual(workloadIdentity(first).params['text'], workloadIdentity(changedText).params['text']);
+        scope.assert.notEqual(workloadIdentity(first).params.text, workloadIdentity(changedText).params.text);
         values[0] = 3;
         scope.assert.equal(first.parameters.values[0], 1);
         scope.assert.false(Reflect.set(first.parameters.values, '0', 4));
@@ -109,7 +109,7 @@ export const testNode = suite('benchmark evidence contracts', [
         scope.assert.equal(result.summary.inconclusive, 1);
         const measurement = result.perTest[0]?.benchmark;
         scope.assert.equal(measurement?.samples, 128);
-        scope.assert.equal(measurement?.metrics['value']?.count, 128);
+        scope.assert.equal(measurement?.metrics.value?.count, 128);
         scope.assert.equal(result.runnerErrors[0]?.subtype, 'measurement');
         return scope.assert.collect();
     }),
@@ -134,7 +134,7 @@ export const testNode = suite('benchmark evidence contracts', [
             budgets: { one: { counter: { maximum: 1 } } }
         }));
         scope.assert.equal(result.summary.failed, 1);
-        scope.assert.deepEqual(result.perTest[0]?.benchmark?.metrics['counter']?.unavailableReasons ?? [], [
+        scope.assert.deepEqual(result.perTest[0]?.benchmark?.metrics.counter?.unavailableReasons ?? [], [
             'Unsupported counter.'
         ]);
         scope.assert.equal(result.runnerErrors.length, 0);

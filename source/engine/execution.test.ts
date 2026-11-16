@@ -152,7 +152,7 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.deepEqual(
                     {
-                        rootCounts: result.bySuite['root'] ?? null,
+                        rootCounts: result.bySuite.root ?? null,
                         summary: result.summary,
                         verdicts: result.perTest.map(function toVerdict(testResult) {
                             return testResult.verdict;

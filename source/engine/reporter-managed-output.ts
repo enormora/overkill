@@ -52,9 +52,9 @@ function isOutputLineRole(value: unknown): value is OutputLineIntent['role'] {
 
 function isOutputLineIntent(value: unknown): value is OutputLineIntent {
     return isObject(value) &&
-        isOutputLineKind(value['kind']) &&
-        isOutputLineRole(value['role']) &&
-        typeof value['text'] === 'string' &&
+        isOutputLineKind(value.kind) &&
+        isOutputLineRole(value.role) &&
+        typeof value.text === 'string' &&
         Object.hasOwn(value, 'annotation');
 }
 

@@ -45,7 +45,7 @@ function normalizedResult(): BenchmarkExecutionResult {
 function incompleteDisplay(missing: 'factor' | 'summary'): BenchmarkExecutionResult {
     const result = normalizedResult();
     const { normalization } = result;
-    const metric = normalization?.metrics['latency'];
+    const metric = normalization?.metrics.latency;
     if (normalization === null || metric === undefined) {
         throw new Error('Expected normalized metric.');
     }
@@ -56,7 +56,7 @@ function incompleteDisplay(missing: 'factor' | 'summary'): BenchmarkExecutionRes
             metrics: {
                 latency: {
                     ...metric,
-                    summary: result.metrics['latency'] ?? null,
+                    summary: result.metrics.latency ?? null,
                     factor: { estimate: 2, lower: 2, upper: 2 },
                     [missing]: null
                 }
@@ -67,11 +67,11 @@ function incompleteDisplay(missing: 'factor' | 'summary'): BenchmarkExecutionRes
 export const testNode = suite('normalization summaries', [
     test('reads historical normalized results without inventing a budget scale', function (scope: TestScope) {
         const result = normalizedResult();
-        const metric = result.normalization?.metrics['latency'];
+        const metric = result.normalization?.metrics.latency;
         scope.require.defined(metric);
         Reflect.deleteProperty(metric, 'budgetFactor');
         const restored = benchmarkResultSchema.parse(result);
-        scope.assert.equal(restored.normalization?.metrics['latency']?.budgetFactor, null);
+        scope.assert.equal(restored.normalization?.metrics.latency?.budgetFactor, null);
         return scope.assert.collect();
     }),
     ...([ 'summary', 'factor' ] as const).map(function incompleteDisplayCase(missing) {
@@ -82,7 +82,7 @@ export const testNode = suite('normalization summaries', [
             const benchmark = incompleteDisplay(missing);
             const groups = benchmarkMetricGroups({ ...fixture, perTest: [ { ...measured, benchmark } ] });
             scope.assert.equal(groups.length, 1);
-            scope.assert.equal(groups[0]?.rows[0]?.summary, benchmark.metrics['latency']);
+            scope.assert.equal(groups[0]?.rows[0]?.summary, benchmark.metrics.latency);
             scope.assert.deepEqual({ budgets: groups[0]?.rows[0]?.budgets }, { budgets: [] });
             return scope.assert.collect();
         });
@@ -90,16 +90,16 @@ export const testNode = suite('normalization summaries', [
     test('scales displayed observations and budgets while retaining raw evidence', function (scope: TestScope) {
         const result = normalizedResult();
         const evidence = summarizeNormalization(result, 1);
-        scope.assert.deepEqual({ summary: evidence?.metrics['latency']?.summary }, {
+        scope.assert.deepEqual({ summary: evidence?.metrics.latency?.summary }, {
             summary: {
-                ...result.metrics['latency'],
+                ...result.metrics.latency,
                 minimum: 2,
                 maximum: 8,
                 mean: 5,
                 median: 5
             }
         });
-        scope.assert.deepEqual({ budget: evidence?.metrics['latency']?.budgets[0] }, {
+        scope.assert.deepEqual({ budget: evidence?.metrics.latency?.budgets[0] }, {
             budget: {
                 ...result.budgets[0],
                 minimum: null,
@@ -108,20 +108,20 @@ export const testNode = suite('normalization summaries', [
                 interval: { lower: 2, upper: 8 }
             }
         });
-        scope.assert.equal(result.metrics['latency']?.median, 2.5);
+        scope.assert.equal(result.metrics.latency?.median, 2.5);
         return scope.assert.collect();
     }),
     test('retains absent metrics and observations instead of inventing summaries', function (scope: TestScope) {
         const result = normalizedResult();
         const absent = summarizeNormalization({ ...result, metrics: {}, budgets: [] }, 0);
-        scope.assert.equal(absent?.metrics['latency']?.summary, null);
-        scope.assert.deepEqual({ budgets: absent?.metrics['latency']?.budgets }, { budgets: [] });
+        scope.assert.equal(absent?.metrics.latency?.summary, null);
+        scope.assert.deepEqual({ budgets: absent?.metrics.latency?.budgets }, { budgets: [] });
         scope.assert.equal(summarizeNormalization({ ...result, normalization: null }, 1), null);
         return scope.assert.collect();
     }),
     test('marks overflowing displays non-comparable while preserving raw observations', function (scope: TestScope) {
         const result = normalizedResult();
-        const metric = result.metrics['latency'];
+        const metric = result.metrics.latency;
         scope.require.defined(metric);
         const raw = { ...result, metrics: { latency: { ...metric, maximum: Number.MAX_VALUE } } };
         const evidence = summarizeNormalization(raw, 1);

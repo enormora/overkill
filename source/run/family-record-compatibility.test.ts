@@ -18,7 +18,7 @@ function familyProfile(definition: TestFamily<null>): DefinedFamilyProfile {
             }
         }
     });
-    const profile = config.profiles['custom'];
+    const profile = config.profiles.custom;
     if (profile === undefined || !isDefinedFamilyProfile(profile)) {
         throw new Error('Missing test profile.');
     }

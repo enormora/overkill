@@ -29,7 +29,7 @@ export function runRecordPolicyFixture(persist: 'always' | 'on-demand', record: 
             }
         }
     });
-    const profile = config.profiles['microtest'];
+    const profile = config.profiles.microtest;
     if (profile === undefined) {
         throw new Error('Expected microtest profile.');
     }

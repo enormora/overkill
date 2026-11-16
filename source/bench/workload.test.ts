@@ -11,7 +11,7 @@ function nestedRecord(depth: number): WorkloadParameters {
 
 function invalidRecords(): readonly { readonly name: string; readonly value: unknown; }[] {
     const cycle: Record<string, unknown> = {};
-    cycle['self'] = cycle;
+    cycle.self = cycle;
     const sparse = [ 1 ];
     Reflect.deleteProperty(sparse, '0');
     const extraArray = Object.assign([ 1 ], { extra: true });
@@ -76,9 +76,9 @@ export const testNode = suite('workload descriptors', [
         const first = workload('small', { nested: { z: 2, a: [ true, null ] }, packages: 5 });
         const second = workload('small', { packages: 5, nested: { a: [ true, null ], z: 2 } });
         scope.assert.deepEqual(first.id, second.id);
-        scope.assert.equal(first.id.params['packages'], '5');
-        scope.assert.equal(workload('small', { packages: '5' }).id.params['packages'], '"5"');
-        scope.assert.equal(first.id.params['nested'], '{"a":[true,null],"z":2}');
+        scope.assert.equal(first.id.params.packages, '5');
+        scope.assert.equal(workload('small', { packages: '5' }).id.params.packages, '"5"');
+        scope.assert.equal(first.id.params.nested, '{"a":[true,null],"z":2}');
         scope.assert.equal(workload('boundary', { value: nestedRecord(63) }).name, 'boundary');
         return scope.assert.collect();
     }),

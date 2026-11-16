@@ -146,9 +146,9 @@ export const testNode = createOverkillSuite({
                         }
                     }
                 });
-                const microtestProfile = requireMicrotestProfile(scope, config.profiles['microtest']);
-                const loadedProfile = requireMicrotestProfile(scope, config.profiles['loaded']);
-                const rawProfile = requireMicrotestProfile(scope, config.profiles['raw']);
+                const microtestProfile = requireMicrotestProfile(scope, config.profiles.microtest);
+                const loadedProfile = requireMicrotestProfile(scope, config.profiles.loaded);
+                const rawProfile = requireMicrotestProfile(scope, config.profiles.raw);
 
                 scope.assert.deepEqual(microtestProfile.coverage, {
                     outputDirectory: resolvedConfigFixturePath('target/coverage'),

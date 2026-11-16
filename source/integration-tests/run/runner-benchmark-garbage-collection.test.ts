@@ -65,7 +65,7 @@ function assertRequestedHost(scope: TestScope, execution: RunExecutionFacts): vo
 }
 
 function assertOriginalHost(scope: TestScope, command: RunCommand): void {
-    const profile = command.config.profiles['bench'];
+    const profile = command.config.profiles.bench;
     scope.require.defined(profile);
     if (profile.execution.processModel === 'worker-pool') {
         scope.assert.deepEqual(profile.execution.hostProcess, { kind: 'direct' });
@@ -77,7 +77,7 @@ function assertGarbageCollectionRun(scope: TestScope, result: RunResult): void {
     scope.assert.deepEqual(result.runnerErrors, []);
     const measured = result.perTest[0]?.benchmark;
     scope.require.defined(measured);
-    scope.assert.equal(measured.metrics['exposed']?.median, 1);
+    scope.assert.equal(measured.metrics.exposed?.median, 1);
     scope.assert.partialDeepEqual(measured.lifecycle ?? {}, {
         policy: { garbageCollection: 'after-sample' },
         garbageCollection: { mode: 'after-sample', completed: 3, failures: 0 }

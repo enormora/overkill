@@ -206,8 +206,8 @@ export async function prepareCoverageSources(input: CoverageSourceInput, access:
             }
         },
         sourcePath(sourcePath, info) {
-            return typeof info['url'] === 'string' && info['url'].startsWith('file:')
-                ? path.relative(request.projectRoot, fileURLToPath(info['url'])).split(path.sep).join('/')
+            return typeof info.url === 'string' && info.url.startsWith('file:')
+                ? path.relative(request.projectRoot, fileURLToPath(info.url)).split(path.sep).join('/')
                 : sourcePath;
         },
         sourceIncluded(sourcePath) {

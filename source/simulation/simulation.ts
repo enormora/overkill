@@ -87,7 +87,7 @@ function assertScenarioDescriptor(scenarioKey: string, descriptor: unknown): voi
         throw new TypeError(`Simulation scenario "${scenarioKey}" must be an object.`);
     }
 
-    if (typeof descriptor['title'] !== 'string' || descriptor['title'].length === 0) {
+    if (typeof descriptor.title !== 'string' || descriptor.title.length === 0) {
         throw new TypeError(`Simulation scenario "${scenarioKey}" requires a non-empty title.`);
     }
 }

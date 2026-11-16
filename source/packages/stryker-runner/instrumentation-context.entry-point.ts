@@ -148,5 +148,5 @@ export function createInvocationInstrumentation(): InvocationInstrumentation {
 }
 
 export function isStrykerWorker(): boolean {
-    return process.env['STRYKER_MUTATOR_WORKER'] !== undefined;
+    return process.env.STRYKER_MUTATOR_WORKER !== undefined;
 }

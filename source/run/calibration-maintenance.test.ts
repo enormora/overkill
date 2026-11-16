@@ -30,7 +30,7 @@ function maintenance(remove: MaintenanceInput['store']['remove']): MaintenanceIn
     const config = normalizeConfig({
         profiles: { bench: { testFamily: 'benchmark', files: { include: [ '*.bench.ts' ] } } }
     });
-    const profile = config.profiles['bench'];
+    const profile = config.profiles.bench;
     if (profile === undefined) {
         throw new Error('Missing benchmark profile.');
     }

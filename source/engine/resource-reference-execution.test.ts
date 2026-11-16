@@ -184,10 +184,10 @@ export const testNode = suite('engine resource references', [
                 const resource = Object.freeze({
                     ...referencedResource(directory, 'owner'),
                     workload(parameters: Readonly<Record<string, unknown>>) {
-                        if (typeof parameters['value'] !== 'string') {
+                        if (typeof parameters.value !== 'string') {
                             throw new TypeError('Expected a workload value.');
                         }
-                        return { value: parameters['value'] };
+                        return { value: parameters.value };
                     }
                 });
                 const engine = createTestEngine();

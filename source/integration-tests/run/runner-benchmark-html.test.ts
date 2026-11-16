@@ -22,7 +22,7 @@ import { readBenchmarkRunMetadata } from '../../bench/benchmark-run-report.ts';
 import { readPerformanceBaselineReport } from '../../baselines/performance-report.ts';
 
 function benchmarkProfile(scope: TestScope, fixture: BaselineFixture): BenchmarkProfileConfig {
-    const profile = fixture.command.config.profiles['startup'];
+    const profile = fixture.command.config.profiles.startup;
     scope.require.defined(profile);
     if (profile.testFamily !== 'benchmark') {
         throw new Error('Expected benchmark profile.');
@@ -128,7 +128,7 @@ export const testNode = suite('benchmark HTML runner integration', [
         const config = normalizeConfig({
             profiles: { startup: { testFamily: 'benchmark', files: { include: [ 'fixture.bench.ts' ] } } }
         });
-        const profile = config.profiles['startup'];
+        const profile = config.profiles.startup;
         scope.require.defined(profile);
         if (profile.testFamily !== 'benchmark') {
             throw new Error('Expected benchmark profile.');

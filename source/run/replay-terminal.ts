@@ -101,5 +101,5 @@ async function arrowRun(runs: readonly HistoryRunSummary[]): Promise<string | nu
 }
 
 export async function pickReplayRun(runs: readonly HistoryRunSummary[]): Promise<string | null> {
-    return readProcessEnvironment(process)['TERM'] === 'dumb' ? await numberedRun(runs) : await arrowRun(runs);
+    return readProcessEnvironment(process).TERM === 'dumb' ? await numberedRun(runs) : await arrowRun(runs);
 }
