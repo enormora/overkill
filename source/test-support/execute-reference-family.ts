@@ -19,7 +19,9 @@ export async function executeReferenceFamily(
     const testPlan = createTestPlan(root, {
         runtimeMatrices: true,
         benchmarkCalibration: false,
-        property: family === 'property' ? { policy: defaultPropertyPolicy, timeoutMilliseconds: 10_000 } : null
+        property: family === 'property' || family === 'integration'
+            ? { testFamily: family, policy: defaultPropertyPolicy, timeoutMilliseconds: 10_000 }
+            : null
     });
     await using prepared = await prepareFamily({
         testPlan,

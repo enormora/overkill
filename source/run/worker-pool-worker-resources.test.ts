@@ -87,6 +87,7 @@ function command(): WorkerPoolCommand {
         seed: '0',
         benchmarkNormalization: null,
         benchmarkGarbageCollection: null,
+        propertyPolicy: null,
         attachmentEndpoint: null,
         retryPolicy: null,
         collectionTimeoutMilliseconds: 100,

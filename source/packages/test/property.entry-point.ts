@@ -1,6 +1,7 @@
 export {
     defineCodec,
     gen,
+    isGenerator,
     property,
     relation,
     sampleGenerator,

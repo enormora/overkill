@@ -56,7 +56,9 @@ type PropertyReferenceScope<Value> = { readonly value: Value; readonly sample: P
 type ReferencedProperty<Value> = Except<InlinePropertyDefinition<Value>, 'test'> & {
     readonly test: BodyReference<PropertyReferenceScope<Value>>;
 };
-export type PropertyDefinition<Value> = InlinePropertyDefinition<Value> | ReferencedProperty<Value>;
+type PurePropertyDefinition<Value> = InlinePropertyDefinition<Value> | ReferencedProperty<Value>;
+type IntegrationPropertyDefinition<Value> = PurePropertyDefinition<Value> & { readonly testFamily: 'integration'; };
+export type PropertyDefinition<Value> = IntegrationPropertyDefinition<Value> | PurePropertyDefinition<Value>;
 
 export type PropertyCaseScope = TestScope & {
     readonly forall: PropertyForall;

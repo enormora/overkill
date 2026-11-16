@@ -7,7 +7,7 @@ import { attachmentArtifacts, attachmentMatchesAttempt, resultWithRuntimeAttachm
 import type { AttachmentStorageSession } from './attachment-storage-session.ts';
 import { createAttachmentExecution, type AttachmentExecution } from './attachment-execution.ts';
 import type { AttachmentCoordinator } from './attachment-coordinator-context.ts';
-import type { AttachmentEndpoint } from './attachment-protocol.ts';
+import { retainPropertyWitnessAttachments } from './property-witness-storage.ts';
 
 export type AttachmentRunCoordinator = AttachmentCoordinator & {
     readonly artifacts: () => readonly RuntimeAttachmentArtifact[];
@@ -21,14 +21,14 @@ type AttachmentRunCoordinatorState = {
     readonly resolved: AttachmentStorageSession['resolved'];
     readonly branches: WeakMap<Readonly<Record<string, unknown>>, string>;
     readonly execution: AttachmentExecution;
-    readonly endpoint: AttachmentEndpoint;
+    readonly endpoint: AttachmentCoordinator['endpoint'];
     readonly finalized: StoredRunValue<RunResult | null>;
 };
 function attachmentRunCoordinatorBranchEndpoint(
     state: AttachmentRunCoordinatorState,
     branch: Readonly<Record<string, unknown>>,
     retain: () => boolean
-): AttachmentEndpoint {
+): AttachmentCoordinator['endpoint'] {
     const { branches, store } = state;
 
     const id = branches.get(branch) ?? randomUUID();
@@ -69,7 +69,7 @@ async function attachmentRunCoordinatorFinalize(
     if (finalized.read() !== null) {
         return result;
     }
-    const localErrors = await execution.finish();
+    const localErrors = [ ...await retainPropertyWitnessAttachments(execution, result), ...await execution.finish() ];
     store.settleResult(result);
     const owners = await server.finish();
     const final = resultWithRuntimeAttachments(result, store.selectedArtifacts(), {
@@ -94,7 +94,7 @@ export function createAttachmentRunCoordinator(storage: AttachmentStorageSession
     const execution: AttachmentExecution = createAttachmentExecution(async function (operation) {
         return store.exchange('local', operation);
     }, server.endpoint.limits);
-    const endpoint: AttachmentEndpoint = server.endpoint;
+    const { endpoint } = server;
     const finalized = createStoredRunValue<RunResult | null>(null);
     const state: AttachmentRunCoordinatorState = {
         storage,

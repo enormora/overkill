@@ -141,6 +141,7 @@ function createIntegrationRunConfig(reporter: DefinedReporter): NormalizedConfig
         }),
         profiles: {
             integration: {
+                property: null,
                 failureArtifacts: defaultFailureArtifactPolicy,
                 baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
                 attachments: defaultAttachmentLimits,

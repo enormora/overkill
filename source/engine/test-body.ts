@@ -120,6 +120,13 @@ export type TestBodyFamilyAttachment<Definition> = {
     readonly definition: Definition;
 };
 
+export function isPropertyBodyAttachment(attachment: TestBodyFamilyAttachment<unknown> | null): boolean {
+    return attachment !== null && (
+        attachment.family === 'property' ||
+        attachment.family === 'integration' && isPropertyBodyDefinition(attachment.definition)
+    );
+}
+
 type FamilyAttachedBody<Body, Definition> = Body & {
     readonly [testBodyFamilyBrand]: TestBodyFamilyAttachment<Definition>;
 };
@@ -267,7 +274,10 @@ export function propertyExecutionForDefinition<Body>(
 
 function propertyExecutionForBody<Body>(body: Body): PropertyBodyExecution<Body> | null {
     const attachment = readTestBodyFamily(body);
-    if (attachment?.family !== 'property' || !isPropertyBodyDefinition(attachment.definition)) {
+    if (
+        attachment === null || ![ 'property', 'integration' ].includes(attachment.family) ||
+        !isPropertyBodyDefinition(attachment.definition)
+    ) {
         return null;
     }
     return propertyExecutionForDefinition(body, attachment.definition);

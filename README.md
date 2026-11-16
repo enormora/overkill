@@ -19,6 +19,13 @@ Repository tests run through the published `@overkill-dev/run` package. The
 including for package smoke tests with their own installed packages. Test files
 continue to import source modules for the code under test.
 
+## ESLint testing
+
+Install `@overkill-dev/eslint-test` to share rule definitions and named
+configuration matrices between example suites and automated source/option
+properties. Configuration tests add inventories, resolved policy checks, project
+fixtures, and generated safety properties. See the [package documentation](source/packages/eslint-test/readme.md).
+
 ## Differential testing
 
 Install `@overkill-dev/differential` alongside `@overkill-dev/test`.

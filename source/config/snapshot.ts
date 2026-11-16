@@ -16,6 +16,7 @@ import {
     type HostProcess,
     type BenchmarkExecution,
     type IntegrationExecution,
+    type PropertyProfileConfig,
     type CoveragePolicy
 } from './types.ts';
 
@@ -215,6 +216,12 @@ function copyDefinedFamilyProfile(profile: DefinedFamilyProfile): DefinedFamilyP
     };
 }
 
+function copyPropertyPolicy(
+    policy: PropertyProfileConfig['property'] | null
+): PropertyProfileConfig['property'] | null {
+    return policy === null ? null : { ...policy };
+}
+
 function copyBuiltinProfileConfig(profile: Exclude<ProfileConfig, DefinedFamilyProfile>): ProfileConfig {
     if (profile.testFamily === 'property') {
         return {
@@ -260,6 +267,7 @@ function copyBuiltinProfileConfig(profile: Exclude<ProfileConfig, DefinedFamilyP
 
     if (profile.testFamily === 'integration') {
         return {
+            property: copyPropertyPolicy(profile.property),
             baselines: { ...profile.baselines, adapters: Array.from(profile.baselines.adapters) },
             attachments: { ...profile.attachments },
             execution: copyIntegrationExecution(profile.execution),

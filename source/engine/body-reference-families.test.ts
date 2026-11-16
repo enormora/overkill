@@ -111,18 +111,21 @@ export const testNode = suite('referenced body family composition', [
         });
         return scope.assert.collect();
     }),
-    test('resolves property implementations before generated trials', async function (scope) {
-        await fixture(async function execute(directory) {
-            const body = reference<
-                { readonly value: 42; readonly sample: PropertySampleScope<42>; },
-                ReturnType<TestBody>
-            >(directory, 'sample');
-            const node = property({ title: 'property', generator: gen.constant(42), test: body });
-            const result = await executeReferenceFamily(directory, 'property', [ node ]);
-            scope.assert.deepEqual(result.runnerErrors, []);
-            scope.assert.equal(result.summary.passed, 1);
+    ...([ 'property', 'integration' ] as const).map(function propertyFamily(family) {
+        return test(`resolves ${family} implementations before generated trials`, async function (scope) {
+            await fixture(async function execute(directory) {
+                const body = reference<
+                    { readonly value: 42; readonly sample: PropertySampleScope<42>; },
+                    ReturnType<TestBody>
+                >(directory, 'sample');
+                const definition = { title: 'property', generator: gen.constant(42), test: body };
+                const node = property(family === 'integration' ? { ...definition, testFamily: family } : definition);
+                const result = await executeReferenceFamily(directory, family, [ node ]);
+                scope.assert.deepEqual(result.runnerErrors, []);
+                scope.assert.equal(result.summary.passed, 1);
+            });
+            return scope.assert.collect();
         });
-        return scope.assert.collect();
     }),
     test('retains property family metadata on referenced wrappers', async function (scope) {
         await fixture(async function execute(directory) {

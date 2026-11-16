@@ -304,6 +304,7 @@ export function defaultIntegrationProfile(
     overrides: IntegrationProfileOverrides
 ): IntegrationProfileConfig {
     return {
+        property: null,
         baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
         attachments: defaultAttachmentLimits,
         retries: null,

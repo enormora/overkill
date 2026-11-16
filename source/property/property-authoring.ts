@@ -1,10 +1,17 @@
-import { isBodyReference, mapBodyReference, executableBody, withReferencedBodyFamily } from '../engine/test-body.ts';
+import {
+    isBodyReference,
+    isPropertyBodyAttachment,
+    mapBodyReference,
+    executableBody,
+    withReferencedBodyFamily
+} from '../engine/test-body.ts';
 import type { BodyReference } from '../engine/body-reference.ts';
 import {
     attachTestBodyFamily,
     readPropertyExecutionHost,
     createPropertyTestCase,
     type AssertionResult,
+    type DefinitionLocations,
     type PropertySettings,
     type PropertySettingsDeclaration,
     type TestBodyFamilyAttachment,
@@ -27,6 +34,8 @@ import {
 } from './property-invocation.ts';
 import type {
     NestedPropertyDeclaration,
+    NormalizedPropertyInvocation,
+    PropertyBody,
     PropertyCaseBody,
     PropertyDeclaration,
     PropertyDefinition
@@ -54,9 +63,39 @@ function hasPropertySettings<Value>(
     return Object.hasOwn(definition, 'settings');
 }
 
+function hasTestFamily<Value>(
+    definition: PropertyDefinition<Value>
+): definition is PropertyDefinition<Value> & { readonly testFamily: 'integration'; } {
+    return Object.hasOwn(definition, 'testFamily');
+}
+
+function declaredPropertyBody<Value>(
+    invocation: NormalizedPropertyInvocation<Value>,
+    locations: DefinitionLocations,
+    body: PropertyDefinition<Value>['test']
+): BodyReference | TestBody {
+    function execution(test: PropertyBody<Value>): TestBody {
+        return async function executeDeclaredProperty(scope) {
+            return await runPropertyInvocation({ ...invocation, test }, {
+                scope,
+                signal: scope.signal,
+                identity: 'declared-property',
+                locations
+            });
+        };
+    }
+    return isBodyReference(body)
+        ? mapBodyReference(body, function bindProperty(bound) {
+            return execution(async function executeSample(value, sample) {
+                return bound({ value, sample });
+            });
+        })
+        : execution(body);
+}
+
 export function property<Value>(definition: PropertyDefinition<Value>): TestCase {
     ensurePropertyDefinition(definition);
-    const referenced = isBodyReference(definition.test) ? definition.test : null;
+    const family = hasTestFamily(definition) ? definition.testFamily : 'property';
     const ordinary = typeof definition.test === 'function' ? definition.test : function unavailableImplementation() {
         throw new TypeError('Property implementation was not admitted.');
     };
@@ -74,25 +113,12 @@ export function property<Value>(definition: PropertyDefinition<Value>): TestCase
         test: ordinary,
         definitionLocations
     });
-    function execution(test: typeof ordinary) {
-        return async function executeDeclaredProperty(scope: TestScope) {
-            return await runPropertyInvocation({ ...invocation, test }, {
-                scope,
-                signal: scope.signal,
-                identity: 'declared-property',
-                locations: definitionLocations
-            });
-        };
-    }
     const body = attachTestBodyFamily(
-        referenced === null ? execution(ordinary) : mapBodyReference(referenced, function bindProperty(bound) {
-            return execution(async function executeSample(value, sample) {
-                return bound({ value, sample });
-            });
-        }),
-        { family: 'property', definition: declaration }
+        declaredPropertyBody(invocation, definitionLocations, definition.test),
+        { family, definition: declaration }
     );
     return createPropertyTestCase({
+        ...hasTestFamily(definition) ? { testFamily: definition.testFamily } : {},
         definition: declaration,
         annotations: {},
         controls: {},
@@ -108,7 +134,7 @@ function propertyFamilyAttachment(
 ): TestBodyFamilyAttachment<unknown> {
     const attachment = readTestBodyFamily(body);
     if (attachment !== null) {
-        if (attachment.family !== 'property') {
+        if (!isPropertyBodyAttachment(attachment)) {
             throw new TypeError('withProperties() cannot wrap a body belonging to another test family.');
         }
         if (settings.length === 0) {
@@ -118,7 +144,7 @@ function propertyFamilyAttachment(
             throw new TypeError('withProperties() settings require a property declaration.');
         }
         return {
-            family: 'property',
+            family: attachment.family,
             definition: Object.freeze({
                 ...attachment.definition,
                 settingsDeclarations: Object.freeze([

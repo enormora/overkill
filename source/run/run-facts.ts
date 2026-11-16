@@ -8,6 +8,7 @@ import { profileFamilyFacts } from './family-run-facts.ts';
 
 import { debuggedWork, runHasAttachmentScopes } from './run-diagnostics.ts';
 import {
+    profilePropertyPolicy,
     resolveProcessUsagePolicy,
     resolveRunRecordPersistence,
     resolveTimingCollection
@@ -70,7 +71,7 @@ function executionFamilyFacts(
         return {
             attachments: profile.attachments,
             benchmarkGarbageCollection: null,
-            propertyPolicy: null,
+            propertyPolicy: profilePropertyPolicy(profile),
             retries: profile.retries
         };
     }

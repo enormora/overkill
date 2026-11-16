@@ -70,6 +70,7 @@ export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit):
     return {
         implementations: runtime.resolvedRun.facts.implementations,
         implementationContext: { projectRoot: runtime.resolvedRun.facts.environment.projectRoot },
+        propertyPolicy: execution.propertyPolicy,
         family: workerFamilyDefinition(runtime),
         debug: execution.debug,
         capture: execution.capture,

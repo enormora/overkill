@@ -6,6 +6,7 @@ import { verifyWitnessSource } from './replay-files.ts';
 import { invalidRequest } from './run-errors.ts';
 import { readWitnessReplayFile, decodeReplayInput } from './replay-input.ts';
 import type { PreparedReplay, ReplayContext, ReplayWitnessInput } from './replay-types.ts';
+import { profilePropertyPolicy } from './run-profile-facts.ts';
 
 type WitnessCommandContext = Readonly<Record<PropertyKey, never>> | { readonly propertyReplay: PropertyWitnessFile; };
 export function propertyWitnessCommand(witness: WitnessFile | null): WitnessCommandContext {
@@ -70,9 +71,14 @@ export async function prepareWitnessReplay(
 }
 
 function replayProfile(command: ReplayWitnessCommand): string {
-    const eligible = Object.keys(command.config.profiles).filter(function propertyProfile(name) {
-        return command.config.profiles[name]?.testFamily === 'property';
-    });
+    const eligible = Object
+        .entries(command.config.profiles)
+        .filter(function supportsProperties([ , profile ]) {
+            return profilePropertyPolicy(profile) !== null;
+        })
+        .map(function profileName([ name ]) {
+            return name;
+        });
     const inferred = eligible.length === 1 ? eligible[0] : null;
     const selected = command.request.profile ?? inferred;
     if (typeof selected !== 'string' || command.config.profiles[selected] === undefined) {

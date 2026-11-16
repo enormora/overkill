@@ -76,7 +76,7 @@ async function createWorkerPoolTestPlan(command: WorkerPoolCommand): Promise<Tes
     const engine = await resolveHostEngine(command.engine, loadRunEngineModule);
     return await createHostTestPlan({
         processModel: 'worker-pool',
-        command: { ...command, propertyPolicy: null },
+        command,
         engine,
         async collect(policy, replay) {
             return await createRunTestPlan({

@@ -166,18 +166,30 @@ export function assertTestPlanCasesMatchProfilePolicy(testPlan: TestPlan, profil
     }
 }
 
-export function assertCollectedRunPlanCasesMatchProfilePolicy(
-    plan: CollectedRunPlan,
-    profile: ProfileConfig
-): void {
-    if (profile.testFamily === 'property') {
-        assertCollectedPropertyPolicies(plan, profile.property, profile.timeouts.softMilliseconds);
-        return;
-    }
+function assertCollectedCaseControls(plan: CollectedRunPlan, profile: ProfileConfig): void {
     for (const file of plan.files) {
         for (const testCase of file.cases) {
             assertCaseControlsMatchProfile(testCase, profile);
         }
+    }
+}
+
+export function assertCollectedRunPlanCasesMatchProfilePolicy(
+    plan: CollectedRunPlan,
+    profile: ProfileConfig
+): void {
+    const propertyPolicy = profile.testFamily === 'property' || profile.testFamily === 'integration'
+        ? profile.property
+        : null;
+    if (propertyPolicy !== null) {
+        assertCollectedPropertyPolicies(plan, {
+            testFamily: profileFamilyId(profile),
+            propertyPolicy,
+            timeoutMilliseconds: profile.timeouts.softMilliseconds
+        });
+    }
+    if (profile.testFamily !== 'property') {
+        assertCollectedCaseControls(plan, profile);
     }
 }
 function selectedCases<Case>(
@@ -348,6 +360,19 @@ function hasReplayPolicy(policy: CollectionPolicy): policy is CollectionReplayPo
     return Object.hasOwn(policy, 'replay');
 }
 
+function requiresPropertyPolicy(testPlan: TestPlan, family: RunTestFamily): boolean {
+    return family === 'property' || testPlan.cases.some(function propertyCase(testCase) {
+        return testCase.execution.kind === 'body' && testCase.execution.bodyMode === 'property';
+    });
+}
+
+export function assertTestPlanCollectionPolicy(testPlan: TestPlan, policy: CollectionPolicy): void {
+    assertTestPlanMatchesTestFamily(testPlan, policy.testFamily);
+    if (policy.propertyPolicy === null && requiresPropertyPolicy(testPlan, policy.testFamily)) {
+        throw new RunCollectionError('Property collection requires profile policy.', { cause: null }, 'loader');
+    }
+}
+
 export function resolveTestPlanCollectionPolicy(
     testPlan: TestPlan,
     policy: CollectionPolicy | CollectionReplayPolicy
@@ -355,12 +380,8 @@ export function resolveTestPlanCollectionPolicy(
     if (hasReplayPolicy(policy) && policy.replay?.kind === 'record') {
         return testPlan;
     }
-    assertTestPlanMatchesTestFamily(testPlan, policy.testFamily);
-    if (policy.testFamily !== 'property') {
-        return testPlan;
-    }
-    if (policy.propertyPolicy === null) {
-        throw new RunCollectionError('Property collection requires profile policy.', { cause: null }, 'loader');
-    }
-    return resolveTestPlanPropertyPolicy(testPlan, policy.propertyPolicy, policy.timeoutMilliseconds);
+    assertTestPlanCollectionPolicy(testPlan, policy);
+    return policy.propertyPolicy === null
+        ? testPlan
+        : resolveTestPlanPropertyPolicy(testPlan, { ...policy, propertyPolicy: policy.propertyPolicy });
 }

@@ -4,7 +4,7 @@ import { bindWireReplayPlan } from './replay-wire.ts';
 import type { ReplayWire } from './run-types.ts';
 import { defaultRunEngine, calibrationCapturePlan } from './default-run-engine.ts';
 import { transferHostFamilyPlan, registerImportedHostFamilyPlan, registerHostFamilyPlan } from './host-family-plan.ts';
-import { resolveTestPlanCollectionPolicy } from './run-selection.ts';
+import { resolveTestPlanCollectionPolicy, assertTestPlanCollectionPolicy } from './run-selection.ts';
 import type { RunEngineModuleLoader } from './run-engine-selection.ts';
 import type { SupervisedChildCommand } from './supervised-protocol.ts';
 
@@ -29,9 +29,11 @@ function hostCollectionPolicy(command: HostPlanCommand): TestPlanCollectionPolic
     return {
         runtimeMatrices: true,
         benchmarkCalibration: command.benchmarkNormalization?.mode === 'capture',
-        property: command.testFamily === 'property' && command.propertyPolicy !== null
-            ? { policy: command.propertyPolicy, timeoutMilliseconds: command.timeoutMilliseconds }
-            : null
+        property: command.propertyPolicy === null ? null : {
+            testFamily: command.testFamily === 'integration' ? 'integration' : 'property',
+            policy: command.propertyPolicy,
+            timeoutMilliseconds: command.timeoutMilliseconds
+        }
     };
 }
 
@@ -89,6 +91,7 @@ export async function createHostTestPlan(input: HostPlanInput): Promise<TestPlan
             input.command.benchmarkNormalization
         );
     }
+    assertTestPlanCollectionPolicy(plan, input.command);
     registerHostFamilyPlan(
         source,
         input.engine,

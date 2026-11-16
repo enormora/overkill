@@ -16,7 +16,8 @@ original declaration; configured rewrapping is rejected during collection. Base 
 
 Generator values are owned by Overkill. Custom generators compose its fluent
 `map`, `flatMap`, `filter`, and `withCodec` surfaces. Sampling callbacks and
-unbranded objects are not generators.
+unbranded objects are not generators. `isGenerator(value)` checks the runtime
+brand and generator contract when accepting extension inputs.
 Their private runtime symbol and shared declaration identity remain compatible
 across leaf and standard package copies.
 
@@ -220,6 +221,14 @@ execution is supervised and concurrent, with a 1 s soft timeout and 2 s hard
 timeout. In-process execution supports best-effort diagnostics without hard
 termination. Process usage policy uses the ordinary `processUsage` surface.
 
+For generated tests that need files or resources, declare
+`property({ testFamily: 'integration', title, generator, test })` and configure an
+integration profile with an explicit `property` budget. These cases use ordinary
+integration capabilities and support supervised processes or worker pools. They
+can share a profile with ordinary integration cases. Confirmed failures retain
+replayable witnesses; checked-in and learned corpora remain property-profile
+features.
+
 `property({ title, generator, test, settings })` and
 `withProperties(body, settings)` override exploration defaults. All nested
 `forall` calls inherit the wrapper's collected policy. Settings cannot change
@@ -358,7 +367,7 @@ replay. Producer-specific payload compatibility is validated separately.
 ## Witness replay
 
 Run `overkill replay-witness <path> --profile <name>` to execute a saved property
-input. The profile may be omitted when exactly one property profile exists.
+input. The profile may be omitted when exactly one property-enabled profile exists.
 Replay executes the target once, without corpus trials, examples, generation,
 confirmation, or shrinking. It accepts retained inputs outside current generator
 bounds, subject to total-work limits and normal execution supervision.

@@ -39,10 +39,8 @@ async function runWorkerLifecycleProbe(pool: TinypoolInstance): Promise<WorkerLi
     return result;
 }
 
-async function realTinypoolWorkerLifecycle(
-    workerLifecycle: WorkerLifecycle
-): Promise<readonly [WorkerLifecycleProbeResult, WorkerLifecycleProbeResult]> {
-    const pool = createTinypoolWorkerPool({
+function createLifecycleProbePool(workerLifecycle: WorkerLifecycle): TinypoolInstance {
+    return createTinypoolWorkerPool({
         cwd: process.cwd(),
         filename: workerLifecycleProbeEntryPoint,
         hostProcess: { kind: 'direct' },
@@ -50,7 +48,12 @@ async function realTinypoolWorkerLifecycle(
         workerCount: 1,
         workerLifecycle
     });
+}
 
+async function realTinypoolWorkerLifecycle(
+    workerLifecycle: WorkerLifecycle
+): Promise<readonly [WorkerLifecycleProbeResult, WorkerLifecycleProbeResult]> {
+    const pool = createLifecycleProbePool(workerLifecycle);
     try {
         return [
             await runWorkerLifecycleProbe(pool),
@@ -73,6 +76,22 @@ export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/worker-pool-lifecycle.test.ts',
     children: [
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'fresh worker pools release workers between assignments',
+            async body(scope: OverkillScope) {
+                const pool = createLifecycleProbePool('fresh-worker-per-unit');
+                try {
+                    await runWorkerLifecycleProbe(pool);
+                    scope.assert.equal(pool.threads.length, 0);
+                    return scope.assert.collect();
+                } finally {
+                    await pool.destroy();
+                }
+            }
+        }),
         createOverkillTestCase({
             annotations: {},
             controls: {},

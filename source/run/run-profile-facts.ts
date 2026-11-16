@@ -1,3 +1,4 @@
+import type { PropertyPolicy } from '../engine/property-node.ts';
 import { copyProcessBudgets } from '../config/snapshot.ts';
 import type {
     ProcessBudgets,
@@ -11,6 +12,10 @@ import type {
 import type { RunRequest } from './run-types.ts';
 import { invalidRequest } from './run-errors.ts';
 import { currentExecutionSession } from './execution-session-context.ts';
+
+export function profilePropertyPolicy(profile: ProfileConfig): PropertyPolicy | null {
+    return profile.testFamily === 'property' || profile.testFamily === 'integration' ? profile.property : null;
+}
 
 export function resolveRunScheduling(request: RunRequest, profile: ProfileConfig): Scheduling {
     return request.execution.mode === 'serial' ? 'serial' : profile.execution.scheduling;

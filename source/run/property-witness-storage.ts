@@ -79,13 +79,33 @@ async function retainAttemptWitnesses(
     }
 }
 
-async function retainWitnesses(execution: AttachmentExecution, result: RunResult): Promise<void> {
+function confirmedPropertyAttempt(attempt: RunResult['perTest'][number]['attempts'][number]): boolean {
+    return attempt.property?.invocations.some(function confirmed(invocation) {
+        return invocation.confirmedWitness !== null;
+    }) === true;
+}
+
+async function retainResultWitnesses(execution: AttachmentExecution, result: RunResult): Promise<void> {
     for (const testCase of result.perTest) {
         for (const attempt of testCase.attempts) {
-            await execution.runAttempt(testCase.workId, attempt.attempt, async function retainAttempt() {
-                await retainAttemptWitnesses(execution, testCase, attempt);
-            });
+            if (confirmedPropertyAttempt(attempt)) {
+                await execution.runAttempt(testCase.workId, attempt.attempt, async function retainAttempt() {
+                    await retainAttemptWitnesses(execution, testCase, attempt);
+                });
+            }
         }
+    }
+}
+
+export async function retainPropertyWitnessAttachments(
+    execution: AttachmentExecution,
+    result: RunResult
+): Promise<readonly RunnerError[]> {
+    try {
+        await retainResultWitnesses(execution, result);
+        return [];
+    } catch (error: unknown) {
+        return [ witnessStorageError(error) ];
     }
 }
 
@@ -103,9 +123,7 @@ async function retainPropertyWitnesses(context: WitnessRun, result: RunResult): 
     const { store, execution } = await createWitnessStorage(context);
     const errors: RunnerError[] = [];
     try {
-        await retainWitnesses(execution, result);
-    } catch (error: unknown) {
-        errors.push(witnessStorageError(error));
+        errors.push(...await retainPropertyWitnessAttachments(execution, result));
     } finally {
         await execution.finish();
         await store.finish(null);

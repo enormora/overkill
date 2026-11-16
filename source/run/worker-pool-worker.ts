@@ -8,7 +8,7 @@ import {
     laneResourceSession
 } from './worker-pool-worker-resources.ts';
 import { resolveDebugSelection } from './run-debug.ts';
-import { withReplayWire } from './replay-wire.ts';
+import { withReplayWire, wirePropertyCorpus } from './replay-wire.ts';
 import { createWorkerExecute, createWorkerProcessUsageTracker } from './worker-execution-engine.ts';
 import {
     composeRunRuntimePolicies,
@@ -135,6 +135,11 @@ async function runAssignment(
                             createRunPermissionRuntimePolicy(),
                             withProjectedFailurePreparation(resourceSession.runtimePolicy, task)
                         ),
+                        propertyRun: {
+                            corpus: wirePropertyCorpus(task.command.replay),
+                            seed: BigInt(task.command.seed),
+                            projectRoot: task.command.cwd
+                        },
                         runFacts: {},
                         startedAt: startedAtIso(task.startedAtMilliseconds),
                         timeoutPolicy: {

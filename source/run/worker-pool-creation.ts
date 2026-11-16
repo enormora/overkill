@@ -55,7 +55,7 @@ export function createTinypoolWorkerPool(options: TinypoolWorkerPoolOptions): Ti
             filename: options.filename,
             isolateWorkers: isolateWorkers(options),
             maxThreads: options.workerCount,
-            minThreads: options.workerCount,
+            minThreads: isolateWorkers(options) ? 0 : options.workerCount,
             runtime: 'worker_threads'
         })
     );

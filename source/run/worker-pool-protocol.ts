@@ -44,6 +44,7 @@ type RunEngineSelection = RunCommand['engine'];
 export type WorkerPoolCommand = {
     readonly implementations: RunFacts['implementations'];
     readonly implementationContext: { readonly projectRoot: string; };
+    readonly propertyPolicy: RunFacts['execution']['propertyPolicy'];
     readonly snapshots: SnapshotRun | null;
     readonly capture: RunCommand['request']['capture'];
     readonly replay: ReplayWire | null;

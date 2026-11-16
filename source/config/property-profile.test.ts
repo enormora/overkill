@@ -1,14 +1,48 @@
 import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import { normalizeConfig } from './config.ts';
 import { propertyProfileSchema } from './schema.ts';
 import { copyConfig } from './snapshot.ts';
 import { validateNormalizedConfig } from './validation.ts';
+import type { NormalizedConfig, IntegrationProfileConfig } from './types.ts';
 
 const files = { include: [ 'source/**/*.property.ts' ] } as const;
 
+function integrationProfile(config: NormalizedConfig): IntegrationProfileConfig {
+    const profile = config.profiles.projects;
+    if (profile?.testFamily !== 'integration') {
+        throw new TypeError('Expected an integration profile.');
+    }
+    return profile;
+}
+
 export const testNode = suite('property profile', [
+    test(
+        'integration profiles resolve explicit property budgets and copy them independently',
+        function (scope: TestScope) {
+            const config = normalizeConfig({
+                profiles: {
+                    projects: { testFamily: 'integration', files, property: { newTrials: 7, maxWork: 2000 } }
+                }
+            });
+            const profile = integrationProfile(config);
+            const copied = integrationProfile(copyConfig(config));
+            scope.require.notNull(profile.property);
+            scope.require.notNull(copied.property);
+            validateNormalizedConfig(config);
+            scope.assert.deepEqual(profile.property, { ...defaultPropertyPolicy, newTrials: 7, maxWork: 2000 });
+            scope.assert.deepEqual(copied.property, profile.property);
+            scope.assert.notEqual(copied.property, profile.property);
+            return scope.assert.collect();
+        }
+    ),
+    test('integration profiles reject invalid property budgets', function (scope) {
+        scope.assert.throws(function invalidBudget() {
+            normalizeConfig({ profiles: { projects: { testFamily: 'integration', files, property: { maxWork: 0 } } } });
+        }, { message: /maxWork/ });
+        return scope.assert.collect();
+    }),
     test('validates normalized policy and rejects added capability fields', function (scope) {
         const config = normalizeConfig({ profiles: { laws: { testFamily: 'property', files } } });
         validateNormalizedConfig(config);

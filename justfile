@@ -1,5 +1,6 @@
 export PATH := './node_modules/.bin:' + env_var('PATH')
-package-smoke-packages := '@overkill-dev/linearizability,@overkill-dev/differential,@overkill-dev/model,@overkill-dev/reporter-benchmark-html,@overkill-dev/baselines,@overkill-dev/bench,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run,@overkill-dev/stryker-runner,@overkill-dev/type-test,@overkill-dev/property,@overkill-dev/test,@overkill-dev/reporter-line,@overkill-dev/reporter-brief,@overkill-dev/reporter-dot,@overkill-dev/reporter-opentelemetry,@overkill-dev/output-renderer-github-actions'
+package-smoke-packages := '@overkill-dev/eslint-test,@overkill-dev/linearizability,@overkill-dev/differential,@overkill-dev/model,@overkill-dev/reporter-benchmark-html,@overkill-dev/baselines,@overkill-dev/bench,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run,@overkill-dev/stryker-runner,@overkill-dev/type-test,@overkill-dev/property,@overkill-dev/test,@overkill-dev/reporter-line,@overkill-dev/reporter-brief,@overkill-dev/reporter-dot,@overkill-dev/reporter-opentelemetry,@overkill-dev/output-renderer-github-actions'
+eslint-smoke-packages := '@overkill-dev/eslint-test,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/property,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run'
 mutation-smoke-packages := '@overkill-dev/engine,@overkill-dev/run,@overkill-dev/stryker-runner,@overkill-dev/reporter-line'
 packtory-node-options := '--max-old-space-size-percentage=75'
 
@@ -68,6 +69,8 @@ test-property-integration: benchmark-html-browser
     node source/integration-tests/run/runner-property-measurements.test.ts
 
 test-runner-integration: test-mutation-integration
+    node source/integration-tests/run/runner-eslint-test.test.ts
+    node source/integration-tests/run/runner-eslint-properties.test.ts
     node source/integration-tests/run/runner-family-transport.test.ts
     node source/integration-tests/run/runner-family-records.test.ts
     node source/integration-tests/run/runner-family-selection.test.ts
@@ -155,6 +158,16 @@ test-linearizability-package-smoke: compile
     node target/build/source/integration-tests/package-smoke/linearizability.test.js
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
 
+test-eslint-package-smoke: compile
+    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+    rm -rf target/eslint-package-smoke
+    mkdir -p target/eslint-package-smoke/node_modules/@overkill-dev
+    NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" PACKTORY_INCLUDED_PACKAGES={{eslint-smoke-packages}} packtory pack @overkill-dev/eslint-test --format folder --version 0.0.0 --vendor-dependencies --out target/eslint-package-smoke/node_modules/@overkill-dev/eslint-test
+    ln -sfn eslint-test/node_modules/@overkill-dev/engine target/eslint-package-smoke/node_modules/@overkill-dev/engine
+    ln -s ../../../../eslint-package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
+    node target/build/source/integration-tests/package-smoke/eslint-test.test.js
+    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+
 test-mutation-package-smoke: (_pack-smoke-packages mutation-smoke-packages)
     node target/build/source/integration-tests/package-smoke/stryker-accuracy.test.js
     node target/build/source/integration-tests/package-smoke/stryker-interruptions.test.js
@@ -170,6 +183,7 @@ test-package-smoke: (_pack-smoke-packages package-smoke-packages)
     node target/build/source/integration-tests/package-smoke/property.test.js
     node target/build/source/integration-tests/package-smoke/model.test.js
     node target/build/source/integration-tests/package-smoke/differential.test.js
+    node target/build/source/integration-tests/package-smoke/eslint-test.test.js
     node target/build/source/integration-tests/package-smoke/linearizability.test.js
     node target/build/source/integration-tests/package-smoke/type-test.test.js
     node target/build/source/integration-tests/package-smoke/stryker-runner.test.js
