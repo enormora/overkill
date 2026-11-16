@@ -46,10 +46,10 @@ See the [canonical boundary](../authoring/higher-test-layers.md#conditional-asse
 
 ## Additional ESLint Candidates
 
-| Candidate | Benefit and boundary |
-| --- | --- |
-| `no-compound-boolean-assertion` | Split `assert.true(a && b)` into checks with useful diagnostics. Do not blindly rewrite `a || b`, change short-circuit effects, or change plan counts. Could be part of the settled `prefer-semantic-assertions` rule instead. |
-| `no-useless-assertion` | Reject assertions determined entirely by source constants, including `assert.true(true)`. Complements self-comparison; may fit an expanded `no-constant-actual-assert` instead of a separate rule. Explicit `assert.fail()` remains valid. |
+| Candidate                       | Benefit and boundary                                                                                                                                                                                                                       |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `no-compound-boolean-assertion` | Split `assert.true(a && b)` into checks with useful diagnostics. Do not blindly rewrite `a \|\| b`, change short-circuit effects, or change plan counts. Could be part of the settled `prefer-semantic-assertions` rule instead.           |
+| `no-useless-assertion`          | Reject assertions determined entirely by source constants, including `assert.true(true)`. Complements self-comparison; may fit an expanded `no-constant-actual-assert` instead of a separate rule. Explicit `assert.fail()` remains valid. |
 
 `no-setup-in-error-assertion`, `no-duplicate-assertions`, and `prefer-table`
 have moved to the settled catalog. For error callbacks, statement count alone

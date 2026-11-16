@@ -337,20 +337,20 @@ and authoring policies that those mechanisms cannot establish.
 
 #### Settled Rule Catalog
 
-| Rule | Constraint |
-| --- | --- |
-| `no-scope-escape` | Do not pass the test scope or its assertion/planning APIs to ordinary helper functions or store them outside their owning test. |
-| `no-single-use-trivial-assertion` | Do not introduce a local, unexported, single-reference custom assertion that merely forwards one built-in check. |
-| `no-self-comparison` | Do not compare the same stable binding with itself in an equality assertion. |
-| `no-constant-actual-assert` | Report likely reversed actual/expected operands where the actual is constant and the expected is not. |
-| `prefer-semantic-assertions` | Prefer the assertion that expresses the check directly over a boolean expression that hides its operands or diagnostic meaning. |
-| `no-shared-mutable-test-state` | Do not let case bodies mutate state shared between tests outside an explicitly owned resource lifetime. |
-| `no-reexported-test-node` | Test entry modules must compose their own root rather than forward another module's root unchanged. |
-| `consistent-run-if-main` | Enforce a configured `always` or `never` policy for explicit direct-file execution. |
-| `no-setup-in-error-assertion` | Keep separate setup operations outside `throws`/`rejects` callbacks so setup failures cannot satisfy the expected-error matcher. |
-| `no-duplicate-assertions` | Reject adjacent identical checks on provably stable, side-effect-free operands; allow checks separated by an operation. |
-| `prefer-table` | Prefer tables for independent repeated cases while preserving stateful scenarios and deliberate test-node composition. |
-| `no-conditional-assertions` | Reject conditionally executed assertions in test bodies; custom assertion implementations may use conditional logic. |
+| Rule                              | Constraint                                                                                                                       |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `no-scope-escape`                 | Do not pass the test scope or its assertion/planning APIs to ordinary helper functions or store them outside their owning test.  |
+| `no-single-use-trivial-assertion` | Do not introduce a local, unexported, single-reference custom assertion that merely forwards one built-in check.                 |
+| `no-self-comparison`              | Do not compare the same stable binding with itself in an equality assertion.                                                     |
+| `no-constant-actual-assert`       | Report likely reversed actual/expected operands where the actual is constant and the expected is not.                            |
+| `prefer-semantic-assertions`      | Prefer the assertion that expresses the check directly over a boolean expression that hides its operands or diagnostic meaning.  |
+| `no-shared-mutable-test-state`    | Do not let case bodies mutate state shared between tests outside an explicitly owned resource lifetime.                          |
+| `no-reexported-test-node`         | Test entry modules must compose their own root rather than forward another module's root unchanged.                              |
+| `consistent-run-if-main`          | Enforce a configured `always` or `never` policy for explicit direct-file execution.                                              |
+| `no-setup-in-error-assertion`     | Keep separate setup operations outside `throws`/`rejects` callbacks so setup failures cannot satisfy the expected-error matcher. |
+| `no-duplicate-assertions`         | Reject adjacent identical checks on provably stable, side-effect-free operands; allow checks separated by an operation.          |
+| `prefer-table`                    | Prefer tables for independent repeated cases while preserving stateful scenarios and deliberate test-node composition.           |
+| `no-conditional-assertions`       | Reject conditionally executed assertions in test bodies; custom assertion implementations may use conditional logic.             |
 
 This settles the rule purposes. Detailed detection boundaries, options,
 and authoring-layer coverage need rule-specific design. The plugin defines
