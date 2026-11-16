@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
+import { completedHistoryRecord, type CompletedHistoryFixture } from '../test-support/history-record-fixture.ts';
 import { createHistory, normalizeConfig, type History } from '../packages/run/run.entry-point.ts';
 import { createNodeHistoryStorage } from './node-history-storage.ts';
 import { readCompactHistory } from './history-storage.ts';
@@ -35,7 +35,7 @@ async function requiredIndex(project: Project): Promise<NonNullable<Awaited<Retu
     }
     return index;
 }
-function freshRecord(id: string): ReturnType<typeof completedHistoryRecord> {
+function freshRecord(id: string): CompletedHistoryFixture {
     const now = new Date();
     return { ...completedHistoryRecord(id), startedAt: now.toISOString() };
 }

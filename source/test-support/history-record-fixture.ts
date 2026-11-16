@@ -13,7 +13,7 @@ export const historyWork = {
 
 export const historyTimestamp = '2026-10-29T00:00:00.000Z';
 
-type CompletedHistoryFixture = Extract<HistoryRecord, { readonly status: 'completed'; }> & {
+export type CompletedHistoryFixture = Extract<HistoryRecord, { readonly status: 'completed'; }> & {
     readonly facts: { readonly implementations: null; };
 };
 
