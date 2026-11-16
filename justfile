@@ -130,6 +130,9 @@ test-runner-integration: test-mutation-integration
 test-unit-with-coverage:
     c8 --config .c8rc.json node source/overkill.test.ts
 
+test-type-test-api:
+    node source/integration-tests/type-test-api/compiler-assessment.test.ts
+
 test-types:
     tstyche
 
