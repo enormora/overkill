@@ -54,6 +54,8 @@ describe('@overkill-dev/run recording', function () {
             .type
             .toBe<LegacyRunFacts | null>();
         expect<Extract<RunRecord, { readonly version: 1; }>['facts']>().type.toBe<LegacyRunFacts | null>();
+    });
+    test('preserves current and historical merged record contracts', function () {
         expect<MergedRunRecord['version']>().type.toBe<CurrentRecordVersion>();
         expect<MergedRunRecord['facts']['family']>().type.toBe<FamilyRunFacts | null>();
         expect<Extract<RunRecord, { readonly kind: 'merged'; readonly version: FamilyRecordVersion; }>['facts']>()
