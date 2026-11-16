@@ -93,6 +93,8 @@ test-runner-integration: test-mutation-integration
     node source/integration-tests/run/runner-property-policy.test.ts
     node source/integration-tests/run/runner-model-contracts.test.ts
     node source/integration-tests/run/runner-differential-contracts.test.ts
+    node source/integration-tests/run/runner-linearizability-contracts.test.ts
+    node source/integration-tests/run/runner-linearizability-lifecycle.test.ts
     node source/integration-tests/run/runner-property-validation.test.ts
     node source/integration-tests/run/runner-property-measurements.test.ts
     node source/integration-tests/run/runner-benchmark-html.test.ts
