@@ -167,7 +167,10 @@ export const testNode = createSuite({
                 const first: ResourceCheckInterval = { kind: 'attempt', work, attempt: { index: 0 } };
                 const retry: ResourceCheckInterval = { kind: 'attempt', work, attempt: { index: 1 } };
                 ledger.writer.record(first, 'page', { kind: 'pass' });
-                ledger.finalize(first, { kind: 'complete' });
+                scope.assert.deepEqual(
+                    ledger.finalize(first, { kind: 'complete' }),
+                    ledger.finalize(first, { kind: 'incomplete', reasons: [ 'must not replace a finalized outcome' ] })
+                );
                 ledger.writer.record(retry, 'page', { kind: 'pass' });
                 ledger.writer.record(first, 'late-page', { kind: 'pass' });
                 scope.assert.deepEqual(

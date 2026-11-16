@@ -329,7 +329,7 @@ async function close(state: ObservationState, dispose: Cleanup): Promise<void> {
     }
     await state.closure.read();
 }
-type ResourceCheckSessionControl = { readonly kind: 'managed'; readonly consumers: readonly WorkId[]; } | {
+export type ResourceCheckSessionControl = { readonly kind: 'managed'; readonly consumers: readonly WorkId[]; } | {
     readonly kind: 'standalone';
     readonly stop: (cause: unknown) => void;
 };
