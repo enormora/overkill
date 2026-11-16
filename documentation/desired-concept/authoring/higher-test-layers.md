@@ -379,35 +379,153 @@ Its purpose is different:
 - `@overkill-dev/eslint-plugin` statically enforces Overkill-specific
   authoring constraints
 
-The plugin should stay small and semantic, focusing on rules that the API
-shape and runtime cannot fully guarantee on their own.
+Use API shape, types, discovery, or runtime enforcement whenever those can
+enforce the intended constraint. Do not add an ESLint equivalent merely to
+report the same violation earlier. Static rules own source relationships
+and authoring policies that those mechanisms cannot establish.
 
-Recommended first rules:
+#### Settled Rule Catalog
 
-- `no-constant-actual-assert`
-  - catches likely reversed `actual` / `expected` in equality-style
-    assertions
-- `require-exported-test-node`
-  - enforces the tests-as-values exported-root convention
-- `no-orphan-test-nodes`
-  - catches high-confidence cases where `test(...)`, `suite(...)`, or
-    `table(...)` results are constructed but obviously discarded
-- `no-duplicate-sibling-titles`
-  - catches statically obvious duplicate sibling test titles before
-    runtime planning fails
-- `consistent-run-if-main`
-  - enforces `always` / `never` policy for explicit `runIfMain(...)`
-    fallback usage
+| Rule                              | Constraint                                                                                                                       |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `no-scope-escape`                 | Do not pass the test scope or its assertion/planning APIs to ordinary helper functions or store them outside their owning test.  |
+| `no-single-use-trivial-assertion` | Do not introduce a local, unexported, single-reference custom assertion that merely forwards one built-in check.                 |
+| `no-self-comparison`              | Do not compare the same stable binding with itself in an equality assertion.                                                     |
+| `no-constant-actual-assert`       | Report likely reversed actual/expected operands where the actual is constant and the expected is not.                            |
+| `prefer-semantic-assertions`      | Prefer the assertion that expresses the check directly over a boolean expression that hides its operands or diagnostic meaning.  |
+| `no-shared-mutable-test-state`    | Do not let case bodies mutate state shared between tests outside an explicitly owned resource lifetime.                          |
+| `no-reexported-test-node`         | Test entry modules must compose their own root rather than forward another module's root unchanged.                              |
+| `consistent-run-if-main`          | Enforce a configured `always` or `never` policy for explicit direct-file execution.                                              |
+| `no-setup-in-error-assertion`     | Keep separate setup operations outside `throws`/`rejects` callbacks so setup failures cannot satisfy the expected-error matcher. |
+| `no-duplicate-assertions`         | Reject adjacent identical checks on provably stable, side-effect-free operands; allow checks separated by an operation.          |
+| `prefer-table`                    | Prefer tables for independent repeated cases while preserving stateful scenarios and deliberate test-node composition.           |
+| `no-conditional-assertions`       | Reject conditionally executed assertions in test bodies; custom assertion implementations may use conditional logic.             |
 
-The plugin should rely on TypeScript types where possible rather than
-duplicating them in lint rules. For example, explicit matcher requirements
-for `throws` / `rejects` should come from the assertion signatures rather
-than from a dedicated lint rule.
+This settles the rule purposes. Detailed detection boundaries, options,
+and authoring-layer coverage need rule-specific design. The plugin defines
+rules; users choose which rules to enable and their severities. Catalog
+membership does not imply enablement or a recommended preset.
 
-To make these rules work across `@overkill-dev/test`, helper presets,
-`@overkill-dev/bench`, engine-level usage, and re-exports, the plugin should
-use a real binding-tracing utility rather than matching one import string
-literally.
+#### Scope Ownership And Binding Identity
+
+`no-scope-escape` includes `scope.assert`, `scope.require`, `scope.plan`,
+assertion methods extracted from those facades, and annotated assertion
+facades. Renaming does not create a different scope or assertion API.
+
+```ts
+test('parses a user', (context) => {
+    const alias = context;
+    const { assert: checks } = alias;
+
+    checkUser(checks, user);
+
+    return context.assert.collect();
+});
+```
+
+The helper call above violates the rule. Ordinary helpers should accept
+application data or specific resource handles. Assertions stay in the test
+body or use explicit custom assertion references. Recognized Overkill
+extension callbacks retain their declared scope-injection contracts.
+
+Detection must follow lexical bindings, including renamed imports,
+namespace imports, destructuring, alias chains, assignment rebinding,
+statically known property access, and aliases stored in local objects.
+Shadowed identifiers must not inherit another binding's identity. Rebinding
+analysis must consider assignments reaching the use rather than assuming
+that an initializer permanently identifies a variable.
+
+Direct use through a local alias is allowed. Passing a callback that closes
+over scope is not automatically a violation: ordinary synchronous iteration
+and supported asynchronous Overkill APIs remain valid. Scope lifetime and
+escaping callbacks need separate analysis from direct argument forwarding.
+
+Matching identifier spellings or trusting a helper solely because its name
+looks like an Overkill API is insufficient. Unknown calls receiving a
+proven scope or assertion API are ordinary helper calls unless a supported
+Overkill contract establishes otherwise.
+
+#### Assertion Quality Boundaries
+
+For `no-single-use-trivial-assertion`, count source references, not runtime
+executions. A single use in a table callback remains one reference. Exported
+assertions, composites grouping several checks, narrowing references, and
+custom diagnostic formatting are outside the trivial-forwarder case.
+Runtime usage counts cannot establish export visibility or source reuse.
+
+`no-self-comparison` requires stable operand identity. Identical source text
+alone does not establish that repeated getters or function calls return the
+same value. `no-constant-actual-assert` is a misuse heuristic, not proof that
+the operands are reversed.
+
+`prefer-semantic-assertions` includes comparisons, string/regex checks,
+collection checks, and type checks where a built-in expresses the intent.
+Suggestions must respect semantic differences such as `===` versus
+`Object.is`. Do not automatically split or inline assertions when that
+changes assertion boundaries, evaluation order, or `plan(n)`.
+
+Shared mutable state includes mutation through aliases and object properties,
+not only reassignment of module-level `let` bindings. Per-case local state,
+read-only shared inputs, and explicitly owned resource handles need distinct
+treatment. Direct engine code that intentionally tests lifecycle behavior
+must not be classified solely from a variable name or broad filename glob.
+
+#### Conditional Assertions In Test Bodies
+
+`no-conditional-assertions` applies to authored test bodies. Detect explicit
+branches, conditional expressions, and short-circuit control flow that make
+checks depend on the observed application result. Early returns that bypass
+later assertions need the same consideration. Scope and assertion aliases do
+not change this policy. `scope.require` gates by throwing on failure, not by
+returning a boolean for a conditional branch. Ordinary straight-line assertions
+after a successful requirement are valid and are not conditional assertions.
+
+Custom assertion implementations are excluded from this rule. They may branch
+to inspect variants, select diagnostics, or implement a narrowing predicate.
+Their returned checks must still satisfy the runtime assertion contract.
+This exemption does not exempt their definitions from other applicable rules,
+such as `no-single-use-trivial-assertion`.
+
+Runtime invocation/collection count comparisons cannot detect an assertion in
+an untaken branch. An explicit `plan(n)` can detect a missing expected count,
+but equal counts do not establish that the same checks ran. Therefore the
+conditional-authoring constraint requires static analysis. Loop handling and
+family-specific callback recognition need detailed detection design.
+
+#### Test Entries And Runtime Ownership
+
+Apply entry-module policies to configured test entries, not every module
+importing an Overkill package. Support modules may export assertions, macros,
+and reusable fragments. Local suite composition from imported fragments is
+valid. Re-export syntax and importing a root followed by exporting an
+unchanged alias both violate `no-reexported-test-node`.
+
+These checks belong outside the plugin:
+
+- missing or invalid exported `testNode`, or additional runtime exports:
+  [discovery validation](./tests-as-values.md#what-it-looks-like)
+- duplicate sibling titles, including expanded table rows: plan validation
+- constructed nodes unreachable from run roots: engine orphan reporting;
+  reusable catalogs remain valid, so reporting does not imply failure
+- zero assertions, invalid plans, plan mismatches, pending async assertions,
+  and omission of recorded assertions from a returned result: engine checks
+- matcher requirements and synchronous/asynchronous callback signatures:
+  assertion API types, with runtime validation for untyped callers
+- assertion budgets: centrally configured runtime policy
+- durable contract failures, assertion-context lifetime and ownership,
+  assertion-time operand meaning, and protocol structure:
+  [runtime assertion integrity](./assertions-and-results.md#runtime-assertion-integrity)
+
+Authoring-layer coverage must be decided per rule after the catalog is
+complete. Export policies concern discovered entry modules regardless of
+which package constructs their nodes. Assertion ownership is engine-level,
+and assertion-extension definitions live in `@overkill-dev/assert`; neither
+is inherently limited to imports from `@overkill-dev/test`.
+
+See [Static Authoring Research](../research/static-authoring-rules.md) for
+additional candidates, conditional-assertion analysis, implementation audit
+notes, and comparisons with other test plugins. Additional rule candidates
+remain proposals; the runtime contracts linked above are settled requirements.
 
 ## What Overkill Should Add Or Emphasize
 
