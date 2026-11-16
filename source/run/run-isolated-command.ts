@@ -3,7 +3,7 @@ import { propertyReplayContext } from './run-support.ts';
 import { currentExecutionSession, currentSnapshotRun } from './execution-session-context.ts';
 import { assertDirectEntrypointCollectionMatches } from './direct-entrypoint-collection.ts';
 import { inspectLocalTestPlan, type LocalTestPlan, type LocalTestPlanInput } from './run-local-test-plan.ts';
-import { resolveProcessUsagePolicy, resolveRunScheduling } from './run-profile-facts.ts';
+import { profilePropertyPolicy, resolveProcessUsagePolicy, resolveRunScheduling } from './run-profile-facts.ts';
 import type { RunCommand, CollectedRunPlan, RunRequest } from './run-types.ts';
 import type {
     SupervisedCollectCommand,
@@ -146,7 +146,7 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
             definitionLocationCapture: input.definitionLocationCapture
         }),
         seed: (input.command.request.seed.value ?? defaultRunSeed).toString(),
-        propertyPolicy: input.profile.testFamily === 'property' ? input.profile.property : null,
+        propertyPolicy: profilePropertyPolicy(input.profile),
         capabilityRestrictions: supervisedCapabilityRestrictions(input.profile, input.command),
         capture: input.capture,
         snapshots: currentSnapshotRun(),
@@ -236,6 +236,7 @@ export function createWorkerPoolCommand(
     const processUsagePolicy = resolveProcessUsagePolicy(input.command.request, input.profile);
 
     return {
+        propertyPolicy: profilePropertyPolicy(input.profile),
         capture: input.command.request.capture,
         snapshots: currentSnapshotRun(),
         family: freezeProfileFamily({

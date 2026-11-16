@@ -17,6 +17,7 @@ import {
 } from '../packages/test/authoring-source-locations.ts';
 import { mapComposedResourceBody } from '../packages/test/resource-wrapper-composition.ts';
 import { isPropertyBodyDefinition } from '../engine/property-node.ts';
+import { isPropertyBodyAttachment } from '../engine/test-body.ts';
 import {
     normalizePropertyInvocation,
     runPropertyInvocation,
@@ -49,8 +50,15 @@ function hasPropertySettings<Value>(
     return Object.hasOwn(definition, 'settings');
 }
 
+function hasTestFamily<Value>(
+    definition: PropertyDefinition<Value>
+): definition is PropertyDefinition<Value> & { readonly testFamily: 'integration'; } {
+    return Object.hasOwn(definition, 'testFamily');
+}
+
 export function property<Value>(definition: PropertyDefinition<Value>): TestCase {
     ensurePropertyDefinition(definition);
+    const family = hasTestFamily(definition) ? definition.testFamily : 'property';
     const invocation = normalizePropertyInvocation(definition);
     const definitionLocations = definitionLocationsForAuthoringCall();
     const declaration: PropertyDeclaration<Value> = Object.freeze<PropertyDeclaration<Value>>({
@@ -72,8 +80,9 @@ export function property<Value>(definition: PropertyDefinition<Value>): TestCase
             identity: 'declared-property',
             locations: definitionLocations
         });
-    }, { family: 'property', definition: declaration });
+    }, { family, definition: declaration });
     return createPropertyTestCase({
+        ...hasTestFamily(definition) ? { testFamily: definition.testFamily } : {},
         definition: declaration,
         annotations: {},
         controls: {},
@@ -89,7 +98,7 @@ function propertyFamilyAttachment(
 ): TestBodyFamilyAttachment<unknown> {
     const attachment = readTestBodyFamily(body);
     if (attachment !== null) {
-        if (attachment.family !== 'property') {
+        if (!isPropertyBodyAttachment(attachment)) {
             throw new TypeError('withProperties() cannot wrap a body belonging to another test family.');
         }
         if (settings.length === 0) {
@@ -99,7 +108,7 @@ function propertyFamilyAttachment(
             throw new TypeError('withProperties() settings require a property declaration.');
         }
         return {
-            family: 'property',
+            family: attachment.family,
             definition: Object.freeze({
                 ...attachment.definition,
                 settingsDeclarations: Object.freeze([

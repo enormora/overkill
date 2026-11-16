@@ -18,6 +18,7 @@ import {
     type ProjectDefinedFamilyProfile,
     type ProjectAttachmentLimits as ParsedProjectAttachmentLimits,
     integrationProfileSchema,
+    propertyProfileSchema,
     microtestProfileSchema,
     projectConfigSchema,
     type Config as ParsedProjectConfig,
@@ -67,16 +68,17 @@ import {
 type ParsedProfiles = NonNullable<ParsedProjectConfig['profiles']>;
 type ParsedProfile = ParsedProfiles[string];
 type ParsedBenchmarkProfile = Extract<ParsedProfile, { readonly testFamily: 'benchmark'; }>;
+type ParsedIntegrationProfile = Extract<ParsedProfile, { readonly testFamily: 'integration'; }>;
 
 type ProjectHostProcessGuard = Readonly<Partial<Record<'hostProcess', never>>>;
 type ProjectRetryPolicyGuard = Readonly<Partial<Record<'retries', never>>>;
 
 export type ProjectIntegrationExecution = ParsedProjectIntegrationExecution & ProjectHostProcessGuard;
-type IntegrationArtifactSettings = Pick<
+type IntegrationPolicySettings = Pick<
     z.input<typeof integrationProfileSchema>,
-    'attachments' | 'baselines' | 'failureArtifacts' | 'retries'
+    'attachments' | 'baselines' | 'failureArtifacts' | 'property' | 'retries'
 >;
-export type ProjectIntegrationProfileConfig = IntegrationArtifactSettings & {
+export type ProjectIntegrationProfileConfig = IntegrationPolicySettings & {
     readonly coverage?: never;
     readonly execution?: ProjectIntegrationExecution | undefined;
     readonly files: ParsedProjectIntegrationProfileConfig['files'];
@@ -141,8 +143,9 @@ function normalizeMicrotestProfile(
     };
 }
 
-function normalizeIntegrationProfile(profile: ProjectIntegrationProfileConfig): IntegrationProfileConfig {
+function normalizeIntegrationProfile(profile: ParsedIntegrationProfile): IntegrationProfileConfig {
     const policy = normalizeProfilePolicy(profile, defaultIntegrationTimeoutPolicy);
+    const { property } = profile;
     const files = normalizeRequiredProfileFiles(profile.files);
     const execution = normalizeIntegrationExecution(profile.execution);
 
@@ -151,6 +154,7 @@ function normalizeIntegrationProfile(profile: ProjectIntegrationProfileConfig): 
 
     return {
         ...policy,
+        property: property === undefined ? null : propertyProfileSchema.unwrap().shape.property.parse(property),
         baselines: ordinaryBaselinePolicySchema.parse(profile.baselines ?? {}),
         attachments: integrationProfileSchema.unwrap().shape.attachments.parse(profile.attachments),
         execution,

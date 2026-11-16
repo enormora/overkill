@@ -1,8 +1,8 @@
 import { profileFamilyId } from '../config/types.ts';
-import type { RunnerFamilyPreparation } from './family-profile-types.ts';
 import type { RunCommand } from './run-types.ts';
 import { prepareProfileFamily } from './family-profile-run.ts';
-import { assertTestPlanMatchesTestFamily } from './run-selection.ts';
+import { assertTestPlanCollectionPolicy } from './run-selection.ts';
+import { profilePropertyPolicy } from './run-profile-facts.ts';
 
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 
@@ -23,22 +23,26 @@ export type LocalTestPlanInput = Pick<ResolvedRunInput, 'files' | 'profile' | 'p
     readonly dependencies: RunOrchestratorDependencies;
     readonly source: RunTestPlanCollectionSource;
 };
-type TestPlan = RunnerFamilyPreparation['sourcePlan'];
+type ProfilePreparation = Awaited<ReturnType<typeof prepareProfileFamily>>;
+type TestPlan = ProfilePreparation['sourcePlan'];
 export type LocalTestPlan = {
     readonly testPlan: TestPlan;
-    readonly preparation: RunnerFamilyPreparation;
+    readonly preparation: ProfilePreparation;
 };
 
 async function readTestPlan(
     input: LocalTestPlanInput,
     engine: RunOrchestratorDependencies['defaultEngine']
 ): Promise<TestPlan> {
+    const propertyPolicy = profilePropertyPolicy(input.profile);
     const policy = {
         runtimeMatrices: true,
         benchmarkCalibration: false,
-        property: input.profile.testFamily === 'property'
-            ? { policy: input.profile.property, timeoutMilliseconds: input.profile.timeouts.softMilliseconds }
-            : null
+        property: propertyPolicy === null ? null : {
+            testFamily: input.profile.testFamily === 'integration' ? 'integration' : 'property',
+            policy: propertyPolicy,
+            timeoutMilliseconds: input.profile.timeouts.softMilliseconds
+        }
     } as const;
 
     if (input.source.kind === 'direct-entrypoint') {
@@ -61,7 +65,11 @@ async function readTestPlan(
 export async function createProfileTestPlan(input: LocalTestPlanInput, signal: AbortSignal): Promise<LocalTestPlan> {
     const engine = await resolveRunEngine(input.command.engine, input.dependencies);
     const collected = await readTestPlan(input, engine);
-    assertTestPlanMatchesTestFamily(collected, profileFamilyId(input.profile));
+    assertTestPlanCollectionPolicy(collected, {
+        testFamily: profileFamilyId(input.profile),
+        propertyPolicy: profilePropertyPolicy(input.profile),
+        timeoutMilliseconds: input.profile.timeouts.softMilliseconds
+    });
     const definition = snapshotProfileFamily({
         profile: input.profile,
         source: input.source,

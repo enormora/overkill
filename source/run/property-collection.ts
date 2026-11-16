@@ -1,44 +1,46 @@
 import { isDeepStrictEqual } from 'node:util';
-import {
-    resolveTestPlanPropertyPolicy as resolveEnginePropertyPolicy,
-    validatePropertyControls
-} from '../engine/property-plan.ts';
 import { resolvePropertyPolicy } from '../engine/property-policy.ts';
 import type { PropertyPolicy, PropertyBodyDefinition } from '../engine/property-node.ts';
 import { workIdentityKey } from '../engine/identity.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
+import {
+    resolveTestPlanPropertyPolicy as resolveEnginePropertyPolicy,
+    validatePropertyControls,
+    type PropertyCollectionPolicy
+} from '../engine/property-plan.ts';
 import { RunCollectionError } from './run-errors.ts';
 import type { CollectedRunPlan } from './run-types.ts';
 
-export function assertCollectedPropertyPolicies(
-    plan: CollectedRunPlan,
-    defaults: PropertyPolicy,
-    softMilliseconds: number
+function assertCollectedPropertyPolicy(
+    testCase: CollectedRunPlan['discoveredFiles'][number]['cases'][number],
+    settings: PropertyCollectionPolicy
 ): void {
+    validatePropertyControls(testCase, settings.timeoutMilliseconds);
+    if (testCase.property !== null) {
+        const expected = resolvePropertyPolicy(settings.propertyPolicy, testCase.property.definition);
+        if (!isDeepStrictEqual(expected, testCase.property.policy)) {
+            throw new RunCollectionError(
+                'Collected property policy does not match profile and declaration settings.',
+                { cause: null },
+                'loader'
+            );
+        }
+    }
+}
+
+export function assertCollectedPropertyPolicies(plan: CollectedRunPlan, settings: PropertyCollectionPolicy): void {
     for (const file of plan.discoveredFiles) {
         for (const testCase of file.cases) {
-            validatePropertyControls(testCase, softMilliseconds);
-            if (testCase.property !== null) {
-                const expected = resolvePropertyPolicy(defaults, testCase.property.definition);
-                if (!isDeepStrictEqual(expected, testCase.property.policy)) {
-                    throw new RunCollectionError(
-                        'Collected property policy does not match profile and declaration settings.',
-                        { cause: null },
-                        'loader'
-                    );
-                }
+            if (settings.testFamily !== 'integration' || testCase.property !== null) {
+                assertCollectedPropertyPolicy(testCase, settings);
             }
         }
     }
 }
 
-export function resolveTestPlanPropertyPolicy(
-    testPlan: TestPlan,
-    defaults: PropertyPolicy,
-    softMilliseconds: number
-): TestPlan {
+export function resolveTestPlanPropertyPolicy(testPlan: TestPlan, settings: PropertyCollectionPolicy): TestPlan {
     try {
-        return resolveEnginePropertyPolicy(testPlan, defaults, softMilliseconds);
+        return resolveEnginePropertyPolicy(testPlan, settings);
     } catch (error: unknown) {
         throw new RunCollectionError(
             String(error instanceof Error ? error.message : error),

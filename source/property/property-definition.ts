@@ -48,7 +48,9 @@ export type PropertyForall = {
 };
 
 type ConfiguredPropertyDefinition<Value> = PropertyDefinitionBody<Value> & { readonly settings: PropertySettings; };
-export type PropertyDefinition<Value> = ConfiguredPropertyDefinition<Value> | PropertyDefinitionBody<Value>;
+type PurePropertyDefinition<Value> = ConfiguredPropertyDefinition<Value> | PropertyDefinitionBody<Value>;
+type IntegrationPropertyDefinition<Value> = PurePropertyDefinition<Value> & { readonly testFamily: 'integration'; };
+export type PropertyDefinition<Value> = IntegrationPropertyDefinition<Value> | PurePropertyDefinition<Value>;
 
 export type PropertyCaseScope = TestScope & {
     readonly forall: PropertyForall;

@@ -1,5 +1,5 @@
 import type { TestPlanCase } from './test-plan.ts';
-import { readTestBodyFamily } from './test-body.ts';
+import { readTestBodyFamily, isPropertyBodyAttachment } from './test-body.ts';
 
 function resolvedPropertyExecutionError(testCase: TestPlanCase): TypeError | null {
     const { execution } = testCase;
@@ -9,7 +9,7 @@ function resolvedPropertyExecutionError(testCase: TestPlanCase): TypeError | nul
     if (execution.policy.kind !== 'resolved') {
         return new TypeError('Property execution requires resolved collection policy.');
     }
-    return testCase.resourceAttachments.resourceGraph.length === 0
+    return testCase.testFamily === 'integration' || testCase.resourceAttachments.resourceGraph.length === 0
         ? null
         : new TypeError('Property execution cannot use resource descriptors.');
 }
@@ -22,7 +22,7 @@ export function testBodyExecutionError(testCase: TestPlanCase): TypeError | null
     if (execution.bodyMode === 'property') {
         return resolvedPropertyExecutionError(testCase);
     }
-    if (readTestBodyFamily(execution.body)?.family === 'property') {
+    if (isPropertyBodyAttachment(readTestBodyFamily(execution.body))) {
         return new TypeError('Property execution requires a collected property declaration.');
     }
     return null;

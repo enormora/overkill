@@ -150,7 +150,10 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
 }
 
 export async function createResolvedRunFromCollection(input: CollectionResolvedRunInput): Promise<ResolvedRun> {
-    if (input.profile.testFamily === 'property') {
+    if (
+        input.profile.testFamily === 'property' ||
+        input.profile.testFamily === 'integration' && input.profile.property !== null
+    ) {
         assertCollectedRunPlanCasesMatchProfilePolicy(input.collection.collectedPlan, input.profile);
     }
     const collectedPlan = selectedCollectedRunPlan(input.collection.collectedPlan, input.request.selection);

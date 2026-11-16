@@ -8,6 +8,20 @@ declare const numberGenerator: leaf.Generator<number>;
 declare const booleanGenerator: leaf.Generator<boolean>;
 
 describe('property authoring types', function () {
+    test('integration properties retain input inference', function () {
+        const node = leaf.property({
+            testFamily: 'integration',
+            title: 'project inputs',
+            generator: numberGenerator,
+            test(value, sample) {
+                expect(value).type.toBe<number>();
+                expect(sample).type.toBe<leaf.PropertySampleScope<number>>();
+                sample.assert.equal(value, 1);
+                return sample.assert.collect();
+            }
+        });
+        expect(node).type.toBe<TestCase>();
+    });
     test('infers custom codec values on both entry points', function () {
         const codec = leaf.defineCodec({
             name: 'numeric',

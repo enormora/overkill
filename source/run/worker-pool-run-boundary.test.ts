@@ -49,6 +49,7 @@ function workerPoolCommand(hostProcess: WorkerPoolCommand['hostProcess']): Worke
         seed: '0',
         benchmarkNormalization: null,
         benchmarkGarbageCollection: null,
+        propertyPolicy: null,
         attachmentEndpoint: null,
         retryPolicy: null,
         collectionTimeoutMilliseconds: 100,

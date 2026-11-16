@@ -248,10 +248,9 @@ tools. ESLint rule testing is the clearest example: projects often already
 have `valid` / `invalid` case tables and want to preserve that structure.
 
 Overkill should support this, but not by making raw ESLint `RuleTester` a
-core primitive. The better direction is a focused adapter package, with a
-narrow name such as:
+core primitive. Rule and configuration testing share a focused adapter package:
 
-- `@overkill-dev/eslint-rule-test`
+- `@overkill-dev/eslint-test`
 
 This is distinct from:
 
@@ -263,12 +262,13 @@ RuleTester-style case objects into ordinary Overkill tests.
 Example direction:
 
 ```ts
-import { eslintRuleSuite } from '@overkill-dev/eslint-rule-test';
+import { defineRuleTests } from '@overkill-dev/eslint-test';
 import rule from '../src/rules/no-foo.ts';
 
-export const testNode = eslintRuleSuite({
+export const ruleTests = defineRuleTests({
     name: 'no-foo',
     rule,
+    configs: {},
     languageOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module'
@@ -281,6 +281,8 @@ export const testNode = eslintRuleSuite({
         }
     ]
 });
+
+export const testNode = ruleTests.examples();
 ```
 
 This same adapter pattern should also cover domain-specific assertion
@@ -311,12 +313,59 @@ So the package should be allowed to expose more than one helper preset, but
 the default authoring story should still be the macro-style suite builder
 above.
 
-`@overkill-dev/eslint-rule-test` may use `createTestFacade(...)` when it
+`@overkill-dev/eslint-test` may use `createTestFacade(...)` when it
 needs a named domain preset rather than only a builder function. Useful cases
 include compatibility with familiar `RuleTester`-style imports, a typed
 `ruleTest` surface that always attaches parser-service resources, or a preset
 that records ESLint diagnostics as domain-specific assertion output. The
 facade remains adapter-owned and lowers to ordinary Overkill nodes.
+
+#### Bound Definitions And Configuration Expansion
+
+The adapter's primary authoring surface is `defineRuleTests({ name, rule,
+configs, valid, invalid })`. It returns independent `examples()` and
+`properties()` suite builders over the same definition. Neither method
+registers state for the other. Export their roots from separate modules selected
+by microtest and property profiles respectively.
+
+Named linter configurations are reusable plain values. Cases select all named
+configurations by default; `defaultConfigs` narrows the suite default. Per-case
+`configs` replaces that selection with `'all'`, a nonempty list of names, or
+`'base'` for one execution without a named overlay. Configuration expansion
+happens before execution and does not introduce runtime/resource identities.
+
+Property construction automatically supplies syntax-aware JavaScript/TypeScript
+inputs and schema-valid rule options. Eligible authored examples provide seeds
+and retain expectations only for their exact original inputs. Generated inputs
+check crash freedom and syntax preservation of fixes and suggestions; bounded
+fix convergence is explicit opt-in. Diagnostic correctness needs an authored
+oracle and is not inferred from a rule implementation.
+
+Unsupported automatic generation fails construction with an explicit generator
+override available. Search exhaustion uses the existing inconclusive contract.
+Property owns exploration, shrinking, corpora, witnesses and reproduction.
+
+### ESLint Configuration Suites
+
+`defineConfigTests` complements rule testing in `@overkill-dev/eslint-test`.
+Its independent `checks()`, `fixtures()`, and `properties()` factories produce
+ordinary Overkill suites. Inventories distinguish explicit rule declarations
+from the effective configuration for a filename; off counts as configured.
+Catalogs and plugin aliases are explicit, with selectable deprecation policies.
+
+Fixture tests compare clean source, diagnostic sets, ordered diagnostics, and
+native autofix output. Fatal parser failures cannot disappear through rule
+filtering. Custom observations use ordinary assertions and existing snapshots.
+ESLint owns configuration resolution, matching, ignores, validation, and fixing.
+
+Existing projects remain read-only. Virtual projects use scoped temporary
+resources and can include TypeScript configuration and supporting modules.
+Generated trials materialize fresh projects so parser services see the tested
+source. Default properties check crash freedom and syntax safety of fixes and
+suggestions; fix stability and repeatability are explicit contracts. Profiles
+own capabilities, work budgets, shrinking, and replay. Config properties use
+integration profiles with explicit property budgets, preserving filesystem
+access and resource lifetimes under supervised processes and worker pools.
 
 ### Static Authoring Rules
 
@@ -325,7 +374,7 @@ The ESLint rule-test adapter should be complemented by a separate
 
 Its purpose is different:
 
-- `@overkill-dev/eslint-rule-test` adapts an external test-case DSL into
+- `@overkill-dev/eslint-test` adapts an external test-case DSL into
   ordinary Overkill suites
 - `@overkill-dev/eslint-plugin` statically enforces Overkill-specific
   authoring constraints

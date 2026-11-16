@@ -68,6 +68,7 @@ export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit):
     const execution = workerPoolExecutionFacts(runtime.resolvedRun);
 
     return {
+        propertyPolicy: execution.propertyPolicy,
         family: workerFamilyDefinition(runtime),
         debug: execution.debug,
         capture: execution.capture,

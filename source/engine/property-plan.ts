@@ -36,8 +36,13 @@ function requiresPropertyDeclaration(testCase: TestPlanCase): boolean {
     return testCase.testFamily === 'property' && testCase.execution.kind !== 'skip';
 }
 
-function resolvePropertyCase(testCase: TestPlanCase, defaults: PropertyPolicy, softMilliseconds: number): TestPlanCase {
-    validatePropertyControls(testCase, softMilliseconds);
+export type PropertyCollectionPolicy = {
+    readonly testFamily: string;
+    readonly propertyPolicy: PropertyPolicy;
+    readonly timeoutMilliseconds: number;
+};
+
+function resolvePropertyExecution(testCase: TestPlanCase, defaults: PropertyPolicy): TestPlanCase {
     const { execution } = testCase;
     if (execution.kind !== 'body' || execution.bodyMode !== 'property') {
         if (requiresPropertyDeclaration(testCase)) {
@@ -60,16 +65,25 @@ function resolvePropertyCase(testCase: TestPlanCase, defaults: PropertyPolicy, s
     }
 }
 
+function resolvePropertyCase(testCase: TestPlanCase, settings: PropertyCollectionPolicy): TestPlanCase {
+    const { execution } = testCase;
+    const propertyBody = execution.kind === 'body' && execution.bodyMode === 'property';
+    if (settings.testFamily === 'integration' && !propertyBody) {
+        return testCase;
+    }
+    validatePropertyControls(testCase, settings.timeoutMilliseconds);
+    return resolvePropertyExecution(testCase, settings.propertyPolicy);
+}
+
 export function resolveTestPlanPropertyPolicy(
     testPlan: TestPlan,
-    defaults: PropertyPolicy,
-    softMilliseconds: number
+    settings: PropertyCollectionPolicy
 ): TestPlan {
     function resolveCases(cases: NonEmptyReadonlyArray<TestPlanCase>): NonEmptyReadonlyArray<TestPlanCase> {
         return [
-            resolvePropertyCase(cases[0], defaults, softMilliseconds),
+            resolvePropertyCase(cases[0], settings),
             ...cases.slice(1).map(function resolveCase(testCase) {
-                return resolvePropertyCase(testCase, defaults, softMilliseconds);
+                return resolvePropertyCase(testCase, settings);
             })
         ];
     }
