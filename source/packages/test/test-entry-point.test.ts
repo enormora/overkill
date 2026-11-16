@@ -65,6 +65,7 @@ const invokeSuite = suite as (...parameters: readonly unknown[]) => unknown;
 const rootAuthoringExportNames = [
     'createTestFacade',
     'createTranscript',
+    'defineBodyReference',
     'defineHarness',
     'defineMacro',
     'defineParameterizedTestBody',
