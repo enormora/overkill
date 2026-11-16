@@ -1,8 +1,8 @@
-import { setInterval as scheduleCheckpoints, clearInterval as stopCheckpoints } from 'node:timers';
 import { withModuleLoadingScope, type ModuleLoadingHooks } from '../module-loading-scope.ts';
-import { observeActiveCaseWork } from './execution-global-error-observer.ts';
-import { recordExecutionArtifact, withRunnerInfrastructure } from './execution-observation.ts';
+import { startDebugCheckpoints } from './debug-checkpoints.ts';
 import { workIdentityKey } from './identity.ts';
+import { observeActiveCaseWork } from './execution-global-error-observer.ts';
+import { recordExecutionArtifact } from './execution-observation.ts';
 import { createDebugArtifact, debugNativeSnapshot, type DebugNativeSnapshot } from './test-debug-artifact.ts';
 import { captureDebugModule, createDebugAttempt, debugAttempts, type DebugAttempt } from './test-debug-recording.ts';
 import type { ExecuteCaseInput } from './case-attempt-context.ts';
@@ -11,7 +11,6 @@ import { debugFailure, readRecordings } from './test-debug-providers.ts';
 
 type DebugCapture = { readonly before: DebugNativeSnapshot; readonly stop: () => Promise<void>; };
 const active = new Set<DebugAttempt>();
-const checkpointIntervalMilliseconds = 50;
 function createAttempt(input: ExecuteCaseInput): DebugAttempt {
     const attempt = createDebugAttempt(input.testCase.workId);
     for (const current of active) {
@@ -51,40 +50,24 @@ async function reportCheckpoint(
 }
 function beginCapture(input: ExecuteCaseInput, attempt: DebugAttempt): DebugCapture {
     const before = debugNativeSnapshot();
-    let pending: Promise<void> | null = null;
     const stopObservingWork = observeActiveCaseWork(attempt.overlap);
-    async function deliverCheckpoint(): Promise<void> {
-        try {
-            await reportCheckpoint(input, attempt, before);
-        } catch (error: unknown) {
-            input.supervision.recordRunnerError(debugFailure(input, error, 'Debug checkpoint delivery failed.'));
-        } finally {
-            pending = null;
-        }
-    }
-    function checkpoint(): void {
-        if (pending !== null || !attempt.isOpen()) {
-            return;
-        }
-        pending = deliverCheckpoint();
-    }
     active.add(attempt);
-    attempt.onCheckpoint(checkpoint);
-    const timer = withRunnerInfrastructure(function () {
-        return scheduleCheckpoints(checkpoint, checkpointIntervalMilliseconds);
+    const stopCheckpoints = startDebugCheckpoints({
+        clock: input.context.dependencies.wallClock,
+        attempt,
+        async report() {
+            await reportCheckpoint(input, attempt, before);
+        },
+        failed(error) {
+            input.supervision.recordRunnerError(debugFailure(input, error, 'Debug checkpoint delivery failed.'));
+        }
     });
-    timer.unref();
     return {
         before,
         async stop() {
-            attempt.close();
             active.delete(attempt);
             stopObservingWork();
-            stopCheckpoints(timer);
-            const delivery = pending;
-            if (delivery !== null) {
-                await delivery;
-            }
+            await stopCheckpoints();
         }
     };
 }
@@ -97,6 +80,7 @@ function selectedForDebug(input: ExecuteCaseInput): boolean {
         return workIdentityKey(work) === workIdentityKey(input.testCase.workId);
     });
 }
+
 export async function withDebugAttempt<Value>(
     input: ExecuteCaseInput,
     operation: () => Promise<Value>,
