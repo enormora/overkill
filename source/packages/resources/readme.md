@@ -301,7 +301,9 @@ Standalone referenced sessions require an absolute `projectRoot`:
 
 ```ts
 await using session = await startResources({
-    resources: { server }, projectRoot, signal
+    resources: { server },
+    projectRoot,
+    signal
 });
 ```
 

@@ -123,7 +123,7 @@ export const testNode = suite('immutable source-map delivery', [
                 ...inlineMap,
                 ignoreList: [],
                 sourceRoot: '',
-                sources: [ new URL('original.ts', module.url).href ]
+                sources: [ URL.parse('original.ts', module.url)?.href ]
             });
             return scope.assert.collect();
         });

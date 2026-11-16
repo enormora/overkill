@@ -143,7 +143,8 @@ export const testNode = suite('portable implementation catalogs', [
                             ...build.graph,
                             entries: Object.fromEntries(
                                 Object.entries(build.graph.entries).map(function redirect([ key, url ]) {
-                                    return [ key, new URL('other.mjs', url).href ];
+                                    const target = new URL('other.mjs', url);
+                                    return [ key, target.href ];
                                 })
                             )
                         }

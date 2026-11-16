@@ -89,18 +89,20 @@ export const testNode = suite('worker implementation lifetimes', [
         return scope.assert.collect();
     }),
     test('preserves work and cleanup failures together', async function (scope: TestScope) {
+        const primary = new Error('work failed');
         await project(scope, async function verify(root) {
             const plan = await referencePlan(root, 'cleanup-failure', scope.signal);
-            const primary = new Error('work failed');
-            const failure: unknown = await withWorkerImplementations(root, plan, async function execute() {
-                await scope.assert.rejects(async function deniedImport() {
-                    await importProbe()('./outside.mjs');
-                }, { message: 'Implementation import is outside the frozen graph: ./outside.mjs' });
-                throw primary;
-            })
-                .catch(function capture(error: unknown) {
-                    return error;
+            let failure: unknown = null;
+            try {
+                await withWorkerImplementations(root, plan, async function execute() {
+                    await scope.assert.rejects(async function deniedImport() {
+                        await importProbe()('./outside.mjs');
+                    }, { message: 'Implementation import is outside the frozen graph: ./outside.mjs' });
+                    throw primary;
                 });
+            } catch (error: unknown) {
+                failure = error;
+            }
             scope.require.instanceOf(failure, AggregateError);
             scope.assert.equal(failure.message, 'Implementation execution and cleanup failed.');
             scope.assert.equal(failure.errors.length, 2);

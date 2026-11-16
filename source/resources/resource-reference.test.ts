@@ -104,7 +104,7 @@ export const testNode = suite('referenced resource sessions', [
         scope.assert.throws(function missingConsumer() {
             defineResourceReference({
                 ...declaration,
-                name: 'unprojected',
+                name: 'missing-consumer',
                 scope: 'per-run',
                 owner: ownerReference('/project', 'owner'),
                 consumer: null
@@ -216,11 +216,12 @@ export const testNode = suite('referenced resource sessions', [
                 resources: { resource },
                 signal: scope.signal
             });
-            const failure: unknown = await session.disposeOnce({ signal: scope.signal }).catch(
-                function capture(error: unknown) {
-                    return error;
-                }
-            );
+            let failure: unknown = null;
+            try {
+                await session.disposeOnce({ signal: scope.signal });
+            } catch (error: unknown) {
+                failure = error;
+            }
             scope.require.instanceOf(failure, ResourceLifecycleError);
             scope.assert.deepEqual(
                 failure.failures().map(function describe(entry) {
