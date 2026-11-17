@@ -114,3 +114,11 @@ export {
     benchmarkTimelineEvidenceSchema,
     benchmarkTimelineReportSchema
 } from '../../bench/timeline-schema.ts';
+
+export { readRawBenchmarkSamples } from '../../bench/benchmark-sample-data.ts';
+export {
+    collectorResultSchema,
+    readingAttributionSchema,
+    measurementComparisonIdentitySchema,
+    measurementEvidenceSchema
+} from '../../bench/measurement-evidence-schema.ts';

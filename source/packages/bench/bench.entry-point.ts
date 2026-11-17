@@ -147,5 +147,5 @@ export type {
     MeasurementInvocationEvidence
 } from '../../engine/measurement-evidence.ts';
 
-export { readRawBenchmarkSamples } from '../../bench/benchmark-sample-data.ts';
+export { readRawBenchmarkSamples } from '../run/benchmark-calibration.entry-point.ts';
 export type { RawBenchmarkSamples, RawBenchmarkSample, ReadingAttribution } from '../../engine/measurement-evidence.ts';

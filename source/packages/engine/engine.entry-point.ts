@@ -506,3 +506,18 @@ export type { TestRoot } from '../../engine/test-node.ts';
 export type { PortableValue } from '../../portable-value.ts';
 
 export type { ImplementationCatalog, ImplementationDeclaration } from '../../implementation-catalog.ts';
+
+export type {
+    MeasurementInvocation,
+    MeasurementTargetIdentity,
+    CollectorResult,
+    CollectorCompleteness,
+    MeasurementEvidence,
+    MeasurementInvocationEvidence,
+    MeasurementComparisonIdentity,
+    ReadingAttribution,
+    RawBenchmarkSample,
+    RawBenchmarkSamples
+} from '../../engine/measurement-evidence.ts';
+
+export { rawBenchmarkSamplesVersion } from '../../engine/measurement-evidence.ts';
