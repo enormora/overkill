@@ -146,6 +146,9 @@ export function createPermissionDenialRuntimePolicy(): TestRuntimePolicy {
     );
 
     return {
+        resourceChecks() {
+            return [];
+        },
         async prepareAttempt() {
             return undefined;
         },

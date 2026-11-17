@@ -1,5 +1,7 @@
+import { withStandaloneResourceChecks } from '../resource-check-delivery.ts';
 import type { WorkloadInput } from '../engine/workload-input.ts';
 import { resourceAttachments } from '../attachments/attachment-context.ts';
+import { ResourceCheckError } from './resource-check-error.ts';
 import {
     resourceCheckInstallers,
     createResourceCheckSession,
@@ -416,10 +418,11 @@ function disposableResourceSession<Resources extends ResourceDependencies>(
     return Object.freeze(session);
 }
 
-export async function startResources<Resources extends ResourceDependencies>(
+async function startResourceSession<Resources extends ResourceDependencies>(
     request: StartResourcesRequest<Resources>
 ): Promise<ResourceSession<Resources>> {
     if (hasProjectRoot(request)) {
+        // eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
         const { startResourceReferenceSession } = await import('./resource-reference-session.ts');
         return await startResourceReferenceSession({
             finish: disposableResourceSession,
@@ -428,7 +431,7 @@ export async function startResources<Resources extends ResourceDependencies>(
             signal: request.signal,
             async start() {
                 const { projectRoot: _projectRoot, ...local } = request;
-                return await startResources(local);
+                return await startResourceSession(local);
             }
         });
     }
@@ -443,7 +446,25 @@ export async function startResources<Resources extends ResourceDependencies>(
         },
         async disposeOnce(disposalContext: ResourceSessionDisposalContext): Promise<void> {
             if (disposal === null) {
-                disposal = disposeResourceSession(acquisition.order, acquisition, disposalContext.signal);
+                disposal = (async function closeObservedSession() {
+                    const errors: unknown[] = [];
+                    try {
+                        await disposeResourceSession(acquisition.order, acquisition, disposalContext.signal);
+                    } catch (error: unknown) {
+                        errors.push(error);
+                    }
+                    const snapshots = session.resourceChecks();
+                    if (
+                        snapshots.some(function failed(snapshot) {
+                            return snapshot.failures.length > 0 || snapshot.status.kind !== 'complete';
+                        })
+                    ) {
+                        throw new ResourceCheckError('Resource checks failed.', { resourceChecks: snapshots, errors });
+                    }
+                    if (errors.length > 0) {
+                        throw errors[0];
+                    }
+                })();
             }
 
             await disposal;
@@ -451,4 +472,12 @@ export async function startResources<Resources extends ResourceDependencies>(
     };
 
     return disposableResourceSession<Resources>(session);
+}
+
+export async function startResources<Resources extends ResourceDependencies>(
+    request: StartResourcesRequest<Resources>
+): Promise<ResourceSession<Resources>> {
+    return await withStandaloneResourceChecks(async function startSession() {
+        return await startResourceSession(request);
+    });
 }

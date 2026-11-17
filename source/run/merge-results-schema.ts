@@ -2,6 +2,7 @@ import { z } from 'zod/v4';
 import { workIdSchema, runtimeIdSchema } from '../engine/identity-schema.ts';
 import {
     currentRunRecordVersion,
+    implementationRunRecordVersion,
     previousRunRecordVersion,
     familyRunRecordVersion,
     validateImplementationRecord
@@ -15,6 +16,7 @@ const mergeRecordData = z.object({
         z.literal(1),
         z.literal(previousRunRecordVersion),
         z.literal(familyRunRecordVersion),
+        z.literal(implementationRunRecordVersion),
         z.literal(currentRunRecordVersion)
     ]),
     kind: z.literal('single'),
@@ -36,6 +38,7 @@ const mergeRecordData = z.object({
         return {
             ...result,
             ...parseSerializedRunDiagnostics({
+                resourceChecks: result.resourceChecks,
                 artifacts: result.artifacts,
                 perTest: result.perTest,
                 runnerErrors: result.runnerErrors
@@ -50,6 +53,7 @@ const mergedRecordData = mergeRecordData.omit({ status: true, runtime: true, ver
     version: z.union([
         z.literal(previousRunRecordVersion),
         z.literal(familyRunRecordVersion),
+        z.literal(implementationRunRecordVersion),
         z.literal(currentRunRecordVersion)
     ]),
     kind: z.literal('merged'),

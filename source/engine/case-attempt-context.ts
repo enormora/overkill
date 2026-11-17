@@ -1,3 +1,4 @@
+import type { PerTestResult, RunnerError } from './run-result.ts';
 import type { AsyncLeakDependencies } from './execution-async-leak-policy.ts';
 import type { ExecutionSupervision, ExecutionSupervisionDependencies } from './execution-supervision.ts';
 import type { NormalizedExecuteOptions } from './execution-options.ts';
@@ -15,4 +16,16 @@ export type ExecuteCaseInput = {
     readonly options: NormalizedExecuteOptions;
     readonly supervision: ExecutionSupervision;
     readonly testCase: TestPlanCase;
+};
+
+export type ReportedCase = {
+    readonly executionWindow: TimingWindow;
+    readonly reporterErrors: readonly RunnerError[];
+    readonly runnerErrors: readonly RunnerError[];
+    readonly result: PerTestResult;
+};
+
+export type TimingWindow = {
+    readonly endedAtMicroseconds: number;
+    readonly startedAtMicroseconds: number;
 };

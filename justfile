@@ -113,6 +113,7 @@ test-runner-integration: test-mutation-integration
     node source/integration-tests/run/runner-attachments.test.ts
     node source/integration-tests/run/runner-attachment-retention.test.ts
     node source/integration-tests/run/runner-retries.test.ts
+    node source/integration-tests/run/runner-resource-checks.test.ts
     node source/integration-tests/run/runner-ipc-results.test.ts
     node source/integration-tests/run/runner-coverage-branches.test.ts
     node source/integration-tests/run/runner-coverage.test.ts

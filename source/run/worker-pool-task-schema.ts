@@ -6,6 +6,7 @@ import {
     workloadIdSchema,
     attemptIdSchema
 } from '../engine/identity-schema.ts';
+import { resourceCheckEndpointSchema } from './resource-check-channel.ts';
 import { workloadInputsSchema } from './collected-run-plan-schema.ts';
 import type { WorkerPoolTaskWithoutPort } from './worker-pool-host-protocol.ts';
 import { executionCommandFields, hostProcessSchema } from './run-command-schema.ts';
@@ -30,7 +31,10 @@ const commandSchema = z.strictObject({
     hostProcess: hostProcessSchema,
     workerLifecycle: z.enum([ 'fresh-worker-per-unit', 'reuse' ])
 });
-const lifecycleFields = { lane: z.string(), lifecycle: z.strictObject({ token: z.string() }) };
+const lifecycleFields = {
+    lane: z.string(),
+    lifecycle: z.strictObject({ token: z.string(), endpoint: resourceCheckEndpointSchema.nullable().default(null) })
+};
 const boundaryUsesSchema = z.array(z.strictObject({ boundaryKey: z.string(), count: z.number() }));
 export const workerPoolTaskSchema: z.ZodType<WorkerPoolTaskWithoutPort> = z.discriminatedUnion('kind', [
     z.strictObject({

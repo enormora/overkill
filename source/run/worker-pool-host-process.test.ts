@@ -199,7 +199,7 @@ async function runTask(pool: CreatedWorkerPool): Promise<unknown> {
         assignedWork: [ createDefaultWorkId({ file: 'test.ts', suite: [], title: 'case', params: null }) ],
         boundaryUseCounts: [],
         lane: 'lane',
-        lifecycle: { token: 'lifecycle' },
+        lifecycle: { endpoint: null, token: 'lifecycle' },
         projectedResources: { resources: [] },
         runWork: [ createDefaultWorkId({ file: 'test.ts', suite: [], title: 'case', params: null }) ],
         command: workerPoolCommand(),

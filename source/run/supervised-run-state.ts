@@ -1,3 +1,5 @@
+import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
+import { resourceCheckSnapshotKey } from '../resource-check-snapshot.ts';
 import { interruptedPropertyEvidence } from '../engine/property-evidence.ts';
 import {
     caseIdentityKey,
@@ -19,6 +21,7 @@ import {
 } from './boundary-artifact-capture.ts';
 import type { RunRequest, CollectedRunPlan } from './run-types.ts';
 import { createSupervisedOutputCapture } from './supervised-output-capture.ts';
+// eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
 import { retainedRetryArtifacts } from './retry-artifact-retention.ts';
 
 export function collectedCasesByKey(collectedPlan: CollectedRunPlan): ReadonlyMap<string, SupervisedCase> {
@@ -98,6 +101,8 @@ type TimingWindow = {
 };
 
 export type SupervisedRunState = {
+    readonly resourceChecks: () => readonly ResourceCheckSnapshot[];
+    readonly recordResourceCheck: (snapshot: ResourceCheckSnapshot) => void;
     readonly recordPropertyProgress: (key: string, attempt: number, evidence: PropertyCaseEvidence) => void;
     readonly recordBenchmarkProgress: (key: string, result: NonNullable<PerTestResult['benchmark']>) => void;
     readonly activeCases: ReadonlyMap<string, ActiveSupervisedCase>;
@@ -300,12 +305,18 @@ export function createSupervisedRunState(
         pendingTerminal: new Set<string>(),
         terminalOutputDraining: false
     };
-    const artifacts = createStoredRunValue<readonly RunArtifact[]>([]);
+    const retainedEvidence = {
+        artifacts: createStoredRunValue<readonly RunArtifact[]>([]),
+        resourceChecks: new Map<string, ResourceCheckSnapshot>()
+    };
     const captures = {
         output: createSupervisedOutputCapture(outputLimitBytes),
-        boundary: createBoundaryArtifactCapture(artifacts, boundary, function activeBoundaryWork() {
+        boundary: createBoundaryArtifactCapture(retainedEvidence.artifacts, boundary, function activeBoundaryWork() {
             return Array.from(cases.active.values(), function activeWork(active) {
-                return { work: active.workId ?? createDefaultWorkId(active.id), attempt: active.attempt };
+                return {
+                    work: active.workId ?? createDefaultWorkId(active.id),
+                    attempt: active.attempt
+                };
             });
         })
     };
@@ -355,6 +366,15 @@ export function createSupervisedRunState(
     }
 
     return {
+        resourceChecks() {
+            return Array.from(retainedEvidence.resourceChecks.values());
+        },
+        recordResourceCheck(snapshot) {
+            const key = resourceCheckSnapshotKey(snapshot);
+            if ((retainedEvidence.resourceChecks.get(key)?.revision ?? -1) < snapshot.revision) {
+                retainedEvidence.resourceChecks.set(key, snapshot);
+            }
+        },
         captureMode(capture) {
             const active = outputCases(cases);
             const [ activeCase ] = active.values();
@@ -381,7 +401,7 @@ export function createSupervisedRunState(
             cases.active.set(key, { ...testCase, property: null, benchmark: null, attempt, startedAtMicroseconds });
         },
         artifacts() {
-            return artifacts.read();
+            return retainedEvidence.artifacts.read();
         },
         caseArtifacts(work, attempt) {
             return captures.boundary.forAttempt(work, attempt);
@@ -410,8 +430,8 @@ export function createSupervisedRunState(
             const activeWork = Array.from(captureWindow.values(), function capturedWork(testCase) {
                 return { attempt: testCase.attempt, work: testCase.workId ?? createDefaultWorkId(testCase.id) };
             });
-            artifacts.write([
-                ...artifacts.read(),
+            retainedEvidence.artifacts.write([
+                ...retainedEvidence.artifacts.read(),
                 ...captures.output.record(activeWork, stream, chunk, capturedAtMicroseconds)
             ]);
         },
@@ -422,11 +442,11 @@ export function createSupervisedRunState(
             const results = [ ...previous, result ];
             attemptResults.set(key, results);
             const retained = retainedRetryArtifacts(
-                artifacts.read(),
+                retainedEvidence.artifacts.read(),
                 [ caseAttemptHistory(result, results) ],
                 artifactPolicy
             );
-            artifacts.write(retained);
+            retainedEvidence.artifacts.write(retained);
             const activeCase = cases.active.get(key);
             if (activeCase !== undefined) {
                 timingWindows.push({

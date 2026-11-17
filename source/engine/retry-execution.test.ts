@@ -191,6 +191,9 @@ function deterministicEngine(clock: ReturnType<typeof createDeterministicClock>)
 
 function failingCompletionPolicy(completed: () => void): NonNullable<ExecuteOptions['runtimePolicy']> {
     return {
+        resourceChecks() {
+            return [];
+        },
         async runLoad(run) {
             return await run();
         },

@@ -33,7 +33,7 @@ type RunFactsKeys = readonly [
 ];
 
 type FamilyRecordVersion = 3;
-type CurrentRecordVersion = 4;
+type CurrentRecordVersion = 5;
 type LegacyReplayRecordVersion = 2;
 type HistoricalFamilyFacts = Except<RunFacts, 'implementations'>;
 type LegacyRunFacts = Except<RunFacts, 'family' | 'implementations'>;

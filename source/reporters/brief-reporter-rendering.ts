@@ -2,6 +2,7 @@ import { formatCaseId, type CaseId } from '../engine/identity.ts';
 import type { OutputLineIntent } from '../engine/reporter-output.ts';
 import { formatSourceLocation, type ReportingContext } from '../engine/reporting-context.ts';
 import type { RunResult, RunnerError, TestFailure } from '../engine/run-result.ts';
+import { reportedResourceChecks } from './resource-check-rendering.ts';
 import { primaryFailureSourceLocation } from './failure-location.ts';
 import { formatFailureSummary, formatPropertyDiagnostics } from './failure-summary.ts';
 import { witnessReplayLines } from './witness-replay-lines.ts';
@@ -116,11 +117,23 @@ export function briefSummaryIntents(result: RunResult): readonly OutputLineInten
 }
 
 export function briefFailureIntents(result: RunResult, context: ReportingContext): readonly OutputLineIntent[] {
-    return result.perTest.flatMap(function finalFailureIntents(testResult) {
-        return testResult.outcome?.kind === 'fail'
-            ? testResult.outcome.failures.map(function finalFailureIntent(failure) {
-                return failureIntent(testResult.id, failure, context);
+    return [
+        ...reportedResourceChecks(result)
+            .filter(function lifetime(snapshot) {
+                return snapshot.interval.kind === 'lifetime';
             })
-            : [];
-    });
+            .flatMap(function lifetimeFailures(snapshot) {
+                return snapshot.failures.map(function findingIntent(finding) {
+                    const target = finding.target === null ? '' : ` (${finding.target})`;
+                    return stdout(`fail ${snapshot.resource}${target}: ${finding.check.summary}`, null);
+                });
+            }),
+        ...result.perTest.flatMap(function finalFailureIntents(testResult) {
+            return testResult.outcome?.kind === 'fail'
+                ? testResult.outcome.failures.map(function finalFailureIntent(failure) {
+                    return failureIntent(testResult.id, failure, context);
+                })
+                : [];
+        })
+    ];
 }

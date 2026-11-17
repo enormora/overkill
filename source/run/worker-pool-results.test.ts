@@ -87,6 +87,7 @@ function emptyShardResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
 
 function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
     return {
+        resourceChecks: [],
         artifacts: [],
         bySuite: {},
         orphans: [],

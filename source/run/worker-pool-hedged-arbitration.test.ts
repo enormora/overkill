@@ -107,6 +107,7 @@ function assertConflictArtifactIdentity(
 
 function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
     return {
+        resourceChecks: [],
         artifacts: [],
         bySuite: {},
         orphans: [],

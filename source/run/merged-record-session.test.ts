@@ -15,7 +15,7 @@ async function prepare(directory: string): Promise<MergeResultsCommand> {
     return { config: defaultRunConfig({}), cwd: directory, inputs: [ { kind: 'directory', path: '.' } ] };
 }
 function assertRecordVersions(scope: TestScope, current: MergedRunRecord): void {
-    scope.assert.equal(current.version, 4);
+    scope.assert.equal(current.version, 5);
     const historical = structuredClone(current);
     Reflect.deleteProperty(historical.facts, 'family');
     const legacy = mergedRecordSchema.parse({ ...historical, version: 2 });

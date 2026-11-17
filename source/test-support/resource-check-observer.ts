@@ -1,5 +1,5 @@
 import type { ResourceCheckObservation } from '../resources/resource-checks.ts';
-import type { ResourceCheckWriter } from '../resources/resource-check-contract.ts';
+import type { ResourceCheckWriter } from '../resource-check-protocol.ts';
 
 type ObservationContext = { readonly ledger: ResourceCheckWriter; };
 

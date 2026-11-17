@@ -206,7 +206,10 @@ export const testNode = createSuite({
                 context.ledger.requestStop(lifetime, 'late-service', { kind: 'check', check: failedCheck });
                 scope.assert.deepEqual(stopped, []);
                 scope.assert.equal(fixture.session.snapshots()[0]?.status.kind, 'incomplete');
-                scope.assert.equal(fixture.session.snapshots()[0]?.errors[0]?.target, 'late-service');
+                scope.assert.deepEqual({
+                    target: fixture.session.snapshots()[0]?.errors[0]?.target,
+                    summary: fixture.session.snapshots()[0]?.failures[0]?.check.summary
+                }, { target: 'late-service', summary: failedCheck.summary });
                 return scope.assert.collect();
             }
         }),

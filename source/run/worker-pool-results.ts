@@ -1,4 +1,6 @@
+import { finalizedResourceCheckResult } from '../engine/resource-check-result.ts';
 import { workIdentityKey } from '../engine/identity.ts';
+import { currentResourceCheckBroker } from './resource-check-broker.ts';
 import type {
     PerTestResult,
     RunArtifact,
@@ -23,6 +25,7 @@ import {
     workerPoolPlacementTrace,
     type WorkerPoolRunRuntime,
     type WorkerPoolTaskRun
+    // eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
 } from './worker-pool-runtime.ts';
 
 function taskArtifacts(runtime: WorkerPoolRunRuntime): readonly RunArtifact[] {
@@ -209,7 +212,7 @@ export async function finishWorkerPoolRun(
     return await reportFinalResult(
         await runtime.finalizeResult({
             placementTrace: workerPoolPlacementTrace(runtime).finish(),
-            result
+            result: finalizedResourceCheckResult(result, currentResourceCheckBroker()?.snapshots() ?? [])
         }),
         runtime,
         completedTaskRuns

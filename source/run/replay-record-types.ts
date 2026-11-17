@@ -1,7 +1,12 @@
 import type { FamilyRunFacts } from '../engine/family-run.ts';
 import type { WitnessFile } from '../engine/witness-file.ts';
 import type { LoaderConfig } from '../config/types.ts';
-import type { currentRunRecordVersion, previousRunRecordVersion, familyRunRecordVersion } from './run-record-format.ts';
+import type {
+    currentRunRecordVersion,
+    implementationRunRecordVersion,
+    previousRunRecordVersion,
+    familyRunRecordVersion
+} from './run-record-format.ts';
 import type { PlacementTrace } from './placement-trace.ts';
 import type { RunRecordRequest, RunRecordResult } from './run-record-types.ts';
 import type { CollectedRunPlan, RunFacts, WorkId, RunEngineFacts, RunHostProcessFacts } from './run-types.ts';
@@ -27,11 +32,17 @@ export type ReplayPlanningFacts = RecordedBenchmarkFacts & RecordedReproducibili
     readonly implementations: RunFacts['implementations'];
     readonly family: FamilyRunFacts | null;
 };
-type RecordedReplayResult = Pick<RunRecordResult, 'planStatus'> & {
+type RecordedReplayResult = Pick<RunRecordResult, 'planStatus' | 'resourceChecks'> & {
     readonly perTest: readonly { readonly workId: WorkId; }[];
 };
+type ReplayRecordVersions = readonly [
+    typeof currentRunRecordVersion,
+    typeof implementationRunRecordVersion,
+    typeof familyRunRecordVersion,
+    typeof previousRunRecordVersion
+];
 export type ReplayRunRecord = {
-    readonly version: typeof currentRunRecordVersion | typeof familyRunRecordVersion | typeof previousRunRecordVersion;
+    readonly version: ReplayRecordVersions[number];
     readonly kind: 'single';
     readonly id: string;
     readonly seed: string;

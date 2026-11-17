@@ -29,7 +29,12 @@ export async function createMergedRecordStorage(
         if (errors.length === 0) {
             return;
         }
-        const diagnostics = serializeRunDiagnostics({ artifacts: [], perTest: [], runnerErrors: errors });
+        const diagnostics = serializeRunDiagnostics({
+            resourceChecks: [],
+            artifacts: [],
+            perTest: [],
+            runnerErrors: errors
+        });
         current = {
             ...current,
             result: {

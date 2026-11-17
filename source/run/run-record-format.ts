@@ -1,7 +1,8 @@
 import { isDeepStrictEqual } from 'node:util';
 import type { z } from 'zod/v4';
 
-export const currentRunRecordVersion = 4;
+export const currentRunRecordVersion = 5;
+export const implementationRunRecordVersion = 4;
 export const previousRunRecordVersion = 2;
 export const familyRunRecordVersion = 3;
 function recordFields(value: unknown): value is Readonly<Record<string, unknown>> {
@@ -19,16 +20,34 @@ function evidenceMatches(value: Readonly<Record<string, unknown>>): boolean {
     return !hasImplementationEvidence(value['facts']) || !hasImplementationEvidence(value['replayPlan']) ||
         isDeepStrictEqual(value['facts'].implementations, value['replayPlan'].implementations);
 }
-export function validateImplementationRecord(value: unknown, context: Readonly<z.RefinementCtx>): void {
-    if (!recordFields(value)) {
-        return;
+function validateResourceCheckRecord(
+    value: Readonly<Record<string, unknown>>,
+    context: Readonly<z.RefinementCtx>
+): void {
+    if (
+        value['version'] === currentRunRecordVersion && recordFields(value['result']) &&
+        !Object.hasOwn(value['result'], 'resourceChecks')
+    ) {
+        context.addIssue({ code: 'custom', message: 'Current records require explicit resource-check evidence.' });
     }
-    if (value['version'] === currentRunRecordVersion) {
+}
+function validateCurrentImplementationRecord(
+    value: Readonly<Record<string, unknown>>,
+    context: Readonly<z.RefinementCtx>
+): void {
+    if (value['version'] === currentRunRecordVersion || value['version'] === implementationRunRecordVersion) {
         requireImplementationEvidence(value['facts'], context);
         if (Object.hasOwn(value, 'replayPlan')) {
             requireImplementationEvidence(value['replayPlan'], context);
         }
     }
+}
+export function validateImplementationRecord(value: unknown, context: Readonly<z.RefinementCtx>): void {
+    if (!recordFields(value)) {
+        return;
+    }
+    validateResourceCheckRecord(value, context);
+    validateCurrentImplementationRecord(value, context);
     if (
         !evidenceMatches(value)
     ) {

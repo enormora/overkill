@@ -1,3 +1,4 @@
+import { finalizedResourceCheckResult } from '../engine/resource-check-result.ts';
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import type {
     ReporterEvent,
@@ -41,6 +42,7 @@ import type {
     SupervisedChildMessage,
     SupervisedCollectCommand,
     SupervisedRunCommand
+    // eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
 } from './supervised-protocol.ts';
 
 type NonTimingSupervisedChildMessage = Exclude<SupervisedChildMessage, { readonly kind: 'timing'; }>;
@@ -172,7 +174,9 @@ function applyTestEndEvent(
 }
 
 function applyProgressEvent(event: ReporterEvent, state: SupervisedRunState): void {
-    if (event.kind === 'property-progress') {
+    if (event.kind === 'resource-check-progress') {
+        state.recordResourceCheck(event.snapshot);
+    } else if (event.kind === 'property-progress') {
         state.recordPropertyProgress(workIdentityKey(event.workId), event.attempt, event.property);
     } else if (event.kind === 'benchmark-progress') {
         state.recordBenchmarkProgress(workIdentityKey(event.workId), event.benchmark);
@@ -432,7 +436,7 @@ export async function reportRunStart(
 
 function resultWithSupervisedArtifacts(result: RunResult, runtime: SupervisedRunRuntime): RunResult {
     return resultWithRetainedArtifacts(
-        result,
+        finalizedResourceCheckResult(result, runtime.state.resourceChecks()),
         runtime.state.artifacts(),
         runtime.resolvedRun.facts.execution.retries?.artifacts ?? 'first-failure-and-final'
     );

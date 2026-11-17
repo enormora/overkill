@@ -13,8 +13,8 @@ import {
     stopResourceCheckAttempt,
     withResourceCheckCancellation
 } from '../resource-check-cancellation.ts';
+import type { ResourceCheckInterval } from '../resource-check-protocol.ts';
 import { createResourceCheckLedger } from './resource-check-ledger.ts';
-import type { ResourceCheckInterval } from './resource-check-contract.ts';
 import { createResourceCheckSession, withResourceChecks } from './resource-checks.ts';
 import { defineResource } from './resources.ts';
 
@@ -88,12 +88,41 @@ function pendingManagedObservation(): ManagedObservationFixture {
     };
 }
 
+async function copiedCancellationMember(): Promise<unknown> {
+    const module = new URL('../resource-check-cancellation.ts?cancellation-copy', import.meta.url);
+    const copy: unknown = await import(module.href);
+    if (typeof copy !== 'object' || copy === null) {
+        throw new TypeError('Expected a cancellation module.');
+    }
+    return Reflect.get(copy, 'stopResourceCheckAttempt');
+}
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'resource check isolation',
     annotations: {},
     controls: {},
     children: [
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'loaded module copies share active cancellation ownership',
+            annotations: {},
+            controls: {},
+            async body(scope) {
+                const stop = await copiedCancellationMember();
+                if (typeof stop !== 'function') {
+                    throw new TypeError('Expected attempt cancellation.');
+                }
+                const causes: unknown[] = [];
+                const run = resourceCheckRunIdentity();
+                await withResourceCheckCancellation(work, { index: 0 }, function cancelled(cause) {
+                    causes.push(cause);
+                }, async function stopCopiedAttempt() {
+                    Reflect.apply(stop, undefined, [ work, { index: 0 }, 'shared stop', run ]);
+                });
+                scope.assert.deepEqual(causes, [ 'shared stop' ]);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'concurrent consumers await shared observer admission',
@@ -161,9 +190,16 @@ export const testNode = createSuite({
             annotations: {},
             controls: {},
             body(scope) {
-                const ledger = createResourceCheckLedger('owner', function () {
-                    return undefined;
-                });
+                const ledger = createResourceCheckLedger(
+                    'owner',
+                    function () {
+                        return undefined;
+                    },
+                    { run: 'test-run', id: 'test-owner', scope: 'per-case' },
+                    function publish() {
+                        return undefined;
+                    }
+                );
                 const first: ResourceCheckInterval = { kind: 'attempt', work, attempt: { index: 0 } };
                 const retry: ResourceCheckInterval = { kind: 'attempt', work, attempt: { index: 1 } };
                 ledger.writer.record(first, 'page', { kind: 'pass' });
@@ -199,9 +235,16 @@ export const testNode = createSuite({
             controls: {},
             body(scope) {
                 const causes: unknown[] = [];
-                const ledger = createResourceCheckLedger('owner', function (cause) {
-                    causes.push(cause);
-                });
+                const ledger = createResourceCheckLedger(
+                    'owner',
+                    function (cause) {
+                        causes.push(cause);
+                    },
+                    { run: 'test-run', id: 'test-owner', scope: 'per-case' },
+                    function publish() {
+                        return undefined;
+                    }
+                );
                 const failure = new Error('observer transport failed');
                 ledger.writer.requestStop(
                     { kind: 'lifetime' },

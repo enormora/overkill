@@ -21,7 +21,10 @@ function completedRunStatus(result: NonNullable<HistoryRecord['result']>): Histo
         return 'runner-error';
     }
     const counts = result.summary;
-    if (counts.failed + counts.crashed + counts.processExhausted + counts.runtimePolicy > 0) {
+    if (
+        result.status === 'failed' ||
+        counts.failed + counts.crashed + counts.processExhausted + counts.runtimePolicy > 0
+    ) {
         return 'failed';
     }
     return counts.inconclusive > 0 ? 'inconclusive' : 'passed';

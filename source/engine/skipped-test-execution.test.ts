@@ -60,6 +60,9 @@ function createRuntimePolicyProbe(): RuntimePolicyProbe {
             return caseRuns;
         },
         runtimePolicy: {
+            resourceChecks() {
+                return [];
+            },
             async prepareAttempt() {
                 return undefined;
             },

@@ -2,7 +2,7 @@ import { z } from 'zod/v4';
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializedValueSchema } from '../compare/serialized-value-schema.ts';
 import type { TestOutcome } from './run-result.ts';
-import { sourceLocationsSchema } from './identity-schema.ts';
+import { workIdSchema, sourceLocationsSchema } from './identity-schema.ts';
 import { diffPathSchema, diffSchema } from './diff-schema.ts';
 import { runArtifactIdSchema } from './artifact-schema.ts';
 
@@ -33,7 +33,49 @@ const failedCheckSchema: z.ZodType<FailedCheck> = z.lazy(function () {
         z.strictObject({ ...base, kind: z.literal('foreign'), error: thrownErrorSchema, label: z.string() })
     ]);
 });
+export const resourceCheckOwnerSchema = z.strictObject({
+    run: z.string(),
+    id: z.string(),
+    scope: z.enum([ 'per-run', 'per-file', 'per-suite', 'per-case', 'shared-per-worker' ])
+});
+export const resourceCheckIntervalSchema = z.discriminatedUnion('kind', [
+    z.strictObject({ kind: z.literal('lifetime') }),
+    z.strictObject({
+        kind: z.literal('attempt'),
+        work: workIdSchema,
+        attempt: z.strictObject({ index: z.number().int().nonnegative() })
+    })
+]);
+export const resourceCheckSnapshotSchema = z.strictObject({
+    owner: resourceCheckOwnerSchema,
+    revision: z.number().int().nonnegative(),
+    resource: z.string(),
+    interval: resourceCheckIntervalSchema,
+    passing: z.number().int().nonnegative(),
+    failures: z.array(z.strictObject({ target: z.string().nullable(), check: failedCheckSchema })),
+    errors: z.array(
+        z.strictObject({ interval: resourceCheckIntervalSchema, target: z.string().nullable(), cause: z.unknown() })
+    ),
+    status: z.discriminatedUnion('kind', [
+        z.strictObject({ kind: z.literal('open') }),
+        z.strictObject({ kind: z.literal('complete') }),
+        z.strictObject({ kind: z.literal('incomplete'), reasons: z.array(z.string()) })
+    ])
+});
 const failureSchema = z.discriminatedUnion('kind', [
+    z.strictObject({
+        kind: z.literal('resource-check'),
+        owner: resourceCheckOwnerSchema,
+        resource: z.string(),
+        interval: z.strictObject({
+            kind: z.literal('attempt'),
+            work: workIdSchema,
+            attempt: z.strictObject({ index: z.number().int().nonnegative() })
+        }),
+        failures: z.tuple([ z.strictObject({ target: z.string().nullable(), check: failedCheckSchema }) ]).rest(
+            z.strictObject({ target: z.string().nullable(), check: failedCheckSchema })
+        )
+    }),
     z.strictObject({ kind: z.literal('assertion'), checks: z.tuple([ failedCheckSchema ]).rest(failedCheckSchema) }),
     z.strictObject({ kind: z.literal('body-error'), error: thrownErrorSchema }),
     z.strictObject({ kind: z.literal('cleanup-error'), error: thrownErrorSchema }),

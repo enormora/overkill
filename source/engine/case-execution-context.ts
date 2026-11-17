@@ -1,3 +1,4 @@
+import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import type { PropertyRunContext } from './property-execution-host.ts';
 import type { BenchmarkAttempt } from './benchmark-attempt.ts';
 import type { AttemptId } from './identity.ts';
@@ -16,6 +17,7 @@ export type CaseExecutionOptions = {
 };
 
 export type TestRuntimePolicy = {
+    readonly resourceChecks: () => readonly ResourceCheckSnapshot[];
     readonly prepareAttempt: (testCase: TestPlanCase, attempt: AttemptId) => Promise<void>;
     readonly runAttempt: <Value>(
         testCase: TestPlanCase,

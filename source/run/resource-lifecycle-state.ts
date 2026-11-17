@@ -4,7 +4,7 @@ import { createTranscriptAttemptScope } from '../attachments/resource-failure-co
 import { runWithTranscriptScope } from '../transcript/transcript-store.ts';
 import { workIdentityKey, type WorkId, type AttemptId } from '../engine/identity.ts';
 import { observeResourceOwnerAcquisition, releaseResourceOwner } from '../engine/resource-owner-observation.ts';
-import type { RunnerError, TestPlanCase } from './run-engine-primitives.ts';
+import type { RunnerError, TestPlanCase, TestRuntimePolicy } from './run-engine-primitives.ts';
 import { runSnapshotAttempt } from './snapshot-attempt.ts';
 import type { AttachmentExecution } from './attachment-execution.ts';
 import type {
@@ -37,6 +37,7 @@ type ManagedResourceScopeAcquisition = {
 };
 
 export type ManagedLifecycleState = {
+    readonly resourceChecks: TestRuntimePolicy['resourceChecks'];
     readonly prepareAttempt: (testCase: TestPlanCase, attempt: AttemptId) => Promise<void>;
     readonly completeCase: (testCase: TestPlanCase, attempt: AttemptId) => Promise<void>;
     readonly acquireComposedResources: (

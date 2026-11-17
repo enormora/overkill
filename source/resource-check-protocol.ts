@@ -1,5 +1,5 @@
-import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
-import type { WorkId, AttemptId } from '../engine/identity.ts';
+import type { FailedCheck, NonEmptyReadonlyArray } from './assertion-protocol/assertion-node-shape.ts';
+import type { WorkId, AttemptId } from './engine/identity.ts';
 
 export type ResourceCheckInterval = {
     readonly kind: 'attempt';
@@ -37,7 +37,14 @@ export type ResourceCheckWriter = {
         cause: ResourceCheckStopCause
     ) => void;
 };
+export type ResourceCheckOwner = {
+    readonly run: string;
+    readonly id: string;
+    readonly scope: 'per-case' | 'per-file' | 'per-run' | 'per-suite' | 'shared-per-worker';
+};
 export type ResourceCheckSnapshot = {
+    readonly owner: ResourceCheckOwner;
+    readonly revision: number;
     readonly resource: string;
     readonly interval: ResourceCheckInterval;
     readonly passing: number;
@@ -53,4 +60,12 @@ export type ResourceCheckSnapshot = {
     readonly status: ResourceCheckCompleteness | {
         readonly kind: 'open';
     };
+};
+
+export type ResourceCheckFailure = {
+    readonly kind: 'resource-check';
+    readonly owner: ResourceCheckOwner;
+    readonly resource: string;
+    readonly interval: Extract<ResourceCheckInterval, { readonly kind: 'attempt'; }>;
+    readonly failures: NonEmptyReadonlyArray<{ readonly target: string | null; readonly check: FailedCheck; }>;
 };

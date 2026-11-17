@@ -51,6 +51,11 @@ Preserve the originating resource and work/attempt/target identity. A body
 failure, `require` short-circuit, invalid builder return, caught controller
 error, or transcript reset cannot discard recorded findings.
 
+A failed attempt-owned check uses the `resource-check` failure variant, retaining
+its owner, resource, interval, target, and existing `FailedCheck` diagnostics.
+It is terminal for automatic retries. `RunResult.resourceChecks` also retains
+passing summaries, completeness, and shared lifetime evidence.
+
 Resource checks do not satisfy `plan(n)`, zero-assertion detection, or the
 builder return contract. Passing resource activity is summarized rather than
 recording an authored assertion for every event. Observation/enforcement loss
@@ -938,6 +943,7 @@ type Inconclusive = {
 };
 
 type TestFailure =
+    | ResourceCheckFailure
     | {
         readonly kind: 'assertion';
         readonly checks: NonEmptyReadonlyArray<FailedCheck>;

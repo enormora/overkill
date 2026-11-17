@@ -14,7 +14,12 @@ async function aggregateMergeResults(command: MergeResultsCommand): Promise<Merg
     const { readMergeSources } = await import('./merge-results-input.ts');
     const { sources, errors } = assessMergeSources(await readMergeSources(command));
     const result = mergedRunResult(sources);
-    const diagnostics = serializeRunDiagnostics({ artifacts: [], perTest: [], runnerErrors: errors });
+    const diagnostics = serializeRunDiagnostics({
+        resourceChecks: [],
+        artifacts: [],
+        perTest: [],
+        runnerErrors: errors
+    });
     const [ first, ...remaining ] = sources;
     const { record } = first;
     return {
