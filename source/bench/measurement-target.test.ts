@@ -7,7 +7,9 @@ import {
     rawMeasurement,
     withMeasurementTarget,
     wallClockMeasurement,
-    defaultSamplingPolicy
+    defaultSamplingPolicy,
+    measurementStrategy,
+    threadCpuCollector
 } from '../packages/bench/bench.entry-point.ts';
 import { benchmarkResultSchema } from '../run/benchmark-result-schema.ts';
 import { createMeasurementSample } from './measurement-region.ts';
@@ -41,6 +43,32 @@ function assertInvocationOrder(scope: TestScope, evidence: MeasurementEvidence):
     }));
 }
 export const testNode = suite('measurement targets and attribution', [
+    test('requires explicit target names and clock domains', function (scope) {
+        const target = defaultMeasurementTarget();
+        for (const identity of [ { ...target.identity, name: '' }, { ...target.identity, clock: '' } ]) {
+            scope.assert.throws(function () {
+                withMeasurementTarget({ ...target, identity }, wallClockMeasurement());
+            }, { message: 'Measurement targets require a name and clock domain.' });
+        }
+        return scope.assert.collect();
+    }),
+    test('rejects host CPU metrics for another runtime or target instance', function (scope) {
+        const target = defaultMeasurementTarget();
+        for (const identity of [ { ...target.identity, scope: 'remote' }, { ...target.identity, instance: 'other' } ]) {
+            let operations = 0;
+            const strategy = withMeasurementTarget(
+                { ...target, identity },
+                measurementStrategy([ threadCpuCollector() ])
+            );
+            scope.assert.throws(function () {
+                createMeasurementSample(strategy, scope.signal).sample.measure(function () {
+                    operations += 1;
+                });
+            }, { message: 'Node collectors require the executing runtime as their measured target.' });
+            scope.assert.equal(operations, 0);
+        }
+        return scope.assert.collect();
+    }),
     test('uses the selected clock without adding a promise to synchronous work', function (scope: TestScope) {
         let clock = 0;
         const target = targetWithClock(function readTargetClock() {
