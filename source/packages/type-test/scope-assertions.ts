@@ -1,5 +1,5 @@
-import type { SourceAnalysis } from './source-analysis-port.ts';
 import type * as TypeScript from 'typescript-beta/ast';
+import type { SourceAnalysis } from './source-analysis-port.ts';
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
 import { sourceSymbol, sourceChildren } from './source-analysis.ts';
 import { nativeRelationBinding } from './native-reference.ts';

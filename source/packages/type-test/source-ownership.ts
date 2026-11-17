@@ -1,6 +1,6 @@
-import type { SourceAnalysis } from './source-analysis-port.ts';
 import type * as TypeScript from 'typescript-beta/ast';
 import { resolveSourceLocation, isTableBodyOrigin, type TestBodyOrigin } from '../engine/engine.entry-point.ts';
+import type { SourceAnalysis } from './source-analysis-port.ts';
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
 import type { CompilerSyntax } from './installed-compiler.ts';
 import {

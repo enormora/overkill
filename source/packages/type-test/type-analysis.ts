@@ -5,14 +5,14 @@ export type TypeAnalysis = {
     readonly compiler: CompilerSyntax;
     readonly checker: Pick<
         Checker,
+        | 'getParameterType'
+        | 'getReturnTypeOfSignature'
         | 'getTypeAtLocation'
         | 'getTypeFromTypeNode'
-        | 'typeToString'
-        | 'isTypeAssignableTo'
-        | 'isReadonlySymbol'
         | 'getTypeOfSymbol'
-        | 'getParameterType'
         | 'getTypePredicateOfSignature'
-        | 'getReturnTypeOfSignature'
+        | 'isReadonlySymbol'
+        | 'isTypeAssignableTo'
+        | 'typeToString'
     >;
 };
