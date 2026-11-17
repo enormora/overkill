@@ -1,10 +1,12 @@
 import { z } from 'zod/v4';
 import { normalizationEvidenceSchema } from '../bench/calibration-evidence.ts';
 import { comparableCalibrationSchema } from '../bench/calibration-schema.ts';
+import { measurementComparisonIdentitySchema } from '../bench/measurement-evidence-schema.ts';
 import { workIdSchema } from '../engine/identity-schema.ts';
 import {
     normalizedPerformanceBaselineVersion,
     previousNormalizedPerformanceBaselineVersion,
+    measuredPerformanceBaselineVersion,
     type StoredPerformanceBaseline
 } from './performance-baseline.ts';
 
@@ -16,15 +18,19 @@ const legacyPerformanceBaselineSchema = z.strictObject({
     version: z.literal(1),
     work: workIdSchema
 });
-
+const normalizedPerformanceBaselineSchema = legacyPerformanceBaselineSchema.extend({
+    version: z.union([
+        z.literal(previousNormalizedPerformanceBaselineVersion),
+        z.literal(normalizedPerformanceBaselineVersion)
+    ]),
+    normalization: normalizationEvidenceSchema.nullable()
+});
 export const storedPerformanceBaselineSchema: z.ZodType<StoredPerformanceBaseline> = z.union([
     legacyPerformanceBaselineSchema,
+    normalizedPerformanceBaselineSchema,
     legacyPerformanceBaselineSchema.extend({
-        version: z.literal(previousNormalizedPerformanceBaselineVersion),
-        normalization: normalizationEvidenceSchema.nullable()
-    }),
-    legacyPerformanceBaselineSchema.extend({
-        version: z.literal(normalizedPerformanceBaselineVersion),
-        normalization: normalizationEvidenceSchema.nullable()
+        version: z.literal(measuredPerformanceBaselineVersion),
+        normalization: normalizationEvidenceSchema.nullable(),
+        measurement: measurementComparisonIdentitySchema
     })
 ]);

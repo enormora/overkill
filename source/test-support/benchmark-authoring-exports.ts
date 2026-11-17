@@ -19,6 +19,7 @@ export const benchmarkAuthoringExports = [
     'rawMeasurement',
     'readBenchmarkTimeline',
     'readCalibrationReferenceReport',
+    'readRawBenchmarkSamples',
     'runtimeHealthCollector',
     'skippedTest',
     'suite',
@@ -28,5 +29,6 @@ export const benchmarkAuthoringExports = [
     'timelineMeasurement',
     'unavailableMetric',
     'wallClockMeasurement',
+    'withMeasurementTarget',
     'workload'
 ] as const;

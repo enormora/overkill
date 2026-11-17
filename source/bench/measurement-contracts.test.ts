@@ -86,6 +86,7 @@ export const testNode = suite('measurement contracts', [
     }),
     test('rejects collector identity collisions and invalid metric declarations', function (scope) {
         const collector: MetricCollector = {
+            version: '1',
             name: 'custom',
             mode: 'sync',
             metrics: [],
@@ -96,6 +97,7 @@ export const testNode = suite('measurement contracts', [
         for (
             const collectors of [
                 [ { ...collector, name: '' } ],
+                [ { ...collector, version: '' } ],
                 [ collector, collector ],
                 [ { ...collector, metrics: [ { ...provenance, name: '' } ] } ],
                 [ { ...collector, metrics: [ { ...provenance, name: 'value', unit: '' } ] } ],

@@ -161,10 +161,56 @@ resource acquisition, and teardown are outside the measured callback.
 Built-in collectors are `threadCpuCollector`, `processCpuCollector`,
 `memoryCollector`, `processResourceCollector`, and `runtimeHealthCollector`.
 Runtime health needs an async strategy to prime and drain its observers.
-Custom collectors declare identity, metric names, units, and scopes, then
-return a session with `start`, `stop`, `complete`, and `dispose`. Start and stop
-are synchronous boundaries. Completed readings use `availableMetric` or
-`unavailableMetric`. Returned plain numbers are custom metrics with unit `number`.
+Custom collectors declare `name`, `version`, `mode`, and metric names, units,
+and scopes. `prepare(context)` acknowledges readiness and returns `start`,
+`stop`, and `finalize`. Register allocation release with
+`context.cleanup.defer(signal => ...)` before acquisition can fail. The harness
+releases registered allocations in reverse order, including partial preparation.
+Collectors release their own allocations; shared resources keep their declared lifetime.
+
+`finalize(context)` returns `context.readings(metricReadings)`. This binds the
+readings to their invocation and target. For incomplete capture, return the same
+envelope with `completeness: { kind: 'incomplete', reasons: [...] }`.
+Missing or incomplete readings remain unavailable; required metrics cannot pass
+budgets. Available readings must match the collector's declared provenance.
+
+Synchronous collectors keep every lifecycle hook synchronous. Async collectors
+may await preparation, start, stop, and finalization. All starts complete before
+the operation. The harness stops started sessions and finalizes prepared sessions
+once, then releases allocations, preserving operation and shutdown failures together.
+Cancellation uses a fresh cleanup signal. Stop, finalization, and release share
+one two-second deadline per invocation; late results cannot enter another sample.
+Synchronous hooks cannot be forcibly preempted within their executing thread.
+
+`withMeasurementTarget(target, strategy)` selects a `MeasurementTarget` for
+sync or async strategies. It supplies a synchronous local monotonic clock and
+explicit cooldown and GC capabilities. Its identity declares name, version,
+scope, clock domain, and semantic facts such as instrumentation, endpoints, and
+reset/cache policy. Instance and document identities attribute concrete readings;
+they do not enter comparison identity. Both clock endpoints must use that target's
+clock domain. Cross-clock subtraction and automatic host timing substitution are
+unsupported.
+
+Without an explicit target, function regions measure the executing Node runtime.
+Requested cooldown or GC must exist on the selected target before warmup starts.
+External-process and cold-module strategies reject requested target settling or
+GC because their measured processes do not expose those capabilities. Explicit
+GC remains off by default; ambient host exposure does not enable it.
+
+Targets with `normalization: 'raw'` receive no default CPU calibration. Select
+`'node-cpu'` only for a target compatible with that calibration model. Target
+selection survives raw, calibrated, and timeline wrappers.
+
+Lifecycle evidence version 3 records warmup/measured invocation identity,
+collector completeness, target facts, errors, and separate measured/lifecycle
+durations. Historical lifecycle records retain absent attribution. Raw sample
+attachments use version 2 envelopes with per-reading invocation/target attribution.
+Use `readRawBenchmarkSamples(value)` to read current envelopes or historical
+attachments; historical readings retain null attribution. Performance baseline
+version 4 keys stable target and collector facts separately from instance IDs.
+Use `overkill bench baseline apply` to replace baselines whose measurement
+identity changed. Historical baseline formats remain inspectable.
+Returned plain numbers remain custom metrics with unit `number`.
 
 CPU metrics are deltas in microseconds. Memory metrics include end snapshots
 and signed byte deltas; RSS and active resource counts describe the process,

@@ -5,8 +5,10 @@ import {
     type PerformanceEntry as RuntimeEntry
 } from 'node:perf_hooks';
 import { setImmediate as nextTurn } from 'node:timers/promises';
+import { validateExecutingMeasurementTarget } from './measurement-target.ts';
 import type {
     AsyncCollectorSession,
+    AsyncCollectorPreparationContext,
     AsyncMetricCollector,
     MetricDeclaration,
     MetricReadings
@@ -39,7 +41,7 @@ async function drainObserver(signal: AbortSignal): Promise<void> {
     await nextTurn(undefined, { signal });
 }
 
-function runtimeSession(signal: AbortSignal): AsyncCollectorSession {
+function runtimeSession(context: AsyncCollectorPreparationContext): AsyncCollectorSession {
     const histogram = monitorEventLoopDelay({ samplePerIteration: true });
     const state = {
         startTime: Number.POSITIVE_INFINITY,
@@ -62,6 +64,10 @@ function runtimeSession(signal: AbortSignal): AsyncCollectorSession {
     const observer = new RuntimeObserver(function observeGc(list) {
         record(list.getEntries());
     });
+    context.cleanup.defer(function releaseRuntimeObserver() {
+        histogram.disable();
+        observer.disconnect();
+    });
     observer.observe({ entryTypes: [ 'gc' ] });
     histogram.enable();
     return {
@@ -83,36 +89,30 @@ function runtimeSession(signal: AbortSignal): AsyncCollectorSession {
                 histogram.count === 0 ? null : histogram.max / nanosecondsPerMicrosecond
             ];
         },
-        async complete() {
-            await drainObserver(signal);
+        async finalize(finalization) {
+            await drainObserver(finalization.signal);
             record(observer.takeRecords());
-            return runtimeHealthReadings([
+            return finalization.readings(runtimeHealthReadings([
                 ...delayReadings,
                 state.elapsedUtilization,
                 state.count,
                 state.duration
-            ]);
-        },
-        async dispose() {
-            histogram.disable();
-            observer.disconnect();
+            ]));
         }
     };
 }
 
 export function runtimeHealthCollector(): AsyncMetricCollector {
     return {
+        version: '1',
         name: 'runtime-health',
         mode: 'async',
         metrics,
-        async prepare(signal) {
-            const session = runtimeSession(signal);
-            try {
-                await drainObserver(signal);
-            } catch (error: unknown) {
-                await session.dispose();
-                throw error;
-            }
+        async prepare(context) {
+            context.signal.throwIfAborted();
+            validateExecutingMeasurementTarget(context);
+            const session = runtimeSession(context);
+            await drainObserver(context.signal);
             return session;
         }
     };

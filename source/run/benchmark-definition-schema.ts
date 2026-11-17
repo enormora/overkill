@@ -14,8 +14,19 @@ export const benchmarkDefinitionSchema: z.ZodType<BenchmarkDefinitionSummary> = 
     measurement: z.union([
         z.strictObject({
             mode: z.enum([ 'async', 'sync' ]),
+            target: z
+                .strictObject({
+                    name: z.string(),
+                    version: z.string(),
+                    scope: z.string(),
+                    clock: z.string(),
+                    semantics: z.record(z.string(), z.string())
+                })
+                .nullable()
+                .default(null),
             collectors: z.array(z.strictObject({
                 name: z.string(),
+                version: z.string().nullable().default(null),
                 metrics: z.array(z.strictObject({
                     name: z.string(),
                     collector: z.string(),

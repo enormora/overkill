@@ -806,6 +806,20 @@ collector readiness, start/stop, target markers, and finalization rather than
 adding a second browser sampling loop. Ready acknowledgments precede measured
 work. Retain warmup/measured phase and invocation identity for every reading.
 
+The common collector API uses `prepare(context)`, `start(context)`,
+`stop(context)`, and `finalize(context)`. Preparation registers allocation
+release before acquisition can fail; finalization returns a reading envelope
+with invocation, target, and completeness. Sync and async collector contracts
+remain separate. Stop, finalization, and release share a fresh two-second
+cleanup deadline per invocation. `withMeasurementTarget(target, strategy)`
+binds explicit target clocks and cooldown/GC capabilities. Stable target
+semantics and collector versions enter comparison identity; concrete instance
+and document IDs remain attribution facts. Lifecycle version 3 and raw sample
+version 2 retain this evidence, with absent attribution for historical records.
+Performance baseline version 4 includes stable measurement comparison identity;
+historical baselines without matching identity require an explicit baseline
+update rather than automatic comparison.
+
 Existing synchronous measurement regions retain their synchronous path; async
 collector readiness must not add Promise boundaries inside a tight measured
 loop. Cooldown probes and explicitly requested GC apply to the measured runtime,

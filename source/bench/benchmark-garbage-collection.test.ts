@@ -91,7 +91,7 @@ export const testNode = suite('explicit benchmark garbage collection', [
             );
             scope.assert.partialDeepEqual(measuredBenchmark(result), {
                 samples: 2,
-                lifecycle: { version: 2, garbageCollection: { mode: 'after-sample', completed: 3, failures: 0 } }
+                lifecycle: { version: 3, garbageCollection: { mode: 'after-sample', completed: 3, failures: 0 } }
             });
             return scope.assert.collect();
         }
@@ -259,7 +259,7 @@ export const testNode = suite('explicit benchmark garbage collection', [
         const measured = result.perTest[0]?.benchmark;
         scope.require.defined(measured);
         scope.require.defined(measured.lifecycle);
-        const { garbageCollection: _evidence, policy, ...lifecycle } = measured.lifecycle;
+        const { garbageCollection: _evidence, measurement: _measurement, policy, ...lifecycle } = measured.lifecycle;
         const { garbageCollection: _policy, ...historicalPolicy } = policy;
         const restored = benchmarkResultSchema.parse({
             ...measured,

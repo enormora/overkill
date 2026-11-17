@@ -26,7 +26,7 @@ export const testNode = suite('adaptive benchmark placement policy', [
     test('trusts artifact-size returns and does not treat async mode as capacity evidence', function (scope) {
         for (const mode of [ 'sync', 'async' ] as const) {
             const facts = resolveBenchmarkPlacement({
-                definitions: [ { ...definition(), measurement: { mode, collectors: [] } } ],
+                definitions: [ { ...definition(), measurement: { mode, target: null, collectors: [] } } ],
                 host: quietHost(),
                 processModel: 'worker-pool'
             });
@@ -67,7 +67,14 @@ export const testNode = suite('adaptive benchmark placement policy', [
                     } ]
                 }
             },
-            { ...size, measurement: { mode: 'sync' as const, collectors: [ { name: 'custom', metrics: [] } ] } }
+            {
+                ...size,
+                measurement: {
+                    mode: 'sync' as const,
+                    target: null,
+                    collectors: [ { name: 'custom', version: '1', metrics: [] } ]
+                }
+            }
         ];
         for (const candidate of sensitive) {
             const facts = resolveBenchmarkPlacement({

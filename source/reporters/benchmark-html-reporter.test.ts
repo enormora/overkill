@@ -55,7 +55,8 @@ function lifecycleReport(): string {
     const benchmark = {
         ...measuredTest.benchmark,
         lifecycle: {
-            version: 2 as const,
+            version: 3 as const,
+            measurement: null,
             garbageCollection: { mode: 'after-sample' as const, completed: 36, failures: 0 },
             policy: {
                 garbageCollection: 'after-sample' as const,

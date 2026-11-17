@@ -1,4 +1,5 @@
-import type { MetricCollector, MetricDeclaration, MetricReadings } from './measurement-types.ts';
+import { validateExecutingMeasurementTarget } from './measurement-target.ts';
+import type { MetricCollector, MetricDeclaration } from './measurement-types.ts';
 import { availableMetric, unavailableMetric } from './metric-reading.ts';
 import { bytesPerBinaryKilobyte } from './measurement-units.ts';
 
@@ -15,10 +16,12 @@ function cpuCollector(scope: 'process' | 'thread'): MetricCollector {
     });
 
     return {
+        version: '1',
         name,
         mode: 'sync',
         metrics,
-        prepare() {
+        prepare(context) {
+            validateExecutingMeasurementTarget(context);
             let before = { user: 0, system: 0 };
             let after = { user: 0, system: 0 };
 
@@ -29,16 +32,13 @@ function cpuCollector(scope: 'process' | 'thread'): MetricCollector {
                 stop() {
                     after = read();
                 },
-                complete() {
+                finalize(finalization) {
                     const user = after.user - before.user;
                     const system = after.system - before.system;
                     const values = [ user, system, user + system ];
-                    return Object.fromEntries(metrics.map(function cpuReading(metric, index) {
+                    return finalization.readings(Object.fromEntries(metrics.map(function cpuReading(metric, index) {
                         return [ metric.name, availableMetric(values[index] ?? 0, metric) ];
-                    }));
-                },
-                dispose() {
-                    return undefined;
+                    })));
                 }
             };
         }
@@ -97,10 +97,12 @@ export function memoryCollector(): MetricCollector {
     });
 
     return {
+        version: '1',
         name,
         mode: 'sync',
         metrics: declarations,
-        prepare() {
+        prepare(context) {
+            validateExecutingMeasurementTarget(context);
             const before = new Map<string, number>();
             let after: readonly MemorySnapshot[] = [];
             return {
@@ -112,8 +114,8 @@ export function memoryCollector(): MetricCollector {
                 stop() {
                     after = memorySnapshot();
                 },
-                complete() {
-                    return Object.fromEntries(after.flatMap(function memoryReadings(metric) {
+                finalize(finalization) {
+                    return finalization.readings(Object.fromEntries(after.flatMap(function memoryReadings(metric) {
                         const provenance = { collector: name, scope: metric.scope, unit: metric.unit };
                         return [
                             [ metric.name, availableMetric(metric.value, provenance) ],
@@ -122,10 +124,7 @@ export function memoryCollector(): MetricCollector {
                                 availableMetric(metric.value - (before.get(metric.name) ?? metric.value), provenance)
                             ]
                         ];
-                    }));
-                },
-                dispose() {
-                    return undefined;
+                    })));
                 }
             };
         }
@@ -150,10 +149,12 @@ export function processResourceCollector(): MetricCollector {
         })
     ];
     return {
+        version: '1',
         name,
         mode: 'sync',
         metrics,
-        prepare() {
+        prepare(context) {
+            validateExecutingMeasurementTarget(context);
             let before: ReturnType<typeof process.resourceUsage> | null = null;
             let after: ReturnType<typeof process.resourceUsage> | null = null;
             return {
@@ -163,13 +164,13 @@ export function processResourceCollector(): MetricCollector {
                 stop() {
                     after = process.resourceUsage();
                 },
-                complete(): MetricReadings {
+                finalize(finalization) {
                     const previousSnapshot = before;
                     const currentSnapshot = after;
                     if (previousSnapshot === null || currentSnapshot === null) {
                         throw new TypeError('Resource measurement requires start and stop.');
                     }
-                    return Object.fromEntries(metrics.map(function resourceReading(metric) {
+                    return finalization.readings(Object.fromEntries(metrics.map(function resourceReading(metric) {
                         if (metric.name === 'processMaximumResidentSetBytes') {
                             return [
                                 metric.name,
@@ -190,10 +191,7 @@ export function processResourceCollector(): MetricCollector {
                                 ? availableMetric(value - previous, metric)
                                 : unavailableMetric('Counter unavailable on this platform.', metric)
                         ];
-                    }));
-                },
-                dispose() {
-                    return undefined;
+                    })));
                 }
             };
         }

@@ -24,7 +24,10 @@ function validateCollectors(collectors: readonly (AsyncMetricCollector | MetricC
     const identities = new Set<string>();
 
     for (const collector of collectors) {
-        if (collector.name.trim().length === 0 || identities.has(collector.name)) {
+        if (
+            collector.name.trim().length === 0 || collector.version.trim().length === 0 ||
+            identities.has(collector.name)
+        ) {
             throw new TypeError('Collectors require unique non-empty identities.');
         }
 

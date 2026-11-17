@@ -1,9 +1,11 @@
 import type { JsonValue, ReadonlyDeep } from 'type-fest';
+import type { MetricProvenance } from './benchmark-metrics.ts';
+import type { MeasurementEvidence } from './measurement-evidence.ts';
 import type { WorkloadParameters } from './workload-parameters.ts';
 import type { WorkId, WorkloadId } from './identity.ts';
 import type { BenchmarkTimelineEvidence, BenchmarkTimelinePolicy } from './benchmark-timeline.ts';
 
-export const benchmarkLifecycleVersion = 2;
+export const benchmarkLifecycleVersion = 3;
 
 export type BenchmarkWorkload<Parameters extends WorkloadParameters = WorkloadParameters> = {
     readonly name: string;
@@ -20,8 +22,16 @@ export type BenchmarkDefinitionSummary = {
     readonly workloads: readonly BenchmarkWorkload[];
     readonly measurement: {
         readonly mode: 'async' | 'sync';
+        readonly target: {
+            readonly name: string;
+            readonly version: string;
+            readonly scope: string;
+            readonly clock: string;
+            readonly semantics: Readonly<Record<string, string>>;
+        } | null;
         readonly collectors: readonly {
             readonly name: string;
+            readonly version: string | null;
             readonly metrics: readonly (MetricProvenance & { readonly name: string; })[];
         }[];
     } | {
@@ -52,26 +62,6 @@ type BudgetStatistics = {
     readonly quantile: { readonly kind: 'quantile'; readonly probability: number; };
 };
 export type BudgetStatistic = BudgetStatistics[keyof BudgetStatistics];
-
-export type MetricProvenance = {
-    readonly collector: string;
-    readonly scope: 'custom' | 'process' | 'region' | 'runtime' | 'thread';
-    readonly unit: string;
-};
-
-type MetricReadingStates = {
-    readonly available: {
-        readonly availability: 'available';
-        readonly value: number;
-        readonly provenance: MetricProvenance;
-    };
-    readonly unavailable: {
-        readonly availability: 'unavailable';
-        readonly reason: string;
-        readonly provenance: MetricProvenance;
-    };
-};
-export type MetricReading = MetricReadingStates[keyof MetricReadingStates];
 
 export type BenchmarkBudgetResult = {
     readonly metric: string;
@@ -159,6 +149,7 @@ type BenchmarkCooldownResults = {
 export type BenchmarkCooldownResult = BenchmarkCooldownResults[keyof BenchmarkCooldownResults];
 
 export type BenchmarkLifecycleResult = {
+    readonly measurement: MeasurementEvidence | null;
     readonly version: typeof benchmarkLifecycleVersion;
     readonly policy: ResolvedBenchmarkLifecyclePolicy;
     readonly garbageCollection: BenchmarkGarbageCollectionResult | null;

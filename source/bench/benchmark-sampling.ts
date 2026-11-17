@@ -62,7 +62,7 @@ async function sampledExecution(
     state: SamplingState
 ): Promise<AssertionResult> {
     await state.progress();
-    lifecycle.garbageCollection.validate();
+    lifecycle.validate();
     await using disposal = new AsyncDisposableStack();
     const processes = input.measurement.mode === 'process' || input.measurement.mode === 'module'
         ? createProcessSamplingSession(

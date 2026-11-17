@@ -1,7 +1,8 @@
 import type { BodyImplementation } from '../engine/test-body.ts';
 import type { WorkloadParameters } from '../engine/workload-parameters.ts';
 import type { BenchmarkScope } from '../engine/test-node.ts';
-import type { BenchmarkLifecyclePolicy, MetricReading, SamplingPolicy } from '../engine/benchmark-result.ts';
+import type { BenchmarkLifecyclePolicy, SamplingPolicy } from '../engine/benchmark-result.ts';
+import type { MetricReading } from '../engine/benchmark-metrics.ts';
 import type { AuthoringAnnotations, AuthoringControls } from '../packages/test/authoring-test-data.ts';
 import type { BenchmarkTimeline } from '../engine/benchmark-timeline.ts';
 import type { MeasurementSample, MeasurementStrategy } from './measurement-types.ts';

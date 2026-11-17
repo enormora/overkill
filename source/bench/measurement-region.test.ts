@@ -17,10 +17,18 @@ import type { AsyncMetricCollector, MetricCollector } from './measurement-types.
 function trackedCollector(name: string, record: (event: string) => void, disposalError: Error | null): MetricCollector {
     const metric = { name, collector: name, scope: 'custom' as const, unit: 'count' };
     return {
+        version: '1',
         name,
         mode: 'sync',
         metrics: [ metric ],
-        prepare() {
+        prepare(context) {
+            context.cleanup.defer(function releaseCollector() {
+                record(`dispose:${name}`);
+                if (disposalError !== null) {
+                    throw disposalError;
+                }
+            });
+
             record(`prepare:${name}`);
             return {
                 start() {
@@ -29,15 +37,9 @@ function trackedCollector(name: string, record: (event: string) => void, disposa
                 stop() {
                     record(`stop:${name}`);
                 },
-                complete() {
+                finalize(finalization) {
                     record(`complete:${name}`);
-                    return { [name]: availableMetric(1, metric) };
-                },
-                dispose() {
-                    record(`dispose:${name}`);
-                    if (disposalError !== null) {
-                        throw disposalError;
-                    }
+                    return finalization.readings({ [name]: availableMetric(1, metric) });
                 }
             };
         }
@@ -86,25 +88,11 @@ export const testNode = suite('measurement regions and collectors', [
         }, { exact: failure });
         return scope.assert.collect();
     }),
-    test('requires both process resource snapshots before reporting counters', function (scope) {
-        for (const boundary of [ 'none', 'start', 'stop' ]) {
-            const session = processResourceCollector().prepare(scope.signal);
-            if (boundary === 'start') {
-                session.start();
-            } else if (boundary === 'stop') {
-                session.stop();
-            }
-            scope.assert.throws(function () {
-                return session.complete();
-            }, { message: 'Resource measurement requires start and stop.' });
-            session.dispose();
-        }
-        return scope.assert.collect();
-    }),
     test('disposes asynchronous collectors after preparation and action failures', async function (scope) {
         const events: string[] = [];
         const failure = new Error('async preparation');
         const collector: AsyncMetricCollector = {
+            version: '1',
             name: 'failure',
             mode: 'async',
             metrics: [],
@@ -123,7 +111,7 @@ export const testNode = suite('measurement regions and collectors', [
                 return 1;
             });
         }, { exact: failure });
-        scope.assert.deepEqual(events, [ 'prepare:prepared', 'dispose:prepared' ]);
+        scope.assert.deepEqual(events, [ 'prepare:prepared', 'complete:prepared', 'dispose:prepared' ]);
         await scope.assert.rejects(async function () {
             return createMeasurementSample(wallClockMeasurement(), scope.signal).sample.measure(async function () {
                 throw failure;
@@ -141,7 +129,14 @@ export const testNode = suite('measurement regions and collectors', [
     test('rejects asynchronous cancellation before preparing runtime observers', async function (scope) {
         const failure = new Error('cancelled');
         await scope.assert.rejects(async function () {
-            return runtimeHealthCollector().prepare(AbortSignal.abort(failure));
+            return createAsyncMeasurementSample(
+                asyncMeasurementStrategy([ runtimeHealthCollector() ]),
+                AbortSignal.abort(failure)
+            )
+                .sample
+                .measure(function () {
+                    return 1;
+                });
         }, { type: Error });
         scope.assert.equal(runtimeHealthReadings([])['gcObservedCount']?.availability, 'unavailable');
         return scope.assert.collect();
@@ -185,10 +180,15 @@ export const testNode = suite('measurement regions and collectors', [
         const cancelled = new Error('cancelled during preparation');
         const counts = { actions: 0, disposed: 0 };
         const collector: AsyncMetricCollector = {
+            version: '1',
             name: 'cancelled',
             mode: 'async',
             metrics: [],
-            async prepare() {
+            async prepare(context) {
+                context.cleanup.defer(async function releaseCollector() {
+                    counts.disposed += 1;
+                });
+
                 await Promise.resolve();
                 controller.abort(cancelled);
                 return {
@@ -198,11 +198,8 @@ export const testNode = suite('measurement regions and collectors', [
                     stop() {
                         return undefined;
                     },
-                    async complete() {
-                        return {};
-                    },
-                    async dispose() {
-                        counts.disposed += 1;
+                    async finalize(finalization) {
+                        return finalization.readings({});
                     }
                 };
             }
@@ -323,7 +320,7 @@ export const testNode = suite('measurement regions and collectors', [
                 return 1;
             });
         }, { exact: error });
-        scope.assert.deepEqual(events, [ 'prepare:first', 'dispose:first' ]);
+        scope.assert.deepEqual(events, [ 'prepare:first', 'complete:first', 'dispose:first' ]);
         return scope.assert.collect();
     }),
     test('rejects cancellation and invalid operation counts before invoking work', function (scope) {
@@ -398,6 +395,89 @@ export const testNode = suite('measurement regions and collectors', [
         scope.assert.equal(measured.metrics['eventLoopDelayMeanMicroseconds']?.provenance.scope, 'runtime');
         scope.assert.equal(measured.metrics['eventLoopDelayMeanMicroseconds']?.availability, 'unavailable');
         scope.assert.equal(measured.metrics['gcObservedDurationMicroseconds']?.provenance.unit, 'microseconds');
+        return scope.assert.collect();
+    }),
+    test('awaits collector start and stop around the operation', async function (scope) {
+        const events: string[] = [];
+        const collector: AsyncMetricCollector = {
+            version: '1',
+            name: 'readiness',
+            mode: 'async',
+            metrics: [],
+            async prepare(context) {
+                context.cleanup.defer(async function releaseCollector() {
+                    events.push('released');
+                });
+
+                return {
+                    async start() {
+                        await Promise.resolve();
+                        events.push('ready');
+                    },
+                    async stop() {
+                        await Promise.resolve();
+                        events.push('stopped');
+                    },
+                    async finalize(finalization) {
+                        events.push('finalized');
+                        return finalization.readings({});
+                    }
+                };
+            }
+        };
+        const lifecycle = createAsyncMeasurementSample(asyncMeasurementStrategy([ collector ]), scope.signal);
+        await lifecycle.sample.measure(function () {
+            events.push('operation');
+        });
+        scope.assert.deepEqual(events, [ 'ready', 'operation', 'stopped', 'finalized', 'released' ]);
+        return scope.assert.collect();
+    }),
+    test('stops partially started collectors once before release', function (scope) {
+        const events: string[] = [];
+        const failure = new Error('start failed');
+        const first = trackedCollector('first', function (event) {
+            events.push(event);
+        }, null);
+        const second: MetricCollector = {
+            version: '1',
+            name: 'second',
+            mode: 'sync',
+            metrics: [],
+            prepare(context) {
+                context.cleanup.defer(function releaseCollector() {
+                    events.push('dispose:second');
+                });
+
+                return {
+                    start() {
+                        events.push('start:second');
+                        throw failure;
+                    },
+                    stop() {
+                        events.push('stop:second');
+                    },
+                    finalize(finalization) {
+                        return finalization.readings({});
+                    }
+                };
+            }
+        };
+        const lifecycle = createMeasurementSample(measurementStrategy([ first, second ]), scope.signal);
+        scope.assert.throws(function () {
+            lifecycle.sample.measure(function () {
+                events.push('operation');
+            });
+        }, { exact: failure });
+        scope.assert.deepEqual(events, [
+            'prepare:first',
+            'start:first',
+            'start:second',
+            'stop:first',
+            'stop:second',
+            'complete:first',
+            'dispose:second',
+            'dispose:first'
+        ]);
         return scope.assert.collect();
     })
 ]);

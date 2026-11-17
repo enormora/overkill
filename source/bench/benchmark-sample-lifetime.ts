@@ -1,4 +1,5 @@
 import { CaseRunnerError, isCaseRunnerError } from '../engine/run-result.ts';
+import { measurementContext } from './measurement-context.ts';
 import type { BenchmarkLifecycle } from './benchmark-lifecycle.ts';
 import type { SamplingSessionInput } from './benchmark-sampling-types.ts';
 import { createAsyncMeasurementSample, createMeasurementSample } from './measurement-region.ts';
@@ -87,6 +88,11 @@ async function observeInvocation(
         await processes?.dispose();
     });
     const lifecycle = processes ?? functionSample(input);
+    if (processes === null) {
+        disposal.defer(async function closeFunctionMeasurement() {
+            await lifecycle.dispose();
+        });
+    }
     const returned: unknown = await Reflect.apply(input.body, undefined, [ {
         ...input.context,
         workload: input.workload,
@@ -116,9 +122,13 @@ async function attemptInvocation(
     }
 }
 
-function collectAfterCleanup(input: BenchmarkInvocationInput, failed: boolean, collectGarbage: () => void): void {
+async function collectAfterCleanup(
+    input: BenchmarkInvocationInput,
+    failed: boolean,
+    collectGarbage: () => Promise<void>
+): Promise<void> {
     try {
-        collectGarbage();
+        await collectGarbage();
     } catch (error: unknown) {
         if (failed && isCaseRunnerError(error)) {
             input.scope.reportError(error);
@@ -128,24 +138,27 @@ function collectAfterCleanup(input: BenchmarkInvocationInput, failed: boolean, c
     }
 }
 
-type InvocationLifecycle = Pick<BenchmarkLifecycle, 'garbageCollection' | 'recordCleanup'>;
-function collectInvocationGarbage(
+type InvocationLifecycle = Pick<
+    BenchmarkLifecycle,
+    'garbageCollection' | 'measurement' | 'recordCleanup'
+>;
+async function collectInvocationGarbage(
     input: BenchmarkInvocationInput,
     lifecycle: InvocationLifecycle,
     invocation: InvocationOutcome,
     result: SampleCleanupResult
-): void {
-    const collect = function collectAfterInvocation(): void {
-        collectAfterCleanup(
+): Promise<void> {
+    const collect = async function collectAfterInvocation(): Promise<void> {
+        await collectAfterCleanup(
             input,
             invocation.kind === 'failed' || result.failures > 0,
             lifecycle.garbageCollection.collect
         );
     };
     if (input.lifecycle.garbageCollection === 'after-sample') {
-        timelineSpan('harness', 'forced GC', collect);
+        await timelineSpan('harness', 'forced GC', collect);
     } else {
-        collect();
+        await collect();
     }
 }
 async function completeInvocation(
@@ -156,7 +169,7 @@ async function completeInvocation(
 ): Promise<void> {
     const result = await timelineSpan('harness', 'sample cleanup', cleanup.finish);
     lifecycle.recordCleanup(result);
-    collectInvocationGarbage(input, lifecycle, invocation, result);
+    await collectInvocationGarbage(input, lifecycle, invocation, result);
     if (invocation.kind === 'failed') {
         throw invocation.error;
     }
@@ -174,6 +187,22 @@ export async function measureBenchmarkInvocation(
 ): Promise<void> {
     beginTimelineInvocation(measurement.phase);
     const cleanup = createSampleCleanup(input.scope.reportCleanupError);
-    const invocation = await attemptInvocation(input, cleanup, observe, measurement);
+    const context = lifecycle.measurement.begin(measurement.phase);
+    const invocation = await measurementContext.run(context, async function runInvocation() {
+        return await attemptInvocation(input, cleanup, observe, measurement);
+    });
+    if (measurement.processes !== null) {
+        context.record({
+            invocation: context.invocation,
+            target: context.target.identity,
+            collectors: [],
+            status: invocation.kind === 'complete' ? 'complete' : 'incomplete',
+            errors: invocation.kind === 'failed'
+                ? [ invocation.error instanceof Error ? invocation.error.message : String(invocation.error) ]
+                : [],
+            durationMicroseconds: null,
+            lifecycleMicroseconds: null
+        });
+    }
     await completeInvocation(input, lifecycle, cleanup, invocation);
 }

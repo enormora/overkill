@@ -1,23 +1,38 @@
 import { z } from 'zod/v4';
 import { metricReadingSchema } from '../packages/run/benchmark-calibration.entry-point.ts';
-import type { BenchmarkMetricSummary, MetricReading } from '../engine/benchmark-result.ts';
+import type { BenchmarkMetricSummary } from '../engine/benchmark-result.ts';
+import type { MetricReading } from '../engine/benchmark-metrics.ts';
+import type { ReadingAttribution } from '../engine/measurement-evidence.ts';
+import { attributeReading } from './measurement-attribution.ts';
 import { observationMean, observationMedian } from './statistical-primitives.ts';
 import { availableMetric } from './metric-reading.ts';
 
-const returnedMetricsSchema = z.record(z.string().min(1), z.union([ z.number(), metricReadingSchema ]));
+const returnedReadingSchema = z.preprocess(function attributeSuppliedReading(value) {
+    if (typeof value === 'object' && value !== null) {
+        attributeReading(value);
+    }
+    return value;
+}, metricReadingSchema);
+const returnedMetricsSchema = z.record(z.string().min(1), z.union([ z.number(), returnedReadingSchema ]));
 
 export type MetricObservations = {
     readonly validate: (reading: MetricReading) => void;
     readonly append: (reading: MetricReading) => void;
     readonly readings: () => readonly MetricReading[];
+    readonly envelopes: () => readonly {
+        readonly reading: MetricReading;
+        readonly attribution: ReadingAttribution | null;
+    }[];
     readonly values: () => readonly number[];
 };
 
 export function createMetricObservations(): MetricObservations {
     const readings: MetricReading[] = [];
     const values: number[] = [];
+    const envelopes: { readonly reading: MetricReading; readonly attribution: ReadingAttribution | null; }[] = [];
     let provenance: MetricReading['provenance'] | null = null;
     const validate = function validateReading(reading: MetricReading): void {
+        attributeReading(reading);
         if (
             provenance !== null && reading.availability === 'available' &&
             JSON.stringify(provenance) !== JSON.stringify(reading.provenance)
@@ -30,10 +45,14 @@ export function createMetricObservations(): MetricObservations {
         append(reading) {
             validate(reading);
             readings.push(reading);
+            envelopes.push({ reading, attribution: attributeReading(reading) });
             if (reading.availability === 'available') {
                 provenance = reading.provenance;
                 values.push(reading.value);
             }
+        },
+        envelopes() {
+            return envelopes;
         },
         readings() {
             return readings;

@@ -26,6 +26,7 @@ const adapter: PerformanceBaselineAdapter = {
     }
 };
 const input = {
+    measurement: null,
     normalization: null,
     actual,
     adapter,

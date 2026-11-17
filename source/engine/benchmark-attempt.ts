@@ -1,3 +1,4 @@
+import type { AttemptId } from './identity.ts';
 import { executableBody } from './test-body.ts';
 import type { BenchmarkExecutionEnvironment } from './benchmark-environment.ts';
 import type { BenchmarkExecutionResult } from './benchmark-result.ts';
@@ -49,7 +50,8 @@ export function createBenchmarkAttempt(
 
 export function builderBodyForAttempt(
     testCase: TestPlanCase,
-    attempt: BenchmarkAttempt
+    attempt: BenchmarkAttempt,
+    attemptId: AttemptId
 ): TestBody {
     const { execution } = testCase;
     if (execution.kind !== 'body' || execution.bodyMode === 'throwing') {
@@ -65,6 +67,7 @@ export function builderBodyForAttempt(
     return async function runBenchmark(scope) {
         return executableBody(execution.body)({
             workId: testCase.workId,
+            attemptId,
             benchmarkEnvironment: attempt.benchmarkEnvironment,
             reportCleanupError: attempt.reportCleanupError,
             cleanup: scope.cleanup,

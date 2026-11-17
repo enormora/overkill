@@ -1,4 +1,5 @@
 import { canonicalIdentityJson } from '../canonical-identity.ts';
+import { readMeasurementTarget } from './measurement-target.ts';
 import type { MetricDeclaration } from './measurement-types.ts';
 import type { UncalibratedMeasurement } from './measurement-definition.ts';
 import type { MetricNormalization } from './calibration-definition.ts';
@@ -29,6 +30,9 @@ export function defaultMetricNormalization(
     measurement: UncalibratedMeasurement,
     declared: ReadonlySet<string>
 ): Readonly<Record<string, MetricNormalization>> {
+    if (readMeasurementTarget(measurement)?.normalization === 'raw') {
+        return {};
+    }
     const metrics = new Map(timingMetrics);
     for (const metric of nativeCollectorMetrics(measurement)) {
         if (

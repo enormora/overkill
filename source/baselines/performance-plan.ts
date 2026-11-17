@@ -1,3 +1,4 @@
+import type { MeasurementComparisonIdentity } from '../engine/measurement-evidence.ts';
 import type {
     BenchmarkNormalizationEvidence,
     CalibrationIdentity,
@@ -12,6 +13,8 @@ import { planBaselineChange } from './baseline-planning.ts';
 import type { PerformanceBaselineAdapter, PerformanceBaselineValue } from './performance-adapter.ts';
 import {
     normalizedPerformanceBaselineVersion,
+    currentPerformanceNormalization,
+    measuredPerformanceBaselineVersion,
     type BaselineChange,
     type BaselineUpdateMode,
     type StoredPerformanceBaseline
@@ -19,6 +22,7 @@ import {
 
 type PerformanceProposalPlan = {
     readonly normalization: BenchmarkNormalizationEvidence | null;
+    readonly measurement: MeasurementComparisonIdentity | null;
     readonly actual: PerformanceBaselineValue;
     readonly adapter: PerformanceBaselineAdapter;
     readonly existing: StoredPerformanceBaseline | null;
@@ -58,7 +62,7 @@ function unchangedExpectation(input: PerformanceProposalPlan, value: Performance
     if (existing === null) {
         return false;
     }
-    const normalization = existing.version === normalizedPerformanceBaselineVersion ? existing.normalization : null;
+    const normalization = currentPerformanceNormalization(existing);
     const storedBasis = canonicalIdentityJson(normalizationBudgetBasis(normalization));
     const currentBasis = canonicalIdentityJson(normalizationBudgetBasis(input.normalization));
     return compareExactly(existing.expected.value, value) && storedBasis === currentBasis;
@@ -69,17 +73,24 @@ function proposedPerformanceBaseline(input: PerformanceProposalPlan): StoredPerf
     if (snapshot === null) {
         throw new Error('Performance baseline proposal exceeds the configured artifact byte limit.');
     }
-    const baseline: StoredPerformanceBaseline = {
+    const baseline = {
         adapter: input.adapter.id,
         expected: { calibration: input.actual.calibration, value: snapshot.value },
         profile: input.profile,
-        subtype: 'performance-baseline',
-        ...input.normalization === null
-            ? { version: 1 as const }
-            : { version: normalizedPerformanceBaselineVersion, normalization: input.normalization },
+        subtype: 'performance-baseline' as const,
         work: input.work
     };
-    return baseline;
+    if (input.measurement !== null) {
+        return {
+            ...baseline,
+            version: measuredPerformanceBaselineVersion,
+            measurement: input.measurement,
+            normalization: input.normalization
+        };
+    }
+    return input.normalization === null
+        ? { ...baseline, version: 1 }
+        : { ...baseline, version: normalizedPerformanceBaselineVersion, normalization: input.normalization };
 }
 export function proposePerformanceBaseline(input: PerformanceProposalPlan): BaselineChange | null {
     return planBaselineChange({

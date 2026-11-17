@@ -32,6 +32,7 @@ function calibrationScope(scope: TestScope): BenchmarkScope {
     };
     return {
         workId,
+        attemptId: { index: 0 },
         workload: selectedWorkload,
         signal: scope.signal,
         cleanup: scope.cleanup,

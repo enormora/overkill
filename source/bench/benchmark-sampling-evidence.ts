@@ -45,9 +45,12 @@ export async function recordObservationSamples(
     }
     const artifact = await attachmentsForProducer({ kind: 'case' }).json(
         { name, mediaType: 'application/json' },
-        Object.fromEntries(Array.from(observations, function rawMetric([ metric, readings ]) {
-            return [ metric, readings.readings() ];
-        }))
+        {
+            version: 2,
+            metrics: Object.fromEntries(Array.from(observations, function rawMetric([ metric, readings ]) {
+                return [ metric, readings.envelopes() ];
+            }))
+        }
     );
     const omitted = artifact.payload.content.kind === 'omitted';
     return {

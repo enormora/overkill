@@ -9,7 +9,12 @@ import type {
     PerformanceBaselineValue,
     PerformanceComparison
 } from './performance-adapter.ts';
-import type { BaselineChange, BaselineUpdateMode, StoredPerformanceBaseline } from './performance-baseline.ts';
+import {
+    performanceMeasurementIdentity,
+    type BaselineChange,
+    type BaselineUpdateMode,
+    type StoredPerformanceBaseline
+} from './performance-baseline.ts';
 import type { PerformanceObservationEvidence } from './performance-presentation.ts';
 import { observePerformance } from './performance-observation.ts';
 import { proposePerformanceBaseline } from './performance-plan.ts';
@@ -99,6 +104,7 @@ export function evaluatePerformanceBaseline(input: PerformanceEvaluationInput): 
         ...input,
         actual,
         work,
+        measurement: performanceMeasurementIdentity(input.event.benchmark),
         normalization: benchmarkNormalization(input)
     });
     const checked = baselineChecks(input, actual);

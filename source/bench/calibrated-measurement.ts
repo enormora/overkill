@@ -1,3 +1,4 @@
+import { readMeasurementTarget, withMeasurementTarget } from './measurement-target.ts';
 import { measurementStrategy, asyncMeasurementStrategy } from './measurement-strategy.ts';
 import { defaultMetricNormalization } from './default-normalization.ts';
 import { processMeasurement } from './process-measurement.ts';
@@ -46,9 +47,11 @@ function plainStrategy(measurement: UncalibratedMeasurement): UncalibratedMeasur
     if (measurement.mode === 'process') {
         return processMeasurement(measurement);
     }
-    return measurement.mode === 'sync'
+    const strategy = measurement.mode === 'sync'
         ? measurementStrategy(measurement.collectors)
         : asyncMeasurementStrategy(measurement.collectors);
+    const target = readMeasurementTarget(measurement);
+    return target === null ? strategy : withMeasurementTarget(target, strategy);
 }
 function resolvedStrategy(measurement: UncalibratedMeasurement): UncalibratedMeasurement {
     const strategy = plainStrategy(measurement);

@@ -1,4 +1,4 @@
-import type { MetricReading } from '../engine/benchmark-result.ts';
+import type { MetricReading } from '../engine/benchmark-metrics.ts';
 import type { ProcessCommand } from './process-command.ts';
 import type { ProcessOutput } from './process-output.ts';
 import type { ProcessCompletionResult } from './process-interactions.ts';

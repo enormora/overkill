@@ -3,12 +3,13 @@ import type { NonEmptyReadonlyArray, ResolvableSourceLocation } from '../asserti
 import type { BodyImplementation } from './test-body.ts';
 import type { BenchmarkExecutionEnvironment } from './benchmark-environment.ts';
 import type { BenchmarkDefinitionSummary, BenchmarkExecutionResult } from './benchmark-result.ts';
-import type { WorkId, WorkloadId } from './identity.ts';
+import type { WorkId, WorkloadId, AttemptId } from './identity.ts';
 import type { CaseRunnerError } from './run-result.ts';
 import type { TestAnnotationsInput, TestControlsInput } from './test-data.ts';
 
 export type BenchmarkScope = {
     readonly workId: WorkId;
+    readonly attemptId: AttemptId;
     readonly benchmarkEnvironment: BenchmarkExecutionEnvironment | null;
     readonly reportCleanupError: (error: unknown) => void;
     readonly cleanup: (callback: () => Promise<void> | void) => void;

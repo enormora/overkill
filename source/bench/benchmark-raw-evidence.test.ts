@@ -73,7 +73,7 @@ export const testNode = suite('benchmark raw evidence', [
         });
         scope.assert.partialDeepEqual(artifact.payload.content, {
             kind: 'json',
-            value: { value: observations.readings() }
+            value: { version: 2, metrics: { value: observations.envelopes() } }
         });
         scope.assert.deepEqual(await fixture.execution.finish(), []);
         return scope.assert.collect();

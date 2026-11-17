@@ -1,4 +1,5 @@
-import type { BenchmarkMetricSummary, MetricReading } from '../engine/benchmark-result.ts';
+import type { BenchmarkMetricSummary } from '../engine/benchmark-result.ts';
+import type { MetricReading } from '../engine/benchmark-metrics.ts';
 import { CaseRunnerError } from '../engine/run-result.ts';
 import {
     createMetricObservations,
