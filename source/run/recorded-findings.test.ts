@@ -1,9 +1,9 @@
-import type { RunRecordTestOutcome } from './run-record-outcomes.ts';
-import { createDefaultWorkId } from '../engine/identity.ts';
 import { runIfMain } from '#test-runner';
+import { createDefaultWorkId } from '../engine/identity.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import type { FailedCheck, RunResult, TestOutcome } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+import type { RunRecordTestOutcome } from './run-record-outcomes.ts';
 import { recordedRunResult, serializeRunDiagnostics, parseSerializedRunDiagnostics } from './run-record-result.ts';
 
 function findings(): readonly [FailedCheck, ...readonly FailedCheck[]] {
@@ -66,20 +66,25 @@ function nestedFindings(): RunResult {
     };
 }
 type FindingSummary = { readonly target: string | null; readonly summary: string; };
-function outcomeFindings(outcome: RunRecordTestOutcome | null | undefined): {
+type OutcomeFindings = {
     readonly assertions: readonly string[];
     readonly children: readonly string[];
     readonly resources: readonly FindingSummary[];
-} {
+};
+type FailedRecordedOutcome = Extract<RunRecordTestOutcome, { readonly kind: 'fail'; }>;
+function failureGroups(outcome: RunRecordTestOutcome | null | undefined): FailedRecordedOutcome['failures'] {
     if (outcome?.kind !== 'fail') {
         throw new Error('Expected failed recorded outcome.');
     }
-    const [ assertion, resource ] = outcome.failures;
-    if (assertion?.kind !== 'assertion' || resource?.kind !== 'resource-check') {
+    return outcome.failures;
+}
+function outcomeFindings(outcome: RunRecordTestOutcome | null | undefined): OutcomeFindings {
+    const [ assertion, resource ] = failureGroups(outcome);
+    if (assertion.kind !== 'assertion' || resource?.kind !== 'resource-check') {
         throw new Error('Expected assertion and resource evidence.');
     }
     const composite = assertion.checks[0];
-    if (composite?.kind !== 'composite') {
+    if (composite.kind !== 'composite') {
         throw new Error('Expected composite assertion evidence.');
     }
     return {
@@ -109,7 +114,8 @@ export const testNode = suite('recorded nested findings', [
             }),
             [ [ 'primary', 'first finding' ], [ null, 'second finding' ] ]
         );
-        const restored = parseSerializedRunDiagnostics(JSON.parse(JSON.stringify(serializeRunDiagnostics(live))));
+        const encoded = JSON.stringify(serializeRunDiagnostics(live));
+        const restored = parseSerializedRunDiagnostics(JSON.parse(encoded));
         scope.assert.deepEqual<unknown, unknown>(
             restored.resourceChecks[0]?.failures.map(function finding(value) {
                 return [ value.target, value.check.summary ];
