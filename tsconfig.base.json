@@ -7,6 +7,17 @@
             "ESNext.Disposable"
         ],
         "importHelpers": true,
-        "outDir": "./target/build"
+        "outDir": "./target/build",
+        "paths": {
+            "@typescript/typescript6": [
+                "./node_modules/typescript/lib/typescript.d.ts"
+            ],
+            "typescript/sync": [
+                "./node_modules/typescript-beta/dist/api/sync/api.d.ts"
+            ],
+            "typescript/ast": [
+                "./node_modules/typescript-beta/dist/ast/index.d.ts"
+            ]
+        }
     }
 }

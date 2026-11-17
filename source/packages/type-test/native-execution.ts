@@ -13,8 +13,10 @@ type NativeExecution = {
     readonly request: CheckerRequest;
     readonly compilerVersion: string;
 };
-type NativeExecutionResult = { readonly result: RunResult; readonly provenance: readonly GeneratedModuleResult[]; };
-
+type NativeExecutionResult = {
+    readonly result: RunResult;
+    readonly provenance: readonly GeneratedModuleResult[];
+};
 async function checkNative(input: NativeExecution, started: number): Promise<NativeExecutionResult> {
     const checked = await checkGeneratedInputs(input.request);
     if (checked.compilerVersion !== input.compilerVersion) {
@@ -39,12 +41,12 @@ async function executeNative(input: NativeExecution): Promise<NativeExecutionRes
 }
 
 export async function collectProject(plan: TestPlan, project: FrozenProject): Promise<CollectedCheckerRun> {
-    const translation = translateNativePlan({
-        compiler: project.compiler,
+    const translation = await translateNativePlan({
+        compiler: project.compiler.syntax,
         program: project.program,
-        checker: project.program.getTypeChecker()
+        checker: project.configured.checker
     }, plan);
-    const { configFile, ...compilerOptions } = project.project.options;
+    const compilerOptions = project.project.options;
     const configurationJson = JSON.stringify({
         options: compilerOptions,
         files: project.project.fileNames,
@@ -82,7 +84,7 @@ export async function collectProject(plan: TestPlan, project: FrozenProject): Pr
                         compilerVersion: project.compiler.version,
                         request: {
                             projectConfigPath: project.projectConfigPath,
-                            compiler: { kind: 'version', version: project.compiler.version },
+                            project,
                             modules: translation.modules
                         }
                     });

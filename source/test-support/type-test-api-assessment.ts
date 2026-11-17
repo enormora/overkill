@@ -1,7 +1,8 @@
 import type { SourceFile } from 'typescript-beta/ast';
-import { API, type Type, type Project } from 'typescript-beta/sync';
+import { API, type Type, type Project } from 'typescript-beta/async';
 import { isTypeAliasDeclaration, isVariableStatement, isIdentifier } from 'typescript-beta/ast/is';
 import { version } from 'typescript-beta';
+import { createCompilerLifetime } from '../packages/type-test/compiler-lifetime.ts';
 
 export type CapabilityEvidence = {
     readonly requirement: string;
@@ -11,9 +12,16 @@ export type CapabilityEvidence = {
     readonly calls: number;
     readonly errorType: boolean;
 };
-
-function inferenceOperands(project: Project, source: SourceFile): readonly (readonly [string, Type])[] {
-    const operands: (readonly [string, Type])[] = [];
+async function inferenceOperands(project: Project, source: SourceFile): Promise<
+    readonly (readonly [
+        string,
+        Type
+    ])[]
+> {
+    const operands: (readonly [
+        string,
+        Type
+    ])[] = [];
     const statements = source.statements.filter(isVariableStatement);
     for (const statement of statements) {
         for (const declaration of statement.declarationList.declarations) {
@@ -21,79 +29,101 @@ function inferenceOperands(project: Project, source: SourceFile): readonly (read
                 isIdentifier(declaration.name) && declaration.name.text === 'inferred' &&
                 declaration.initializer !== undefined
             ) {
-                operands.push([ 'InferenceActual', project.checker.getTypeAtLocation(declaration.initializer) ]);
+                operands.push([ 'InferenceActual', await project.checker.getTypeAtLocation(declaration.initializer) ]);
             }
         }
     }
     return operands;
 }
 
-function projectOperands(project: Project, fileNames: readonly string[]): Map<string, Type> {
+async function sourceOperands(project: Project, source: SourceFile): Promise<readonly (readonly [string, Type])[]> {
+    const operands = Array.from(await inferenceOperands(project, source));
+    for (const statement of source.statements) {
+        if (isTypeAliasDeclaration(statement) && statement.name.text !== 'InferenceActual') {
+            operands.push([ statement.name.text, await project.checker.getTypeFromTypeNode(statement.type) ]);
+        }
+    }
+    return operands;
+}
+
+async function projectOperands(project: Project, fileNames: readonly string[]): Promise<Map<string, Type>> {
     const operands = new Map<string, Type>();
     for (const path of fileNames) {
-        const source = project.program.getSourceFile(path);
+        const source = await project.program.getSourceFile(path);
         if (source === undefined) {
             throw new Error('An original source file is unavailable.');
         }
-        inferenceOperands(project, source).forEach(function retainExpression([ name, type ]) {
+        const inferred = await sourceOperands(project, source);
+        inferred.forEach(function retainExpression([ name, type ]) {
             operands.set(name, type);
         });
-        for (const statement of source.statements) {
-            if (isTypeAliasDeclaration(statement) && statement.name.text !== 'InferenceActual') {
-                operands.set(statement.name.text, project.checker.getTypeFromTypeNode(statement.type));
-            }
-        }
     }
     return operands;
 }
 
-function validateProject(project: Project): void {
+async function validateProject(project: Project): Promise<void> {
     const diagnostics = [
-        ...project.program.getConfigFileParsingDiagnostics(),
-        ...project.program.getGlobalDiagnostics(),
-        ...project.program.getProgramDiagnostics(),
-        ...project.program.getSyntacticDiagnostics(),
-        ...project.program.getSemanticDiagnostics()
+        ...await project.program.getConfigFileParsingDiagnostics(),
+        ...await project.program.getGlobalDiagnostics(),
+        ...await project.program.getProgramDiagnostics(),
+        ...await project.program.getSyntacticDiagnostics(),
+        ...await project.program.getSemanticDiagnostics()
     ];
     if (diagnostics.length > 0) {
         throw new Error('The assessment project has compiler diagnostics.', { cause: diagnostics });
     }
 }
 
-function compareProject(project: Project, fileNames: readonly string[]): readonly CapabilityEvidence[] {
-    const operands = projectOperands(project, fileNames);
-    return Array.from(operands).flatMap(function compareOperands([ name, actual ]) {
-        if (!name.endsWith('Actual')) {
-            return [];
-        }
+async function relationEvidence(
+    project: Project,
+    name: string,
+    actual: Type,
+    expected: Type
+): Promise<CapabilityEvidence> {
+    const properties = await actual.getProperties();
+    const signatures = await actual.getCallSignatures();
+    return {
+        requirement: name.replace(/Actual$/u, ''),
+        forward: await project.checker.isTypeAssignableTo(actual, expected),
+        reverse: await project.checker.isTypeAssignableTo(expected, actual),
+        properties: properties.map(function propertyName(property) {
+            return property.name;
+        }),
+        calls: signatures.length,
+        errorType: actual.isErrorType()
+    };
+}
+
+async function compareProject(project: Project, fileNames: readonly string[]): Promise<readonly CapabilityEvidence[]> {
+    const operands = await projectOperands(project, fileNames);
+    const evidence: CapabilityEvidence[] = [];
+    const comparisons = Array.from(operands).filter(function actualOperand([ name ]) {
+        return name.endsWith('Actual');
+    });
+    for (const [ name, actual ] of comparisons) {
         const expected = operands.get(name.replace(/Actual$/u, 'Expected'));
         if (expected === undefined || actual.isErrorType() || expected.isErrorType()) {
             throw new Error('Missing or invalid comparison operands.');
         }
-        return [ {
-            requirement: name.replace(/Actual$/u, ''),
-            forward: project.checker.isTypeAssignableTo(actual, expected),
-            reverse: project.checker.isTypeAssignableTo(expected, actual),
-            properties: actual.getProperties().map(function propertyName(property) {
-                return property.name;
-            }),
-            calls: actual.getCallSignatures().length,
-            errorType: actual.isErrorType()
-        } ];
-    });
+        evidence.push(await relationEvidence(project, name, actual, expected));
+    }
+    return evidence;
 }
 
-export function assessCompilerApi(projectConfigPath: string): readonly CapabilityEvidence[] {
-    if (version !== '7.1.0-beta') {
-        throw new Error('The assessment requires TypeScript 7.1.0-beta.');
-    }
-    using api = new API();
-    const configuration = api.parseConfigFile(projectConfigPath);
-    using snapshot = api.createSnapshot({ openProjects: [ projectConfigPath ] });
-    const project = snapshot.getConfiguredProject(projectConfigPath);
-    if (project === undefined) {
-        throw new Error('The original configured project was not loaded.');
-    }
-    validateProject(project);
-    return compareProject(project, configuration.fileNames);
+export async function assessCompilerApi(projectConfigPath: string): Promise<readonly CapabilityEvidence[]> {
+    await using lifetime = createCompilerLifetime();
+    return await lifetime.run(async function assess() {
+        if (version !== '7.1.0-beta') {
+            throw new Error('The assessment requires TypeScript 7.1.0-beta.');
+        }
+        await using api = new API();
+        const configuration = await api.parseConfigFile(projectConfigPath);
+        await using snapshot = await api.createSnapshot({ openProjects: [ projectConfigPath ] });
+        const project = snapshot.getConfiguredProject(projectConfigPath);
+        if (project === undefined) {
+            throw new Error('The original configured project was not loaded.');
+        }
+        await validateProject(project);
+        return await compareProject(project, configuration.fileNames);
+    });
 }

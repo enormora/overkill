@@ -1,10 +1,33 @@
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { runIfMain } from '#test-runner';
-import * as compiler from 'typescript';
+import { API, ModuleKind } from 'typescript-beta/async';
 import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { createCompilerLifetime } from './compiler-lifetime.ts';
+import type { GeneratedInputRequest } from './generated-input-types.ts';
+import { loadProject, disposeProject, type FrozenProject } from './frozen-project.ts';
 import { checkGeneratedInputs } from './checker.entry-point.ts';
 import { withGeneratedInputs, type TranslatedModule } from './generated-input.entry-point.ts';
+
+async function compilerProject(scope: TestScope, directory: string): Promise<FrozenProject> {
+    const frozen = await loadProject(join(directory, 'tsconfig.json'), {
+        kind: 'package',
+        specifier: 'typescript-beta',
+        version: '7.1.0-beta'
+    }, process.cwd());
+    scope.cleanup(async function () {
+        await disposeProject(frozen);
+    });
+    return frozen;
+}
+
+async function compilerInput(
+    scope: TestScope,
+    directory: string
+): Promise<Pick<GeneratedInputRequest, 'compiler' | 'project'>> {
+    const frozen = await compilerProject(scope, directory);
+    return { project: frozen, compiler: frozen.compiler.syntax };
+}
 
 async function fixture(scope: TestScope): Promise<string> {
     const directory = await mkdtemp(join(process.cwd(), 'target-generated-'));
@@ -49,27 +72,53 @@ async function generatedNames(directory: string): Promise<readonly string[]> {
         return path.startsWith('.');
     });
 }
-async function checkerEvents(
-    directory: string,
-    module: TranslatedModule
-): Promise<
-    { readonly events: readonly string[]; readonly versions: readonly string[]; readonly checkerConfigPath: string; }
-> {
-    const result = await checkGeneratedInputs({
-        compiler: { kind: 'local' },
-        projectConfigPath: join(directory, 'tsconfig.json'),
-        modules: [ module ]
-    });
-    const events = result.events.map(function name(event) {
-        return event[0];
-    });
-    const versions = result.events.flatMap(function identity(event) {
-        return event[0] === 'project:uses'
-            ? [ `${event[1].compilerVersion}@${event[1].projectConfig.specifier}` ]
-            : [];
-    });
-    return { events, versions, checkerConfigPath: result.checkerConfigPath };
+
+async function checkerEvents(directory: string, module: TranslatedModule): Promise<{
+    readonly events: readonly string[];
+    readonly versions: readonly string[];
+    readonly checkerConfigPath: string;
+}> {
+    const project = await loadProject(join(directory, 'tsconfig.json'), {
+        kind: 'package',
+        specifier: 'typescript-beta',
+        version: '7.1.0-beta'
+    }, process.cwd());
+    try {
+        const result = await checkGeneratedInputs({
+            project,
+            projectConfigPath: join(directory, 'tsconfig.json'),
+            modules: [ module ]
+        });
+        const events = result.events.map(function name(event) {
+            return event[0];
+        });
+        const versions = result.events.flatMap(function identity(event) {
+            return event[0] === 'project:uses'
+                ? [ `${event[1].compilerVersion}@${event[1].projectConfig.specifier}` ]
+                : [];
+        });
+        return { events, versions, checkerConfigPath: result.checkerConfigPath };
+    } finally {
+        await disposeProject(project);
+    }
 }
+
+async function assertNoDiagnostics(scope: TestScope, path: string): Promise<void> {
+    await using lifetime = createCompilerLifetime();
+    await lifetime.run(async function execute() {
+        await using api = new API();
+        await using program = await api.createProgram([ path ], {
+            strict: true,
+            noEmit: true,
+            module: ModuleKind.NodeNext,
+            allowImportingTsExtensions: true,
+            types: []
+        });
+        const diagnostics = await program.getSemanticDiagnostics();
+        scope.assert.equal(diagnostics.length, 0);
+    });
+}
+
 export const testNode = suite('generated type-test input', [
     test('repairs direct nominal self-imports and retains original locations', async function (scope: TestScope) {
         const directory = await fixture(scope);
@@ -79,7 +128,7 @@ export const testNode = suite('generated type-test input', [
             "import type { Nominal as Self } from './self.ts';\nexport class Nominal { private value = 1; }\nconst value: Self = new Nominal();\n"
         );
         await withGeneratedInputs({
-            compiler,
+            ...await compilerInput(scope, directory),
             projectConfigPath: join(directory, 'tsconfig.json'),
             modules: [ module ]
         }, async function check(batch) {
@@ -91,24 +140,14 @@ export const testNode = suite('generated type-test input', [
             const text = await readFile(result.path, 'utf8');
             scope.assert.equal(text.includes('from "./.overkill-type-test-'), true);
             scope.assert.equal(result.provenance.repairs.length, 1);
-            const program = compiler.createProgram([ result.path ], {
-                strict: true,
-                noEmit: true,
-                module: compiler.ModuleKind.NodeNext,
-                allowImportingTsExtensions: true,
-                types: []
-            });
-            scope.assert.equal(compiler.getPreEmitDiagnostics(program).length, 0);
+            await assertNoDiagnostics(scope, result.path);
             scope.assert.deepEqual(batch.mapRange(result.path, { start: 0, end: 6 }, 'generated'), [ {
                 start: 0,
                 end: 6
             } ]);
         });
         scope.assert.equal(await readFile(module.path, 'utf8'), module.originalText);
-        scope.assert.deepEqual(
-            await generatedNames(directory),
-            []
-        );
+        scope.assert.deepEqual(await generatedNames(directory), []);
         return scope.assert.collect();
     }),
     test('propagates ambiguity only through supplied translated dependencies', async function (scope: TestScope) {
@@ -118,22 +157,20 @@ export const testNode = suite('generated type-test input', [
             source(directory, 'dependent.ts', "import './bad.ts';\nexport {};"),
             source(directory, 'independent.mts', 'export const value = 1;')
         ]);
-        await withGeneratedInputs(
-            { compiler, projectConfigPath: join(directory, 'tsconfig.json'), modules },
-            async function check(batch) {
-                scope.assert.deepEqual(
-                    batch.modules.map(function kind(module) {
-                        return module.kind;
-                    }),
-                    [ 'ambiguous', 'ambiguous', 'ready' ]
-                );
-                const names = await generatedNames(directory);
-                scope.assert.equal(
-                    names.length,
-                    1
-                );
-            }
-        );
+        await withGeneratedInputs({
+            ...await compilerInput(scope, directory),
+            projectConfigPath: join(directory, 'tsconfig.json'),
+            modules
+        }, async function check(batch) {
+            scope.assert.deepEqual(
+                batch.modules.map(function kind(module) {
+                    return module.kind;
+                }),
+                [ 'ambiguous', 'ambiguous', 'ready' ]
+            );
+            const names = await generatedNames(directory);
+            scope.assert.equal(names.length, 1);
+        });
         return scope.assert.collect();
     }),
     test('uses public checker events for both verdicts and the selected compiler', async function (scope: TestScope) {
@@ -160,7 +197,7 @@ export const testNode = suite('generated type-test input', [
                 .length,
             1
         );
-        scope.assert.deepEqual(versions, [ `${compiler.version}@${checkerConfigPath}` ]);
+        scope.assert.deepEqual(versions, [ `7.1.0-beta@${checkerConfigPath}` ]);
         return scope.assert.collect();
     }),
     test('preserves edited files and reports cleanup failure', async function (scope: TestScope) {
@@ -169,7 +206,7 @@ export const testNode = suite('generated type-test input', [
         let path = '';
         await scope.assert.rejects(async function modify() {
             await withGeneratedInputs({
-                compiler,
+                ...await compilerInput(scope, directory),
                 projectConfigPath: join(directory, 'tsconfig.json'),
                 modules: [ module ]
             }, async function edit(batch) {
@@ -190,17 +227,14 @@ export const testNode = suite('generated type-test input', [
         await writeFile(join(directory, 'tsconfig.json'), JSON.stringify({ include: [ '*.ts', '.*.ts' ] }));
         await scope.assert.rejects(async function prepare() {
             await withGeneratedInputs({
-                compiler,
+                ...await compilerInput(scope, directory),
                 projectConfigPath: join(directory, 'tsconfig.json'),
                 modules: [ module ]
             }, async function unexpected() {
                 throw new Error('Callback must not run.');
             });
         }, { message: /Original project discovers generated inputs/u });
-        scope.assert.deepEqual(
-            await generatedNames(directory),
-            []
-        );
+        scope.assert.deepEqual(await generatedNames(directory), []);
         return scope.assert.collect();
     }),
     test('rejects duplicate originals and stale snapshots before writing', async function (scope: TestScope) {
@@ -208,7 +242,7 @@ export const testNode = suite('generated type-test input', [
         const module = await source(directory, 'snapshot.ts', 'export const value = 1;');
         await scope.assert.rejects(async function duplicate() {
             await withGeneratedInputs({
-                compiler,
+                ...await compilerInput(scope, directory),
                 projectConfigPath: join(directory, 'tsconfig.json'),
                 modules: [ module, module ]
             }, async function unexpected() {
@@ -218,7 +252,7 @@ export const testNode = suite('generated type-test input', [
         await writeFile(module.path, 'export const value = 2;');
         await scope.assert.rejects(async function changed() {
             await withGeneratedInputs({
-                compiler,
+                ...await compilerInput(scope, directory),
                 projectConfigPath: join(directory, 'tsconfig.json'),
                 modules: [ module ]
             }, async function unexpected() {
@@ -233,17 +267,14 @@ export const testNode = suite('generated type-test input', [
         const module = await source(directory, 'failure.cts', 'export const value = 1;');
         await scope.assert.rejects(async function fail() {
             await withGeneratedInputs({
-                compiler,
+                ...await compilerInput(scope, directory),
                 projectConfigPath: join(directory, 'tsconfig.json'),
                 modules: [ module ]
             }, async function reject() {
                 throw new Error('callback failed');
             });
         }, { message: 'callback failed' });
-        scope.assert.deepEqual(
-            await generatedNames(directory),
-            []
-        );
+        scope.assert.deepEqual(await generatedNames(directory), []);
         return scope.assert.collect();
     })
 ]);

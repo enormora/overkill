@@ -1,6 +1,8 @@
-import TypeScript from 'typescript';
+import * as TypeScript from 'typescript-beta/ast';
+import { API } from 'typescript-beta/async';
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { createCompilerLifetime } from './compiler-lifetime.ts';
 import { referenceExpression } from './native-reference-expression.ts';
 import {
     mapSourceRange,
@@ -11,13 +13,15 @@ import {
 } from './generated-source.ts';
 
 function referenceCall(node: TypeScript.Node): TypeScript.CallExpression | undefined {
-    return TypeScript.isCallExpression(node) ? node : TypeScript.forEachChild(node, referenceCall);
+    return TypeScript.isCallExpression(node) ? node : node.forEachChild(referenceCall);
 }
 
-export const testNode = suite('generated source mapping', [
-    test('preserves leading source trivia in translated type arguments', function (scope: TestScope) {
-        const originalText = 'reference<string, /* expected type */ number>()';
-        const file = TypeScript.createSourceFile('/example.ts', originalText, TypeScript.ScriptTarget.Latest, true);
+async function translatedReference(originalText: string): Promise<TranslatedModule> {
+    await using lifetime = createCompilerLifetime();
+    return await lifetime.run(async function execute() {
+        await using api = new API();
+        await using lease = await api.createSourceFile('/example.ts', originalText);
+        const file = lease.sourceFile;
         const call = referenceCall(file);
         if (call === undefined) {
             throw new Error('Expected a reference call.');
@@ -35,7 +39,7 @@ export const testNode = suite('generated source mapping', [
             'check',
             range
         );
-        const translated = replaceMappedSource(
+        return replaceMappedSource(
             {
                 path: file.fileName,
                 originalText,
@@ -45,6 +49,12 @@ export const testNode = suite('generated source mapping', [
             range,
             fragments
         );
+    });
+}
+
+export const testNode = suite('generated source mapping', [
+    test('preserves leading source trivia in translated type arguments', async function (scope: TestScope) {
+        const translated = await translatedReference('reference<string, /* expected type */ number>()');
         scope.assert.equal(translated.text, 'check<string>().type.toBe< /* expected type */ number>()');
         return scope.assert.collect();
     }),

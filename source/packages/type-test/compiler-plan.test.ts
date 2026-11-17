@@ -4,16 +4,17 @@ import { runIfMain } from '#test-runner';
 import { suite, test } from '../test/test.entry-point.ts';
 import { createEngine, type TestPlan, type TestScope } from '../engine/engine.entry-point.ts';
 import { frozenTypeProject } from '../../test-support/frozen-type-project.ts';
+import { testNode as lifetime } from './compiler-lifetime.test.ts';
 import type { CheckerPreparation } from './checker-plan.ts';
 import { prepare } from './compiler-plan.ts';
-import { typeTestSettingsSchema, type TypeTestOptions } from './profile-settings.ts';
+import { typeTestSettingsSchema, type TypeTestSettings } from './profile-settings.ts';
 
 const sourceFileCount = 300;
 type PreparedProject = {
     readonly directory: string;
     readonly original: TestPlan;
     readonly preparation: CheckerPreparation;
-    readonly settings: TypeTestOptions;
+    readonly settings: TypeTestSettings;
 };
 
 function skippedPlan(): TestPlan {
@@ -43,14 +44,19 @@ async function preparedProject(scope: TestScope): Promise<PreparedProject> {
         'tsconfig.json': JSON.stringify({ compilerOptions: { noLib: true, types: [] }, files })
     });
     const original = skippedPlan();
-    const settings: TypeTestOptions = {
+    const settings: TypeTestSettings = {
         projectConfigPath: join(directory, 'tsconfig.json'),
-        compiler: { kind: 'local' }
+        compiler: { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' }
     };
-    return { directory, original, settings, preparation: await prepare(original, settings) };
+    const preparation = await prepare(original, settings, process.cwd());
+    scope.cleanup(async function () {
+        await preparation.dispose();
+    });
+    return { directory, original, settings, preparation };
 }
 
 export const testNode = suite('compiler planning', [
+    lifetime,
     test('rejects empty matrices and non-exact versions', function (scope) {
         scope.assert.false(
             typeTestSettingsSchema
@@ -84,7 +90,10 @@ export const testNode = suite('compiler planning', [
     }),
     test('rejects foreign preparation', async function (scope) {
         const { preparation, original, settings } = await preparedProject(scope);
-        const second = await prepare(original, settings);
+        const second = await prepare(original, settings, process.cwd());
+        scope.cleanup(async function () {
+            await second.dispose();
+        });
         await scope.assert.rejects(async function foreignPlan() {
             await preparation.collect(second.testPlan);
         }, { message: /does not match the frozen project/u });

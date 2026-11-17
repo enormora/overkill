@@ -65,7 +65,7 @@ export const testNode = suite('TypeScript beta public API assessment', [
         });
         const before = await readdir(directory);
         for (let invocation = 0; invocation < 2; invocation += 1) {
-            const evidence = assessCompilerApi(join(directory, 'tsconfig.json'));
+            const evidence = await assessCompilerApi(join(directory, 'tsconfig.json'));
             assertEvidence(scope, evidence);
         }
         scope.assert.deepEqual(await readdir(directory), before);
@@ -78,7 +78,8 @@ export const testNode = suite('TypeScript beta public API assessment', [
             'tsconfig.json': JSON.stringify({ extends: './base.json', files: [ 'relations.ts' ] }),
             'relations.ts': 'export type NullActual = null; export type NullExpected = string;'
         });
-        scope.assert.equal(assessCompilerApi(join(directory, 'tsconfig.json'))[0]?.forward, false);
+        const evidence = await assessCompilerApi(join(directory, 'tsconfig.json'));
+        scope.assert.equal(evidence[0]?.forward, false);
         return scope.assert.collect();
     }),
     test('rejects unavailable referenced declarations without building them', async function (scope) {
@@ -93,8 +94,8 @@ export const testNode = suite('TypeScript beta public API assessment', [
             'dependency/tsconfig.json': JSON.stringify({ compilerOptions: { composite: true }, files: [ 'value.ts' ] }),
             'dependency/value.ts': 'export type Value = string;'
         });
-        scope.assert.throws(function missingOutput() {
-            assessCompilerApi(join(directory, 'tsconfig.json'));
+        await scope.assert.rejects(async function missingOutput() {
+            await assessCompilerApi(join(directory, 'tsconfig.json'));
         }, { message: /compiler diagnostics/u });
         scope.assert.deepEqual(await readdir(join(directory, 'dependency')), [ 'tsconfig.json', 'value.ts' ]);
         return scope.assert.collect();
@@ -105,8 +106,8 @@ export const testNode = suite('TypeScript beta public API assessment', [
             'invalid.ts': 'export type Invalid = Missing;'
         });
         for (let invocation = 0; invocation < 2; invocation += 1) {
-            scope.assert.throws(function invalidProject() {
-                assessCompilerApi(join(directory, 'tsconfig.json'));
+            await scope.assert.rejects(async function invalidProject() {
+                await assessCompilerApi(join(directory, 'tsconfig.json'));
             }, { message: /compiler diagnostics/u });
         }
         return scope.assert.collect();

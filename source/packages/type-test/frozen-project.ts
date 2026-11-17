@@ -1,77 +1,105 @@
 import { resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
-import { isDeepStrictEqual } from 'node:util';
-import { Store } from 'tstyche/api';
-import type { CompilerSelection } from './checker.entry-point.ts';
-import { parseProject } from './generated-module-plan.ts';
-import { captureProjectInputs, verifyProjectInputs, sourceFingerprint, type FrozenInputs } from './frozen-inputs.ts';
+import type { Except } from 'type-fest';
+import type { API, Snapshot, Project, ParsedCommandLine } from 'typescript-beta/async';
+import { createCompilerLifetime } from './compiler-lifetime.ts';
+import type { CompilerSelection } from './profile-settings.ts';
+import { resolveInstalledCompiler, verifyInstalledCompiler, type InstalledCompiler } from './installed-compiler.ts';
+import {
+    observeProjectInputs,
+    verifyProjectInputs,
+    sourceFingerprint,
+    type FrozenInputs,
+    type ProjectInputObservation
+} from './frozen-inputs.ts';
 import type { NativeTranslation } from './native-translation.ts';
 
-type Compiler = NonNullable<Awaited<ReturnType<typeof Store.load>>>;
 export type FrozenProject = {
-    readonly inputs: FrozenInputs;
-    readonly compiler: Compiler;
+    readonly compiler: InstalledCompiler;
+    readonly api: API;
+    readonly snapshot: Snapshot;
+    readonly configured: Project;
     readonly projectConfigPath: string;
+    readonly project: ParsedCommandLine;
+    readonly program: Project['program'];
+    readonly inputs: FrozenInputs;
     readonly projectText: string;
-    readonly project: ReturnType<typeof parseProject>;
-    readonly program: ReturnType<Compiler['createProgram']>;
+    readonly ownership: AsyncDisposableStack;
+};
+type ProjectSession = {
+    readonly compiler: InstalledCompiler;
+    readonly api: API;
+    readonly projectConfigPath: string;
+    readonly observation: ProjectInputObservation;
+    readonly ownership: AsyncDisposableStack;
 };
 export const fingerprint = sourceFingerprint;
-
-async function selectedCompiler(selection: CompilerSelection): Promise<Compiler> {
-    const target = selection.kind === 'local' ? '*' : selection.version;
-    const selected = await Store.load(target);
-    if (selected === undefined || selection.kind === 'version' && selected.version !== target) {
-        throw new Error('Cannot load the expected exact compiler version.');
+function configuredProject(snapshot: Snapshot, path: string): Project {
+    const project = snapshot.getConfiguredProject(path);
+    if (project === undefined) {
+        throw new Error('Original configured project is unavailable.');
     }
-    return selected;
+    return project;
 }
 
-async function pinnedCompiler(selected: Compiler): Promise<Compiler> {
-    const compiler = await Store.load(selected.version);
-    const selectedText = selected.sys.readFile(selected.sys.getExecutingFilePath());
-    const exactText = compiler?.sys.readFile(compiler.sys.getExecutingFilePath());
-    if (
-        compiler === undefined || selectedText === undefined || exactText === undefined ||
-        sourceFingerprint(selectedText) !== sourceFingerprint(exactText)
-    ) {
-        throw new Error('Selected compiler cannot be pinned to its exact version.');
+async function captureProject(input: ProjectSession): Promise<Except<FrozenProject, 'ownership'>> {
+    const project = await input.api.parseConfigFile(input.projectConfigPath);
+    if (project.errors.length > 0) {
+        throw new Error(`Cannot parse original project: ${input.projectConfigPath}`, { cause: project.errors });
     }
-    return compiler;
-}
-
-export async function loadProject(projectPath: string, selection: CompilerSelection): Promise<FrozenProject> {
-    const compiler = await pinnedCompiler(await selectedCompiler(selection));
-    const projectConfigPath = resolve(projectPath);
-    const { project, program, inputs } = captureProjectInputs(compiler, projectConfigPath);
+    const snapshot = input.ownership.use(await input.api.createSnapshot({ openProjects: [ input.projectConfigPath ] }));
+    const configured = configuredProject(snapshot, input.projectConfigPath);
+    const paths = await configured.program.getSourceFileNames();
+    for (const path of paths) {
+        input.observation.fs.realpath(path);
+    }
     return {
-        compiler,
-        projectConfigPath,
+        compiler: input.compiler,
+        api: input.api,
+        snapshot,
+        configured,
+        projectConfigPath: input.projectConfigPath,
         project,
-        program,
-        inputs,
-        projectText: await readFile(projectConfigPath, 'utf8')
+        program: configured.program,
+        inputs: input.observation.snapshot(),
+        projectText: await readFile(input.projectConfigPath, 'utf8')
     };
 }
 
-function compilerOptions(project: ReturnType<typeof parseProject>): unknown {
-    const { configFile, ...options } = project.options;
-    return { options, files: project.fileNames, references: project.projectReferences };
+export async function loadProject(
+    projectPath: string,
+    selection: CompilerSelection,
+    projectRoot: string
+): Promise<FrozenProject> {
+    const compiler = await resolveInstalledCompiler(projectRoot, selection);
+    await using ownership = new AsyncDisposableStack();
+    const observation = observeProjectInputs();
+    const lifetime = ownership.use(createCompilerLifetime());
+    const api = ownership.use(lifetime.run(function openCompiler() {
+        return new compiler.native.API({ cwd: projectRoot, fs: observation.fs, runExternalCode: false });
+    }));
+    const project = await lifetime.run(async function capture() {
+        return await captureProject({
+            compiler,
+            api,
+            observation,
+            ownership,
+            projectConfigPath: resolve(projectRoot, projectPath)
+        });
+    });
+    return { ...project, ownership: ownership.move() };
+}
+
+export async function disposeProject(project: FrozenProject): Promise<void> {
+    await project.ownership.disposeAsync();
 }
 
 export async function verifyFrozenProject(project: FrozenProject, translation: NativeTranslation): Promise<void> {
-    const current = parseProject({
-        compiler: project.compiler,
-        projectConfigPath: project.projectConfigPath,
-        modules: []
-    });
-    if (!isDeepStrictEqual(compilerOptions(current), compilerOptions(project.project))) {
-        throw new Error('Type-test project configuration changed after collection.');
-    }
+    await verifyInstalledCompiler(project.compiler);
     if (await readFile(project.projectConfigPath, 'utf8') !== project.projectText) {
         throw new Error('Type-test project configuration changed after collection.');
     }
-    verifyProjectInputs(project.compiler, project.inputs);
+    verifyProjectInputs(project.inputs);
     for (const module of translation.modules) {
         if (fingerprint(await readFile(module.path, 'utf8')) !== fingerprint(module.originalText)) {
             throw new Error(`Type-test source changed after collection: ${module.path}`);

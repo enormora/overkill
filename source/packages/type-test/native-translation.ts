@@ -1,4 +1,4 @@
-import type TypeScript from 'typescript';
+import type * as TypeScript from 'typescript-beta/ast';
 import { resolveSourceLocation, type TestBodyOrigin, type TestPlan } from '../engine/engine.entry-point.ts';
 import { rejectForeignCheckerBoundaries } from './checker-boundary-validation.ts';
 import type { SourceAnalysis } from './source-analysis.ts';
@@ -7,14 +7,18 @@ import {
     replaceMappedText,
     mapSourceRange,
     type TranslatedModule,
-    type SourceRange
+    type SourceRange,
+    type SourceFragment
 } from './generated-source.ts';
 import { resolveBodyOrigin, namedBodyParameter, type SourceBody } from './source-ownership.ts';
-import { nativeReference, type NativeReference } from './native-reference.ts';
-import { referenceExpression, needsTypeSubject } from './native-reference-expression.ts';
-import { decoratorReplacements, type SourceReplacement } from './decorator-translation.ts';
+import { nativeReference } from './native-reference.ts';
+import { referenceExpression } from './native-reference-expression.ts';
 import { scopeAssertions, assertionAnnotation } from './scope-assertions.ts';
 
+type SourceReplacement = {
+    readonly range: SourceRange;
+    readonly fragments: readonly SourceFragment[];
+};
 export type NativeSite = {
     readonly path: string;
     readonly range: SourceRange;
@@ -27,23 +31,27 @@ export type NativeTranslation = {
     readonly modules: readonly TranslatedModule[];
     readonly sites: readonly NativeSite[];
 };
-type BodyOwnership = { readonly body: SourceBody; readonly owners: readonly string[]; };
+type BodyOwnership = {
+    readonly body: SourceBody;
+    readonly owners: readonly string[];
+};
 type BodyTranslation = {
-    readonly needsSubjectAlias: boolean;
     readonly sites: readonly NativeSite[];
     readonly replacements: readonly SourceReplacement[];
 };
-type AssertionContext = { readonly analysis: SourceAnalysis; readonly expectName: string; };
-
+type AssertionContext = {
+    readonly analysis: SourceAnalysis;
+    readonly expectName: string;
+};
 export function caseKey(testCase: TestPlan['cases'][number]): string {
     return JSON.stringify([ testCase.id.file, testCase.id.suite, testCase.id.title, testCase.id.params ]);
 }
 
-function assertionSite(
+async function assertionSite(
     analysis: SourceAnalysis,
     call: TypeScript.CallExpression,
     owners: readonly string[]
-): NativeSite {
+): Promise<NativeSite> {
     const file = call.getSourceFile();
     const range = { start: call.getStart(file), end: call.end };
     const position = file.getLineAndCharacterOfPosition(range.start);
@@ -51,24 +59,10 @@ function assertionSite(
         path: file.fileName,
         range,
         owners,
-        message: assertionAnnotation(analysis, call),
+        message: await assertionAnnotation(analysis, call),
         line: position.line + 1,
         column: position.character + 1
     };
-}
-
-const decoratorAssertionOperands = 2;
-
-function declarationChanges(
-    context: AssertionContext,
-    call: TypeScript.CallExpression,
-    reference: NativeReference
-): readonly SourceReplacement[] {
-    const declaration = call.arguments[1];
-    if (declaration === undefined || call.arguments.length !== decoratorAssertionOperands) {
-        throw new Error('Decorator assertions require exactly one declaration callback.');
-    }
-    return decoratorReplacements(context.analysis, declaration, reference, context.expectName);
 }
 
 function validateAssertionSyntax(context: AssertionContext, call: TypeScript.CallExpression): void {
@@ -77,19 +71,18 @@ function validateAssertionSyntax(context: AssertionContext, call: TypeScript.Cal
     }
 }
 
-function assertionChanges(context: AssertionContext, call: TypeScript.CallExpression): readonly SourceReplacement[] {
+async function assertionChanges(
+    context: AssertionContext,
+    call: TypeScript.CallExpression
+): Promise<readonly SourceReplacement[]> {
     validateAssertionSyntax(context, call);
     const referenceNode = call.arguments[0];
     if (referenceNode === undefined) {
         throw new Error('Native assertion is missing its reference.');
     }
-    const reference = nativeReference(context.analysis, referenceNode);
-    if (reference.kind === 'decorator') {
-        return declarationChanges(context, call, reference);
-    }
+    const reference = await nativeReference(context.analysis, referenceNode);
     const marker = context.analysis.compiler.isCallExpression(referenceNode) ? referenceNode.expression : referenceNode;
     const range = { start: call.getStart(), end: call.end };
-
     return [ {
         range,
         fragments: [
@@ -104,25 +97,16 @@ function assertionChanges(context: AssertionContext, call: TypeScript.CallExpres
     } ];
 }
 
-function assertionNeedsTypeSubject(analysis: SourceAnalysis, call: TypeScript.CallExpression): boolean {
-    const reference = call.arguments[0];
-    return reference !== undefined && needsTypeSubject(nativeReference(analysis, reference));
-}
-
-function translatedBody(context: AssertionContext, ownership: BodyOwnership): BodyTranslation {
+async function translatedBody(context: AssertionContext, ownership: BodyOwnership): Promise<BodyTranslation> {
     const scopeParameter = namedBodyParameter(context.analysis, ownership.body);
-    const calls = scopeAssertions(context.analysis, ownership.body, scopeParameter);
-    return {
-        sites: calls.map(function site(call) {
-            return assertionSite(context.analysis, call, ownership.owners);
-        }),
-        replacements: calls.flatMap(function changes(call) {
-            return assertionChanges(context, call);
-        }),
-        needsSubjectAlias: calls.some(function typedSubject(call) {
-            return assertionNeedsTypeSubject(context.analysis, call);
-        })
-    };
+    const calls = await scopeAssertions(context.analysis, ownership.body, scopeParameter);
+    const sites: NativeSite[] = [];
+    const replacements: SourceReplacement[] = [];
+    for (const call of calls) {
+        sites.push(await assertionSite(context.analysis, call, ownership.owners));
+        replacements.push(...await assertionChanges(context, call));
+    }
+    return { sites, replacements };
 }
 
 function checkerInsertionOffset(module: TranslatedModule, file: TypeScript.SourceFile): number {
@@ -142,8 +126,7 @@ function checkerInsertionOffset(module: TranslatedModule, file: TypeScript.Sourc
 function translatedModule(
     file: TypeScript.SourceFile,
     replacements: readonly SourceReplacement[],
-    expectName: string,
-    needsSubjectAlias: boolean
+    expectName: string
 ): TranslatedModule {
     const identity: TranslatedModule = {
         path: file.fileName,
@@ -167,12 +150,11 @@ function translatedModule(
     const translated = sorted.reduce(function replace(module, change) {
         return replaceMappedSource(module, change.range, change.fragments);
     }, identity);
-    const declaration = needsSubjectAlias ? `type ${expectName}Subject<Subject> = Subject;\n` : '';
     const offset = checkerInsertionOffset(translated, file);
     return replaceMappedText(
         translated,
         { start: offset, end: offset },
-        `\nimport { expect as ${expectName} } from 'tstyche';\n${declaration}`
+        `\nimport { expect as ${expectName} } from 'tstyche';\n`
     );
 }
 
@@ -183,7 +165,7 @@ function bodyAnchor(origin: TestBodyOrigin): string {
         : 'unknown source';
 }
 
-function ownedBody(analysis: SourceAnalysis, testCase: TestPlan['cases'][number]): SourceBody {
+async function ownedBody(analysis: SourceAnalysis, testCase: TestPlan['cases'][number]): Promise<SourceBody> {
     if (testCase.bodyOrigin === null) {
         throw new Error('Selected type-test case has no callback source ownership.');
     }
@@ -195,7 +177,7 @@ function ownedBody(analysis: SourceAnalysis, testCase: TestPlan['cases'][number]
         throw new Error('Type-test cases do not support runtime execution controls.');
     }
     try {
-        return resolveBodyOrigin(analysis, testCase.bodyOrigin);
+        return await resolveBodyOrigin(analysis, testCase.bodyOrigin);
     } catch (error: unknown) {
         const reason = error instanceof Error ? error.message : 'Unknown callback source.';
         throw new Error(
@@ -205,13 +187,13 @@ function ownedBody(analysis: SourceAnalysis, testCase: TestPlan['cases'][number]
     }
 }
 
-function bodyOwnership(analysis: SourceAnalysis, plan: TestPlan): readonly BodyOwnership[] {
+async function bodyOwnership(analysis: SourceAnalysis, plan: TestPlan): Promise<readonly BodyOwnership[]> {
     const bodies = new Map<SourceBody, string[]>();
     const selected = plan.cases.filter(function executable(testCase) {
         return testCase.execution.kind !== 'skip';
     });
     for (const testCase of selected) {
-        const body = ownedBody(analysis, testCase);
+        const body = await ownedBody(analysis, testCase);
         const owners = bodies.get(body) ?? [];
         if (!owners.includes(caseKey(testCase))) {
             owners.push(caseKey(testCase));
@@ -233,19 +215,20 @@ function fileOwnership(bodies: readonly BodyOwnership[]): ReadonlyMap<TypeScript
     return files;
 }
 
-function translateFile(
+async function translateFile(
     analysis: SourceAnalysis,
     file: TypeScript.SourceFile,
     entries: readonly BodyOwnership[]
-): NativeTranslation {
-    rejectForeignCheckerBoundaries(analysis, file);
+): Promise<NativeTranslation> {
+    await rejectForeignCheckerBoundaries(analysis, file);
     let expectName = '__overkillTypeExpect';
     while (file.text.includes(expectName)) {
         expectName += '_';
     }
-    const translations = entries.map(function translate(entry) {
-        return translatedBody({ analysis, expectName }, entry);
-    });
+    const translations: BodyTranslation[] = [];
+    for (const entry of entries) {
+        translations.push(await translatedBody({ analysis, expectName }, entry));
+    }
     return {
         sites: translations.flatMap(function sites(entry) {
             return entry.sites;
@@ -255,19 +238,17 @@ function translateFile(
             translations.flatMap(function changes(entry) {
                 return entry.replacements;
             }),
-            expectName,
-            translations.some(function typedSubject(entry) {
-                return entry.needsSubjectAlias;
-            })
+            expectName
         ) ]
     };
 }
 
-export function translateNativePlan(analysis: SourceAnalysis, plan: TestPlan): NativeTranslation {
-    const files = fileOwnership(bodyOwnership(analysis, plan));
-    const translations = Array.from(files, function translate([ file, entries ]) {
-        return translateFile(analysis, file, entries);
-    });
+export async function translateNativePlan(analysis: SourceAnalysis, plan: TestPlan): Promise<NativeTranslation> {
+    const files = fileOwnership(await bodyOwnership(analysis, plan));
+    const translations: NativeTranslation[] = [];
+    for (const [ file, entries ] of files) {
+        translations.push(await translateFile(analysis, file, entries));
+    }
     return {
         modules: translations.flatMap(function modules(entry) {
             return entry.modules;

@@ -1,8 +1,10 @@
-import type TypeScript from 'typescript';
+import type * as TypeScript from 'typescript-beta/ast';
 import { resolveSourceLocation, isTableBodyOrigin, type TestBodyOrigin } from '../engine/engine.entry-point.ts';
-
+import type { CompilerSyntax } from './installed-compiler.ts';
 import {
     sourceSymbol,
+    sourceDeclarations,
+    originalSourceFile,
     immutableInitializer,
     transparentExpression,
     validateFunctionBinding,
@@ -13,16 +15,17 @@ import { validateCallbackStorage, supportedCall } from './source-options.ts';
 type ExpressionBody = TypeScript.ArrowFunction | TypeScript.FunctionExpression;
 type DeclarationBody = TypeScript.FunctionDeclaration | TypeScript.MethodDeclaration;
 export type SourceBody = Readonly<DeclarationBody | ExpressionBody>;
-function isSourceBody(compiler: typeof TypeScript, node: TypeScript.Node): node is SourceBody {
+function isSourceBody(compiler: CompilerSyntax, node: TypeScript.Node): node is SourceBody {
     return compiler.isArrowFunction(node) || compiler.isFunctionExpression(node) ||
         compiler.isFunctionDeclaration(node) || compiler.isMethodDeclaration(node);
 }
 
-function callbackDeclarations(
+async function callbackDeclarations(
     analysis: SourceAnalysis,
     expression: TypeScript.Node
-): readonly TypeScript.Declaration[] {
-    return sourceSymbol(analysis, expression)?.declarations ?? [];
+): Promise<readonly TypeScript.Declaration[]> {
+    const symbol = await sourceSymbol(analysis, expression);
+    return symbol === undefined ? [] : await sourceDeclarations(symbol);
 }
 
 function constantExpression(
@@ -37,29 +40,29 @@ function constantExpression(
     return initializer;
 }
 
-function declarationExpression(analysis: SourceAnalysis, expression: TypeScript.Node): TypeScript.Node {
-    const declarations = callbackDeclarations(analysis, expression);
+async function declarationExpression(analysis: SourceAnalysis, expression: TypeScript.Node): Promise<TypeScript.Node> {
+    const declarations = await callbackDeclarations(analysis, expression);
     const implementations = declarations.filter(function implemented(node) {
         return isSourceBody(analysis.compiler, node) && node.body !== undefined;
     });
     const [ implementation ] = implementations;
     if (implementations.length === 1 && implementation !== undefined) {
         if (analysis.compiler.isFunctionDeclaration(implementation)) {
-            validateFunctionBinding(analysis, implementation.name ?? expression);
+            await validateFunctionBinding(analysis, implementation.name ?? expression);
         }
         return implementation;
     }
     return constantExpression(analysis, declarations);
 }
 
-function nextExpression(analysis: SourceAnalysis, node: TypeScript.Node): TypeScript.Node | undefined {
+async function nextExpression(analysis: SourceAnalysis, node: TypeScript.Node): Promise<TypeScript.Node | undefined> {
     return transparentExpression(analysis, node) ??
-        (analysis.compiler.isIdentifier(node) ? declarationExpression(analysis, node) : undefined);
+        (analysis.compiler.isIdentifier(node) ? await declarationExpression(analysis, node) : undefined);
 }
 
-function originalExpression(analysis: SourceAnalysis, initial: TypeScript.Node): TypeScript.Node {
+async function originalExpression(analysis: SourceAnalysis, initial: TypeScript.Node): Promise<TypeScript.Node> {
     let expression = initial;
-    let next = nextExpression(analysis, expression);
+    let next = await nextExpression(analysis, expression);
     const seen = new Set<TypeScript.Node>([ initial ]);
     while (next !== undefined) {
         if (seen.has(next)) {
@@ -67,12 +70,12 @@ function originalExpression(analysis: SourceAnalysis, initial: TypeScript.Node):
         }
         seen.add(next);
         expression = next;
-        next = nextExpression(analysis, expression);
+        next = await nextExpression(analysis, expression);
     }
     return expression;
 }
 
-export function declaredBody(analysis: SourceAnalysis, initial: TypeScript.Node): SourceBody {
+export async function declaredBody(analysis: SourceAnalysis, initial: TypeScript.Node): Promise<SourceBody> {
     let expression = initial;
     while (
         analysis.compiler.isParenthesizedExpression(expression) ||
@@ -80,14 +83,17 @@ export function declaredBody(analysis: SourceAnalysis, initial: TypeScript.Node)
     ) {
         expression = expression.expression;
     }
-    const resolved = originalExpression(analysis, expression);
+    const resolved = await originalExpression(analysis, expression);
     if (isSourceBody(analysis.compiler, resolved) && resolved.body !== undefined) {
         return resolved;
     }
     throw new Error('Callback source is not a statically identifiable function body.');
 }
 
-function propertyExpression(analysis: SourceAnalysis, property: TypeScript.ObjectLiteralElementLike): TypeScript.Node {
+async function propertyExpression(
+    analysis: SourceAnalysis,
+    property: TypeScript.ObjectLiteralElementLike
+): Promise<TypeScript.Node> {
     if (analysis.compiler.isPropertyAssignment(property)) {
         return property.initializer;
     }
@@ -95,19 +101,19 @@ function propertyExpression(analysis: SourceAnalysis, property: TypeScript.Objec
         return property;
     }
     if (analysis.compiler.isShorthandPropertyAssignment(property)) {
-        return declarationExpression(analysis, property);
+        return await declarationExpression(analysis, property);
     }
     throw new Error('Unsupported callback property source.');
 }
 
-function objectField(analysis: SourceAnalysis, input: TypeScript.Node, field: string): TypeScript.Node {
-    validateCallbackStorage(analysis, input);
-    const node = originalExpression(analysis, input);
+async function objectField(analysis: SourceAnalysis, input: TypeScript.Node, field: string): Promise<TypeScript.Node> {
+    await validateCallbackStorage(analysis, input);
+    const node = await originalExpression(analysis, input);
     if (!analysis.compiler.isObjectLiteralExpression(node)) {
         throw new Error('Unsupported callback options expression.');
     }
     const property = node.properties.findLast(function named(entry) {
-        return entry.name !== undefined &&
+        return !analysis.compiler.isSpreadAssignment(entry) &&
             (analysis.compiler.isIdentifier(entry.name) || analysis.compiler.isStringLiteral(entry.name)) &&
             entry.name.text === field;
     });
@@ -123,17 +129,21 @@ function objectField(analysis: SourceAnalysis, input: TypeScript.Node, field: st
     if (property === undefined) {
         throw new Error(`Callback definition has no explicit ${field} source.`);
     }
-    return propertyExpression(analysis, property);
+    return await propertyExpression(analysis, property);
 }
 
-function validatedCases(analysis: SourceAnalysis, input: TypeScript.Node): TypeScript.Node {
-    const source = objectField(analysis, input, 'cases');
-    validateCallbackStorage(analysis, source);
+async function validatedCases(analysis: SourceAnalysis, input: TypeScript.Node): Promise<TypeScript.Node> {
+    const source = await objectField(analysis, input, 'cases');
+    await validateCallbackStorage(analysis, source);
     return source;
 }
 
-function tableCaseExpression(analysis: SourceAnalysis, input: TypeScript.Node, index: number): TypeScript.Node {
-    const cases = originalExpression(analysis, validatedCases(analysis, input));
+async function tableCaseExpression(
+    analysis: SourceAnalysis,
+    input: TypeScript.Node,
+    index: number
+): Promise<TypeScript.Node> {
+    const cases = await originalExpression(analysis, await validatedCases(analysis, input));
     if (!analysis.compiler.isArrayLiteralExpression(cases)) {
         throw new Error('Low-level table cases require static source ownership.');
     }
@@ -144,7 +154,7 @@ function tableCaseExpression(analysis: SourceAnalysis, input: TypeScript.Node, i
     if (row === undefined) {
         throw new Error('Table case source index is missing.');
     }
-    return objectField(analysis, row, 'body');
+    return await objectField(analysis, row, 'body');
 }
 
 const authoringNames = new Set([
@@ -157,52 +167,52 @@ const authoringNames = new Set([
     'withRuntime',
     'defineParameterizedTestBody'
 ]);
-
-function expressionName(analysis: SourceAnalysis, expression: TypeScript.Node): string | undefined {
+async function expressionName(analysis: SourceAnalysis, expression: TypeScript.Node): Promise<string | undefined> {
     const location = analysis.compiler.isPropertyAccessExpression(expression) ? expression.name : expression;
-    return sourceSymbol(analysis, location)?.name;
+    const symbol = await sourceSymbol(analysis, location);
+    return symbol?.name;
 }
 
-function authoringName(
+async function authoringName(
     analysis: SourceAnalysis,
     expression: TypeScript.Node,
     seen: ReadonlySet<TypeScript.Node>
-): string | undefined {
-    const name = expressionName(analysis, expression);
+): Promise<string | undefined> {
+    const name = await expressionName(analysis, expression);
     if (name !== undefined && authoringNames.has(name)) {
         return name;
     }
     if (seen.has(expression)) {
         throw new Error('Cyclic authoring API alias.');
     }
-    const next = nextExpression(analysis, expression);
-    return next === undefined ? name : authoringName(analysis, next, new Set([ ...seen, expression ]));
+    const next = await nextExpression(analysis, expression);
+    return next === undefined ? name : await authoringName(analysis, next, new Set([ ...seen, expression ]));
 }
 
-function callName(analysis: SourceAnalysis, call: TypeScript.CallExpression): string | undefined {
-    return authoringName(analysis, call.expression, new Set());
+async function callName(analysis: SourceAnalysis, call: TypeScript.CallExpression): Promise<string | undefined> {
+    return await authoringName(analysis, call.expression, new Set());
 }
 
-function positionalBody(
+async function positionalBody(
     analysis: SourceAnalysis,
     call: TypeScript.CallExpression,
     first: TypeScript.Node,
     name: string | undefined
-): TypeScript.Node {
+): Promise<TypeScript.Node> {
     const positional = [ 'test', 'withResource', 'withResources', 'withRuntime' ];
     const body = call.arguments[1];
     if (name !== undefined && positional.includes(name) && body !== undefined) {
         return body;
     }
-    return objectField(analysis, first, name === 'table' ? 'test' : 'body');
+    return await objectField(analysis, first, name === 'table' ? 'test' : 'body');
 }
 
-function bodyExpression(
+async function bodyExpression(
     analysis: SourceAnalysis,
     call: TypeScript.CallExpression,
     origin: TestBodyOrigin
-): TypeScript.Node {
-    const name = callName(analysis, call);
+): Promise<TypeScript.Node> {
+    const name = await callName(analysis, call);
     const first = call.arguments[0];
     if (first === undefined) {
         throw new Error('Callback construction has no arguments.');
@@ -211,9 +221,9 @@ function bodyExpression(
         return first;
     }
     if (name === 'createTable' && isTableBodyOrigin(origin)) {
-        return tableCaseExpression(analysis, first, origin.tableIndex);
+        return await tableCaseExpression(analysis, first, origin.tableIndex);
     }
-    return positionalBody(analysis, call, first, name);
+    return await positionalBody(analysis, call, first, name);
 }
 
 function callAtOffset(
@@ -227,7 +237,7 @@ function callAtOffset(
             if (analysis.compiler.isCallExpression(node)) {
                 calls.push(node);
             }
-            analysis.compiler.forEachChild(node, visit);
+            node.forEachChild(visit);
         }
     }
     visit(file);
@@ -238,12 +248,12 @@ function callAtOffset(
     return call;
 }
 
-function locatedCall(analysis: SourceAnalysis, origin: TestBodyOrigin): TypeScript.CallExpression {
+async function locatedCall(analysis: SourceAnalysis, origin: TestBodyOrigin): Promise<TypeScript.CallExpression> {
     const location = resolveSourceLocation(origin.location);
     if (location.kind !== 'known' || location.line === null || location.column === null) {
         throw new Error('Type-test checking requires a known callback source location.');
     }
-    const file = analysis.program.getSourceFile(location.file);
+    const file = await originalSourceFile(analysis, location.file);
     if (file === undefined) {
         throw new Error(`Callback source is outside the checker project: ${location.file}`);
     }
@@ -252,7 +262,7 @@ function locatedCall(analysis: SourceAnalysis, origin: TestBodyOrigin): TypeScri
         file,
         file.getPositionOfLineAndCharacter(location.line - 1, location.column - 1)
     );
-    if (!supportedCall(analysis, call)) {
+    if (!await supportedCall(analysis, call)) {
         throw new Error('Callback anchor does not identify a supported authoring API.');
     }
     return call;
@@ -265,9 +275,9 @@ function preferredOrigin(origin: TestBodyOrigin): TestBodyOrigin {
     return resolveSourceLocation(origin.forwarded.location).kind === 'known' ? origin.forwarded : origin;
 }
 
-export function resolveBodyOrigin(analysis: SourceAnalysis, supplied: TestBodyOrigin): SourceBody {
+export async function resolveBodyOrigin(analysis: SourceAnalysis, supplied: TestBodyOrigin): Promise<SourceBody> {
     const origin = preferredOrigin(supplied);
-    return declaredBody(analysis, bodyExpression(analysis, locatedCall(analysis, origin), origin));
+    return await declaredBody(analysis, await bodyExpression(analysis, await locatedCall(analysis, origin), origin));
 }
 
 export function namedBodyParameter(analysis: SourceAnalysis, body: SourceBody): TypeScript.Identifier {

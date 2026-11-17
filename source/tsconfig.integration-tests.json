@@ -2,6 +2,15 @@
     "extends": "../tsconfig.base.json",
     "compilerOptions": {
         "paths": {
+            "@typescript/typescript6": [
+                "../node_modules/typescript/lib/typescript.d.ts"
+            ],
+            "typescript/sync": [
+                "../node_modules/typescript-beta/dist/api/sync/api.d.ts"
+            ],
+            "typescript/ast": [
+                "../node_modules/typescript-beta/dist/ast/index.d.ts"
+            ],
             "@overkill-dev/assert": [
                 "./packages/assert/assert.entry-point.ts"
             ],

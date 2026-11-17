@@ -1,25 +1,31 @@
-import type TypeScript from 'typescript';
-import { sourceSymbol, type SourceAnalysis } from './source-analysis.ts';
+import type * as TypeScript from 'typescript-beta/ast';
+import { sourceSymbol, sourceChildren, sourceDeclarations, type SourceAnalysis } from './source-analysis.ts';
 
-function isCheckerBoundary(analysis: SourceAnalysis, node: TypeScript.Identifier): boolean {
-    const symbol = sourceSymbol(analysis, node);
+async function isCheckerBoundary(analysis: SourceAnalysis, node: TypeScript.Identifier): Promise<boolean> {
+    const symbol = await sourceSymbol(analysis, node);
     if (symbol === undefined || ![ 'expect', 'test', 'describe' ].includes(symbol.name)) {
         return false;
     }
-    return symbol.declarations?.some(function checkerDeclaration(declaration) {
+    const declarations = await sourceDeclarations(symbol);
+    return declarations.some(function checkerDeclaration(declaration) {
         return declaration.getSourceFile().fileName.replaceAll('\\', '/').includes('/node_modules/tstyche/');
-    }) === true;
+    });
 }
 
-export function rejectForeignCheckerBoundaries(analysis: SourceAnalysis, file: TypeScript.SourceFile): void {
-    function visit(node: TypeScript.Node): void {
+export async function rejectForeignCheckerBoundaries(
+    analysis: SourceAnalysis,
+    file: TypeScript.SourceFile
+): Promise<void> {
+    async function visit(node: TypeScript.Node): Promise<void> {
         if (
             analysis.compiler.isIdentifier(node) && !analysis.compiler.isImportSpecifier(node.parent) &&
-            isCheckerBoundary(analysis, node)
+            await isCheckerBoundary(analysis, node)
         ) {
             throw new Error('Checker assertion without native source ownership is unsupported.');
         }
-        analysis.compiler.forEachChild(node, visit);
+        for (const child of sourceChildren(node)) {
+            await visit(child);
+        }
     }
-    visit(file);
+    await visit(file);
 }

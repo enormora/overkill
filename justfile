@@ -134,7 +134,7 @@ test-type-test-api:
     node source/integration-tests/type-test-api/compiler-assessment.test.ts
 
 test-types:
-    tstyche
+    TSTYCHE_TYPESCRIPT_SPECIFIER=typescript tstyche
 
 _pack-smoke-packages packages: compile
     rm -rf target/build/source/node_modules
@@ -210,3 +210,6 @@ publish-dry-run: compile
 
 benchmark-mutation-cost: compile
     node target/build/source/packages/test/overkill.entry-point.js bench run --profile mutation-cost --seed 42 --order lexical
+
+test-type-test-package-smoke: (_pack-smoke-packages "@overkill-dev/engine,@overkill-dev/run,@overkill-dev/type-test")
+    node target/build/source/integration-tests/package-smoke/type-test.test.js

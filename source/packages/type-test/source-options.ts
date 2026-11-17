@@ -1,8 +1,19 @@
-import type TypeScript from 'typescript';
-import { immutableInitializer, sourceSymbol, transparentExpression, type SourceAnalysis } from './source-analysis.ts';
+import type * as CompilerApi from 'typescript-beta/async';
+import type * as TypeScript from 'typescript-beta/ast';
+import {
+    immutableInitializer,
+    sourceChildren,
+    sourceIdentifiers,
+    loadSourceSymbols,
+    sourceDeclarations,
+    sourceSymbol,
+    transparentExpression,
+    type SourceAnalysis
+} from './source-analysis.ts';
 
-export function supportedCall(analysis: SourceAnalysis, call: TypeScript.CallExpression): boolean {
-    const declaration = analysis.checker.getResolvedSignature(call)?.declaration;
+export async function supportedCall(analysis: SourceAnalysis, call: TypeScript.CallExpression): Promise<boolean> {
+    const signature = await analysis.checker.getResolvedSignature(call);
+    const declaration = await signature.declaration?.resolve();
     const path = declaration?.getSourceFile().fileName.replaceAll('\\', '/') ?? '';
     return /\/(?:source\/(?:engine|authoring|packages\/(?:engine|test))|node_modules\/@overkill-dev\/(?:engine|test))\//u
         .test(path);
@@ -26,7 +37,7 @@ function staticReference(analysis: SourceAnalysis, node: TypeScript.Expression):
         compiler.isQualifiedName(node.parent);
 }
 
-function allowedUse(analysis: SourceAnalysis, node: TypeScript.Expression): boolean {
+async function allowedUse(analysis: SourceAnalysis, node: TypeScript.Expression): Promise<boolean> {
     const use = storageUse(analysis, node);
     const { parent } = use;
     const { compiler } = analysis;
@@ -35,7 +46,7 @@ function allowedUse(analysis: SourceAnalysis, node: TypeScript.Expression): bool
     }
     return compiler.isCallExpression(parent) && parent.arguments.some(function matching(argument) {
         return argument === use;
-    }) && supportedCall(analysis, parent);
+    }) && await supportedCall(analysis, parent);
 }
 
 function storageAlias(analysis: SourceAnalysis, node: TypeScript.Expression): TypeScript.BindingName | undefined {
@@ -51,26 +62,103 @@ function storageAlias(analysis: SourceAnalysis, node: TypeScript.Expression): Ty
     return undefined;
 }
 
-function validateReferences(
-    analysis: SourceAnalysis,
-    symbol: TypeScript.Symbol,
-    validate: (node: TypeScript.Node) => void
+function addBindingNames(
+    compiler: SourceAnalysis['compiler'],
+    bindings: TypeScript.NamedImportBindings,
+    addName: (name: string) => void
 ): void {
-    const { compiler } = analysis;
-    function visit(node: TypeScript.Node): void {
-        if (compiler.isIdentifier(node) && sourceSymbol(analysis, node) === symbol) {
-            const alias = storageAlias(analysis, node);
-            if (alias !== undefined) {
-                validate(alias);
-            } else if (!allowedUse(analysis, node)) {
-                throw new Error('Callback options may be mutated or escape static source ownership.');
-            }
+    if (compiler.isNamespaceImport(bindings)) {
+        addName(bindings.name.text);
+    } else {
+        for (const binding of bindings.elements) {
+            addName(binding.name.text);
         }
-        compiler.forEachChild(node, visit);
     }
-    for (const file of analysis.program.getSourceFiles()) {
-        if (!file.isDeclarationFile && !file.fileName.includes('/node_modules/')) {
-            visit(file);
+}
+
+function addImportNames(
+    compiler: SourceAnalysis['compiler'],
+    clause: TypeScript.ImportClause,
+    addName: (name: string) => void
+): void {
+    if (clause.name !== undefined) {
+        addName(clause.name.text);
+    }
+    if (clause.namedBindings !== undefined) {
+        addBindingNames(compiler, clause.namedBindings, addName);
+    }
+}
+
+function referenceNames(
+    analysis: SourceAnalysis,
+    file: TypeScript.SourceFile,
+    symbol: CompilerApi.Symbol
+): ReadonlySet<string> {
+    const names = new Set([ symbol.name ]);
+    for (const statement of file.statements) {
+        if (analysis.compiler.isImportEqualsDeclaration(statement)) {
+            names.add(statement.name.text);
+        }
+        if (analysis.compiler.isImportDeclaration(statement) && statement.importClause !== undefined) {
+            addImportNames(analysis.compiler, statement.importClause, function addReferenceName(name) {
+                names.add(name);
+            });
+        }
+    }
+    return names;
+}
+
+async function validateStorageReference(
+    analysis: SourceAnalysis,
+    node: TypeScript.Expression,
+    validate: (node: TypeScript.Node) => Promise<void>
+): Promise<void> {
+    const alias = storageAlias(analysis, node);
+    if (alias !== undefined) {
+        await validate(alias);
+    } else if (!await allowedUse(analysis, node)) {
+        throw new Error('Callback options may be mutated or escape static source ownership.');
+    }
+}
+
+async function validateFileReferences(
+    analysis: SourceAnalysis,
+    file: TypeScript.SourceFile,
+    symbol: CompilerApi.Symbol,
+    validate: (node: TypeScript.Node) => Promise<void>
+): Promise<void> {
+    const names = referenceNames(analysis, file, symbol);
+    const identifiers = sourceIdentifiers(analysis, file).filter(function matchingName(node) {
+        return names.has(node.text);
+    });
+    await loadSourceSymbols(analysis, identifiers);
+    async function visit(node: TypeScript.Node): Promise<void> {
+        if (
+            analysis.compiler.isIdentifier(node) && names.has(node.text) &&
+            await sourceSymbol(analysis, node) === symbol
+        ) {
+            await validateStorageReference(analysis, node, validate);
+        }
+        for (const child of sourceChildren(node)) {
+            await visit(child);
+        }
+    }
+    await visit(file);
+}
+
+async function validateReferences(
+    analysis: SourceAnalysis,
+    symbol: CompilerApi.Symbol,
+    validate: (node: TypeScript.Node) => Promise<void>
+): Promise<void> {
+    const names = await analysis.program.getSourceFileNames();
+    const paths = names.filter(function applicationSource(path) {
+        return !/[/\\]node_modules[/\\]/u.test(path) && !/\.d\.[cm]?ts$/u.test(path);
+    });
+    for (const path of paths) {
+        const file = await analysis.program.getSourceFile(path);
+        if (file !== undefined && !file.isDeclarationFile && !file.fileName.includes('/node_modules/')) {
+            await validateFileReferences(analysis, file, symbol, validate);
         }
     }
 }
@@ -90,38 +178,38 @@ function exportedStorage(analysis: SourceAnalysis, declaration: TypeScript.Decla
     });
 }
 
-function validateInitializers(
+async function validateInitializers(
     analysis: SourceAnalysis,
-    symbol: TypeScript.Symbol,
-    validate: (node: TypeScript.Node) => void
-): void {
-    const declarations = symbol.declarations ?? [];
+    symbol: CompilerApi.Symbol,
+    validate: (node: TypeScript.Node) => Promise<void>
+): Promise<void> {
+    const declarations = await sourceDeclarations(symbol);
     for (const declaration of declarations) {
         if (exportedStorage(analysis, declaration)) {
             throw new Error('Exported callback options escape static source ownership.');
         }
         const initializer = immutableInitializer(analysis, declaration);
         if (initializer !== undefined) {
-            validate(initializer);
+            await validate(initializer);
         }
     }
 }
 
-export function validateCallbackStorage(analysis: SourceAnalysis, initial: TypeScript.Node): void {
-    const seen = new Set<TypeScript.Symbol>();
-    function validate(input: TypeScript.Node): void {
+export async function validateCallbackStorage(analysis: SourceAnalysis, initial: TypeScript.Node): Promise<void> {
+    const seen = new Set<CompilerApi.Symbol>();
+    async function validate(input: TypeScript.Node): Promise<void> {
         const inner = transparentExpression(analysis, input);
         if (inner !== undefined) {
-            validate(inner);
+            await validate(inner);
             return;
         }
-        const symbol = analysis.compiler.isIdentifier(input) ? sourceSymbol(analysis, input) : undefined;
+        const symbol = analysis.compiler.isIdentifier(input) ? await sourceSymbol(analysis, input) : undefined;
         if (symbol === undefined || seen.has(symbol)) {
             return;
         }
         seen.add(symbol);
-        validateInitializers(analysis, symbol, validate);
-        validateReferences(analysis, symbol, validate);
+        await validateInitializers(analysis, symbol, validate);
+        await validateReferences(analysis, symbol, validate);
     }
-    validate(initial);
+    await validate(initial);
 }

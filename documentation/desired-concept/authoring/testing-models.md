@@ -301,6 +301,9 @@ and requires its reported version to match `version` exactly. Package aliases
 allow a matrix, such as `typescript6` and `typescript7`. Checking never installs,
 downloads, or substitutes compilers. Provisioning is an explicit project setup
 step, and a missing or unsupported compiler is a preparation error.
+The current integration supports only the exact `7.1.0-beta` package. Stable
+releases and other prereleases are rejected; expanding support requires explicit
+compatibility validation.
 
 Deduplicate matrix entries only when their resolved compiler identity and
 fingerprint agree. Preserve first occurrence order. A version alone does not

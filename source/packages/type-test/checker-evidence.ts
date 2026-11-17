@@ -1,8 +1,7 @@
 import { resolve } from 'node:path';
 import { ProjectConfigKind, type Event as CheckerEvent } from 'tstyche/api';
-import type { ReadonlyDeep } from 'type-fest';
 
-function verifyProject(event: ReadonlyDeep<CheckerEvent>, path: string, version: string): boolean {
+function verifyProject(event: Readonly<CheckerEvent>, path: string, version: string): boolean {
     if (event[0] !== 'project:uses') {
         return false;
     }
@@ -15,13 +14,15 @@ function verifyProject(event: ReadonlyDeep<CheckerEvent>, path: string, version:
     }
     return true;
 }
-function rejectSetupError(event: ReadonlyDeep<CheckerEvent>): void {
+
+function rejectSetupError(event: Readonly<CheckerEvent>): void {
     if (event[0] === 'store:error' || event[0] === 'project:error') {
         throw new Error('Checker setup failed.', { cause: event });
     }
 }
+
 function completedFiles(
-    events: readonly ReadonlyDeep<CheckerEvent>[],
+    events: readonly Readonly<CheckerEvent>[],
     path: string,
     version: string
 ): ReadonlySet<string> {
@@ -39,8 +40,9 @@ function completedFiles(
     }
     return completed;
 }
+
 export function verifyCheckerEvidence(
-    events: readonly ReadonlyDeep<CheckerEvent>[],
+    events: readonly Readonly<CheckerEvent>[],
     projectPath: string,
     version: string,
     files: readonly string[]

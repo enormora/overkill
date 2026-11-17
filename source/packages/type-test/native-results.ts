@@ -1,4 +1,3 @@
-import type { ReadonlyDeep } from 'type-fest';
 import type { Event as CheckerEvent } from 'tstyche/api';
 import {
     createRunResult,
@@ -17,28 +16,38 @@ import { caseKey, type NativeTranslation, type NativeSite } from './native-trans
 import { checkerDiagnostic, checkerDiagnosticText, type CheckerDiagnostic } from './checker-diagnostics.ts';
 
 type AssertionEventName = 'expect:error' | 'expect:fail' | 'expect:pass';
-type AssertionEvent = ReadonlyDeep<Extract<CheckerEvent, [AssertionEventName, unknown]>>;
+type AssertionEvent = Readonly<
+    Extract<CheckerEvent, [
+        AssertionEventName,
+        unknown
+    ]>
+>;
 const assertionEventNames: ReadonlySet<string> = new Set([ 'expect:pass', 'expect:fail', 'expect:error' ]);
 type CompilationEventName = 'collect:error' | 'directive:error' | 'file:error';
-type CompilationEvent = ReadonlyDeep<Extract<CheckerEvent, [CompilationEventName, unknown]>>;
+type CompilationEvent = Readonly<
+    Extract<CheckerEvent, [
+        CompilationEventName,
+        unknown
+    ]>
+>;
 const compilationEventNames: ReadonlySet<string> = new Set([ 'file:error', 'collect:error', 'directive:error' ]);
 type SiteEvidence = {
     readonly site: NativeSite;
     readonly passed: boolean;
     readonly diagnostics: readonly CheckerDiagnostic[];
 };
-
-function isAssertionEvent(event: ReadonlyDeep<CheckerEvent>): event is AssertionEvent {
+function isAssertionEvent(event: Readonly<CheckerEvent>): event is AssertionEvent {
     return assertionEventNames.has(event[0]);
 }
-function isCompilationEvent(event: ReadonlyDeep<CheckerEvent>): event is CompilationEvent {
+
+function isCompilationEvent(event: Readonly<CheckerEvent>): event is CompilationEvent {
     return compilationEventNames.has(event[0]);
 }
 
 function resultSite(check: CheckerRun, translation: NativeTranslation, event: AssertionEvent): NativeSite | null {
     const { node } = event[1].result.expect;
     const source = node.getSourceFile();
-    const ranges = check.inputs.mapRange(source.fileName, { start: node.getStart(source), end: node.end }, 'generated');
+    const ranges = check.inputs.mapRange(source.fileName, { start: node.getStart(), end: node.end }, 'generated');
     const module = check.inputs.modules.find(function generated(entry) {
         return entry.kind === 'ready' && entry.path === source.fileName;
     });
@@ -52,8 +61,10 @@ function resultSite(check: CheckerRun, translation: NativeTranslation, event: As
     }) ?? null;
 }
 
-type EvidenceContext = { readonly check: CheckerRun; readonly translation: NativeTranslation; };
-
+type EvidenceContext = {
+    readonly check: CheckerRun;
+    readonly translation: NativeTranslation;
+};
 function mergeEvidence(
     context: EvidenceContext,
     site: NativeSite,
@@ -198,7 +209,6 @@ type NativeCheckEvidence = {
     readonly started: number;
 };
 const microsecondsPerMillisecond = 1000;
-
 function caseResults(input: NativeCheckEvidence): readonly PerTestResult[] {
     const evidence = input.checked === null ? [] : siteEvidence(input.checked, input.translation);
     return input.plan.cases.map(function caseResult(testCase) {
