@@ -21,6 +21,7 @@ import type {
     RunPreciseTimingReport,
     RunArtifact,
     RunResult,
+    ResourceCheckSnapshot,
     RunPlanStatus,
     RunSummary,
     RunTimings,
@@ -59,6 +60,7 @@ type RunResultKeys = readonly [
     'perTest',
     'planStatus',
     'processUsage',
+    'resourceChecks',
     'runnerErrors',
     'status',
     'summary',
@@ -153,6 +155,7 @@ describe('RunResult', function () {
         expect<RunResult['status']>().type.toBe<'failed' | 'passed'>();
         expect<RunResult['planStatus']>().type.toBe<RunPlanStatus>();
         expect<RunResult['processUsage']>().type.toBe<RunProcessUsage | null>();
+        expect<RunResult['resourceChecks']>().type.toBe<readonly ResourceCheckSnapshot[]>();
         expect<RunResult['timings']>().type.toBe<RunTimings>();
         expect<RunTimings['precise']>().type.toBe<RunPreciseTimingReport | null>();
         expect<keyof RunPreciseTimingReport>().type.toBe<ExpectedPreciseTimingKey>();
