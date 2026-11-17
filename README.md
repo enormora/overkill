@@ -39,6 +39,7 @@ CI runs four categories of tests:
   declarations, CLI startup, and interoperability across package boundaries.
   The Stryker smoke test runs one mutant against a one-line module; campaign
   matrices belong in integration tests.
+  Publication dry runs execute as a separate CI job alongside package smoke tests.
 
 Use `npx just test-unit` for a local unit run without coverage. Keep integration
 test nodes out of the unit aggregation rooted at `source/overkill.test.ts`.
