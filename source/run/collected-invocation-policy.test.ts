@@ -9,7 +9,9 @@ import { planCollectedInvocation, type CollectedRunContext } from './collected-r
 
 function collectedContext(): CollectedRunContext {
     const fixture = passingIsolatedWorkerRun(false, false);
-    const profile = defaultIntegrationProfile({ execution: { processModel: 'in-process', scheduling: 'serial' } });
+    const profile = defaultIntegrationProfile({
+        execution: { processModel: 'supervised-process', scheduling: 'serial' }
+    });
     const config = { ...fixture.command.config, profiles: { integration: profile } };
     const command = { ...fixture.command, config };
     const input = { ...fixture.input, config, profile };

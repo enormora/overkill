@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { globalErrorObservation } from '../test-support/global-error-observation.ts';
@@ -8,7 +9,11 @@ import { executionErrorOwnership } from './execution-error-ownership.ts';
 export const testNode = suite('global error attribution boundaries', [
     test('leaves work subscriptions empty outside an execution boundary', function (scope: TestScope) {
         const observed: string[] = [];
-        executionErrorOwnership().runScopeStorage.exit(function () {
+        const storage = executionErrorOwnership().runScopeStorage;
+        if (!(storage instanceof AsyncLocalStorage)) {
+            throw new TypeError('Expected native execution context storage.');
+        }
+        storage.exit(function () {
             const stop = observeActiveCaseWork(function (work) {
                 observed.push(work.case.title);
             });
