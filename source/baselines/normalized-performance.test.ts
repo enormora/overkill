@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import type { RunResult } from '../packages/engine/engine.entry-point.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { recordedMachine } from '../test-support/normalized-machine.ts';
@@ -31,12 +32,25 @@ async function workflow(
     return await createPerformanceWorkflow({
         projectRoot,
         directory: 'baselines',
-        maxBytes: 100_000,
+        maxBytes: defaultAttachmentLimits.maxArtifactBytes,
         profile: 'bench',
         adapters: [ normalizationBaselineAdapter('storage') ],
         calibration: { kind: 'comparable', machineClass, metadata: {}, context: {} },
         mode
     });
+}
+async function saveNormalizedExpectation(
+    scope: TestScope,
+    saving: PerformanceWorkflow,
+    result: RunResult
+): Promise<void> {
+    const evaluation = saving.evaluate(completedBenchmark(result));
+    scope.assert.deepEqual(evaluation.errors, []);
+    scope.assert.equal(evaluation.event.verdict, 'pass');
+    const change = saving.changes[0];
+    scope.require.defined(change);
+    scope.assert.equal(change.baseline.expected.value, 10);
+    await saving.store.apply(change);
 }
 async function savedFastMachine(scope: TestScope): Promise<string> {
     const projectRoot = await mkdtemp(join(tmpdir(), 'overkill-portable-budget-'));
@@ -45,11 +59,7 @@ async function savedFastMachine(scope: TestScope): Promise<string> {
     });
     const fast = await recordedMachine(scope, 100, 'fast-mac', 1000);
     const saving = await workflow(projectRoot, 'fast-mac', 'update');
-    scope.assert.equal(saving.evaluate(completedBenchmark(fast)).event.verdict, 'pass');
-    const change = saving.changes[0];
-    scope.require.defined(change);
-    scope.assert.equal(change.baseline.expected.value, 10);
-    await saving.store.apply(change);
+    await saveNormalizedExpectation(scope, saving, fast);
     return projectRoot;
 }
 export const testNode = suite('portable normalized performance expectations', [
