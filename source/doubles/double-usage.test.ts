@@ -119,6 +119,58 @@ export const testNode = createOverkillSuite({
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
+            annotations: {},
+            controls: {},
+            title: 'negated ordinary argument assertions reject matching calls and accept different calls',
+            async body(scope: OverkillScope) {
+                for (const value of [ 'matching', 'different' ]) {
+                    const result = await executeSingleBody(function (inner: TestScope) {
+                        const call = testDouble.returns('done');
+                        call(value);
+                        inner.assert(doubleUsage.notCalledWith, call, [ 'matching' ]);
+                        return inner.assert.collect();
+                    });
+                    scope.assert.equal(result.summary.failed, value === 'matching' ? 1 : 0);
+                    scope.assert.equal(result.summary.passed, value === 'matching' ? 0 : 1);
+                }
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            annotations: {},
+            controls: {},
+            title: 'once-with assertions report an absent call without inventing argument evidence',
+            async body(scope: OverkillScope) {
+                const result = await executeSingleBody(function (inner: TestScope) {
+                    const call = testDouble.returns('done');
+                    inner.assert(doubleUsage.calledOnceWith, call, [ 'missing' ]);
+                    return inner.assert.collect();
+                });
+                scope.assert.equal(result.summary.failed, 1);
+                const composite = firstComposite(result);
+                scope.require.notNull(composite);
+                scope.assert.deepEqual(childSummaries(composite), [ 'call count' ]);
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            annotations: {},
+            controls: {},
+            title: 'indexed argument assertions reject subjects without double history',
+            async body(scope: OverkillScope) {
+                const result = await executeSingleBody(function (inner: TestScope) {
+                    inner.assert(doubleUsage.nthCallWith, {}, 0, []);
+                    return inner.assert.collect();
+                });
+                scope.assert.equal(result.summary.failed, 1);
+                scope.assert.includes(JSON.stringify(result.perTest[0]?.outcome), 'Expected an Overkill test double.');
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'pattern mismatches and predicate errors remain failures under negation',
             annotations: {},
             controls: {},
