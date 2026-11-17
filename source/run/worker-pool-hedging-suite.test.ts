@@ -1,6 +1,7 @@
 import { runIfMain } from '#test-runner';
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as hedgeTiming } from './dynamic-dispatch-timing-policy.test.ts';
+import { testNode as emptyPool } from './routed-pool-empty-policy.test.ts';
 import { testNode as workerPoolDynamicHedgingTestNode } from './worker-pool-dynamic-hedging.test.ts';
 import { testNode as workerPoolHedgeDispatchTestNode } from './worker-pool-hedge-dispatch.test.ts';
 import { testNode as workerPoolHedgedArbitrationTestNode } from './worker-pool-hedged-arbitration.test.ts';
@@ -14,6 +15,7 @@ export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/worker-pool-hedging-suite.test.ts',
     children: [
+        emptyPool,
         hedgeTiming,
         workerPoolDynamicHedgingTestNode,
         workerPoolHedgeDispatchTestNode,

@@ -2,8 +2,21 @@ import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { globalErrorObservation } from '../test-support/global-error-observation.ts';
 import { withRunnerInfrastructure } from '../execution-ownership.ts';
+import { observeActiveCaseWork } from './execution-global-error-observer.ts';
+import { executionErrorOwnership } from './execution-error-ownership.ts';
 
 export const testNode = suite('global error attribution boundaries', [
+    test('leaves work subscriptions empty outside an execution boundary', function (scope: TestScope) {
+        const observed: string[] = [];
+        executionErrorOwnership().runScopeStorage.exit(function () {
+            const stop = observeActiveCaseWork(function (work) {
+                observed.push(work.case.title);
+            });
+            stop();
+        });
+        scope.assert.deepEqual(observed, []);
+        return scope.assert.collect();
+    }),
     test('serializes errors without a stack', async function (scope: TestScope) {
         const fixture = globalErrorObservation();
         const failure = new Error('stackless');
