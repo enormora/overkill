@@ -3,6 +3,7 @@ import { debugArtifactForWork } from '../test-support/debug-artifact-fixture.ts'
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { supervisedMessageRuntime } from '../test-support/supervised-message-runtime.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
 import { testNode as assignmentPolicy } from './supervised-assignment-policy.test.ts';
 import type { WorkId, ReporterEvent, RunArtifact } from './run-engine-primitives.ts';
 
@@ -24,6 +25,71 @@ function caseCompletion(work: WorkId, artifacts: readonly RunArtifact[]): CaseCo
     };
 }
 export const testNode = suite('supervised child message policy', [
+    test('retains resource observation progress before final results', async function (scope: TestScope) {
+        const fixture = supervisedMessageRuntime(scope, false, true);
+        const snapshot: Extract<ReporterEvent, { readonly kind: 'resource-check-progress'; }>['snapshot'] = {
+            owner: { run: 'run', id: 'owner', scope: 'per-run' },
+            resource: 'service',
+            revision: 1,
+            interval: { kind: 'lifetime' },
+            passing: 1,
+            failures: [],
+            errors: [],
+            status: { kind: 'complete' }
+        };
+        fixture.receive({ kind: 'event', event: { kind: 'resource-check-progress', snapshot } });
+        await fixture.runtime.reporterEvents.wait();
+        scope.assert.deepEqual(fixture.runtime.state.resourceChecks(), [ snapshot ]);
+        scope.assert.deepEqual(fixture.reported, [ { kind: 'resource-check-progress', snapshot } ]);
+        return scope.assert.collect();
+    }),
+    test('retains measurement progress for an active child case', async function (scope: TestScope) {
+        const fixture = supervisedMessageRuntime(scope, false, true);
+        const benchmark = benchmarkHtmlFixture('progress').perTest[0]?.benchmark;
+        scope.require.defined(benchmark);
+        fixture.receive({
+            kind: 'event',
+            event: {
+                kind: 'test-start',
+                case: fixture.work.case,
+                workId: fixture.work,
+                attempt: 0,
+                definitionLocations: [ { kind: 'unknown' } ],
+                suitePath: []
+            }
+        });
+        const event: ReporterEvent = {
+            kind: 'benchmark-progress',
+            workId: fixture.work,
+            benchmark,
+            attempt: 0,
+            case: fixture.work.case,
+            definitionLocations: [ { kind: 'unknown' } ],
+            suitePath: []
+        };
+        fixture.receive({ kind: 'event', event });
+        await fixture.runtime.reporterEvents.wait();
+        scope.assert.equal(fixture.runtime.state.activeCases.values().next().value?.benchmark, benchmark);
+        scope.assert.true(fixture.reported.includes(event));
+        return scope.assert.collect();
+    }),
+    test('ignores process samples after terminal failure', function (scope: TestScope) {
+        const fixture = supervisedMessageRuntime(scope, false, true);
+        fixture.runtime.terminalFailure.write(true);
+        fixture.receive({
+            kind: 'sample',
+            sample: {
+                activeResourceCount: 0,
+                activeResourceTypes: [],
+                capturedAtMicroseconds: 1,
+                javaScriptEngineHeapBytes: 1,
+                residentSetBytes: 1
+            }
+        });
+        scope.assert.equal(fixture.runtime.previousSample.read(), null);
+        scope.assert.deepEqual(fixture.reported, []);
+        return scope.assert.collect();
+    }),
     assignmentPolicy,
     ...[ false, true ].map(function (completedDebug) {
         return test(

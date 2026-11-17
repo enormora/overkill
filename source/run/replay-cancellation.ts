@@ -3,7 +3,10 @@ import { stopWorkerPoolTasks } from './worker-pool-task-events.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 import type { WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
 
-type ReplayCancellation = { readonly runtime: WorkerPoolRunRuntime; readonly dispatcher: WorkerPoolWorkDispatcher; };
+export type ReplayCancellation = {
+    readonly runtime: WorkerPoolRunRuntime;
+    readonly dispatcher: WorkerPoolWorkDispatcher;
+};
 function cancelPlacement(context: ReplayCancellation): void {
     context.runtime.terminalFailure.write(true);
     context.runtime.runState.recordRunnerError({

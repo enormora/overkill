@@ -17,6 +17,7 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { testNode as failurePolicy } from './worker-execution-failure-policy.test.ts';
 
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import { executeWorkerPoolUnits } from './worker-pool-execution.ts';
@@ -122,6 +123,7 @@ export const testNode = createOverkillSuite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-execution-state.test.ts',
     children: [
+        failurePolicy,
         createOverkillTestCase({
             ...testCaseMetadata,
             title: 'worker-pool execution stops after repeated invalid worker outputs',

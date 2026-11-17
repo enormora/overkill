@@ -1,9 +1,11 @@
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { globalErrorObservation } from '../test-support/global-error-observation.ts';
+import { testNode as attributionPolicy } from './global-error-attribution-policy.test.ts';
 import { createOwnedGlobalErrorObserver } from './execution-global-error-observer.ts';
 
 export const testNode = suite('global execution error ownership', [
+    attributionPolicy,
     test('publishes current and newly active work until the subscription stops', async function (scope: TestScope) {
         const fixture = globalErrorObservation();
         const observed: string[] = [];

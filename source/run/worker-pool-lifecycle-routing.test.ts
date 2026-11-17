@@ -331,8 +331,19 @@ async function assertRoutedLifecycleRuns(
         await runtime.pool.run(lifecycleTask('fresh-worker-per-unit', 'worker-2'), runOptions()),
         'fresh-worker-per-unit'
     );
+    scope.assert.equal(
+        await runtime.pool.run({ kind: 'collect', command: { workerLifecycle: 'reuse' } }, runOptions()),
+        'reuse'
+    );
+    scope.assert.equal(
+        await runtime.pool.run(
+            { kind: 'collect', command: { workerLifecycle: 'fresh-worker-per-unit' } },
+            runOptions()
+        ),
+        'fresh-worker-per-unit'
+    );
     runtime.pool.setHostOutputSink?.(null);
-    scope.assert.deepEqual(routedLifecycles, [ 'reuse', 'fresh-worker-per-unit' ]);
+    scope.assert.deepEqual(routedLifecycles, [ 'reuse', 'fresh-worker-per-unit', 'reuse', 'fresh-worker-per-unit' ]);
     scope.assert.deepEqual(routedHostOutputSinks, [
         'reuse',
         'fresh-worker-per-unit',

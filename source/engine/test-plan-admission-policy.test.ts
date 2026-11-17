@@ -13,6 +13,16 @@ function unexecutedBody(): never {
     throw new Error('Collection must not execute bodies.');
 }
 export const testNode = suite('test plan admission and deferred bodies', [
+    test('reports duplicate sibling titles at the root boundary', function (scope: TestScope) {
+        const engine = createTestEngine();
+        const children = [ 'duplicate', 'duplicate' ].map(function node(title) {
+            return engine.createTestCase({ ...metadata, title, body: unexecutedBody });
+        });
+        scope.assert.throws(function () {
+            engine.createTestPlan(engine.createRoot({ title: 'root', annotations: {}, controls: {}, children }));
+        }, { message: 'Duplicate test node title under root: duplicate.' });
+        return scope.assert.collect();
+    }),
     ...[ false, true ].map(function (wrapped) {
         return test(
             `recovers callable origins when node metadata is absent and body wrapping is ${wrapped}`,
