@@ -290,7 +290,7 @@ async function assertShardExecution(scope: TestScope, mode: ExecutionMode): Prom
     await writeLastFailedCase(directory, false);
     await assertShardExitCodes(scope, directory);
     await assertShardRecords(scope, directory);
-    scope.assert.deepEqual(await readHistorySnapshot(directory), before);
+    scope.assert.equal(await readHistorySnapshot(directory), before);
     await assertRetainedHistory(scope, directory);
 }
 
