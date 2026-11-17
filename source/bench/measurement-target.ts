@@ -80,7 +80,10 @@ export function defaultMeasurementTarget(): MeasurementTarget {
     });
 }
 
-function processMeasurementTarget(mode: 'module' | 'process'): MeasurementTarget {
+function processMeasurementTarget(
+    mode: 'module' | 'process',
+    semantics: Readonly<Record<string, string>>
+): MeasurementTarget {
     const target = defaultMeasurementTarget();
     const reason = 'The external measured process does not expose target settling or GC capabilities.';
     return {
@@ -88,6 +91,7 @@ function processMeasurementTarget(mode: 'module' | 'process'): MeasurementTarget
         identity: {
             ...target.identity,
             name: mode,
+            semantics,
             scope: 'external-process',
             clock: mode === 'module' ? 'module-runtime' : 'process-lifetime'
         },
@@ -102,7 +106,10 @@ export function resolveMeasurementTarget(
 ): MeasurementTarget {
     const mode: unknown = Reflect.get(measurement, 'mode');
     if (mode === 'process' || mode === 'module') {
-        return processMeasurementTarget(mode);
+        const semantics = mode === 'process'
+            ? { instrumentation: z.enum([ 'node', 'off' ]).parse(Reflect.get(measurement, 'instrumentation')) }
+            : {};
+        return processMeasurementTarget(mode, semantics);
     }
     const garbageCollection = capability ??
         { kind: 'unavailable' as const, reason: 'Forced GC requires supervised or hosted benchmark execution.' };

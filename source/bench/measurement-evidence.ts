@@ -13,7 +13,7 @@ export type MeasurementRecording = {
     readonly snapshot: () => MeasurementEvidence;
 };
 export function createMeasurementRecording(
-    scope: BenchmarkScope,
+    scope: Pick<BenchmarkScope, 'attemptId' | 'reportError' | 'workId'>,
     target: MeasurementTarget,
     strategy: UncalibratedMeasurement
 ): MeasurementRecording {
@@ -37,6 +37,9 @@ export function createMeasurementRecording(
     let omitted = 0;
     return {
         begin(phase) {
+            const invocationTarget = strategy.mode === 'process' || strategy.mode === 'module'
+                ? { ...target, identity: { ...target.identity, instance: randomUUID() } }
+                : target;
             const invocation = { execution, work: scope.workId, attempt: scope.attemptId, phase, index: counts[phase] };
             counts[phase] += 1;
             const slot = invocations.length;
@@ -44,7 +47,7 @@ export function createMeasurementRecording(
             if (retained) {
                 invocations.push({
                     invocation,
-                    target: target.identity,
+                    target: invocationTarget.identity,
                     collectors: [],
                     status: 'incomplete',
                     errors: [ 'Measurement did not finalize.' ],
@@ -57,7 +60,7 @@ export function createMeasurementRecording(
             let finalized = false;
             return {
                 invocation,
-                target,
+                target: invocationTarget,
                 infrastructureError(cause) {
                     scope.reportError(
                         new CaseRunnerError('Collector lifecycle failed.', { subtype: 'measurement', cause })
