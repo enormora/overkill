@@ -2,7 +2,7 @@ import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type RunResult, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createFakeSupervisedChildProcess } from '../test-support/fake-supervised-child-process.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
-import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultRunConfig, defaultRunRequest, defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createSupervisedRunCommand } from './run-isolated-command.ts';
@@ -36,7 +36,7 @@ const phases = [ 'before-collection', 'active-attempt', 'missing-results', 'coll
 type Phase = typeof phases[number] | 'collection-timing';
 
 async function executeProtocolPhase(phase: Phase): Promise<RunResult> {
-    const resolved = await createDeterministicRunOrchestrator().resolve(command);
+    const resolved = await createUnitRunOrchestrator().resolve(command);
     if (resolved.plan.kind === 'local') {
         throw new Error('Expected a supervised plan.');
     }

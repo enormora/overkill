@@ -6,16 +6,16 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { ResourceScope } from '../resources/resources.ts';
+import {
+    createCollectedPlan,
+    fakeWorkerRuntime
+} from '../test-support/worker-pool-execution-state.ts';
 import { createResourceOwnershipPlan } from './execution-plan-resolution.ts';
 import {
     acquireWorkerPoolResourceLifecycle,
     collectedPlanNeedsLaneResourceLifecycle,
     disposeWorkerPoolResourceLifecycles
 } from './worker-pool-resource-lifecycle-execution.ts';
-import {
-    createCollectedPlan,
-    fakeWorkerRuntime
-} from './worker-pool-execution-state.test.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];

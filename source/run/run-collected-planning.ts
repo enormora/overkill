@@ -69,13 +69,14 @@ function resolvedScheduling(
 }
 
 async function createCurrentCollectedExecutionPlan(
-    input: CollectedExecutionPlanInput
+    input: CollectedExecutionPlanInput,
+    createHasher: typeof createRunShardHasher
 ): Promise<CollectedExecutionPlan> {
     if (input.planKind === 'supervised') {
         assertCollectedPlanCompatible(input.collectedPlan);
     }
 
-    const shardHasher = await createRunShardHasher(input.request.shard);
+    const shardHasher = await createHasher(input.request.shard);
     const placementResolution = await createPlacementResolution(input, shardHasher);
     const planningFacts = placementResolution ?? {
         durationHistory: null,
@@ -100,9 +101,17 @@ async function createCurrentCollectedExecutionPlan(
 }
 
 type CollectedImplementationPlan = CollectedExecutionPlan & { readonly implementations: RunFacts['implementations']; };
+export async function planCollectedExecution(
+    input: CollectedExecutionPlanInput,
+    createHasher: typeof createRunShardHasher
+): Promise<CollectedImplementationPlan> {
+    const plan = replayExecutionPlan(input.collectedPlan) ??
+        await createCurrentCollectedExecutionPlan(input, createHasher);
+    return { ...plan, implementations: collectImplementationCatalog(plan.orderedCases, input.projectRoot) };
+}
+
 export async function createCollectedExecutionPlan(
     input: CollectedExecutionPlanInput
 ): Promise<CollectedImplementationPlan> {
-    const plan = replayExecutionPlan(input.collectedPlan) ?? await createCurrentCollectedExecutionPlan(input);
-    return { ...plan, implementations: collectImplementationCatalog(plan.orderedCases, input.projectRoot) };
+    return await planCollectedExecution(input, createRunShardHasher);
 }

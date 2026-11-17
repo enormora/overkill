@@ -1,8 +1,10 @@
 import { runIfMain } from '#test-runner';
+import { testNode as maps } from './implementation-source-map-policy.test.ts';
 import { suite, test } from './packages/test/test.entry-point.ts';
 import { implementationFormat, implementationImports } from './implementation-source.ts';
 
 export const testNode = suite('native implementation source inspection', [
+    maps,
     test('ignores local exports while retaining side-effect and literal dynamic imports', function (scope) {
         scope.assert.deepEqual(
             implementationImports(

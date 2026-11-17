@@ -3,7 +3,7 @@ import { dirname, extname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { z } from 'zod/v4';
 import ts from 'typescript';
-import type { DeliveredModule } from './module-loading-scope.ts';
+import type { DeliveredModule } from './module-delivery.ts';
 
 export type ImplementationPackage = { readonly url: string; readonly source: string; };
 

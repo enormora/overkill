@@ -7,7 +7,7 @@ import {
     type FailureArtifactAttachments
 } from '../packages/test/resources.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
-import { executeEvidence } from '../test-support/failure-evidence-fixture.ts';
+import { executeInlineEvidence } from '../test-support/failure-evidence-fixture.ts';
 import { currentAttachmentLimits } from '../packages/resources/attachment-context.entry-point.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
@@ -42,8 +42,7 @@ async function assertCombinedFailures(scope: TestScope): Promise<void> {
             throw new Error('collector failed');
         }
     });
-    const fixture = await executeEvidence(
-        scope,
+    const fixture = await executeInlineEvidence(
         withResources({ resource }, function failingCase(testScope) {
             testScope.assert.equal(testScope.resources.resource.secret, 'owner');
             return testScope.assert.collect();
@@ -79,8 +78,7 @@ async function assertCollectorOperationFailure(scope: TestScope): Promise<void> 
             await capture.attachments.json(evidence, undefined);
         }
     );
-    const fixture = await executeEvidence(
-        scope,
+    const fixture = await executeInlineEvidence(
         withResources({ resource }, function originalFailure(testScope) {
             testScope.assert.equal('body failure', 'expected');
             return testScope.assert.collect();
@@ -112,8 +110,7 @@ async function assertDefaultScenario(scope: TestScope): Promise<void> {
             });
         }
     );
-    const fixture = await executeEvidence(
-        scope,
+    const fixture = await executeInlineEvidence(
         withResources({ resource }, function failingCase(testScope) {
             testScope.assert.fail();
             return testScope.assert.collect();
@@ -147,8 +144,7 @@ async function assertExpiredWitness(scope: TestScope): Promise<void> {
             }
         }
     );
-    const fixture = await executeEvidence(
-        scope,
+    const fixture = await executeInlineEvidence(
         withResources({ resource }, function passingCase(testScope) {
             testScope.assert.true(true);
             return testScope.assert.collect();

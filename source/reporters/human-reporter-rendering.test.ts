@@ -14,6 +14,7 @@ import {
     type RunTimingSpan
 } from '../engine/run-timings.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { testNode as debug } from './human-debug-rendering-policy.test.ts';
 import { contextPrefix, problemLines } from './human-reporter-rendering.ts';
 import { formatTimingOffenderLines } from './run-summary-rendering.ts';
 import { testNode as attachmentRendering } from './human-attachment-rendering.test.ts';
@@ -165,6 +166,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        debug,
         attachmentRendering,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],

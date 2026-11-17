@@ -11,8 +11,8 @@ export type ConfigExecution = {
     readonly configs: readonly Linter.Config[];
     readonly materialized: boolean;
 };
-type SourceInput = { readonly filename: string; readonly code: string; };
-type SourceResult = { readonly output: string; readonly messages: readonly Linter.LintMessage[]; };
+export type ConfigSourceInput = { readonly filename: string; readonly code: string; };
+export type ConfigSourceResult = { readonly output: string; readonly messages: readonly Linter.LintMessage[]; };
 const resolvedConfigSchema = z.object({
     rules: z.record(z.string(), z.unknown()).default({}),
     languageOptions: z.record(z.string(), z.unknown()).default({}),
@@ -48,7 +48,7 @@ export function fatalDiagnostics(messages: readonly Linter.LintMessage[]): reado
     });
 }
 
-async function prepareSource(execution: ConfigExecution, input: SourceInput): Promise<string> {
+async function prepareSource(execution: ConfigExecution, input: ConfigSourceInput): Promise<string> {
     execution.context.signal.throwIfAborted();
     const filename = projectPath(execution.context.root, input.filename);
     if (execution.materialized) {
@@ -62,9 +62,9 @@ async function prepareSource(execution: ConfigExecution, input: SourceInput): Pr
 
 export async function lintConfigSource(
     execution: ConfigExecution,
-    input: SourceInput,
+    input: ConfigSourceInput,
     mode: 'fix' | 'lint' | 'parse'
-): Promise<SourceResult> {
+): Promise<ConfigSourceResult> {
     const filePath = await prepareSource(execution, input);
     const engine = configEngine(execution, mode);
     assert.equal(await engine.isPathIgnored(filePath), false, `Unexpected ignored file: ${input.filename}`);
@@ -76,13 +76,19 @@ export async function lintConfigSource(
     return { output: result.output ?? input.code, messages: result.messages };
 }
 
-export async function observeConfigSource(
+export type ConfigSourceLint = (
     execution: ConfigExecution,
-    input: SourceInput,
-    fixing: boolean
+    input: ConfigSourceInput,
+    mode: 'fix' | 'lint' | 'parse'
+) => Promise<ConfigSourceResult>;
+export async function collectConfigObservation(
+    execution: ConfigExecution,
+    input: ConfigSourceInput,
+    fixing: boolean,
+    lint: ConfigSourceLint
 ): Promise<ConfigObservation> {
-    const linted = await lintConfigSource(execution, input, 'lint');
-    const fixed = fixing ? await lintConfigSource(execution, input, 'fix') : linted;
+    const linted = await lint(execution, input, 'lint');
+    const fixed = fixing ? await lint(execution, input, 'fix') : linted;
     return {
         filename: input.filename,
         code: input.code,
@@ -101,4 +107,12 @@ export function stableObservation(observation: ConfigObservation, root: string):
         messages: observation.messages.map(normalize),
         fixedMessages: observation.fixedMessages.map(normalize)
     };
+}
+
+export async function observeConfigSource(
+    execution: ConfigExecution,
+    input: ConfigSourceInput,
+    fixing: boolean
+): Promise<ConfigObservation> {
+    return await collectConfigObservation(execution, input, fixing, lintConfigSource);
 }

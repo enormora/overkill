@@ -1,0 +1,302 @@
+import { runIfMain } from '#test-runner';
+import {
+    createDeterministicClock,
+    type DeterministicClock,
+    type Clock
+} from '@enormora/clock';
+import {
+    createSuite as createOverkillSuite,
+    createTestCase as createOverkillTestCase,
+    type TestScope as OverkillScope
+} from '../packages/engine/engine.entry-point.ts';
+import type { RunTimingSpan } from '../engine/run-timings.ts';
+import { createSupervisedResourceLifecycleTiming } from './supervised-child-execution.ts';
+import {
+    createResourceLifecycleTiming,
+    type ResourceLifecycleTiming,
+    type ResourceLifecycleTimingOperation
+} from './resource-lifecycle-timing.ts';
+import { createRunTimingMeasurement } from './run-timing-collection.ts';
+
+const testCaseMetadata = {
+    annotations: {},
+    controls: {},
+    definitionLocations: [ { kind: 'unknown' as const } ]
+} as const;
+
+type LocalTimingFixture = {
+    readonly spans: readonly RunTimingSpan[];
+    readonly timing: ResourceLifecycleTiming;
+};
+
+type FailureObservations = {
+    readonly cancellation: Error;
+    readonly caughtCancellation: unknown;
+    readonly caughtFailure: unknown;
+    readonly failure: Error;
+};
+
+function operation(signal: AbortSignal): ResourceLifecycleTimingOperation {
+    return {
+        phase: 'acquire' as const,
+        resource: { name: 'database', scope: 'per-run' as const },
+        signal
+    };
+}
+
+function localTiming(clock: DeterministicClock): LocalTimingFixture {
+    const spans: RunTimingSpan[] = [];
+    const timing = createResourceLifecycleTiming({
+        clock,
+        processId: 'process-1',
+        target: {
+            emit(span) {
+                spans.push(span);
+            },
+            kind: 'local'
+        },
+        workerId: 'worker-1'
+    });
+
+    return { spans, timing };
+}
+
+function unavailableTimingClock(): Clock {
+    const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+
+    Object.defineProperty(clock, 'currentMonotonicMicroseconds', {
+        get() {
+            throw new Error('clock unavailable');
+        }
+    });
+
+    return clock;
+}
+
+async function capturedError(run: () => Promise<unknown>): Promise<unknown> {
+    try {
+        await run();
+    } catch (error: unknown) {
+        return error;
+    }
+
+    return null;
+}
+
+async function failureObservations(
+    clock: DeterministicClock,
+    timing: ResourceLifecycleTiming
+): Promise<FailureObservations> {
+    const failureController = new AbortController();
+    const failure = new Error('acquire failed');
+    const caughtFailure = await capturedError(async function failAcquisition() {
+        await timing.measure(operation(failureController.signal), async function acquireResource() {
+            clock.advanceByMicroseconds(12n);
+            throw failure;
+        });
+    });
+    const cancellationController = new AbortController();
+    const cancellation = new Error('cancelled');
+    const caughtCancellation = await capturedError(async function cancelAcquisition() {
+        await timing.measure(operation(cancellationController.signal), async function acquireResource() {
+            clock.advanceByMicroseconds(8n);
+            cancellationController.abort(cancellation);
+            throw cancellation;
+        });
+    });
+
+    return { cancellation, caughtCancellation, caughtFailure, failure };
+}
+
+export const testNode = createOverkillSuite({
+    ...testCaseMetadata,
+    title: 'resource lifecycle timing policy',
+    children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'supervised resource timing emits duration-only child spans',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+                const messages: unknown[] = [];
+                const timing = createSupervisedResourceLifecycleTiming(clock, function recordMessage(message) {
+                    messages.push(message);
+                });
+                const controller = new AbortController();
+
+                await timing.measure({
+                    phase: 'acquire',
+                    resource: { name: 'database', scope: 'per-run' },
+                    signal: controller.signal
+                }, async function acquireResource() {
+                    clock.advanceByMicroseconds(21n);
+                });
+
+                scope.assert.deepEqual(messages, [ {
+                    kind: 'timing',
+                    span: {
+                        durationMicroseconds: 21,
+                        kind: 'resource.acquire',
+                        label: null,
+                        processId: String(process.pid),
+                        resource: { name: 'database', scope: 'per-run' },
+                        startOffsetMicroseconds: null,
+                        startTimeUnixMicroseconds: 0,
+                        status: 'success',
+                        workerId: null
+                    }
+                } ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'resource lifecycle timing records parent-relative resource spans',
+            async body(scope: OverkillScope) {
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+                const measurement = createRunTimingMeasurement(clock);
+                const timing = createResourceLifecycleTiming({
+                    clock,
+                    processId: 'parent-process',
+                    target: { kind: 'parent', record: measurement.record },
+                    workerId: null
+                });
+                const controller = new AbortController();
+
+                clock.advanceByMicroseconds(10n);
+                await timing.measure(operation(controller.signal), async function acquireResource() {
+                    clock.advanceByMicroseconds(25n);
+                });
+
+                const report = measurement.report();
+
+                scope.assert.deepEqual(report.spans, [ {
+                    durationMicroseconds: 25,
+                    kind: 'resource.acquire',
+                    label: null,
+                    processId: 'parent-process',
+                    resource: { name: 'database', scope: 'per-run' },
+                    startOffsetMicroseconds: 10,
+                    startTimeUnixMicroseconds: 10,
+                    status: 'success',
+                    workerId: null
+                } ]);
+                scope.assert.deepEqual(report.aggregates, [ {
+                    count: 1,
+                    durationMicroseconds: 25,
+                    kind: 'resource.acquire'
+                } ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'resource lifecycle timing records local failures and cancellations',
+            async body(scope: OverkillScope) {
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+                const fixture = localTiming(clock);
+                const observed = await failureObservations(clock, fixture.timing);
+
+                scope.assert.equal(observed.caughtFailure, observed.failure);
+                scope.assert.equal(observed.caughtCancellation, observed.cancellation);
+                scope.assert.deepEqual(
+                    fixture.spans.map(function timingStatus(span) {
+                        return {
+                            durationMicroseconds: span.durationMicroseconds,
+                            processId: span.processId,
+                            startOffsetMicroseconds: span.startOffsetMicroseconds,
+                            status: span.status,
+                            workerId: span.workerId
+                        };
+                    }),
+                    [
+                        {
+                            durationMicroseconds: 12,
+                            processId: 'process-1',
+                            startOffsetMicroseconds: null,
+                            status: 'failure',
+                            workerId: 'worker-1'
+                        },
+                        {
+                            durationMicroseconds: 8,
+                            processId: 'process-1',
+                            startOffsetMicroseconds: null,
+                            status: 'cancelled',
+                            workerId: 'worker-1'
+                        }
+                    ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'resource lifecycle timing cannot change resource behavior',
+            async body(scope: OverkillScope) {
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+                const timing = createResourceLifecycleTiming({
+                    clock,
+                    processId: 'process-1',
+                    target: {
+                        emit() {
+                            throw new Error('timing transport failed');
+                        },
+                        kind: 'local'
+                    },
+                    workerId: null
+                });
+                const controller = new AbortController();
+                const value = await timing.measure(operation(controller.signal), async function acquireResource() {
+                    return 'handle';
+                });
+                const failure = new Error('resource failed');
+                const caughtFailure = await capturedError(async function failResource() {
+                    await timing.measure(operation(controller.signal), async function acquireResource() {
+                        throw failure;
+                    });
+                });
+
+                scope.assert.equal(value, 'handle');
+                scope.assert.equal(caughtFailure, failure);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'resource lifecycle timing tolerates unavailable clocks',
+            async body(scope: OverkillScope) {
+                const spans: RunTimingSpan[] = [];
+                const timing = createResourceLifecycleTiming({
+                    clock: unavailableTimingClock(),
+                    processId: 'process-1',
+                    target: {
+                        emit(span) {
+                            spans.push(span);
+                        },
+                        kind: 'local'
+                    },
+                    workerId: null
+                });
+                const controller = new AbortController();
+                const value = await timing.measure(
+                    operation(controller.signal),
+                    async function acquireResource() {
+                        return 'handle';
+                    }
+                );
+
+                scope.assert.equal(value, 'handle');
+                scope.assert.deepEqual(spans, []);
+
+                return scope.assert.collect();
+            }
+        })
+    ]
+});
+
+await runIfMain(import.meta, testNode);

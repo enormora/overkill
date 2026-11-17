@@ -2,7 +2,7 @@ import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { defineReporter, defineTestFamily, type TestFamily } from '../packages/engine/engine.entry-point.ts';
 import { normalizeConfig, type RunCommand, type RunRequest } from '../packages/run/run.entry-point.ts';
-import { createDeterministicRunCoordinator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import { createUnitRunCoordinator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { analysisFixture, type EvidenceMode } from '../test-support/family-analysis-fixture.ts';
 import { selectBenchmarkProfile, selectProfile } from './test-profile.ts';
@@ -169,7 +169,7 @@ export const testNode = suite('family runner failure policy', [
             }
         }, 'complete');
         try {
-            await createDeterministicRunCoordinator().orchestrator.resolve({
+            await createUnitRunCoordinator().orchestrator.resolve({
                 ...input,
                 request: {
                     ...input.request,
@@ -204,7 +204,7 @@ export const testNode = suite('family runner failure policy', [
         const input = command(function unusedBackend() {
             return undefined;
         }, 'complete');
-        const resolved = await createDeterministicRunCoordinator().orchestrator.resolve({
+        const resolved = await createUnitRunCoordinator().orchestrator.resolve({
             ...input,
             config: normalizeConfig({ profiles: { types: { testFamily: 'microtest' } } })
         });
@@ -224,7 +224,7 @@ export const testNode = suite('family runner failure policy', [
         const input = command(function unusedBackend() {
             return undefined;
         }, 'complete');
-        const coordinator = createDeterministicRunCoordinator();
+        const coordinator = createUnitRunCoordinator();
         const initialized = await coordinator.orchestrator.initialize({
             ...input,
             config: normalizeConfig({
@@ -262,7 +262,7 @@ export const testNode = suite('family runner failure policy', [
     }),
     test('maps backend setup failures through runner diagnostics', async function (scope) {
         const events: string[] = [];
-        const coordinator = createDeterministicRunCoordinator();
+        const coordinator = createUnitRunCoordinator();
         const result = await coordinator.orchestrator.run(command(function record(event) {
             events.push(event);
         }, 'setup-error'));
@@ -282,7 +282,7 @@ export const testNode = suite('family runner failure policy', [
     }),
     test('disposes empty selections without calling backend collection', async function (scope) {
         const events: string[] = [];
-        const coordinator = createDeterministicRunCoordinator();
+        const coordinator = createUnitRunCoordinator();
         const input = command(function record(event) {
             events.push(event);
         }, 'complete');
@@ -296,7 +296,7 @@ export const testNode = suite('family runner failure policy', [
     }),
     test('retains reporter failure and disposes backend before final delivery', async function (scope) {
         const events: string[] = [];
-        const coordinator = createDeterministicRunCoordinator();
+        const coordinator = createUnitRunCoordinator();
         const input = command(function record(event) {
             events.push(event);
         }, 'complete');

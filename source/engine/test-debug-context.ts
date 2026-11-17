@@ -1,4 +1,4 @@
-import { withModuleLoadingScope, type ModuleLoadingHooks } from '../module-loading-scope.ts';
+import { withModuleLoadingScope } from '../module-loading-scope.ts';
 import { startDebugCheckpoints } from './debug-checkpoints.ts';
 import { workIdentityKey } from './identity.ts';
 import { observeActiveCaseWork } from './execution-global-error-observer.ts';
@@ -18,22 +18,6 @@ function createAttempt(input: ExecuteCaseInput): DebugAttempt {
         current.overlap(attempt.work);
     }
     return attempt;
-}
-function moduleHooks(attempt: DebugAttempt): ModuleLoadingHooks {
-    return {
-        resolve(specifier, _parentURL, nextResolve) {
-            const start = process.hrtime.bigint();
-            const resolved = nextResolve();
-            captureDebugModule(attempt, { phase: 'resolve', specifier, resolvedUrl: resolved.url, start });
-            return resolved;
-        },
-        load(url, nextLoad) {
-            const start = process.hrtime.bigint();
-            const loaded = nextLoad();
-            captureDebugModule(attempt, { phase: 'load', specifier: url, resolvedUrl: url, start });
-            return loaded;
-        }
-    };
 }
 async function reportCheckpoint(
     input: ExecuteCaseInput,
@@ -90,7 +74,20 @@ export async function withDebugAttempt<Value>(
         return await operation();
     }
     const attempt = createAttempt(input);
-    return await withModuleLoadingScope(moduleHooks(attempt), async function captureAttempt() {
+    return await withModuleLoadingScope({
+        resolve(specifier, _parentURL, nextResolve) {
+            const start = process.hrtime.bigint();
+            const resolved = nextResolve();
+            captureDebugModule(attempt, { phase: 'resolve', specifier, resolvedUrl: resolved.url, start });
+            return resolved;
+        },
+        load(url, nextLoad) {
+            const start = process.hrtime.bigint();
+            const loaded = nextLoad();
+            captureDebugModule(attempt, { phase: 'load', specifier: url, resolvedUrl: url, start });
+            return loaded;
+        }
+    }, async function captureAttempt() {
         const capture = beginCapture(input, attempt);
         try {
             return await debugAttempts.run(attempt, async function observeAttempt() {

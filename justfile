@@ -18,6 +18,9 @@ benchmark-html-browser:
 eslint *OPTIONS:
     NODE_OPTIONS="${NODE_OPTIONS:-} {{eslint-node-options}}" eslint . --cache --cache-location './target/.eslintcache' --cache-strategy content --max-warnings 0 {{OPTIONS}}
 
+eslint-shard shard='1/1':
+    NODE_OPTIONS="${NODE_OPTIONS:-} {{eslint-node-options}}" node lint-eslint-shard.js '{{shard}}'
+
 eslint-fix: (eslint '--fix')
 
 lint-filename:
@@ -39,97 +42,16 @@ lint-fix: eslint-fix
 test-unit: benchmark-html-browser
     node source/overkill.test.ts
 
-test-mutation-integration: benchmark-html-browser
-    node source/integration-tests/run/runner-mutation-accuracy.test.ts
-    node source/integration-tests/run/runner-mutation-cost.test.ts
-    node source/integration-tests/run/runner-mutation-boundaries.test.ts
-    node source/integration-tests/run/runner-mutation-execution.test.ts
-    node source/integration-tests/run/runner-mutation-policy.test.ts
-    node source/integration-tests/run/runner-frozen-policy.test.ts
-    node source/integration-tests/run/runner-frozen-policy-activation.test.ts
-    node source/integration-tests/run/runner-stryker-lifecycle.test.ts
-    node source/integration-tests/run/runner-stryker-worker-reuse.test.ts
-    node source/integration-tests/run/runner-stryker-catalog.test.ts
-    node source/integration-tests/run/runner-stryker-dry-run.test.ts
-    node source/integration-tests/run/runner-stryker-classification.test.ts
-    node source/integration-tests/run/runner-stryker-timeouts.test.ts
-    node source/integration-tests/run/runner-stryker-termination.test.ts
-    node source/integration-tests/run/runner-stryker-ownership.test.ts
-    node source/integration-tests/run/runner-stryker-persistence.test.ts
+test-integration shard='1/1': benchmark-html-browser
+    node source/test-support/run-integration.ts '{{shard}}'
 
-test-property-integration: benchmark-html-browser
-    node source/property/property-suite.test.ts
-    node source/run/corpus-suite.test.ts
-    node source/run/property-corpus-storage.test.ts
-    node source/run/property-corpus-execution.test.ts
-    node source/run/property-witness-storage.test.ts
-    node source/integration-tests/run/runner-replay-witness.test.ts
-    node source/integration-tests/run/runner-model-contracts.test.ts
-    node source/integration-tests/run/runner-differential-contracts.test.ts
-    node source/integration-tests/run/runner-linearizability-contracts.test.ts
-    node source/integration-tests/run/runner-linearizability-lifecycle.test.ts
-    node source/integration-tests/run/runner-property-validation.test.ts
-    node source/integration-tests/run/runner-property-measurements.test.ts
+test-runner-integration shard='1/1': (test-integration shard)
 
-test-runner-integration: test-mutation-integration
-    node source/integration-tests/run/runner-eslint-test.test.ts
-    node source/integration-tests/run/runner-eslint-properties.test.ts
-    node source/integration-tests/run/runner-family-transport.test.ts
-    node source/integration-tests/run/runner-family-records.test.ts
-    node source/integration-tests/run/runner-family-selection.test.ts
-    node source/integration-tests/run/runner-content-snapshots.test.ts
-    node source/integration-tests/run/runner-ordinary-baselines.test.ts
-    node source/integration-tests/run/runner-replay-coverage.test.ts
-    node source/integration-tests/run/runner-replay-compatibility.test.ts
-    node source/integration-tests/run/runner-replay.test.ts
-    node source/integration-tests/run/runner-replay-witness.test.ts
-    node source/integration-tests/run/runner-replay-simulation.test.ts
-    node source/integration-tests/run/runner-record-policy.test.ts
-    node source/integration-tests/run/process-owner-death.test.ts
-    node source/integration-tests/run/process-lifetime.test.ts
-    node source/integration-tests/run/process-execution.test.ts
-    node source/integration-tests/run/runner-external-process.test.ts
-    node source/integration-tests/run/runner-module-imports.test.ts
-    node source/integration-tests/run/runner-benchmark-normalization.test.ts
-    node source/integration-tests/run/runner-benchmark-garbage-collection.test.ts
-    node source/integration-tests/run/runner-benchmark-placement.test.ts
-    node source/integration-tests/run/runner-benchmark-host.test.ts
-    node source/integration-tests/run/runner-property-policy.test.ts
-    node source/integration-tests/run/runner-model-contracts.test.ts
-    node source/integration-tests/run/runner-differential-contracts.test.ts
-    node source/integration-tests/run/runner-linearizability-contracts.test.ts
-    node source/integration-tests/run/runner-linearizability-lifecycle.test.ts
-    node source/integration-tests/run/runner-property-validation.test.ts
-    node source/integration-tests/run/runner-property-measurements.test.ts
-    node source/integration-tests/run/runner-benchmark-html.test.ts
-    node source/integration-tests/run/runner-measurements.test.ts
-    node source/integration-tests/run/runner-supervised-cancellation.test.ts
-    node source/integration-tests/run/runner-collected-lifecycle.test.ts
-    node source/integration-tests/run/runner-workloads.test.ts
-    node source/integration-tests/run/runner-benchmark-baseline-cli.test.ts
-    node source/integration-tests/run/runner-benchmark-baseline-failures.test.ts
-    node source/integration-tests/run/runner-benchmark-baselines.test.ts
-    node source/integration-tests/run/runner-benchmarks.test.ts
-    node source/integration-tests/run/runner-attachments.test.ts
-    node source/integration-tests/run/runner-attachment-retention.test.ts
-    node source/integration-tests/run/runner-retries.test.ts
-    node source/integration-tests/run/runner-resource-checks.test.ts
-    node source/integration-tests/run/runner-ipc-results.test.ts
-    node source/integration-tests/run/runner-coverage-branches.test.ts
-    node source/integration-tests/run/runner-coverage.test.ts
-    node source/integration-tests/run/runner-coverage-records.test.ts
-    node source/integration-tests/run/runner-coverage-sources.test.ts
-    node source/integration-tests/run/runner-explicit-files.test.ts
-    node source/integration-tests/run/runner-supervised-timeouts.test.ts
-    node source/integration-tests/run/runner-file-sets.test.ts
-    node source/integration-tests/run/runner-output.test.ts
-    node source/integration-tests/run/runner-command-line.test.ts
-    node source/integration-tests/run/runner-capability-policy.test.ts
-    node source/integration-tests/run/runner-permission-audit.test.ts
-    node source/integration-tests/run/runner-process-policy.test.ts
+test-process-integration: benchmark-html-browser
+    node source/integration-tests/process.test.ts
 
-test-unit-with-coverage:
-    c8 --config .c8rc.json node source/overkill.test.ts
+test-unit-with-coverage: benchmark-html-browser
+    node source/test-support/unit-coverage.ts
 
 test-type-test-api:
     node source/integration-tests/type-test-api/compiler-assessment.test.ts
@@ -178,9 +100,7 @@ test-eslint-package-smoke: compile
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
 
 test-mutation-package-smoke: (_pack-smoke-packages mutation-smoke-packages)
-    node target/build/source/integration-tests/package-smoke/stryker-accuracy.test.js
-    node target/build/source/integration-tests/package-smoke/stryker-interruptions.test.js
-    node target/build/source/integration-tests/package-smoke/stryker-persistence.test.js
+    node target/build/source/integration-tests/package-smoke/stryker-runner.test.js
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
 
 test-package-smoke: (_pack-smoke-packages package-smoke-packages)
@@ -196,8 +116,6 @@ test-package-smoke: (_pack-smoke-packages package-smoke-packages)
     node target/build/source/integration-tests/package-smoke/linearizability.test.js
     node target/build/source/integration-tests/package-smoke/type-test.test.js
     node target/build/source/integration-tests/package-smoke/stryker-runner.test.js
-    node target/build/source/integration-tests/package-smoke/stryker-accuracy.test.js
-    node target/build/source/integration-tests/package-smoke/stryker-persistence.test.js
     node target/build/source/integration-tests/package-smoke/test-binary.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-permissions.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-attachments.test.js

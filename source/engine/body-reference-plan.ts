@@ -107,9 +107,9 @@ function referencedCases(plan: TestPlan): readonly CaseImplementations[] {
 async function caseDeclarations(
     cases: readonly CaseImplementations[],
     context: ImplementationInputContext,
-    signal: AbortSignal
+    signal: AbortSignal,
+    preparation: ImplementationPreparationSession
 ): Promise<ReadonlyMap<string, ImplementationDeclaration>> {
-    const preparation = await createImplementationPreparationSession();
     const declarations = new Map<string, ImplementationDeclaration>();
     for (const testCase of cases) {
         signal.throwIfAborted();
@@ -120,10 +120,11 @@ async function caseDeclarations(
     }
     return declarations;
 }
-export async function declareImplementations(
+export async function declareImplementationPlan(
     plan: TestPlan,
     context: ImplementationInputContext,
-    signal: AbortSignal
+    signal: AbortSignal,
+    createPreparation: () => Promise<ImplementationPreparationSession>
 ): Promise<TestPlan> {
     if (hasDeclarations(plan)) {
         return plan;
@@ -132,7 +133,10 @@ export async function declareImplementations(
     if (cases.length === 0) {
         return plan;
     }
-    const declared = { ...plan, [declarationsKey]: await caseDeclarations(cases, context, signal) };
+    const declared = {
+        ...plan,
+        [declarationsKey]: await caseDeclarations(cases, context, signal, await createPreparation())
+    };
     return declared;
 }
 export function catalogFromDeclarations(
@@ -274,28 +278,38 @@ function singlePreparedBuild(builds: readonly ImplementationBuild[]): Implementa
     }
     return build;
 }
+export type BodyPlanAdmissionRuntime = {
+    readonly restore: typeof restoreImplementationBuild;
+    readonly admit: typeof withImplementationAdmission;
+};
+type PlanAdmissionInput = {
+    readonly plan: TestPlan;
+    readonly state: ImplementationPlanState;
+    readonly catalog: ImplementationCatalog;
+    readonly request: ImplementationAssignmentRequest;
+};
 async function planAdmissionRequest(
-    plan: TestPlan,
-    state: ImplementationPlanState,
-    catalog: ImplementationCatalog,
-    request: ImplementationAssignmentRequest
+    input: PlanAdmissionInput,
+    restore: BodyPlanAdmissionRuntime['restore']
 ): Promise<
     ImplementationAssignmentRequest & { readonly prepared: Awaited<ReturnType<typeof restoreImplementationBuild>>; }
 > {
+    const { plan, state, catalog, request } = input;
     assertPlanAssignments(plan, catalog, request);
     return {
         participants: request.participants.filter(function assigned(participant) {
             return admittedParticipant(participant, state.admission);
         }),
         context: { projectRoot: catalog.projectRoot },
-        prepared: await restoreImplementationBuild(singlePreparedBuild(catalog.builds), request.signal),
+        prepared: await restore(singlePreparedBuild(catalog.builds), request.signal),
         signal: request.signal
     };
 }
-export async function withBodyPlanAdmission<Value>(
+export async function admitBodyPlan<Value>(
     plan: TestPlan,
     signal: Readonly<AbortSignal> | null,
-    execute: (resolved: TestPlan, activations: readonly ImplementationActivation[]) => Promise<Value>
+    execute: (resolved: TestPlan, activations: readonly ImplementationActivation[]) => Promise<Value>,
+    runtime: BodyPlanAdmissionRuntime
 ): Promise<Value> {
     const executions = new Map<string, TestPlanCaseExecution>();
     const participants = planParticipants(plan, function record(key, execution) {
@@ -307,15 +321,31 @@ export async function withBodyPlanAdmission<Value>(
         return await execute(plan, []);
     }
     const { signal: defaultSignal } = new AbortController();
-    const request = await planAdmissionRequest(plan, state, catalog, {
-        participants,
-        context: { projectRoot: catalog.projectRoot },
-        signal: signal ?? defaultSignal
-    });
-    return await withImplementationAdmission(request, async function executeBoundPlan(activations) {
+    const request = await planAdmissionRequest({
+        plan,
+        state,
+        catalog,
+        request: {
+            participants,
+            context: { projectRoot: catalog.projectRoot },
+            signal: signal ?? defaultSignal
+        }
+    }, runtime.restore);
+    return await runtime.admit(request, async function executeBoundPlan(activations) {
         return await execute(bindBodies(plan, executions), activations);
     });
 }
+export async function withBodyPlanAdmission<Value>(
+    plan: TestPlan,
+    signal: Readonly<AbortSignal> | null,
+    execute: (resolved: TestPlan, activations: readonly ImplementationActivation[]) => Promise<Value>
+): Promise<Value> {
+    return await admitBodyPlan(plan, signal, execute, {
+        restore: restoreImplementationBuild,
+        admit: withImplementationAdmission
+    });
+}
+
 export async function withPreparedBodyPlan<Value>(
     plan: TestPlan,
     signal: Readonly<AbortSignal> | null,
@@ -332,4 +362,12 @@ export function hasBodyImplementations(plan: TestPlan): boolean {
         return undefined;
     })
         .length > 0;
+}
+
+export async function declareImplementations(
+    plan: TestPlan,
+    context: ImplementationInputContext,
+    signal: AbortSignal
+): Promise<TestPlan> {
+    return await declareImplementationPlan(plan, context, signal, createImplementationPreparationSession);
 }

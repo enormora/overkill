@@ -1,3 +1,4 @@
+import { createDeterministicClock } from '@enormora/clock';
 import { runIfMain } from '#test-runner';
 import {
     createSuite as createOverkillSuite,
@@ -20,6 +21,7 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const controller = new AbortController();
                 const pool = createHostedWorkerPool({
+                    wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),
                     environmentVariables: {},
                     options: {
                         cwd: '/project',

@@ -1,5 +1,5 @@
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { attachmentFixture, attachmentWork, type AttachmentFixture } from '../test-support/attachment-fixture.ts';
+import { inlineAttachmentFixture, attachmentWork, type AttachmentFixture } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
 import { createProcessEvidence, processEvidenceSchema } from './process-evidence.ts';
@@ -17,12 +17,12 @@ const observation = {
 
 const oversizedModuleUrl = `file:///${'x'.repeat(4096)}`;
 
-async function retainModuleEvidence(scope: TestScope, maximumBytes: number, url: string): Promise<AttachmentFixture> {
-    const fixture = await attachmentFixture(scope, {
+async function retainModuleEvidence(maximumBytes: number, url: string): Promise<AttachmentFixture> {
+    const fixture = inlineAttachmentFixture({
         ...defaultAttachmentLimits,
         maxInlineBytes: maximumBytes,
         maxArtifactBytes: maximumBytes
-    });
+    }, [ attachmentWork ]);
     await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
         await fixture.execution.runAttempt(attachmentWork, { index: 0 }, async function attempt() {
             const evidence = createProcessEvidence();
@@ -64,7 +64,7 @@ export const testNode = suite('module import evidence', [
         return scope.assert.collect();
     }),
     test('retains process evidence when module metadata exceeds its byte budget', async function (scope: TestScope) {
-        const fixture = await retainModuleEvidence(scope, 1024, oversizedModuleUrl);
+        const fixture = await retainModuleEvidence(1024, oversizedModuleUrl);
         const evidence = retainedEvidence(fixture);
         scope.assert.equal(evidence.entries.length, 1);
         scope.assert.equal(evidence.entries[0]?.module, null);
@@ -76,7 +76,7 @@ export const testNode = suite('module import evidence', [
     test(
         'counts omitted module metadata when its process entry could not be retained',
         async function (scope: TestScope) {
-            const fixture = await retainModuleEvidence(scope, 128, oversizedModuleUrl);
+            const fixture = await retainModuleEvidence(128, oversizedModuleUrl);
             scope.assert.partialDeepEqual(retainedEvidence(fixture), { entries: [], omitted: 2 });
             scope.assert.equal(fixture.store.artifacts().length, 1);
             scope.assert.deepEqual(await fixture.execution.finish(), []);
@@ -84,7 +84,7 @@ export const testNode = suite('module import evidence', [
         }
     ),
     test('retains module metadata beside its owned process entry', async function (scope: TestScope) {
-        const fixture = await retainModuleEvidence(scope, 1024, observation.url);
+        const fixture = await retainModuleEvidence(1024, observation.url);
         const evidence = retainedEvidence(fixture);
         scope.assert.equal(evidence.entries.length, 1);
         const module = evidence.entries[0]?.module;

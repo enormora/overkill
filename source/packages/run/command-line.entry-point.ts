@@ -1,6 +1,6 @@
 import type { CommandLineRunner } from '../../run/command-line-runner.ts';
-import type { NodeCommandLineRunnerOptions } from '../../run/node-command-line-runner.ts';
-import { createCommandLineCommandNamespace } from '../../run/command-line-command-namespace.ts';
+import type { NodeCommandLineRunnerOptions } from '../../run/node-command-line-runner.entry-point.ts';
+import { createCommandLineCommandNamespace } from '../../run/command-line-native-loaders.entry-point.ts';
 import { loadConfig } from './config.entry-point.ts';
 
 export {
@@ -23,19 +23,19 @@ const commandLoaders = {
     async loadBaselineCommands() {
         const { createBaselineCommands } = await import('../../run/baseline-commands.ts');
         const { orchestrator } = await import('../../run/run-orchestrator.entry-point.ts');
-        const { loadDefaultLineReporter } = await import('../../run/command-line-runner.ts');
-        return createBaselineCommands({ loadConfig, createDefaultReporter: loadDefaultLineReporter, orchestrator });
+        const { createDefaultDirectReporter } = await import('../../run/default-direct-reporter.ts');
+        return createBaselineCommands({ loadConfig, createDefaultReporter: createDefaultDirectReporter, orchestrator });
     },
     async loadBenchmarkCommands() {
         const { createBenchmarkCommands } = await import('../../run/benchmark-commands.ts');
 
-        const [ runnerModule, orchestratorModule ] = await Promise.all([
-            import('../../run/command-line-runner.ts'),
+        const [ reporterModule, orchestratorModule ] = await Promise.all([
+            import('../../run/default-direct-reporter.ts'),
             import('../../run/run-orchestrator.entry-point.ts')
         ]);
 
         return createBenchmarkCommands({
-            createDefaultReporter: runnerModule.loadDefaultLineReporter,
+            createDefaultReporter: reporterModule.createDefaultDirectReporter,
             loadConfig,
             orchestrator: orchestratorModule.orchestrator
         });
@@ -53,7 +53,7 @@ export function createNodeCommandLineRunner(options: NodeCommandLineRunnerOption
                     runDependencies,
                     childProcessStarters
                 ] = await Promise.all([
-                    import('../../run/node-command-line-runner.ts'),
+                    import('../../run/node-command-line-runner.entry-point.ts'),
                     import('../../run/node-run-dependencies.entry-point.ts'),
                     import('../../run/node-child-process-starters.ts')
                 ]);
@@ -121,7 +121,7 @@ async function loadDefaultRunner(): Promise<CommandLineRunner> {
         defaultEngineModule
     ] = await Promise.all([
         import('../../run/node-run-dependencies.entry-point.ts'),
-        import('../../run/node-command-line-runner.ts'),
+        import('../../run/node-command-line-runner.entry-point.ts'),
         import('../../run/node-child-process-starters.ts'),
         import('../../run/default-run-engine.ts')
     ]);
@@ -188,7 +188,7 @@ export type {
 } from '../../run/command-line-runner.ts';
 export type {
     NodeCommandLineRunnerOptions
-} from '../../run/node-command-line-runner.ts';
+} from '../../run/node-command-line-runner.entry-point.ts';
 export type {
     Config,
     ProjectIntegrationExecution,

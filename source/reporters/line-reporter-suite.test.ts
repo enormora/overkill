@@ -1,4 +1,5 @@
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as retryPolicy } from './line-retry-policy.test.ts';
 import { testNode as lineReporterArtifactsTestNode } from './line-reporter-artifacts.test.ts';
 import { testNode as lineReporterOrphanTestNode } from './line-reporter-orphan.test.ts';
 import { testNode as lineReporterProgressTestNode } from './line-reporter-progress.test.ts';
@@ -12,6 +13,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        retryPolicy,
         lineReporterTestNode,
         lineReporterProgressTestNode,
         lineReporterArtifactsTestNode,

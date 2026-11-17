@@ -9,6 +9,8 @@ import {
     type TestScope as OverkillScope
 } from '../engine/engine.entry-point.ts';
 import { runWithTranscriptScope } from '../run/transcript-store.entry-point.ts';
+import { testNode as validation } from './interaction-transcript-validation.test.ts';
+import { testNode as ownership } from './interaction-transcript-ownership.test.ts';
 import {
     createTranscript,
     doubleUsage,
@@ -174,6 +176,8 @@ function assertWarnTranscriptUsage(
 
 export const testNode = createSuite({
     children: [
+        validation,
+        ownership,
         createTestCase({
             body(scope: OverkillScope): ReturnType<TestBody> {
                 const transcript = createTranscript<StateEntry>();

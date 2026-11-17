@@ -4,13 +4,14 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import type { NormalizedConfig } from '../config/types.ts';
+import { testNode as shards } from './run-sharding-policy.test.ts';
 import { orderedRunItems } from './run-ordering.ts';
 import type { ResolvedRun, RunCommand, RunRequest } from './run-types.ts';
 
@@ -71,13 +72,14 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        shards,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() keeps source-stable order for lexical requests',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
                 const resolvedRun = await runOrchestrator.resolve(runCommand(
                     localConfig,
                     runRequest('lexical', 1n)
@@ -96,7 +98,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
                 const firstRun = await runOrchestrator.resolve(
                     runCommand(localConfig, runRequest('seeded', 1n))
                 );
@@ -126,7 +128,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
                 const request = runRequest('seeded', 1n);
                 const expectedRun = await runOrchestrator.resolve(runCommand(supervisedConfig, request));
                 const result = await runOrchestrator.run(runCommand(supervisedConfig, request));

@@ -26,16 +26,16 @@ import {
 import type {
     WorkerPoolCollection,
     WorkerPoolCommand,
-    WorkerPoolCompleteResourceOwnerWorkTask,
+    WorkerCompleteResourcesTask as WorkerPoolCompleteResourceOwnerWorkTask,
     WorkerPoolAssignedUnit,
     WorkerPoolDisposeResourceOutput,
-    WorkerPoolDisposeLaneLifecycleTask,
-    WorkerPoolDisposeRunResourcesTask,
-    WorkerPoolAcquireRunResourcesTask,
+    WorkerDisposeLaneTask as WorkerPoolDisposeLaneLifecycleTask,
+    WorkerDisposeResourcesTask as WorkerPoolDisposeRunResourcesTask,
+    WorkerResourceTask as WorkerPoolAcquireRunResourcesTask,
     WorkerPoolRunResourceOutput,
     WorkerPoolRunOutput,
-    WorkerPoolRunTask,
-    WorkerPoolTask
+    WorkerRunTask as WorkerPoolRunTask,
+    WorkerTask as WorkerPoolTask
 } from './worker-pool-protocol.ts';
 import {
     collectTestPlan,
@@ -54,6 +54,14 @@ import {
     type WorkerTimingClock
     // eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
 } from './worker-pool-worker-timing.ts';
+
+export type WorkerTaskRuntime = {
+    readonly clock: typeof createWorkerTimingClock;
+    readonly collect: typeof collectTestPlan;
+    readonly execute: typeof createWorkerExecute;
+    readonly capture: typeof captureOutput;
+    readonly suppress: typeof suppressOutput;
+};
 
 type TimedAssignmentPlanTask = WorkerPoolAcquireRunResourcesTask | WorkerPoolRunTask;
 
@@ -74,9 +82,10 @@ function startedAtIso(startedAtMilliseconds: number): string {
 
 async function collectAssignmentTestPlan(
     task: TimedAssignmentPlanTask,
-    wallClock: WorkerTimingClock
+    wallClock: WorkerTimingClock,
+    runtime: WorkerTaskRuntime
 ): Promise<CollectedWorkerPoolTestPlan> {
-    const bootstrapOutput = suppressOutput();
+    const bootstrapOutput = runtime.suppress();
 
     try {
         return await measureWorkerSpan(
@@ -85,7 +94,7 @@ async function collectAssignmentTestPlan(
             'worker.import-startup',
             async function collectTimedAssignmentTestPlan() {
                 return await runObservedWorkerCollection(async function collectObservedAssignmentPlan() {
-                    return await collectTestPlan(task.command);
+                    return await runtime.collect(task.command);
                 });
             }
         );
@@ -94,13 +103,19 @@ async function collectAssignmentTestPlan(
     }
 }
 
+type WorkerAssignment = {
+    readonly task: WorkerPoolRunTask;
+    readonly wallClock: WorkerTimingClock;
+    readonly collectedPlan: CollectedWorkerPoolTestPlan;
+    readonly assignedUnit: WorkerPoolAssignedUnit;
+};
+
 async function runAssignment(
-    task: WorkerPoolRunTask,
-    wallClock: WorkerTimingClock,
-    collectedPlan: CollectedWorkerPoolTestPlan,
-    assignedUnit: WorkerPoolAssignedUnit
+    input: WorkerAssignment,
+    runtime: WorkerTaskRuntime
 ): Promise<WorkerPoolRunOutput['results'][number]> {
-    const execute = await createWorkerExecute(task.command, wallClock, collectedPlan.testPlan);
+    const { task, wallClock, collectedPlan, assignedUnit } = input;
+    const execute = await runtime.execute(task.command, wallClock, collectedPlan.testPlan);
 
     task.port.postMessage({
         attempt: assignedUnit.attempt,
@@ -169,9 +184,10 @@ async function runAssignment(
 
 async function acquireRunResources(
     task: WorkerPoolAcquireRunResourcesTask,
-    wallClock: WorkerTimingClock
+    wallClock: WorkerTimingClock,
+    runtime: WorkerTaskRuntime
 ): Promise<WorkerPoolRunResourceOutput> {
-    const collectedPlan = await collectAssignmentTestPlan(task, wallClock);
+    const collectedPlan = await collectAssignmentTestPlan(task, wallClock, runtime);
 
     return await acquireWorkerRunResources(
         task,
@@ -201,28 +217,33 @@ async function disposeLaneLifecycle(
 async function runAssignedUnits(
     task: WorkerPoolRunTask,
     wallClock: WorkerTimingClock,
-    collectedPlan: CollectedWorkerPoolTestPlan
+    collectedPlan: CollectedWorkerPoolTestPlan,
+    runtime: WorkerTaskRuntime
 ): Promise<WorkerPoolRunOutput['results']> {
     const results: WorkerPoolRunOutput['results'][number][] = [];
 
     for (const assignedUnit of task.assignedUnits) {
-        results.push(await runAssignment(task, wallClock, collectedPlan, assignedUnit));
+        results.push(await runAssignment({ task, wallClock, collectedPlan, assignedUnit }, runtime));
     }
 
     return results;
 }
 
-async function runAssignments(task: WorkerPoolRunTask, wallClock: WorkerTimingClock): Promise<WorkerPoolRunOutput> {
-    const collectedPlan = await collectAssignmentTestPlan(task, wallClock);
+async function runAssignments(
+    task: WorkerPoolRunTask,
+    wallClock: WorkerTimingClock,
+    runtime: WorkerTaskRuntime
+): Promise<WorkerPoolRunOutput> {
+    const collectedPlan = await collectAssignmentTestPlan(task, wallClock, runtime);
 
     if (task.assignedUnits.length === 0) {
         return createEmptyAssignmentResult();
     }
 
-    const outputCapture = captureOutput(task, wallClock);
+    const outputCapture = runtime.capture(task, wallClock);
 
     try {
-        return { results: await runAssignedUnits(task, wallClock, collectedPlan) };
+        return { results: await runAssignedUnits(task, wallClock, collectedPlan, runtime) };
     } finally {
         outputCapture.restore();
     }
@@ -230,9 +251,10 @@ async function runAssignments(task: WorkerPoolRunTask, wallClock: WorkerTimingCl
 
 async function runCollectionTask(
     task: Extract<WorkerPoolTask, { readonly kind: 'collect'; }>,
-    wallClock: WorkerTimingClock
+    wallClock: WorkerTimingClock,
+    runtime: WorkerTaskRuntime
 ): Promise<WorkerPoolCollection> {
-    const outputCapture = captureOutput(task, wallClock);
+    const outputCapture = runtime.capture(task, wallClock);
 
     try {
         return await measureWorkerSpan(
@@ -241,7 +263,7 @@ async function runCollectionTask(
             'worker.import-startup',
             async function collectTimedWorkerPlan() {
                 return await runObservedWorkerCollection(async function collectObservedWorkerPlan() {
-                    return sendCollectedPlan(await collectTestPlan(task.command));
+                    return sendCollectedPlan(await runtime.collect(task.command));
                 });
             }
         );
@@ -293,11 +315,12 @@ type WorkerPoolTaskOutput = WorkerPoolTaskOutputs[keyof WorkerPoolTaskOutputs];
 
 async function runResourceOwnerTask(
     task: Exclude<WorkerPoolTask, { readonly kind: 'collect' | 'run'; }>,
-    wallClock: WorkerTimingClock
+    wallClock: WorkerTimingClock,
+    runtime: WorkerTaskRuntime
 ): Promise<WorkerPoolTaskOutput> {
     if (task.kind === 'acquire-run-resources') {
         return await withReplayWire(task.command.replay, async function restoreOwnerResources() {
-            return await acquireRunResources(task, wallClock);
+            return await acquireRunResources(task, wallClock, runtime);
         });
     }
 
@@ -326,17 +349,21 @@ async function runResourceOwnerTask(
 
 async function runWorkerTask(
     task: Exclude<WorkerPoolTask, { readonly kind: 'collect'; }>,
-    wallClock: WorkerTimingClock
+    wallClock: WorkerTimingClock,
+    runtime: WorkerTaskRuntime
 ): Promise<WorkerPoolTaskOutput> {
-    return task.kind === 'run' ? await runAssignments(task, wallClock) : await runResourceOwnerTask(task, wallClock);
+    return task.kind === 'run'
+        ? await runAssignments(task, wallClock, runtime)
+        : await runResourceOwnerTask(task, wallClock, runtime);
 }
 
 async function runClosableTask(
     task: Exclude<WorkerPoolTask, { readonly kind: 'collect'; }>,
-    wallClock: WorkerTimingClock
+    wallClock: WorkerTimingClock,
+    runtime: WorkerTaskRuntime
 ): Promise<WorkerPoolTaskOutput> {
     try {
-        return await runWorkerTask(task, wallClock);
+        return await runWorkerTask(task, wallClock, runtime);
     } finally {
         const teardownStartedAtMicroseconds = Number(wallClock.currentMonotonicMicroseconds);
         postWorkerTimingSpan({
@@ -364,8 +391,11 @@ function attachmentTaskCommand(task: WorkerPoolTask): WorkerPoolCommand | null {
 
 export const workerPoolEntryPointUrl = import.meta.url;
 
-export async function runTask(task: WorkerPoolTask): Promise<WorkerPoolTaskOutput> {
-    const wallClock = createWorkerTimingClock();
+export async function runWorkerPoolTask(
+    task: WorkerPoolTask,
+    runtime: WorkerTaskRuntime
+): Promise<WorkerPoolTaskOutput> {
+    const wallClock = runtime.clock();
 
     recordWorkerStartup(task, wallClock);
 
@@ -378,10 +408,20 @@ export async function runTask(task: WorkerPoolTask): Promise<WorkerPoolTaskOutpu
                 task.kind === 'collect' ? null : task.lifecycle.token,
                 async function executeAttachmentTask() {
                     return task.kind === 'collect'
-                        ? await runCollectionTask(task, wallClock)
-                        : await runClosableTask(task, wallClock);
+                        ? await runCollectionTask(task, wallClock, runtime)
+                        : await runClosableTask(task, wallClock, runtime);
                 }
             );
         }
     );
+}
+
+export async function runTask(task: WorkerPoolTask): Promise<WorkerPoolTaskOutput> {
+    return await runWorkerPoolTask(task, {
+        clock: createWorkerTimingClock,
+        collect: collectTestPlan,
+        execute: createWorkerExecute,
+        capture: captureOutput,
+        suppress: suppressOutput
+    });
 }

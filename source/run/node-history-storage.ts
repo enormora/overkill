@@ -2,12 +2,26 @@ import { mkdir, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { hostname } from 'node:os';
 import lockfile from 'proper-lockfile';
-import { createNodeFileStore } from '../file-store.ts';
+import { createNodeFileStore, type FileStore } from '../file-store.ts';
 import type { HistoryPolicy } from '../config/history-policy.ts';
 import { checkHistoryMaintenanceBudget } from './history-maintenance-budget.ts';
 import { acquireHistoryLock } from './history-lock-acquisition.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
 
+type HistoryRunOwner = { readonly pid: number; readonly host: string; };
+export type HistoryStorageRuntime = {
+    readonly files: FileStore;
+    readonly names: (target: string) => Promise<readonly string[]>;
+    readonly prepare: (target: string) => Promise<void>;
+    readonly remove: (target: string) => Promise<void>;
+    readonly owner: () => HistoryRunOwner;
+    readonly lease: (
+        target: string,
+        policy: HistoryPolicy,
+        compromised: (error: Error) => void
+    ) => Promise<() => Promise<void>>;
+    readonly lock: typeof acquireHistoryLock;
+};
 type LockState = { readonly error: () => Error | null; readonly record: (error: Error) => void; };
 function createLockState(): LockState {
     let error: Error | null = null;
@@ -32,8 +46,8 @@ async function directoryNames(directory: string): Promise<readonly string[]> {
     }
 }
 
-async function historyFiles(directory: string): Promise<readonly string[]> {
-    const names = await directoryNames(directory);
+async function historyFiles(directory: string, namesOf: HistoryStorageRuntime['names']): Promise<readonly string[]> {
+    const names = await namesOf(directory);
     return names
         .filter(function jsonRecord(name) {
             return name.endsWith('.json');
@@ -55,32 +69,33 @@ async function guardedHistoryOperation<T>(operation: () => Promise<T>, state: Lo
 async function acquireRunLease(
     ownerPath: string,
     policy: HistoryPolicy,
-    state: LockState
+    state: LockState,
+    runtime: HistoryStorageRuntime
 ): Promise<() => Promise<void>> {
     try {
-        return await lockfile.lock(ownerPath, {
-            lockfilePath: `${ownerPath}.lease`,
-            stale: policy.staleLockMilliseconds,
-            onCompromised: state.record
-        });
+        return await runtime.lease(ownerPath, policy, state.record);
     } catch (error: unknown) {
-        await rm(ownerPath, { force: true });
+        await runtime.remove(ownerPath);
         throw error;
     }
 }
-export function createNodeHistoryStorage(directory: string, policy: HistoryPolicy): HistoryStorage {
-    const store = createNodeFileStore();
+export function createHistoryStorage(
+    directory: string,
+    policy: HistoryPolicy,
+    runtime: HistoryStorageRuntime
+): HistoryStorage {
+    const store = runtime.files;
     const history: HistoryStorage = {
         async beginRun(id) {
             const ownerPath = path.join(directory, 'active-runs', `${id}.json`);
             const state = createLockState();
             const release = await history.withLock(async function registerOwner() {
-                await store.create(ownerPath, JSON.stringify({ pid: process.pid, host: hostname() }));
-                return await acquireRunLease(ownerPath, policy, state);
+                await store.create(ownerPath, JSON.stringify(runtime.owner()));
+                return await acquireRunLease(ownerPath, policy, state, runtime);
             });
             return async function releaseOwner() {
                 await release();
-                await rm(ownerPath, { force: true });
+                await runtime.remove(ownerPath);
                 const error = state.error();
                 if (error !== null) {
                     throw error;
@@ -97,13 +112,13 @@ export function createNodeHistoryStorage(directory: string, policy: HistoryPolic
         },
         async list(target) {
             checkHistoryMaintenanceBudget();
-            return await historyFiles(target);
+            return await historyFiles(target, runtime.names);
         },
         async withLock(operation) {
             checkHistoryMaintenanceBudget();
-            await mkdir(directory, { recursive: true });
+            await runtime.prepare(directory);
             const state = createLockState();
-            const release = await acquireHistoryLock(directory, policy, state.record);
+            const release = await runtime.lock(directory, policy, state.record);
             try {
                 return await guardedHistoryOperation(operation, state);
             } finally {
@@ -112,4 +127,28 @@ export function createNodeHistoryStorage(directory: string, policy: HistoryPolic
         }
     };
     return history;
+}
+
+export function createNodeHistoryStorage(directory: string, policy: HistoryPolicy): HistoryStorage {
+    return createHistoryStorage(directory, policy, {
+        files: createNodeFileStore(),
+        names: directoryNames,
+        async prepare(target) {
+            await mkdir(target, { recursive: true });
+        },
+        async remove(target) {
+            await rm(target, { force: true });
+        },
+        owner() {
+            return { pid: process.pid, host: hostname() };
+        },
+        async lease(target, leasePolicy, compromised) {
+            return await lockfile.lock(target, {
+                lockfilePath: `${target}.lease`,
+                stale: leasePolicy.staleLockMilliseconds,
+                onCompromised: compromised
+            });
+        },
+        lock: acquireHistoryLock
+    });
 }

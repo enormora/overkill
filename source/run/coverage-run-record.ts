@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { createRunRecordDependencies } from './run-record-input.ts';
 import { resolveCoveragePaths } from './coverage-paths.ts';
-import type { CoverageSessionRequest } from './coverage-session.ts';
+import type { CoverageSessionRequest } from './coverage-collection.ts';
 import { microtestCoveragePolicy } from './run-coverage.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';

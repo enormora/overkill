@@ -57,13 +57,14 @@ function revalidationFailure(error: unknown): string {
 
 async function reevaluatePolicy(
     policy: FrozenMicrotestPolicy,
-    dependencies: Pick<RunInputResolutionDependencies, 'discoverRunFilesWithProjectRoot'>
+    dependencies: Pick<RunInputResolutionDependencies, 'discoverRunFilesWithProjectRoot'>,
+    load: typeof loadConfig
 ): Promise<FrozenMicrotestPolicy> {
     if (policy.source.kind === 'memory') {
         return policy;
     }
     try {
-        const config = await loadConfig(policy.source.request);
+        const config = await load(policy.source.request);
         const input = {
             moduleBoundary: policy.moduleBoundary,
             command: { ...policyBaselineCommand(policy), config },
@@ -88,11 +89,12 @@ async function reevaluatePolicy(
     }
 }
 
-export async function validateFrozenPolicySource(
+export async function revalidateFrozenPolicy(
     policy: FrozenMicrotestPolicy,
-    dependencies: Pick<RunInputResolutionDependencies, 'discoverRunFilesWithProjectRoot'>
+    dependencies: Pick<RunInputResolutionDependencies, 'discoverRunFilesWithProjectRoot'>,
+    load: typeof loadConfig
 ): Promise<void> {
-    const actual = await reevaluatePolicy(policy, dependencies);
+    const actual = await reevaluatePolicy(policy, dependencies, load);
     if (actual === policy) {
         return;
     }
@@ -104,4 +106,11 @@ export async function validateFrozenPolicySource(
     if (conflicts.length > 0) {
         throw new RunResolutionError(`Frozen policy changed: ${conflicts.join(', ')}.`, undefined, 'invalid-request');
     }
+}
+
+export async function validateFrozenPolicySource(
+    policy: FrozenMicrotestPolicy,
+    dependencies: Pick<RunInputResolutionDependencies, 'discoverRunFilesWithProjectRoot'>
+): Promise<void> {
+    await revalidateFrozenPolicy(policy, dependencies, loadConfig);
 }

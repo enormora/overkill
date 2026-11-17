@@ -13,7 +13,7 @@ import {
     type RunCommand,
     type RunOrchestrator
 } from '../../packages/run/run.entry-point.ts';
-import { createCurrentProcessRunOrchestrator } from '../../run/current-process-run-orchestrator.ts';
+import { createCurrentProcessRunOrchestrator } from '../../run/current-process-run-orchestrator.entry-point.ts';
 import { defaultRunEngine } from '../../run/default-run-engine.ts';
 import { loadRunEngineModule, loadRunTestModules, runDiscovery } from '../../run/node-run-dependencies.entry-point.ts';
 import { startSupervisedChild, startWorkerPoolHost } from '../../run/node-child-process-starters.ts';

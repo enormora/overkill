@@ -1,23 +1,24 @@
-import { createClock } from '@enormora/clock';
+import { createDeterministicClock } from '@enormora/clock';
+import { memoryOrdinaryBaselines } from '../test-support/memory-ordinary-baselines.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { OrdinaryBaselineAdapter } from '../baselines/ordinary-baseline-adapter.ts';
 import { baselineCaseEvent, baselineCaseResult } from '../test-support/baseline-case-fixture.ts';
-import { createOrdinaryBaselineFixture } from '../test-support/ordinary-baseline-fixture.ts';
+import { createObservationAdapter } from '../test-support/ordinary-baseline-fixture.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { createOrdinaryBaselineWorkflow, type OrdinaryBaselineWorkflow } from './baseline-workflow.ts';
 import { createOrdinaryBaselineSession } from './baseline-session.ts';
 
 type WorkflowFixture = { readonly workflow: OrdinaryBaselineWorkflow; readonly observations: () => number; };
 async function workflowFixture(
-    scope: TestScope,
     evaluate: OrdinaryBaselineAdapter['evaluate']
 ): Promise<WorkflowFixture> {
-    const data = await createOrdinaryBaselineFixture(scope, 'in-process', 'text');
+    const data = createObservationAdapter('text');
     let observations = 0;
     const workflow = await createOrdinaryBaselineWorkflow({
+        store: memoryOrdinaryBaselines([]),
         policy: {
-            directory: data.directory,
+            directory: 'test-baselines',
             snapshots: false,
             stale: 'fail',
             adapters: [ {
@@ -29,8 +30,7 @@ async function workflowFixture(
             } ]
         },
         projectRoot: process.cwd(),
-        request: defaultRunRequest({ profile: 'unit', baselineUpdateMode: 'update' }),
-        maxBytes: 65_536
+        request: defaultRunRequest({ profile: 'unit', baselineUpdateMode: 'update' })
     });
     return {
         workflow,
@@ -41,12 +41,12 @@ async function workflowFixture(
 }
 export const testNode = suite('ordinary baseline event lifecycle', [
     test('blocks publication when its retained report exceeds the artifact limit', async function (scope: TestScope) {
-        const fixture = await workflowFixture(scope, async function () {
+        const fixture = await workflowFixture(async function () {
             return { kind: 'observed', comparison: null, proposal: { kind: 'text', text: '42' } };
         });
         await fixture.workflow.evaluate(baselineCaseEvent);
         const dispatcher = createReporterDispatcher({
-            wallClock: createClock(),
+            wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),
             stdout: {
                 writeLine() {
                     return undefined;
@@ -72,7 +72,7 @@ export const testNode = suite('ordinary baseline event lifecycle', [
         return scope.assert.collect();
     }),
     test('ignores skipped and intermediate retry events', async function (scope: TestScope) {
-        const fixture = await workflowFixture(scope, async function () {
+        const fixture = await workflowFixture(async function () {
             throw new Error('Unexpected observation.');
         });
         for (
@@ -93,7 +93,7 @@ export const testNode = suite('ordinary baseline event lifecycle', [
         return scope.assert.collect();
     }),
     test('does not propose changes for inapplicable adapters', async function (scope: TestScope) {
-        const fixture = await workflowFixture(scope, async function () {
+        const fixture = await workflowFixture(async function () {
             return { kind: 'not-applicable' };
         });
         const evaluated = await fixture.workflow.evaluate(baselineCaseEvent);
@@ -104,7 +104,7 @@ export const testNode = suite('ordinary baseline event lifecycle', [
         return scope.assert.collect();
     }),
     test('shares concurrent observations and reconciles their proposals once', async function (scope: TestScope) {
-        const fixture = await workflowFixture(scope, async function () {
+        const fixture = await workflowFixture(async function () {
             return { kind: 'observed', comparison: null, proposal: { kind: 'text', text: '42' } };
         });
         const [ first, second ] = await Promise.all([

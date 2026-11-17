@@ -4,6 +4,7 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { testNode as policy } from './reporting-policy-context.test.ts';
 import {
     createReportingContext,
     formatAssertionSourceLocations,
@@ -17,6 +18,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        policy,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'relativizeSourceLocationPath() renders files below project root as relative paths',

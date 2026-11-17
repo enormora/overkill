@@ -2,7 +2,7 @@ import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { defineResource, withFailureArtifacts, withResources } from '../packages/test/resources.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
-import { executeEvidence } from '../test-support/failure-evidence-fixture.ts';
+import { executeInlineEvidence } from '../test-support/failure-evidence-fixture.ts';
 
 export const testNode = suite('simulation witness validation', [
     test('invalid envelopes retain the body failure and permit disposal', async function (scope) {
@@ -34,8 +34,7 @@ export const testNode = suite('simulation witness validation', [
                 }
             }
         );
-        const fixture = await executeEvidence(
-            scope,
+        const fixture = await executeInlineEvidence(
             withResources({ resource }, function fail(testScope) {
                 testScope.assert.fail();
                 return testScope.assert.collect();

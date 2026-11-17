@@ -3,7 +3,12 @@ import type { AttemptId, WorkId } from '../engine/identity.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import { createStoredRunValue, type StoredRunValue } from './supervised-run-state.ts';
-import { attachmentArtifacts, attachmentMatchesAttempt, resultWithRuntimeAttachments } from './attachment-results.ts';
+import {
+    attachmentArtifacts,
+    attachmentMatchesAttempt,
+    resultWithRuntimeAttachments,
+    type AttachmentResultOptions
+} from './attachment-results.ts';
 import type { AttachmentStorageSession } from './attachment-storage-session.ts';
 import { createAttachmentExecution, type AttachmentExecution } from './attachment-execution.ts';
 import type { AttachmentCoordinator } from './attachment-coordinator-context.ts';
@@ -14,11 +19,13 @@ export type AttachmentRunCoordinator = AttachmentCoordinator & {
     readonly execution: AttachmentExecution;
     readonly close: () => Promise<void>;
 };
+export type AttachmentCoordinatorStorage = Pick<AttachmentStorageSession, 'server' | 'store'> & {
+    readonly policy: AttachmentResultOptions['policy'];
+};
 type AttachmentRunCoordinatorState = {
-    readonly storage: AttachmentStorageSession;
     readonly store: AttachmentStorageSession['store'];
     readonly server: AttachmentStorageSession['server'];
-    readonly resolved: AttachmentStorageSession['resolved'];
+    readonly policy: AttachmentResultOptions['policy'];
     readonly branches: WeakMap<Readonly<Record<string, unknown>>, string>;
     readonly execution: AttachmentExecution;
     readonly endpoint: AttachmentCoordinator['endpoint'];
@@ -64,7 +71,7 @@ async function attachmentRunCoordinatorFinalize(
     state: AttachmentRunCoordinatorState,
     result: RunResult
 ): Promise<RunResult> {
-    const { finalized, execution, server, store, resolved } = state;
+    const { finalized, execution, server, store, policy } = state;
 
     if (finalized.read() !== null) {
         return result;
@@ -75,7 +82,7 @@ async function attachmentRunCoordinatorFinalize(
     const final = resultWithRuntimeAttachments(result, store.selectedArtifacts(), {
         localErrors,
         owners,
-        policy: resolved.facts.execution.retries?.artifacts ?? 'first-failure-and-final',
+        policy,
         retainsBranch: store.retainsBranch
     });
     finalized.write(final);
@@ -88,8 +95,8 @@ async function attachmentRunCoordinatorClose(state: AttachmentRunCoordinatorStat
     await execution.finish();
     await server.finish();
 }
-export function createAttachmentRunCoordinator(storage: AttachmentStorageSession): AttachmentRunCoordinator {
-    const { store, server, resolved } = storage;
+export function createAttachmentCoordinator(storage: AttachmentCoordinatorStorage): AttachmentRunCoordinator {
+    const { store, server, policy } = storage;
     const branches = new WeakMap<Record<string, unknown>, string>();
     const execution: AttachmentExecution = createAttachmentExecution(async function (operation) {
         return store.exchange('local', operation);
@@ -97,10 +104,9 @@ export function createAttachmentRunCoordinator(storage: AttachmentStorageSession
     const { endpoint } = server;
     const finalized = createStoredRunValue<RunResult | null>(null);
     const state: AttachmentRunCoordinatorState = {
-        storage,
         store,
         server,
-        resolved,
+        policy,
         branches,
         execution,
         endpoint,
@@ -119,4 +125,12 @@ export function createAttachmentRunCoordinator(storage: AttachmentStorageSession
         finalize: attachmentRunCoordinatorFinalize.bind(null, state),
         close: attachmentRunCoordinatorClose.bind(null, state)
     };
+}
+
+export function createAttachmentRunCoordinator(storage: AttachmentStorageSession): AttachmentRunCoordinator {
+    return createAttachmentCoordinator({
+        store: storage.store,
+        server: storage.server,
+        policy: storage.resolved.facts.execution.retries?.artifacts ?? 'first-failure-and-final'
+    });
 }

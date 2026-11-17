@@ -15,6 +15,11 @@ export const fileModuleBoundarySchema: z.ZodType<FileModuleBoundary> = z
     })
     .readonly();
 
+export type FileBoundaryAccess = {
+    readonly canonical: (target: string) => Promise<string>;
+    readonly canonicalFile: (target: string) => string;
+    readonly loading: typeof withModuleLoadingScope;
+};
 type ActiveModuleRoots = {
     readonly requested: readonly string[];
     readonly resolved: readonly string[];
@@ -74,18 +79,19 @@ export function validateFileModuleBoundary(boundary: FileModuleBoundary): void {
     }
 }
 
-export async function withFileModuleBoundary<Result>(
+export async function withModuleBoundary<Result>(
     boundary: FileModuleBoundary | null,
-    operation: () => Promise<Result>
+    operation: () => Promise<Result>,
+    access: FileBoundaryAccess
 ): Promise<Result> {
     if (boundary === null) {
         return await operation();
     }
     validateFileModuleBoundary(boundary);
     const [ projectRoot, sharedRoots ] = await Promise.all([
-        realpath(boundary.projectRoot),
+        access.canonical(boundary.projectRoot),
         Promise.all(boundary.sharedRoots.map(async function canonicalRoot(root) {
-            return realpath(root);
+            return access.canonical(root);
         }))
     ]);
     validateFileModuleBoundary({ projectRoot, sharedRoots });
@@ -99,8 +105,7 @@ export async function withFileModuleBoundary<Result>(
             if (currentRoots === undefined || !url.startsWith('file:')) {
                 return;
             }
-            // eslint-disable-next-line node/no-sync -- Native synchronous hooks must reject symlink escapes before evaluation.
-            const path = realpathSync(fileURLToPath(url));
+            const path = access.canonicalFile(fileURLToPath(url));
             if (
                 currentRoots.resolved.every(function containsModule(root) {
                     return !containsPath(root, path);
@@ -110,7 +115,7 @@ export async function withFileModuleBoundary<Result>(
             }
         }
 
-        return await withModuleLoadingScope({
+        return await access.loading({
             resolve(specifier, parentURL, nextResolve) {
                 validateRequestedModule(specifier, parentURL);
                 const resolved = nextResolve();
@@ -122,5 +127,16 @@ export async function withFileModuleBoundary<Result>(
                 return nextLoad();
             }
         }, operation);
+    });
+}
+
+export async function withFileModuleBoundary<Result>(
+    boundary: FileModuleBoundary | null,
+    operation: () => Promise<Result>
+): Promise<Result> {
+    return await withModuleBoundary(boundary, operation, {
+        canonical: realpath,
+        canonicalFile: realpathSync,
+        loading: withModuleLoadingScope
     });
 }

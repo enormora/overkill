@@ -4,6 +4,10 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import {
+    createCollectedPlan,
+    fakeWorkerRuntime
+} from '../test-support/worker-pool-execution-state.ts';
 import type {
     PlacementPlan,
     WorkUnit
@@ -15,10 +19,6 @@ import {
     placementRunWork
 } from './worker-pool-command.ts';
 import type { WorkerPoolLeaseMember } from './worker-pool-dispatch-state.ts';
-import {
-    createCollectedPlan,
-    fakeWorkerRuntime
-} from './worker-pool-execution-state.test.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 
 const testCaseMetadata = {

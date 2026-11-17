@@ -4,6 +4,7 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { rawProperty } from './raw-comparison.ts';
 import {
     compareArrayContainsPartial,
     compareDeepValues,
@@ -18,6 +19,56 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'raw properties tolerate inaccessible proxy descriptors',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const value = new Proxy({ value: 42 }, {
+                    getOwnPropertyDescriptor() {
+                        throw new Error('Descriptor unavailable.');
+                    }
+                });
+                scope.assert.deepEqual(rawProperty(value, 'value'), { key: 'value', value: { accessor: true } });
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'array differences ignore shared sparse positions',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const actual = [ 'actual' ];
+                const expected = [ 'expected' ];
+                actual.length = 2;
+                expected.length = 2;
+                const result = compareDeepValues(actual, expected);
+                scope.assert.partialDeepEqual(result, {
+                    passed: false,
+                    diff: {
+                        kind: 'array',
+                        operations: [ { operation: 'replace', path: [ { kind: 'index', index: 0 } ] } ]
+                    }
+                });
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'different error prototypes produce whole-value mismatches',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const result = compareDeepValues(new TypeError('failure'), new Error('failure'));
+                scope.assert.equal(result.passed, false);
+                scope.assert.equal(result.diff?.kind, 'value');
+                scope.assert.deepEqual(result.path, []);
+                return scope.assert.collect();
+            }
+        }),
+
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'compareStringEquality() returns no diff for equal strings',

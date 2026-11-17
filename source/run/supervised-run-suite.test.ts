@@ -1,12 +1,8 @@
 import { runIfMain } from '#test-runner';
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as supervisedRunCollectionTestNode } from './supervised-run-collection.test.ts';
-import { testNode as supervisedRunArtifactsTestNode } from './supervised-run-artifacts.test.ts';
 import { testNode as supervisedRunStateTestNode } from './supervised-run-state.test.ts';
-import { testNode as supervisedRunTestNode } from './supervised-run.test.ts';
 import { testNode as retryAttributionTestNode } from './retry-attribution.test.ts';
-import { testNode as protocolOrderTestNode } from './supervised-run-protocol-order.test.ts';
-import { testNode as cancellationTestNode } from './supervised-cancellation.test.ts';
 import { testNode as cancellationOptionsTestNode } from './run-cancellation.test.ts';
 
 export const testNode = createOverkillSuite({
@@ -15,13 +11,9 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
-        cancellationTestNode,
         cancellationOptionsTestNode,
-        protocolOrderTestNode,
         retryAttributionTestNode,
-        supervisedRunTestNode,
         supervisedRunCollectionTestNode,
-        supervisedRunArtifactsTestNode,
         supervisedRunStateTestNode
     ]
 });

@@ -1,3 +1,4 @@
+import { defaultIntegrationProfile } from '../test-support/run-command-factory.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { projectConfigSchema } from './schema.ts';
 import { normalizeConfig } from './config.ts';
@@ -19,6 +20,37 @@ function hostConfig(): NormalizedConfig {
 }
 
 export const testNode = suite('benchmark host configuration', [
+    ...([ 'supervised-process', 'worker-pool' ] as const).map(function (processModel) {
+        return test(`copies integration placement ${processModel}`, function (scope: TestScope) {
+            const original = {
+                ...hostConfig(),
+                profiles: {
+                    sample: defaultIntegrationProfile({
+                        execution: { processModel, hostProcess: { kind: 'child', nodeArguments: [ '--no-warnings' ] } }
+                    })
+                }
+            };
+            const copied = copyConfig(original);
+            scope.assert.deepEqual(copied, original);
+            scope.assert.notEqual(copied.profiles['sample']?.execution, original.profiles.sample.execution);
+            return scope.assert.collect();
+        });
+    }),
+    test('copies supervised benchmark placement independently', function (scope: TestScope) {
+        const original = normalizeConfig({
+            profiles: {
+                sample: {
+                    testFamily: 'benchmark',
+                    files: { include: [ 'sample.bench.ts' ] },
+                    execution: { processModel: 'supervised-process' }
+                }
+            }
+        });
+        const copied = copyConfig(original);
+        scope.assert.deepEqual(copied, original);
+        scope.assert.notEqual(copied.profiles['sample']?.execution, original.profiles['sample']?.execution);
+        return scope.assert.collect();
+    }),
     test('requires every limit in direct normalized configuration', function (scope: TestScope) {
         const config = copyConfig(hostConfig());
         const profile = config.profiles['startup'];

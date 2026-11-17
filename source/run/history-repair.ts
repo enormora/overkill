@@ -36,8 +36,9 @@ type RepairState = {
 };
 const automaticRepairBudgetMilliseconds = 2000;
 
-function assertBudget(deadline: number): void {
-    if (performance.now() > deadline) {
+type RepairDeadline = { readonly expiresAtMilliseconds: number; readonly now: () => number; };
+function assertBudget(deadline: RepairDeadline): void {
+    if (deadline.now() > deadline.expiresAtMilliseconds) {
         throw historyStateError('Automatic history repair exceeded its two-second budget.');
     }
 }
@@ -162,7 +163,7 @@ async function rebuildRecords(
     store: HistoryStorage,
     context: RepairContext,
     paths: readonly string[],
-    deadline: number
+    deadline: RepairDeadline
 ): Promise<RepairState> {
     let state = await repairState(store, context);
     for (const recordPath of paths) {
@@ -205,22 +206,33 @@ async function publishRepair(
     await store.write(path.join(context.directory, 'history', 'index.json'), JSON.stringify(validIndex));
 }
 
-export async function repairHistory(store: HistoryStorage, context: RepairContext): Promise<HistoryRepairResult> {
-    try {
-        return await store.withLock(async function rebuildHistory() {
-            const deadline = context.mode === 'automatic'
-                ? performance.now() + automaticRepairBudgetMilliseconds
-                : Number.POSITIVE_INFINITY;
-            const listed = await store.list(path.join(context.directory, 'runs'));
-            const paths = listed.toSorted(function alphabetical(left, right) {
-                return left.localeCompare(right);
+export type HistoryRepair = (store: HistoryStorage, context: RepairContext) => Promise<HistoryRepairResult>;
+export function createHistoryRepair(now: () => number): HistoryRepair {
+    return async function repairHistory(store, context) {
+        try {
+            return await store.withLock(async function rebuildRetainedHistory() {
+                const deadline: RepairDeadline = {
+                    expiresAtMilliseconds: context.mode === 'automatic'
+                        ? now() + automaticRepairBudgetMilliseconds
+                        : Number.POSITIVE_INFINITY,
+                    now
+                };
+                const listed = await store.list(path.join(context.directory, 'runs'));
+                const paths = listed.toSorted(function alphabetical(left, right) {
+                    return left.localeCompare(right);
+                });
+                const state = await rebuildRecords(store, context, paths, deadline);
+                assertBudget(deadline);
+                await publishRepair(store, context, state, paths);
+                return {
+                    rebuiltRunCount: state.rebuiltRunCount,
+                    diagnostics: state.diagnostics,
+                    dataLoss: state.dataLoss
+                };
             });
-            const state = await rebuildRecords(store, context, paths, deadline);
-            assertBudget(deadline);
-            await publishRepair(store, context, state, paths);
-            return { rebuiltRunCount: state.rebuiltRunCount, diagnostics: state.diagnostics, dataLoss: state.dataLoss };
-        });
-    } catch (error: unknown) {
-        throw historyStateError(error);
-    }
+        } catch (error: unknown) {
+            throw historyStateError(error);
+        }
+    };
 }
+export const repairHistory = createHistoryRepair(performance.now.bind(performance));

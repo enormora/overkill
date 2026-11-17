@@ -1,9 +1,12 @@
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { withCoverageRecordFixture, type CoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
+import {
+    withMemoryCoverageRecordFixture,
+    type CoverageRecordFixture
+} from '../test-support/coverage-record-fixture.ts';
 import { createDeterministicRunTestModuleLoader } from '../test-support/deterministic-run-fixtures.ts';
 import { defaultMicrotestProfile, defaultRunConfig } from '../test-support/run-command-factory.ts';
-import { createRunCoordinator, type RunCoordinator } from './run.ts';
+import { createRunCoordinator, type RunCoordinator } from './run-coordinator.entry-point.ts';
 
 const passingFile = 'source/integration-tests/run/fixtures/passing.test.ts';
 const importFailure = 'source/integration-tests/run/fixtures/throws-on-import.test.ts';
@@ -80,7 +83,7 @@ function assertRecordingSnapshots(
 }
 
 async function assertRecordedRun(scope: TestScope, scenario: RecordingScenario): Promise<void> {
-    await withCoverageRecordFixture(config, scenario.failedWrites, async function execute(fixture) {
+    await withMemoryCoverageRecordFixture(config, scenario.failedWrites, async function execute(fixture) {
         const { command, orchestrator } = recordedInvocation(fixture);
         const result = await orchestrator.run({
             ...command,
@@ -123,7 +126,7 @@ export const testNode = suite('ordinary and reusable recording invocations', [
             ...config,
             profiles: { microtest: { ...profile, runRecords: { persist: 'always' as const } } }
         };
-        await withCoverageRecordFixture(required, [], async function execute(fixture) {
+        await withMemoryCoverageRecordFixture(required, [], async function execute(fixture) {
             const { command, orchestrator } = recordedInvocation(fixture);
             const result = await orchestrator.run({ ...command, request: { ...command.request, record: false } });
             scope.assert.equal(result.status, 'passed');
@@ -132,7 +135,7 @@ export const testNode = suite('ordinary and reusable recording invocations', [
         return scope.assert.collect();
     }),
     test('invalid recording requests fail before starting a record', async function (scope: TestScope) {
-        await withCoverageRecordFixture(config, [], async function execute(fixture) {
+        await withMemoryCoverageRecordFixture(config, [], async function execute(fixture) {
             const { command, orchestrator } = recordedInvocation(fixture);
             const request = { ...command.request };
             Reflect.set(request, 'record', 'invalid');
@@ -144,7 +147,7 @@ export const testNode = suite('ordinary and reusable recording invocations', [
         return scope.assert.collect();
     }),
     test('invalid profile persistence fails before starting a record', async function (scope: TestScope) {
-        await withCoverageRecordFixture(config, [], async function execute(fixture) {
+        await withMemoryCoverageRecordFixture(config, [], async function execute(fixture) {
             const { command, orchestrator } = recordedInvocation(fixture);
             const profile = command.config.profiles['microtest'];
             scope.require.defined(profile);
@@ -159,7 +162,7 @@ export const testNode = suite('ordinary and reusable recording invocations', [
         return scope.assert.collect();
     }),
     test('merge recording requires a shard and excludes ordinary recording', async function (scope: TestScope) {
-        await withCoverageRecordFixture(config, [], async function execute(fixture) {
+        await withMemoryCoverageRecordFixture(config, [], async function execute(fixture) {
             const { command, orchestrator } = recordedInvocation(fixture);
             const request = { ...command.request, recordForMerge: true };
             await scope.assert.rejects(async function recordWithoutShards() {
@@ -173,7 +176,7 @@ export const testNode = suite('ordinary and reusable recording invocations', [
         return scope.assert.collect();
     }),
     test('persists the replay plan before any result exists', async function (scope: TestScope) {
-        await withCoverageRecordFixture(config, [], async function execute(fixture) {
+        await withMemoryCoverageRecordFixture(config, [], async function execute(fixture) {
             const { command, orchestrator } = recordedInvocation(fixture);
             await orchestrator.run(command);
             assertReplayPlanSnapshot(scope, fixture);
@@ -197,7 +200,7 @@ export const testNode = suite('ordinary and reusable recording invocations', [
         return scope.assert.collect();
     }),
     test('empty selections retain complete facts and a failed result', async function (scope: TestScope) {
-        await withCoverageRecordFixture(config, [], async function execute(fixture) {
+        await withMemoryCoverageRecordFixture(config, [], async function execute(fixture) {
             const { command, orchestrator } = recordedInvocation(fixture);
             const result = await orchestrator.run({
                 ...command,
@@ -216,7 +219,7 @@ export const testNode = suite('ordinary and reusable recording invocations', [
     test(
         'collection stays read-only and each reusable invocation completes its own record',
         async function (scope: TestScope) {
-            await withCoverageRecordFixture(config, [], async function execute(fixture) {
+            await withMemoryCoverageRecordFixture(config, [], async function execute(fixture) {
                 const { command, orchestrator } = recordedInvocation(fixture);
                 const initialized = await orchestrator.initialize(command);
                 const collected = await initialized.collect();

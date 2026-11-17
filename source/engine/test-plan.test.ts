@@ -6,6 +6,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+import { testNode as admission } from './test-plan-admission-policy.test.ts';
 import type { TestCaseOptions } from './test-node.ts';
 import type { TestPlanFromTestFilesOptions } from './test-plan.ts';
 
@@ -33,6 +34,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        admission,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createTestPlan() expands suites and tables into executable cases',

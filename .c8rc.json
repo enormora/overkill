@@ -4,8 +4,10 @@
     "src": ["source"],
     "exclude": [
         "source/**/*.test.ts",
-        "source/integration-tests/run/fixtures/**/*.test.ts",
-        "source/packages/**/*.ts",
+        "source/**/*.entry-point.ts",
+        "source/**/*.type-test.ts",
+        "source/test-support/**",
+        "source/integration-tests/**",
         "target/**"
     ],
     "check-coverage": true,

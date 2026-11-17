@@ -8,7 +8,8 @@ import {
     type HostRunnerErrors,
     type WorkerPoolCreationOptions,
     type WorkerPoolHostOutputSink,
-    type WorkerPoolHostProcessStarter
+    type WorkerPoolHostProcessStarter,
+    type RunOrchestratorDependencies
 } from './run-orchestrator-dependencies.ts';
 import { createProcessUsageFromSamples } from './process-usage.ts';
 import type { SupervisedChildProcess } from './supervised-child-process.ts';
@@ -49,6 +50,7 @@ type HostRuntime = {
 };
 
 type HostedWorkerPoolInput = {
+    readonly wallClock: RunOrchestratorDependencies['wallClock'];
     readonly environmentVariables: RuntimeCapabilityPolicyEnvironment;
     readonly options: WorkerPoolCreationOptions;
     readonly startWorkerPoolHost: WorkerPoolHostProcessStarter;
@@ -331,6 +333,7 @@ function observeRuntime(observation: RuntimeObservationInput): void {
         return observation.state.outputSink.read();
     });
     observeHostTransport({
+        wallClock: observation.input.wallClock,
         child: observation.child,
         configured() {
             recordHostStartup(observation.input, observation.child, observation.startupStartedAtMicroseconds);

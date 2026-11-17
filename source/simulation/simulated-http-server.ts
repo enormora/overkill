@@ -1,4 +1,4 @@
-import http, { type IncomingMessage, type ServerResponse } from 'node:http';
+import http, { type IncomingMessage } from 'node:http';
 import {
     createHttpTranscriptRecorder,
     httpHeadersSnapshot,
@@ -66,7 +66,14 @@ type ServerLifecycle = {
         (event: 'listening', listener: () => void): unknown;
     };
 };
-type ResponseWriter = Readonly<Pick<ServerResponse, 'end' | 'writeHead'>>;
+type ResponseHead = {
+    (status: number): unknown;
+    (status: number, statusText: string, headers: Readonly<Record<string, string>>): unknown;
+};
+type ResponseWriter = {
+    readonly end: (body: Uint8Array | string) => unknown;
+    readonly writeHead: ResponseHead;
+};
 type SimulatedHttpServerHandleCandidate<Simulation extends SimulationWithScenarios> = {
     readonly baseUrl: string;
     readonly dispose: () => Promise<void>;
@@ -405,7 +412,7 @@ function reportSimulationFailure<Scenarios extends SimulationScenarioCatalog>(
     }
 }
 
-async function routeSimulationRequest<Scenarios extends SimulationScenarioCatalog>(
+export async function serveSimulatedHttpRequest<Scenarios extends SimulationScenarioCatalog>(
     context: SimulationRequestContext<Scenarios>
 ): Promise<void> {
     const sequence = context.transcript.nextSequence();
@@ -426,7 +433,7 @@ function createServer<Scenarios extends SimulationScenarioCatalog>(
 ): http.Server {
     const server = http.createServer(function handleRequest(request, response) {
         startGuardedRoute(
-            routeSimulationRequest({
+            serveSimulatedHttpRequest({
                 request,
                 response,
                 simulation: options.simulation,
@@ -501,11 +508,15 @@ export function assertNoSimulatedHttpHandlerErrors(handlerErrors: readonly unkno
     }
 }
 
-export async function startSimulatedHttpServer<
+export async function listenToSimulatedHttpServer<
     const Name extends string,
     const Scenarios extends SimulationScenarioCatalog
 >(
-    options: SimulatedHttpServerOptions<Name, Scenarios>
+    options: SimulatedHttpServerOptions<Name, Scenarios>,
+    createListeningServer: (
+        simulation: SimulatedHttpServerDefinition<string, Scenarios>,
+        host: string
+    ) => SimulatedHttpListeningServer
 ): Promise<SimulatedHttpServerHandle<SimulatedHttpServerDefinition<Name, Scenarios>>> {
     if (!isDefinedSimulatedHttpServer(options.simulation)) {
         throw new TypeError('startSimulatedHttpServer() requires a simulated HTTP server definition.');
@@ -513,7 +524,7 @@ export async function startSimulatedHttpServer<
 
     const host = options.host ?? '127.0.0.1';
     const port = options.port ?? 0;
-    const listeningServer = createSimulatedHttpListeningServer(options.simulation, host);
+    const listeningServer = createListeningServer(options.simulation, host);
     const baseUrl = await listenBaseUrl(listeningServer.server, host, port);
     const disposeServer = createServerDisposal(listeningServer.server, listeningServer.errors);
 
@@ -522,4 +533,13 @@ export async function startSimulatedHttpServer<
         disposeServer,
         listeningServer.transcript
     );
+}
+
+export async function startSimulatedHttpServer<
+    const Name extends string,
+    const Scenarios extends SimulationScenarioCatalog
+>(
+    options: SimulatedHttpServerOptions<Name, Scenarios>
+): Promise<SimulatedHttpServerHandle<SimulatedHttpServerDefinition<Name, Scenarios>>> {
+    return await listenToSimulatedHttpServer(options, createSimulatedHttpListeningServer);
 }

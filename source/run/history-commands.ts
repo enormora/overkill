@@ -11,7 +11,11 @@ import type { History } from './history-types.ts';
 import { confirmHistoryClear } from './history-confirmation.ts';
 
 type HistoryOutput = Pick<CommandLineRunnerResult, 'fallbackDiagnostics' | 'stdoutLines'>;
-type HistoryOperation = (history: History, request: HistoryCommandRequest) => Promise<HistoryOutput>;
+type HistoryOperation = (
+    history: History,
+    request: HistoryCommandRequest,
+    runtime: HistoryCommandRuntime
+) => Promise<HistoryOutput>;
 const operations: Readonly<Record<keyof HistoryCommands, HistoryOperation>> = {
     async list(history) {
         const summaries = await history.list();
@@ -55,8 +59,8 @@ const operations: Readonly<Record<keyof HistoryCommands, HistoryOperation>> = {
             fallbackDiagnostics: result.diagnostics
         };
     },
-    async clear(history, request) {
-        if (!await confirmHistoryClear(request.yes)) {
+    async clear(history, request, runtime) {
+        if (!await runtime.confirm(request.yes)) {
             return { stdoutLines: [], fallbackDiagnostics: [] };
         }
         const result = await history.clear({ confirmed: true });
@@ -66,23 +70,37 @@ const operations: Readonly<Record<keyof HistoryCommands, HistoryOperation>> = {
 async function executeHistoryCommand(
     loadConfig: ConfigLoader,
     verb: keyof HistoryCommands,
-    request: HistoryCommandRequest
+    request: HistoryCommandRequest,
+    runtime: HistoryCommandRuntime
 ): Promise<CommandLineRunnerResult> {
     const config = await loadConfig(request);
-    const projectRoot = await realpath(request.cwd);
-    const history = createHistory({ projectRoot, config });
-    const output = await operations[verb](history, request);
+    const projectRoot = await runtime.canonical(request.cwd);
+    const history = runtime.create({ projectRoot, config });
+    const output = await operations[verb](history, request, runtime);
     return { exitCode: 0, runResult: null, ...output };
 }
-export function createHistoryCommands(loadConfig: ConfigLoader): HistoryCommands {
+export type HistoryCommandRuntime = {
+    readonly canonical: (path: string) => Promise<string>;
+    readonly create: typeof createHistory;
+    readonly confirm: typeof confirmHistoryClear;
+};
+export function createHistoryCommandSet(loadConfig: ConfigLoader, runtime: HistoryCommandRuntime): HistoryCommands {
     function command(verb: keyof HistoryCommands): HistoryCommands['list'] {
         return async function runHistoryCommand(request) {
             try {
-                return await executeHistoryCommand(loadConfig, verb, request);
+                return await executeHistoryCommand(loadConfig, verb, request, runtime);
             } catch (error: unknown) {
                 return createCommandLineErrorResultFromUnknown(error);
             }
         };
     }
     return { list: command('list'), prune: command('prune'), compact: command('compact'), clear: command('clear') };
+}
+
+export function createHistoryCommands(loadConfig: ConfigLoader): HistoryCommands {
+    return createHistoryCommandSet(loadConfig, {
+        canonical: realpath,
+        create: createHistory,
+        confirm: confirmHistoryClear
+    });
 }

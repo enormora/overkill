@@ -1,348 +1,38 @@
 import { runIfMain } from '#test-runner';
+import {
+    shardBySecondPath,
+    createConstrainedPlan,
+    workerPoolResolvedRun,
+    localResolvedRun,
+    firstWorkUnit,
+    secondWorkUnit,
+    expectedPlacementPlan,
+    fileSetForFile,
+    integrationPath,
+    secondIntegrationPath,
+    testFileHref,
+    createCollectedPlan
+} from '../test-support/worker-pool-placement.ts';
 
 import {
-    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
-    type CaseId,
-    type TestPlan,
-    type TestBodyExecutionRequirementSummary,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import {
-    defaultRunConfig,
-    defaultRunRequest,
-    defaultIntegrationProfile
-} from '../test-support/run-command-factory.ts';
+import { defaultRunRequest, defaultIntegrationProfile } from '../test-support/run-command-factory.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
-import { defaultRunEngine } from './default-run-engine.ts';
+
 import { createCollectedExecutionPlan } from './run-collected-planning.ts';
-import { emptyWorkUnitResourceConstraints } from './run-types.ts';
+import { emptyWorkUnitResourceConstraints, type CollectedRunPlan } from './run-types.ts';
 import {
     createWorkerPoolPlacementPlan,
     createWorkerPoolPlacementResolution,
     type WorkerPoolPlacementPlanInput
 } from './worker-pool-placement-planning.ts';
-import {
-    runStartTimeFromMilliseconds,
-    workerPoolCollectedPlan,
-    type WorkerPoolRunRuntime
-} from './worker-pool-runtime.ts';
+import { runStartTimeFromMilliseconds, workerPoolCollectedPlan } from './worker-pool-runtime.ts';
 import {
     workUnitsFromCollectedPlan
 } from './work-unit-planning.ts';
-
-export const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
-const secondIntegrationPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
-const annotations = { ownership: [], tags: [] };
-const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
-const defaultUnitPolicy = {
-    order: 'plan',
-    scheduling: 'concurrent',
-    workerLifecycle: 'reuse'
-} as const;
-type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
-type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
-type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;
-type WorkUnit = PlacementPlan['units'][number];
-
-const shardBySecondPath = {
-    hash(value: string): bigint {
-        return value.includes(secondIntegrationPath) ? 1n : 0n;
-    }
-};
-
-export function testFileHref(path: string): string {
-    const url = new URL(path, import.meta.url);
-
-    return url.href;
-}
-
-function collectedCase(
-    title: string,
-    suitePath: CollectedRunPlan['files'][number]['cases'][number]['suitePath']
-): CollectedRunPlan['files'][number]['cases'][number] {
-    return {
-        implementationDeclaration: null,
-
-        skipReason: null,
-        property: null,
-        benchmark: null,
-        workloadParameters: null,
-        annotations,
-        controls,
-        definitionLocations: [ { kind: 'unknown' as const } ],
-        params: title === 'second' ? '["slow"]' : null,
-        resourceAttachments: {
-            directResources: [],
-            resourceGraph: [],
-            runtimeGraphs: []
-        },
-        suitePath,
-        testFamily: 'integration',
-        title
-    };
-}
-
-export function createCollectedPlan(): CollectedRunPlan {
-    return {
-        implementations: null,
-
-        family: null,
-        defined: 2,
-        discoveredFiles: [],
-        files: [
-            {
-                file: integrationPath,
-                cases: [
-                    collectedCase('first', [
-                        { definitionLocations: [ { kind: 'unknown' as const } ], title: 'integration' }
-                    ])
-                ]
-            },
-            {
-                file: secondIntegrationPath,
-                cases: [ collectedCase('second', []) ]
-            }
-        ],
-        orphans: [],
-        root: {
-            annotations,
-            controls,
-            title: 'worker pool'
-        }
-    };
-}
-
-function createConstrainedPlan(requirements: readonly TestBodyExecutionRequirementSummary[]): CollectedRunPlan {
-    const plan = createCollectedPlan();
-    const firstFile = plan.files[0];
-    const firstCase = firstFile?.cases[0];
-
-    if (firstFile === undefined || firstCase === undefined) {
-        throw new Error('Constrained planning fixture requires its first case.');
-    }
-
-    return {
-        ...plan,
-        files: [
-            {
-                ...firstFile,
-                cases: [
-                    {
-                        ...firstCase,
-                        resourceAttachments: {
-                            ...firstCase.resourceAttachments,
-                            resourceGraph: [
-                                {
-                                    workload: 'independent' as const,
-                                    dependencies: [],
-                                    handleTransport: 'local',
-                                    name: 'database',
-                                    requirements,
-                                    scenarios: [],
-                                    scope: 'per-case'
-                                }
-                            ]
-                        }
-                    },
-                    ...firstFile.cases.slice(1)
-                ]
-            },
-            ...plan.files.slice(1)
-        ]
-    };
-}
-
-function createLocalTestPlan(): TestPlan {
-    const testNode = defaultRunEngine.createTestCase({
-        annotations: {},
-        body(scope) {
-            scope.assert.true(true);
-            return scope.assert.collect();
-        },
-        controls: {},
-        definitionLocations: [ { kind: 'unknown' as const } ],
-        title: 'local'
-    });
-
-    return defaultRunEngine.createTestPlanFromTestFiles({
-        files: [ { file: integrationPath, testNode } ],
-        root: {
-            annotations: {},
-            controls: {},
-            title: 'worker pool placement'
-        }
-    });
-}
-
-function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
-    return {
-        collectionRunnerErrors: [],
-        config: defaultRunConfig(),
-        cwd: process.cwd(),
-        engine: { kind: 'default' },
-        facts: {
-            implementations: null,
-
-            family: { id: 'integration', version: '1', settings: null, preparation: null, collection: null },
-            adapter: null,
-            benchmarkHost: null,
-            benchmarkCalibration: null,
-            benchmarkNormalization: null,
-            benchmarkPlacement: null,
-            coveragePolicy: null,
-            durationHistory: null,
-            cases: [],
-            environment: {
-                node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
-                projectRoot: process.cwd(),
-                runtimeStateDir: '.overkill'
-            },
-            execution: {
-                debuggedCases: [],
-                failureArtifacts: defaultFailureArtifactPolicy,
-                runRecords: { persist: false, reasons: [] },
-                benchmarkGarbageCollection: null,
-                propertyPolicy: null,
-                attachments: null,
-                retries: null,
-                assignmentPolicy: 'case-count-balanced',
-                baselineUpdateMode: 'none',
-                capture: 'buffered',
-                coverage: false,
-                debug: { mode: 'off', selectors: [] },
-                engine: { kind: 'default' },
-                maxConcurrency: 5,
-                dispatchPolicy: 'dynamic-lease',
-                hedging: { mode: 'off' },
-                hostProcess: { kind: 'direct' },
-                order: 'seeded',
-                placementPlan: null,
-                processModel: 'worker-pool',
-                profile: 'integration',
-                processUsagePolicy: defaultIntegrationProfile({}).processUsage,
-                scheduling: 'serial',
-                testFamily: 'integration',
-                timingCollection: 'summary',
-                timeoutPolicy: {
-                    collectionMilliseconds: 1000,
-                    hardMilliseconds: 1000,
-                    softMilliseconds: 500
-                },
-                workDistribution: { mode: 'file' },
-                workerCount: {
-                    hostMaximum: 1,
-                    profileMaximum: null,
-                    requested: null,
-                    resolved: 1
-                },
-                workerLifecycle: 'reuse',
-                verbose: false
-            },
-            loader: { sourceMaps: false, stripMode: 'strip-only' },
-            reproducibility: {
-                selectedIdentities: [],
-                selection: { kind: 'all' },
-                seed: '42',
-                shard: { index: 1, total: 1 },
-                shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
-            }
-        },
-        plan,
-        reporters: [],
-        request: defaultRunRequest({ paths: [ integrationPath ], profile: 'integration' })
-    };
-}
-
-function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
-    return createResolvedRun({ collectedPlan, kind: 'worker-pool' });
-}
-
-function localResolvedRun(): ResolvedRun {
-    return createResolvedRun({ kind: 'local', testPlan: createLocalTestPlan() });
-}
-
-function firstCaseId(): CaseId {
-    return {
-        file: integrationPath,
-        params: null,
-        suite: [ 'integration' ],
-        title: 'first'
-    };
-}
-
-function secondCaseId(): CaseId {
-    return {
-        file: secondIntegrationPath,
-        params: '["slow"]',
-        suite: [],
-        title: 'second'
-    };
-}
-
-function firstWorkUnit(): WorkUnit {
-    return {
-        group: null,
-        id: { familyVariant: null, key: integrationPath, mode: 'file', runtimes: [], workload: null },
-        ...defaultUnitPolicy,
-        resourceConstraints: emptyWorkUnitResourceConstraints,
-        work: [ { familyVariant: null, case: firstCaseId(), runtimes: [], workload: null } ]
-    };
-}
-
-function secondWorkUnit(): WorkUnit {
-    return {
-        group: null,
-        id: { familyVariant: null, key: secondIntegrationPath, mode: 'file', runtimes: [], workload: null },
-        ...defaultUnitPolicy,
-        resourceConstraints: emptyWorkUnitResourceConstraints,
-        work: [ { familyVariant: null, case: secondCaseId(), runtimes: [], workload: null } ]
-    };
-}
-
-function expectedPlacementPlan(): PlacementPlan {
-    const firstUnit = firstWorkUnit();
-    const secondUnit = secondWorkUnit();
-
-    return {
-        assignments: [
-            { lane: 'worker-1', unit: firstUnit.id },
-            { lane: 'worker-2', unit: secondUnit.id }
-        ],
-        lanes: [
-            {
-                executor: {
-                    capabilities: [],
-                    capacity: 1,
-                    id: 'worker-1',
-                    kind: 'local-worker'
-                },
-                id: 'worker-1'
-            },
-            {
-                executor: {
-                    capabilities: [],
-                    capacity: 1,
-                    id: 'worker-2',
-                    kind: 'local-worker'
-                },
-                id: 'worker-2'
-            }
-        ],
-        resourceOwnership: { owners: [] },
-        units: [ firstUnit, secondUnit ]
-    };
-}
-
-export function fileSetForFile(file: string): string | null {
-    const files = new Map([
-        [ integrationPath, 'fast' ],
-        [ secondIntegrationPath, 'slow' ]
-    ]);
-
-    return files.get(file) ?? null;
-}
 
 function assertWorkerPoolPlanHelpers(scope: OverkillScope, collectedPlan: CollectedRunPlan): void {
     scope.assert.equal(runStartTimeFromMilliseconds(0), '1970-01-01T00:00:00.000Z');

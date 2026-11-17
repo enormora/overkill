@@ -1,5 +1,5 @@
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
-import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { createFakeSupervisedChildProcess } from '../test-support/fake-supervised-child-process.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import { defaultRunConfig, defaultRunRequest, defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
@@ -22,7 +22,7 @@ type Phase = typeof phases[number];
 
 async function cancelAt(phase: Phase): Promise<EngineRunResult> {
     const controller = new AbortController();
-    const resolved = await createDeterministicRunOrchestrator().resolve(command);
+    const resolved = await createUnitRunOrchestrator().resolve(command);
     if (resolved.plan.kind !== 'supervised') {
         throw new Error('Expected supervised fixture collection.');
     }

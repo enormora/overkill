@@ -6,7 +6,7 @@ import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { readBenchmarkRunMetadata } from '../bench/benchmark-run-report.ts';
 import { canonicalIdentityJson, type RunResult } from '../packages/engine/engine.entry-point.ts';
 import type { BenchmarkHostSnapshot } from '../bench/benchmark-host-snapshot.ts';
-import { createRunCoordinator, type RunCoordinator } from './run.ts';
+import { createRunCoordinator, type RunCoordinator } from './run-coordinator.entry-point.ts';
 import type { RunCommand } from './run-types.ts';
 
 type ReporterNotification = { readonly kind: string; };

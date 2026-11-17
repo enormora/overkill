@@ -1,29 +1,14 @@
 import { runIfMain } from '#test-runner';
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as collection } from './coverage-collection.test.ts';
 import { testNode as recordSuiteTestNode } from './run-record-suite.test.ts';
-import { testNode as coverageReportingTestNode } from './coverage-reporting.test.ts';
-import { testNode as recordedCoverageTestNode } from './recorded-coverage-run.test.ts';
-import { testNode as localCoverageTestNode } from './run-local-coverage.test.ts';
-import { testNode as supervisedCoverageTestNode } from './run-supervised-coverage.test.ts';
-import { testNode as resultFinalizationTestNode } from './run-result-finalization.test.ts';
-import { testNode as sessionTestNode } from './recorded-coverage-session.test.ts';
-import { testNode as runCoverageTestNode } from './run-coverage.test.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/coverage-suite.test.ts',
     annotations: {},
     controls: {},
-    children: [
-        recordSuiteTestNode,
-        localCoverageTestNode,
-        sessionTestNode,
-        resultFinalizationTestNode,
-        supervisedCoverageTestNode,
-        coverageReportingTestNode,
-        runCoverageTestNode,
-        recordedCoverageTestNode
-    ]
+    children: [ collection, recordSuiteTestNode ]
 });
 
 await runIfMain(import.meta, testNode);

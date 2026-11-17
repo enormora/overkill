@@ -14,9 +14,7 @@ import type {
     CommandLineCommandContext,
     CommandLineRunnerResult
 } from './command-line-command.ts';
-import {
-    createCommandLineCommandNamespace
-} from './command-line-command-namespace.ts';
+import { createCommandLineCommandNamespace } from './command-line-native-loaders.entry-point.ts';
 
 type LoadBaselineCommands = () => Promise<CommandLineBaselineCommands>;
 type LoadBenchmarkCommands = () => Promise<CommandLineBenchmarkCommands>;

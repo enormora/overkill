@@ -16,7 +16,7 @@ import { createRunTestPlan } from './run-test-plan.ts';
 import { RunCollectionError } from './run-errors.ts';
 import type {
     WorkerPoolCollection,
-    WorkerPoolRunTask,
+    WorkerRunTask as WorkerPoolRunTask,
     WorkerPoolCommand,
     WorkerPoolRunOutput
 } from './worker-pool-protocol.ts';

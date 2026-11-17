@@ -1,4 +1,5 @@
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
+import { createOrdinaryBaselineStore } from './baseline-store.ts';
 import type { RunPreparationInput, RunPreparationResult } from './prepared-run-types.ts';
 import {
     createResultFromResolutionError,
@@ -17,10 +18,14 @@ export async function prepareOrdinaryBaselineRun(options: RunPreparationInput): 
     const maxBytes = limits.maxArtifactBytes;
     try {
         const workflow = await createOrdinaryBaselineWorkflow({
+            store: await createOrdinaryBaselineStore({
+                directory: profile.baselines.directory,
+                projectRoot: options.input.projectRoot,
+                maxBytes
+            }),
             policy: profile.baselines,
             request,
-            projectRoot: options.input.projectRoot,
-            maxBytes
+            projectRoot: options.input.projectRoot
         });
         return {
             input: options.input,

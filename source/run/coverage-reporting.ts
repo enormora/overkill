@@ -1,6 +1,7 @@
 import path from 'node:path';
 import {
     CoverageReport,
+    type V8CoverageEntry,
     type CoverageResults,
     type ReportDescription
 } from 'monocart-coverage-reports';
@@ -10,7 +11,12 @@ import type {
     CoverageReportFile
 } from '../engine/coverage-artifact.ts';
 import type { CoverageOutput } from '../config/types.ts';
-import { prepareCoverageSources, type CoverageSourceScope } from './coverage-source-selection.ts';
+import {
+    prepareCoverageSources,
+    createCoverageSourceAccess,
+    type CoverageSourceScope,
+    type CoverageSourceAccess
+} from './coverage-source-selection.ts';
 import type { CoverageNativeBatch } from './coverage-native-data.ts';
 
 export type CoverageReportRequest = {
@@ -24,6 +30,20 @@ export type CoverageReportRequest = {
 export type CoverageReportResult = {
     readonly reports: readonly CoverageReportFile[];
     readonly summary: CoverageArtifactPayload['summary'];
+};
+
+type CoverageBackendResult = Pick<CoverageResults, 'summary'>;
+export type CoverageReportBackend = {
+    readonly hasCache: () => boolean;
+    readonly add: (entries: readonly V8CoverageEntry[]) => Promise<unknown>;
+    readonly addFromDir: (path: string) => Promise<unknown>;
+    readonly generate: () => Promise<CoverageBackendResult | undefined>;
+};
+export type CoverageReportingRuntime = {
+    readonly sources: CoverageSourceAccess;
+    readonly createReport: (
+        options: NonNullable<ConstructorParameters<typeof CoverageReport>[0]>
+    ) => CoverageReportBackend;
 };
 
 type ConfiguredCoverageReport = {
@@ -81,14 +101,14 @@ function configuredCoverageReports(request: CoverageReportRequest): readonly Con
     });
 }
 
-function metric(results: CoverageResults, name: 'branches' | 'functions' | 'lines'): CoverageMetric {
+function metric(results: CoverageBackendResult, name: 'branches' | 'functions' | 'lines'): CoverageMetric {
     const value = results.summary[name];
 
     return { covered: value.covered, total: value.total };
 }
 
 async function initializeFilteredCoverage(
-    report: CoverageReport,
+    report: CoverageReportBackend,
     batches: readonly CoverageNativeBatch[]
 ): Promise<void> {
     if (report.hasCache()) {
@@ -104,13 +124,13 @@ async function initializeFilteredCoverage(
     await report.add(Array.from(batch.entries));
 }
 
-function hasExecutableCoverage(results: CoverageResults): boolean {
+function hasExecutableCoverage(results: CoverageBackendResult): boolean {
     return ([ 'branches', 'functions', 'lines' ] as const).some(function hasExecutableMetric(name) {
         return results.summary[name].total > 0;
     });
 }
 
-async function generateExecutableCoverageReport(report: CoverageReport): Promise<CoverageResults> {
+async function generateExecutableCoverageReport(report: CoverageReportBackend): Promise<CoverageBackendResult> {
     const results = await report.generate();
 
     if (results === undefined) {
@@ -122,12 +142,13 @@ async function generateExecutableCoverageReport(report: CoverageReport): Promise
     return results;
 }
 
-export async function generateCoverageReports(
-    request: CoverageReportRequest
+export async function collectCoverageReports(
+    request: CoverageReportRequest,
+    runtime: CoverageReportingRuntime
 ): Promise<CoverageReportResult> {
-    const sources = await prepareCoverageSources(request);
+    const sources = await prepareCoverageSources(request, runtime.sources);
     const configuredReports = configuredCoverageReports(request);
-    const report = new CoverageReport({
+    const report = runtime.createReport({
         ...sources.all === null ? {} : { all: sources.all },
         baseDir: request.projectRoot,
         clean: false,
@@ -159,4 +180,13 @@ export async function generateCoverageReports(
             lines: metric(results, 'lines')
         }
     };
+}
+
+export async function generateCoverageReports(request: CoverageReportRequest): Promise<CoverageReportResult> {
+    return await collectCoverageReports(request, {
+        sources: createCoverageSourceAccess(),
+        createReport(options) {
+            return new CoverageReport(options);
+        }
+    });
 }

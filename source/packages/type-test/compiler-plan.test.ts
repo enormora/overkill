@@ -1,3 +1,4 @@
+import { testNode as nativeMapping } from './generated-reference-mapping.test.ts';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { runIfMain } from '#test-runner';
@@ -56,6 +57,7 @@ async function preparedProject(scope: TestScope): Promise<PreparedProject> {
 }
 
 export const testNode = suite('compiler planning', [
+    nativeMapping,
     lifetime,
     test('rejects empty matrices and non-exact versions', function (scope) {
         scope.assert.false(

@@ -1,9 +1,8 @@
 import { isDeepStrictEqual } from 'node:util';
-import { readFile } from 'node:fs/promises';
 import { suite, test } from '../packages/test/test.entry-point.ts';
+import standardValues from './fixtures/property-values-v1.json' with { type: 'json' };
+import versionOneGraph from './fixtures/property-graph-v1.json' with { type: 'json' };
 import { testNode as compatibility } from './property-compatibility.test.ts';
-import { testNode as validation } from './property-codec-validation.test.ts';
-import { testNode as execution } from './property-codec-execution.test.ts';
 import { capturePropertyInput, decodePropertyInput } from './property-graph.ts';
 import { defineCodec } from './property-codec.ts';
 
@@ -66,7 +65,6 @@ function expressionState(value: unknown): unknown {
 }
 
 export const testNode = suite('property graph codecs', [
-    validation,
     compatibility,
     test('round trips every supported standard value family', async function (scope) {
         const values: readonly unknown[] = [
@@ -98,9 +96,7 @@ export const testNode = suite('property graph codecs', [
             new BigInt64Array([ -1n, 2n ]),
             new BigUint64Array([ 1n, 2n ])
         ];
-        const fixtures: unknown = JSON.parse(
-            await readFile(new URL('./fixtures/property-values-v1.json', import.meta.url), 'utf8')
-        );
+        const fixtures: unknown = structuredClone(standardValues);
         if (!Array.isArray(fixtures) || fixtures.length !== values.length) {
             throw new TypeError('Expected one fixture per standard value.');
         }
@@ -111,7 +107,6 @@ export const testNode = suite('property graph codecs', [
         }
         return scope.assert.collect();
     }),
-    execution,
     test('rejects malformed references and unsupported native tags', function (scope) {
         const encoded = capturePropertyInput(null, null, consume);
         for (const payload of [ [ { $value: 99 } ], [ [ 'URL', 'https://example.com' ] ], [ [ 'Map', 0 ] ] ]) {
@@ -138,9 +133,7 @@ export const testNode = suite('property graph codecs', [
         return scope.assert.collect();
     }),
     test('decodes the version one compatibility fixture', async function (scope) {
-        const input: unknown = JSON.parse(
-            await readFile(new URL('./fixtures/property-graph-v1.json', import.meta.url), 'utf8')
-        );
+        const input: unknown = structuredClone(versionOneGraph);
         const value = decodePropertyInput(input, null, consume);
         scope.assert.equal(expressionState(value), 2);
         if (typeof value !== 'object' || value === null) {

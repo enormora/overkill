@@ -1,4 +1,5 @@
-import { Socket } from 'node:net';
+import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
+import { createStoredValue } from '../stored-value.ts';
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
@@ -7,9 +8,22 @@ import type { ResourceCheckFrame } from './resource-check-channel.ts';
 import {
     createResourceCheckRegistry,
     type ResourceCheckRegistry,
-    type ResourceCheckSend
+    type ResourceCheckSend,
+    type ResourceCheckConnection
 } from './resource-check-registry.ts';
 
+type RegistryConnection = ResourceCheckConnection & { readonly destroy: () => void; };
+function connection(): RegistryConnection {
+    const destroyed = createStoredValue(false);
+    return {
+        get destroyed() {
+            return destroyed.read();
+        },
+        destroy() {
+            destroyed.write(true);
+        }
+    };
+}
 const work = createDefaultWorkId({ file: null, suite: [], title: 'consumer', params: null });
 const otherWork = createDefaultWorkId({ file: null, suite: [], title: 'other consumer', params: null });
 const attempt = { kind: 'attempt', work, attempt: { index: 0 } } as const;
@@ -25,16 +39,18 @@ const snapshot: ResourceCheckSnapshot = {
     status: { kind: 'complete' }
 };
 type Scenario = {
+    readonly clock: DeterministicClock;
     readonly registry: ResourceCheckRegistry;
     readonly owner: ResourceCheckOwner;
-    readonly socket: Socket;
-    readonly sibling: Socket;
+    readonly socket: RegistryConnection;
+    readonly sibling: RegistryConnection;
     readonly send: ResourceCheckSend;
     readonly sent: () => readonly ResourceCheckFrame[];
 };
 async function registeredOwner(scope: TestScope, resourceScope: ResourceCheckOwner['scope']): Promise<Scenario> {
-    const registry = createResourceCheckRegistry(owner.run);
-    const sockets = { owner: new Socket(), sibling: new Socket() };
+    const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+    const registry = createResourceCheckRegistry(owner.run, clock);
+    const sockets = { owner: connection(), sibling: connection() };
     const frames: ResourceCheckFrame[] = [];
     const registered = { ...owner, scope: resourceScope };
     scope.cleanup(function closeSockets() {
@@ -51,6 +67,7 @@ async function registeredOwner(scope: TestScope, resourceScope: ResourceCheckOwn
         consumers: [ work ]
     });
     return {
+        clock,
         registry,
         owner: registered,
         socket: sockets.owner,
@@ -106,7 +123,7 @@ async function checkpointOwner(scenario: Scenario): Promise<void> {
 async function finalizeInterval(
     scenario: Scenario,
     interval: ResourceCheckSnapshot['interval'],
-    socket: Socket
+    socket: RegistryConnection
 ): Promise<void> {
     await scenario.registry.receive(socket, scenario.send, { kind: 'finalize', request: 'finalize', interval });
 }
@@ -176,7 +193,9 @@ export const testNode = suite('resource check owner registry', [
     }),
     test('reports finalization acknowledgements that never arrive', async function (scope) {
         const scenario = await registeredOwner(scope, 'per-run');
-        await finalizeInterval(scenario, attempt, scenario.socket);
+        const waiting = finalizeInterval(scenario, attempt, scenario.socket);
+        scenario.clock.advanceByMilliseconds(2000);
+        await waiting;
         const response = scenario.sent()[1];
         scope.assert.true(
             response?.kind === 'result' && response

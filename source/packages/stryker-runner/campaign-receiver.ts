@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { createServer, type Socket } from 'node:net';
+import { createServer } from 'node:net';
 import { createClock, type Clock } from '@enormora/clock';
 import {
     createInvocationBudget,
@@ -15,12 +15,12 @@ import {
     type CampaignEndpoint,
     type CampaignResponse
 } from './campaign-protocol.ts';
-import { receiveCampaignFrames, sendCampaignFrame } from './campaign-transport.ts';
+import { receiveCampaignFrames, sendCampaignFrame, type CampaignSocket } from './campaign-transport.ts';
 import { createCampaignWorker, type CampaignWorker } from './campaign-worker.ts';
 import type { CampaignBaseline } from './mutation-catalog.ts';
 
 type CampaignDelivery = {
-    readonly socket: Socket;
+    readonly socket: CampaignSocket;
     readonly worker: CampaignWorker;
     readonly frame: Readonly<ReturnType<typeof campaignRequestSchema.parse>>;
     readonly previous: Promise<void>;
@@ -75,7 +75,7 @@ async function deliverFrame(delivery: CampaignDelivery): Promise<void> {
 }
 
 type CampaignAdmission = {
-    readonly socket: Socket;
+    readonly socket: CampaignSocket;
     readonly worker: CampaignWorker;
     readonly clock: Clock;
     readonly operations: Readonly<Map<number, AbortController>>;
@@ -103,15 +103,13 @@ async function finishWorker(worker: CampaignWorker, previous: Promise<void>): Pr
     } catch {}
 }
 
-function serveWorker(
-    socket: Socket,
+export function serveCampaignWorker(
+    socket: CampaignSocket,
     token: string,
-    baselines: Readonly<Map<string, CampaignBaseline>>,
-    campaigns: Readonly<Map<string, string>>
+    worker: CampaignWorker,
+    clock: Clock
 ): void {
     socket.unref();
-    const worker = createCampaignWorker(baselines, campaigns);
-    const clock = createClock();
     const operations = new Map<number, AbortController>();
     let pending = Promise.resolve();
     socket.on('error', function () {
@@ -147,7 +145,7 @@ async function startReceiver(): Promise<CampaignEndpoint> {
     const baselines = new Map<string, CampaignBaseline>();
     const campaigns = new Map<string, string>();
     const server = createServer(function (socket) {
-        serveWorker(socket, token, baselines, campaigns);
+        serveCampaignWorker(socket, token, createCampaignWorker(baselines, campaigns), createClock());
     });
     await new Promise<void>(function (resolve, reject) {
         server.once('error', reject);

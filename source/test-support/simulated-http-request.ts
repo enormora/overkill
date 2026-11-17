@@ -1,0 +1,70 @@
+import { IncomingMessage } from 'node:http';
+import { Socket } from 'node:net';
+import { createStoredValue } from '../stored-value.ts';
+import { type HttpTranscript, createHttpTranscriptRecorder } from '../transcript/http-transcript.ts';
+import type { TestScope } from '../packages/test/test.entry-point.ts';
+import { currentTranscriptScope } from '../transcript/transcript-store.ts';
+
+import type { SimulatedHttpServerDefinition, SimulationScenarioCatalog } from '../simulation/simulation.ts';
+import { serveSimulatedHttpRequest } from '../simulation/simulated-http-server.ts';
+
+type ResponseState = {
+    readonly status: number | null;
+    readonly statusText: string | null;
+    readonly headers: Readonly<Record<string, string>>;
+    readonly body: Uint8Array | string | null;
+};
+type ResponseHeadWithHeaders = readonly [status: number, statusText: string, headers: Readonly<Record<string, string>>];
+type ResponseHeadArguments = ResponseHeadWithHeaders | readonly [status: number];
+type SimulatedHttpFixture = {
+    readonly request: IncomingMessage;
+    readonly response: ResponseState;
+    readonly errors: readonly unknown[];
+    readonly transcript: HttpTranscript<{ readonly scenario: string; }>;
+    readonly serve: () => Promise<void>;
+};
+export function simulatedHttpRequest<Scenarios extends SimulationScenarioCatalog>(
+    scope: TestScope,
+    simulation: SimulatedHttpServerDefinition<string, Scenarios>
+): SimulatedHttpFixture {
+    const socket = new Socket();
+    const request = new IncomingMessage(socket);
+    request.method = 'GET';
+    request.url = '/resource';
+    const response = createStoredValue<ResponseState>({ status: null, statusText: null, headers: {}, body: null });
+    const errors: unknown[] = [];
+    const transcript = createHttpTranscriptRecorder<{ readonly scenario: string; }>();
+    scope.cleanup(function () {
+        request.destroy();
+        socket.destroy();
+    });
+    return {
+        request,
+        get response() {
+            return response.read();
+        },
+        errors,
+        transcript: transcript.transcript,
+        async serve() {
+            await serveSimulatedHttpRequest({
+                baseUrl: 'https://service.test:42',
+                request,
+                simulation,
+                transcript,
+                scope: currentTranscriptScope(),
+                recordError(error) {
+                    errors.push(error);
+                },
+                response: {
+                    writeHead(...args: ResponseHeadArguments) {
+                        const [ status, statusText = null, headers = {} ] = args;
+                        response.write({ ...response.read(), status, statusText, headers });
+                    },
+                    end(body) {
+                        response.write({ ...response.read(), body });
+                    }
+                }
+            });
+        }
+    };
+}

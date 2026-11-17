@@ -15,6 +15,7 @@ import {
     type TestScope,
     type TestScope as OverkillScope
 } from '../engine/engine.entry-point.ts';
+import { testNode as validation } from './authoring-data-validation.test.ts';
 import {
     createTestFacade,
     type TestFacade
@@ -336,6 +337,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        validation,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test createTestFacade() returns a narrow authoring surface',

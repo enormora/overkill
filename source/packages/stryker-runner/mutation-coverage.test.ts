@@ -5,12 +5,10 @@ import type { CoverageArtifact } from '../engine/engine.entry-point.ts';
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { dryMutationResult } from './dry-run-results.ts';
 import { testNode as selectionTestNode } from './mutation-selection.test.ts';
-import { testNode as baselineTestNode } from './mutation-baseline.test.ts';
 import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
 
 export const testNode = suite('mutation coverage delivery', [
     selectionTestNode,
-    baselineTestNode,
     ...([ 'perTest', 'all' ] as const).map(function returnedCoverage(mode) {
         return test(`${mode} returns detached counters without mutating raw evidence`, function (scope) {
             const { reply, baseline } = mutationCoverageFixture(mode);

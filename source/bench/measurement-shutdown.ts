@@ -1,3 +1,4 @@
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { createClock, type Clock } from '@enormora/clock';
 import { microsecondsPerMillisecond } from './measurement-units.ts';
 
@@ -32,7 +33,9 @@ export function createMeasurementDeadline(clock: Clock, milliseconds: number): M
     const expire = function expireMeasurement(): void {
         controller.abort(new Error('Measurement shutdown deadline exceeded.'));
     };
-    const timer = clock.setTimeout(expire, milliseconds);
+    const timer = withRunnerInfrastructure(function scheduleShutdown() {
+        return clock.setTimeout(expire, milliseconds);
+    });
     const check = function checkDeadline(): void {
         if (clock.currentMonotonicMicroseconds >= expires) {
             expire();

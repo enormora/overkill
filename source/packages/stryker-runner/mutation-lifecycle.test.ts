@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { suite, test } from '../test/test.entry-point.ts';
+import { suite, test, type TestScope } from '../test/test.entry-point.ts';
 import { workIdentityKey, type PerTestResult } from '../run/run.entry-point.ts';
 import { runResultFactory } from '../../test-support/run-result-factory.ts';
 import { collectedMutationPlan } from '../../test-support/mutation-plan-fixture.ts';
@@ -33,8 +33,81 @@ function mutationCaseResults(): readonly [PerTestResult, PerTestResult] {
     return [ first, second ];
 }
 
+function failedMutationCase(): PerTestResult {
+    const [ original ] = mutationCaseResults();
+    const outcome: NonNullable<PerTestResult['outcome']> = {
+        kind: 'fail',
+        failures: [ { kind: 'body-error', error: { name: 'Error', message: 'failed', stack: null, thrown: null } } ]
+    };
+    return {
+        ...original,
+        verdict: 'fail',
+        outcome,
+        attempts: [ { ...original.attempts[0], verdict: 'fail', outcome } ]
+    };
+}
 export const testNode = suite('mutation case admission', [
-    test('rejects admissions outside selection and repeated admissions', async function (scope) {
+    test('rejects admission and completion before selection', async function (scope: TestScope) {
+        const [ result ] = mutationCaseResults();
+        const lifecycle = await createMutationLifecycle(input);
+        scope.cleanup(lifecycle.dispose);
+        await scope.assert.rejects(async function () {
+            await lifecycle.enterCase(result.workId);
+        }, { message: /unselected or repeated/u });
+        await scope.assert.rejects(async function () {
+            await lifecycle.completeCase(result, []);
+        }, { message: /active admission/u });
+        scope.assert.partialDeepEqual<unknown, unknown>(lifecycle.snapshot(), {
+            catalog: [],
+            selected: [],
+            completed: [],
+            bailed: false
+        });
+        return scope.assert.collect();
+    }),
+    ...[ 'dry', 'runtime', 'static' ].flatMap(function (mode) {
+        return [ false, true ].map(function (disableBail) {
+            return test(
+                `classifies failed adapter results in ${mode} mode with bail disabled ${disableBail}`,
+                async function (scope: TestScope) {
+                    const result = failedMutationCase();
+                    const lifecycle = await createMutationLifecycle({
+                        ...input,
+                        mode,
+                        disableBail,
+                        activeMutant: '1',
+                        hitLimit: 1
+                    });
+                    scope.cleanup(lifecycle.dispose);
+                    await lifecycle.select(collectedMutationPlan([ result.workId ]));
+                    await lifecycle.beforeCases();
+                    await lifecycle.enterCase(result.workId);
+                    const stopped = await lifecycle.completeCase(result, []);
+                    scope.assert.equal(stopped, mode !== 'dry' && !disableBail ? 'stop' : 'continue');
+                    scope.assert.partialDeepEqual<unknown, unknown>(lifecycle.snapshot(), {
+                        completed: [ workIdentityKey(result.workId) ],
+                        bailed: stopped === 'stop'
+                    });
+                    return scope.assert.collect();
+                }
+            );
+        });
+    }),
+    test('rejects unknown identities and empty runtime selections', async function (scope: TestScope) {
+        const [ result ] = mutationCaseResults();
+        const unknown = await createMutationLifecycle({ ...input, selected: [ 'missing' ] });
+        scope.cleanup(unknown.dispose);
+        await scope.assert.rejects(async function () {
+            await unknown.select(collectedMutationPlan([ result.workId ]));
+        }, { message: 'Stryker requested an unknown test identity.' });
+        const empty = await createMutationLifecycle({ ...input, mode: 'runtime', selected: [] });
+        scope.cleanup(empty.dispose);
+        await scope.assert.rejects(async function () {
+            await empty.select(collectedMutationPlan([ result.workId ]));
+        }, { message: 'Stryker requested a mutant selection with no runnable tests.' });
+        return scope.assert.collect();
+    }),
+    test('rejects admissions outside selection and repeated admissions', async function (scope: TestScope) {
         const [ first, second ] = mutationCaseResults();
         const lifecycle = await createMutationLifecycle({ ...input, selected: [ workIdentityKey(first.workId) ] });
         scope.cleanup(lifecycle.dispose);
@@ -52,7 +125,7 @@ export const testNode = suite('mutation case admission', [
         }, { message: /unselected or repeated/u });
         return scope.assert.collect();
     }),
-    test('rejects repeated completions', async function (scope) {
+    test('rejects repeated completions', async function (scope: TestScope) {
         const [ result ] = mutationCaseResults();
         const lifecycle = await createMutationLifecycle(input);
         scope.cleanup(lifecycle.dispose);
@@ -64,7 +137,7 @@ export const testNode = suite('mutation case admission', [
         }, { message: /active admission/u });
         return scope.assert.collect();
     }),
-    test('rejects completion without admission and changed intentional skips', async function (scope) {
+    test('rejects completion without admission and changed intentional skips', async function (scope: TestScope) {
         const [ original ] = mutationCaseResults();
         const result: PerTestResult = {
             ...original,
@@ -94,7 +167,7 @@ export const testNode = suite('mutation case admission', [
         }, { message: /intentional skip state/u });
         return scope.assert.collect();
     }),
-    test('detects added cases in originally empty eligible files before selection', async function (scope) {
+    test('detects added cases in originally empty eligible files before selection', async function (scope: TestScope) {
         const result = runResultFactory
             .build({ perTest: [ { id: { file: 'case.ts', suite: [], title: 'original', params: null } } ] })
             .perTest[0];

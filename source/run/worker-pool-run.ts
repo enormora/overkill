@@ -50,7 +50,7 @@ const emptyWorkerPoolTimingMetadata = Object.freeze({
     workerId: null
 });
 
-type WorkerPoolExecutionOptions = {
+export type WorkerPoolExecutionOptions = {
     readonly record: RunAttachmentRecord;
     readonly finalizeResult: RunResultFinalizer;
     readonly timing: RunTimingMeasurement | null;

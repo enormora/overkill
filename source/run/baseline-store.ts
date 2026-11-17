@@ -1,7 +1,9 @@
-import { readdir, realpath, unlink } from 'node:fs/promises';
+import { mkdir, readdir, realpath, unlink } from 'node:fs/promises';
 import path from 'node:path';
-import { createNodeFileStore } from '../file-store.ts';
-import { createBaselineStorage } from './baseline-storage.ts';
+import properLockfile from 'proper-lockfile';
+import { createNodeFileStore, type FileStore } from '../file-store.ts';
+import { existingPathAncestor } from './path-containment.ts';
+import { createBaselineStorage, baselineFileStatus, type BaselineStorageAccess } from './baseline-storage.ts';
 import { createBaselinePublication, type BaselineStoreCommit } from './baseline-publication.ts';
 import {
     storedOrdinaryBaselineSchema,
@@ -36,15 +38,25 @@ function previousBaseline(change: OrdinaryBaselineChange): StoredOrdinaryBaselin
     }
     return change.kind === 'update' ? change.previous : change.baseline;
 }
-export async function createOrdinaryBaselineStore(input: BaselineStoreInput): Promise<OrdinaryBaselineStore> {
-    const root = await realpath(input.projectRoot);
+export type OrdinaryBaselineAccess = BaselineStorageAccess & {
+    readonly files: Pick<FileStore, 'create' | 'read' | 'write'>;
+    readonly canonical: (path: string) => Promise<string>;
+    readonly names: (path: string) => Promise<readonly string[]>;
+    readonly prepare: (path: string) => Promise<void>;
+    readonly remove: (path: string) => Promise<void>;
+    readonly lock: (path: string) => Promise<() => Promise<void>>;
+};
+export async function openOrdinaryBaselineStore(
+    input: BaselineStoreInput,
+    access: OrdinaryBaselineAccess
+): Promise<OrdinaryBaselineStore> {
+    const root = await access.canonical(input.projectRoot);
     const directory = path.resolve(root, input.directory);
-    const files = createNodeFileStore();
     const { checkDirectory, location, encoded, read } = createBaselineStorage({
         root,
         directory,
         maxBytes: input.maxBytes
-    });
+    }, access);
     async function validateChange(change: OrdinaryBaselineChange): Promise<void> {
         await checkDirectory(directory);
         const previous = await read(location(change.baseline));
@@ -60,7 +72,7 @@ export async function createOrdinaryBaselineStore(input: BaselineStoreInput): Pr
     async function listSubtype(subtype: string): Promise<readonly OrdinaryBaselineEntry[]> {
         const selected = path.join(directory, subtype);
         await checkDirectory(selected);
-        const allNames = await names(selected);
+        const allNames = await access.names(selected);
         const selectedNames = allNames
             .filter(function baselineFile(name) {
                 return name.endsWith('.baseline.json');
@@ -86,11 +98,11 @@ export async function createOrdinaryBaselineStore(input: BaselineStoreInput): Pr
         await validateChange(change);
         const file = location(change.baseline);
         if (change.kind === 'remove') {
-            await unlink(file);
+            await access.remove(file);
         } else if (change.kind === 'create') {
-            await files.create(file, encoded(change.baseline));
+            await access.files.create(file, encoded(change.baseline));
         } else {
-            await files.write(file, encoded(change.baseline));
+            await access.files.write(file, encoded(change.baseline));
         }
     }
     await checkDirectory(directory);
@@ -101,6 +113,32 @@ export async function createOrdinaryBaselineStore(input: BaselineStoreInput): Pr
         },
         validate: validateChanges,
         apply: applyChange,
-        publish: createBaselinePublication({ directory, checkDirectory, validate: validateChanges, apply: applyChange })
+        publish: createBaselinePublication({
+            validate: validateChanges,
+            apply: applyChange,
+            async acquire() {
+                await checkDirectory(directory);
+                await access.prepare(directory);
+                await checkDirectory(directory);
+                return await access.lock(directory);
+            }
+        })
     };
+}
+
+export async function createOrdinaryBaselineStore(input: BaselineStoreInput): Promise<OrdinaryBaselineStore> {
+    return await openOrdinaryBaselineStore(input, {
+        files: createNodeFileStore(),
+        canonical: realpath,
+        ancestor: existingPathAncestor,
+        inspect: baselineFileStatus,
+        names,
+        async prepare(directory) {
+            await mkdir(directory, { recursive: true });
+        },
+        remove: unlink,
+        async lock(directory) {
+            return await properLockfile.lock(directory, { realpath: false });
+        }
+    });
 }

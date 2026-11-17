@@ -1,4 +1,5 @@
 import type { Clock } from '@enormora/clock';
+import { createPerformanceBaselineStore, type PerformanceBaselineStore } from '../baselines/performance-store.ts';
 import type { ReporterDispatcher, ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { BenchmarkProfileConfig } from '../config/types.ts';
@@ -10,7 +11,7 @@ import type { RunRequest } from './run-types.ts';
 import type { RunResultSession } from './run-support.ts';
 
 export type BenchmarkBaselineSession = RunResultSession;
-type BenchmarkBaselineSessionInput = {
+export type BenchmarkBaselineSessionInput = {
     readonly calibration: ComparableCalibration;
     readonly clock: Clock;
     readonly profile: BenchmarkProfileConfig;
@@ -62,18 +63,18 @@ function createBaselineReporter(dispatcher: ReporterDispatcher, workflow: Perfor
     };
 }
 
-export async function createBenchmarkBaselineSession(
-    input: BenchmarkBaselineSessionInput
+export async function openBenchmarkBaselineSession(
+    input: BenchmarkBaselineSessionInput,
+    store: PerformanceBaselineStore
 ): Promise<BenchmarkBaselineSession> {
     const { calibration, profile, request } = input;
     const workflow = await createPerformanceWorkflow({
         adapters: profile.baselines.adapters,
         calibration,
-        directory: profile.baselines.directory,
+        store,
         maxBytes: profile.attachments.maxArtifactBytes,
         mode: request.baselineUpdateMode,
-        profile: request.profile,
-        projectRoot: input.projectRoot
+        profile: request.profile
     });
     const reporter = createBaselineReporter(input.reporterDispatcher, workflow);
     return {
@@ -97,4 +98,20 @@ export async function createBenchmarkBaselineSession(
             });
         }
     };
+}
+
+export async function createBenchmarkBaselineSession(
+    input: BenchmarkBaselineSessionInput
+): Promise<BenchmarkBaselineSession> {
+    return await openBenchmarkBaselineSession(
+        input,
+        await createPerformanceBaselineStore({
+            directory: input.profile.baselines.directory,
+            maxBytes: input
+                .profile
+                .attachments
+                .maxArtifactBytes,
+            projectRoot: input.projectRoot
+        })
+    );
 }

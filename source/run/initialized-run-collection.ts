@@ -1,7 +1,4 @@
-import {
-    createExecutionGlobalErrorObserver,
-    type ExecutionGlobalErrorObserver
-} from '../engine/execution-global-error-observer.ts';
+import { createExecutionGlobalErrorObserver, observeCollection } from '../engine/execution-global-error-observer.ts';
 import { createCollectedRun } from './collected-run.ts';
 import { withFileModuleBoundary } from './file-module-boundary.ts';
 import { validateFrozenPolicySource } from './frozen-policy-validation.ts';
@@ -27,36 +24,6 @@ function completeCollection(resolved: ResolvedRun, runtimePolicy: RunRuntimePoli
     return resolved;
 }
 
-async function collectionHookFailure(observer: ExecutionGlobalErrorObserver): Promise<never> {
-    await observer.fatalSignal();
-    const errors = observer.takeErrors();
-    throw new AggregateError(
-        errors,
-        errors[0]?.message ?? 'Test collection failed after a process-level runtime error.',
-        {
-            cause: errors[0] ?? null
-        }
-    );
-}
-
-async function observeCollectedPlan(collect: () => Promise<ResolvedRun>): Promise<ResolvedRun> {
-    const observer = createExecutionGlobalErrorObserver('in-process');
-    try {
-        return await observer.runBoundary(async function observeCollectionBoundary() {
-            return await observer.runPhase('collection', async function observeCollectionErrors() {
-                const failure = collectionHookFailure(observer);
-                const resolved = await Promise.race([ collect(), failure ]);
-                if (observer.hasFatalError()) {
-                    await failure;
-                }
-                return resolved;
-            });
-        });
-    } finally {
-        observer.stop();
-    }
-}
-
 async function collectRunWithPolicy(context: InitializedRunInput): Promise<ResolvedRun> {
     const { command, dependencies, input, source } = context;
     return await observeRunRuntimePolicy(
@@ -64,14 +31,14 @@ async function collectRunWithPolicy(context: InitializedRunInput): Promise<Resol
         dependencies,
         async function observeCollectionPolicy(runtimePolicy) {
             try {
-                const resolved = await observeCollectedPlan(async function collectObservedPlan() {
+                const resolved = await observeCollection(async function collectObservedPlan() {
                     return await runtimePolicy.runLoad(async function collectObservedRun() {
                         if (source.kind === 'frozen-policy') {
                             await validateFrozenPolicySource(source.policy, dependencies);
                         }
                         return await createLocalResolvedRun(command, dependencies, input, source);
                     });
-                });
+                }, createExecutionGlobalErrorObserver('in-process'));
                 return completeCollection(resolved, runtimePolicy);
             } catch (error: unknown) {
                 const errors = runtimePolicy.takeRunErrors();

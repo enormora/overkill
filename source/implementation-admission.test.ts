@@ -14,7 +14,7 @@ import {
     type PreparedImplementation
 } from './packages/engine/engine.entry-point.ts';
 import { withImplementationGraph } from './implementation-graph.ts';
-import { withModuleLoadingScope, isDeliveredModuleImport, type ModuleLoadingHooks } from './module-loading-scope.ts';
+import { withModuleLoadingScope, isDeliveredModuleImport } from './module-loading-scope.ts';
 
 function preparation(
     directory: string,
@@ -74,8 +74,12 @@ async function dependencyProject(
         log
     };
 }
-function changedResolution(target: string, change: (url: URL) => URL): ModuleLoadingHooks {
-    return {
+async function withChangedResolution<Value>(
+    target: string,
+    change: (url: URL) => URL,
+    operation: () => Promise<Value>
+): Promise<Value> {
+    return await withModuleLoadingScope({
         load(_url, nextLoad) {
             return nextLoad();
         },
@@ -85,7 +89,7 @@ function changedResolution(target: string, change: (url: URL) => URL): ModuleLoa
                 ? { ...resolved, url: change(new URL(resolved.url)).href }
                 : resolved;
         }
-    };
+    }, operation);
 }
 
 export const testNode = suite('native implementation admission boundaries', [
@@ -95,13 +99,13 @@ export const testNode = suite('native implementation admission boundaries', [
             const project = await dependencyProject(directory.path);
             const input = preparation(directory.path, 'body.mjs', 'host');
             const prepared = await prepareImplementation(input);
-            const hooks = changedResolution(project[kind], function removeBuildIdentity(url) {
+            const change = function removeBuildIdentity(url: URL): URL {
                 const changed = new URL(url);
                 changed.search = '';
                 return changed;
-            });
+            };
             await scope.assert.rejects(async function changedLoader() {
-                await withModuleLoadingScope(hooks, async function load() {
+                await withChangedResolution(project[kind], change, async function load() {
                     return await nativeValue(input, prepared);
                 });
             }, { message: 'Implementation module resolution changed after preparation.' });
@@ -114,9 +118,9 @@ export const testNode = suite('native implementation admission boundaries', [
         const project = await dependencyProject(directory.path);
         const input = preparation(directory.path, 'body.mjs', 'host');
         const prepared = await prepareImplementation(input);
-        const hooks = changedResolution(project.dependency, testDouble.throws<(url: URL) => URL>('resolver failed'));
+        const change = testDouble.throws<(url: URL) => URL>('resolver failed');
         await scope.assert.rejects(async function brokenResolver() {
-            await withModuleLoadingScope(hooks, async function load() {
+            await withChangedResolution(project.dependency, change, async function load() {
                 return await nativeValue(input, prepared);
             });
         }, { message: 'Implementation loading failed.' });

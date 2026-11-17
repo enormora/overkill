@@ -2,7 +2,6 @@ import path from 'node:path';
 import { ulid } from 'ulid';
 import { currentReplayWitness } from './replay-context.ts';
 import { currentRunRecordVersion } from './run-record-format.ts';
-import { runRecordVersions } from './run-record-versions.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
 import type { SingleRunRecord, RunRecordVersions } from './run-record-types.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
@@ -104,7 +103,7 @@ export function initialRecord(
 export type RunRecordInput = Pick<ResolvedRunInput, 'config' | 'engine' | 'profile' | 'projectRoot' | 'request'>;
 export type RunRecordExecutionDependencies = Pick<
     RunOrchestratorDependencies,
-    'createHistoryStorage' | 'maintainHistory' | 'node' | 'runtimeStateStore' | 'wallClock'
+    'createHistoryStorage' | 'maintainHistory' | 'node' | 'readRunVersions' | 'runtimeStateStore' | 'wallClock'
 >;
 
 export async function createRunRecordDependencies(
@@ -126,7 +125,7 @@ export async function createRunRecordDependencies(
         createId: ulid,
         node: dependencies.node,
         store: dependencies.runtimeStateStore,
-        versions: await runRecordVersions(input.engine, dependencies.node.version),
+        versions: await dependencies.readRunVersions(input.engine, dependencies.node.version),
         wallClock: dependencies.wallClock
     };
 }

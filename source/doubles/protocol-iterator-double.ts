@@ -437,18 +437,7 @@ function createSyncIterator<YieldValue, ReturnValue, NextValue>(
     iteratorIndex: number
 ): TestIterator<YieldValue, ReturnValue, NextValue> {
     const tracked = trackedSyncMethods(methods, recorder, iteratorIndex);
-    const bareIterator: Iterator<YieldValue, unknown, undefined> = {
-        next() {
-            return tracked.next();
-        },
-        return(value) {
-            return tracked.return(value);
-        },
-        throw(value) {
-            return tracked.throw(value);
-        }
-    };
-    const iterator = Object.assign(Iterator.from(bareIterator), tracked) as unknown as TestIterator<
+    const iterator = Object.assign(Iterator.from(tracked), tracked) as unknown as TestIterator<
         YieldValue,
         ReturnValue,
         NextValue

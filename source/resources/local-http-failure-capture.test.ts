@@ -2,7 +2,7 @@ import { runIfMain } from '#test-runner';
 import { runWithTranscriptScope } from '../transcript/transcript-store.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
-import { attachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
+import { inlineAttachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
 import { runWithResourceFailureContext } from '../attachments/resource-failure-context.ts';
 import { createHttpTranscriptRecorder, type HttpInteraction } from '../transcript/http-transcript.ts';
@@ -26,7 +26,7 @@ function invalidInteraction(): HttpInteraction<null> {
     };
 }
 async function assertSerializationFailure(scope: TestScope): Promise<void> {
-    const fixture = await attachmentFixture(scope, defaultAttachmentLimits);
+    const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
     await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
         await fixture.execution.runAttempt(work, { index: 0 }, async function failingTranscript() {
             await runWithResourceFailureContext(context, async function captureHttp() {
@@ -42,7 +42,7 @@ async function assertSerializationFailure(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(fixture.store.artifacts(), []);
 }
 async function assertCaptureErrors(scope: TestScope): Promise<void> {
-    const fixture = await attachmentFixture(scope, defaultAttachmentLimits);
+    const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
     await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
         await fixture.execution.runAttempt(work, { index: 0 }, async function captureTranscript() {
             await runWithResourceFailureContext(context, async function captureHttp() {
@@ -66,7 +66,7 @@ async function assertCaptureErrors(scope: TestScope): Promise<void> {
     );
 }
 async function assertUnknownTranscriptScope(scope: TestScope): Promise<void> {
-    const fixture = await attachmentFixture(scope, defaultAttachmentLimits);
+    const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
     const lifetime = {
         name: 'service',
         condition: { kind: 'resource', resource: 'service', boundary: 'shared' }

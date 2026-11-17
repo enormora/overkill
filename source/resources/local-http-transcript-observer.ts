@@ -55,7 +55,7 @@ type ObservedNodeClientRequest = {
     readonly path: string;
     readonly protocol: string;
 };
-type ValueSet<Value> = Pick<Set<Value>, 'add' | 'delete' | 'values'>;
+type ValueSet<Value> = Pick<Set<Value>, 'add' | 'delete' | 'has' | 'values'>;
 type ValueMap<Key, Value> = Pick<Map<Key, Value>, 'entries' | 'get' | 'set'>;
 type ObserverState = {
     readonly fallbackAttribution: 'attempt' | 'lifetime';
@@ -384,7 +384,7 @@ function observeServerFinish(state: ObserverState, message: unknown): void {
     const diagnostic = serverMessage(message, state.server);
     const observation = diagnostic === null ? undefined : state.requests.get(diagnostic.request);
 
-    if (diagnostic === null || observation === undefined) {
+    if (diagnostic === null || observation === undefined || !state.activeRequests.has(diagnostic.request)) {
         return;
     }
 
@@ -555,7 +555,7 @@ function disposeObservers(state: ObserverState): void {
         diagnosticsChannel.unsubscribe(name, listener);
     }
 
-    for (const request of state.activeRequests.values()) {
+    for (const request of Array.from(state.activeRequests.values())) {
         const observation = state.requests.get(request);
 
         if (observation !== undefined) {
@@ -567,6 +567,7 @@ function disposeObservers(state: ObserverState): void {
             };
 
             state.recorder.record(interaction, observation.scope);
+            state.activeRequests.delete(request);
         }
     }
 }

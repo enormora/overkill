@@ -1,4 +1,4 @@
-import { mkdir, open, type FileHandle } from 'node:fs/promises';
+import { mkdir, open } from 'node:fs/promises';
 import path from 'node:path';
 import type { AttachmentCompletion, AttachmentContent } from '../engine/runtime-attachment.ts';
 import { snapshotJson } from '../attachments/json-snapshot.ts';
@@ -134,8 +134,13 @@ type FileAttachmentRetention = {
     readonly finish: (completion: AttachmentCompletion) => Promise<void>;
     readonly retain: (chunk: Uint8Array, availableBytes: number) => Promise<number>;
 };
+type AttachmentFileWrite = { readonly bytesWritten: number; };
+export type AttachmentFile = {
+    readonly write: (chunk: Uint8Array) => Promise<AttachmentFileWrite>;
+    readonly close: () => Promise<void>;
+};
 type FileAttachmentRetentionState = {
-    readonly file: FileHandle;
+    readonly file: AttachmentFile;
     readonly filePath: string;
     readonly limit: number;
     readonly budget: AttachmentByteBudget;
@@ -201,7 +206,11 @@ async function fileAttachmentRetentionRetain(
     }
     return length;
 }
-function createFileAttachmentRetention(file: FileHandle, filePath: string, limit: number): FileAttachmentRetention {
+export function createFileAttachmentRetention(
+    file: AttachmentFile,
+    filePath: string,
+    limit: number
+): FileAttachmentRetention {
     const budget: AttachmentByteBudget = createAttachmentByteBudget(limit);
     const completion = createStoredRunValue<Exclude<AttachmentCompletion, { readonly kind: 'truncated'; }>>({
         kind: 'incomplete',

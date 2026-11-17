@@ -1,9 +1,9 @@
 import { resolve } from 'node:path';
 import { runIfMain } from '#test-runner';
-import { testNode as catalogExecutionTestNode } from '../../integration-tests/run/runner-stryker-catalog.test.ts';
 import { suite, test } from '../test/test.entry-point.ts';
 import { workIdentityKey, type CollectedRunPlan, type WorkId } from '../run/run.entry-point.ts';
 import { collectedMutationPlan } from '../../test-support/mutation-plan-fixture.ts';
+import { testNode as evidenceValidation } from './mutation-catalog-validation.test.ts';
 import { testNode as admissionTestNode } from './mutation-lifecycle.test.ts';
 import { testNode as observationTestNode } from './mutation-observation.test.ts';
 import {
@@ -25,9 +25,9 @@ const work: WorkId = {
 };
 
 export const testNode = suite('mutation catalog contract', [
+    evidenceValidation,
     observationTestNode,
     admissionTestNode,
-    catalogExecutionTestNode,
     test('rejects duplicate, missing, and empty exact selections', function (scope) {
         const plan = collectedMutationPlan([ work ]);
         const id = workIdentityKey(work);

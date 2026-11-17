@@ -16,38 +16,6 @@ export type CoveragePathRequest = {
     readonly runId: string;
 };
 
-async function nearestExistingPath(candidate: string): Promise<string> {
-    try {
-        return await realpath(candidate);
-    } catch (error: unknown) {
-        const parentPath = path.dirname(candidate);
-
-        if (parentPath === candidate) {
-            throw error;
-        }
-
-        return await nearestExistingPath(parentPath);
-    }
-}
-
-async function validateCreatedCoverageDirectory(projectRoot: string, coverageDirectory: string): Promise<void> {
-    if (!isPathInside(projectRoot, await realpath(coverageDirectory))) {
-        throw new Error('Coverage output directory resolves outside the project root.');
-    }
-}
-
-async function assertCoveragePathInsideProject(projectRoot: string, coverageDirectory: string): Promise<void> {
-    const existingAncestor = await nearestExistingPath(coverageDirectory);
-
-    if (
-        [ coverageDirectory, existingAncestor ].some(function escapesProject(candidate) {
-            return !isPathInside(projectRoot, candidate);
-        })
-    ) {
-        throw new Error('Coverage output directory must remain inside the project root.');
-    }
-}
-
 export function resolveCoveragePaths(request: CoveragePathRequest): CoveragePaths {
     const projectRoot = path.resolve(request.projectRoot);
     const runtimeStateRoot = path.resolve(projectRoot, request.runtimeStateDir);
@@ -60,12 +28,54 @@ export function resolveCoveragePaths(request: CoveragePathRequest): CoveragePath
     return { coverageDirectory, projectRoot, rawDataDirectory };
 }
 
-export async function createCoveragePaths(paths: CoveragePaths): Promise<CoveragePaths> {
-    const projectRoot = await realpath(paths.projectRoot);
+type CoverageDirectoryOptions = { readonly recursive: true; };
+export type CoveragePathRuntime = {
+    readonly canonical: (target: string) => Promise<string>;
+    readonly createDirectory: (target: string, options: CoverageDirectoryOptions) => Promise<unknown>;
+};
+export function createCoveragePathStorage(
+    runtime: CoveragePathRuntime
+): (paths: CoveragePaths) => Promise<CoveragePaths> {
+    async function nearestExistingPath(candidate: string): Promise<string> {
+        try {
+            return await runtime.canonical(candidate);
+        } catch (error: unknown) {
+            const parentPath = path.dirname(candidate);
 
-    await assertCoveragePathInsideProject(projectRoot, paths.coverageDirectory);
-    await mkdir(paths.rawDataDirectory, { recursive: true });
-    await validateCreatedCoverageDirectory(projectRoot, paths.coverageDirectory);
+            if (parentPath === candidate) {
+                throw error;
+            }
 
-    return { ...paths, projectRoot };
+            return await nearestExistingPath(parentPath);
+        }
+    }
+
+    async function validateCreatedCoverageDirectory(projectRoot: string, coverageDirectory: string): Promise<void> {
+        if (!isPathInside(projectRoot, await runtime.canonical(coverageDirectory))) {
+            throw new Error('Coverage output directory resolves outside the project root.');
+        }
+    }
+
+    async function assertCoveragePathInsideProject(projectRoot: string, coverageDirectory: string): Promise<void> {
+        const existingAncestor = await nearestExistingPath(coverageDirectory);
+
+        if (
+            [ coverageDirectory, existingAncestor ].some(function escapesProject(candidate) {
+                return !isPathInside(projectRoot, candidate);
+            })
+        ) {
+            throw new Error('Coverage output directory must remain inside the project root.');
+        }
+    }
+
+    return async function createCoveragePaths(paths: CoveragePaths): Promise<CoveragePaths> {
+        const projectRoot = await runtime.canonical(paths.projectRoot);
+
+        await assertCoveragePathInsideProject(projectRoot, paths.coverageDirectory);
+        await runtime.createDirectory(paths.rawDataDirectory, { recursive: true });
+        await validateCreatedCoverageDirectory(projectRoot, paths.coverageDirectory);
+
+        return { ...paths, projectRoot };
+    };
 }
+export const createCoveragePaths = createCoveragePathStorage({ canonical: realpath, createDirectory: mkdir });

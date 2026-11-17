@@ -14,7 +14,13 @@ type PruneContext = {
     readonly policy: HistoryOptions['config']['history'];
     readonly store: HistoryStorage;
 };
-type RetentionWrite = Pick<PruneContext, 'directory' | 'store'> & {
+export type HistoryRetentionRuntime = {
+    readonly now: () => string;
+    readonly catalog: typeof readRetentionCatalog;
+    readonly remove: (target: string) => Promise<void>;
+};
+type RetentionContext = PruneContext & { readonly runtime: HistoryRetentionRuntime; };
+type RetentionWrite = Pick<RetentionContext, 'directory' | 'runtime' | 'store'> & {
     readonly next: ReturnType<typeof retainCompactHistory>;
     readonly nextDurations: Awaited<ReturnType<typeof readDurationState>>;
     readonly result: HistoryPruneResult;
@@ -36,7 +42,7 @@ async function applyRetention(input: RetentionWrite): Promise<void> {
     await writeArtifactRetention(input);
     for (const target of result.paths) {
         checkHistoryMaintenanceBudget();
-        await rm(target, { recursive: true, force: true });
+        await input.runtime.remove(target);
     }
     if (nextDurations !== null) {
         await store.write(durationStatePath(directory), JSON.stringify(nextDurations));
@@ -76,10 +82,10 @@ function removalResult(
         removedWorkEntries: 0
     };
 }
-async function prepareRetention(context: PruneContext, request: HistoryPruneRequest): Promise<RetentionWrite> {
-    const now = currentTimestamp();
+async function prepareRetention(context: RetentionContext, request: HistoryPruneRequest): Promise<RetentionWrite> {
+    const now = context.runtime.now();
     const index = await requiredIndex(context);
-    const catalog = await readRetentionCatalog({
+    const catalog = await context.runtime.catalog({
         store: context.store,
         runs: path.join(context.directory, 'runs'),
         index,
@@ -121,10 +127,24 @@ async function prepareRetention(context: PruneContext, request: HistoryPruneRequ
         }
     };
 }
-export async function pruneHistory(context: PruneContext, request: HistoryPruneRequest): Promise<HistoryPruneResult> {
-    const write = await prepareRetention(context, request);
+export async function applyHistoryRetention(
+    context: PruneContext,
+    request: HistoryPruneRequest,
+    runtime: HistoryRetentionRuntime
+): Promise<HistoryPruneResult> {
+    const write = await prepareRetention({ ...context, runtime }, request);
     if (!request.dryRun) {
         await applyRetention(write);
     }
     return write.result;
+}
+
+export async function pruneHistory(context: PruneContext, request: HistoryPruneRequest): Promise<HistoryPruneResult> {
+    return await applyHistoryRetention(context, request, {
+        now: currentTimestamp,
+        catalog: readRetentionCatalog,
+        async remove(target) {
+            await rm(target, { recursive: true, force: true });
+        }
+    });
 }

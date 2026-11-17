@@ -1,9 +1,9 @@
 import { runIfMain } from '#test-runner';
 import { MutantRunStatus, type MutantRunResult } from '@stryker-mutator/api/test-runner';
-import { testNode as executionTestNode } from '../../integration-tests/run/runner-stryker-classification.test.ts';
 import { suite, test } from '../test/test.entry-point.ts';
 import { workIdentityKey, type PerTestResult, type RunnerError } from '../run/run.entry-point.ts';
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
+import { testNode as protocol } from './mutation-interruption-policy.test.ts';
 import { mutantExecutionResult } from './mutation-results.ts';
 import { classifyMutationCase } from './mutation-case-classification.ts';
 import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
@@ -55,7 +55,7 @@ function translate(result: PerTestResult, errors: readonly RunnerError[]): Mutan
 }
 
 export const testNode = suite('mutant case classification', [
-    executionTestNode,
+    protocol,
     ...([ 'runtime-policy', 'permission', 'uncaught-exception', 'unhandled-rejection' ] as const).map(
         function policy(subtype) {
             return test(`kills safely attributed ${subtype} failures with structured diagnostics`, function (scope) {

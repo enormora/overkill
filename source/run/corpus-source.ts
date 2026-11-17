@@ -5,10 +5,13 @@ import { cacheSchema, cachedEntrySchema as entrySchema } from './property-corpus
 import { CorpusOperationError, type CorpusRequest } from './corpus-types.ts';
 
 export type CorpusCandidate = { readonly id: string | null; readonly entry: PropertyWitnessFile; };
-type CorpusCandidates = { readonly entries: readonly CorpusCandidate[]; readonly diagnostics: readonly string[]; };
-async function readSource(request: CorpusRequest): Promise<unknown> {
+export type CorpusCandidates = {
+    readonly entries: readonly CorpusCandidate[];
+    readonly diagnostics: readonly string[];
+};
+async function readSource(request: CorpusRequest, read: (target: string) => Promise<string>): Promise<unknown> {
     try {
-        return JSON.parse(await readFile(path.resolve(request.cwd, request.source.path), 'utf8'));
+        return JSON.parse(await read(path.resolve(request.cwd, request.source.path)));
     } catch (error: unknown) {
         throw new CorpusOperationError('Cannot read corpus source.', { cause: error }, 'invalid-source');
     }
@@ -64,9 +67,16 @@ function selectSource(
     return selectCache(cache.data.entries, request);
 }
 
-export async function readCorpusEntries(
-    request: CorpusRequest
+export async function loadCorpusEntries(
+    request: CorpusRequest,
+    read: (target: string) => Promise<string>
 ): Promise<CorpusCandidates> {
-    const data = await readSource(request);
+    const data = await readSource(request, read);
     return selectSource(data, request);
+}
+
+export async function readCorpusEntries(request: CorpusRequest): Promise<CorpusCandidates> {
+    return await loadCorpusEntries(request, async function read(target) {
+        return await readFile(target, 'utf8');
+    });
 }
