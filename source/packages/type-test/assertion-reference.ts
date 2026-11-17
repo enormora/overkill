@@ -20,42 +20,42 @@ export type TypeRelationBindings = {
 };
 
 export function typeAssertionReference<Arguments extends readonly unknown[], Types>(
-    matcher: string,
+    relation: string,
     negated: boolean
 ): TypeAssertionReference<Arguments, Types> {
-    const name = `${negated ? 'not ' : ''}${matcher}`;
+    const name = `${negated ? 'not ' : ''}${relation}`;
     const reference = createCompositeAssertionReferenceRecord<Arguments, never>({
         kind: 'composite',
         name,
         formatSummary: null,
         run() {
             throw new Error(
-                `Type assertion "${name}" requires the type-test adapter; ordinary execution cannot check it.`
+                `Type assertion "${name}" requires the type-test family; ordinary execution cannot check it.`
             );
         }
     });
     return Object.assign(reference, { [typeArgumentsBrand]: null });
 }
 
-function relationBindings(matcher: string, negated: boolean): TypeRelationBindings {
-    return Object.assign(function relation<Actual, Expected>() {
-        return typeAssertionReference<readonly [], readonly [Actual, Expected]>(matcher, negated);
+function relationBindings(relation: string, negated: boolean): TypeRelationBindings {
+    return Object.assign(function typedRelation<Actual, Expected>() {
+        return typeAssertionReference<readonly [], readonly [Actual, Expected]>(relation, negated);
     }, {
         withActual<Expected>() {
-            return typeAssertionReference<readonly [actual: unknown], readonly [Expected]>(matcher, negated);
+            return typeAssertionReference<readonly [actual: unknown], readonly [Expected]>(relation, negated);
         },
         withExpected<Actual>() {
-            return typeAssertionReference<readonly [expected: unknown], readonly [Actual]>(matcher, negated);
+            return typeAssertionReference<readonly [expected: unknown], readonly [Actual]>(relation, negated);
         },
         expressions: typeAssertionReference<readonly [actual: unknown, expected: unknown], readonly []>(
-            matcher,
+            relation,
             negated
         )
     });
 }
 
-export function typeRelation(matcher: string): TypeRelationBindings & { readonly not: TypeRelationBindings; } {
-    return Object.assign(relationBindings(matcher, false), { not: relationBindings(matcher, true) });
+export function typeRelation(relation: string): TypeRelationBindings & { readonly not: TypeRelationBindings; } {
+    return Object.assign(relationBindings(relation, false), { not: relationBindings(relation, true) });
 }
 
 export type TypeRelation = TypeRelationBindings & { readonly not: TypeRelationBindings; };

@@ -311,7 +311,7 @@ export const configuration = {
         },
         {
             name: 'type-test',
-            description: 'Native type assertions and TSTyche checking for Overkill.',
+            description: 'Original-source type assertions for Overkill.',
             roots: {
                 main: moduleRoot('packages/type-test/type-test.entry-point'),
                 backend: { javaScript: 'packages/type-test/family-backend.entry-point.js' }

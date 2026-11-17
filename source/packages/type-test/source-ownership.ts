@@ -1,5 +1,6 @@
 import type * as TypeScript from 'typescript-beta/ast';
 import { resolveSourceLocation, isTableBodyOrigin, type TestBodyOrigin } from '../engine/engine.entry-point.ts';
+import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
 import type { CompilerSyntax } from './installed-compiler.ts';
 import {
     sourceSymbol,
@@ -19,7 +20,6 @@ function isSourceBody(compiler: CompilerSyntax, node: TypeScript.Node): node is 
     return compiler.isArrowFunction(node) || compiler.isFunctionExpression(node) ||
         compiler.isFunctionDeclaration(node) || compiler.isMethodDeclaration(node);
 }
-
 async function callbackDeclarations(
     analysis: SourceAnalysis,
     expression: TypeScript.Node
@@ -27,7 +27,6 @@ async function callbackDeclarations(
     const symbol = await sourceSymbol(analysis, expression);
     return symbol === undefined ? [] : await sourceDeclarations(symbol);
 }
-
 function constantExpression(
     analysis: SourceAnalysis,
     declarations: readonly TypeScript.Declaration[]
@@ -35,11 +34,10 @@ function constantExpression(
     const declaration = declarations.length === 1 ? declarations[0] : undefined;
     const initializer = declaration === undefined ? undefined : immutableInitializer(analysis, declaration);
     if (initializer === undefined) {
-        throw new Error('Unsupported or ambiguous callback source ownership.');
+        throw new UnsupportedEvidenceError('Unsupported or ambiguous callback source ownership.', undefined);
     }
     return initializer;
 }
-
 async function declarationExpression(analysis: SourceAnalysis, expression: TypeScript.Node): Promise<TypeScript.Node> {
     const declarations = await callbackDeclarations(analysis, expression);
     const implementations = declarations.filter(function implemented(node) {
@@ -54,19 +52,17 @@ async function declarationExpression(analysis: SourceAnalysis, expression: TypeS
     }
     return constantExpression(analysis, declarations);
 }
-
 async function nextExpression(analysis: SourceAnalysis, node: TypeScript.Node): Promise<TypeScript.Node | undefined> {
     return transparentExpression(analysis, node) ??
         (analysis.compiler.isIdentifier(node) ? await declarationExpression(analysis, node) : undefined);
 }
-
 async function originalExpression(analysis: SourceAnalysis, initial: TypeScript.Node): Promise<TypeScript.Node> {
     let expression = initial;
     let next = await nextExpression(analysis, expression);
     const seen = new Set<TypeScript.Node>([ initial ]);
     while (next !== undefined) {
         if (seen.has(next)) {
-            throw new Error('Cyclic callback source ownership.');
+            throw new UnsupportedEvidenceError('Cyclic callback source ownership.', undefined);
         }
         seen.add(next);
         expression = next;
@@ -74,7 +70,6 @@ async function originalExpression(analysis: SourceAnalysis, initial: TypeScript.
     }
     return expression;
 }
-
 export async function declaredBody(analysis: SourceAnalysis, initial: TypeScript.Node): Promise<SourceBody> {
     let expression = initial;
     while (
@@ -87,9 +82,8 @@ export async function declaredBody(analysis: SourceAnalysis, initial: TypeScript
     if (isSourceBody(analysis.compiler, resolved) && resolved.body !== undefined) {
         return resolved;
     }
-    throw new Error('Callback source is not a statically identifiable function body.');
+    throw new UnsupportedEvidenceError('Callback source is not a statically identifiable function body.', undefined);
 }
-
 async function propertyExpression(
     analysis: SourceAnalysis,
     property: TypeScript.ObjectLiteralElementLike
@@ -103,14 +97,13 @@ async function propertyExpression(
     if (analysis.compiler.isShorthandPropertyAssignment(property)) {
         return await declarationExpression(analysis, property);
     }
-    throw new Error('Unsupported callback property source.');
+    throw new UnsupportedEvidenceError('Unsupported callback property source.', undefined);
 }
-
 async function objectField(analysis: SourceAnalysis, input: TypeScript.Node, field: string): Promise<TypeScript.Node> {
     await validateCallbackStorage(analysis, input);
     const node = await originalExpression(analysis, input);
     if (!analysis.compiler.isObjectLiteralExpression(node)) {
-        throw new Error('Unsupported callback options expression.');
+        throw new UnsupportedEvidenceError('Unsupported callback options expression.', undefined);
     }
     const property = node.properties.findLast(function named(entry) {
         return !analysis.compiler.isSpreadAssignment(entry) &&
@@ -124,20 +117,18 @@ async function objectField(analysis: SourceAnalysis, input: TypeScript.Node, fie
                 analysis.compiler.isComputedPropertyName(entry.name);
         })
     ) {
-        throw new Error('Callback options contain a potentially overriding property.');
+        throw new UnsupportedEvidenceError('Callback options contain a potentially overriding property.', undefined);
     }
     if (property === undefined) {
-        throw new Error(`Callback definition has no explicit ${field} source.`);
+        throw new UnsupportedEvidenceError(`Callback definition has no explicit ${field} source.`, undefined);
     }
     return await propertyExpression(analysis, property);
 }
-
 async function validatedCases(analysis: SourceAnalysis, input: TypeScript.Node): Promise<TypeScript.Node> {
     const source = await objectField(analysis, input, 'cases');
     await validateCallbackStorage(analysis, source);
     return source;
 }
-
 async function tableCaseExpression(
     analysis: SourceAnalysis,
     input: TypeScript.Node,
@@ -145,18 +136,17 @@ async function tableCaseExpression(
 ): Promise<TypeScript.Node> {
     const cases = await originalExpression(analysis, await validatedCases(analysis, input));
     if (!analysis.compiler.isArrayLiteralExpression(cases)) {
-        throw new Error('Low-level table cases require static source ownership.');
+        throw new UnsupportedEvidenceError('Low-level table cases require static source ownership.', undefined);
     }
     if (cases.elements.some(analysis.compiler.isSpreadElement)) {
-        throw new Error('Low-level table case spreads have ambiguous source ownership.');
+        throw new UnsupportedEvidenceError('Low-level table case spreads have ambiguous source ownership.', undefined);
     }
     const row = cases.elements[index];
     if (row === undefined) {
-        throw new Error('Table case source index is missing.');
+        throw new UnsupportedEvidenceError('Table case source index is missing.', undefined);
     }
     return await objectField(analysis, row, 'body');
 }
-
 const authoringNames = new Set([
     'test',
     'table',
@@ -172,7 +162,6 @@ async function expressionName(analysis: SourceAnalysis, expression: TypeScript.N
     const symbol = await sourceSymbol(analysis, location);
     return symbol?.name;
 }
-
 async function authoringName(
     analysis: SourceAnalysis,
     expression: TypeScript.Node,
@@ -183,16 +172,14 @@ async function authoringName(
         return name;
     }
     if (seen.has(expression)) {
-        throw new Error('Cyclic authoring API alias.');
+        throw new UnsupportedEvidenceError('Cyclic authoring API alias.', undefined);
     }
     const next = await nextExpression(analysis, expression);
     return next === undefined ? name : await authoringName(analysis, next, new Set([ ...seen, expression ]));
 }
-
 async function callName(analysis: SourceAnalysis, call: TypeScript.CallExpression): Promise<string | undefined> {
     return await authoringName(analysis, call.expression, new Set());
 }
-
 async function positionalBody(
     analysis: SourceAnalysis,
     call: TypeScript.CallExpression,
@@ -206,7 +193,6 @@ async function positionalBody(
     }
     return await objectField(analysis, first, name === 'table' ? 'test' : 'body');
 }
-
 async function bodyExpression(
     analysis: SourceAnalysis,
     call: TypeScript.CallExpression,
@@ -215,7 +201,7 @@ async function bodyExpression(
     const name = await callName(analysis, call);
     const first = call.arguments[0];
     if (first === undefined) {
-        throw new Error('Callback construction has no arguments.');
+        throw new UnsupportedEvidenceError('Callback construction has no arguments.', undefined);
     }
     if (name === 'defineParameterizedTestBody') {
         return first;
@@ -225,7 +211,6 @@ async function bodyExpression(
     }
     return await positionalBody(analysis, call, first, name);
 }
-
 function callAtOffset(
     analysis: SourceAnalysis,
     file: TypeScript.SourceFile,
@@ -243,19 +228,21 @@ function callAtOffset(
     visit(file);
     const call = calls.at(-1);
     if (call === undefined) {
-        throw new Error('Callback source location does not identify an authoring call.');
+        throw new UnsupportedEvidenceError('Callback source location does not identify an authoring call.', undefined);
     }
     return call;
 }
-
 async function locatedCall(analysis: SourceAnalysis, origin: TestBodyOrigin): Promise<TypeScript.CallExpression> {
     const location = resolveSourceLocation(origin.location);
     if (location.kind !== 'known' || location.line === null || location.column === null) {
-        throw new Error('Type-test checking requires a known callback source location.');
+        throw new UnsupportedEvidenceError('Type-test checking requires a known callback source location.', undefined);
     }
     const file = await originalSourceFile(analysis, location.file);
     if (file === undefined) {
-        throw new Error(`Callback source is outside the checker project: ${location.file}`);
+        throw new UnsupportedEvidenceError(
+            `Callback source is outside the checker project: ${location.file}`,
+            undefined
+        );
     }
     const call = callAtOffset(
         analysis,
@@ -263,27 +250,24 @@ async function locatedCall(analysis: SourceAnalysis, origin: TestBodyOrigin): Pr
         file.getPositionOfLineAndCharacter(location.line - 1, location.column - 1)
     );
     if (!await supportedCall(analysis, call)) {
-        throw new Error('Callback anchor does not identify a supported authoring API.');
+        throw new UnsupportedEvidenceError('Callback anchor does not identify a supported authoring API.', undefined);
     }
     return call;
 }
-
 function preferredOrigin(origin: TestBodyOrigin): TestBodyOrigin {
     if (!isTableBodyOrigin(origin) || origin.forwarded === null) {
         return origin;
     }
     return resolveSourceLocation(origin.forwarded.location).kind === 'known' ? origin.forwarded : origin;
 }
-
 export async function resolveBodyOrigin(analysis: SourceAnalysis, supplied: TestBodyOrigin): Promise<SourceBody> {
     const origin = preferredOrigin(supplied);
     return await declaredBody(analysis, await bodyExpression(analysis, await locatedCall(analysis, origin), origin));
 }
-
 export function namedBodyParameter(analysis: SourceAnalysis, body: SourceBody): TypeScript.Identifier {
     const parameter = body.parameters[0];
     if (parameter === undefined || !analysis.compiler.isIdentifier(parameter.name)) {
-        throw new Error('Checking requires a named first callback parameter.');
+        throw new UnsupportedEvidenceError('Checking requires a named first callback parameter.', undefined);
     }
     return parameter.name;
 }

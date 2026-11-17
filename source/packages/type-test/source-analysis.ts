@@ -1,5 +1,6 @@
 import type * as CompilerApi from 'typescript-beta/async';
 import type * as TypeScript from 'typescript-beta/ast';
+import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
 import type { CompilerSyntax } from './installed-compiler.ts';
 import { compilerFileSystem } from './compiler-file-system.ts';
 
@@ -31,7 +32,7 @@ async function canonicalSourceFile(analysis: SourceAnalysis, path: string): Prom
         return compilerFileSystem.realpath(name) === canonical;
     });
     if (matches.length > 1) {
-        throw new Error(`Callback source has ambiguous project identities: ${path}`);
+        throw new UnsupportedEvidenceError(`Callback source has ambiguous project identities: ${path}`, undefined);
     }
     const [ name ] = matches;
     return name === undefined ? undefined : await analysis.program.getSourceFile(name);
@@ -186,7 +187,7 @@ function bindingAssignment(analysis: SourceAnalysis, node: TypeScript.Node): boo
 export async function validateFunctionBinding(analysis: SourceAnalysis, name: TypeScript.Node): Promise<void> {
     const symbol = await sourceSymbol(analysis, name);
     if (symbol === undefined) {
-        throw new Error('Cannot establish callback function binding.');
+        throw new UnsupportedEvidenceError('Cannot establish callback function binding.', undefined);
     }
     const bindingName = analysis.compiler.isIdentifier(name) ? name.text : symbol.name;
     async function visit(node: TypeScript.Node): Promise<void> {
@@ -194,7 +195,7 @@ export async function validateFunctionBinding(analysis: SourceAnalysis, name: Ty
             analysis.compiler.isIdentifier(node) && node.text === bindingName &&
             await sourceSymbol(analysis, node) === symbol && bindingAssignment(analysis, node)
         ) {
-            throw new Error('Callback function bindings cannot be reassigned.');
+            throw new UnsupportedEvidenceError('Callback function bindings cannot be reassigned.', undefined);
         }
         for (const child of sourceChildren(node)) {
             await visit(child);

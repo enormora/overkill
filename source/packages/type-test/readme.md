@@ -99,23 +99,16 @@ const result = await engine.execute(collected, { ...executionOptions, signal });
 The preparation owns compiler sessions and releases them through engine cleanup.
 Coverage, runtime resources, retries, and runtime assertion operations are unsupported.
 
-## Current checker limitations
+## Original-source checking
 
-Projects with references are rejected before generated checking. TSTyche's beta
-runner drops references from its internal project wrapper. Supporting them
-requires the planned original-source checker.
+Relations read types from the original compiler project. Checking creates no
+replacement inputs, derived configurations, or emitted outputs. Imports,
+contextual typing, and nominal declaration identity remain compiler-owned.
 
-Checking still uses dot-prefixed `.overkill-type-test-*` sibling modules and a
-related temporary project. Exclude that prefix from external watchers. Original
-files are preserved; cleanup reports files changed by another writer.
+Generic bodies retain their authored constraints. Table rows share their body's
+static parameter type. Unsupported evidence remains inconclusive under negation.
+Compiler diagnostics invalidate relation evidence rather than becoming assertion
+failures. Dedicated deadline and watch behavior remain separate lifecycle work.
 
-Generated modules have distinct nominal identity. Direct self-imports and imports
-between translated modules are repaired when unambiguous; transitive nominal and
-source-sensitive constructs can still produce false verdicts. Unsupported or
-missing evidence is inconclusive. Original-source comparison and the complete
-relation semantics remain separate implementation work.
-
-Checker calls are serialized. Do not overlap unrelated TSTyche runs in the same
-process. Preparation and source analysis use asynchronous beta compiler sessions.
-TSTyche's checker and the compiler filesystem callbacks remain synchronous.
-Dedicated deadline and watch behavior remain separate lifecycle work.
+Equality returns inconclusive evidence when recursive expansion exceeds 256
+comparison levels.

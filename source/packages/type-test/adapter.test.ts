@@ -80,7 +80,7 @@ export const testNode = suite('native type-test adapter', [
         scope.assert.equal(result.bodyCalls, 0);
         return scope.assert.collect();
     }),
-    test('preserves imports used only by translated assertions with unused checks enabled', async function (scope) {
+    test('preserves imports used only by type assertions with unused checks enabled', async function (scope) {
         const referencePath = fileURLToPath(new URL('./type-test.entry-point.ts', import.meta.url));
         const definitions = `import {sameType as onlyInline} from ${JSON.stringify(referencePath)};
         void [same,assignableTo,assignableFrom,suite,table,defineMacro,defineParameterizedTestBody,
@@ -120,6 +120,7 @@ export const testNode = suite('native type-test adapter', [
         const result = await runNativeProject(scope, definitions, null);
         scope.assert.equal(result.status, 'failed');
         scope.assert.equal(result.summary.passed, 0);
+        scope.assert.equal(result.summary.inconclusive, 1);
         scope.assert.includes(result.errors.join('\n'), 'cannot be reassigned');
         return scope.assert.collect();
     }),
@@ -282,16 +283,6 @@ const nodes=[engine.createTestCase(options)];`;
             scope.assert.includes(result.errors.join('\n'), 'changed after collection');
             return scope.assert.collect();
         });
-    }),
-    test('rejects checker assertions outside native boundaries', async function (scope) {
-        const definitions = `import {expect as foreign} from 'tstyche';
-const nodes=[test('foreign',scope=>{
-    scope.assert(same<string,string>());foreign<string>().type.toBe<number>();return scope.assert.collect();
-})];`;
-        const result = await runNativeProject(scope, definitions, null);
-        scope.assert.equal(result.status, 'failed');
-        scope.assert.includes(result.errors.join('\n'), 'without native source ownership');
-        return scope.assert.collect();
     }),
     test('rejects detached runtime assertion methods', async function (scope) {
         const definitions = `const nodes=[test('detached',scope=>{
