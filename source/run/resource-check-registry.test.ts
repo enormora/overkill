@@ -1,6 +1,6 @@
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
-import { createStoredValue } from '../stored-value.ts';
 import { runIfMain } from '#test-runner';
+import { createStoredValue } from '../stored-value.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import type { ResourceCheckOwner, ResourceCheckSnapshot } from '../resource-check-protocol.ts';

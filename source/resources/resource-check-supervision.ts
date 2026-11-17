@@ -1,5 +1,5 @@
-import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { createClock, type Clock } from '@enormora/clock';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import type { Awaitable } from './resource-definition-shape.ts';
 
 const microsecondsPerMillisecond = 1000;

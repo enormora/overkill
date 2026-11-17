@@ -1,7 +1,7 @@
-import { createClock } from '@enormora/clock';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import { createServer, type Server, type Socket } from 'node:net';
+import { createClock } from '@enormora/clock';
 import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import {
     createResourceCheckRegistry,

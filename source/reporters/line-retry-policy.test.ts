@@ -1,4 +1,5 @@
 import figures from 'figures';
+import colors from 'yoctocolors';
 import { runIfMain } from '#test-runner';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
@@ -53,7 +54,7 @@ export const testNode = suite('line reporter completion policy', [
         scope.require.notNull(reporter.onFinish);
         await reporter.onFinish(runResultFactory.build({ status: 'passed', summary: { planned: 1, passed: 1 } }));
         scope.assert.includes(lines.join('\n'), '1 pass');
-        scope.assert.equal(lines[0]?.startsWith(figures.tick+' '),true);
+        scope.assert.equal(lines[0]?.startsWith(`${colors.green(figures.tick)} `), true);
         return scope.assert.collect();
     })
 ]);

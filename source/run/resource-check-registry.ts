@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Clock } from '@enormora/clock';
-import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { match } from 'ts-pattern';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { resourceCheckSnapshotKey } from '../resource-check-snapshot.ts';
 import { workIdentityKey, type WorkId } from '../engine/identity.ts';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';

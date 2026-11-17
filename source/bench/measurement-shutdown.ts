@@ -1,5 +1,5 @@
-import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { createClock, type Clock } from '@enormora/clock';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { microsecondsPerMillisecond } from './measurement-units.ts';
 
 const measurementShutdownMilliseconds = 2000;
