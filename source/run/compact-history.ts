@@ -1,13 +1,14 @@
 import { caseIdentityKey } from '../engine/identity.ts';
 import type { HistoryPolicy } from '../config/history-policy.ts';
+import { emptyDurationState, ingestDurationState } from './duration-history-storage.ts';
 import type { CompactHistory } from './compact-history-schema.ts';
-import { historyRunSummary, caseOutcomes } from './history-outcomes.ts';
+import { historyRunSummary, caseOutcomes, recordDurationContributions } from './history-outcomes.ts';
 import type { HistoryRecord } from './history-record.ts';
 
 const millisecondsPerDay = 86_400_000;
 
 export function emptyCompactHistory(now: string): CompactHistory {
-    return { version: 1, updatedAt: now, summaries: [], receipts: [], cases: [] };
+    return { version: 1, updatedAt: now, durations: emptyDurationState(now), summaries: [], receipts: [], cases: [] };
 }
 
 function recent(timestampValue: string, now: string, days: number): boolean {
@@ -51,7 +52,7 @@ export function retainCompactHistory(index: CompactHistory, policy: HistoryPolic
 
 type IngestionContext = { readonly policy: HistoryPolicy; readonly now: string; readonly testFamily: string | null; };
 
-function shouldIngestCases(index: CompactHistory, record: HistoryRecord, context: IngestionContext): boolean {
+function shouldIngestRun(index: CompactHistory, record: HistoryRecord, context: IngestionContext): boolean {
     const existingReceipt = index.receipts.find(function sameRun(value) {
         return value.id === record.id;
     });
@@ -83,7 +84,8 @@ export function ingestCompactRecord(
     const cases = new Map(index.cases.map(function caseEntry(value) {
         return [ caseIdentityKey(value.identity), value ];
     }));
-    if (shouldIngestCases(index, record, context)) {
+    const contributes = shouldIngestRun(index, record, context);
+    if (contributes) {
         for (const [ key, value ] of caseOutcomes(record)) {
             const previous = cases.get(key) ?? {
                 identity: value.identity,
@@ -104,6 +106,13 @@ export function ingestCompactRecord(
     return retainCompactHistory(
         {
             ...index,
+            durations: contributes
+                ? ingestDurationState(index.durations, recordDurationContributions(record), {
+                    run: { id: record.id, startedAt: record.startedAt },
+                    policy,
+                    now
+                })
+                : index.durations,
             cases: Array.from(cases.values()),
             summaries: summariesWithRecord(index, record, testFamily),
             receipts: [

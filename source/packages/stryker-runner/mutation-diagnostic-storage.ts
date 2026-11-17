@@ -4,6 +4,7 @@ import type { SerializedValue } from '../engine/engine.entry-point.ts';
 import {
     createNodeFileStore,
     type FrozenMicrotestPolicy,
+    type RunRecordHeader,
     type SerializedRunDiagnostics
 } from '../run/run.entry-point.ts';
 import type { OverkillRunnerOptions } from './runner-settings-schema.ts';
@@ -20,8 +21,7 @@ export type MutationDiagnosticExecution = { readonly kind: 'dry'; } | {
     readonly kind: 'mutant';
     readonly mutant: string;
 };
-export type MutationDiagnosticDocument = {
-    readonly version: 1;
+export type MutationDiagnosticDocument = RunRecordHeader<'mutation'> & {
     readonly campaign: string;
     readonly invocation: string;
     readonly seed: string;
@@ -86,7 +86,7 @@ export async function writeMutationDiagnostics(
     context: MutationDiagnosticContext,
     document: MutationDiagnosticDocument
 ): Promise<void> {
-    const directory = path.join(context.directory, context.campaign, document.invocation);
+    const directory = path.join(context.directory, context.campaign, document.id);
     const artifacts: DiagnosticArtifact[] = [];
     for (const [ index, artifact ] of document.diagnostics.artifacts.entries()) {
         artifacts.push(await retainArtifactFile(context.root, directory, artifact, index));

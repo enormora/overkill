@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 type MaintenanceBudget = {
     readonly deadline: number;
+    readonly now: () => number;
     readonly diagnostics: () => readonly string[];
     readonly recordDiagnostic: (message: string) => void;
 };
@@ -26,16 +27,25 @@ export function recordHistoryMaintenanceDiagnostic(message: string): void {
     deadlines.getStore()?.recordDiagnostic(message);
 }
 
+export function historyMaintenanceNow(): number {
+    return deadlines.getStore()?.now() ?? performance.now();
+}
+
 export function checkHistoryMaintenanceBudget(): void {
-    if (performance.now() >= historyMaintenanceDeadline()) {
+    if (historyMaintenanceNow() >= historyMaintenanceDeadline()) {
         throw new HistoryMaintenanceDeferredError();
     }
 }
 
-export async function withinHistoryMaintenanceBudget<T>(milliseconds: number, operation: () => Promise<T>): Promise<T> {
+export async function withinHistoryMaintenanceBudget<T>(
+    milliseconds: number,
+    operation: () => Promise<T>,
+    now: () => number
+): Promise<T> {
     const messages = new Set<string>();
     return await deadlines.run({
-        deadline: performance.now() + milliseconds,
+        deadline: now() + milliseconds,
+        now,
         diagnostics() {
             return Array.from(messages);
         },

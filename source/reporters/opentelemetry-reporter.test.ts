@@ -176,7 +176,17 @@ async function writePreciseResult(recording: RecordingDependencies): Promise<{
     const reporter = createOpenTelemetryReporter(recording.dependencies, {
         outputFile: 'reports/traces.jsonl'
     })(reportingContext);
-    await reporter.onResult(preciseResult('failed', 'timeout'));
+    await reporter.onResult({
+        context: {
+            id: null,
+            startedAt: null,
+            facts: null
+        },
+        result: preciseResult(
+            'failed',
+            'timeout'
+        )
+    });
     const write = recording.writes[0];
 
     if (write === undefined) {
@@ -226,7 +236,17 @@ export const testNode = createOverkillSuite({
                 const reporter = createOpenTelemetryReporter(recording.dependencies, {
                     outputFile: 'traces.jsonl'
                 })(reportingContext);
-                await reporter.onResult(preciseResult('passed', 'success'));
+                await reporter.onResult({
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    },
+                    result: preciseResult(
+                        'passed',
+                        'success'
+                    )
+                });
                 const write = recording.writes[0];
 
                 if (write === undefined) {
@@ -252,7 +272,14 @@ export const testNode = createOverkillSuite({
                 })(reportingContext);
 
                 await scope.assert.rejects(async function exportSummaryTimings(): Promise<void> {
-                    await reporter.onResult(runResultFactory.build());
+                    await reporter.onResult({
+                        context: {
+                            id: null,
+                            startedAt: null,
+                            facts: null
+                        },
+                        result: runResultFactory.build()
+                    });
                 }, {
                     message:
                         'OpenTelemetry reporter requires precise run timings. Enable timings.collection as "precise" or use --timings.'

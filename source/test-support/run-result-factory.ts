@@ -431,6 +431,8 @@ function buildRunResult(overrides: RunResultOverrides = {}): RunResult {
     };
 
     return {
+        preparationFacts: null,
+        baselineReports: [],
         resourceChecks: [],
         artifacts: values.artifacts,
         bySuite: values.bySuite,

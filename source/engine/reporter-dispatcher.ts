@@ -27,7 +27,8 @@ import {
 import type {
     DefinedReporter,
     Reporter,
-    ReporterEvent
+    ReporterEvent,
+    RunReport
 } from './reporter.ts';
 import {
     createDeliveryReportingContext,
@@ -380,7 +381,7 @@ async function reportEvent(
 
 async function reportResult(
     context: ReporterDispatchContext,
-    result: RunResult
+    report: RunReport
 ): Promise<readonly RunnerError[]> {
     const results = await Promise.all(context.reporters.map(async function reportFinalResult(
         reporter
@@ -390,7 +391,7 @@ async function reportResult(
                 context.dependencies,
                 reporter,
                 function reportResultToFinalReporter(): ReturnType<ReporterCallback> {
-                    return reporter.onResult(result);
+                    return reporter.onResult(report);
                 }
             );
         }
@@ -404,7 +405,7 @@ async function reportResult(
             context.dependencies,
             reporter,
             function reportResultToRealTimeReporter(): ReturnType<ReporterCallback> {
-                return onFinish(result);
+                return onFinish(report);
             }
         );
     }));
@@ -533,7 +534,7 @@ async function createReporterDelivery(
             return await reportEvent(context, event);
         },
         async reportResult(result) {
-            return await reportResult(context, result);
+            return await reportResult(context, runReporting.report(result));
         }
     };
 }

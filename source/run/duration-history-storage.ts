@@ -1,22 +1,14 @@
-import path from 'node:path';
 import type { ReadonlyDeep } from 'type-fest';
 import { z } from 'zod';
+import { workIdSchema } from '../engine/identity-schema.ts';
 import { workIdentityKey } from '../engine/identity.ts';
 import type { HistoryPolicy } from '../config/history-policy.ts';
 import {
-    durationHistoryIndexSchema,
-    durationObservationSchema,
-    durationWorkIdSchema
+    durationObservationSchema
 } from './duration-history-schema.ts';
-import type { DurationHistoryIndex, DurationHistoryStore } from './duration-history-types.ts';
-import type { DurationHistoryObservation } from './run-types.ts';
-import {
-    historyStateError,
-    assertSupportedHistoryVersion,
-    UnsupportedHistoryVersionError
-} from './history-state-error.ts';
+import type { DurationHistoryIndex } from './duration-history-types.ts';
+import type { DurationHistoryObservation, WorkId } from './run-types.ts';
 
-const durationStateVersion = 3;
 const millisecondsPerDay = 86_400_000;
 const timestamp = z.iso.datetime({ offset: true });
 const counter = z.number().nonnegative();
@@ -25,12 +17,9 @@ const storedObservationSchema = z.strictObject({
     value: durationObservationSchema
 });
 export const durationHistoryStateSchema = z.strictObject({
-    version: z.literal(durationStateVersion),
     updatedAt: timestamp,
-    legacyCutoff: timestamp.nullable(),
-    appliedRuns: z.array(z.strictObject({ id: z.string(), startedAt: timestamp })),
     entries: z.array(z.strictObject({
-        work: durationWorkIdSchema,
+        work: workIdSchema,
         observations: z.array(storedObservationSchema),
         count: counter.int(),
         totalDurationMicroseconds: counter
@@ -38,64 +27,8 @@ export const durationHistoryStateSchema = z.strictObject({
 });
 export type DurationHistoryState = ReadonlyDeep<z.output<typeof durationHistoryStateSchema>>;
 
-export function durationStatePath(directory: string): string {
-    return path.join(directory, 'duration-history', 'work-durations.json');
-}
-
 export function emptyDurationState(now: string): DurationHistoryState {
-    return { version: durationStateVersion, updatedAt: now, legacyCutoff: null, appliedRuns: [], entries: [] };
-}
-
-function migrateDurationIndex(legacy: DurationHistoryIndex, now: string): DurationHistoryState {
-    return {
-        version: durationStateVersion,
-        updatedAt: legacy.updatedAt,
-        legacyCutoff: now,
-        appliedRuns: [],
-        entries: legacy.entries.map(function migrateEntry(entry) {
-            return {
-                work: entry.work,
-                count: entry.observations.length,
-                totalDurationMicroseconds: entry.observations.reduce(function sum(total, observation) {
-                    return total + observation.durationMicroseconds;
-                }, 0),
-                observations: entry.observations.map(function preserveLegacy(value) {
-                    return { runId: null, value };
-                })
-            };
-        })
-    };
-}
-
-function parseDurationState(source: string, now: string): DurationHistoryState {
-    assertSupportedHistoryVersion(source, durationStateVersion);
-    const value: unknown = JSON.parse(source);
-    const current = durationHistoryStateSchema.safeParse(value);
-    return current.success ? current.data : migrateDurationIndex(durationHistoryIndexSchema.parse(value), now);
-}
-
-async function storedDurationState(
-    store: DurationHistoryStore,
-    directory: string,
-    now: string
-): Promise<DurationHistoryState | null> {
-    const source = await store.read(durationStatePath(directory));
-    return source === null ? null : parseDurationState(source, now);
-}
-
-export async function readDurationState(
-    store: DurationHistoryStore,
-    directory: string,
-    now: string
-): Promise<DurationHistoryState | null> {
-    try {
-        return await storedDurationState(store, directory, now);
-    } catch (error: unknown) {
-        if (error instanceof UnsupportedHistoryVersionError) {
-            throw error;
-        }
-        throw historyStateError(error);
-    }
+    return { updatedAt: now, entries: [] };
 }
 
 export function durationIndexProjection(
@@ -103,7 +36,6 @@ export function durationIndexProjection(
     completed: ReadonlySet<string>
 ): DurationHistoryIndex {
     return {
-        version: 2,
         updatedAt: state.updatedAt,
         entries: state.entries.map(function projectEntry(entry) {
             return {
@@ -117,7 +49,7 @@ export function durationIndexProjection(
 }
 
 export type DurationContribution = {
-    readonly work: z.output<typeof durationWorkIdSchema>;
+    readonly work: WorkId;
     readonly observation: DurationHistoryObservation;
 };
 
@@ -125,26 +57,18 @@ type DurationIngestion = {
     readonly run: { readonly id: string; readonly startedAt: string; } | null;
     readonly policy: HistoryPolicy;
     readonly now: string;
-    readonly source: 'repair' | 'run';
 };
 
-function shouldSkipRun(state: DurationHistoryState, context: DurationIngestion): boolean {
+function shouldSkipRun(context: DurationIngestion): boolean {
     const { run } = context;
     if (run === null) {
         return false;
-    }
-    if (
-        state.appliedRuns.some(function alreadyApplied(value) {
-            return value.id === run.id;
-        })
-    ) {
-        return true;
     }
     const cutoff = Date.parse(context.now) - context.policy.staleIdentityRetentionDays * millisecondsPerDay;
     if (Date.parse(run.startedAt) < cutoff) {
         return true;
     }
-    return context.source === 'repair' && state.legacyCutoff !== null && run.startedAt <= state.legacyCutoff;
+    return false;
 }
 
 type DurationEntry = DurationHistoryState['entries'][number];
@@ -203,44 +127,13 @@ export function ingestDurationState(
     observations: readonly DurationContribution[],
     context: DurationIngestion
 ): DurationHistoryState {
-    if (shouldSkipRun(state, context)) {
+    if (shouldSkipRun(context)) {
         return state;
     }
     const entries = mergedDurationEntries(state, observations, context.run?.id ?? null);
-    const runs = [ ...state.appliedRuns, ...context.run === null ? [] : [ context.run ] ];
-    const cutoff = Date.parse(context.now) - context.policy.staleIdentityRetentionDays * millisecondsPerDay;
     return {
         ...state,
         updatedAt: context.now,
-        appliedRuns: runs.filter(function freshRun(value) {
-            return Date.parse(value.startedAt) >= cutoff;
-        }),
         entries: retainDurationEntries(entries, context)
     };
-}
-
-export type DurationLearningContext = {
-    readonly directory: string;
-    readonly policy: HistoryPolicy;
-    readonly now: string;
-};
-
-export async function writeLearnedDurations(
-    store: DurationHistoryStore,
-    observations: DurationHistoryIndex['entries'],
-    context: DurationLearningContext
-): Promise<void> {
-    const state = await readDurationState(store, context.directory, context.now) ?? emptyDurationState(context.now);
-    const contributions = observations.flatMap(function workObservations(entry) {
-        return entry.observations.map(function contribution(observation) {
-            return { work: entry.work, observation };
-        });
-    });
-    const next = ingestDurationState(state, contributions, {
-        run: null,
-        policy: context.policy,
-        now: context.now,
-        source: 'run'
-    });
-    await store.write(durationStatePath(context.directory), JSON.stringify(durationHistoryStateSchema.parse(next)));
 }

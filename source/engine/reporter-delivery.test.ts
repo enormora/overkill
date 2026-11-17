@@ -123,7 +123,7 @@ function createFinalPhaseReporterFixture(): FinalPhaseReporterFixture {
         dispose: null,
         kind: 'final-result',
         name: 'final-broken',
-        onResult(result) {
+        onResult({ result }) {
             failingFinalInput = result;
             throw new Error('cannot write final output');
         },
@@ -136,7 +136,7 @@ function createFinalPhaseReporterFixture(): FinalPhaseReporterFixture {
         onEvent() {
             return undefined;
         },
-        onFinish(result) {
+        onFinish({ result }) {
             failingFinishInput = result;
             throw new Error('cannot write finish output');
         },

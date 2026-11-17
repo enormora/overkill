@@ -73,7 +73,7 @@ function recordCompatibility(content: string): DetailedRecordState {
         return 'unavailable';
     }
     const record = decoded.data;
-    return record.version !== 1 && record.replayPlan !== null && record.replayProfile !== null && record.facts !== null
+    return record.replayPlan !== null && record.replayProfile !== null && record.facts !== null
         ? 'available'
         : 'unavailable';
 }

@@ -3,13 +3,18 @@ import { recordUndeliveredRunnerError } from '../engine/reporter-error-delivery-
 import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { createDebugArtifactStore, persistDebugResult } from './debug-artifact-storage.ts';
-import { createResultFromResolutionError } from './run-collection-error-result.ts';
-import { RunCollectionError } from './run-errors.ts';
-import { runRecordPersistenceError, type RunRecordError, type RunRecordPhase } from './run-record-error.ts';
+import { compactRunRecord } from './compact-run-record.ts';
+import {
+    interruptedRunResult,
+    runRecordPersistenceError,
+    type RunRecordError,
+    type RunRecordPhase
+} from './run-record-error.ts';
 import { recordedRunResult } from './run-record-result.ts';
-import type { SingleRunRecord } from './run-record-types.ts';
+import type { SingleRunRecord, CompactRunRecord } from './run-record-types.ts';
 
 export type RunRecordStorage = {
+    readonly requireDetails: () => void;
     readonly interrupt: (error: unknown, placementTrace: SingleRunRecord['placementTrace']) => Promise<void>;
     readonly current: () => SingleRunRecord;
     readonly persist: (value: SingleRunRecord, phase: RunRecordPhase) => Promise<void>;
@@ -45,17 +50,25 @@ function resultWithPersistenceError(result: RunResult, error: RunRecordError, ph
     return { ...result, runnerErrors: [ ...result.runnerErrors, runnerError ], status: 'failed' };
 }
 
+type RecordStorageInput = Parameters<typeof createDebugArtifactStore>[1] & {
+    readonly detail: 'compact' | 'detailed';
+    readonly committed: (record: SingleRunRecord | CompactRunRecord) => Promise<void>;
+};
+
 export function createRunRecordStorage(
     filePath: string,
     initial: SingleRunRecord,
-    store: Parameters<typeof createDebugArtifactStore>[1]
+    store: RecordStorageInput
 ): RunRecordStorage {
     let current = initial;
+    let { detail } = store;
     const debugArtifacts = createDebugArtifactStore(join(dirname(filePath), initial.id, 'debug'), store);
     const storage: RunRecordStorage = {
+        requireDetails() {
+            detail = 'detailed';
+        },
         async interrupt(error, placementTrace) {
-            const crash = new RunCollectionError('Run interrupted before completion.', { cause: error }, 'crash');
-            const result = recordedRunResult(createResultFromResolutionError(crash, null));
+            const result = recordedRunResult(interruptedRunResult(error));
             const previousResult = current.result;
             const interruptedResult = previousResult === null ? result : {
                 ...previousResult,
@@ -74,7 +87,9 @@ export function createRunRecordStorage(
             current = value;
             try {
                 await withRunnerInfrastructure(async function writeRunRecord() {
-                    await store.write(filePath, `${JSON.stringify(value, null, jsonIndentation)}\n`);
+                    const stored = detail === 'compact' ? compactRunRecord(value) : value;
+                    await store.write(filePath, `${JSON.stringify(stored, null, jsonIndentation)}\n`);
+                    await store.committed(stored);
                 });
             } catch (error: unknown) {
                 throw runRecordPersistenceError(filePath, phase, error);

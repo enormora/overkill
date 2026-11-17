@@ -1,3 +1,4 @@
+import { withRunIdentity } from '../execution-ownership.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { createCoverageRunRecord, type CoverageRunRecord } from './coverage-run-record.ts';
 import type { CoverageSession } from './coverage-session.ts';
@@ -33,10 +34,12 @@ export async function runRecordedCoverage(request: RecordedCoverageRequest): Pro
         request.dependencies,
         request.timing
     );
-    try {
-        const result = await runCoverageAttempt(request, attempt);
-        return await attempt.record.complete(result);
-    } catch (error: unknown) {
-        return await interruptRunRecord(attempt.record, error);
-    }
+    return await withRunIdentity(attempt.record, async function executeOwnedCoverage() {
+        try {
+            const result = await runCoverageAttempt(request, attempt);
+            return await attempt.record.complete(result);
+        } catch (error: unknown) {
+            return await interruptRunRecord(attempt.record, error);
+        }
+    });
 }

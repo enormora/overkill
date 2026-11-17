@@ -5,6 +5,7 @@ import type {
     BenchmarkCalibrationResult as BenchmarkCalibrationResultDefinition
 } from '../bench/host-calibration-result.ts';
 import type { CaseId, WorkId } from '../engine/identity.ts';
+import type { BenchmarkBaseline } from './baseline-values.ts';
 import { findStaleBaselines } from './baseline-planning.ts';
 import type {
     BaselineIdentity,
@@ -14,14 +15,11 @@ import type {
     BaselineSubtype as SharedBaselineSubtype,
     BaselineUpdateMode as SharedBaselineUpdateMode
 } from './baseline-model.ts';
-import type { PerformanceBaselineValue } from './performance-adapter.ts';
 
 export type BaselineSubtype = SharedBaselineSubtype;
 export type BaselineUpdateMode = SharedBaselineUpdateMode;
 
-export const previousNormalizedPerformanceBaselineVersion = 2;
-export const normalizedPerformanceBaselineVersion = 3;
-export const measuredPerformanceBaselineVersion = 4;
+export const normalizedPerformanceBaselineVersion = 1;
 
 export type CalibrationReferenceChange = { readonly kind: 'remove' | 'write'; readonly path: string; };
 
@@ -32,40 +30,7 @@ export type PerformanceBaselineIdentity = {
     readonly profile: string;
     readonly work: WorkId;
 };
-type PerformanceBaselineData = {
-    readonly adapter: string;
-    readonly expected: PerformanceBaselineValue;
-    readonly profile: string;
-    readonly subtype: 'performance-baseline';
-    readonly work: WorkId;
-};
-type LegacyPerformanceBaseline = PerformanceBaselineData & { readonly version: 1; };
-type NormalizedPerformanceBaseline = PerformanceBaselineData & {
-    readonly version: typeof normalizedPerformanceBaselineVersion | typeof previousNormalizedPerformanceBaselineVersion;
-    readonly normalization: BenchmarkNormalizationEvidence | null;
-};
-type MeasuredPerformanceBaseline = PerformanceBaselineData & {
-    readonly version: typeof measuredPerformanceBaselineVersion;
-    readonly normalization: BenchmarkNormalizationEvidence | null;
-    readonly measurement: MeasurementComparisonIdentity;
-};
-type PerformanceBaselineFormats = {
-    readonly legacy: LegacyPerformanceBaseline;
-    readonly normalized: NormalizedPerformanceBaseline;
-    readonly measured: MeasuredPerformanceBaseline;
-};
-export type StoredPerformanceBaseline = PerformanceBaselineFormats[keyof PerformanceBaselineFormats];
-export function currentPerformanceNormalization(
-    baseline: StoredPerformanceBaseline
-): BenchmarkNormalizationEvidence | null {
-    if (baseline.version === normalizedPerformanceBaselineVersion) {
-        return baseline.normalization;
-    }
-    if (baseline.version === measuredPerformanceBaselineVersion) {
-        return baseline.normalization;
-    }
-    return null;
-}
+export type StoredPerformanceBaseline = BenchmarkBaseline;
 export type BaselineEntry<TBaseline = StoredPerformanceBaseline> = SharedBaselineEntry<TBaseline>;
 export type BaselineChange<TBaseline = StoredPerformanceBaseline> = SharedBaselineChange<TBaseline>;
 export type BaselineWriteOutcome<TBaseline = StoredPerformanceBaseline> = SharedBaselineWriteOutcome<TBaseline>;
@@ -96,13 +61,13 @@ export function measurementComparisonClass(benchmark: BenchmarkExecutionResult |
 }
 export function performanceBaselineIdentity(baseline: StoredPerformanceBaseline): PerformanceBaselineIdentity {
     return {
-        measurement: baseline.version === measuredPerformanceBaselineVersion
+        measurement: baseline.measurement !== null
             ? canonicalIdentityJson(baseline.measurement)
             : null,
         adapter: baseline.adapter,
         machineClass: performanceComparisonClass(
             baseline.expected.calibration.machineClass,
-            currentPerformanceNormalization(baseline)
+            baseline.normalization
         ),
         profile: baseline.profile,
         work: baseline.work

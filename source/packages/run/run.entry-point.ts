@@ -5,6 +5,8 @@ import { createDirectProfileResolver } from '../../run/run-if-main-profile.ts';
 import { runDirectEntrypoint } from '../../run/run-orchestrator.entry-point.ts';
 import { loadConfig } from './config.entry-point.ts';
 
+export { parseRunnerResult } from '../../run/runner-result.ts';
+export type { RunRecordHeader } from '../../run-record-header.ts';
 export { createNodeFileStore, type FileStore } from '../../file-store.ts';
 
 const resolveDirectProfile = createDirectProfileResolver({
@@ -61,7 +63,7 @@ export {
 } from '../../run/run-record-result.ts';
 export { parseRunArtifacts } from '../../run/run-artifact-schema.ts';
 export type { RunnerResult } from '../../run/run-types.ts';
-export { parseRunResult, parseRunnerResult, parseRunnerError } from '../../run/run-result-schema.ts';
+export { parseRunResult, parseRunnerError } from '../../run/run-result-schema.ts';
 export { workIdentityKey } from '../../engine/identity.ts';
 export type { PerTestResult, RunnerError } from '../../run/run-engine-primitives.ts';
 export { withFileModuleBoundary } from '../../run/file-module-boundary.ts';
@@ -251,6 +253,8 @@ export type {
 export type {
     ResolvedRuntime,
     RunRecord,
+    CompactRunRecord,
+    CompactRunResult,
     SingleRunRecord,
     RunRecordCoverage,
     RunRecordRequest,

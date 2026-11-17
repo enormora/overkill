@@ -18,7 +18,7 @@ const command = {
 
 export const testNode = suite('external process contracts', [
     moduleEvidenceTestNode,
-    test('reads historical process evidence without inventing module observations', function (scope) {
+    test('retains explicit module absence in process evidence', function (scope) {
         const execution = {
             status: 'failed',
             message: 'fixture failed',
@@ -26,11 +26,10 @@ export const testNode = suite('external process contracts', [
             output: processOutput('pipes', 100).snapshot()
         };
         const evidence = processEvidenceSchema.parse({
-            version: 1,
-            entries: [ { phase: 'warmup', execution } ],
+            entries: [ { phase: 'warmup', execution, module: null } ],
             omitted: 1
         });
-        scope.assert.equal(evidence.version, 2);
+        scope.assert.false(Object.hasOwn(evidence, 'version'));
         scope.assert.equal(evidence.entries[0]?.module, null);
         scope.assert.equal(evidence.entries[0]?.phase, 'warmup');
         scope.assert.equal(evidence.entries[0]?.execution.status, 'failed');

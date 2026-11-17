@@ -1,24 +1,13 @@
 import path from 'node:path';
-import { z } from 'zod';
 import type { HistoryOptions, HistoryRepairResult } from './history-types.ts';
 import { emptyCompactHistory, ingestCompactRecord, retainCompactHistory } from './compact-history.ts';
 import { compactHistorySchema, type CompactHistory } from './compact-history-schema.ts';
 import { historyRecordSchema, type HistoryRecord } from './history-record.ts';
 import {
     historyStateError,
-    assertSupportedHistoryVersion,
-    UnsupportedHistoryVersionError
+    assertSupportedHistoryVersion
 } from './history-state-error.ts';
-import { recordDurationContributions } from './history-outcomes.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
-import {
-    durationHistoryStateSchema,
-    durationStatePath,
-    emptyDurationState,
-    ingestDurationState,
-    readDurationState,
-    type DurationHistoryState
-} from './duration-history-storage.ts';
 
 type RepairContext = {
     readonly directory: string;
@@ -29,7 +18,6 @@ type RepairContext = {
 type RepairPart<T> = { readonly value: T; readonly dataLoss: boolean; readonly diagnostics: readonly string[]; };
 type RepairState = {
     readonly index: CompactHistory;
-    readonly durations: DurationHistoryState;
     readonly rebuiltRunCount: number;
     readonly dataLoss: boolean;
     readonly diagnostics: readonly string[];
@@ -42,13 +30,6 @@ function assertBudget(deadline: number): void {
     }
 }
 
-const legacyIndexSchema = compactHistorySchema.extend({ version: z.literal(0) });
-function recoverIndexValue(source: string): CompactHistory {
-    const value: unknown = JSON.parse(source);
-    const legacy = legacyIndexSchema.safeParse(value);
-    return legacy.success ? { ...legacy.data, version: 1 } : compactHistorySchema.parse(value);
-}
-
 async function recoverIndex(store: HistoryStorage, context: RepairContext): Promise<RepairPart<CompactHistory>> {
     const source = await store.read(path.join(context.directory, 'history', 'index.json'));
     if (source === null) {
@@ -56,7 +37,7 @@ async function recoverIndex(store: HistoryStorage, context: RepairContext): Prom
     }
     assertSupportedHistoryVersion(source, 1);
     try {
-        return { value: recoverIndexValue(source), dataLoss: false, diagnostics: [] };
+        return { value: compactHistorySchema.parse(JSON.parse(source)), dataLoss: false, diagnostics: [] };
     } catch (error: unknown) {
         if (context.mode === 'automatic') {
             throw historyStateError(error);
@@ -71,40 +52,13 @@ async function recoverIndex(store: HistoryStorage, context: RepairContext): Prom
     }
 }
 
-async function durationRepairPart(
-    store: HistoryStorage,
-    context: RepairContext
-): Promise<RepairPart<DurationHistoryState>> {
-    const existing = await readDurationState(store, context.directory, context.now);
-    return { value: existing ?? emptyDurationState(context.now), dataLoss: false, diagnostics: [] };
-}
-
-async function recoverDurations(
-    store: HistoryStorage,
-    context: RepairContext
-): Promise<RepairPart<DurationHistoryState>> {
-    try {
-        return await durationRepairPart(store, context);
-    } catch (error: unknown) {
-        if (context.mode === 'automatic' || error instanceof UnsupportedHistoryVersionError) {
-            throw error;
-        }
-        return {
-            value: emptyDurationState(context.now),
-            dataLoss: true,
-            diagnostics: [ 'Unreadable duration history was rebuilt. Samples without retained records may be lost.' ]
-        };
-    }
-}
-
 async function repairState(store: HistoryStorage, context: RepairContext): Promise<RepairState> {
-    const [ index, durations ] = await Promise.all([ recoverIndex(store, context), recoverDurations(store, context) ]);
+    const index = await recoverIndex(store, context);
     return {
         index: index.value,
-        durations: durations.value,
         rebuiltRunCount: 0,
-        dataLoss: index.dataLoss || durations.dataLoss,
-        diagnostics: [ ...index.diagnostics, ...durations.diagnostics ]
+        dataLoss: index.dataLoss,
+        diagnostics: index.diagnostics
     };
 }
 
@@ -128,18 +82,10 @@ function recoverRecord(state: RepairState, record: HistoryRecord, context: Repai
         return value.id === record.id;
     });
     const testFamily = record.facts?.execution.testFamily ?? previous?.testFamily;
-    const durations = record.status === 'completed'
-        ? ingestDurationState(state.durations, recordDurationContributions(record), {
-            run: { id: record.id, startedAt: record.startedAt },
-            source: 'repair',
-            policy: context.policy,
-            now: context.now
-        })
-        : state.durations;
     if (testFamily === undefined) {
-        return missingRecordFamily({ ...state, durations }, record, context);
+        return missingRecordFamily(state, record, context);
     }
-    return { ...state, durations, index: ingestCompactRecord(state.index, record, { ...context, testFamily }) };
+    return { ...state, index: ingestCompactRecord(state.index, record, { ...context, testFamily }) };
 }
 
 async function rebuildRecord(
@@ -199,9 +145,7 @@ async function publishRepair(
         context.policy,
         context.now
     );
-    const validDurations = durationHistoryStateSchema.parse(state.durations);
     const validIndex = compactHistorySchema.parse(index);
-    await store.write(durationStatePath(context.directory), JSON.stringify(validDurations));
     await store.write(path.join(context.directory, 'history', 'index.json'), JSON.stringify(validIndex));
 }
 

@@ -1,9 +1,9 @@
+import type { RunReport } from '../engine/reporter.ts';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
 import { readBenchmarkRunMetadata } from '../bench/benchmark-run-report.ts';
 import type { PerformanceBaselineEvidence } from '../baselines/performance-presentation.ts';
 import { readPerformanceBaselineReport, type PerformanceBaselineReport } from '../baselines/performance-report.ts';
 import { formatCaseId, workIdentityKey } from '../engine/identity.ts';
-import type { RunResult } from '../engine/run-result.ts';
 import { createProcessEvidenceReader } from '../bench/process-evidence-query.ts';
 import { readBenchmarkTimeline } from '../bench/timeline-report.ts';
 import type { BenchmarkHtmlReport, BaselineChartRow } from './benchmark-html-data.ts';
@@ -53,9 +53,10 @@ function baselineRows(baseline: PerformanceBaselineReport | null): readonly Base
         });
     });
 }
-export function createBenchmarkHtmlReport(result: RunResult): BenchmarkHtmlReport {
+export function createBenchmarkHtmlReport(report: RunReport): BenchmarkHtmlReport {
+    const { result, context } = report;
     const readProcesses = createProcessEvidenceReader(result);
-    const metadata = readBenchmarkRunMetadata(result);
+    const metadata = readBenchmarkRunMetadata(context.facts);
     const baseline = readPerformanceBaselineReport(result);
     if (
         metadata === null && baseline === null && result.perTest.every(function measured(test) {

@@ -162,7 +162,6 @@ function assertRunnerErrorOutput(scope: OverkillScope, errorOutput: readonly Out
 export const testNode = createOverkillSuite({
     title: 'source/reporters/brief-reporter.test.ts',
     ...testMetadata,
-
     children: [
         createOverkillTestCase({
             ...testMetadata,
@@ -404,7 +403,6 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             title: 'brief reporter prints one diagnostic line per failure cause',
             ...testMetadata,
-
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 const failureOutput = await readOutput(reporter.onEvent(failEvent()));
@@ -448,52 +446,59 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 scope.require.notNull(reporter.onFinish);
-                const finishOutput = await readOutput(reporter.onFinish(runResultFactory.build({
-                    timings: {
-                        precise: {
-                            aggregates: [ { count: 1, durationMicroseconds: 750_000, kind: 'config.load' } ],
-                            ambientNoise: 'unknown',
-                            droppedSpanCount: 0,
-                            overhead: {
-                                aggregationMicroseconds: 0,
-                                recordingMicroseconds: 0,
-                                renderingMicroseconds: 0,
-                                serializationMicroseconds: 0
+                const finishOutput = await readOutput(reporter.onFinish({
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    },
+                    result: runResultFactory.build({
+                        timings: {
+                            precise: {
+                                aggregates: [ { count: 1, durationMicroseconds: 750_000, kind: 'config.load' } ],
+                                ambientNoise: 'unknown',
+                                droppedSpanCount: 0,
+                                overhead: {
+                                    aggregationMicroseconds: 0,
+                                    recordingMicroseconds: 0,
+                                    renderingMicroseconds: 0,
+                                    serializationMicroseconds: 0
+                                },
+                                observationWindow: { durationMicroseconds: 750_000, startTimeUnixMicroseconds: 0 },
+                                slowestSpanLimit: 50,
+                                slowestSpans: [ {
+                                    durationMicroseconds: 750_000,
+                                    kind: 'config.load',
+                                    label: null,
+                                    processId: null,
+                                    resource: null,
+                                    startOffsetMicroseconds: 0,
+                                    startTimeUnixMicroseconds: 0,
+                                    status: 'success',
+                                    workerId: null
+                                } ],
+                                spanLimit: 5000,
+                                spans: [ {
+                                    durationMicroseconds: 750_000,
+                                    kind: 'config.load',
+                                    label: null,
+                                    processId: null,
+                                    resource: null,
+                                    startOffsetMicroseconds: 0,
+                                    startTimeUnixMicroseconds: 0,
+                                    status: 'success',
+                                    workerId: null
+                                } ],
+                                truncated: false
                             },
-                            observationWindow: { durationMicroseconds: 750_000, startTimeUnixMicroseconds: 0 },
-                            slowestSpanLimit: 50,
-                            slowestSpans: [ {
-                                durationMicroseconds: 750_000,
-                                kind: 'config.load',
-                                label: null,
-                                processId: null,
-                                resource: null,
-                                startOffsetMicroseconds: 0,
-                                startTimeUnixMicroseconds: 0,
-                                status: 'success',
-                                workerId: null
-                            } ],
-                            spanLimit: 5000,
-                            spans: [ {
-                                durationMicroseconds: 750_000,
-                                kind: 'config.load',
-                                label: null,
-                                processId: null,
-                                resource: null,
-                                startOffsetMicroseconds: 0,
-                                startTimeUnixMicroseconds: 0,
-                                status: 'success',
-                                workerId: null
-                            } ],
-                            truncated: false
-                        },
-                        summary: {
-                            runnerOverheadWallTimeMicroseconds: 1_000_000,
-                            testExecutionWallTimeMicroseconds: 1_000_000,
-                            totalWallTimeMicroseconds: 2_000_000
+                            summary: {
+                                runnerOverheadWallTimeMicroseconds: 1_000_000,
+                                testExecutionWallTimeMicroseconds: 1_000_000,
+                                totalWallTimeMicroseconds: 2_000_000
+                            }
                         }
-                    }
-                })));
+                    })
+                }));
 
                 scope.assert.deepEqual(
                     finishOutput.slice(1).map(function toText(intent) {
@@ -508,22 +513,28 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             title: 'brief reporter prints final counts',
             ...testMetadata,
-
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 scope.require.notNull(reporter.onFinish);
 
-                const finishOutput = await readOutput(reporter.onFinish(runResultFactory.build({
-                    summary: {
-                        discovered: 5,
-                        failed: 1,
-                        inconclusive: 1,
-                        passed: 2,
-                        planned: 5,
-                        skipped: 1
+                const finishOutput = await readOutput(reporter.onFinish({
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
                     },
-                    totalWallTimeMicroseconds: 42_000
-                })));
+                    result: runResultFactory.build({
+                        summary: {
+                            discovered: 5,
+                            failed: 1,
+                            inconclusive: 1,
+                            passed: 2,
+                            planned: 5,
+                            skipped: 1
+                        },
+                        totalWallTimeMicroseconds: 42_000
+                    })
+                }));
 
                 scope.assert.deepEqual(
                     finishOutput.map(function toText(intent) {

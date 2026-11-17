@@ -1,10 +1,10 @@
-import { readdir, realpath, unlink } from 'node:fs/promises';
+import { readdir, realpath } from 'node:fs/promises';
 import path from 'node:path';
-import { createNodeFileStore } from '../file-store.ts';
 import { createBaselineStorage } from './baseline-storage.ts';
 import { createBaselinePublication, type BaselineStoreCommit } from './baseline-publication.ts';
 import {
     storedOrdinaryBaselineSchema,
+    baselineFilename,
     type StoredOrdinaryBaseline,
     type OrdinaryBaselineEntry,
     type OrdinaryBaselineChange
@@ -30,33 +30,23 @@ async function names(directory: string): Promise<readonly string[]> {
         throw error;
     }
 }
-function previousBaseline(change: OrdinaryBaselineChange): StoredOrdinaryBaseline | null {
-    if (change.kind === 'create') {
-        return null;
-    }
-    return change.kind === 'update' ? change.previous : change.baseline;
-}
 export async function createOrdinaryBaselineStore(input: BaselineStoreInput): Promise<OrdinaryBaselineStore> {
     const root = await realpath(input.projectRoot);
     const directory = path.resolve(root, input.directory);
-    const files = createNodeFileStore();
-    const { checkDirectory, location, encoded, read } = createBaselineStorage({
+    const {
+        checkDirectory,
+        read,
+        validate: validateChange,
+        apply: applyChange
+    } = createBaselineStorage<StoredOrdinaryBaseline>({
+        schema: storedOrdinaryBaselineSchema,
+        relativePath(baseline) {
+            return path.join(baseline.subtype, baselineFilename(baseline));
+        },
         root,
         directory,
         maxBytes: input.maxBytes
     });
-    async function validateChange(change: OrdinaryBaselineChange): Promise<void> {
-        await checkDirectory(directory);
-        const previous = await read(location(change.baseline));
-        const expected = previousBaseline(change);
-        const normalized = expected === null ? null : storedOrdinaryBaselineSchema.parse(expected);
-        if (JSON.stringify(previous) !== JSON.stringify(normalized)) {
-            throw new Error('Baseline changed during execution. Run the command again.');
-        }
-        if (change.kind !== 'remove') {
-            encoded(change.baseline);
-        }
-    }
     async function listSubtype(subtype: string): Promise<readonly OrdinaryBaselineEntry[]> {
         const selected = path.join(directory, subtype);
         await checkDirectory(selected);
@@ -80,17 +70,6 @@ export async function createOrdinaryBaselineStore(input: BaselineStoreInput): Pr
     async function validateChanges(changes: readonly OrdinaryBaselineChange[]): Promise<void> {
         for (const change of changes) {
             await validateChange(change);
-        }
-    }
-    async function applyChange(change: OrdinaryBaselineChange): Promise<void> {
-        await validateChange(change);
-        const file = location(change.baseline);
-        if (change.kind === 'remove') {
-            await unlink(file);
-        } else if (change.kind === 'create') {
-            await files.create(file, encoded(change.baseline));
-        } else {
-            await files.write(file, encoded(change.baseline));
         }
     }
     await checkDirectory(directory);

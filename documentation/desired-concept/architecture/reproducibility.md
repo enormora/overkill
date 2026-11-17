@@ -58,8 +58,8 @@ Reproduction validates the current implementation/build and frozen selected
 catalog before admission. A changed module graph, incompatible browser/collector,
 or unavailable guard capability requires fresh preparation or a clear failure,
 not silent metric substitution. Records keep incomplete/truncated evidence and
-attempt/session/document provenance. Historical readers remain versioned and do
-not load browser/controller packages merely to inspect old results. Reproducing
+attempt/session/document provenance. Inspecting records does not load
+browser/controller packages. Reproducing
 intent does not claim identical browser scheduling or timings across machines.
 `RunFacts` is a serializable snapshot with run-level domains and a
 `cases` projection. It is not attached to each executable case. The
@@ -73,15 +73,28 @@ it is an optimization, not the required cross-CI baseline.
 
 ## Run Record Shape
 
-Version 3 retains executable-family facts and replay settings. Versioned readers
-preserve versions 1 and 2 without inventing implementation versions or loading
-family modules. Earlier generated-input type checks retain their recorded meaning.
+Ordinary executions save one compact run record. Explicit recording, replay,
+coverage, and attachment workflows retain detailed evidence in that same lifecycle.
+`detail` distinguishes compact outcomes and measured summaries from replayable
+details. Internal worker and mutation tasks do not enter ordinary history.
+
+Aggregated history holds bounded observations and counters for scheduling and
+selection. Baselines, regression witnesses, and calibration references are reusable
+inputs with independent lifecycles. Benchmark performance means the measured
+consumer workload; duration history learns execution cost for future scheduling.
+
+Version 1 retains executable-family facts, implementation provenance, replay
+settings, and resource-check evidence. It replaces the earlier development
+formats; existing records must be regenerated. Existing files are never deleted
+as a migration step. Inspecting records does not load
+family modules. Fields with safe defaults do not require a version bump. Increase
+the envelope version only for incompatible meaning or representation.
 
 ```ts
 type SingleRunRecord = {
     readonly id: string; // ULID
     readonly kind: 'single';
-    readonly version: 3;
+    readonly version: 1;
     readonly replayPlan: CollectedRunPlan | null;
     readonly replayProfile: unknown;
     readonly replayWitness: WitnessFile | null;
@@ -106,7 +119,7 @@ type SingleRunRecord = {
 type MergedRunRecord = {
     readonly id: string; // ULID
     readonly kind: 'merged';
-    readonly version: 2;
+    readonly version: 1;
     readonly status: 'started' | 'completed' | 'interrupted';
     readonly facts: RunFacts;
     readonly identities: ReadonlyArray<WorkId>;
@@ -117,12 +130,11 @@ type MergedRunRecord = {
     readonly result: RunRecordResult;
 };
 
-type RunRecord = SingleRunRecord | MergedRunRecord;
+type RunRecord = CompactRunRecord | SingleRunRecord | MergedRunRecord;
 ```
 
-Current version 5 records require explicit resource-check evidence in their result.
-Historical version 4 and earlier records without that collection decode it as
-empty.
+Version 1 records require explicit resource-check evidence in their result,
+including an empty collection when no checks were recorded.
 
 Completed single records require a result. Started and interrupted attempts may
 have no result. `RunRecordRequest` preserves the request with a decimal string
@@ -201,8 +213,8 @@ shard total, selected identities, loader configuration, and Overkill package
 versions must agree. `RunFacts.reproducibility.selectedIdentities` records the
 complete selected `WorkId` set after expansion and before sharding, including
 on empty shards. Identity comparison ignores array order and retains runtime,
-workload, and family variants. Historical records decode absent evidence as
-`null` for replay; merging requires regenerated records with explicit evidence.
+workload, and family variants. Missing selection evidence decodes as `null`
+for replay; merging requires records with explicit evidence.
 Version comparison covers the engine version and recorded `@overkill-dev/*`
 package keys and values; other dependency versions may differ. Host metadata such as platform or Node runtime details
 may differ and is preserved as metadata. Missing shards, duplicate executed
@@ -267,14 +279,17 @@ index is readable; a rebuild from corrupted state may lose summaries whose
 detailed records were already pruned. Explicit repair reports this potential
 loss; automatic repair does not replace state when its inputs are insufficient.
 
-Run/case history lives in `history/index.json`; duration history retains its
-existing path. Both share one project history lock. Ingestion receipts prevent
-repeated completion or repair from increasing counters twice. Legacy duration
-samples without run identity survive migration; records started before the
-migration cutoff do not add duration samples during repair. Migrated counters
-start from the observations still available.
+Run/case history and duration observations live in one versioned document at
+`history/index.json`, guarded by one project history lock. Completion atomically
+publishes observations and ingestion receipts. Repeated completion or repair
+does not increase counters twice. Scheduling reads observations and receipts
+from the same snapshot. The old separate duration document is no longer read.
 
 ## Retention And Maintenance
+
+The detailed-record limit downgrades older details to compact records. Compact
+records follow summary count and age limits. Aggregate observations and counters
+survive record pruning; repairs report possible loss when source records expired.
 
 Run-record retention is global project policy under top-level `history`
 configuration. Profile policy decides whether a run writes a record; global
@@ -466,10 +481,11 @@ unit and lane order, without new adaptive scheduling decisions, and replay emits
 a diagnostic. Empty selections require no source imports.
 
 Replay writes a fresh record and leaves the source record intact.
-Version 2 snapshots contain bodyless collection metadata and normalized profile
+Version 1 snapshots contain bodyless collection metadata and normalized profile
 policy without reporter callbacks. Witness replay records retain the concrete
-witness input for subsequent recorded-run replay. Version 1 records remain inspectable; missing
-replay metadata is a compatibility error. Reporter callbacks use current config.
+witness input for subsequent recorded-run replay. Records without replay
+snapshots remain inspectable; missing replay metadata is a compatibility error.
+Reporter callbacks use current config.
 
 Limitations:
 

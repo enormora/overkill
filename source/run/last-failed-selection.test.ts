@@ -47,7 +47,7 @@ export const testNode = suite('last-failed selection', [
                     ...first,
                     result: {
                         ...first.result,
-                        perTest: [ { workId: historyWork, durationMicroseconds: 10, verdict: 'fail' } ]
+                        perTest: [ { benchmark: null, workId: historyWork, durationMicroseconds: 10, verdict: 'fail' } ]
                     }
                 }, context);
 
@@ -55,7 +55,15 @@ export const testNode = suite('last-failed selection', [
                     ...first,
                     id: 'second',
                     startedAt: '2026-10-29T00:00:01.000Z',
-                    result: { ...first.result, perTest: [ { workId: historyWork, durationMicroseconds: 10, verdict } ] }
+                    result: {
+                        ...first.result,
+                        perTest: [ {
+                            benchmark: null,
+                            workId: historyWork,
+                            durationMicroseconds: 10,
+                            verdict
+                        } ]
+                    }
                 }, context);
                 const selection = await readLastFailedSelection({ kind: 'all' }, { projectRoot: '/project', config }, {
                     createHistoryStorage() {

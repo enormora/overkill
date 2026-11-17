@@ -70,32 +70,38 @@ export const testNode = createOverkillSuite({
                     throw new TypeError('Expected dot reporter to expose onFinish.');
                 }
 
-                await onFinish(runResultFactory.build({
-                    perTest: [
-                        {
-                            id: { file: null, title: 'passes', params: null, suite: [ 'root' ] },
-                            outcome: { kind: 'pass' }
-                        }
-                    ],
-                    summary: { discovered: 1, passed: 1, planned: 1 },
-                    totalWallTimeMicroseconds: 5000
-                }));
-                await onFinish(runResultFactory.build({
-                    perTest: [
-                        {
-                            id: { file: null, title: 'heap ceiling', params: null, suite: [ 'root' ] },
-                            outcome: null,
-                            verdict: 'process-exhausted'
-                        },
-                        {
-                            id: { file: null, title: 'worker death', params: null, suite: [ 'root' ] },
-                            outcome: null,
-                            verdict: 'crashed'
-                        }
-                    ],
-                    summary: { crashed: 1, discovered: 2, planned: 2, processExhausted: 1 },
-                    totalWallTimeMicroseconds: 9000
-                }));
+                await onFinish({
+                    context: { id: null, startedAt: null, facts: null },
+                    result: runResultFactory.build({
+                        perTest: [
+                            {
+                                id: { file: null, title: 'passes', params: null, suite: [ 'root' ] },
+                                outcome: { kind: 'pass' }
+                            }
+                        ],
+                        summary: { discovered: 1, passed: 1, planned: 1 },
+                        totalWallTimeMicroseconds: 5000
+                    })
+                });
+                await onFinish({
+                    context: { id: null, startedAt: null, facts: null },
+                    result: runResultFactory.build({
+                        perTest: [
+                            {
+                                id: { file: null, title: 'heap ceiling', params: null, suite: [ 'root' ] },
+                                outcome: null,
+                                verdict: 'process-exhausted'
+                            },
+                            {
+                                id: { file: null, title: 'worker death', params: null, suite: [ 'root' ] },
+                                outcome: null,
+                                verdict: 'crashed'
+                            }
+                        ],
+                        summary: { crashed: 1, discovered: 2, planned: 2, processExhausted: 1 },
+                        totalWallTimeMicroseconds: 9000
+                    })
+                });
 
                 scope.assert.equal(
                     terminal.text(),

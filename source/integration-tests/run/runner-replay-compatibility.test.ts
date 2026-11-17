@@ -43,7 +43,7 @@ async function verifyIncompatibleRecords(scope: TestScope): Promise<void> {
     const saved = await recordedProject(scope, false);
     await writeReplayCase(saved.project, "throw new Error('Imported incompatible replay.');");
     const invalid = [
-        { ...saved.record, version: 1 },
+        { ...saved.record, version: 2 },
         { ...saved.record, version: 99 },
         { ...saved.record, kind: 'merged' },
         { ...saved.record, replayPlan: null },

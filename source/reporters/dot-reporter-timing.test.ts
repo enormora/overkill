@@ -89,7 +89,7 @@ export const testNode = createOverkillSuite({
                 const { onFinish } = reporter;
 
                 scope.require.notNull(onFinish);
-                await onFinish(result);
+                await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
 
                 scope.assert.equal(
                     terminal.text(),

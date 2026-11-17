@@ -6,6 +6,7 @@ import type { HistoryPolicy } from '../config/history-policy.ts';
 import {
     checkHistoryMaintenanceBudget,
     historyMaintenanceDeadline,
+    historyMaintenanceNow,
     recordHistoryMaintenanceDiagnostic,
     HistoryMaintenanceDeferredError
 } from './history-maintenance-budget.ts';
@@ -47,13 +48,13 @@ async function retryLock(
     if (!locked) {
         throw error;
     }
-    if (performance.now() >= deadline) {
+    if (historyMaintenanceNow() >= deadline) {
         if (Number.isFinite(historyMaintenanceDeadline())) {
             throw new HistoryMaintenanceDeferredError();
         }
         throw error;
     }
-    await delay(Math.min(retryIntervalMilliseconds, Math.max(0, deadline - performance.now())));
+    await delay(Math.min(retryIntervalMilliseconds, Math.max(0, deadline - historyMaintenanceNow())));
 }
 
 export async function acquireHistoryLock(
@@ -66,7 +67,7 @@ export async function acquireHistoryLock(
         stale: policy.staleLockMilliseconds,
         onCompromised
     };
-    const deadline = Math.min(performance.now() + policy.lockTimeoutMilliseconds, historyMaintenanceDeadline());
+    const deadline = Math.min(historyMaintenanceNow() + policy.lockTimeoutMilliseconds, historyMaintenanceDeadline());
     for (;;) {
         try {
             return await acquireProjectLock(directory, options);

@@ -1,18 +1,27 @@
 import type { ReadonlyDeep } from 'type-fest';
 import { z } from 'zod';
-import { resourceCheckSnapshotSchema } from '../engine/assertion-result-schema.ts';
+import { benchmarkRunFactsSchema } from '../bench/benchmark-run-report.ts';
 import { workIdSchema } from '../engine/identity-schema.ts';
+import { benchmarkResultSchema } from './benchmark-result-schema.ts';
+import { runObservationFields } from './run-result-schema.ts';
+import { baselineReportSummariesSchema } from './baseline-report-schema.ts';
 import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
 import {
     currentRunRecordVersion,
-    implementationRunRecordVersion,
-    previousRunRecordVersion,
-    familyRunRecordVersion,
     validateImplementationRecord
 } from './run-record-format.ts';
 import { verdictSchema } from './run-artifact-schema.ts';
 
 const family = z.string();
+const contextFields = benchmarkRunFactsSchema.omit({ execution: true }).extend({
+    implementations: z.unknown(),
+    environment: benchmarkRunFactsSchema.shape.environment.nullable().default(null),
+    benchmarkHost: benchmarkRunFactsSchema.shape.benchmarkHost.default(null),
+    benchmarkPlacement: benchmarkRunFactsSchema.shape.benchmarkPlacement.default(null),
+    benchmarkCalibration: benchmarkRunFactsSchema.shape.benchmarkCalibration.default(null),
+    benchmarkNormalization: benchmarkRunFactsSchema.shape.benchmarkNormalization.default(null)
+});
+const contextExecution = benchmarkRunFactsSchema.shape.execution.partial().extend({ testFamily: family });
 const execution = z.union([
     z.object({
         processModel: z.enum([ 'in-process', 'supervised-process' ]),
@@ -24,21 +33,17 @@ const execution = z.union([
         workerLifecycle: z.enum([ 'reuse', 'fresh-worker-per-unit' ])
     })
 ]);
-const count = z.number().int().nonnegative();
 const result = z.object({
-    resourceChecks: z.array(resourceCheckSnapshotSchema).default([]),
+    baselineReports: runObservationFields.baselineReports.or(baselineReportSummariesSchema).default([]),
+    preparationFacts: z.record(z.string(), z.unknown()).nullable().default(null),
+    resourceChecks: runObservationFields.resourceChecks,
     status: z.enum([ 'passed', 'failed' ]).default('passed'),
-    runnerErrors: z.array(z.unknown()).readonly(),
-    summary: z.object({
-        failed: count,
-        crashed: count,
-        processExhausted: count,
-        runtimePolicy: count,
-        inconclusive: count
-    }),
-    timings: z.object({ summary: z.object({ totalWallTimeMicroseconds: z.number().nonnegative() }) }),
+    runnerErrors: runObservationFields.runnerErrors.readonly(),
+    summary: runObservationFields.summary,
+    timings: runObservationFields.timings.strip(),
     perTest: z
         .array(z.object({
+            benchmark: benchmarkResultSchema.nullable().default(null),
             workId: workIdSchema,
             verdict: verdictSchema,
             durationMicroseconds: z.number().nonnegative()
@@ -46,13 +51,23 @@ const result = z.object({
         .readonly()
 });
 const fields = {
-    version: z.union([
-        z.literal(1),
-        z.literal(previousRunRecordVersion),
-        z.literal(familyRunRecordVersion),
-        z.literal(implementationRunRecordVersion),
-        z.literal(currentRunRecordVersion)
-    ]),
+    version: z.literal(currentRunRecordVersion),
+    detail: z.enum([ 'compact', 'detailed' ]).default('detailed'),
+    identities: z.array(workIdSchema).nullable().default(null),
+    versions: z
+        .object({
+            engine: z.string().nullable(),
+            node: z
+                .string()
+                .nullable()
+                .default(null),
+            packages: z.record(
+                z.string(),
+                z.string()
+            )
+        })
+        .nullable()
+        .default(null),
     replayPlan: collectedRunPlanSchema.nullable().default(null),
     replayProfile: z.unknown().default(null),
     kind: z.literal('single'),
@@ -60,7 +75,7 @@ const fields = {
     startedAt: z.iso.datetime({ offset: true }),
     request: z.object({ profile: z.string(), recordForMerge: z.boolean().default(false) }),
     execution,
-    facts: z.object({ execution: z.object({ testFamily: family }) }).nullable()
+    facts: contextFields.extend({ execution: contextExecution }).nullable()
 };
 const singleHistoryRecordSchema = z.discriminatedUnion('status', [
     z.object({ ...fields, status: z.literal('completed'), result }),
@@ -68,17 +83,15 @@ const singleHistoryRecordSchema = z.discriminatedUnion('status', [
 ]);
 const mergedHistoryRecordSchema = z
     .object({
-        version: z.union([
-            z.literal(previousRunRecordVersion),
-            z.literal(familyRunRecordVersion),
-            z.literal(implementationRunRecordVersion),
-            z.literal(currentRunRecordVersion)
-        ]),
+        version: z.literal(currentRunRecordVersion),
         kind: z.literal('merged'),
+        detail: fields.detail,
+        identities: fields.identities,
+        versions: fields.versions,
         id: z.string().min(1),
         startedAt: z.iso.datetime({ offset: true }),
         status: z.enum([ 'started', 'completed', 'interrupted' ]),
-        facts: z.object({ execution: z.object({ profile: z.string(), testFamily: family }).and(execution) }),
+        facts: contextFields.extend({ execution: contextExecution.extend({ profile: z.string() }).and(execution) }),
         result
     })
     .transform(function historyProjection(record) {

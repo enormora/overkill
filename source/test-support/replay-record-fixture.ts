@@ -17,6 +17,7 @@ export function workerReplayRecord(
     return {
         version: currentRunRecordVersion,
         kind: 'single',
+        detail: 'detailed',
         id: 'retained-worker-run',
         status: 'interrupted',
         seed: run.facts.reproducibility.seed,

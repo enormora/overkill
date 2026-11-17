@@ -1,5 +1,5 @@
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
+import { benchmarkHtmlFixture, benchmarkSampleFixture } from '../test-support/benchmark-html-fixture.ts';
 import { runResultSchema } from '../run/run-result-schema.ts';
 import { readBenchmarkSamples } from '../bench/benchmark-sample-report.ts';
 import { createProcessEvidenceReader, processEvidenceMediaType } from '../bench/process-evidence-query.ts';
@@ -68,7 +68,7 @@ export const testNode = suite('benchmark HTML retained evidence', [
         const samples = replaceSamples(artifact, {
             kind: 'json',
             byteLength: 0,
-            value: { unrecorded: [ unavailableMetric('Collector unavailable.', provenance) ] }
+            value: benchmarkSampleFixture({ unrecorded: [ unavailableMetric('Collector unavailable.', provenance) ] })
         });
         scope.assert.deepEqual(readBenchmarkSamples({ ...result, artifacts: [ samples ] }, measured), {
             kind: 'available',
@@ -108,9 +108,9 @@ export const testNode = suite('benchmark HTML retained evidence', [
         const sampleArtifact = replaceSamples(artifact, {
             kind: 'json',
             byteLength: 0,
-            value: {
+            value: benchmarkSampleFixture({
                 latency: [ availableMetric(7, provenance), unavailableMetric('Collector unavailable.', provenance) ]
-            }
+            })
         });
         const changed = {
             ...measured,
@@ -125,7 +125,17 @@ export const testNode = suite('benchmark HTML retained evidence', [
             partial: true,
             metrics: { latency: [ 7 ] }
         });
-        const row = createBenchmarkHtmlReport(partial).charts.groups[0]?.rows[0];
+        const row = createBenchmarkHtmlReport({
+            result: partial,
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            }
+        })
+            .charts
+            .groups[0]
+            ?.rows[0];
         scope.require.defined(row);
         scope.assert.equal(row.sampleNote, 'Retained partial samples.');
         scope.assert.deepEqual(row.histogram, [ 1 ]);
@@ -136,7 +146,7 @@ export const testNode = suite('benchmark HTML retained evidence', [
         const sampleArtifact = replaceSamples(artifact, {
             kind: 'json',
             byteLength: 0,
-            value: { latency: [ availableMetric(7, { collector: 'other', scope: 'custom', unit: 'seconds' }) ] }
+            value: benchmarkSampleFixture({ latency: [ availableMetric(7, { collector: 'other', scope: 'custom', unit: 'seconds' }) ] })
         });
         scope.assert.throws(function () {
             readBenchmarkSamples({ ...result, artifacts: [ sampleArtifact ] }, measured);
@@ -223,7 +233,17 @@ export const testNode = suite('benchmark HTML retained evidence', [
     }),
     test('keeps summary and budget evidence when sample artifacts are absent', function (scope: TestScope) {
         const result = benchmarkHtmlFixture('absent samples');
-        const report = createBenchmarkHtmlReport({ ...result, artifacts: [] });
+        const report = createBenchmarkHtmlReport({
+            result: {
+                ...result,
+                artifacts: []
+            },
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            }
+        });
         const row = report.charts.groups[0]?.rows[0];
         scope.require.defined(row);
         scope.assert.equal(row.summary.mean, 2.5);

@@ -1,22 +1,13 @@
 import path from 'node:path';
 import { workIdentityKey } from '../engine/identity.ts';
-import type { PerTestResult, RunnerError, RunResult } from '../engine/run-result.ts';
-import type { HistoryStorageFactory } from './history-storage-types.ts';
 import { readDurationProjection } from './history-reader.ts';
-import { writeLearnedDurations } from './duration-history-storage.ts';
-import { currentExecutionSession } from './execution-session-context.ts';
 import type {
     DurationHistoryInput,
     DurationHistoryObservation,
     DurationHistorySample,
-    ResolvedRun,
     WorkId,
     WorkUnit
 } from './run-types.ts';
-import {
-    resultWithResolvedTimingCollection,
-    type RunTimingMeasurement
-} from './run-timing-collection.ts';
 import type { DurationHistoryIndex, DurationHistoryPlacement, DurationHistoryStore } from './duration-history-types.ts';
 
 const maximumObservationCount = 8;
@@ -34,22 +25,6 @@ const minimumCoverageRatio = 0.5;
 const evenSampleDivisor = 2;
 
 type DurationHistoryEntry = DurationHistoryIndex['entries'][number];
-type DurationHistoryObservationMetadata = DurationHistoryObservation['metadata'];
-
-type DurationHistoryResult = {
-    readonly perTest: readonly PerTestResult[];
-};
-
-function durationHistoryWriteError(cause: unknown): RunnerError {
-    return {
-        attributedToAttempt: null,
-        attributedTo: null,
-        cause,
-        diagnostics: [],
-        message: 'Failed to write duration history.',
-        subtype: 'runtime-state'
-    };
-}
 
 export async function readDurationHistoryIndex(
     store: DurationHistoryStore,
@@ -223,116 +198,4 @@ export function selectDurationHistoryPlacement(
             return workDuration * unit.resourceConstraints.capacityWeight;
         }
     };
-}
-
-function executionMetadata(resolvedRun: ResolvedRun): DurationHistoryObservationMetadata {
-    const { execution } = resolvedRun.facts;
-
-    return {
-        processModel: execution.processModel,
-        profile: execution.profile,
-        scheduling: execution.scheduling,
-        testFamily: execution.testFamily,
-        workerLifecycle: execution.processModel === 'worker-pool'
-            ? execution.workerLifecycle
-            : null
-    };
-}
-
-function durationHistoryObservationsFromResult(
-    resolvedRun: ResolvedRun,
-    result: DurationHistoryResult,
-    observedAt: string
-): readonly DurationHistoryEntry[] {
-    const metadata = executionMetadata(resolvedRun);
-
-    return result.perTest.flatMap(function toObservation(testResult) {
-        if (!finiteDuration(testResult.durationMicroseconds)) {
-            return [];
-        }
-
-        return [ {
-            observations: [ {
-                durationMicroseconds: testResult.durationMicroseconds,
-                metadata,
-                observedAt
-            } ],
-            work: testResult.workId
-        } ];
-    });
-}
-
-export async function resultWithUpdatedDurationHistory(
-    store: DurationHistoryStore,
-    resolvedRun: ResolvedRun,
-    result: RunResult,
-    completedAtMilliseconds: number
-): Promise<RunResult> {
-    const observedAt = isoTimestamp(completedAtMilliseconds);
-    const observations = durationHistoryObservationsFromResult(resolvedRun, result, observedAt);
-
-    if (observations.length === 0) {
-        return result;
-    }
-
-    try {
-        await writeLearnedDurations(store, observations, {
-            directory: path.resolve(
-                resolvedRun.facts.environment.projectRoot,
-                resolvedRun.facts.environment.runtimeStateDir
-            ),
-            policy: resolvedRun.config.history,
-            now: observedAt
-        });
-        return result;
-    } catch (error: unknown) {
-        return {
-            ...result,
-            runnerErrors: [ ...result.runnerErrors, durationHistoryWriteError(error) ]
-        };
-    }
-}
-
-export type DurationHistoryTimingMeasurement = RunTimingMeasurement;
-
-export type TimedDurationHistoryResultInput = {
-    readonly createHistoryStorage: HistoryStorageFactory;
-    readonly completedAtMilliseconds: number;
-    readonly resolvedRun: ResolvedRun;
-    readonly result: RunResult;
-    readonly store: DurationHistoryStore;
-    readonly timing: DurationHistoryTimingMeasurement | null;
-};
-
-export async function resultWithUpdatedDurationHistoryAndTiming(
-    input: TimedDurationHistoryResultInput
-): Promise<RunResult> {
-    if (currentExecutionSession() !== null || input.resolvedRun.facts.execution.runRecords.persist) {
-        return resultWithResolvedTimingCollection(input.resolvedRun, input.result, input.timing);
-    }
-    const directory = path.resolve(
-        input.resolvedRun.facts.environment.projectRoot,
-        input.resolvedRun.facts.environment.runtimeStateDir
-    );
-    const history = input.createHistoryStorage(directory, input.resolvedRun.config.history);
-    try {
-        return await history.withLock(async function learnDurations() {
-            return resultWithResolvedTimingCollection(
-                input.resolvedRun,
-                await resultWithUpdatedDurationHistory(
-                    input.store,
-                    input.resolvedRun,
-                    input.result,
-                    input.completedAtMilliseconds
-                ),
-                input.timing
-            );
-        });
-    } catch (error: unknown) {
-        return {
-            ...input.result,
-            status: 'failed',
-            runnerErrors: [ ...input.result.runnerErrors, durationHistoryWriteError(error) ]
-        };
-    }
 }

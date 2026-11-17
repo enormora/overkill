@@ -13,7 +13,15 @@ function assertChartScales(scope: TestScope, result: RunResult): void {
     scope.assert.true(
         isDeepStrictEqual(parseRunnerResult(result).perTest[0]?.benchmark, result.perTest[0]?.benchmark)
     );
-    const { groups } = createBenchmarkHtmlReport(result).charts;
+    const { groups } = createBenchmarkHtmlReport({
+        result,
+        context: {
+            id: null,
+            startedAt: null,
+            facts: null
+        }
+    })
+        .charts;
     scope.assert.equal(groups.length, 2);
     scope.assert.true(groups.some(function rawGroup(group) {
         return group.name.includes('raw)');
@@ -142,7 +150,20 @@ export const testNode = suite('benchmark normalization process boundaries', [
             }),
             [ 0.5, 100 ]
         );
-        scope.assert.equal(createBenchmarkHtmlReport(result).charts.groups.length, 3);
+        scope.assert.equal(
+            createBenchmarkHtmlReport({
+                result,
+                context: {
+                    id: null,
+                    startedAt: null,
+                    facts: null
+                }
+            })
+                .charts
+                .groups
+                .length,
+            3
+        );
         return scope.assert.collect();
     }),
     test('normalizes automatically without captured references', async function (scope: TestScope) {

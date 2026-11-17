@@ -3,7 +3,6 @@ import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import type { MeasurementComparisonIdentity } from '../engine/measurement-evidence.ts';
 import {
     performanceBaselineIdentity,
-    measuredPerformanceBaselineVersion,
     type StoredPerformanceBaseline
 } from './performance-baseline.ts';
 import { performanceBaselineKey } from './performance-store.ts';
@@ -25,7 +24,7 @@ const measurement: MeasurementComparisonIdentity = {
 };
 function baselineFor(identity: MeasurementComparisonIdentity): StoredPerformanceBaseline {
     return {
-        version: measuredPerformanceBaselineVersion,
+        version: 1,
         measurement: identity,
         normalization: null,
         adapter: 'duration',
@@ -39,7 +38,7 @@ export const testNode = suite('measurement comparison identity', [
     test('retains stable measurement facts in versioned baselines', function (scope) {
         const baseline = baselineFor(measurement);
         const encoded = JSON.stringify(baseline);
-        scope.assert.true(encoded.includes('"version":4'));
+        scope.assert.true(encoded.includes('"version":1'));
         const restored = storedPerformanceBaselineSchema.parse(JSON.parse(encoded));
         scope.assert.deepEqual(restored, baseline);
         scope.assert.equal(typeof performanceBaselineIdentity(restored).measurement, 'string');

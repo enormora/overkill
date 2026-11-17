@@ -43,6 +43,14 @@ async function assertUnavailable(scope: TestScope, history: History): Promise<vo
     const listed = await history.list();
     scope.assert.equal(listed[0]?.replay, 'unavailable');
 }
+async function storeOlderIndex(project: Project): Promise<void> {
+    const { directory, history, store } = project;
+    const record = { ...freshRecord('interrupted'), status: 'interrupted', result: null };
+    await store.write(path.join(directory, 'runs/interrupted.json'), JSON.stringify(record));
+    await history.compact();
+    const index = await requiredIndex(project);
+    await store.write(path.join(directory, 'history/index.json'), JSON.stringify({ ...index, version: 0 }));
+}
 export const testNode = suite('history maintenance boundaries', [
     test('prune rejects artifact identities that disagree with their directory', async function (scope: TestScope) {
         await withProject(async function mismatchedArtifact({ directory, history, store }) {
@@ -119,15 +127,20 @@ export const testNode = suite('history maintenance boundaries', [
         });
         return scope.assert.collect();
     }),
-    test('list repairs legacy indexes before returning interrupted replay sources', async function (scope: TestScope) {
-        await withProject(async function legacyIndex(project) {
-            const { directory, history, store } = project;
-            const record = { ...freshRecord('interrupted'), status: 'interrupted', result: null };
-            await store.write(path.join(directory, 'runs/interrupted.json'), JSON.stringify(record));
-            await history.compact();
-            const index = await requiredIndex(project);
-            await store.write(path.join(directory, 'history/index.json'), JSON.stringify({ ...index, version: 0 }));
-            const listed = await history.list();
+    test('list requires explicit repair for older indexes', async function (scope: TestScope) {
+        await withProject(async function olderIndex(project) {
+            await storeOlderIndex(project);
+            const source = await project.store.read(path.join(project.directory, 'history/index.json'));
+            await scope.assert.rejects(project.history.list, { message: /overkill history compact/ });
+            scope.assert.equal(await project.store.read(path.join(project.directory, 'history/index.json')), source);
+        });
+        return scope.assert.collect();
+    }),
+    test('explicit repair replaces older indexes with retained observations', async function (scope: TestScope) {
+        await withProject(async function olderIndex(project) {
+            await storeOlderIndex(project);
+            await project.history.compact();
+            const listed = await project.history.list();
             scope.assert.equal(listed[0]?.replay, 'available-interrupted');
             const repaired = await requiredIndex(project);
             scope.assert.equal(repaired.version, 1);
@@ -222,9 +235,8 @@ export const testNode = suite('history maintenance boundaries', [
         });
         return scope.assert.collect();
     }),
-    test('pruning tolerates absent duration state', async function (scope: TestScope) {
-        await withProject(async function missingDurations({ directory, history }) {
-            await rm(path.join(directory, 'duration-history'), { recursive: true });
+    test('pruning tolerates empty duration observations', async function (scope: TestScope) {
+        await withProject(async function missingDurations({ history }) {
             const result = await history.prune({ dryRun: false });
             scope.assert.equal(result.removedWorkEntries, 0);
             scope.assert.deepEqual(result.paths, []);

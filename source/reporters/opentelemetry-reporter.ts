@@ -217,7 +217,7 @@ export function createOpenTelemetryReporter(
             kind: 'final-result',
             name: 'opentelemetry',
             sinks: [ { kind: 'file', path: options.outputFile } ],
-            async onResult(result) {
+            async onResult({ result }) {
                 const content = `${JSON.stringify(traceData(dependencies, result))}\n`;
                 await dependencies.writeFile(options.outputFile, content);
             }

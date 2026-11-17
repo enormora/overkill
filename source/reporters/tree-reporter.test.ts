@@ -52,22 +52,34 @@ export const testNode = createOverkillSuite({
                     }
                 });
 
-                await reporter.onResult(runResultFactory.build({
-                    perTest: [
-                        {
-                            durationMicroseconds: 2000,
-                            id: { file: 'source/example.test.ts', params: null, suite: [ 'root' ], title: 'passes' }
-                        },
-                        {
-                            durationMicroseconds: 3000,
-                            id: { file: 'source/example.test.ts', params: 'row=1', suite: [ 'root' ], title: 'fails' },
-                            outcome: { kind: 'fail' },
-                            verdict: 'fail'
-                        }
-                    ],
-                    summary: { discovered: 2, failed: 1, passed: 1, planned: 2 },
-                    totalWallTimeMicroseconds: 5000
-                }));
+                await reporter.onResult({
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    },
+                    result: runResultFactory.build({
+                        perTest: [
+                            {
+                                durationMicroseconds: 2000,
+                                id: { file: 'source/example.test.ts', params: null, suite: [ 'root' ], title: 'passes' }
+                            },
+                            {
+                                durationMicroseconds: 3000,
+                                id: {
+                                    file: 'source/example.test.ts',
+                                    params: 'row=1',
+                                    suite: [ 'root' ],
+                                    title: 'fails'
+                                },
+                                outcome: { kind: 'fail' },
+                                verdict: 'fail'
+                            }
+                        ],
+                        summary: { discovered: 2, failed: 1, passed: 1, planned: 2 },
+                        totalWallTimeMicroseconds: 5000
+                    })
+                });
 
                 scope.assert.deepEqual(recorder.lines(), [
                     'source/example.test.ts',
@@ -103,19 +115,26 @@ export const testNode = createOverkillSuite({
                     }
                 });
 
-                await reporter.onResult(runResultFactory.build({
-                    perTest: [
-                        {
-                            id: { file: null, params: null, suite: [ 'root' ], title: 'passes' }
-                        },
-                        {
-                            id: { file: null, params: null, suite: [ 'root' ], title: 'crashes' },
-                            outcome: null,
-                            verdict: 'crashed'
-                        }
-                    ],
-                    summary: { crashed: 1, discovered: 2, passed: 1, planned: 2 }
-                }));
+                await reporter.onResult({
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    },
+                    result: runResultFactory.build({
+                        perTest: [
+                            {
+                                id: { file: null, params: null, suite: [ 'root' ], title: 'passes' }
+                            },
+                            {
+                                id: { file: null, params: null, suite: [ 'root' ], title: 'crashes' },
+                                outcome: null,
+                                verdict: 'crashed'
+                            }
+                        ],
+                        summary: { crashed: 1, discovered: 2, passed: 1, planned: 2 }
+                    })
+                });
 
                 scope.assert.deepEqual(recorder.lines(), [
                     '<unknown>',
@@ -147,21 +166,28 @@ export const testNode = createOverkillSuite({
                     }
                 });
 
-                await reporter.onResult(runResultFactory.build({
-                    perTest: [
-                        {
-                            id: { file: null, params: null, suite: [], title: 'skips' },
-                            outcome: { kind: 'skip' },
-                            verdict: 'skip'
-                        },
-                        {
-                            id: { file: null, params: null, suite: [], title: 'maybe' },
-                            outcome: { kind: 'inconclusive' },
-                            verdict: 'inconclusive'
-                        }
-                    ],
-                    summary: { discovered: 2, inconclusive: 1, planned: 2, skipped: 1 }
-                }));
+                await reporter.onResult({
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    },
+                    result: runResultFactory.build({
+                        perTest: [
+                            {
+                                id: { file: null, params: null, suite: [], title: 'skips' },
+                                outcome: { kind: 'skip' },
+                                verdict: 'skip'
+                            },
+                            {
+                                id: { file: null, params: null, suite: [], title: 'maybe' },
+                                outcome: { kind: 'inconclusive' },
+                                verdict: 'inconclusive'
+                            }
+                        ],
+                        summary: { discovered: 2, inconclusive: 1, planned: 2, skipped: 1 }
+                    })
+                });
 
                 scope.assert.deepEqual(recorder.lines(), [
                     '<unknown>',

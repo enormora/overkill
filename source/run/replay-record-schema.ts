@@ -1,7 +1,6 @@
 import { z } from 'zod/v4';
 import { resourceCheckSnapshotSchema } from '../engine/assertion-result-schema.ts';
 import { witnessFileSchema } from '../engine/witness-file.ts';
-import { loaderSchema } from '../config/schema.ts';
 import { workIdSchema } from '../engine/identity-schema.ts';
 import type { ReplayRunRecord } from './replay-record-types.ts';
 import { replayTraceSchema } from './replay-trace-schema.ts';
@@ -10,11 +9,7 @@ import { frozenMicrotestPolicySchema } from './frozen-run-policy-schema.ts';
 import { replayPlanningSchema } from './replay-planning-schema.ts';
 import {
     currentRunRecordVersion,
-    implementationRunRecordVersion,
-    previousRunRecordVersion,
-    familyRunRecordVersion,
     validateImplementationRecord
-    // eslint-disable-next-line import/max-dependencies -- Replay retains resource-check evidence when projecting current records.
 } from './run-record-format.ts';
 
 const replayRequestSchema = frozenMicrotestPolicySchema.shape.request.extend({
@@ -25,17 +20,13 @@ const replayRequestSchema = frozenMicrotestPolicySchema.shape.request.extend({
 });
 const replayRecordData = z
     .object({
-        version: z.union([
-            z.literal(previousRunRecordVersion),
-            z.literal(familyRunRecordVersion),
-            z.literal(implementationRunRecordVersion),
-            z.literal(currentRunRecordVersion)
-        ]),
+        version: z.literal(currentRunRecordVersion),
         kind: z.literal('single'),
+        detail: z.literal('detailed'),
         id: z.string().min(1),
         seed: z.string().regex(/^\d+$/u),
         request: replayRequestSchema,
-        loader: loaderSchema,
+        loader: frozenMicrotestPolicySchema.shape.loader,
         engine: frozenMicrotestPolicySchema.shape.engine,
         status: z.enum([ 'started', 'completed', 'interrupted' ]),
         replayPlan: collectedRunPlanSchema,
@@ -54,7 +45,7 @@ const replayRecordData = z
         versions: z.object({ node: z.string(), packages: z.record(z.string(), z.string()) })
     })
     .refine(function familyRecord(record) {
-        return record.version < familyRunRecordVersion || record.facts.family !== null;
+        return record.facts.family !== null;
     })
     .refine(function completedResult(record) {
         return record.status !== 'completed' || record.result !== null;

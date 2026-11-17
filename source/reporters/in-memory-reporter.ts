@@ -54,7 +54,7 @@ export function createInMemoryRealTimeReporter(): InMemoryRealTimeReporter {
                     recordedEntries.push({ event, result: null, type: 'event' });
                 },
 
-                async onFinish(result) {
+                async onFinish({ result }) {
                     recordedEntries.push({ event: null, result, type: 'finish' });
                 }
             };
@@ -78,7 +78,7 @@ export function createInMemoryFinalResultReporter(): InMemoryFinalResultReporter
                 name: 'in-memory-final-result',
                 sinks: [],
 
-                async onResult(result) {
+                async onResult({ result }) {
                     recordedEntries.push({ event: null, result, type: 'result' });
                 }
             };

@@ -27,6 +27,7 @@ function parentRecord(fixture: AttachmentRunFixture): RunRecordSession {
         projectRoot: resolved.facts.environment.projectRoot,
         request: { ...resolved.request, record: true }
     }, {
+        detail: 'detailed',
         async maintainHistory() {
             return [];
         },

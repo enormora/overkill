@@ -65,7 +65,7 @@ export function assertCompletedBenchmarks(scope: TestScope, result: RunResult): 
     for (const tested of result.perTest) {
         scope.assert.equal(tested.benchmark?.normalization, null);
     }
-    const html = createBenchmarkHtmlReport(result);
+    const html = createBenchmarkHtmlReport({ result, context: { id: null, startedAt: null, facts: null } });
     scope.assert.includes(JSON.stringify(html.cases), 'node-child-cpu-v1');
     scope.assert.includes(JSON.stringify(html.cases), 'instrumentation');
 }

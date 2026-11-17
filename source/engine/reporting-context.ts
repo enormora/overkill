@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { currentRunIdentity } from '../execution-ownership.ts';
 import type {
     KnownSourceLocation,
     ResolvableSourceLocation
@@ -8,6 +9,8 @@ import {
     ensureValidSourceLocation,
     resolveSourceLocation
 } from '../assertion-protocol/source-location.ts';
+import type { RunReport } from './reporter.ts';
+import type { RunResult } from './run-result.ts';
 import { resolvedFailureArtifactPolicySchema, type FailureArtifactPolicy } from './failure-artifact-policy.ts';
 import { currentFailureArtifactPolicy } from './execution-observation.ts';
 
@@ -117,12 +120,25 @@ function policyFromRunFacts(facts: unknown): FailureArtifactPolicy {
 
 export type RunReportingContext = {
     readonly context: ReportingContext;
+    readonly report: (result: RunResult) => RunReport;
     readonly observeFacts: (facts: unknown) => void;
 };
 
 export function createRunReportingContext(): RunReportingContext {
+    let observedFacts: Readonly<Record<string, unknown>> | null = null;
     let state: ProfileReportingContextState = { projectRoot: null, failureArtifacts: currentFailureArtifactPolicy() };
     return {
+        report(result) {
+            const identity = currentRunIdentity();
+            return {
+                result,
+                context: {
+                    id: identity?.id ?? null,
+                    startedAt: identity?.startedAt ?? null,
+                    facts: observedFacts ?? result.preparationFacts
+                }
+            };
+        },
         context: createReportingContext({
             get projectRoot() {
                 return state.projectRoot;
@@ -132,6 +148,7 @@ export function createRunReportingContext(): RunReportingContext {
             }
         }),
         observeFacts(facts) {
+            observedFacts = isRecord(facts) ? facts : null;
             state = { projectRoot: projectRootFromRunFacts(facts), failureArtifacts: policyFromRunFacts(facts) };
         }
     };

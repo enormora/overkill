@@ -5,10 +5,16 @@ import { selectHistoryRemovals } from './history-retention-records.ts';
 
 const now = '2026-10-30T00:00:00.000Z';
 const metadata = [
-    { version: 1, id: 'new-pass', status: 'passed', startedAt: now },
-    { version: 1, id: 'old-pass', status: 'passed', startedAt: '2026-10-20T00:00:00.000Z' },
-    { version: 1, id: 'boundary-fail', status: 'failed', startedAt: '2026-10-23T00:00:00.000Z' },
-    { version: 1, id: 'expired-error', status: 'runner-error', startedAt: '2026-10-22T23:59:59.999Z' }
+    { version: 1, detail: 'detailed', id: 'new-pass', status: 'passed', startedAt: now },
+    { version: 1, detail: 'detailed', id: 'old-pass', status: 'passed', startedAt: '2026-10-20T00:00:00.000Z' },
+    { version: 1, detail: 'detailed', id: 'boundary-fail', status: 'failed', startedAt: '2026-10-23T00:00:00.000Z' },
+    {
+        version: 1,
+        detail: 'detailed',
+        id: 'expired-error',
+        status: 'runner-error',
+        startedAt: '2026-10-22T23:59:59.999Z'
+    }
 ] as const;
 const catalog = {
     records: metadata.map(function recordPath(value) {
@@ -34,16 +40,9 @@ export const testNode = suite('record and artifact retention', [
             detailedRunLimit: 1,
             successfulArtifactRunLimit: 1
         }, now);
-        scope.assert.deepEqual(
-            result.removedRecords.toSorted(function alphabetical(left, right) {
-                return left.localeCompare(right);
-            }),
-            [
-                '/state/runs/boundary-fail.json',
-                '/state/runs/expired-error.json',
-                '/state/runs/old-pass.json'
-            ]
-        );
+        scope.assert.deepEqual(result.removedRecords, []);
+        scope.assert.deepEqual(Array.from(result.detailedRecords), [ 'new-pass' ]);
+        scope.assert.equal(result.retainedRecords.size, catalog.records.length);
         scope.assert.deepEqual(
             result.removedArtifacts.toSorted(function alphabetical(left, right) {
                 return left.localeCompare(right);
@@ -56,14 +55,16 @@ export const testNode = suite('record and artifact retention', [
         return scope.assert.collect();
     }),
     test(
-        'zero limits remove successful records and artifacts but preserve recent failure evidence',
+        'zero detail limits retain compact records and preserve recent failure artifacts',
         function (scope: TestScope) {
             const result = selectHistoryRemovals(catalog, '/state/runs', {
                 ...defaultHistoryPolicy,
                 detailedRunLimit: 0,
                 successfulArtifactRunLimit: 0
             }, now);
-            scope.assert.equal(result.removedRecords.length, catalog.records.length);
+            scope.assert.equal(result.removedRecords.length, 0);
+            scope.assert.equal(result.detailedRecords.size, 0);
+            scope.assert.equal(result.retainedRecords.size, catalog.records.length);
             scope.assert.deepEqual(
                 result.removedArtifacts.toSorted(function alphabetical(left, right) {
                     return left.localeCompare(right);

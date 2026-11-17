@@ -14,14 +14,17 @@ function budgetHtml(scope: TestScope): string {
     scope.require.defined(budget);
     return renderBenchmarkHtml(
         createBenchmarkHtmlReport({
-            ...result,
-            perTest: [ {
-                ...measured,
-                benchmark: {
-                    ...benchmark,
-                    budgets: [ { ...budget, estimate: 5, minimum: 2, maximum: 10 } ]
-                }
-            } ]
+            result: {
+                ...result,
+                perTest: [ {
+                    ...measured,
+                    benchmark: {
+                        ...benchmark,
+                        budgets: [ { ...budget, estimate: 5, minimum: 2, maximum: 10 } ]
+                    }
+                } ]
+            },
+            context: { id: null, startedAt: null, facts: null }
         }),
         ''
     );

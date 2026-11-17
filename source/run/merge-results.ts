@@ -25,6 +25,7 @@ async function aggregateMergeResults(command: MergeResultsCommand): Promise<Merg
     return {
         id: ulid(),
         kind: 'merged',
+        detail: 'detailed',
         version: currentRunRecordVersion,
         status: 'started',
         startedAt,

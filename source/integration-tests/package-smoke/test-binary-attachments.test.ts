@@ -83,7 +83,7 @@ const configScript = [
     "    profiles: { attachments: { testFamily: 'integration', files: { include: ['attachment-smoke.test.mjs'] } } },",
     '    reporters: [defineReporter(function() { return {',
     "        kind: 'final-result', name: 'attachment-observer', dispose: null, sinks: [{kind: 'stdout-raw-primary'}],",
-    '        onResult(result) {',
+    '        onResult({ result }) {',
     "            if (result.status !== 'passed') process.stderr.write(JSON.stringify(result));",
     '            process.stdout.write(JSON.stringify({status: result.status, artifacts: result.artifacts}));',
     '        }',

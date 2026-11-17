@@ -9,7 +9,7 @@ import {
 import { campaignBaselineSchema } from './mutation-catalog.ts';
 import { mutationSandboxSchema } from './mutation-sandbox.ts';
 
-export const campaignProtocolVersion = 5;
+export const campaignProtocolVersion = 1;
 
 const jsonSchema: z.ZodType<JsonValue> = z.json();
 

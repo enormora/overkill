@@ -1,39 +1,16 @@
 import { z } from 'zod/v4';
-import type { WorkId } from '../engine/identity.ts';
 import { workIdSchema } from '../engine/identity-schema.ts';
 import { comparableCalibrationSchema } from '../bench/calibration-schema.ts';
+import type * as Values from './baseline-values.ts';
 import type {
     ChartedPerformanceBaselineAdapter,
     PerformanceBaselineAdapter,
-    PerformanceComparison,
-    PerformanceMetricComparison,
-    PerformanceProposalInput
+    PerformanceMetricComparison
 } from './performance-adapter.ts';
 
-type ObservedPerformance = PerformanceProposalInput & {
-    readonly kind: 'observed';
-    readonly comparison: PerformanceComparison | null;
-};
-type InapplicablePerformance = { readonly kind: 'not-applicable'; };
-type UnevaluatedPerformance = { readonly kind: 'not-evaluated'; readonly reason: string; };
-type ErroredPerformance = { readonly kind: 'error'; readonly reason: string; };
-type PerformanceObservationStates = {
-    readonly error: ErroredPerformance;
-    readonly inapplicable: InapplicablePerformance;
-    readonly observed: ObservedPerformance;
-    readonly unevaluated: UnevaluatedPerformance;
-};
-export type PerformanceObservationEvidence = PerformanceObservationStates[keyof PerformanceObservationStates];
-type AvailablePresentation = { readonly kind: 'available'; readonly metrics: readonly PerformanceMetricComparison[]; };
-type UnavailablePresentation = { readonly kind: 'unavailable'; readonly reason: string; };
-type ErroredPresentation = { readonly kind: 'error'; readonly reason: string; };
-export type PerformancePresentation = AvailablePresentation | ErroredPresentation | UnavailablePresentation;
-export type PerformanceBaselineEvidence = {
-    readonly adapter: string;
-    readonly work: WorkId;
-    readonly observation: PerformanceObservationEvidence;
-    readonly presentation: PerformancePresentation;
-};
+export type PerformanceObservationEvidence = Values.PerformanceObservationEvidence;
+export type PerformancePresentation = Values.PerformancePresentation;
+export type PerformanceBaselineEvidence = Values.PerformanceBaselineEvidence;
 const finite = z.number();
 const rangeSchema = z
     .strictObject({

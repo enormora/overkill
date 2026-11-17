@@ -13,7 +13,6 @@ import {
     performanceBaselineIdentity,
     stalePerformanceBaselines,
     performanceComparisonClass,
-    currentPerformanceNormalization,
     measurementComparisonClass,
     type PerformanceBaselineIdentity,
     type BaselineChange,
@@ -295,7 +294,7 @@ function evaluateCase(
 function belongsToRun(input: PerformanceWorkflowInput, baseline: StoredPerformanceBaseline): boolean {
     const sameProfile = baseline.profile.normalize('NFC') === input.profile.normalize('NFC');
     const sameMachine = baseline.expected.calibration.machineClass === input.calibration.machineClass;
-    const portable = currentPerformanceNormalization(baseline) !== null &&
+    const portable = baseline.normalization !== null &&
         performanceBaselineIdentity(baseline).machineClass !== baseline.expected.calibration.machineClass;
     return sameProfile && (sameMachine || portable);
 }

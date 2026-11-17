@@ -1,9 +1,9 @@
-import type { ResourceCheckFailure, ResourceCheckSnapshot } from '../resource-check-protocol.ts';
+import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import type {
-    FailedCheck,
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
+import type { BaselineRunReport } from './baseline-report.ts';
 import type {
     TestDebugArtifact,
     AdapterArtifact,
@@ -11,47 +11,33 @@ import type {
     CapturedOutputArtifact,
     RunArtifactId
 } from './run-artifact.ts';
-import type { PropertyInvocationEvidence } from './property-failure-evidence.ts';
-import type { TestContractFailureCode } from './test-contract-failure-code.ts';
 import type { AttemptId, CaseId, WorkId } from './identity.ts';
 
 import type { RunTimings } from './run-timings.ts';
 import type { RunProcessUsage } from './process-usage.ts';
 import type { CoverageArtifact, CoverageRunnerErrorCause } from './coverage-artifact.ts';
 import type { RuntimeAttachmentArtifact } from './runtime-attachment.ts';
-// eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
-import type { BenchmarkExecutionResult } from './benchmark-result.ts';
 
-export type PropertyCaseEvidence = {
-    readonly invocations: readonly PropertyInvocationEvidence[];
-};
+import type { PerTestResult, TestAttemptResult, TestOutcome, TestVerdict } from './test-result.ts';
 
-export type TestAttemptResult = {
-    readonly property: PropertyCaseEvidence | null;
-    readonly benchmark: BenchmarkExecutionResult | null;
-    readonly attempt: AttemptId;
-    readonly outcome: TestOutcome | null;
-    readonly verdict: TestVerdict;
-    readonly durationMicroseconds: number;
-};
-
-export type RetrySummary = {
-    readonly attempts: number;
-    readonly finalVerdict: TestVerdict;
-};
-
-export type PerTestResult = {
-    readonly property: PropertyCaseEvidence | null;
-    readonly benchmark: BenchmarkExecutionResult | null;
-    readonly attempts: NonEmptyReadonlyArray<TestAttemptResult>;
-    readonly retried: RetrySummary | null;
-    readonly definitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
-    readonly id: CaseId;
-    readonly outcome: TestOutcome | null;
-    readonly verdict: TestVerdict;
-    readonly workId: WorkId;
-    readonly durationMicroseconds: number;
-};
+export type {
+    PropertyCaseEvidence,
+    TestAttemptResult,
+    RetrySummary,
+    PerTestResult,
+    PassOutcome,
+    AssertionTestFailure,
+    BodyErrorTestFailure,
+    TestContractFailure,
+    HedgedDuplicateConflictFailure,
+    TestFailure,
+    FailOutcome,
+    SkipOutcome,
+    InconclusiveOutcome,
+    TestOutcome,
+    TestVerdict
+} from './test-result.ts';
+export type { BaselineRunReport, BaselineReportSummary } from './baseline-report.ts';
 
 type RunnerErrorSubtypeByName = {
     readonly witnessReplay: 'witness-replay';
@@ -73,85 +59,6 @@ type RunnerErrorSubtypeByName = {
 };
 
 type RunnerErrorSubtype = RunnerErrorSubtypeByName[keyof RunnerErrorSubtypeByName];
-
-export type PassOutcome = {
-    readonly checks?: never;
-    readonly kind: 'pass';
-    readonly reason?: never;
-};
-
-export type AssertionTestFailure = {
-    readonly checks: NonEmptyReadonlyArray<FailedCheck>;
-    readonly kind: 'assertion';
-};
-
-type TestErrorDetails = {
-    readonly message: string;
-    readonly name: string;
-    readonly stack: string | null;
-    readonly thrown: unknown;
-};
-
-export type BodyErrorTestFailure = {
-    readonly error: TestErrorDetails;
-    readonly kind: 'body-error';
-};
-
-export type TestContractFailure = {
-    readonly actual: unknown;
-    readonly code: TestContractFailureCode;
-    readonly expected: string;
-    readonly kind: 'test-contract';
-    readonly summary: string;
-};
-
-type TimeoutTestFailure = {
-    readonly deadlineMilliseconds: number;
-    readonly elapsedMilliseconds: number;
-    readonly kind: 'timeout';
-};
-
-type CleanupErrorTestFailure = {
-    readonly error: TestErrorDetails;
-    readonly kind: 'cleanup-error';
-};
-
-export type HedgedDuplicateConflictFailure = {
-    readonly artifact: RunArtifactId;
-    readonly kind: 'hedged-duplicate-conflict';
-    readonly summary: string;
-};
-
-export type TestFailure = (readonly [
-    AssertionTestFailure,
-    BodyErrorTestFailure,
-    CleanupErrorTestFailure,
-    HedgedDuplicateConflictFailure,
-    ResourceCheckFailure,
-    TestContractFailure,
-    TimeoutTestFailure
-])[number];
-
-export type FailOutcome = {
-    readonly failures: NonEmptyReadonlyArray<TestFailure>;
-    readonly kind: 'fail';
-    readonly reason?: never;
-};
-
-export type SkipOutcome = {
-    readonly checks?: never;
-    readonly kind: 'skip';
-    readonly reason: string;
-};
-
-export type InconclusiveOutcome = {
-    readonly checks?: never;
-    readonly kind: 'inconclusive';
-    readonly reason: string;
-};
-
-export type TestOutcome = FailOutcome | InconclusiveOutcome | PassOutcome | SkipOutcome;
-export type TestVerdict = TestOutcome['kind'] | 'crashed' | 'process-exhausted' | 'runtime-policy';
 
 export type RunnerError = {
     readonly attributedToAttempt: AttemptId | null;
@@ -552,6 +459,8 @@ export type OrphanedNode = {
 };
 
 export type RunResult = {
+    readonly preparationFacts: Readonly<Record<string, unknown>> | null;
+    readonly baselineReports: readonly BaselineRunReport[];
     readonly resourceChecks: readonly ResourceCheckSnapshot[];
     readonly artifacts: readonly RunArtifact[];
     readonly bySuite: Readonly<Record<string, SuiteRunCounts>>;

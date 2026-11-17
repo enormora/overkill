@@ -1,3 +1,4 @@
+import { testNode as compactEvidence } from './compact-run-record.test.ts';
 import { runIfMain } from '#test-runner';
 import { trackRunnerErrorDelivery } from '../engine/reporter-error-delivery-tracking.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
@@ -12,26 +13,25 @@ type RunResult = Awaited<ReturnType<typeof executeRecordedRun>>;
 
 async function assertPolicy(scope: TestScope, persist: 'always' | 'on-demand', record: boolean): Promise<void> {
     const fixture = runRecordPolicyFixture(persist, record);
-    const enabled = persist === 'always' || record;
     const result = await executeRecordedRun(
         '/project',
         fixture.input,
         fixture.dependencies,
         async function execute(session) {
-            scope.assert.equal(session !== null, enabled);
-            scope.assert.equal(fixture.writes.length, enabled ? 1 : 0);
+            scope.assert.notEqual(session, null);
+            scope.assert.equal(fixture.writes.length, 1);
             return runResultFactory.build({ status: 'passed' });
         }
     );
     scope.assert.equal(result.status, 'passed');
-    scope.assert.equal(fixture.writes.length, enabled ? 2 : 0);
-    if (enabled) {
-        scope.assert.equal(fixture.writes[0]?.status, 'started');
-        scope.assert.equal(fixture.writes.at(-1)?.status, 'completed');
-    }
+    scope.assert.equal(fixture.writes.at(-1)?.detail, persist === 'always' || record ? 'detailed' : 'compact');
+    scope.assert.equal(fixture.writes.length, 2);
+    scope.assert.equal(fixture.writes[0]?.status, 'started');
+    scope.assert.equal(fixture.writes.at(-1)?.status, 'completed');
 }
 
 export const testNode = suite('run record policy', [
+    compactEvidence,
     test('maintenance startup failures remain non-fatal', async function (scope: TestScope) {
         const fixture = runRecordPolicyFixture('always', false);
         const result = runnerResult(

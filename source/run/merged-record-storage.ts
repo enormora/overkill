@@ -6,7 +6,6 @@ import { serializeRunDiagnostics } from './run-record-result.ts';
 import { runRecordPersistenceError } from './run-record-error.ts';
 import { createNodeHistoryStorage } from './node-history-storage.ts';
 import { updateCompactHistory } from './history-storage.ts';
-import { historyRecordSchema } from './history-record.ts';
 import type { MergeResultsCommand, MergedRunRecord } from './merge-results-types.ts';
 
 export type MergedRecordStorage = {
@@ -50,7 +49,7 @@ export async function createMergedRecordStorage(
     async function write(): Promise<void> {
         await store.write(file, `${JSON.stringify(current)}\n`);
         const now = new Date(createClock().currentUnixEpochMilliseconds);
-        await updateCompactHistory(history, historyRecordSchema.parse(current), {
+        await updateCompactHistory(history, current, {
             directory,
             policy: command.config.history,
             now: now.toISOString(),

@@ -28,27 +28,25 @@ function familyProfile(definition: TestFamily<null>): DefinedFamilyProfile {
 }
 
 export const testNode = suite('family record compatibility', [
-    ...([ 2, 3 ] as const).map(function mergedVersion(version) {
-        return test(`inspects merged version ${version} without resolving family modules`, function (scope) {
-            const record = completedHistoryRecord('historical-merged');
-            const parsed = historyRecordSchema.parse({
-                ...record,
-                kind: 'merged',
-                version,
-                facts: {
-                    execution: {
-                        ...record.execution,
-                        profile: record.request.profile,
-                        testFamily: '@missing/checker'
-                    }
+    test('inspects merged records without resolving family modules', function (scope) {
+        const record = completedHistoryRecord('merged');
+        const parsed = historyRecordSchema.parse({
+            ...record,
+            kind: 'merged',
+            facts: {
+                implementations: null,
+                execution: {
+                    ...record.execution,
+                    profile: record.request.profile,
+                    testFamily: '@missing/checker'
                 }
-            });
-            scope.assert.equal(parsed.version, version);
-            scope.assert.equal(parsed.facts?.execution.testFamily, '@missing/checker');
-            scope.assert.equal(parsed.request.profile, record.request.profile);
-            scope.assert.equal(parsed.replayPlan, null);
-            return scope.assert.collect();
+            }
         });
+        scope.assert.equal(parsed.version, 1);
+        scope.assert.equal(parsed.facts?.execution.testFamily, '@missing/checker');
+        scope.assert.equal(parsed.request.profile, record.request.profile);
+        scope.assert.equal(parsed.replayPlan, null);
+        return scope.assert.collect();
     }),
     test('rejects replacement of a recorded family with a built-in profile', async function (scope: TestScope) {
         const current = normalizeConfig({ profiles: { custom: { testFamily: 'microtest' } } }).profiles['custom'];
@@ -104,27 +102,24 @@ export const testNode = suite('family record compatibility', [
         }, { message: 'Frozen family identity or implementation version changed; collect a new run.' });
         return scope.assert.collect();
     }),
-    ...([ 1, 2, 3 ] as const).map(function historicalVersion(version) {
-        return test(`inspects version ${version} without resolving family modules`, function (scope) {
-            const record = completedHistoryRecord('historical');
-            const parsed = historyRecordSchema.parse({
-                ...record,
-                version,
-                facts: { execution: { testFamily: '@missing/checker' } },
-                replayProfile: {
-                    kind: 'family',
-                    family: {
-                        id: '@missing/checker',
-                        version: 'historical',
-                        module: { moduleUrl: 'file:///missing/checker.ts', exportName: 'family' }
-                    },
-                    policy: {}
-                }
-            });
-            scope.assert.equal(parsed.version, version);
-            scope.assert.equal(parsed.facts?.execution.testFamily, '@missing/checker');
-            return scope.assert.collect();
+    test('inspects single records without resolving family modules', function (scope) {
+        const record = completedHistoryRecord('single');
+        const parsed = historyRecordSchema.parse({
+            ...record,
+            facts: { implementations: null, execution: { testFamily: '@missing/checker' } },
+            replayProfile: {
+                kind: 'family',
+                family: {
+                    id: '@missing/checker',
+                    version: '1',
+                    module: { moduleUrl: 'file:///missing/checker.ts', exportName: 'family' }
+                },
+                policy: {}
+            }
         });
+        scope.assert.equal(parsed.version, 1);
+        scope.assert.equal(parsed.facts?.execution.testFamily, '@missing/checker');
+        return scope.assert.collect();
     })
 ]);
 

@@ -337,6 +337,8 @@ export function createRunResultFromCollectedPlan(
     const summary = countOutcomes(plan, perTest);
 
     return {
+        preparationFacts: null,
+        baselineReports: [],
         resourceChecks: [],
         artifacts: [],
         bySuite: countSuites(plan, perTest),

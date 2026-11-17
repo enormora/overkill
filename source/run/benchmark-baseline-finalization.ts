@@ -4,13 +4,12 @@ import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import type { BaselineChange, BaselineUpdateMode, BaselineWriteOutcome } from '../baselines/performance-baseline.ts';
 import { successfulPerformanceRun, type PerformanceWorkflow } from '../baselines/performance-workflow.ts';
 import { performanceBaselineError } from '../baselines/performance-evaluation.ts';
-import { performanceReportArtifact, type PerformanceBaselineReport } from '../baselines/performance-report.ts';
+import { withPerformanceBaselineReport, type PerformanceBaselineReport } from '../baselines/performance-report.ts';
 import type { PerformanceBaselineEvidence } from '../baselines/performance-presentation.ts';
 import type { ComparableCalibration } from '../packages/run/benchmark-calibration.entry-point.ts';
 
 type BaselineFinalizationInput = {
     readonly calibration: ComparableCalibration;
-    readonly capturedAtMicroseconds: () => number;
     readonly completeInventory: boolean;
     readonly maxBytes: number;
     readonly mode: BaselineUpdateMode;
@@ -26,7 +25,6 @@ type BaselineCommit = {
 
 function reportFor(input: BaselineFinalizationInput, writeOutcome: BaselineWriteOutcome): PerformanceBaselineReport {
     return {
-        version: 2,
         comparisons: input.comparisons,
         calibration: input.calibration,
         changes: input.workflow.changes,
@@ -39,8 +37,7 @@ async function commitChanges(
     written: readonly BaselineChange[],
     recordWritten: (change: BaselineChange) => void
 ): Promise<BaselineWriteOutcome> {
-    performanceReportArtifact({
-        capturedAtMicroseconds: 0,
+    withPerformanceBaselineReport({
         maxBytes: input.maxBytes,
         report: reportFor(input, { changes: input.workflow.changes, kind: 'written' }),
         result: input.result
@@ -75,33 +72,29 @@ async function commitBaselines(input: BaselineFinalizationInput): Promise<Baseli
     }
 }
 
-function attachCoreReport(input: BaselineFinalizationInput, outcome: BaselineWriteOutcome): RunResult {
+function retainCoreReport(input: BaselineFinalizationInput, outcome: BaselineWriteOutcome): RunResult {
     try {
-        const artifact = performanceReportArtifact({
-            capturedAtMicroseconds: input.capturedAtMicroseconds(),
+        return withPerformanceBaselineReport({
             maxBytes: input.maxBytes,
             report: reportFor(input, outcome),
             result: input.result
         });
-        return { ...input.result, artifacts: [ ...input.result.artifacts, artifact ] };
     } catch {
         return input.result;
     }
 }
 
-async function attachReport(input: BaselineFinalizationInput, outcome: BaselineWriteOutcome): Promise<RunResult> {
+async function retainReport(input: BaselineFinalizationInput, outcome: BaselineWriteOutcome): Promise<RunResult> {
     try {
-        const artifact = performanceReportArtifact({
-            capturedAtMicroseconds: input.capturedAtMicroseconds(),
+        return withPerformanceBaselineReport({
             maxBytes: input.maxBytes,
             report: reportFor(input, outcome),
             result: input.result
         });
-        return { ...input.result, artifacts: [ ...input.result.artifacts, artifact ] };
     } catch (error: unknown) {
         const failure = performanceBaselineError(error, null);
         const failed = appendRunnerErrors(input.result, [ failure, ...await input.notify([ failure ]) ]);
-        return attachCoreReport({ ...input, comparisons: [], result: failed }, outcome);
+        return retainCoreReport({ ...input, comparisons: [], result: failed }, outcome);
     }
 }
 
@@ -114,7 +107,7 @@ export async function finalizeBenchmarkBaselines(
     const presentation = input.workflow.present();
     const finalized = appendRunnerErrors(result, [ ...committed.errors, ...presentation.errors ]);
     const reportingErrors = await input.notify([ ...completion.errors, ...committed.errors, ...presentation.errors ]);
-    return await attachReport({
+    return await retainReport({
         ...input,
         comparisons: presentation.comparisons,
         result: appendRunnerErrors(finalized, reportingErrors)

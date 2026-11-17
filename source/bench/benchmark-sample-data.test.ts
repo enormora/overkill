@@ -5,15 +5,10 @@ import { currentMeasurementContext } from './measurement-context.ts';
 
 const reading = availableMetric(7, { collector: 'custom', scope: 'custom', unit: 'ticks' });
 export const testNode = suite('versioned benchmark samples', [
-    test('reads historical attachments with absent attribution', function (scope) {
-        const parsed = readRawBenchmarkSamples({ value: [ reading ], version: [ reading ] });
-        scope.assert.deepEqual(parsed, {
-            version: 2,
-            metrics: {
-                value: [ { reading: structuredClone(reading), attribution: null } ],
-                version: [ { reading: structuredClone(reading), attribution: null } ]
-            }
-        });
+    test('rejects unversioned attachments instead of guessing attribution', function (scope) {
+        scope.assert.throws(function unversionedSamples() {
+            readRawBenchmarkSamples({ value: [ reading ] });
+        }, { type: Error });
         return scope.assert.collect();
     }),
     test('preserves invocation and target identity in current envelopes', function (scope) {
@@ -22,7 +17,7 @@ export const testNode = suite('versioned benchmark samples', [
             invocation: { ...context.invocation, index: 9 },
             target: { ...context.target.identity, document: 'document-one' }
         };
-        const parsed = readRawBenchmarkSamples({ version: 2, metrics: { value: [ { reading, attribution } ] } });
+        const parsed = readRawBenchmarkSamples({ version: 1, metrics: { value: [ { reading, attribution } ] } });
         scope.assert.deepEqual(parsed.metrics['value'] ?? [], [ { reading, attribution } ]);
         return scope.assert.collect();
     }),

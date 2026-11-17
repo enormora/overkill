@@ -1,10 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import type { z } from 'zod/v4';
 
-export const currentRunRecordVersion = 5;
-export const implementationRunRecordVersion = 4;
-export const previousRunRecordVersion = 2;
-export const familyRunRecordVersion = 3;
+export const currentRunRecordVersion = 1;
 function recordFields(value: unknown): value is Readonly<Record<string, unknown>> {
     return typeof value === 'object' && value !== null;
 }
@@ -35,7 +32,7 @@ function validateCurrentImplementationRecord(
     value: Readonly<Record<string, unknown>>,
     context: Readonly<z.RefinementCtx>
 ): void {
-    if (value['version'] === currentRunRecordVersion || value['version'] === implementationRunRecordVersion) {
+    if (value['version'] === currentRunRecordVersion) {
         requireImplementationEvidence(value['facts'], context);
         if (Object.hasOwn(value, 'replayPlan')) {
             requireImplementationEvidence(value['replayPlan'], context);

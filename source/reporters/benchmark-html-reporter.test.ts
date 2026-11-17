@@ -26,22 +26,25 @@ function unboundedBenchmarkHtml(scope: TestScope): string {
     scope.require.defined(budget);
     return renderBenchmarkHtml(
         createBenchmarkHtmlReport({
-            ...result,
-            perTest: [ {
-                ...measured,
-                benchmark: {
-                    ...benchmark,
-                    budgets: [ {
-                        ...budget,
-                        minimum: 1,
-                        maximum: null,
-                        estimate: null,
-                        interval: { lower: null, upper: null },
-                        precise: false,
-                        decision: 'undecided' as const
-                    } ]
-                }
-            } ]
+            result: {
+                ...result,
+                perTest: [ {
+                    ...measured,
+                    benchmark: {
+                        ...benchmark,
+                        budgets: [ {
+                            ...budget,
+                            minimum: 1,
+                            maximum: null,
+                            estimate: null,
+                            interval: { lower: null, upper: null },
+                            precise: false,
+                            decision: 'undecided' as const
+                        } ]
+                    }
+                } ]
+            },
+            context: { id: null, startedAt: null, facts: null }
         }),
         ''
     );
@@ -55,7 +58,6 @@ function lifecycleReport(): string {
     const benchmark = {
         ...measuredTest.benchmark,
         lifecycle: {
-            version: 3 as const,
             measurement: null,
             garbageCollection: { mode: 'after-sample' as const, completed: 36, failures: 0 },
             policy: {
@@ -73,7 +75,20 @@ function lifecycleReport(): string {
         }
     };
     return renderBenchmarkHtml(
-        createBenchmarkHtmlReport({ ...result, perTest: [ { ...measuredTest, benchmark } ] }),
+        createBenchmarkHtmlReport({
+            result: {
+                ...result,
+                perTest: [ {
+                    ...measuredTest,
+                    benchmark
+                } ]
+            },
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            }
+        }),
         ''
     );
 }
@@ -91,7 +106,17 @@ export const testNode = suite('benchmark HTML reporter', [
         return scope.assert.collect();
     }),
     test('identifies historical lifecycle evidence as unavailable', function (scope: TestScope) {
-        const html = renderBenchmarkHtml(createBenchmarkHtmlReport(benchmarkHtmlFixture('historical')), '');
+        const html = renderBenchmarkHtml(
+            createBenchmarkHtmlReport({
+                result: benchmarkHtmlFixture('historical'),
+                context: {
+                    id: null,
+                    startedAt: null,
+                    facts: null
+                }
+            }),
+            ''
+        );
         scope.assert.includes(html, 'Lifecycle evidence unavailable.');
         return scope.assert.collect();
     }),
@@ -101,7 +126,18 @@ export const testNode = suite('benchmark HTML reporter', [
         }, { message: 'Benchmark HTML report outputFile must not be blank.' });
         const result = benchmarkHtmlFixture('unmeasured');
         scope.assert.throws(function () {
-            createBenchmarkHtmlReport({ ...result, artifacts: [], perTest: [] });
+            createBenchmarkHtmlReport({
+                result: {
+                    ...result,
+                    artifacts: [],
+                    perTest: []
+                },
+                context: {
+                    id: null,
+                    startedAt: null,
+                    facts: null
+                }
+            });
         }, { message: 'Benchmark HTML reporter requires benchmark result evidence.' });
         return scope.assert.collect();
     }),
@@ -115,7 +151,14 @@ export const testNode = suite('benchmark HTML reporter', [
         return scope.assert.collect();
     }),
     test('retains authoritative intervals without embedding raw observations', function (scope: TestScope) {
-        const report = createBenchmarkHtmlReport(benchmarkHtmlFixture('latency'));
+        const report = createBenchmarkHtmlReport({
+            result: benchmarkHtmlFixture('latency'),
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            }
+        });
         const row = report.charts.groups[0]?.rows[0];
         scope.require.defined(row);
         scope.assert.deepEqual(row.box, [ 1, 1.75, 2.5, 3.25, 4 ]);
@@ -127,7 +170,14 @@ export const testNode = suite('benchmark HTML reporter', [
         return scope.assert.collect();
     }),
     test('escapes untrusted names in HTML and embedded chart scripts', function (scope: TestScope) {
-        const report = createBenchmarkHtmlReport(benchmarkHtmlFixture('</script><script>attack()</script>'));
+        const report = createBenchmarkHtmlReport({
+            result: benchmarkHtmlFixture('</script><script>attack()</script>'),
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            }
+        });
         const html = renderBenchmarkHtml(report, 'window.renderBenchmarkCharts = () => {};');
         scope.assert.includes(html, '&lt;/script&gt;');
         scope.assert.equal(html.includes('</script><script>attack()'), false);
@@ -147,8 +197,22 @@ export const testNode = suite('benchmark HTML reporter', [
         const reporter = createBenchmarkHtmlReporter({ outputFile })(
             createReportingContext({ projectRoot: process.cwd() })
         );
-        await reporter.onResult(benchmarkHtmlFixture('first'));
-        await reporter.onResult(benchmarkHtmlFixture('replacement'));
+        await reporter.onResult({
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            },
+            result: benchmarkHtmlFixture('first')
+        });
+        await reporter.onResult({
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            },
+            result: benchmarkHtmlFixture('replacement')
+        });
         const html = await readFile(outputFile, 'utf8');
         scope.assert.includes(html, 'replacement');
         scope.assert.includes(html, 'renderBenchmarkCharts');

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/witness-file.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { writeCorpusIndex } from '../test-support/corpus-index.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { capturePropertyInput } from '../property/property-graph.ts';
 import { inspectCorpus, promoteWitness, type CorpusRequest } from '../packages/run/run.entry-point.ts';
@@ -26,7 +27,7 @@ function replayableWitness(): PropertyWitnessFile {
     });
 }
 export const testNode = suite('corpus error handling', [
-    test('missing, malformed, and unsupported sources fail inspection', async function (scope) {
+    test('missing, malformed, and unsupported sources fail inspection', async function (scope: TestScope) {
         const cwd = await corpusDirectory(scope);
         await writeFile(path.join(cwd, 'malformed.json'), '{');
         await writeFile(path.join(cwd, 'unsupported.json'), JSON.stringify({ version: 1, kind: 'simulation' }));
@@ -37,11 +38,17 @@ export const testNode = suite('corpus error handling', [
         }
         return scope.assert.collect();
     }),
-    test('unknown and duplicate cache IDs cannot select an arbitrary witness', async function (scope) {
+    test('unknown and duplicate cache IDs cannot select an arbitrary witness', async function (scope: TestScope) {
         const cwd = await corpusDirectory(scope);
-        const entry = { id: 'duplicate', savedAt: '', entry: replayableWitness() };
-        await writeFile(path.join(cwd, 'cache.json'), JSON.stringify({ version: 1, entries: [ entry, entry ] }));
-        for (const entryId of [ 'missing', 'duplicate' ]) {
+        const [ duplicate ] = await writeCorpusIndex(
+            path.join(
+                cwd,
+                'cache.json'
+            ),
+            [ replayableWitness(), replayableWitness() ]
+        );
+        scope.require.defined(duplicate);
+        for (const entryId of [ 'missing', duplicate ]) {
             await scope.assert.rejects(async function ambiguous() {
                 await inspectCorpus({
                     ...inspectionRequest(cwd, 'cache.json'),
@@ -51,16 +58,19 @@ export const testNode = suite('corpus error handling', [
         }
         return scope.assert.collect();
     }),
-    test('empty and unselected multi-entry caches cannot be promoted', async function (scope) {
+    test('empty and unselected multi-entry caches cannot be promoted', async function (scope: TestScope) {
         const cwd = await corpusDirectory(scope);
+        const witness = replayableWitness();
         for (
-            const entries of [ [], [ { id: 'one', savedAt: '', entry: replayableWitness() }, {
-                id: 'two',
-                savedAt: '',
-                entry: replayableWitness()
+            const entries of [ [], [ witness, {
+                ...witness,
+                counterexample: {
+                    ...witness.counterexample,
+                    payload: []
+                }
             } ] ]
         ) {
-            await writeFile(path.join(cwd, 'cache.json'), JSON.stringify({ version: 1, entries }));
+            await writeCorpusIndex(path.join(cwd, 'cache.json'), entries);
             await scope.assert.rejects(async function unselected() {
                 await promoteWitness({
                     ...inspectionRequest(cwd, 'cache.json'),
@@ -75,23 +85,23 @@ export const testNode = suite('corpus error handling', [
     }),
     test(
         'cache inspection diagnoses incompatible inputs while selected inspection stays strict',
-        async function (scope) {
+        async function (scope: TestScope) {
             const cwd = await corpusDirectory(scope);
-            const entry = { id: 'incompatible', savedAt: '', entry: propertyCorpusEntry };
-            await writeFile(path.join(cwd, 'cache.json'), JSON.stringify({ version: 1, entries: [ entry ] }));
+            const [ entryId ] = await writeCorpusIndex(path.join(cwd, 'cache.json'), [ propertyCorpusEntry ]);
+            scope.require.defined(entryId);
             const result = await inspectCorpus(inspectionRequest(cwd, 'cache.json'));
             scope.assert.deepEqual(result.entries, []);
             scope.assert.equal(result.diagnostics.length, 1);
             await scope.assert.rejects(async function strict() {
                 await inspectCorpus({
                     ...inspectionRequest(cwd, 'cache.json'),
-                    source: { kind: 'cache-entry', path: 'cache.json', entryId: 'incompatible' }
+                    source: { kind: 'cache-entry', path: 'cache.json', entryId }
                 });
             }, { message: /Unsupported corpus transport format/v });
             return scope.assert.collect();
         }
     ),
-    test('standard inspection rejects custom codecs and malformed graph payloads', async function (scope) {
+    test('standard inspection rejects custom codecs and malformed graph payloads', async function (scope: TestScope) {
         const cwd = await corpusDirectory(scope);
         const original = replayableWitness();
         for (
@@ -107,23 +117,26 @@ export const testNode = suite('corpus error handling', [
         }
         return scope.assert.collect();
     }),
-    test('source destinations and filesystem failures preserve the original witness', async function (scope) {
-        const cwd = await corpusDirectory(scope);
-        const content = JSON.stringify(replayableWitness());
-        await writeFile(path.join(cwd, 'witness.json'), content);
-        await writeFile(path.join(cwd, 'blocked'), 'existing file');
-        for (const destination of [ 'witness.json', 'blocked/output.json' ]) {
-            await scope.assert.rejects(async function unavailable() {
-                await promoteWitness({
-                    ...inspectionRequest(cwd, 'witness.json'),
-                    destination,
-                    async beforeWrite() {
-                        return undefined;
-                    }
-                });
-            }, { name: 'CorpusOperationError' });
+    test(
+        'source destinations and filesystem failures preserve the original witness',
+        async function (scope: TestScope) {
+            const cwd = await corpusDirectory(scope);
+            const content = JSON.stringify(replayableWitness());
+            await writeFile(path.join(cwd, 'witness.json'), content);
+            await writeFile(path.join(cwd, 'blocked'), 'existing file');
+            for (const destination of [ 'witness.json', 'blocked/output.json' ]) {
+                await scope.assert.rejects(async function unavailable() {
+                    await promoteWitness({
+                        ...inspectionRequest(cwd, 'witness.json'),
+                        destination,
+                        async beforeWrite() {
+                            return undefined;
+                        }
+                    });
+                }, { name: 'CorpusOperationError' });
+            }
+            scope.assert.equal(await readFile(path.join(cwd, 'witness.json'), 'utf8'), content);
+            return scope.assert.collect();
         }
-        scope.assert.equal(await readFile(path.join(cwd, 'witness.json'), 'utf8'), content);
-        return scope.assert.collect();
-    })
+    )
 ]);

@@ -4,8 +4,8 @@ import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
 import { createMemoryHistoryStorage } from '../test-support/memory-history-storage.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
-import { updateCompactHistory } from './history-storage.ts';
-import { readDurationProjection, readRequiredCompactHistory } from './history-reader.ts';
+import { readRequiredCompactHistory, updateCompactHistory } from './history-storage.ts';
+import { readDurationProjection } from './history-reader.ts';
 
 const directory = '/project/state';
 const context = { directory, policy: defaultHistoryPolicy, now: historyTimestamp, testFamily: 'microtest' };
@@ -34,34 +34,28 @@ async function leavePendingCompletion(scope: TestScope, store: HistoryStorage): 
 }
 
 export const testNode = suite('history reader', [
-    test('required history repairs an older index before reading outcomes', async function (scope: TestScope) {
+    test('required history rejects older indexes without overwriting them', async function (scope: TestScope) {
         const store = await committedStore();
         const indexPath = `${directory}/history/index.json`;
         const current = await store.read(indexPath);
         scope.require.defined(current);
         await store.write(indexPath, current.replace('"version":1', '"version":0'));
-        let repairs = 0;
-        const index = await readRequiredCompactHistory(store, directory, async function repairLegacyIndex() {
-            repairs += 1;
-            await store.write(indexPath, current);
-        });
-        scope.assert.equal(repairs, 1);
-        scope.assert.equal(index.summaries[0]?.id, 'completed');
+        await scope.assert.rejects(async function unsupportedHistory() {
+            await readRequiredCompactHistory(store, directory);
+        }, { message: /overkill history compact/ });
+        scope.assert.equal(await store.read(indexPath), current.replace('"version":1', '"version":0'));
         return scope.assert.collect();
     }),
     test(
         'required selection history rejects missing and corrupt state without rebuilding it',
         async function (scope: TestScope) {
             const store = createMemoryHistoryStorage();
-            const repair = async function unexpectedRepair(): Promise<never> {
-                throw new Error('Unexpected automatic repair.');
-            };
             await scope.assert.rejects(async function missingHistory() {
-                await readRequiredCompactHistory(store, directory, repair);
+                await readRequiredCompactHistory(store, directory);
             }, { message: /overkill history compact/ });
             await store.write(`${directory}/history/index.json`, '{');
             await scope.assert.rejects(async function corruptHistory() {
-                await readRequiredCompactHistory(store, directory, repair);
+                await readRequiredCompactHistory(store, directory);
             }, { message: /overkill history compact/ });
             return scope.assert.collect();
         }
@@ -78,7 +72,7 @@ export const testNode = suite('history reader', [
             return scope.assert.collect();
         }
     ),
-    test('recorded duration history requires a readable completion ledger', async function (scope: TestScope) {
+    test('missing aggregate history is cold and corrupt history requires repair', async function (scope: TestScope) {
         const store = await committedStore();
         const missing = {
             ...store,
@@ -86,9 +80,7 @@ export const testNode = suite('history reader', [
                 return filePath.endsWith('/history/index.json') ? null : await store.read(filePath);
             }
         };
-        await scope.assert.rejects(async function missingLedger() {
-            await readDurationProjection(missing, directory);
-        }, { message: /overkill history compact/ });
+        scope.assert.equal(await readDurationProjection(missing, directory), null);
         await store.write(`${directory}/history/index.json`, '{');
         await scope.assert.rejects(async function corruptLedger() {
             await readDurationProjection(store, directory);

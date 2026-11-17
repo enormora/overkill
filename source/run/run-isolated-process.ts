@@ -1,4 +1,4 @@
-import { finalizeResultWithDurationHistory, readRunDurationHistory } from './run-state-finalization.ts';
+import { finalizeRunEvidence, readRunDurationHistory } from './run-state-finalization.ts';
 import {
     createResultFromResolutionError,
     reportCollectionErrorResult
@@ -229,8 +229,7 @@ async function executeWorkerPoolRunResult(options: WorkerPoolRunResultInput): Pr
             record: options.record,
             async finalizeResult(resolvedRun, completion) {
                 options.record?.retainPlacementTrace(completion.placementTrace);
-                const finalized = await finalizeResultWithDurationHistory(
-                    dependencies,
+                const finalized = await finalizeRunEvidence(
                     resolvedRun,
                     options.baseline?.prepareResult(completion.result) ?? completion.result,
                     timing

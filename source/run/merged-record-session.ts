@@ -1,4 +1,5 @@
 import { createClock } from '@enormora/clock';
+import { withRunIdentity } from '../execution-ownership.ts';
 import { createReporterDispatcher, type ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import { createBriefFinalResultReporter } from '../reporters/brief-final-result-reporter.ts';
 import { createMergedRecordStorage } from './merged-record-storage.ts';
@@ -74,9 +75,14 @@ export async function executeMergedRecord(
     const storage = await createMergedRecordStorage(command, initial);
     const dispatcher = mergeDispatcher();
     const tracked = await dispatcher.trackRunnerErrorDelivery(async function deliverMergedRecord() {
-        return await runMerge(command, storage, dispatcher);
+        return await withRunIdentity(initial, async function deliverOwnedMerge() {
+            return await runMerge(command, storage, dispatcher);
+        });
     });
-    const maintenance = await maintainHistory({ projectRoot: command.cwd, config: command.config });
+    const maintenance = await maintainHistory(
+        { projectRoot: command.cwd, config: command.config },
+        performance.now.bind(performance)
+    );
     return {
         record: tracked.result,
         diagnostics: [

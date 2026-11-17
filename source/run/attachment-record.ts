@@ -72,6 +72,7 @@ export async function createAttachmentRecord(
             request: resolved.request
         }, dependencies)
     );
+    record.requireDetails();
     if (session === null) {
         await record.start(null);
     }

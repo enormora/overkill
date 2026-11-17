@@ -3,20 +3,14 @@ import type { RunArtifact } from '../engine/run-result.ts';
 import type {
     ComparableCalibration as ComparableCalibrationDefinition
 } from '../bench/host-calibration-result.ts';
+import type * as Values from './baseline-values.ts';
 import type { BaselineJson as SharedBaselineJson, BaselineObservation, BaselineComparison } from './baseline-model.ts';
 
 export type BaselineJson = SharedBaselineJson;
 
-export type PerformanceBaselineValue = {
-    readonly calibration: ComparableCalibration;
-    readonly value: BaselineJson;
-};
+export type PerformanceBaselineValue = Values.PerformanceBaselineValue;
 export type PerformanceObservation = BaselineObservation<BaselineJson>;
-export type BaselineDiagnostic = {
-    readonly actual: BaselineJson;
-    readonly expected: BaselineJson;
-    readonly summary: string;
-};
+export type BaselineDiagnostic = Values.BaselineDiagnostic;
 export type PerformanceComparison = BaselineComparison<BaselineDiagnostic>;
 export type PerformanceObservationInput = {
     readonly artifacts: readonly RunArtifact[];
@@ -37,24 +31,9 @@ export type PerformanceBaselineOperations = {
     readonly propose: (input: PerformanceProposalInput) => BaselineJson;
     readonly compare: (input: PerformanceComparisonInput) => PerformanceComparison;
 };
-type MissingMetricReference = { readonly kind: 'missing'; };
-type PointMetricReference = { readonly kind: 'value'; readonly value: number; };
-type RangeMetricReference = {
-    readonly kind: 'range';
-    readonly minimum: number | null;
-    readonly maximum: number | null;
-};
-export type PerformanceMetricReference = MissingMetricReference | PointMetricReference | RangeMetricReference;
-type RawMetricScale = { readonly kind: 'raw'; };
-type NormalizedMetricScale = { readonly kind: 'normalized'; readonly description: string; };
-export type PerformanceMetricScale = NormalizedMetricScale | RawMetricScale;
-export type PerformanceMetricComparison = {
-    readonly name: string;
-    readonly unit: string;
-    readonly scale: PerformanceMetricScale;
-    readonly actual: number | null;
-    readonly expected: PerformanceMetricReference;
-};
+export type PerformanceMetricReference = Values.PerformanceMetricReference;
+export type PerformanceMetricScale = Values.PerformanceMetricScale;
+export type PerformanceMetricComparison = Values.PerformanceMetricComparison;
 export type ChartedPerformanceBaselineAdapter = PerformanceBaselineOperations & {
     readonly describeMetrics: (input: PerformanceProposalInput) => readonly PerformanceMetricComparison[];
 };

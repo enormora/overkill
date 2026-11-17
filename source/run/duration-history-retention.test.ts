@@ -18,7 +18,7 @@ const observation = {
         }
     }
 } as const;
-const context = { now: historyTimestamp, policy: defaultHistoryPolicy, source: 'run' as const };
+const context = { now: historyTimestamp, policy: defaultHistoryPolicy };
 
 export const testNode = suite('duration history retention', [
     test('observation trimming preserves counts and accumulated duration', function (scope: TestScope) {
@@ -40,10 +40,9 @@ export const testNode = suite('duration history retention', [
             run: { id: 'expired', startedAt: '2026-01-01T00:00:00.000Z' }
         });
         scope.assert.equal(state.entries.length, 0);
-        scope.assert.equal(state.appliedRuns.length, 0);
         return scope.assert.collect();
     }),
-    test('stale work entries and ingestion receipts are pruned together', function (scope: TestScope) {
+    test('stale work entries are pruned', function (scope: TestScope) {
         const earlier = '2026-01-01T00:00:00.000Z';
         const initial = ingestDurationState(emptyDurationState(earlier), [ {
             ...observation,
@@ -51,7 +50,6 @@ export const testNode = suite('duration history retention', [
         } ], { ...context, now: earlier, run: { id: 'old', startedAt: earlier } });
         const retained = ingestDurationState(initial, [], { ...context, run: null });
         scope.assert.equal(retained.entries.length, 0);
-        scope.assert.equal(retained.appliedRuns.length, 0);
         return scope.assert.collect();
     })
 ]);

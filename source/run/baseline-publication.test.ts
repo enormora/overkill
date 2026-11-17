@@ -2,6 +2,7 @@ import path from 'node:path';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { storedBaseline } from '../test-support/baseline-case-fixture.ts';
 import { createOrdinaryBaselineFixture } from '../test-support/ordinary-baseline-fixture.ts';
+import { storedOrdinaryBaselineSchema, baselineFilename } from './baseline-record.ts';
 import { createBaselineStorage } from './baseline-storage.ts';
 import { createBaselinePublication } from './baseline-publication.ts';
 import type { OrdinaryBaselineStore } from './baseline-store.ts';
@@ -22,7 +23,11 @@ export const testNode = suite('ordinary baseline batch publication', [
         async function (scope: TestScope) {
             const fixture = await createOrdinaryBaselineFixture(scope, 'in-process', 'text');
             const store = await fixture.store();
-            const storage = createBaselineStorage({
+            const storage = createBaselineStorage<typeof storedBaseline>({
+                schema: storedOrdinaryBaselineSchema,
+                relativePath(baseline) {
+                    return path.join(baseline.subtype, baselineFilename(baseline));
+                },
                 root: process.cwd(),
                 directory: path.resolve(fixture.directory),
                 maxBytes: 1024

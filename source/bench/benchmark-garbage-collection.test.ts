@@ -91,7 +91,7 @@ export const testNode = suite('explicit benchmark garbage collection', [
             );
             scope.assert.partialDeepEqual(measuredBenchmark(result), {
                 samples: 2,
-                lifecycle: { version: 3, garbageCollection: { mode: 'after-sample', completed: 3, failures: 0 } }
+                lifecycle: { garbageCollection: { mode: 'after-sample', completed: 3, failures: 0 } }
             });
             return scope.assert.collect();
         }
@@ -243,7 +243,7 @@ export const testNode = suite('explicit benchmark garbage collection', [
         scope.assert.equal(result.summary.failed, 1);
         return scope.assert.collect();
     }),
-    test('decodes historical lifecycle evidence without inventing GC observations', async function (scope: TestScope) {
+    test('rejects lifecycle evidence without explicit GC observations', async function (scope: TestScope) {
         const result = await executeGarbageCollectionBenchmark(
             garbageCollectionBenchmark(function ({ sample }) {
                 return {
@@ -261,12 +261,9 @@ export const testNode = suite('explicit benchmark garbage collection', [
         scope.require.defined(measured.lifecycle);
         const { garbageCollection: _evidence, measurement: _measurement, policy, ...lifecycle } = measured.lifecycle;
         const { garbageCollection: _policy, ...historicalPolicy } = policy;
-        const restored = benchmarkResultSchema.parse({
-            ...measured,
-            lifecycle: { ...lifecycle, version: 1, policy: historicalPolicy }
-        });
-        scope.assert.equal(restored.lifecycle?.garbageCollection, null);
-        scope.assert.equal(restored.lifecycle?.policy.garbageCollection, 'off');
+        scope.assert.throws(function incompleteLifecycle() {
+            benchmarkResultSchema.parse({ ...measured, lifecycle: { ...lifecycle, policy: historicalPolicy } });
+        }, { name: 'ZodError' });
         return scope.assert.collect();
     })
 ]);

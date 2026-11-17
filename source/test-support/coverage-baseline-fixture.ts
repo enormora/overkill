@@ -2,7 +2,7 @@ import type { TestScope } from '../packages/test/test.entry-point.ts';
 import type { ReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { RunResultSession } from '../run/run-support.ts';
-import { ordinaryBaselineReportArtifact, readOrdinaryBaselineReport } from '../run/baseline-report.ts';
+import { withOrdinaryBaselineReport, readOrdinaryBaselineReport } from '../run/baseline-report.ts';
 
 const warnings = [ 'Coverage baselines finalized.' ];
 const reportByteLimit = 65_536;
@@ -17,13 +17,12 @@ export function coverageBaselineSession(
                 return result;
             },
             async finalize(result) {
-                const artifact = ordinaryBaselineReportArtifact(result, {
-                    version: 1,
+                const artifact = withOrdinaryBaselineReport(result, {
                     changes: [],
                     warnings,
                     writeOutcome: { kind: 'read-only' }
                 }, reportByteLimit);
-                return { ...result, artifacts: [ ...result.artifacts, artifact ] };
+                return artifact;
             }
         }
         : null;

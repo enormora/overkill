@@ -124,7 +124,15 @@ export const testNode = createSuite({
                 await session.recordFacts(facts, null);
                 const result = runResultFactory.build();
                 await session.checkpointResult(result);
-                scope.assert.deepEqual(await session.complete(result), { ...result, maintenanceDiagnostics: [] });
+                scope.assert.deepEqual(await session.complete(result), {
+                    context: {
+                        id: recordId,
+                        startedAt: '1970-01-01T00:00:00.000Z',
+                        facts
+                    },
+                    ...result,
+                    maintenanceDiagnostics: []
+                });
                 assertCompletedRecord(scope, writes[3], result);
                 return scope.assert.collect();
             }

@@ -83,7 +83,7 @@ export const testNode = suite('history CLI', [
             );
             const prune = await execute(process.execPath, [ binary, 'history', 'prune' ], { cwd });
             scope.assert.equal(prune.code, 0);
-            scope.assert.includes(prune.stdout, `Removed ${path.join(cwd, '.overkill/runs/completed.json')}`);
+            scope.assert.includes(prune.stdout, 'Compacted 2 detailed records.');
         });
         return scope.assert.collect();
     }),

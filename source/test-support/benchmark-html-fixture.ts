@@ -1,3 +1,5 @@
+import type { MetricReading } from '../engine/benchmark-metrics.ts';
+import type { RawBenchmarkSamples } from '../engine/measurement-evidence.ts';
 import type { BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
 import type { RunResult, PerTestResult } from '../engine/run-result.ts';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
@@ -14,6 +16,11 @@ function fixtureTest(result: RunResult): PerTestResult {
     return test;
 }
 
+export function benchmarkSampleFixture(metrics: Readonly<Record<string, readonly MetricReading[]>>): RawBenchmarkSamples {
+    return {version: 1, metrics: Object.fromEntries(Object.entries(metrics).map(function envelopes([name, readings]) {
+        return [name, readings.map(function envelope(reading) { return {reading, attribution: null}; })];
+    }))};
+}
 export function benchmarkHtmlFixture(title: string): RunResult {
     const id = createCaseId('fixture.bench.ts', [ 'benchmarks' ], title, null);
     const workId = { familyVariant: null, case: id, workload: { name: 'small', params: {} }, runtimes: [] };
@@ -47,11 +54,9 @@ export function benchmarkHtmlFixture(title: string): RunResult {
             content: {
                 kind: 'json',
                 byteLength: 0,
-                value: {
-                    latency: values.map(function reading(value) {
-                        return availableMetric(value, provenance);
-                    })
-                }
+                value: benchmarkSampleFixture({
+                    latency: values.map(function reading(value) { return availableMetric(value, provenance); })
+                })
             }
         }
     };

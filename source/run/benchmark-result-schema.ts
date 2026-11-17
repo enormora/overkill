@@ -2,10 +2,8 @@ import { z } from 'zod/v4';
 import { measurementEvidenceSchema } from '../bench/measurement-evidence-schema.ts';
 import { metricSummarySchema, benchmarkBudgetResultSchema } from '../bench/benchmark-statistics-schema.ts';
 import { normalizationEvidenceSchema } from '../bench/calibration-evidence.ts';
-import {
-    benchmarkLifecycleVersion,
-    type BenchmarkExecutionResult,
-    type BenchmarkLifecycleResult
+import type {
+    BenchmarkExecutionResult
 } from '../engine/benchmark-result.ts';
 import { workloadIdSchema } from '../engine/identity-schema.ts';
 import { benchmarkTimelineEvidenceSchema } from '../bench/timeline-schema.ts';
@@ -20,8 +18,7 @@ const rawSamplesSchema = z.strictObject({
     reference: z.string().nullable(),
     reason: z.string().nullable()
 });
-const legacyLifecycleResultSchema = z.strictObject({
-    version: z.literal(1),
+const lifecycleEvidenceSchema = z.strictObject({
     policy: legacyLifecyclePolicySchema,
     warmup: z.strictObject({
         samples: z.number().int().nonnegative(),
@@ -42,9 +39,8 @@ const legacyLifecycleResultSchema = z.strictObject({
         })
     ])
 });
-const historicalGcLifecycleVersion = 2;
-const versionTwoLifecycleResultSchema = legacyLifecycleResultSchema.extend({
-    version: z.literal(historicalGcLifecycleVersion),
+const lifecycleResultSchema = lifecycleEvidenceSchema.extend({
+    measurement: measurementEvidenceSchema.nullable(),
     policy: resolvedLifecyclePolicySchema,
     garbageCollection: z
         .discriminatedUnion('mode', [
@@ -57,24 +53,6 @@ const versionTwoLifecycleResultSchema = legacyLifecycleResultSchema.extend({
         ])
         .nullable()
 });
-const lifecycleResultSchema = z.union([
-    versionTwoLifecycleResultSchema.extend({
-        version: z.literal(benchmarkLifecycleVersion),
-        measurement: measurementEvidenceSchema.nullable()
-    }),
-    versionTwoLifecycleResultSchema.transform(function historicalMeasurement(value): BenchmarkLifecycleResult {
-        return { ...value, version: benchmarkLifecycleVersion, measurement: null };
-    }),
-    legacyLifecycleResultSchema.transform(function historicalGarbageCollection(value): BenchmarkLifecycleResult {
-        return {
-            ...value,
-            version: benchmarkLifecycleVersion,
-            measurement: null,
-            policy: { ...value.policy, garbageCollection: 'off' as const },
-            garbageCollection: null
-        };
-    })
-]);
 
 export const benchmarkResultSchema: z.ZodType<BenchmarkExecutionResult> = z.strictObject({
     timeline: benchmarkTimelineEvidenceSchema.nullable().default(null),

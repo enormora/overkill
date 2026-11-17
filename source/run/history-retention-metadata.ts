@@ -10,6 +10,7 @@ import { historyRunStatus } from './history-outcomes.ts';
 const millisecondsPerDay = 86_400_000;
 export const manifestSchema = z.object({
     version: z.literal(1),
+    detail: z.enum([ 'compact', 'detailed' ]).default('detailed'),
     id: z.string(),
     startedAt: z.iso.datetime({ offset: true }),
     status: z.enum([ 'passed', 'failed', 'runner-error', 'interrupted', 'inconclusive' ])
@@ -66,6 +67,7 @@ export async function recordMetadata(input: RecordCatalogInput, recordPath: stri
     assertRecordCommitted(record, input);
     return manifestSchema.parse({
         version: 1,
+        detail: record.detail,
         id: record.id,
         startedAt: record.startedAt,
         status: historyRunStatus(record)

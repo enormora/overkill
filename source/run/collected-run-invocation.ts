@@ -1,5 +1,5 @@
 import { recordedRunPlan } from './recorded-run-plan.ts';
-import { finalizeResultWithDurationHistory } from './run-state-finalization.ts';
+import { finalizeRunEvidence } from './run-state-finalization.ts';
 import { executeCollectedPlan } from './collected-run-execution.ts';
 import type { CollectedInvocationPlan, CollectedRunContext } from './collected-run-planning.ts';
 import type { RunResult } from './run-engine-primitives.ts';
@@ -27,7 +27,7 @@ export async function executeCollectedInvocation(
                         async finalizeResult(run, result) {
                             const covered = await session.finalize(result);
                             return await record.checkpointResult(
-                                await finalizeResultWithDurationHistory(dependencies, run, covered, timing)
+                                await finalizeRunEvidence(run, covered, timing)
                             );
                         }
                     }
@@ -54,7 +54,7 @@ export async function executeCollectedInvocation(
                 {
                     record,
                     async finalizeResult(run, result) {
-                        const finalized = await finalizeResultWithDurationHistory(dependencies, run, result, timing);
+                        const finalized = await finalizeRunEvidence(run, result, timing);
                         return record === null ? finalized : await record.checkpointResult(finalized);
                     }
                 }

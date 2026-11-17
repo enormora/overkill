@@ -30,7 +30,11 @@ async function checkPreparedTypeTests(request: TypeTestCheckRequest): Promise<Ru
     });
     const selection = await planTestSelection(prepared.testPlan, request);
     if (selection.kind === 'empty-shard') {
-        return { ...selection.result, maintenanceDiagnostics: [] };
+        return {
+            context: { id: null, startedAt: null, facts: null },
+            ...selection.result,
+            maintenanceDiagnostics: []
+        };
     }
     const collected = await prepared.collect({
         workIds: selection.testPlan.cases.map(function identity(testCase) {
@@ -40,6 +44,7 @@ async function checkPreparedTypeTests(request: TypeTestCheckRequest): Promise<Ru
     });
     const startedAt = new Date();
     return {
+        context: { id: null, startedAt: null, facts: null },
         ...await request.engine.execute(collected, {
             signal,
             debug: { mode: 'off' },
@@ -61,6 +66,7 @@ export async function checkTypeTests(request: TypeTestCheckRequest): Promise<Run
         return await checkPreparedTypeTests(request);
     } catch (error: unknown) {
         return {
+            context: { id: null, startedAt: null, facts: null },
             ...createRunResult(request.engine.createTestPlan(request.root), [], [ {
                 subtype: 'loader',
                 cause: error,

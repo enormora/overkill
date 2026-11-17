@@ -24,6 +24,7 @@ import type {
     ReporterDispatcher as ReporterDispatcherDefinition
 } from '../engine/reporter-dispatcher.ts';
 import type {
+    RunReport as RunReportDefinition,
     ReporterEvent as ReporterEventDefinition
 } from '../engine/reporter.ts';
 import type {
@@ -59,6 +60,7 @@ export type RunArtifact = RunArtifactDefinition;
 export type RunProcessUsage = RunProcessUsageDefinition;
 export type RunProcessUsageTracker = RunProcessUsageTrackerDefinition;
 export type RunResult = RunResultDefinition;
+export type RunReport = RunReportDefinition;
 export type RunnerError = RunnerErrorDefinition;
 export type TestPlan = TestPlanDefinition;
 export type TestPlanCase = TestPlanCaseDefinition;

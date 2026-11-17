@@ -10,9 +10,11 @@ import { initialRecord, type RunRecordDependencies } from './run-record-input.ts
 import type { RunFacts, RunnerResult, CollectedRunPlan, ResolvedRun } from './run-types.ts';
 
 export type RunRecordSession = {
+    readonly requireDetails: () => void;
     readonly complete: (result: RunResult) => Promise<RunnerResult>;
     readonly checkpointResult: (result: RunResult) => Promise<RunResult>;
     readonly id: string;
+    readonly startedAt: string;
     readonly interrupt: (error: unknown) => Promise<void>;
     readonly path: string;
     readonly retainPlacementTrace: (trace: SingleRunRecord['placementTrace']) => void;
@@ -30,14 +32,13 @@ export function createRunRecordSession(
     const filePath = path.resolve(input.projectRoot, input.config.runtimeStateDir, 'runs', `${value.id}.json`);
     const directory = path.dirname(path.dirname(filePath));
     const storage = createRunRecordStorage(filePath, value, {
+        detail: dependencies.detail,
         async write(recordPath, content) {
             await dependencies.store.write(recordPath, content);
+        },
+        async committed(record) {
             const now = new Date(dependencies.wallClock.currentUnixEpochMilliseconds);
-            await updateCompactHistory(dependencies.history, {
-                replayPlan: null,
-                replayProfile: null,
-                ...storage.current()
-            }, {
+            await updateCompactHistory(dependencies.history, record, {
                 directory,
                 policy: input.config.history,
                 now: now.toISOString(),
@@ -59,6 +60,7 @@ export function createRunRecordSession(
         }
     }
     const session: RunRecordSession = {
+        requireDetails: storage.requireDetails,
         async recordResolvedRun(run) {
             await session.recordFacts(run.facts, recordedRunPlan(run));
         },
@@ -68,15 +70,29 @@ export function createRunRecordSession(
         async complete(result) {
             const completed = await completeRecord(result);
             if (value.request.recordForMerge) {
-                return { ...completed, maintenanceDiagnostics: [] };
+                return {
+                    ...completed,
+                    context: {
+                        id: value.id,
+                        startedAt: value.startedAt,
+                        facts: storage.current().facts ?? completed.preparationFacts
+                    },
+                    maintenanceDiagnostics: []
+                };
             }
             maintenance = maintenance ?? dependencies.maintainHistory();
             return {
                 ...completed,
+                context: {
+                    id: value.id,
+                    startedAt: value.startedAt,
+                    facts: storage.current().facts ?? completed.preparationFacts
+                },
                 maintenanceDiagnostics: await maintenance
             };
         },
         id: value.id,
+        startedAt: value.startedAt,
         async interrupt(error) {
             try {
                 await storage.interrupt(error, placementTrace);

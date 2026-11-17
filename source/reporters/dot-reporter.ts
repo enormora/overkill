@@ -1,6 +1,12 @@
 import figures from 'figures';
 import colors from 'yoctocolors';
-import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from '../engine/reporter.ts';
+import {
+    defineReporter,
+    type RunReport,
+    type DefinedReporter,
+    type RealTimeReporter,
+    type ReporterEvent
+} from '../engine/reporter.ts';
 import type { RunResult, RunnerError, TestVerdict } from '../engine/run-result.ts';
 import {
     formatCoverageSummaryLines,
@@ -123,7 +129,7 @@ export function createDotReporter(dependencies: DotReporterDependencies): Define
                 }
             },
 
-            async onFinish(result: RunResult) {
+            async onFinish({ result }: RunReport) {
                 finishProgress();
                 writeLine(formatSummary(result));
                 for (const coverageLine of formatCoverageSummaryLines(result)) {

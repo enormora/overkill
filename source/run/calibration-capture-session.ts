@@ -3,7 +3,7 @@ import { CalibrationPublicationError, type CalibrationReferenceStore } from '../
 import { successfulPerformanceRun } from '../baselines/performance-workflow.ts';
 import { appendRunnerErrors } from '../engine/execution-result.ts';
 import { performanceBaselineError } from '../baselines/performance-evaluation.ts';
-import { calibrationReferenceReportArtifact, type CalibrationReferenceReport } from '../bench/calibration-report.ts';
+import { withCalibrationReferenceReport, type CalibrationReferenceReport } from '../bench/calibration-report.ts';
 import type { CalibrationSnapshot } from '../engine/benchmark-result.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -37,7 +37,6 @@ function captureReport(
         return test.workId;
     });
     return {
-        version: 1,
         changes: snapshots.map(function writtenReference(snapshot) {
             return {
                 kind: 'write',
@@ -53,13 +52,11 @@ function appendCaptureReport(
     result: RunResult,
     report: CalibrationReferenceReport
 ): RunResult {
-    const artifact = calibrationReferenceReportArtifact({
+    return withCalibrationReferenceReport({
         result,
         report,
-        maxBytes: input.maxBytes,
-        capturedAtMicroseconds: Number(input.dependencies.wallClock.currentMonotonicMicroseconds)
+        maxBytes: input.maxBytes
     });
-    return { ...result, artifacts: [ ...result.artifacts, artifact ] };
 }
 function referenceOwners(result: RunResult, snapshot: CalibrationSnapshot): RunResult['perTest'][number]['workId'][] {
     const key = canonicalIdentityJson(snapshot.identity);

@@ -393,7 +393,7 @@ export const testNode = suite('family lifetime', [
                 name: 'lifetime',
                 sinks: [ { kind: 'memory' } ],
                 dispose: null,
-                onResult(result) {
+                onResult({ result }) {
                     observed.push('result');
                     scope.assert.equal(
                         result.runnerErrors.some(function cleanup(error) {

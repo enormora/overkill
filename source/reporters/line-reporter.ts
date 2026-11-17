@@ -301,7 +301,7 @@ export function createLineReporter(dependencies: LineReporterDependencies): Defi
                 }
             },
 
-            async onFinish(finalResult) {
+            async onFinish({ result: finalResult }) {
                 const lines = problemLines(finalResult, context, { verbose });
 
                 for (const line of lines) {

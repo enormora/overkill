@@ -25,7 +25,7 @@ export const testNode = suite('history repair failures', [
     }),
     test('explicit repair recovers corrupt durations and reports the lost history', async function (scope: TestScope) {
         const store = createMemoryHistoryStorage();
-        await store.write(`${directory}/duration-history/work-durations.json`, '{');
+        await store.write(`${directory}/history/index.json`, '{');
         await store.write(`${directory}/runs/record.json`, JSON.stringify(completedHistoryRecord('record')));
         const repaired = await repairHistory(store, context);
         scope.assert.equal(repaired.dataLoss, true);
@@ -36,7 +36,7 @@ export const testNode = suite('history repair failures', [
     }),
     test('automatic repair preserves corrupt duration state for explicit recovery', async function (scope: TestScope) {
         const store = createMemoryHistoryStorage();
-        const filePath = `${directory}/duration-history/work-durations.json`;
+        const filePath = `${directory}/history/index.json`;
         await store.write(filePath, '{');
         await scope.assert.rejects(async function automaticCorruption() {
             await repairHistory(store, { ...context, mode: 'automatic' });
@@ -46,7 +46,7 @@ export const testNode = suite('history repair failures', [
     }),
     test('future duration schemas are preserved during explicit repair', async function (scope: TestScope) {
         const store = createMemoryHistoryStorage();
-        const filePath = `${directory}/duration-history/work-durations.json`;
+        const filePath = `${directory}/history/index.json`;
         const source = JSON.stringify({ version: 99 });
         await store.write(filePath, source);
         await scope.assert.rejects(async function unsupportedDurationVersion() {

@@ -165,7 +165,7 @@ export function createTreeReporter(
             name: 'tree',
             sinks: [ { kind: 'stdout-raw' } ],
 
-            onResult(result) {
+            onResult({ result }) {
                 for (const line of treeResultLines(result, context, options)) {
                     dependencies.stdoutConsole.log(line);
                 }

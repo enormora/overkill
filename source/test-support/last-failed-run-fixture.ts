@@ -55,7 +55,7 @@ export function lastFailedRunFixture(lastFailed: boolean): LastFailedRunFixture 
                 result: {
                     ...record.result,
                     summary: { ...record.result.summary, failed: verdict === 'fail' ? 1 : 0 },
-                    perTest: [ { workId: historyWork, verdict, durationMicroseconds: 10 } ]
+                    perTest: [ { benchmark: null, workId: historyWork, verdict, durationMicroseconds: 10 } ]
                 }
             }, { directory, now: historyTimestamp, policy: config.history, testFamily: 'microtest' });
         },

@@ -104,11 +104,7 @@ type GroupWorkDistribution = {
 
 export type WorkDistribution = CaseWorkDistribution | FileWorkDistribution | GroupWorkDistribution;
 
-export type MicrotestExecution = MicrotestExecutionShape<
-    MaxConcurrency,
-    MicrotestProcessModel,
-    Scheduling
->;
+export type MicrotestExecution = MicrotestExecutionShape<MaxConcurrency, MicrotestProcessModel, Scheduling>;
 export type IntegrationExecution = IntegrationExecutionShape<
     WorkerPoolAssignmentPolicy,
     WorkerPoolDispatchPolicy,
@@ -265,6 +261,7 @@ export type ConfigLoadRequest = {
 };
 
 export type RunRecordPersistenceReason = keyof {
+    readonly history: true;
     readonly artifact: true;
     readonly coverage: true;
     readonly debug: true;

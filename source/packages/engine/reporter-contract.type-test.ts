@@ -17,7 +17,7 @@ import {
     type ReporterOutput,
     type ReporterEvent,
     type RunFacts,
-    type RunResult,
+    type RunReport,
     type SinkDeclaration,
     type TestPlan,
     type TestPlanCase,
@@ -93,7 +93,7 @@ describe('Reporter contract', function () {
         expect<RunFacts>().type.toBe<Readonly<Record<string, unknown>>>();
         expect<RealTimeReporter['dispose']>().type.toBe<(() => Promise<void> | void) | null>();
         expect<RealTimeReporter['onEvent']>().type.toBe<(event: ReporterEvent) => Promise<void> | void>();
-        expect<RealTimeReporter['onFinish']>().type.toBe<((result: RunResult) => Promise<void> | void) | null>();
+        expect<RealTimeReporter['onFinish']>().type.toBe<((report: RunReport) => Promise<void> | void) | null>();
         expect<FinalResultReporter['dispose']>().type.toBe<(() => Promise<void> | void) | null>();
         expect<FinalResultReporter['kind']>().type.toBe<'final-result'>();
     });
@@ -103,13 +103,13 @@ describe('Reporter contract', function () {
             (event: ReporterEvent) => ReporterOutput
         >();
         expect<RawStdoutRealTimeReporter['onFinish']>().type.not.toBeAssignableFrom<
-            (result: RunResult) => ReporterOutput
+            (report: RunReport) => ReporterOutput
         >();
         expect<ManagedStdoutRealTimeReporter['onEvent']>().type.toBeAssignableFrom<
             (event: ReporterEvent) => ReporterOutput
         >();
         expect<FileAndManagedStderrFinalResultReporter['onResult']>().type.toBeAssignableFrom<
-            (result: RunResult) => Promise<ReporterOutput>
+            (report: RunReport) => Promise<ReporterOutput>
         >();
         expect<LateManagedStdoutRealTimeReporter['onEvent']>().type.toBeAssignableFrom<
             (event: ReporterEvent) => ReporterOutput

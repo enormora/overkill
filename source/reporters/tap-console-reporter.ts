@@ -116,7 +116,7 @@ export function createTapConsoleReporter(
             name: 'tap',
             sinks: [ { kind: 'stdout-raw' } ],
 
-            async onResult(currentTestRunResult) {
+            async onResult({ result: currentTestRunResult }) {
                 stdoutConsole.log(formatResultAsTap(currentTestRunResult));
             }
         };

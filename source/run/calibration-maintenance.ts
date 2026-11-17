@@ -6,7 +6,7 @@ import {
     CalibrationPublicationError,
     type CalibrationReferenceStore
 } from '../baselines/calibration-store.ts';
-import { calibrationReferenceReportArtifact, type CalibrationReferenceReport } from '../bench/calibration-report.ts';
+import { withCalibrationReferenceReport, type CalibrationReferenceReport } from '../bench/calibration-report.ts';
 import { staleCalibrationReferences, type CalibrationInventory } from './calibration-inventory.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunResultSession } from './run-support.ts';
@@ -28,13 +28,11 @@ function appendReport(session: MaintenanceInput, result: RunResult, report: Cali
     if (profile.testFamily !== 'benchmark') {
         throw new TypeError('Calibration maintenance requires a benchmark profile.');
     }
-    const artifact = calibrationReferenceReportArtifact({
+    return withCalibrationReferenceReport({
         result,
         report,
-        maxBytes: profile.attachments.maxArtifactBytes,
-        capturedAtMicroseconds: Number(session.dependencies.wallClock.currentMonotonicMicroseconds)
+        maxBytes: profile.attachments.maxArtifactBytes
     });
-    return { ...result, artifacts: [ ...result.artifacts, artifact ] };
 }
 async function publishRemovals(
     session: MaintenanceInput,
@@ -58,7 +56,6 @@ async function retainMaintenance(
     stale: CalibrationInventory
 ): Promise<RunResult> {
     const report: CalibrationReferenceReport = {
-        version: 1,
         completed: [],
         outcome: 'read-only',
         changes: stale.map(function removal(reference) {

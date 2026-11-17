@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/witness-file.ts';
-import { cacheSchema, cachedEntrySchema as entrySchema } from './property-corpus-cache.ts';
+import type { CorpusCache } from './property-corpus-cache.ts';
+import { corpusIndexSchema, readCorpusCache } from './property-corpus-storage.ts';
 import { CorpusOperationError, type CorpusRequest } from './corpus-types.ts';
 
 export type CorpusCandidate = { readonly id: string | null; readonly entry: PropertyWitnessFile; };
@@ -15,17 +16,12 @@ async function readSource(request: CorpusRequest): Promise<unknown> {
 }
 
 function selectCache(
-    values: readonly unknown[],
+    cache: CorpusCache,
     request: CorpusRequest
 ): CorpusCandidates {
-    const diagnostics: string[] = [];
-    const entries = values.flatMap(function validated(candidate) {
-        const parsed = entrySchema.safeParse(candidate);
-        if (parsed.success) {
-            return [ parsed.data ];
-        }
-        diagnostics.push(parsed.error.message);
-        return [];
+    const { entries } = cache;
+    const diagnostics = cache.diagnostics.map(function message(diagnostic) {
+        return diagnostic.reason;
     });
     if (request.source.kind === 'cache-entry') {
         const id = request.source.entryId;
@@ -45,15 +41,15 @@ function selectCache(
     };
 }
 
-function selectSource(
+async function selectSource(
     data: unknown,
     request: CorpusRequest
-): CorpusCandidates {
+): Promise<CorpusCandidates> {
     const witness = propertyWitnessSchema.safeParse(data);
     if (witness.success && request.source.kind === 'path') {
         return { entries: [ { id: null, entry: witness.data } ], diagnostics: [] };
     }
-    const cache = cacheSchema.safeParse(data);
+    const cache = corpusIndexSchema.safeParse(data);
     if (!cache.success) {
         throw new CorpusOperationError(
             'Expected a property witness or corpus cache index.',
@@ -61,12 +57,12 @@ function selectSource(
             'invalid-source'
         );
     }
-    return selectCache(cache.data.entries, request);
+    return selectCache(await readCorpusCache(path.resolve(request.cwd, request.source.path)), request);
 }
 
 export async function readCorpusEntries(
     request: CorpusRequest
 ): Promise<CorpusCandidates> {
     const data = await readSource(request);
-    return selectSource(data, request);
+    return await selectSource(data, request);
 }

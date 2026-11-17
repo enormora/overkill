@@ -2,9 +2,6 @@ import { z } from 'zod/v4';
 import { workIdSchema, runtimeIdSchema } from '../engine/identity-schema.ts';
 import {
     currentRunRecordVersion,
-    implementationRunRecordVersion,
-    previousRunRecordVersion,
-    familyRunRecordVersion,
     validateImplementationRecord
 } from './run-record-format.ts';
 import { mergeFactsSchema } from './merge-facts-schema.ts';
@@ -12,14 +9,9 @@ import { runResultSchema } from './run-result-schema.ts';
 import { parseSerializedRunDiagnostics } from './run-record-result.ts';
 
 const mergeRecordData = z.object({
-    version: z.union([
-        z.literal(1),
-        z.literal(previousRunRecordVersion),
-        z.literal(familyRunRecordVersion),
-        z.literal(implementationRunRecordVersion),
-        z.literal(currentRunRecordVersion)
-    ]),
+    version: z.literal(currentRunRecordVersion),
     kind: z.literal('single'),
+    detail: z.literal('detailed'),
     status: z.literal('completed'),
     id: z.string().min(1),
     facts: mergeFactsSchema,
@@ -50,12 +42,7 @@ export const mergeRecordSchema = z.unknown().superRefine(validateImplementationR
 export type MergeRecord = Readonly<z.output<typeof mergeRecordSchema>>;
 
 const mergedRecordData = mergeRecordData.omit({ status: true, runtime: true, versions: true }).extend({
-    version: z.union([
-        z.literal(previousRunRecordVersion),
-        z.literal(familyRunRecordVersion),
-        z.literal(implementationRunRecordVersion),
-        z.literal(currentRunRecordVersion)
-    ]),
+    version: z.literal(currentRunRecordVersion),
     kind: z.literal('merged'),
     status: z.enum([ 'started', 'completed', 'interrupted' ]),
     startedAt: z.iso.datetime({ offset: true }),

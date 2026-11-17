@@ -26,7 +26,17 @@ async function assertRenderedReport(
             return location.file;
         }
     });
-    await reporter.onResult(benchmarkHtmlTimelineFixture(title, 'packaged marker'));
+    await reporter.onResult({
+        context: {
+            id: null,
+            startedAt: null,
+            facts: null
+        },
+        result: benchmarkHtmlTimelineFixture(
+            title,
+            'packaged marker'
+        )
+    });
     const html = await readFile(outputFile, 'utf8');
     scope.assert.includes(html, title);
     scope.assert.includes(html, 'renderBenchmarkCharts');

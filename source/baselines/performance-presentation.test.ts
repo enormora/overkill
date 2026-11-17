@@ -4,7 +4,7 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { testDouble } from '../doubles/test-double.ts';
 import type { ChartedPerformanceBaselineAdapter, PerformanceBaselineAdapter } from './performance-adapter.ts';
 import { presentPerformanceMetrics } from './performance-presentation.ts';
-import { performanceReportArtifact, readPerformanceBaselineReport } from './performance-report.ts';
+import { withPerformanceBaselineReport, readPerformanceBaselineReport } from './performance-report.ts';
 
 const calibration = { context: {}, kind: 'comparable', machineClass: 'test', metadata: {} } as const;
 const observation = {
@@ -112,26 +112,24 @@ export const testNode = suite('performance chart presentation', [
     }),
     test('rejects reports that exceed the artifact limit', function (scope: TestScope) {
         scope.assert.throws(function oversizedReport() {
-            performanceReportArtifact({
-                capturedAtMicroseconds: 0,
+            withPerformanceBaselineReport({
                 maxBytes: 1,
-                report: { calibration, changes: [], writeOutcome: { kind: 'read-only' } },
+                report: { comparisons: [], calibration, changes: [], writeOutcome: { kind: 'read-only' } },
                 result: runResultFactory.build({})
             });
-        }, { message: 'performance-baselines report exceeds the configured artifact byte limit.' });
+        }, { message: 'Benchmark comparison evidence exceeds the configured byte limit.' });
         return scope.assert.collect();
     }),
-    test('reads saved legacy baseline reports without inventing chart metadata', function (scope: TestScope) {
+    test('retains typed baseline comparison reports without an attachment', function (scope: TestScope) {
         const result = runResultFactory.build();
-        const artifact = performanceReportArtifact({
+        const updated = withPerformanceBaselineReport({
             result,
             maxBytes: 4096,
-            capturedAtMicroseconds: 0,
-            report: { calibration, changes: [], writeOutcome: { kind: 'read-only' } }
+            report: { comparisons: [], calibration, changes: [], writeOutcome: { kind: 'read-only' } }
         });
-        const restored = readPerformanceBaselineReport({ ...result, artifacts: [ artifact ] });
+        const restored = readPerformanceBaselineReport(updated);
         scope.require.defined(restored);
-        scope.assert.partialDeepEqual(restored, { version: 2, comparisons: [], writeOutcome: { kind: 'read-only' } });
+        scope.assert.partialDeepEqual(restored, { comparisons: [], writeOutcome: { kind: 'read-only' } });
         return scope.assert.collect();
     })
 ]);

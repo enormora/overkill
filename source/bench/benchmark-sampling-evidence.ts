@@ -46,7 +46,7 @@ export async function recordObservationSamples(
     const artifact = await attachmentsForProducer({ kind: 'case' }).json(
         { name, mediaType: 'application/json' },
         {
-            version: 2,
+            version: 1,
             metrics: Object.fromEntries(Array.from(observations, function rawMetric([ metric, readings ]) {
                 return [ metric, readings.envelopes() ];
             }))

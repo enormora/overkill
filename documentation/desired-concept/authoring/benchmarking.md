@@ -562,8 +562,8 @@ omits host observation and records an uncalibrated one-worker ceiling.
 
 `RunFacts.benchmarkPlacement` records policy `conservative-size-only-v1`, its
 maximum worker count, and bounded reason/ceiling pairs. It is null for other
-families. Version 3 benchmark-run metadata retains this decision as `placement`;
-older reports and failures before completed placement use null. Placement is
+families. Reporter run context retains this decision; failures before completed
+placement use null. Placement is
 frozen before execution and observations are not repeated between samples.
 
 Noise handling has three levels:
@@ -600,9 +600,8 @@ process collectors describe the runner observer, not workload measurements.
 The observer uses a 250 ms window; the complete pass is bounded by 1000 ms or
 the shorter profile collection timeout, with platform probes capped at 250 ms.
 All observations stop before execution. `bench list` and baseline `list` omit
-the pass. Version 3 benchmark-run artifacts retain host and placement evidence on successful and
-rejected runs; historical version 1 artifacts retain an explicit absent host. Versions 1 and 2
-retain an explicit absent placement decision.
+the pass. Reporter run context retains available host and placement evidence
+on successful and rejected runs.
 Host placement calibration and metric normalization remain separate.
 
 Warmup, calibration, cleanup, and cooldown are distinct phases:
@@ -665,9 +664,9 @@ coordinator never enables or invokes GC automatically. Direct engine execution
 cannot request harness GC through ambient exposure alone. Explicit generic
 host arguments remain supported independently of automatic benchmark policy.
 
-Lifecycle evidence version 2 retains resolved policy and completed/failed GC
-counts through progress, attempts, saved results, and HTML. Historical lifecycle
-evidence retains absent GC observations rather than invented counts.
+Lifecycle evidence retains resolved policy and completed/failed GC counts
+through progress, attempts, saved results, and HTML. The containing run record
+owns its persistence version.
 
 ## Calibration And Normalization
 
@@ -814,11 +813,10 @@ remain separate. Stop, finalization, and release share a fresh two-second
 cleanup deadline per invocation. `withMeasurementTarget(target, strategy)`
 binds explicit target clocks and cooldown/GC capabilities. Stable target
 semantics and collector versions enter comparison identity; concrete instance
-and document IDs remain attribution facts. Lifecycle version 3 and raw sample
-version 2 retain this evidence, with absent attribution for historical records.
-Performance baseline version 4 includes stable measurement comparison identity;
-historical baselines without matching identity require an explicit baseline
-update rather than automatic comparison.
+and document IDs remain attribution facts. Lifecycle evidence and raw sample
+attachments retain these facts. Raw sample envelopes and saved performance
+baselines start at version 1. Baselines include stable measurement comparison
+identity; changing that identity requires an explicit baseline update.
 
 Existing synchronous measurement regions retain their synchronous path; async
 collector readiness must not add Promise boundaries inside a tight measured

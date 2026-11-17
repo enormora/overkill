@@ -107,6 +107,8 @@ function assertConflictArtifactIdentity(
 
 function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
     return {
+        preparationFacts: null,
+        baselineReports: [],
         resourceChecks: [],
         artifacts: [],
         bySuite: {},
@@ -215,10 +217,7 @@ async function cancelHedgedPeer(
     authorities: HedgedAuthorities,
     authorityTask: WorkerPoolTaskRun,
     peerTask: WorkerPoolTaskRun
-): Promise<{
-    readonly peerTask: WorkerPoolTaskRun;
-    readonly runtime: WorkerPoolRunRuntime;
-}> {
+): Promise<{ readonly peerTask: WorkerPoolTaskRun; readonly runtime: WorkerPoolRunRuntime; }> {
     runtime.activeTasks.delete(authorityTask);
     recordCancelledHedgedTaskRun(authorities, peerTask, runtime);
     await runtime.reporterEvents.wait();

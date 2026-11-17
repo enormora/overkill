@@ -74,7 +74,16 @@ type RealTimeReporter = {
     readonly name: string;
     readonly sinks: ReadonlyArray<SinkDeclaration>;
     onEvent(event: ReporterEvent): void | Promise<void>;
-    onFinish: ((result: RunResult) => void | Promise<void>) | null;
+    onFinish: ((report: RunReport) => void | Promise<void>) | null;
+};
+
+type RunReport = {
+    readonly context: {
+        readonly id: string | null;
+        readonly startedAt: string | null;
+        readonly facts: Readonly<Record<string, unknown>> | null;
+    };
+    readonly result: RunResult;
 };
 
 type FinalResultReporter = {
@@ -82,7 +91,7 @@ type FinalResultReporter = {
     readonly kind: 'final-result';
     readonly name: string;
     readonly sinks: ReadonlyArray<SinkDeclaration>;
-    onResult(result: RunResult): void | Promise<void>;
+    onResult(report: RunReport): void | Promise<void>;
 };
 ```
 

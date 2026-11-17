@@ -1,18 +1,21 @@
 import type { Except } from 'type-fest';
+import type { RunRecordHeader } from '../run-record-header.ts';
 import type { WitnessFile } from '../engine/witness-file.ts';
 import type { RuntimeId, WorkId } from '../engine/identity.ts';
-import type { RunnerError, RunResult } from '../engine/run-result.ts';
+import type { RunnerError, RunResult, BaselineReportSummary } from '../engine/run-result.ts';
 import type { SerializedValue } from '../compare/serialized-value.ts';
 import type { CoveragePolicy, LoaderConfig, ProfileConfig } from '../config/types.ts';
-import type {
-    currentRunRecordVersion,
-    implementationRunRecordVersion,
-    previousRunRecordVersion,
-    familyRunRecordVersion
-} from './run-record-format.ts';
 import type { RunRecordArtifact, RunRecordTestAttempt, RunRecordTestOutcome } from './run-record-outcomes.ts';
 import type { PlacementTrace } from './placement-trace.ts';
-import type { RunEngineFacts, RunEnvironmentFacts, RunFacts, RunRequest, CollectedRunPlan } from './run-types.ts';
+import type {
+    RunEngineFacts,
+    RunEnvironmentFacts,
+    RunFacts,
+    RunRequest,
+    CollectedRunPlan,
+    RunSingleProcessExecutionFacts,
+    RunWorkerPoolExecutionFacts
+} from './run-types.ts';
 
 export type RunRecordCoverage = {
     readonly directory: string;
@@ -49,87 +52,95 @@ export type RunRecordRequest = Except<RunRequest, 'seed'> & {
     readonly seed: { readonly value: string; };
 };
 
-type RunRecordInputs<Facts> = {
+type RunRecordInputs = Except<RunRecordHeader<'single'>, 'detail' | 'status'> & {
     readonly coverage: RunRecordCoverage | null;
     readonly cwd: string;
     readonly engine: RunEngineFacts;
     readonly environment: RunEnvironmentFacts;
     readonly execution: ProfileConfig['execution'];
-    readonly facts: Facts | null;
-    readonly id: string;
+    readonly facts: RunFacts | null;
     readonly identities: readonly WorkId[];
-    readonly kind: 'single';
+    readonly detail: 'detailed';
     readonly loader: LoaderConfig;
     readonly placementTrace: PlacementTrace | null;
     readonly request: RunRecordRequest;
     readonly runtime: ResolvedRuntime | null;
     readonly seed: string;
-    readonly startedAt: string;
-
     readonly versions: RunRecordVersions;
-};
-
-type ReplayableRecordFormat<Version extends number> = {
-    readonly version: Version;
     readonly replayPlan: CollectedRunPlan | null;
     readonly replayProfile: unknown;
     readonly replayWitness: WitnessFile | null;
 };
-type LegacyRecordFormat = ReplayableRecordFormat<typeof previousRunRecordVersion> | {
-    readonly version: 1;
-};
-type CurrentVersionRecord = ReplayableRecordFormat<typeof currentRunRecordVersion>;
-type ImplementationVersionRecord = ReplayableRecordFormat<typeof implementationRunRecordVersion>;
-type CurrentRecordFormat = CurrentVersionRecord | ImplementationVersionRecord;
-type CurrentRecordInputs = CurrentRecordFormat & RunRecordInputs<RunFacts>;
-type HistoricalFamilyFacts = Except<RunFacts, 'implementations'>;
-type FamilyRecordFormat = ReplayableRecordFormat<typeof familyRunRecordVersion>;
-type HistoricalFamilyRecord = FamilyRecordFormat & RunRecordInputs<HistoricalFamilyFacts>;
-type LegacyFacts = Except<RunFacts, 'family' | 'implementations'>;
-type LegacyPlainRecord = LegacyRecordFormat & RunRecordInputs<LegacyFacts>;
-type LegacyRecordInputs = HistoricalFamilyRecord | LegacyPlainRecord;
-type VersionedRecordInputs = CurrentRecordInputs | LegacyRecordInputs;
 
-type CompletedRunRecord = VersionedRecordInputs & {
+type CompletedRunRecord = RunRecordInputs & {
     readonly result: RunRecordResult;
     readonly status: 'completed';
 };
-type StartedRunRecord = VersionedRecordInputs & {
+type StartedRunRecord = RunRecordInputs & {
     readonly result: RunRecordResult | null;
     readonly status: 'interrupted' | 'started';
 };
 
 export type SingleRunRecord = CompletedRunRecord | StartedRunRecord;
-export type RunRecord = LegacyMergedRunRecord | MergedRunRecord | SingleRunRecord;
+export type RunRecord = CompactRunRecord | MergedRunRecord | SingleRunRecord;
 
 export type MergeRunFacts = Except<RunFacts, 'family'> & { readonly family: RunFacts['family'] | null; };
 
 type MergedRecordLineage = { readonly id: string; readonly path: string; };
-type MergedRunFields = {
-    readonly id: string;
-    readonly kind: 'merged';
-    readonly version: typeof currentRunRecordVersion;
+type MergedRunFields = Except<RunRecordHeader<'merged'>, 'detail' | 'status'> & {
+    readonly detail: 'detailed';
     readonly facts: MergeRunFacts;
     readonly identities: readonly WorkId[];
     readonly lineage: readonly [MergedRecordLineage, ...(readonly MergedRecordLineage[])];
     readonly runtime: readonly [ResolvedRuntime | null, ...readonly (ResolvedRuntime | null)[]];
     readonly versions: Pick<RunRecordVersions, 'engine' | 'packages'>;
-    readonly startedAt: string;
     readonly result: RunRecordResult;
 };
 
 type MergedLifecycle = { readonly status: 'completed'; } | { readonly status: 'interrupted' | 'started'; };
 export type MergedRunRecord = MergedLifecycle & MergedRunFields;
-type LegacyMergedFields = Except<MergedRunRecord, 'facts' | 'version'>;
-type LegacyMergedWithoutFamily = LegacyMergedFields & {
-    readonly version: typeof previousRunRecordVersion;
-    readonly facts: Except<RunFacts, 'family' | 'implementations'>;
+
+type CompactSingleExecution = Pick<RunSingleProcessExecutionFacts, 'processModel' | 'scheduling'>;
+type CompactWorkerExecution = Pick<RunWorkerPoolExecutionFacts, 'processModel' | 'scheduling' | 'workerLifecycle'>;
+type CompactExecution = CompactSingleExecution | CompactWorkerExecution;
+type CompactTestFields = 'benchmark' | 'durationMicroseconds' | 'verdict' | 'workId';
+type CompactTestResult = Pick<RunRecordResult['perTest'][number], CompactTestFields>;
+export type CompactRunResult = {
+    readonly status: RunRecordResult['status'];
+    readonly summary: RunRecordResult['summary'];
+    readonly preparationFacts: RunRecordResult['preparationFacts'];
+    readonly resourceChecks: RunRecordResult['resourceChecks'];
+    readonly timings: Pick<RunRecordResult['timings'], 'summary'>;
+    readonly runnerErrors: RunResult['runnerErrors'];
+    readonly baselineReports: readonly BaselineReportSummary[];
+    readonly perTest: readonly CompactTestResult[];
 };
-type HistoricalFamilyMerge = LegacyMergedFields & {
-    readonly version: typeof familyRunRecordVersion;
-    readonly facts: Except<RunFacts, 'implementations'>;
+type CompactRunFacts = {
+    readonly benchmarkHost: RunFacts['benchmarkHost'];
+    readonly benchmarkPlacement: RunFacts['benchmarkPlacement'];
+    readonly benchmarkCalibration: RunFacts['benchmarkCalibration'];
+    readonly benchmarkNormalization: RunFacts['benchmarkNormalization'];
+    readonly environment: Pick<RunEnvironmentFacts, 'node'> | null;
+    readonly execution: CompactExecution & { readonly testFamily: string; readonly profile: string; };
+    readonly implementations: null;
 };
-type HistoricalImplementationMerge = Except<MergedRunRecord, 'version'> & {
-    readonly version: typeof implementationRunRecordVersion;
+type CompactRunFields = Except<RunRecordHeader<'merged' | 'single'>, 'detail' | 'status'> & {
+    readonly detail: 'compact';
+    readonly evidence: 'summaries';
+    readonly replayPlan: null;
+    readonly replayProfile: null;
+    readonly versions: Pick<RunRecordVersions, 'engine' | 'packages'> & { readonly node: string | null; } | null;
+    readonly identities: readonly WorkId[] | null;
+    readonly execution: CompactExecution;
+    readonly request: Pick<RunRecordRequest, 'profile' | 'recordForMerge'>;
+    readonly facts: CompactRunFacts | null;
 };
-type LegacyMergedRunRecord = HistoricalFamilyMerge | HistoricalImplementationMerge | LegacyMergedWithoutFamily;
+type CompletedCompactRunRecord = CompactRunFields & {
+    readonly status: 'completed';
+    readonly result: CompactRunResult;
+};
+type StartedCompactRunRecord = CompactRunFields & {
+    readonly status: 'interrupted' | 'started';
+    readonly result: CompactRunResult | null;
+};
+export type CompactRunRecord = CompletedCompactRunRecord | StartedCompactRunRecord;

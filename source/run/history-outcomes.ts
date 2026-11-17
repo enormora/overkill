@@ -1,5 +1,4 @@
 import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
-import { currentRunRecordVersion } from './run-record-format.ts';
 import type { DurationContribution } from './duration-history-storage.ts';
 import type { HistoryRecord } from './history-record.ts';
 import type { CaseHistoryStatus, HistoryRunSummary } from './compact-history-schema.ts';
@@ -41,7 +40,7 @@ export function historyRunSummary(record: HistoryRecord, testFamily: string): Hi
         testFamily,
         status: historyRunStatus(record),
         durationMicroseconds: record.result?.timings.summary.totalWallTimeMicroseconds ?? null,
-        replayable: record.version === currentRunRecordVersion && record.facts !== null &&
+        replayable: record.facts !== null &&
             record.replayPlan !== null && record.replayProfile !== null
     };
 }

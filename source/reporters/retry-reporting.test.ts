@@ -140,7 +140,14 @@ export const testNode = createSuite({
                 const reporter = createBriefReporter()(context);
                 const { onFinish } = reporter;
                 scope.require.defined(onFinish);
-                const output = await onFinish(recoveredResult());
+                const output = await onFinish({
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    },
+                    result: recoveredResult()
+                });
                 scope.require.defined(output);
                 scope.assert.includes(output[0]?.text ?? '', 'retried=1');
                 scope.assert.includes(output[0]?.text ?? '', 'failed=0');
@@ -173,7 +180,7 @@ export const testNode = createSuite({
                 scope.assert.equal(text, '');
                 const { onFinish } = reporter;
                 scope.require.defined(onFinish);
-                await onFinish(result);
+                await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
                 scope.assert.includes(text, '1 executed (1 pass, 0 fail, 0 skip), 1 retried');
                 return scope.assert.collect();
             }

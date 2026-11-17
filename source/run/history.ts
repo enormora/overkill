@@ -9,7 +9,7 @@ import {
     detailedRecordState,
     type DetailedRecordState
 } from './history-state-access.ts';
-import { readRequiredCompactHistory } from './history-reader.ts';
+import { readRequiredCompactHistory } from './history-storage.ts';
 
 import { repairHistory } from './history-repair.ts';
 import { pruneHistory } from './history-pruning.ts';
@@ -74,9 +74,7 @@ export function createHistory(options: HistoryOptions): History {
     }
     return {
         async list(): Promise<readonly HistoryRunSummary[]> {
-            const index = await readRequiredCompactHistory(store, directory, async function repairAutomatically() {
-                return await repair('automatic');
-            });
+            const index = await readRequiredCompactHistory(store, directory);
             return await guarded(async function listHistory() {
                 return await Promise.all(
                     index

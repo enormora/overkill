@@ -1,5 +1,5 @@
 import type { RunResult } from '../engine/run-result.ts';
-import { finalizeResultWithDurationHistory } from './run-state-finalization.ts';
+import { finalizeRunEvidence } from './run-state-finalization.ts';
 import type { RecordedCoverageExecution } from './recorded-coverage-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { RunResultSession } from './run-support.ts';
@@ -21,10 +21,10 @@ export async function finalizeRunResult(
     result: RunResult,
     execution: RunResultFinalization
 ): Promise<RunResult> {
-    const { coverageSession, dependencies, record, timing } = execution;
+    const { coverageSession, record, timing } = execution;
     const prepared = execution.baseline?.prepareResult(result) ?? result;
     const coveredResult = coverageSession === null ? prepared : await coverageSession.finalize(prepared);
-    const finalResult = await finalizeResultWithDurationHistory(dependencies, run, coveredResult, timing);
+    const finalResult = await finalizeRunEvidence(run, coveredResult, timing);
     const recordedResult = record === null ? finalResult : await record.checkpointResult(finalResult);
     return execution.baseline === null ? recordedResult : await execution.baseline.finalize(recordedResult);
 }

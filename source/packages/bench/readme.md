@@ -201,15 +201,14 @@ Targets with `normalization: 'raw'` receive no default CPU calibration. Select
 `'node-cpu'` only for a target compatible with that calibration model. Target
 selection survives raw, calibrated, and timeline wrappers.
 
-Lifecycle evidence version 3 records warmup/measured invocation identity,
-collector completeness, target facts, errors, and separate measured/lifecycle
-durations. Historical lifecycle records retain absent attribution. Raw sample
-attachments use version 2 envelopes with per-reading invocation/target attribution.
-Use `readRawBenchmarkSamples(value)` to read current envelopes or historical
-attachments; historical readings retain null attribution. Performance baseline
-version 4 keys stable target and collector facts separately from instance IDs.
-Use `overkill bench baseline apply` to replace baselines whose measurement
-identity changed. Historical baseline formats remain inspectable.
+Lifecycle evidence records warmup/measured invocation identity, collector
+completeness, target facts, errors, and separate measured/lifecycle durations.
+Raw sample attachments use version 1 envelopes with per-reading invocation
+and target attribution. Use `readRawBenchmarkSamples(value)` to read them.
+Saved performance baselines use version 1 and key stable target and collector
+facts separately from instance IDs. Use `overkill bench baseline apply` to
+replace baselines whose measurement identity changed. Earlier development
+formats require regeneration.
 Returned plain numbers remain custom metrics with unit `number`.
 
 CPU metrics are deltas in microseconds. Memory metrics include end snapshots
@@ -525,11 +524,10 @@ in the snapshot belong to that observer; execution host arguments retain their
 ordinary execution facts.
 
 `RunFacts.benchmarkHost` contains the snapshot, configured limits, and check
-results. Version 4 `benchmark-run` artifacts retain host evidence, the nullable
-`placement` decision, and normalization inputs for JSON and HTML reporting.
-Versions 1 through 3 remain readable with `normalization: null`. Versions 1 and 2
-also use `placement: null`; version 1 uses `host: null`. Host observations are separate from
-`RunFacts.benchmarkCalibration`, which retains the legacy adapter CPU reference.
+results. Reporter `RunReport.context.facts` provides the same host, placement,
+and normalization context. `RunFacts.benchmarkCalibration` retains the adapter CPU
+reference. These describe execution of the consumer's benchmark workload;
+they do not measure Overkill's own performance.
 The snapshot describes its recorded moment; collection and fixture startup may
 change conditions afterward. Sampling does not recheck host conditions.
 
@@ -646,8 +644,7 @@ Inference retains the independent, stationary observation assumption.
 
 Results retain raw summaries, calibration samples, reference selection, factors,
 normalized summaries, and converted display budgets. JSON and HTML preserve both
-scales. `RunFacts.benchmarkNormalization` and version 4 `benchmark-run` artifacts
-record reference inputs; older artifacts remain readable. Direct engine execution
+scales. `RunFacts.benchmarkNormalization` records reference inputs. Direct engine execution
 also supplies automatic calibration context.
 
 Capture and baseline cleanup emit a `calibration-references` report, readable with

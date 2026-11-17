@@ -1,5 +1,8 @@
 import { defaultEngine } from '../../engine/standard-engine.ts';
 
+export type { BaselineRunReport, BaselineReportSummary } from '../../engine/baseline-report.ts';
+export type { RunReport } from '../../engine/reporter.ts';
+
 export const {
     createPropertyTestCase,
     createBenchmarkTestCase,
@@ -63,7 +66,6 @@ export type {
 export { attachBenchmarkCalibrationBody, readBenchmarkCalibrationBody } from '../../engine/benchmark-node.ts';
 export type { BenchmarkCalibrationBody } from '../../engine/benchmark-node.ts';
 export { maximumRetainedSamples, minimumInferentialSamples } from '../../engine/benchmark-limits.ts';
-export { benchmarkLifecycleVersion } from '../../engine/benchmark-result.ts';
 export { resolveBenchmarkGarbageCollection } from '../../engine/benchmark-garbage-collection.ts';
 export type {
     BenchmarkDefinitionSummary,

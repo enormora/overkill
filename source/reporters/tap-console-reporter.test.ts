@@ -133,18 +133,21 @@ export const testNode = createOverkillSuite({
                 const reporter = tapConsoleReporterWithLog(log);
 
                 await reporter.onResult(
-                    runResultFactory.build({
-                        perTest: [],
-                        summary: {
-                            defined: 0,
-                            discovered: 0,
-                            failed: 0,
-                            inconclusive: 0,
-                            passed: 0,
-                            planned: 0,
-                            skipped: 0
-                        }
-                    })
+                    {
+                        context: { id: null, startedAt: null, facts: null },
+                        result: runResultFactory.build({
+                            perTest: [],
+                            summary: {
+                                defined: 0,
+                                discovered: 0,
+                                failed: 0,
+                                inconclusive: 0,
+                                passed: 0,
+                                planned: 0,
+                                skipped: 0
+                            }
+                        })
+                    }
                 );
 
                 scope.assert(doubleUsage.callCount, log, 1);
@@ -163,31 +166,34 @@ export const testNode = createOverkillSuite({
                 const reporter = tapConsoleReporterWithLog(log);
 
                 await reporter.onResult(
-                    runResultFactory.build({
-                        perTest: [
-                            {
-                                id: failingCaseId,
-                                outcome: {
-                                    failures: [ { checks: [ { summary: 'the-reason' } ], kind: 'assertion' } ],
-                                    kind: 'fail'
+                    {
+                        context: { id: null, startedAt: null, facts: null },
+                        result: runResultFactory.build({
+                            perTest: [
+                                {
+                                    id: failingCaseId,
+                                    outcome: {
+                                        failures: [ { checks: [ { summary: 'the-reason' } ], kind: 'assertion' } ],
+                                        kind: 'fail'
+                                    },
+                                    verdict: 'fail'
                                 },
-                                verdict: 'fail'
-                            },
-                            {
-                                id: passingCaseId,
-                                verdict: 'pass'
+                                {
+                                    id: passingCaseId,
+                                    verdict: 'pass'
+                                }
+                            ],
+                            summary: {
+                                defined: 2,
+                                discovered: 4,
+                                failed: 1,
+                                inconclusive: 0,
+                                passed: 1,
+                                planned: 2,
+                                skipped: 0
                             }
-                        ],
-                        summary: {
-                            defined: 2,
-                            discovered: 4,
-                            failed: 1,
-                            inconclusive: 0,
-                            passed: 1,
-                            planned: 2,
-                            skipped: 0
-                        }
-                    })
+                        })
+                    }
                 );
 
                 scope.assert(doubleUsage.callCount, log, 1);
@@ -208,35 +214,38 @@ export const testNode = createOverkillSuite({
                 const reporter = tapConsoleReporterWithLog(log);
 
                 await reporter.onResult(
-                    runResultFactory.build({
-                        perTest: [
-                            {
-                                id: fallbackCaseId,
-                                outcome: {
-                                    failures: [
-                                        {
-                                            actual: 0,
-                                            code: 'no-assertions',
-                                            expected: 'at least one assertion',
-                                            kind: 'test-contract',
-                                            summary: 'Expected at least one assertion.'
-                                        }
-                                    ],
-                                    kind: 'fail'
-                                },
-                                verdict: 'fail'
+                    {
+                        context: { id: null, startedAt: null, facts: null },
+                        result: runResultFactory.build({
+                            perTest: [
+                                {
+                                    id: fallbackCaseId,
+                                    outcome: {
+                                        failures: [
+                                            {
+                                                actual: 0,
+                                                code: 'no-assertions',
+                                                expected: 'at least one assertion',
+                                                kind: 'test-contract',
+                                                summary: 'Expected at least one assertion.'
+                                            }
+                                        ],
+                                        kind: 'fail'
+                                    },
+                                    verdict: 'fail'
+                                }
+                            ],
+                            summary: {
+                                defined: 1,
+                                discovered: 1,
+                                failed: 1,
+                                inconclusive: 0,
+                                passed: 0,
+                                planned: 1,
+                                skipped: 0
                             }
-                        ],
-                        summary: {
-                            defined: 1,
-                            discovered: 1,
-                            failed: 1,
-                            inconclusive: 0,
-                            passed: 0,
-                            planned: 1,
-                            skipped: 0
-                        }
-                    })
+                        })
+                    }
                 );
 
                 scope.assert(doubleUsage.callCount, log, 1);
@@ -257,29 +266,32 @@ export const testNode = createOverkillSuite({
                 const reporter = tapConsoleReporterWithLog(log);
 
                 await reporter.onResult(
-                    runResultFactory.build({
-                        perTest: [
-                            {
-                                id: skippedCaseId,
-                                outcome: { kind: 'skip', reason: 'not selected' },
-                                verdict: 'skip'
-                            },
-                            {
-                                id: inconclusiveCaseId,
-                                outcome: { kind: 'inconclusive', reason: 'lost signal' },
-                                verdict: 'inconclusive'
+                    {
+                        context: { id: null, startedAt: null, facts: null },
+                        result: runResultFactory.build({
+                            perTest: [
+                                {
+                                    id: skippedCaseId,
+                                    outcome: { kind: 'skip', reason: 'not selected' },
+                                    verdict: 'skip'
+                                },
+                                {
+                                    id: inconclusiveCaseId,
+                                    outcome: { kind: 'inconclusive', reason: 'lost signal' },
+                                    verdict: 'inconclusive'
+                                }
+                            ],
+                            summary: {
+                                defined: 2,
+                                discovered: 2,
+                                failed: 0,
+                                inconclusive: 1,
+                                passed: 0,
+                                planned: 2,
+                                skipped: 1
                             }
-                        ],
-                        summary: {
-                            defined: 2,
-                            discovered: 2,
-                            failed: 0,
-                            inconclusive: 1,
-                            passed: 0,
-                            planned: 2,
-                            skipped: 1
-                        }
-                    })
+                        })
+                    }
                 );
 
                 const expectedOutput = [

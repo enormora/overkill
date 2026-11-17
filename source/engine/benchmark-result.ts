@@ -5,8 +5,6 @@ import type { WorkloadParameters } from './workload-parameters.ts';
 import type { WorkId, WorkloadId } from './identity.ts';
 import type { BenchmarkTimelineEvidence, BenchmarkTimelinePolicy } from './benchmark-timeline.ts';
 
-export const benchmarkLifecycleVersion = 3;
-
 export type BenchmarkWorkload<Parameters extends WorkloadParameters = WorkloadParameters> = {
     readonly name: string;
     readonly parameters: Parameters;
@@ -14,9 +12,7 @@ export type BenchmarkWorkload<Parameters extends WorkloadParameters = WorkloadPa
 
 export type BenchmarkDefinitionSummary = {
     readonly timeline: BenchmarkTimelinePolicy | null;
-    readonly normalization: Readonly<
-        Record<string, NormalizationRuleSummary>
-    >;
+    readonly normalization: Readonly<Record<string, NormalizationRuleSummary>>;
     readonly lifecycle: BenchmarkLifecyclePolicy | null;
     readonly kind: string;
     readonly workloads: readonly BenchmarkWorkload[];
@@ -150,7 +146,6 @@ export type BenchmarkCooldownResult = BenchmarkCooldownResults[keyof BenchmarkCo
 
 export type BenchmarkLifecycleResult = {
     readonly measurement: MeasurementEvidence | null;
-    readonly version: typeof benchmarkLifecycleVersion;
     readonly policy: ResolvedBenchmarkLifecyclePolicy;
     readonly garbageCollection: BenchmarkGarbageCollectionResult | null;
     readonly warmup: {
