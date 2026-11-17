@@ -6,9 +6,6 @@
             "ES2025",
             "DOM"
         ],
-        "types": [
-            "node"
-        ],
         "rootDir": "..",
         "tsBuildInfoFile": "../target/buildcache/benchmark-html-browser.tsbuildinfo"
     },

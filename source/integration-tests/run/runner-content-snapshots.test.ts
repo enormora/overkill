@@ -69,7 +69,7 @@ async function verifyReadOnlyMismatch(scope: TestScope, fixture: SnapshotFixture
 async function updateChangedSnapshot(scope: TestScope, fixture: SnapshotFixture): Promise<void> {
     const entries = await fixture.store.list();
     const entry = entries.find(function textSnapshot(candidate) {
-        return candidate.baseline.comparisonContext.name === 'response';
+        return candidate.baseline.comparisonContext['name'] === 'response';
     });
     scope.require.defined(entry);
     await fixture.store.apply({

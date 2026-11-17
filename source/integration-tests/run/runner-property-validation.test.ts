@@ -36,7 +36,7 @@ async function concurrentStream(
     command: RunCommand,
     processModel: 'in-process' | 'supervised-process'
 ): ReturnType<typeof orchestrator.run> {
-    const profile = command.config.profiles.cases;
+    const profile = command.config.profiles['cases'];
     if (profile?.testFamily !== 'property') {
         throw new TypeError('Expected property profile.');
     }

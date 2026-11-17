@@ -1,3 +1,4 @@
+import type { ResourceCheckSnapshot } from '../resources/resource-check-contract.ts';
 import { resourceEntries } from '../resources/resource-graph.ts';
 import type {
     AnyResourceDefinition,
@@ -43,10 +44,12 @@ function resourceContextFromManagedRecords(
 
 export function managedResourceSession(
     resources: ResourceMap,
-    handles: ReadonlyMap<AnyResourceDefinition, unknown>
+    handles: ReadonlyMap<AnyResourceDefinition, unknown>,
+    resourceChecks: () => readonly ResourceCheckSnapshot[]
 ): ResourceSession<ResourceMap> {
     const session = {
         context: resourceContextFromManagedRecords(resources, handles),
+        resourceChecks,
         async disposeOnce() {
             return undefined;
         }

@@ -76,7 +76,7 @@ async function captureWitness(scope: TestScope, project: ReplayProject, nested: 
 }
 
 async function verifyCorpus(scope: TestScope, project: ReplayProject, file: string): Promise<void> {
-    const profile = project.command.config.profiles.cases;
+    const profile = project.command.config.profiles['cases'];
     if (profile?.testFamily !== 'property') {
         throw new TypeError('Expected property profile.');
     }

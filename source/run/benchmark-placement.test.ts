@@ -58,8 +58,7 @@ export const testNode = suite('adaptive benchmark placement policy', [
                 budgets: {
                     small: [ {
                         ...size
-                            .budgets
-                            .small
+                            .budgets['small']
                             ?.[0],
                         metric: 'operationsPerSecond',
                         maximum: 100,

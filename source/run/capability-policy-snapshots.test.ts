@@ -30,7 +30,7 @@ export const testNode = suite('capability policy snapshots', [
             await checkpoints.observe('attempt', async function () {
                 await Promise.resolve();
             });
-            environment.TEST_VALUE = 'changed';
+            environment['TEST_VALUE'] = 'changed';
         });
         const value = await checkpoints.observe('attempt', async function () {
             return await Promise.resolve('repeated');

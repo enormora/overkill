@@ -130,7 +130,7 @@ export const testNode = suite('workload test cases', [
             title: 'root',
             children: [ child ]
         }));
-        scope.assert.equal(plan.cases[0].workId.workload?.params.count, '5');
+        scope.assert.equal(plan.cases[0].workId.workload?.params['count'], '5');
         const otherEngine = createTestEngine();
         scope.assert.false(otherEngine.ownsTestNode(child));
         return scope.assert.collect();

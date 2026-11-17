@@ -1,12 +1,20 @@
 import type { WorkloadId } from '../engine/identity.ts';
 import { snapshotWorkloadInput, type WorkloadInput, type WorkloadParameters } from '../engine/workload-input.ts';
 import { snapshotWorkloadParameters } from '../engine/workload-parameters.ts';
+import { ResourceLifecycleError, resourceLifecycleError } from './resource-lifecycle-error.ts';
+import { hasWorkloadInput, type ResourceWorkload } from './resource-workload-types.ts';
 import { withWorkloadCallbacks } from './resource-workload-callbacks.ts';
 import { createResourceGraph } from './resource-graph.ts';
 import type { AnyResourceDefinition, ResourceDependencies } from './resource-definition-shape.ts';
 import { inheritResourceDefinition, parentResourceDefinition } from './resource-scenario-binding.ts';
-import type { ResourceWorkload } from './resource-workload-types.ts';
 
+export type ResourceAcquisitionContext = {
+    readonly acquisitionFailureMessage: string;
+    readonly fallbackResourceName: string;
+};
+type ResourceWorkloadRequest = { readonly resources: ResourceDependencies; readonly workload: WorkloadInput; } | {
+    readonly resources: ResourceDependencies;
+};
 const resourceWorkloads = new WeakMap<AnyResourceDefinition, WorkloadInput>();
 
 export function resourceWorkloadIdentity(resource: AnyResourceDefinition): WorkloadId | null {
@@ -118,4 +126,26 @@ export function createWorkloadResourceBinding(input: WorkloadInput | null): Work
             return graph.resources(resources);
         }
     };
+}
+
+export function boundWorkloadResources(
+    request: ResourceWorkloadRequest,
+    context: ResourceAcquisitionContext
+): ResourceDependencies {
+    const workload = hasWorkloadInput(request) ? request.workload : null;
+    try {
+        const binding = createWorkloadResourceBinding(workload);
+        return binding.resources(request.resources);
+    } catch (error: unknown) {
+        if (error instanceof ResourceLifecycleError) {
+            throw error;
+        }
+        throw resourceLifecycleError(
+            `${context.acquisitionFailureMessage} ${
+                error instanceof Error ? error.message : 'Invalid workload input.'
+            }`,
+            [ { cause: error, phase: 'acquire', resourceName: context.fallbackResourceName } ],
+            error
+        );
+    }
 }

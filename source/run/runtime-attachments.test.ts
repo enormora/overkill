@@ -27,7 +27,7 @@ function assertInvalidJson(scope: TestScope): void {
         }, { name: 'TypeError' });
     }
     const cyclic: Record<string, unknown> = {};
-    cyclic.self = cyclic;
+    cyclic['self'] = cyclic;
     scope.assert.throws(function rejectCyclicJson() {
         snapshotJson(cyclic, 1024);
     }, { name: 'TypeError' });

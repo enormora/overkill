@@ -80,7 +80,7 @@ function assertConfigSubpath(scope: TestScope): void {
     scope.assert.equal(configSubpath.defineConfig(config), config);
     scope.assert.equal(Object.hasOwn(configSubpath, 'orchestrator'), false);
     scope.assert.equal(typeof configSubpath.loadConfig, 'function');
-    scope.assert.equal(configSubpath.normalizeConfig(config).profiles.unit?.testFamily, 'microtest');
+    scope.assert.equal(configSubpath.normalizeConfig(config).profiles['unit']?.testFamily, 'microtest');
 }
 
 function reporterSubpathOutputs(): readonly string[] {
@@ -150,6 +150,7 @@ function assertResourcesSubpathExports(scope: TestScope): void {
         'defineImplementationReference',
         'defineLocalServiceResource',
         'defineResource',
+        'defineResourceCheckObserverReference',
         'defineResourceConsumerReference',
         'defineResourceOwnerReference',
         'defineResourceReference',
@@ -159,6 +160,7 @@ function assertResourcesSubpathExports(scope: TestScope): void {
         'startRuntime',
         'withFailureArtifacts',
         'withResource',
+        'withResourceChecks',
         'withResources',
         'withRuntime',
         'withWitnessReplay'

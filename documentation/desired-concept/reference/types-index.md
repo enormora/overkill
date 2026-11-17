@@ -2812,6 +2812,20 @@ their declared realm; native handles/closures are not serialized. See
 for the shared planning contract. The resource types below do not by themselves
 establish cross-realm compatibility.
 
+The observer installer receives `handle`, `resource`, `signal`, `ledger`, and
+`cleanup`. Register acquired listener/infrastructure cleanup with
+`cleanup.defer(signal => ...)` before awaiting further installation. Return
+`prepare({ interval, signal })` and `finalize({ interval, signal })`; finalization
+returns `{ kind: 'complete' }` or `{ kind: 'incomplete', reasons }` after draining
+the adapter's delivery boundary. Ledger writes carry explicit lifetime or
+work/attempt intervals and nullable target identity. `resourceChecks()` returns
+retained snapshots without changing body assertion counts. Outcome/evidence
+delivery is a separate implementation milestone.
+`ledger.requestStop(interval, target, cause)` accepts either
+`{ kind: 'check', check }` or `{ kind: 'observation-error', error }` and records
+the cause before requesting cancellation. Recorded observation errors make
+finalization incomplete even when an adapter returns `complete`.
+
 `withResourceChecks(resource, observer)` adds the shared observer lifecycle and
 durable findings ledger. It does not reuse body assertion counts or resettable
 transcripts. `withFailureArtifacts(resource, prepare)` handles provisional

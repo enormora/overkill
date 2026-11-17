@@ -20,10 +20,10 @@ import type { WorkloadTestCaseVariant, TestScope } from '../../../packages/engin
 type PackageParameters = { readonly packages: number; };
 
 function parsePackages(parameters: WorkloadParameters): PackageParameters {
-    if (typeof parameters.packages !== 'number') {
+    if (typeof parameters['packages'] !== 'number') {
         throw new TypeError('Expected a package count.');
     }
-    return { packages: parameters.packages };
+    return { packages: parameters['packages'] };
 }
 
 const registry = createLocalHttpServiceResource({

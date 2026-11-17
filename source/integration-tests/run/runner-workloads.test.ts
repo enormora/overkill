@@ -50,7 +50,7 @@ function commandForWorkloads(execution: BenchmarkExecution, directory: string): 
             }
         }
     });
-    const profile = config.profiles.workloads;
+    const profile = config.profiles['workloads'];
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Missing workload benchmark profile.');
     }

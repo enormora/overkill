@@ -1,7 +1,13 @@
+import {
+    resourceCheckInstallers,
+    createResourceCheckSession,
+    type ResourceCheckSession
+} from '../resources/resource-checks.ts';
 import { workIdentityKey, type AttemptId } from '../engine/identity.ts';
 import type {
     AnyResourceDefinition,
     ResourceContext,
+    ResourceSessionContract,
     ResourceProjectionPayload,
     RuntimeResourceMap as ResourceMap
 } from '../resources/resources.ts';
@@ -9,7 +15,7 @@ import {
     exposeResourceHandle,
     sourceResourceDefinition
 } from '../resources/resource-scenario-binding.ts';
-import { acquireManagedResourceHandle } from './resource-handle-acquisition.ts';
+import { acquireManagedResourceHandle, type ResourceHandleRequest } from './resource-handle-acquisition.ts';
 import { replayAcquiredResource, replayResourceDefinition } from './replay-resource.ts';
 import {
     caseResourceBoundaryKeys,
@@ -25,19 +31,20 @@ import {
     type ResourceProjectionRecords
 } from './resource-lifecycle-projection.ts';
 import {
+    acquireOwnedResource,
     currentLifecycleAttempt,
     currentAttachmentExecution,
     type ManagedLifecycleState,
     type ManagedRunnerError
 } from './resource-lifecycle-state.ts';
-import type { ResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
 
 type TestPlanCase = Parameters<ManagedLifecycleState['completeCase']>[0];
 
-export type ManagedResourceLifecycleTiming = ResourceLifecycleTiming | null;
+export type ManagedResourceLifecycleTiming = ResourceHandleRequest['timing'];
 
 export type ManagedResourceRecord = {
     readonly releaseOwner: () => void;
+    readonly checks: ResourceCheckSession | null;
     readonly boundary: LifecycleBoundary;
     readonly dependencyContext: ResourceContext<ResourceMap>;
     readonly descriptor: AnyResourceDefinition;
@@ -60,6 +67,7 @@ export type ManagedLifecycleStores = {
     readonly takeAttemptErrors: (testCase: TestPlanCase, attempt: AttemptId) => readonly ManagedRunnerError[];
     readonly takePendingRunErrors: () => readonly ManagedRunnerError[];
     readonly takeRunErrors: () => readonly ManagedRunnerError[];
+    readonly checks: ResourceSessionContract<ResourceContext<ResourceMap>>['resourceChecks'];
     readonly records: () => readonly ManagedResourceRecord[];
 };
 
@@ -93,6 +101,7 @@ export function createManagedStores(options: ResourceLifecycleStoreOptions): Man
     const acquisitions = new Map<string, ManagedResourceAcquisition>();
     const boundaryUseCounts = new Map(initialBoundaryUseCountsFromRecords(options.boundaryUseCounts));
     const errorsByCase = new Map<string, ManagedRunnerError[]>();
+    const observations = new Set<ResourceCheckSession>();
     const records = new Map<string, ManagedResourceRecord>();
     const runErrors: ManagedRunnerError[] = [];
 
@@ -130,7 +139,15 @@ export function createManagedStores(options: ResourceLifecycleStoreOptions): Man
         rememberAcquisition(boundaryKey, acquisition) {
             acquisitions.set(boundaryKey, acquisition);
         },
+        checks() {
+            return Array.from(observations).flatMap(function (observation) {
+                return observation.snapshots();
+            });
+        },
         rememberRecord(boundaryKey, record) {
+            if (record.checks !== null) {
+                observations.add(record.checks);
+            }
             records.set(boundaryKey, record);
         },
         records() {
@@ -163,6 +180,7 @@ export function createManagedStores(options: ResourceLifecycleStoreOptions): Man
 export function resourceProjectionRecordsFromStores(stores: ManagedLifecycleStores): ResourceProjectionRecords {
     return {
         resources: stores.records().flatMap(function toProjectionRecord(record) {
+            record.checks?.assertAdmitted();
             const payload = serializeProjectedHandle(record.descriptor, record.ownerHandle, record.dependencyContext);
 
             return payload === null
@@ -173,6 +191,7 @@ export function resourceProjectionRecordsFromStores(stores: ManagedLifecycleStor
 }
 
 export function managedResourceHandle(record: ManagedResourceRecord, resource: AnyResourceDefinition): unknown {
+    record.checks?.assertAdmitted();
     return exposeResourceHandle(resource, record.consumerHandle);
 }
 
@@ -198,6 +217,29 @@ function projectionRecords(records: ResourceProjectionRecords): ReadonlyMap<stri
     return new Map(records.resources.map(function toEntry(record) {
         return [ record.boundaryKey, record.payload ];
     }));
+}
+
+async function installManagedObservation(
+    record: ManagedResourceRecord,
+    signal: AbortSignal
+): Promise<ManagedResourceRecord> {
+    const { checks } = record;
+    if (checks === null) {
+        return record;
+    }
+    const observation = await acquireOwnedResource(async function installOwnerObservation() {
+        await checks.install(signal);
+    });
+    return {
+        ...record,
+        releaseOwner() {
+            try {
+                record.releaseOwner();
+            } finally {
+                observation.releaseOwner();
+            }
+        }
+    };
 }
 
 export function createManagedResourceAcquirer(
@@ -248,15 +290,15 @@ export function createManagedResourceAcquirer(
         signal: AbortSignal
     ): Promise<ManagedResourceRecord> {
         const dependencyContext = await acquireDependencyContext(resource, testCase, signal);
+        const consumers = options
+            .testCases
+            .filter(function consumesBoundary(candidate) {
+                return caseResourceBoundaryKeys(candidate, new Set([ resource.scope ])).includes(boundary.key);
+            })
+            .map(function consumerWork(candidate) {
+                return candidate.workId;
+            });
         if (resource.scope !== 'per-case') {
-            const consumers = options
-                .testCases
-                .filter(function consumesBoundary(candidate) {
-                    return caseResourceBoundaryKeys(candidate, new Set([ resource.scope ])).includes(boundary.key);
-                })
-                .map(function consumerWork(candidate) {
-                    return candidate.workId;
-                });
             await currentAttachmentExecution()?.registerResourceConsumers(boundary.key, consumers);
         }
         const acquisition = await acquireManagedResourceHandle({
@@ -268,6 +310,9 @@ export function createManagedResourceAcquirer(
             timing: options.timing
         });
         const record = {
+            checks: resourceCheckInstallers(resource).length === 0
+                ? null
+                : createResourceCheckSession(resource, acquisition.value, { kind: 'managed', consumers }),
             releaseOwner: acquisition.releaseOwner,
             boundary,
             dependencyContext,
@@ -277,7 +322,9 @@ export function createManagedResourceAcquirer(
             ownerHandle: acquisition.value
         };
 
-        return await restoreAcquiredResource(record, signal);
+        stores.rememberRecord(record.boundary.key, record);
+        const observed = await installManagedObservation(record, signal);
+        return await restoreAcquiredResource(observed, signal);
     }
 
     async function startExternalResource(
@@ -302,6 +349,7 @@ export function createManagedResourceAcquirer(
             },
             external: true,
             consumerHandle: deserializeProjectedHandle(resource, payload, dependencyContext),
+            checks: null,
             ownerHandle: null
         };
 
@@ -341,7 +389,7 @@ export function createManagedResourceAcquirer(
         assertCompatibleResource(stores, boundary, resource);
 
         if (existingRecord !== undefined) {
-            return existingRecord;
+            return await (stores.existingAcquisition(boundary.key) ?? existingRecord);
         }
 
         const externalRecord = externalProjections.has(boundary.key)

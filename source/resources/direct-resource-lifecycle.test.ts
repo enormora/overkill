@@ -1,5 +1,8 @@
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestNode, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { testNode as resourceChecksTestNode } from './resource-checks.test.ts';
+import { testNode as resourceCheckIsolationTestNode } from './resource-check-isolation.test.ts';
+import { testNode as resourceCheckFailuresTestNode } from './resource-check-failures.test.ts';
 import {
     defineResource,
     type EmptyResourceDependencies,
@@ -374,6 +377,9 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        resourceChecksTestNode,
+        resourceCheckIsolationTestNode,
+        resourceCheckFailuresTestNode,
         lifecycleTestCase(
             'startResources exposes direct handles and disposes them once in reverse order',
             assertDirectResourceLifecycle

@@ -84,7 +84,7 @@ async function incompatibleCorpus(
 }
 async function assertCheckedInCompatibility(scope: TestScope, input: IncompatibleCorpus): Promise<void> {
     const { command, file, content } = input;
-    const profile = command.config.profiles.laws;
+    const profile = command.config.profiles['laws'];
     if (profile?.testFamily !== 'property') {
         throw new TypeError('Expected property profile.');
     }

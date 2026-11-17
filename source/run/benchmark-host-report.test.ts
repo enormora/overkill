@@ -78,7 +78,7 @@ export const testNode = suite('benchmark host reporting', [
         'retains existing host evidence through fallback error metadata and HTML reporting',
         function (scope: TestScope) {
             const command = benchmarkCommand();
-            const profile = command.config.profiles.startup;
+            const profile = command.config.profiles['startup'];
             if (profile?.testFamily !== 'benchmark') {
                 throw new Error('Missing benchmark profile.');
             }

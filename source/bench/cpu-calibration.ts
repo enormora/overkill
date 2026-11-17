@@ -18,7 +18,7 @@ function createCpuCalibration(configuration: readonly [] | readonly [Calibration
             if (measured.value !== expected) {
                 throw new TypeError('CPU calibration checksum changed.');
             }
-            const reading = measured.metrics.threadCpuTotalMicroseconds;
+            const reading = measured.metrics['threadCpuTotalMicroseconds'];
             if (reading === undefined) {
                 throw new TypeError('CPU calibration collector did not return CPU time.');
             }

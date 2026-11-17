@@ -21,8 +21,7 @@ export function quietHost(): BenchmarkHostAssessment {
     const profile = normalizeConfig({
         profiles: { sizes: { testFamily: 'benchmark', files: { include: [ 'sizes.bench.ts' ] } } }
     })
-        .profiles
-        .sizes;
+        .profiles['sizes'];
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Missing benchmark profile.');
     }

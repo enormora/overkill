@@ -52,7 +52,7 @@ function checkInvalidCase(value: Readonly<Record<string, unknown>>): void {
             output: z.union([ z.string(), z.null() ]).optional()
         })
         .parse(value);
-    if (value.output === value.code) {
+    if (value['output'] === value['code']) {
         throw new TypeError('Use null or omit output when no fix is expected.');
     }
 }

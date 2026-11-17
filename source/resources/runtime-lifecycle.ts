@@ -6,6 +6,7 @@ import {
     isDefinedRuntime,
     type AnyResourceDefinition,
     type ResourceContext,
+    type ResourceSessionContract,
     type RuntimeContext,
     type RuntimeDefinition,
     type RuntimeResourceMap
@@ -27,6 +28,7 @@ import {
 } from './resource-session.ts';
 
 type RuntimeSessionBase<Runtime extends RuntimeDefinition> = {
+    readonly resourceChecks: ResourceSessionContract<RuntimeContext<Runtime>>['resourceChecks'];
     readonly context: RuntimeContext<Runtime>;
     readonly disposeOnce: (context: RuntimeSessionDisposalContext) => Promise<void>;
 };
@@ -52,6 +54,7 @@ export type RuntimeSessionDisposalContext = {
 };
 
 export type RuntimeSession<Runtime extends RuntimeDefinition> = AsyncDisposable & {
+    readonly resourceChecks: ResourceSessionContract<RuntimeContext<Runtime>>['resourceChecks'];
     readonly context: RuntimeContext<Runtime>;
     readonly disposeOnce: (context: RuntimeSessionDisposalContext) => Promise<void>;
 };
@@ -170,12 +173,7 @@ async function disposeRuntimeResources(
     acquisition: Awaited<ReturnType<typeof acquireResourceGraph>>,
     signal: AbortSignal
 ): Promise<void> {
-    const failures = await disposeResources(
-        acquisition.order,
-        acquisition.ownerHandles,
-        acquisition.resourceHandles,
-        signal
-    );
+    const failures = await disposeResources(acquisition.order, acquisition, signal);
 
     if (failures.length > 0) {
         throw resourceLifecycleError('Runtime resource disposal failed.', failures, failures[0]?.cause);
@@ -208,6 +206,11 @@ function runtimeSession<Runtime extends RuntimeDefinition>(
     let disposal: Promise<void> | null = null;
     const session = {
         context,
+        resourceChecks() {
+            return Array.from(acquisition.checks.values()).flatMap(function (check) {
+                return check.snapshots();
+            });
+        },
         async disposeOnce(disposalContext: RuntimeSessionDisposalContext): Promise<void> {
             if (disposal === null) {
                 disposal = disposeRuntimeResources(acquisition, disposalContext.signal);

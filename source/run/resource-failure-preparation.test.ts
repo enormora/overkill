@@ -62,6 +62,7 @@ function ownerRecord(scope: TestScope, recordCapture: (kind: string) => void): M
             return undefined;
         },
         descriptor,
+        checks: null,
         boundary: { key: 'run:service', scope: 'per-run' },
         dependencyContext: {},
         external: false,

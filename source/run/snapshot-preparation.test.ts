@@ -22,7 +22,7 @@ async function preparationInput(scope: TestScope): Promise<PreparationInput> {
             }
         }
     });
-    const profile = config.profiles.integration;
+    const profile = config.profiles['integration'];
     scope.require.defined(profile);
     if (profile.testFamily !== 'integration') {
         throw new TypeError('Expected the integration profile.');

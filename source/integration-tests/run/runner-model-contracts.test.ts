@@ -80,7 +80,7 @@ async function captureModelWitness(scope: TestScope, project: ReplayProject, nes
 }
 
 async function verifyCorpus(scope: TestScope, project: ReplayProject, file: string): Promise<void> {
-    const profile = project.command.config.profiles.cases;
+    const profile = project.command.config.profiles['cases'];
     scope.require.defined(profile);
     if (profile.testFamily !== 'property') {
         throw new TypeError('Expected property profile.');

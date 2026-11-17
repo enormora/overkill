@@ -218,3 +218,23 @@ export type {
     ResourceConsumerImplementation
 } from '../../resources/resource-implementation-reference.ts';
 export { resourceImplementationParticipants } from '../../resources/resource-implementation-participants.ts';
+
+export { withResourceChecks } from '../../resources/resource-checks.ts';
+export type {
+    ResourceCheckObserverReference,
+    ResourceCheckObserver,
+    ResourceCheckInstaller,
+    ResourceCheckInstallationContext,
+    ResourceCheckObservation
+} from '../../resources/resource-checks.ts';
+export type {
+    ResourceCheckInterval,
+    ResourceCheckIntervalContext,
+    ResourceCheckCompleteness,
+    ResourceCheckFinding,
+    ResourceCheckWriter,
+    ResourceCheckStopCause,
+    ResourceCheckSnapshot
+} from '../../resources/resource-check-contract.ts';
+
+export { defineResourceCheckObserverReference } from '../../resources/resource-check-reference.ts';

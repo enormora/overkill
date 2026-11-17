@@ -74,7 +74,7 @@ export async function createBenchmarkBaselineFixture(
             }
         }
     });
-    const profile = config.profiles.startup;
+    const profile = config.profiles['startup'];
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Missing benchmark profile.');
     }

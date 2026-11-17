@@ -57,7 +57,7 @@ async function preparation(): Promise<RunnerFamilyPreparation> {
         } ],
         root: { annotations: {}, controls: {}, title: 'root' }
     });
-    const profile = normalizeConfig({ profiles: { local: localProfile } }).profiles.local;
+    const profile = normalizeConfig({ profiles: { local: localProfile } }).profiles['local'];
     if (profile === undefined) {
         throw new Error('Missing local profile.');
     }

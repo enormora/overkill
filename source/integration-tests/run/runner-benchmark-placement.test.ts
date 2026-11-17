@@ -32,7 +32,7 @@ function command(directory: string, title: string, execution: BenchmarkExecution
         reporters: [ createLineReporter() ],
         profiles: { sizes: { testFamily: 'benchmark', files: { include: [ fixture ] } } }
     });
-    const profile = config.profiles.sizes;
+    const profile = config.profiles['sizes'];
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Missing benchmark profile.');
     }

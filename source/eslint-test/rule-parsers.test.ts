@@ -131,7 +131,7 @@ export const testNode = suite('ESLint parser and configuration composition', [
         const rule: Rule.RuleModule = {
             meta: { schema: [] },
             create(context) {
-                if (context.sourceCode.text === 'original' && context.settings.flag !== true) {
+                if (context.sourceCode.text === 'original' && context.settings['flag'] !== true) {
                     throw new Error('missing case setting');
                 }
                 return {};
