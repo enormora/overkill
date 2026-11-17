@@ -5,6 +5,7 @@ import { validateReporterRunFacts } from '../engine/reporter.ts';
 import { createBenchmarkHtmlReporter } from './benchmark-html-reporter.ts';
 import { createBenchmarkHtmlReport } from './benchmark-html-model.ts';
 import { renderBenchmarkHtml } from './benchmark-html-document.ts';
+import type { BenchmarkHtmlReport } from './benchmark-html-data.ts';
 
 function unboundedBenchmarkHtml(scope: TestScope): string {
     const result = benchmarkHtmlFixture('unbounded');
@@ -36,17 +37,46 @@ function unboundedBenchmarkHtml(scope: TestScope): string {
         ''
     );
 }
-function lifecycleReport(): string {
+function lifecycleModel(): BenchmarkHtmlReport {
     const result = benchmarkHtmlFixture('lifecycle');
     const measuredTest = result.perTest[0];
     if (measuredTest?.benchmark === null || measuredTest === undefined) {
         throw new Error('Missing benchmark fixture.');
     }
+    const target = {
+        name: 'recorded target',
+        version: '1',
+        scope: 'case',
+        clock: 'monotonic',
+        instance: 'recorded',
+        document: null,
+        semantics: {}
+    };
+    const measurement = {
+        version: 1 as const,
+        identity: { target, collectors: [] },
+        omitted: 0,
+        invocations: [ {
+            invocation: {
+                execution: 'recorded',
+                work: measuredTest.workId,
+                attempt: { index: 0 },
+                phase: 'measured' as const,
+                index: 0
+            },
+            target,
+            collectors: [],
+            status: 'complete' as const,
+            errors: [],
+            durationMicroseconds: 12,
+            lifecycleMicroseconds: 14
+        } ]
+    };
     const benchmark = {
         ...measuredTest.benchmark,
         lifecycle: {
             version: 3 as const,
-            measurement: null,
+            measurement,
             garbageCollection: { mode: 'after-sample' as const, completed: 36, failures: 0 },
             policy: {
                 garbageCollection: 'after-sample' as const,
@@ -62,14 +92,78 @@ function lifecycleReport(): string {
             cooldown: { mode: 'off' as const }
         }
     };
-    return renderBenchmarkHtml(
-        createBenchmarkHtmlReport({ ...result, perTest: [ { ...measuredTest, benchmark } ] }),
-        ''
-    );
+    return createBenchmarkHtmlReport({ ...result, perTest: [ { ...measuredTest, benchmark } ] });
 }
 export const testNode = suite('benchmark HTML rendering', [
+    ...[ null, { mode: 'off' as const } ].map(function garbageCollectionEvidence(garbageCollection) {
+        return test(
+            `renders garbage collection evidence ${garbageCollection?.mode ?? 'unavailable'}`,
+            function (scope: TestScope) {
+                const report = lifecycleModel();
+                const first = report.cases[0];
+                scope.require.defined(first);
+                scope.require.defined(first.lifecycle);
+                const html = renderBenchmarkHtml({
+                    ...report,
+                    cases: [ { ...first, lifecycle: { ...first.lifecycle, garbageCollection } } ]
+                }, '');
+                scope.assert.includes(
+                    html,
+                    `<td>${garbageCollection?.mode ?? 'unavailable'}</td><td>unavailable</td><td>unavailable</td>`
+                );
+                scope.assert.includes(
+                    html,
+                    '<td>recorded target</td><td>monotonic</td><td>12</td><td>14</td><td>complete</td>'
+                );
+                return scope.assert.collect();
+            }
+        );
+    }),
+    test('renders recorded cooldown outcomes and durations', function (scope: TestScope) {
+        const report = lifecycleModel();
+        const first = report.cases[0];
+        scope.require.defined(first);
+        scope.require.defined(first.lifecycle);
+        const lifecycle = {
+            ...first.lifecycle,
+            policy: {
+                ...first.lifecycle.policy,
+                cooldown: { mode: 'runtime' as const, maximumEventLoopUtilization: 0.1, timeoutMilliseconds: 1000 }
+            },
+            cooldown: {
+                mode: 'runtime' as const,
+                strategy: 'event-loop-utilization-v1' as const,
+                completed: 1,
+                windows: 1,
+                durationMicroseconds: 250,
+                lastUtilization: 0.01,
+                outcome: 'settled' as const
+            }
+        };
+        const html = renderBenchmarkHtml({ ...report, cases: [ { ...first, lifecycle } ] }, '');
+        scope.assert.includes(html, '<td>settled</td><td>250</td>');
+        return scope.assert.collect();
+    }),
+    test('identifies recorded timelines that contain no events', function (scope: TestScope) {
+        const report = lifecycleModel();
+        const timelines = [ {
+            label: 'empty',
+            evidence: {
+                version: 1 as const,
+                events: 0,
+                omitted: 0,
+                status: 'recorded' as const,
+                reference: null,
+                reason: null
+            },
+            events: []
+        } ];
+        const html = renderBenchmarkHtml({ ...report, charts: { ...report.charts, timelines } }, '');
+        scope.assert.includes(html, 'No timeline events are available.');
+        return scope.assert.collect();
+    }),
     test('renders warmup and cleanup separately from measured distributions', function (scope: TestScope) {
-        const html = lifecycleReport();
+        const html = renderBenchmarkHtml(lifecycleModel(), '');
         scope.assert.includes(html, 'Warmup samples');
         scope.assert.includes(
             html,
