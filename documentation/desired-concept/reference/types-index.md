@@ -2830,7 +2830,9 @@ type ResourceCheckSnapshot = {
     readonly interval: ResourceCheckInterval;
     readonly passing: number;
     readonly failures: ReadonlyArray<{ readonly target: string | null; readonly check: FailedCheck; }>;
-    readonly errors: ReadonlyArray<{ readonly interval: ResourceCheckInterval; readonly target: string | null; readonly cause: unknown; }>;
+    readonly errors: ReadonlyArray<
+        { readonly interval: ResourceCheckInterval; readonly target: string | null; readonly cause: unknown; }
+    >;
     readonly status: ResourceCheckCompleteness | { readonly kind: 'open'; };
 };
 type ResourceCheckFailure = {
