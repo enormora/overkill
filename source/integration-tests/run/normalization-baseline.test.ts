@@ -71,7 +71,7 @@ async function replaceSavedCalibration(
     const [ entry ] = await store.list();
     scope.require.defined(entry);
     const { baseline } = entry;
-    if (baseline.version === 1 || baseline.normalization === null) {
+    if (baseline.normalization === null) {
         throw new Error('Expected normalized baseline.');
     }
     const metric = baseline.normalization.metrics['value'];
@@ -251,7 +251,6 @@ export const testNode = suite('saved normalization references', [
         const report = readCalibrationReferenceReport(capture.result);
         scope.require.defined(report);
         scope.assert.deepEqual(report, {
-            version: 1,
             changes: [],
             completed: [],
             outcome: 'written'

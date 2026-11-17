@@ -32,11 +32,11 @@ function assertRejectedRun(scope: TestScope, result: RunResult): void {
     scope.assert.equal(result.status, 'failed');
     scope.assert.equal(result.summary.planned, 0);
     scope.assert.equal(result.runnerErrors[0]?.subtype, 'measurement');
-    scope.assert.equal(result.artifacts.length, 1);
+    scope.assert.equal(result.artifacts.length, 0);
 }
 
 function assertHostEvidence(scope: TestScope, result: RunResult, snapshot: BenchmarkHostSnapshot): void {
-    const host = readBenchmarkRunMetadata(result)?.host;
+    const host = readBenchmarkRunMetadata(result.preparationFacts)?.host;
     scope.require.defined(host);
     scope.assert.equal(canonicalIdentityJson(host.snapshot), canonicalIdentityJson(snapshot));
     scope.assert.deepEqual(
@@ -178,7 +178,7 @@ export const testNode = suite('benchmark host admission', [
             scope.assert.equal(result.summary.planned, 0);
             scope.assert.equal(result.runnerErrors[0]?.subtype, 'measurement');
             scope.assert.equal(result.runnerErrors[0]?.message, 'Native observer unavailable.');
-            scope.assert.equal(readBenchmarkRunMetadata(result)?.host, null);
+            scope.assert.equal(readBenchmarkRunMetadata(result.preparationFacts)?.host, null);
             return scope.assert.collect();
         }
     ),
@@ -193,7 +193,7 @@ export const testNode = suite('benchmark host admission', [
             'fails'
         );
         const result = await runner.orchestrator.bench.run(acceptedCommand(), { timing: null });
-        const host = readBenchmarkRunMetadata(result)?.host;
+        const host = readBenchmarkRunMetadata(result.preparationFacts)?.host;
         scope.require.defined(host);
         scope.assert.equal(canonicalIdentityJson(host.snapshot), canonicalIdentityJson(snapshot));
         scope.assert.equal(result.runnerErrors[0]?.subtype, 'loader');

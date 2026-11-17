@@ -26,6 +26,16 @@ export type PerformanceBaselineStore = {
     readonly apply: (change: BaselineChange) => Promise<void>;
 };
 type PerformanceStoreInput = { readonly directory: string; readonly projectRoot: string; readonly maxBytes: number; };
+async function baselineNames(directory: string): Promise<readonly string[]> {
+    try {
+        return await readdir(directory);
+    } catch (error: unknown) {
+        if (error instanceof Error && Reflect.get(error, 'code') === 'ENOENT') {
+            return [];
+        }
+        throw error;
+    }
+}
 export async function createPerformanceBaselineStore(input: PerformanceStoreInput): Promise<PerformanceBaselineStore> {
     const root = await realpath(input.projectRoot);
     const directory = path.resolve(root, input.directory, 'performance');
@@ -43,12 +53,7 @@ export async function createPerformanceBaselineStore(input: PerformanceStoreInpu
     return {
         async list() {
             await storage.checkDirectory(directory);
-            const names = await readdir(directory).catch(function missingDirectory(error: unknown) {
-                if (error instanceof Error && Reflect.get(error, 'code') === 'ENOENT') {
-                    return [];
-                }
-                throw error;
-            });
+            const names = await baselineNames(directory);
             return await Array.fromAsync(
                 names
                     .filter(function baseline(name) {

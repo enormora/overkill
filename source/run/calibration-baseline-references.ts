@@ -1,6 +1,6 @@
 import { createPerformanceBaselineStore, type PerformanceBaselineStore } from '../baselines/performance-store.ts';
-import {
-    type StoredPerformanceBaseline
+import type {
+    StoredPerformanceBaseline
 } from '../baselines/performance-baseline.ts';
 import type { SavedCalibration } from '../engine/benchmark-result.ts';
 import type { BenchmarkProfileConfig } from '../config/types.ts';
@@ -18,7 +18,7 @@ function selectedBaseline(input: ReferenceLookup, baseline: StoredPerformanceBas
         });
 }
 function storedReferences(baseline: StoredPerformanceBaseline): readonly SavedCalibration[] {
-    const normalization = baseline.normalization;
+    const { normalization } = baseline;
     if (normalization === null) {
         return [];
     }

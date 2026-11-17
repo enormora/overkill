@@ -61,9 +61,7 @@ export function measurementComparisonClass(benchmark: BenchmarkExecutionResult |
 }
 export function performanceBaselineIdentity(baseline: StoredPerformanceBaseline): PerformanceBaselineIdentity {
     return {
-        measurement: baseline.measurement !== null
-            ? canonicalIdentityJson(baseline.measurement)
-            : null,
+        measurement: baseline.measurement === null ? null : canonicalIdentityJson(baseline.measurement),
         adapter: baseline.adapter,
         machineClass: performanceComparisonClass(
             baseline.expected.calibration.machineClass,

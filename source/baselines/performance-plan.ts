@@ -60,7 +60,7 @@ function unchangedExpectation(input: PerformanceProposalPlan, value: Performance
     if (existing === null) {
         return false;
     }
-    const normalization = existing.normalization;
+    const { normalization } = existing;
     const storedBasis = canonicalIdentityJson(normalizationBudgetBasis(normalization));
     const currentBasis = canonicalIdentityJson(normalizationBudgetBasis(input.normalization));
     return compareExactly(existing.expected.value, value) && storedBasis === currentBasis;

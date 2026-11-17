@@ -1,3 +1,4 @@
+import type { RunResult } from '../engine/run-result.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -19,7 +20,7 @@ function benchmarkCommand(): RunCommand {
     };
 }
 
-function preparedBenchmark(scope: TestScope): ReturnType<typeof withBenchmarkErrorMetadata> {
+function preparedBenchmark(scope: TestScope): RunResult {
     const command = benchmarkCommand();
     const profile = command.config.profiles['startup'];
     scope.require.defined(profile);
@@ -27,7 +28,9 @@ function preparedBenchmark(scope: TestScope): ReturnType<typeof withBenchmarkErr
         throw new Error('Expected benchmark profile.');
     }
     return withBenchmarkErrorMetadata(runResultFactory.build({}), command, {
-        snapshot: benchmarkHostSnapshot(), limits: profile.host.limits, checks: []
+        snapshot: benchmarkHostSnapshot(),
+        limits: profile.host.limits,
+        checks: []
     });
 }
 export const testNode = suite('benchmark host reporting', [
@@ -43,9 +46,18 @@ export const testNode = suite('benchmark host reporting', [
     }),
     test('HTML reporting reads host evidence from the report context', function (scope: TestScope) {
         const result = preparedBenchmark(scope);
-        scope.assert.includes(createBenchmarkHtmlReport({ result, context: {
-            id: null, startedAt: null, facts: result.preparationFacts
-        } }).metadata, 'fixture-cpu');
+        scope.assert.includes(
+            createBenchmarkHtmlReport({
+                result,
+                context: {
+                    id: null,
+                    startedAt: null,
+                    facts: result.preparationFacts
+                }
+            })
+                .metadata,
+            'fixture-cpu'
+        );
         return scope.assert.collect();
     })
 ]);

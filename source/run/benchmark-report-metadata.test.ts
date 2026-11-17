@@ -59,10 +59,16 @@ export const testNode = suite('benchmark reporting context', [
             const facts = metadataFacts(metadataCommand(model));
             const metadata = readBenchmarkRunMetadata(facts);
             scope.require.defined(metadata);
-            scope.assert.deepEqual([ metadata.execution.workerCount, metadata.execution.workerLifecycle ], model === 'worker-pool' ? [ 2, 'reuse' ] : [ null, null ]);
+            scope.assert.deepEqual(
+                [ metadata.execution.workerCount, metadata.execution.workerLifecycle ],
+                model === 'worker-pool' ? [ 2, 'reuse' ] : [ null, null ]
+            );
             scope.assert.deepEqual<unknown, unknown>(metadata.placement, facts.benchmarkPlacement);
             const result = runResultFactory.build({});
-            scope.assert.includes(createBenchmarkHtmlReport({ result, context: { id: null, startedAt: null, facts } }).metadata, 'conservative-size-only-v1');
+            scope.assert.includes(
+                createBenchmarkHtmlReport({ result, context: { id: null, startedAt: null, facts } }).metadata,
+                'conservative-size-only-v1'
+            );
             scope.assert.equal(result.artifacts.length, 0);
         }
         return scope.assert.collect();
