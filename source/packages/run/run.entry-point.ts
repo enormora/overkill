@@ -314,8 +314,6 @@ export type { ReplayWitnessRequest, ReplayWitnessCommand } from '../../run/witne
 
 export { selectedTestPlan as selectTestPlan } from '../../run/run-selection.ts';
 
-export { isGeneratedTypeTestPath } from '../../generated-input-path.ts';
-
 export { defineBaselineAdapter } from '../../run/baseline-adapter.ts';
 export type {
     BaselineAdapterDefinition,

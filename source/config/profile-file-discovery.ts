@@ -1,5 +1,4 @@
 import { resolve } from 'node:path';
-import { isGeneratedTypeTestPath } from '../generated-input-path.ts';
 import {
     invalidProfileFileGlobMessage,
     invalidProfileFileSetNameMessage
@@ -105,7 +104,7 @@ async function discoverPatterns(
     const discovered = new Map<string, ConfiguredProfileFile>();
     const matches = dependencies.glob(files.include, {
         cwd,
-        exclude: [ ...files.exclude, '**/.overkill-type-test-*' ],
+        exclude: files.exclude,
         followSymlinks: false
     });
 
@@ -113,7 +112,7 @@ async function discoverPatterns(
         const path = await dependencies.realpath(resolve(cwd, match));
         const stats = await dependencies.stat(path);
 
-        if (stats.isFile() && !isGeneratedTypeTestPath(path) && !isGeneratedTypeTestPath(match)) {
+        if (stats.isFile()) {
             discovered.set(path, { path, fileSet });
         }
     }

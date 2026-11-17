@@ -9,14 +9,20 @@ const sharedBody = `const nodes=[table({title:'rows',cases:[1,2],test:scope=>{
 const changedAfterChecking = `const nodes=[test('passing',scope=>{
     bodyCalls++;scope.assert(same<string,string>());return scope.assert.collect();
 })];
-const {EventEmitter}=await import('tstyche/api');
+const {Program}=await import('typescript-beta/async');
 const {appendFileSync}=await import('node:fs');
+const semanticDiagnostics=Program.prototype.getSemanticDiagnostics;
 let changed=false;
-new EventEmitter().addHandler({on(event:readonly unknown[]){
-    if(!changed&&event[0]==='file:end'){
+Program.prototype.getSemanticDiagnostics=async function readDiagnostics(
+    this:import('typescript-beta/async').Program,
+    ...args:Parameters<typeof semanticDiagnostics>
+){
+    const diagnostics=await semanticDiagnostics.apply(this,args);
+    if(!changed){
         changed=true;appendFileSync(import.meta.filename,'\\n');
     }
-}});`;
+    return diagnostics;
+};`;
 
 export const testNode = suite('compiler matrix evidence', [
     test('preserves shared table ownership for each compiler', async function (scope) {

@@ -22,7 +22,6 @@ type CompilerPlan = {
     readonly requestedCompilers: TypeTestSettings['compiler'];
     readonly versions: {
         readonly adapter: PackageVersion | null;
-        readonly checker: PackageVersion | null;
     };
 };
 function frozenRuntimeIdentity(runtime: RuntimeId): RuntimeId {
@@ -115,7 +114,7 @@ async function executeCompilerMatrix(
         results.push(await group.execute());
     }
     for (const project of projects.values()) {
-        await verifyFrozenProject(project, { modules: [], sites: [] });
+        await verifyFrozenProject(project, { modules: [], sites: [], issues: [] });
     }
     const completed = performance.now() * microsecondsPerMillisecond;
     const result = createRunResult(
@@ -143,7 +142,7 @@ async function executeCompilerMatrix(
 async function collectCompilerGroups(input: CompilerPlan, selected: TestPlan): Promise<readonly CollectedCheckerRun[]> {
     const groups: CollectedCheckerRun[] = [];
     for (const [ version, project ] of input.projects) {
-        await verifyFrozenProject(project, { modules: [], sites: [] });
+        await verifyFrozenProject(project, { modules: [], sites: [], issues: [] });
         const cases = selected.cases.filter(function (entry) {
             const variant = entry.workId.familyVariant;
             return variant?.family === '@overkill-dev/type-test' && variant.key === `typescript@${version}`;
@@ -177,10 +176,9 @@ async function collectCompilerPlan(input: CompilerPlan, selected: TestPlan): Pro
     assertFrozenSelection(input, selected);
     const groups = await collectCompilerGroups(input, selected);
     const planning = {
-        version: 1,
+        version: 2,
         versions: input.versions,
         requestedCompilers: input.requestedCompilers,
-        generatedInputPolicy: { prefix: '.overkill-type-test-', location: 'sibling', preserveExtension: true },
         compilers: groups.map(function (group) {
             return group.facts;
         })
@@ -196,7 +194,7 @@ async function collectCompilerPlan(input: CompilerPlan, selected: TestPlan): Pro
                 get facts() {
                     return parseAdapterFacts({
                         ...planning,
-                        generatedInputs: lowered.map(function (group) {
+                        compilers: lowered.map(function (group) {
                             return group.facts;
                         })
                     });
@@ -282,10 +280,7 @@ export async function prepare(
     ...expansions: CompilerVariantExpansion
 ): Promise<CheckerPreparation> {
     const options = typeTestSettingsSchema.parse(settings);
-    const [ adapter, checker ] = await Promise.all([
-        packageVersion(import.meta.url),
-        packageVersion(import.meta.resolve('tstyche/api'))
-    ]);
+    const adapter = await packageVersion(import.meta.url);
     const group = await resolveCompilerProjects(options, projectRoot);
     await using ownership = group.ownership;
     const { projects } = group;
@@ -297,7 +292,7 @@ export async function prepare(
         })),
         projects,
         requestedCompilers: options.compiler,
-        versions: { adapter, checker }
+        versions: { adapter }
     };
     const facts = parseAdapterFacts({
         requestedCompilers: options.compiler,

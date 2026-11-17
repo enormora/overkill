@@ -4,6 +4,6 @@ export type { TypeAssertionReference, TypeRelationBindings, TypeRelation } from 
 export type { CompilerSelection, CompilerPolicy, TypeTestSettings } from './profile-settings.ts';
 export { family } from './profile.entry-point.ts';
 
-export const sameType = typeRelation('toBe');
-export const assignableTo = typeRelation('toBeAssignableTo');
-export const assignableFrom = typeRelation('toBeAssignableFrom');
+export const sameType = typeRelation('sameType');
+export const assignableTo = typeRelation('assignableTo');
+export const assignableFrom = typeRelation('assignableFrom');

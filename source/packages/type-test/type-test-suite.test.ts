@@ -4,9 +4,9 @@ import { testNode as selection } from './compiler-selection.test.ts';
 import { testNode as matrix } from './compiler-matrix.test.ts';
 import { testNode as planning } from './compiler-plan.test.ts';
 import { testNode as frozen } from './frozen-inputs.test.ts';
-import { testNode as generated } from './generated-input-suite.test.ts';
 import { testNode as adapter } from './adapter.test.ts';
 import { testNode as origins } from './body-origin.test.ts';
+import { testNode as originalRelations } from './original-relations.test.ts';
 import { testNode as assertions } from './assertion-reference.test.ts';
 
 export const testNode = createSuite({
@@ -19,10 +19,10 @@ export const testNode = createSuite({
         matrix,
         planning,
         frozen,
-        generated,
         adapter,
         origins,
         assertions,
+        originalRelations,
         orchestration
     ]
 });
