@@ -6,7 +6,7 @@ import {
     type PreparedImplementationAssignments
 } from '../implementation-assignment.ts';
 import type { ImplementationInputContext } from '../implementation-reference.ts';
-import type { ResourceCheckSnapshot } from './resource-check-contract.ts';
+import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import { resourceImplementationParticipants } from './resource-implementation-participants.ts';
 import type { ResourceDependencies } from './resource-definition-shape.ts';
 import type {

@@ -205,7 +205,9 @@ const exitCodeRules: readonly ExitCodeRule[] = [
     {
         exitCode: commandLineExitCodes.testFailure,
         matches(result) {
-            return result.summary.failed > 0;
+            return result.summary.failed > 0 || result.resourceChecks.some(function failedResource(snapshot) {
+                return snapshot.failures.length > 0;
+            });
         }
     },
     {

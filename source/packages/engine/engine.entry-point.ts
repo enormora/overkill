@@ -521,3 +521,6 @@ export type {
 } from '../../engine/measurement-evidence.ts';
 
 export { rawBenchmarkSamplesVersion } from '../../engine/measurement-evidence.ts';
+
+export type { ResourceCheckFailure } from '../../resource-check-protocol.ts';
+export type { ResourceCheckOwner, ResourceCheckSnapshot } from '../../resource-check-protocol.ts';

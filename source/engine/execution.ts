@@ -1,3 +1,4 @@
+import { withResourceCheckReporting } from './resource-check-reporting.ts';
 import { withPreparedBodyPlan } from './body-reference-plan.ts';
 import { executeFamilyWork } from './family-execution.ts';
 import {
@@ -25,6 +26,7 @@ import {
     withPreparedExecution,
     type ExecuteDependencies as PreparationDependencies,
     type PreparedExecution
+    // eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
 } from './execution-preparation.ts';
 
 export type ExecuteDependencies = PreparationDependencies;
@@ -89,11 +91,21 @@ async function createRunResultBeforeRunEnd(input: ExecuteRunInput): Promise<RunR
         startedAtMicroseconds,
         testExecutionWallTimeMicroseconds: executedTestPlan.testExecutionWallTimeMicroseconds
     });
-    return { ...result, artifacts: [ ...result.artifacts, ...executedTestPlan.artifacts ] };
+    return {
+        ...result,
+        artifacts: [ ...result.artifacts, ...executedTestPlan.artifacts ]
+    };
 }
 
 async function executeRun(input: ExecuteRunInput): Promise<RunResult> {
-    const result = await createRunResultBeforeRunEnd(input);
+    const result = await withResourceCheckReporting(
+        input.context.reporterDelivery,
+        input.options.runtimePolicy,
+        input.testPlan,
+        async function executeObservedResources() {
+            return await createRunResultBeforeRunEnd(input);
+        }
+    );
 
     input.context.dependencies.globalErrorObserver.stop();
     input.context.dependencies.asyncLeakMonitor.stop();

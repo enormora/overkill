@@ -277,6 +277,7 @@ function createManagedLifecycleState(options: ResourceLifecycleOptions): Managed
         },
         stores,
         lifecycle: {
+            resourceChecks: stores.checks,
             async prepareAttempt(testCase, attempt) {
                 await prepareManagedResources(stores, testCase, attempt);
             },
@@ -320,6 +321,7 @@ function createManagedLifecycleState(options: ResourceLifecycleOptions): Managed
 
 function createRuntimePolicyFromLifecycle(lifecycle: ManagedLifecycleState): TestRuntimePolicy {
     return {
+        resourceChecks: lifecycle.resourceChecks,
         async prepareAttempt(testCase, attempt) {
             await lifecycle.prepareAttempt(testCase, attempt);
         },

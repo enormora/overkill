@@ -9,7 +9,7 @@ import {
     suitePathSchema,
     workIdSchema
 } from '../engine/identity-schema.ts';
-import { testOutcomeSchema } from '../engine/assertion-result-schema.ts';
+import { resourceCheckSnapshotSchema, testOutcomeSchema } from '../engine/assertion-result-schema.ts';
 import { propertyEvidenceSchema } from './property-evidence-schema.ts';
 import { runResultSchema } from './run-result-schema.ts';
 import { debugArtifactSchema, runArtifactSchema, verdictSchema } from './run-artifact-schema.ts';
@@ -23,6 +23,7 @@ const testFields = {
     workId: workIdSchema.optional()
 };
 const eventSchema = z.discriminatedUnion('kind', [
+    z.strictObject({ kind: z.literal('resource-check-progress'), snapshot: resourceCheckSnapshotSchema }),
     z.strictObject({ kind: z.literal('debug-checkpoint'), artifact: debugArtifactSchema }),
     z.strictObject({ ...testFields, kind: z.literal('property-progress'), property: propertyEvidenceSchema }),
     z.strictObject({ ...testFields, kind: z.literal('benchmark-progress'), benchmark: benchmarkResultSchema }),

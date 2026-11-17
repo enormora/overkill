@@ -130,6 +130,7 @@ hard process termination is best effort.
 
 ```ts
 type ReporterEvent =
+    | { kind: 'resource-check-progress'; snapshot: ResourceCheckSnapshot; }
     | {
         kind: 'run-start';
         facts: RunFacts;

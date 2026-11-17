@@ -1,3 +1,4 @@
+import { currentResourceCheckDelivery } from './resource-check-delivery.ts';
 import { workIdentityKey, type WorkId, type AttemptId } from './engine/identity.ts';
 import { currentExecutionOwner } from './execution-ownership.ts';
 import { createStoredValue, type StoredValue } from './stored-value.ts';
@@ -45,6 +46,7 @@ export async function withResourceCheckCancellation<Value>(
     abort: (cause: unknown) => void,
     run: () => Promise<Value>
 ): Promise<Value> {
+    const releaseDelivery = currentResourceCheckDelivery()?.active({ kind: 'attempt', work, attempt }, abort);
     const runIdentity = resourceCheckRunIdentity();
     const attempts = new Map(runs.read().get(runIdentity));
     const identity = attemptCancellationKey(work, attempt);
@@ -53,6 +55,7 @@ export async function withResourceCheckCancellation<Value>(
     try {
         return await run();
     } finally {
+        releaseDelivery?.();
         releaseResourceCheckCancellation(runIdentity, identity);
     }
 }

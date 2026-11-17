@@ -1,10 +1,12 @@
 import { workIdentityKey } from '../engine/identity.ts';
 import type {
+    ResourceCheckOwner,
     ResourceCheckInterval,
     ResourceCheckSnapshot,
     ResourceCheckWriter,
+    ResourceCheckFinding,
     ResourceCheckCompleteness
-} from './resource-check-contract.ts';
+} from '../resource-check-protocol.ts';
 
 export type ResourceCheckLedger = {
     readonly writer: ResourceCheckWriter;
@@ -17,13 +19,19 @@ export type ResourceCheckLedger = {
 };
 export function createResourceCheckLedger(
     resource: string,
-    stop: (cause: unknown, interval: ResourceCheckInterval) => void
+    stop: (cause: unknown, interval: ResourceCheckInterval) => void,
+    owner: ResourceCheckOwner,
+    publish: (snapshot: ResourceCheckSnapshot) => void
 ): ResourceCheckLedger {
     const slices = new Map<string, ResourceCheckSnapshot>();
     function key(interval: ResourceCheckInterval): string {
         return interval.kind === 'lifetime'
             ? 'lifetime'
             : `${workIdentityKey(interval.work)}:${interval.attempt.index}`;
+    }
+    function retain(interval: ResourceCheckInterval, snapshot: ResourceCheckSnapshot): void {
+        slices.set(key(interval), snapshot);
+        publish(snapshot);
     }
     function slice(interval: ResourceCheckInterval): ResourceCheckSnapshot {
         const identity = key(interval);
@@ -33,22 +41,25 @@ export function createResourceCheckLedger(
         }
         const created: ResourceCheckSnapshot = Object.freeze({
             resource,
+            owner,
+            revision: 0,
             interval: structuredClone(interval),
             passing: 0,
             failures: Object.freeze([]),
             errors: Object.freeze([]),
             status: { kind: 'open' as const }
         });
-        slices.set(identity, created);
+        retain(interval, created);
         return created;
     }
     function error(interval: ResourceCheckInterval, target: string | null, cause: unknown): void {
         const current = slice(interval);
         const destination = current.status.kind === 'open' ? current : slice({ kind: 'lifetime' });
-        slices.set(
-            key(destination.interval),
+        retain(
+            destination.interval,
             Object.freeze({
                 ...destination,
+                revision: destination.revision + 1,
                 errors: Object.freeze([
                     ...destination.errors,
                     Object.freeze({ interval: structuredClone(interval), target, cause })
@@ -62,10 +73,31 @@ export function createResourceCheckLedger(
             })
         );
     }
+    function retainLateFailure(
+        target: string | null,
+        finding: Extract<ResourceCheckFinding, { readonly kind: 'fail'; }>
+    ): void {
+        const destination = slice({ kind: 'lifetime' });
+        retain(
+            destination.interval,
+            Object.freeze({
+                ...destination,
+                revision: destination.revision + 1,
+                failures: Object.freeze([
+                    ...destination.failures,
+                    Object.freeze({ target, check: structuredClone(finding.check) })
+                ]),
+                status: { kind: 'incomplete' as const, reasons: [ 'Activity arrived after finalization.' ] }
+            })
+        );
+    }
     const writer: ResourceCheckWriter = {
         record(interval, target, finding) {
             const current = slice(interval);
             if (current.status.kind !== 'open') {
+                if (finding.kind === 'fail') {
+                    retainLateFailure(target, finding);
+                }
                 error(
                     interval,
                     target,
@@ -75,10 +107,11 @@ export function createResourceCheckLedger(
                 );
                 return;
             }
-            slices.set(
-                key(interval),
+            retain(
+                interval,
                 Object.freeze({
                     ...current,
+                    revision: current.revision + 1,
                     passing: current.passing + (finding.kind === 'pass' ? 1 : 0),
                     failures: finding.kind === 'pass'
                         ? current.failures
@@ -129,7 +162,10 @@ export function createResourceCheckLedger(
                 kind: 'incomplete',
                 reasons: Object.freeze([ 'Observation errors were recorded.' ])
             };
-            slices.set(key(interval), Object.freeze({ ...current, status: Object.freeze(status) }));
+            retain(
+                interval,
+                Object.freeze({ ...current, revision: current.revision + 1, status: Object.freeze(status) })
+            );
             return status;
         }
     };

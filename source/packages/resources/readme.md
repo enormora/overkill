@@ -223,9 +223,14 @@ and `finalize` callbacks. Observers remain active through owner disposal;
 
 Write findings through `context.ledger` with an explicit lifetime or attempt
 interval. `session.resourceChecks()` retains snapshots after disposal.
+Each snapshot carries a run identity, acquisition owner identity, declared scope,
+and revision. Standalone closure throws `ResourceCheckError` when checks fail
+or required observation is incomplete; its `resourceChecks()` method preserves
+findings alongside disposal errors.
 Installation and total owner closure each have a two-second budget. Persistent
-cross-process stop and evidence delivery, and automatic finding-to-result
-merging, are reserved for the outcomes and evidence milestone.
+owner channels retain findings and stop requests across worker tasks. Required
+finalization precedes retry decisions. Engine-managed findings become structured
+`resource-check` failures independently of body assertion plans.
 
 `withFailureArtifacts(resource, prepare)` adds custom evidence preparation.
 The callback receives the owner handle, including for projected resources.

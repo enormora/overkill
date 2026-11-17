@@ -4,7 +4,12 @@ import type { RuntimeId, WorkId } from '../engine/identity.ts';
 import type { RunnerError, RunResult } from '../engine/run-result.ts';
 import type { SerializedValue } from '../compare/serialized-value.ts';
 import type { CoveragePolicy, LoaderConfig, ProfileConfig } from '../config/types.ts';
-import type { currentRunRecordVersion, previousRunRecordVersion, familyRunRecordVersion } from './run-record-format.ts';
+import type {
+    currentRunRecordVersion,
+    implementationRunRecordVersion,
+    previousRunRecordVersion,
+    familyRunRecordVersion
+} from './run-record-format.ts';
 import type { RunRecordArtifact, RunRecordTestAttempt, RunRecordTestOutcome } from './run-record-outcomes.ts';
 import type { PlacementTrace } from './placement-trace.ts';
 import type { RunEngineFacts, RunEnvironmentFacts, RunFacts, RunRequest, CollectedRunPlan } from './run-types.ts';
@@ -73,7 +78,9 @@ type ReplayableRecordFormat<Version extends number> = {
 type LegacyRecordFormat = ReplayableRecordFormat<typeof previousRunRecordVersion> | {
     readonly version: 1;
 };
-type CurrentRecordFormat = ReplayableRecordFormat<typeof currentRunRecordVersion>;
+type CurrentVersionRecord = ReplayableRecordFormat<typeof currentRunRecordVersion>;
+type ImplementationVersionRecord = ReplayableRecordFormat<typeof implementationRunRecordVersion>;
+type CurrentRecordFormat = CurrentVersionRecord | ImplementationVersionRecord;
 type CurrentRecordInputs = CurrentRecordFormat & RunRecordInputs<RunFacts>;
 type HistoricalFamilyFacts = Except<RunFacts, 'implementations'>;
 type FamilyRecordFormat = ReplayableRecordFormat<typeof familyRunRecordVersion>;
@@ -122,4 +129,7 @@ type HistoricalFamilyMerge = LegacyMergedFields & {
     readonly version: typeof familyRunRecordVersion;
     readonly facts: Except<RunFacts, 'implementations'>;
 };
-type LegacyMergedRunRecord = HistoricalFamilyMerge | LegacyMergedWithoutFamily;
+type HistoricalImplementationMerge = Except<MergedRunRecord, 'version'> & {
+    readonly version: typeof implementationRunRecordVersion;
+};
+type LegacyMergedRunRecord = HistoricalFamilyMerge | HistoricalImplementationMerge | LegacyMergedWithoutFamily;

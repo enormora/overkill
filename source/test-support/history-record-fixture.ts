@@ -32,6 +32,8 @@ export function completedHistoryRecord(id: string): CompletedHistoryFixture {
         execution: { processModel: 'in-process', scheduling: 'serial' },
         facts: { execution: { testFamily: 'microtest' }, implementations: null },
         result: {
+            resourceChecks: [],
+            status: 'passed',
             runnerErrors: [],
             summary: { failed: 0, crashed: 0, processExhausted: 0, runtimePolicy: 0, inconclusive: 0 },
             timings: { summary: { totalWallTimeMicroseconds: 100 } },

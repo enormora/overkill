@@ -89,7 +89,7 @@ function taskBase(): WorkerPoolTaskBase {
         boundaryUseCounts: [ { boundaryKey: 'run:database', count: 1 } ],
         command: command(),
         lane: 'worker-1',
-        lifecycle: { token: 'lifecycle-1' },
+        lifecycle: { endpoint: null, token: 'lifecycle-1' },
         port
     };
 }
@@ -121,7 +121,7 @@ function disposeRunResourcesTask(): WorkerPoolTask {
     return {
         kind: 'dispose-run-resources',
         lane: 'worker-1',
-        lifecycle: { token: 'lifecycle-1' },
+        lifecycle: { endpoint: null, token: 'lifecycle-1' },
         port
     };
 }
@@ -131,7 +131,7 @@ function completeResourceOwnerWorkTask(): WorkerPoolTask {
         boundaryKeys: [ 'file:test.ts:database' ],
         kind: 'complete-resource-owner-work',
         lane: 'worker-1',
-        lifecycle: { token: 'lifecycle-1' },
+        lifecycle: { endpoint: null, token: 'lifecycle-1' },
         port
     };
 }
@@ -140,7 +140,7 @@ function disposeLaneLifecycleTask(): WorkerPoolTask {
     return {
         kind: 'dispose-lane-lifecycle',
         lane: 'worker-1',
-        lifecycle: { token: 'lifecycle-1' },
+        lifecycle: { endpoint: null, token: 'lifecycle-1' },
         port
     };
 }
@@ -180,23 +180,23 @@ export const testNode = createOverkillSuite({
                         command: command(),
                         kind: 'acquire-run-resources',
                         lane: 'worker-1',
-                        lifecycle: { token: 'lifecycle-1' }
+                        lifecycle: { endpoint: null, token: 'lifecycle-1' }
                     },
                     {
                         boundaryKeys: [ 'file:test.ts:database' ],
                         kind: 'complete-resource-owner-work',
                         lane: 'worker-1',
-                        lifecycle: { token: 'lifecycle-1' }
+                        lifecycle: { endpoint: null, token: 'lifecycle-1' }
                     },
                     {
                         kind: 'dispose-run-resources',
                         lane: 'worker-1',
-                        lifecycle: { token: 'lifecycle-1' }
+                        lifecycle: { endpoint: null, token: 'lifecycle-1' }
                     },
                     {
                         kind: 'dispose-lane-lifecycle',
                         lane: 'worker-1',
-                        lifecycle: { token: 'lifecycle-1' }
+                        lifecycle: { endpoint: null, token: 'lifecycle-1' }
                     },
                     {
                         workloadInputs: [],
@@ -216,7 +216,7 @@ export const testNode = createOverkillSuite({
                         command: command(),
                         kind: 'run',
                         lane: 'worker-1',
-                        lifecycle: { token: 'lifecycle-1' },
+                        lifecycle: { endpoint: null, token: 'lifecycle-1' },
                         projectedResources: { resources: [ { boundaryKey: 'run:database', payload: 'connection' } ] },
                         runWork: [ workId() ],
                         startedAtMilliseconds: 25

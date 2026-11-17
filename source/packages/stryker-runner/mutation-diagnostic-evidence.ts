@@ -41,8 +41,13 @@ function deliveredDiagnostics(reply: RunExecutionReply | null): SerializedRunDia
     if (reply?.kind === 'result') {
         return serializeRunDiagnostics(reply.result);
     }
-    const { artifacts } = serializeRunDiagnostics({ artifacts: reply?.artifacts ?? [], perTest: [], runnerErrors: [] });
-    return { ...checkpointDiagnostics(reply), artifacts };
+    const { artifacts } = serializeRunDiagnostics({
+        resourceChecks: [],
+        artifacts: reply?.artifacts ?? [],
+        perTest: [],
+        runnerErrors: []
+    });
+    return { resourceChecks: [], ...checkpointDiagnostics(reply), artifacts };
 }
 function canonicalErrorWork(
     root: string,
@@ -54,6 +59,7 @@ function canonicalErrorWork(
 export function mutationDiagnosticEvidence(root: string, reply: RunExecutionReply | null): SerializedRunDiagnostics {
     const diagnostics = deliveredDiagnostics(reply);
     return {
+        resourceChecks: [],
         artifacts: diagnostics
             .artifacts
             .filter(function diagnosticArtifact(artifact) {

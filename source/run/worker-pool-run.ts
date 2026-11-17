@@ -1,3 +1,4 @@
+import { currentResourceCheckBroker, withResourceCheckBroker } from './resource-check-broker.ts';
 import {
     type RunAttachmentRecord,
     activeRuntimeAttachments,
@@ -35,6 +36,7 @@ import {
     type WorkerPoolCollectionResult,
     type WorkerPoolRunCompletion,
     type WorkerPoolRuntimeInput
+    // eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
 } from './worker-pool-runtime.ts';
 
 type RunResult = WorkerPoolRunCompletion['result'];
@@ -135,6 +137,13 @@ async function createRuntime(
         runState: state.collectionRunState,
         timing: state.timing
     });
+    currentResourceCheckBroker()?.observe(function publishResourceCheckpoint(snapshot) {
+        runtime.reporterEvents.add((async function deliverCheckpoint() {
+            runtime.runState.recordRunnerErrors(
+                await runtime.reporterDelivery.reportEvent({ kind: 'resource-check-progress', snapshot })
+            );
+        })());
+    });
     state.record?.retainPlacementTrace({ entries: runtime.placementTrace.entries() });
     return runtime;
 }
@@ -193,9 +202,23 @@ async function executeWorkerPoolRunWithState(
     dependencies: RunOrchestratorDependencies,
     state: WorkerPoolExecutionState
 ): Promise<RunResult> {
-    return await executeWithRuntimeAttachments(resolvedRun, dependencies, async function executeAttachmentWorkers() {
-        return await executeWorkerPoolRunWithoutAttachments(resolvedRun, dependencies, state);
-    }, state.record ?? null);
+    const executeObservedWorkers = async function executeObservedWorkers(): Promise<RunResult> {
+        return await executeWithRuntimeAttachments(
+            resolvedRun,
+            dependencies,
+            async function executeAttachmentWorkers() {
+                return await executeWorkerPoolRunWithoutAttachments(resolvedRun, dependencies, state);
+            },
+            state.record ?? null
+        );
+    };
+    const hasResources = resolvedRun.plan.kind !== 'local' &&
+        resolvedRun.plan.collectedPlan.files.some(function resourceFile(file) {
+            return file.cases.some(function resourceCase(testCase) {
+                return testCase.resourceAttachments.resourceGraph.length > 0;
+            });
+        });
+    return await (hasResources ? withResourceCheckBroker(executeObservedWorkers) : executeObservedWorkers());
 }
 
 export async function executeWorkerPoolRun(

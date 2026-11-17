@@ -67,7 +67,12 @@ export function createMutationDiagnostics(root: string, retainDiagnostics: boole
                 observedErrors.add(error);
             }
             if (retainDiagnostics && (result.verdict !== 'pass' || errors.length > 0)) {
-                evidence.push(serializeRunDiagnostics({ artifacts: [], perTest: [ result ], runnerErrors: errors }));
+                evidence.push(serializeRunDiagnostics({
+                    resourceChecks: [],
+                    artifacts: [],
+                    perTest: [ result ],
+                    runnerErrors: errors
+                }));
             }
             return classification;
         },
@@ -76,6 +81,7 @@ export function createMutationDiagnostics(root: string, retainDiagnostics: boole
                 ...mutationDiagnostics(observations, Array.from(observedErrors)),
                 diagnostics: retainDiagnostics
                     ? z.json().parse({
+                        resourceChecks: [],
                         artifacts: [],
                         perTest: evidence.flatMap(function caseEvidence(entry) {
                             return entry.perTest;

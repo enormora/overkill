@@ -63,6 +63,9 @@ export function composeRunRuntimePolicies(
     }
 
     return {
+        resourceChecks() {
+            return [ ...firstPolicy.resourceChecks(), ...secondPolicy.resourceChecks() ];
+        },
         async prepareAttempt(testCase, attempt) {
             await secondPolicy.prepareAttempt(testCase, attempt);
             await firstPolicy.prepareAttempt(testCase, attempt);

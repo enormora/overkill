@@ -304,7 +304,19 @@ function formatTimeoutFailure(failure: Extract<TestFailure, { readonly kind: 'ti
     ];
 }
 
-function renderFailure(failure: TestFailure, context: ReportingContext): readonly string[] {
+function renderResourceFailure(
+    failure: Extract<TestFailure, { readonly kind: 'resource-check'; }>,
+    context: ReportingContext
+): readonly string[] {
+    return failure.failures.flatMap(function renderFinding(finding) {
+        const target = finding.target === null ? '' : ` (${finding.target})`;
+        return [ failure.resource + target, ...formatFailedCheck(finding.check, context) ];
+    });
+}
+function renderFailure(
+    failure: Exclude<TestFailure, { readonly kind: 'resource-check'; }>,
+    context: ReportingContext
+): readonly string[] {
     if (failure.kind === 'assertion') {
         return formatAssertionFailure(failure, context);
     }
@@ -328,7 +340,9 @@ export function formatFailure(failure: TestFailure, context: ReportingContext): 
     return withFailureArtifactContext(
         context.failureArtifacts ?? currentFailureArtifactPolicy(),
         function renderBoundedFailure() {
-            return renderFailure(failure, context);
+            return failure.kind === 'resource-check'
+                ? renderResourceFailure(failure, context)
+                : renderFailure(failure, context);
         },
         null
     );

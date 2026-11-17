@@ -1,9 +1,11 @@
 import type { ReadonlyDeep } from 'type-fest';
 import { z } from 'zod';
+import { resourceCheckSnapshotSchema } from '../engine/assertion-result-schema.ts';
 import { workIdSchema } from '../engine/identity-schema.ts';
 import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
 import {
     currentRunRecordVersion,
+    implementationRunRecordVersion,
     previousRunRecordVersion,
     familyRunRecordVersion,
     validateImplementationRecord
@@ -24,6 +26,8 @@ const execution = z.union([
 ]);
 const count = z.number().int().nonnegative();
 const result = z.object({
+    resourceChecks: z.array(resourceCheckSnapshotSchema).default([]),
+    status: z.enum([ 'passed', 'failed' ]).default('passed'),
     runnerErrors: z.array(z.unknown()).readonly(),
     summary: z.object({
         failed: count,
@@ -46,6 +50,7 @@ const fields = {
         z.literal(1),
         z.literal(previousRunRecordVersion),
         z.literal(familyRunRecordVersion),
+        z.literal(implementationRunRecordVersion),
         z.literal(currentRunRecordVersion)
     ]),
     replayPlan: collectedRunPlanSchema.nullable().default(null),
@@ -66,6 +71,7 @@ const mergedHistoryRecordSchema = z
         version: z.union([
             z.literal(previousRunRecordVersion),
             z.literal(familyRunRecordVersion),
+            z.literal(implementationRunRecordVersion),
             z.literal(currentRunRecordVersion)
         ]),
         kind: z.literal('merged'),

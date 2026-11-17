@@ -18,6 +18,7 @@ import type {
     RunResult,
     RunTimingSpan
 } from '../packages/engine/engine.entry-point.ts';
+import type { ResourceCheckEndpoint } from './resource-check-channel.ts';
 import type { SnapshotRun } from './snapshot-wire.ts';
 import type { AttachmentEndpoint } from './attachment-protocol.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
@@ -37,6 +38,7 @@ import type {
 } from './resource-lifecycle-boundaries.ts';
 import type {
     ResourceProjectionRecords
+    // eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
 } from './resource-lifecycle-projection.ts';
 
 type RunEngineSelection = RunCommand['engine'];
@@ -88,6 +90,7 @@ type WorkerPoolCollectTask = {
 };
 
 export type WorkerPoolLifecycleIdentity = {
+    readonly endpoint: ResourceCheckEndpoint | null;
     readonly token: string;
 };
 

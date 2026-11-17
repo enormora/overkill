@@ -2,16 +2,20 @@ import type { PropertyInvocationEvidence } from '../engine/property-failure-evid
 import type { TestFailure, PropertyCaseEvidence } from '../engine/run-result.ts';
 import { formatPropertySummary } from './property-summary.ts';
 
+function resourceFailureSummary(failure: Extract<TestFailure, { readonly kind: 'resource-check'; }>): string {
+    const first = failure.failures[0];
+    const target = first.target === null ? '' : ` (${first.target})`;
+    return `${failure.resource + target}: ${first.check.summary}`;
+}
 export function formatFailureSummary(failure: TestFailure): string {
+    if (failure.kind === 'resource-check') {
+        return resourceFailureSummary(failure);
+    }
     if (failure.kind === 'assertion') {
         return failure.checks[0].summary;
     }
 
-    if (failure.kind === 'body-error') {
-        return failure.error.message;
-    }
-
-    if (failure.kind === 'cleanup-error') {
+    if (failure.kind === 'body-error' || failure.kind === 'cleanup-error') {
         return failure.error.message;
     }
 

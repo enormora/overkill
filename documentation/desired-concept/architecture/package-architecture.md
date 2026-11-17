@@ -577,10 +577,10 @@ documented delivery boundary before checking completeness. Installation has a
 2-second budget; owner closure has one 2-second budget shared by preparation,
 disposal, finalization, and observer cleanup. Earlier supervision deadlines win.
 Direct sessions expose retained ledger snapshots through `resourceChecks()`.
-The lifecycle foundation supplies same-process cancellation and bounded observer
-operations. Persistent cross-process stop, findings, and evidence delivery belong
-to the Resource Check Outcomes And Evidence milestone. Until that integration,
-finalized snapshots are inspected explicitly rather than merged into outcomes.
+Direct execution and supervised workers retain the same structured snapshots.
+Persistent authenticated owner channels checkpoint findings, deliver stop requests,
+and acknowledge attempt finalization before retry eligibility. Lost channels
+retain received evidence and make unfinished observation incomplete.
 `ledger.requestStop` records either a structured failed check or an observation
 error before requesting cancellation; those failure domains remain separate.
 
@@ -632,7 +632,11 @@ Benchmark ledgers additionally retain warmup/measured phase and invocation
 identity; delayed events cannot be assigned to the currently active sample.
 
 Engine-managed sessions merge failed resource checks into ordinary outcomes
-without affecting body plans or assertion counts. Infrastructure/capture errors
+as `resource-check` failures without affecting body plans or assertion counts.
+All failed resource checks are terminal for automatic retries. `RunResult.resourceChecks`
+retains owner/run identity and separate attempt/lifetime snapshots; lifetime
+failures fail the run without inventing case failures or changing case counts.
+Infrastructure/capture errors
 stay separate. Closing a standalone session with failed checks throws structured
 findings while preserving other body/cleanup errors; no event callback delivers
 failure by an out-of-band throw. Direct callers and runner-managed execution

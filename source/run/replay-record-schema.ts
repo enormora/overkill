@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { resourceCheckSnapshotSchema } from '../engine/assertion-result-schema.ts';
 import { witnessFileSchema } from '../engine/witness-file.ts';
 import { loaderSchema } from '../config/schema.ts';
 import { workIdSchema } from '../engine/identity-schema.ts';
@@ -9,9 +10,11 @@ import { frozenMicrotestPolicySchema } from './frozen-run-policy-schema.ts';
 import { replayPlanningSchema } from './replay-planning-schema.ts';
 import {
     currentRunRecordVersion,
+    implementationRunRecordVersion,
     previousRunRecordVersion,
     familyRunRecordVersion,
     validateImplementationRecord
+    // eslint-disable-next-line import/max-dependencies -- Replay retains resource-check evidence when projecting current records.
 } from './run-record-format.ts';
 
 const replayRequestSchema = frozenMicrotestPolicySchema.shape.request.extend({
@@ -25,6 +28,7 @@ const replayRecordData = z
         version: z.union([
             z.literal(previousRunRecordVersion),
             z.literal(familyRunRecordVersion),
+            z.literal(implementationRunRecordVersion),
             z.literal(currentRunRecordVersion)
         ]),
         kind: z.literal('single'),
@@ -42,6 +46,7 @@ const replayRecordData = z
         placementTrace: replayTraceSchema.nullable(),
         result: z
             .object({
+                resourceChecks: z.array(resourceCheckSnapshotSchema).default([]),
                 planStatus: z.enum([ 'planned', 'empty-selection', 'empty-shard' ]),
                 perTest: z.array(z.object({ workId: workIdSchema }))
             })

@@ -1,3 +1,4 @@
+import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import type { TestDebugArtifact } from './run-artifact.ts';
 import type {
     PropertyCaseEvidence,
@@ -208,7 +209,7 @@ type TestReporterEvent = TestReporterEvents[keyof TestReporterEvents];
 export type ReporterEvent = RunReporterEvent | SuiteReporterEvent | TestReporterEvent | {
     readonly kind: 'debug-checkpoint';
     readonly artifact: TestDebugArtifact;
-};
+} | { readonly kind: 'resource-check-progress'; readonly snapshot: ResourceCheckSnapshot; };
 
 type ManagedStandardOutputSinkPresence<
     FirstSink extends SinkDeclaration,

@@ -252,7 +252,7 @@ function disposeLaneTask(lifecycle: WorkerPoolLifecycleIdentity): DisposeLaneLif
 
 async function assertRunResourcesAcquireAndDispose(scope: OverkillScope): Promise<void> {
     const events = createEventLog();
-    const lifecycle = { token: 'acquire-dispose' };
+    const lifecycle = { endpoint: null, token: 'acquire-dispose' };
     const database = projectedDatabaseResource(events);
     const plan = collectedWorkerPlan(withResources({ database }, function testBody(resourceScope) {
         resourceScope.assert.equal(resourceScope.resources.database.url, 'postgres://localhost');
@@ -270,7 +270,7 @@ async function assertRunResourcesAcquireAndDispose(scope: OverkillScope): Promis
 
 async function assertRunResourceFailuresBecomeRunnerErrors(scope: OverkillScope): Promise<void> {
     const database = failingDatabaseResource();
-    const lifecycle = { token: 'failing-acquire' };
+    const lifecycle = { endpoint: null, token: 'failing-acquire' };
     const plan = collectedWorkerPlan(withResources({ database }, function testBody(resourceScope) {
         return resourceScope.assert.collect();
     }));
@@ -282,7 +282,7 @@ async function assertRunResourceFailuresBecomeRunnerErrors(scope: OverkillScope)
 }
 
 async function assertPlainBodiesDoNotAcquireRunResources(scope: OverkillScope): Promise<void> {
-    const lifecycle = { token: 'plain-body' };
+    const lifecycle = { endpoint: null, token: 'plain-body' };
     const plan = collectedWorkerPlan(function testBody(resourceScope) {
         return resourceScope.assert.collect();
     });
@@ -292,14 +292,14 @@ async function assertPlainBodiesDoNotAcquireRunResources(scope: OverkillScope): 
         projectedResources: { resources: [] },
         runnerErrors: []
     });
-    scope.assert.deepEqual(await disposeWorkerRunResources(disposeRunTask({ token: 'missing-run' })), {
+    scope.assert.deepEqual(await disposeWorkerRunResources(disposeRunTask({ endpoint: null, token: 'missing-run' })), {
         runnerErrors: []
     });
     scope.assert.deepEqual(await disposeWorkerRunResources(disposeRunTask(lifecycle)), { runnerErrors: [] });
 }
 
 async function assertScopeWrappersDoNotAcquireRunResources(scope: OverkillScope): Promise<void> {
-    const lifecycle = { token: 'scope-wrapper' };
+    const lifecycle = { endpoint: null, token: 'scope-wrapper' };
     const facade = createTestFacade({
         mapScope() {
             return { project: 'fixture' };
@@ -320,7 +320,7 @@ async function assertScopeWrappersDoNotAcquireRunResources(scope: OverkillScope)
 
 async function assertLaneSessionsAreReusedAndDisposed(scope: OverkillScope): Promise<void> {
     const events = createEventLog();
-    const lifecycle = { token: 'lane-session' };
+    const lifecycle = { endpoint: null, token: 'lane-session' };
     const scratch = laneScratchResource(events);
     const plan = collectedWorkerPlan(withResources({ scratch }, function testBody(resourceScope) {
         return resourceScope.assert.collect();

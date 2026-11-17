@@ -431,3 +431,10 @@ abort signal. Admission also requires a parser for the exported implementation;
 the implementation stays inside the admission callback and is never transport data.
 This also supports standalone observer factories. Observer installation and
 finalization remain the caller's responsibility.
+
+Resource-owned checks use the `resource-check` failure variant and do not count
+toward body assertion plans or satisfy missing assertions. They prevent automatic
+retries. `RunResult.resourceChecks` retains snapshots with resource, owner/run,
+work/attempt, target, and completeness attribution. Shared lifetime failures fail
+the run without changing case counts. `resource-check-progress` events expose
+retained snapshots; required finalization precedes final attempt delivery.

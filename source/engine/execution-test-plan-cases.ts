@@ -1,4 +1,5 @@
 import pLimit from 'p-limit';
+import type { ReportedCase, TimingWindow } from './case-attempt-context.ts';
 import {
     observeConcurrentResourceLeaks
 } from './execution-async-leak-policy.ts';
@@ -20,10 +21,9 @@ import type { PerTestResult, RunnerError } from './run-result.ts';
 import {
     executeCase,
     reportTestStart,
-    type ExecutionCaseDependencies,
-    type ReportedCase,
-    type TimingWindow
+    type ExecutionCaseDependencies
 } from './case-attempt-execution.ts';
+// eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
 import type { TestPlan, TestPlanCase } from './test-plan.ts';
 
 export type ExecutedTestPlan = {
