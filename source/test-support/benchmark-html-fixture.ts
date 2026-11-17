@@ -16,10 +16,20 @@ function fixtureTest(result: RunResult): PerTestResult {
     return test;
 }
 
-export function benchmarkSampleFixture(metrics: Readonly<Record<string, readonly MetricReading[]>>): RawBenchmarkSamples {
-    return {version: 1, metrics: Object.fromEntries(Object.entries(metrics).map(function envelopes([name, readings]) {
-        return [name, readings.map(function envelope(reading) { return {reading, attribution: null}; })];
-    }))};
+export function benchmarkSampleFixture(
+    metrics: Readonly<Record<string, readonly MetricReading[]>>
+): RawBenchmarkSamples {
+    const retained = Object.fromEntries(
+        Object.entries(metrics).map(function envelopes([ name, readings ]) {
+            return [
+                name,
+                readings.map(function envelope(reading) {
+                    return { reading, attribution: null };
+                })
+            ];
+        })
+    );
+    return { version: 1, metrics: retained };
 }
 export function benchmarkHtmlFixture(title: string): RunResult {
     const id = createCaseId('fixture.bench.ts', [ 'benchmarks' ], title, null);
@@ -55,7 +65,9 @@ export function benchmarkHtmlFixture(title: string): RunResult {
                 kind: 'json',
                 byteLength: 0,
                 value: benchmarkSampleFixture({
-                    latency: values.map(function reading(value) { return availableMetric(value, provenance); })
+                    latency: values.map(function reading(value) {
+                        return availableMetric(value, provenance);
+                    })
                 })
             }
         }

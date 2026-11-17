@@ -28,7 +28,7 @@ function writtenChangeCount(outcome: BaselineWriteOutcome<unknown>): number {
     }
     return outcome.kind === 'failed' ? outcome.writtenChanges.length : 0;
 }
-function isBaselineReportSummary(report: BaselineRunReport | BaselineReportSummary): report is BaselineReportSummary {
+function isBaselineReportSummary(report: BaselineReportSummary | BaselineRunReport): report is BaselineReportSummary {
     return Object.hasOwn(report, 'summary');
 }
 export function summarizeBaselineReports(

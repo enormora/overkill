@@ -146,7 +146,9 @@ export const testNode = suite('benchmark HTML retained evidence', [
         const sampleArtifact = replaceSamples(artifact, {
             kind: 'json',
             byteLength: 0,
-            value: benchmarkSampleFixture({ latency: [ availableMetric(7, { collector: 'other', scope: 'custom', unit: 'seconds' }) ] })
+            value: benchmarkSampleFixture({
+                latency: [ availableMetric(7, { collector: 'other', scope: 'custom', unit: 'seconds' }) ]
+            })
         });
         scope.assert.throws(function () {
             readBenchmarkSamples({ ...result, artifacts: [ sampleArtifact ] }, measured);

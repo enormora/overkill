@@ -110,7 +110,7 @@ export const testNode = suite('benchmark HTML baseline comparisons', [
             kind: 'create',
             baseline: {
                 normalization: null,
-    measurement: null,
+                measurement: null,
                 adapter: 'latency',
                 expected: observation.actual,
                 profile: 'benchmark',

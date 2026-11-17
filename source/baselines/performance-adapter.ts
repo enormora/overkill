@@ -4,23 +4,20 @@ import type {
     ComparableCalibration as ComparableCalibrationDefinition
 } from '../bench/host-calibration-result.ts';
 import type * as Values from './baseline-values.ts';
-import type { BaselineJson as SharedBaselineJson, BaselineObservation, BaselineComparison } from './baseline-model.ts';
+import type { BaselineJson as SharedBaselineJson } from './baseline-model.ts';
 
 export type BaselineJson = SharedBaselineJson;
 
 export type PerformanceBaselineValue = Values.PerformanceBaselineValue;
-export type PerformanceObservation = BaselineObservation<BaselineJson>;
+export type PerformanceObservation = Values.PerformanceObservation;
 export type BaselineDiagnostic = Values.BaselineDiagnostic;
-export type PerformanceComparison = BaselineComparison<BaselineDiagnostic>;
+export type PerformanceComparison = Values.PerformanceComparison;
 export type PerformanceObservationInput = {
     readonly artifacts: readonly RunArtifact[];
     readonly calibration: ComparableCalibration;
     readonly work: WorkId;
 };
-export type PerformanceProposalInput = {
-    readonly actual: PerformanceBaselineValue;
-    readonly expected: PerformanceBaselineValue | null;
-};
+export type PerformanceProposalInput = Values.PerformanceProposalInput;
 export type PerformanceComparisonInput = {
     readonly actual: PerformanceBaselineValue;
     readonly expected: PerformanceBaselineValue;

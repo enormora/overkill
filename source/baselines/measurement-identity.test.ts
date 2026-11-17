@@ -38,8 +38,9 @@ export const testNode = suite('measurement comparison identity', [
     test('retains stable measurement facts in versioned baselines', function (scope) {
         const baseline = baselineFor(measurement);
         const encoded = JSON.stringify(baseline);
-        scope.assert.true(encoded.includes('"version":1'));
-        const restored = storedPerformanceBaselineSchema.parse(JSON.parse(encoded));
+        const serialized: unknown = JSON.parse(encoded);
+        scope.assert.partialDeepEqual(serialized, { version: 1 });
+        const restored = storedPerformanceBaselineSchema.parse(serialized);
         scope.assert.deepEqual(restored, baseline);
         scope.assert.equal(typeof performanceBaselineIdentity(restored).measurement, 'string');
         return scope.assert.collect();
