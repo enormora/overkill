@@ -2,6 +2,8 @@ import { runIfMain } from '#test-runner';
 import { Diagnostic } from 'tstyche/api';
 import { suite, test, type TestScope } from '../test/test.entry-point.ts';
 import { observationPlan } from '../../test-support/observation-lifetime.ts';
+import { testNode as assertionResults } from './native-assertion-results.test.ts';
+import { testNode as diagnosticMapping } from './checker-diagnostic-mapping.test.ts';
 import { nativeCheckResult, type NativeCheckEvidence } from './native-results.ts';
 import { caseKey } from './native-translation.ts';
 import type { CheckerRun } from './checker.entry-point.ts';
@@ -30,6 +32,8 @@ function checked(events: CheckerRun['events']): CheckerRun {
     };
 }
 export const testNode = suite('native checker completion policy', [
+    diagnosticMapping,
+    assertionResults,
     test('rejects executable cases without native assertions', function (scope: TestScope) {
         const result = nativeCheckResult(evidence());
         scope.assert.equal(result.status, 'failed');
