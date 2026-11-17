@@ -1,6 +1,9 @@
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { completedHistoryRecord, historyWork } from '../test-support/history-record-fixture.ts';
+import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
+import { canonicalJson } from '../canonical-identity.ts';
+import type { BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
 import type { CompactRunRecord } from './run-record-types.ts';
 import { compactRunRecord } from './compact-run-record.ts';
 import { historyRecordSchema } from './history-record.ts';
@@ -33,7 +36,100 @@ function compactComparisons(reports: readonly unknown[]): CompactRunRecord {
     }));
 }
 
+function benchmarkEvidence(scope: TestScope): BenchmarkExecutionResult {
+    const benchmark = benchmarkHtmlFixture('compaction').perTest[0]?.benchmark;
+    scope.require.defined(benchmark);
+    return {
+        ...benchmark,
+        timeline: {
+            version: 1,
+            events: 1,
+            omitted: 0,
+            status: 'recorded',
+            reference: 'private-timeline',
+            reason: null
+        },
+        lifecycle: {
+            policy: { warmupSamples: 1, garbageCollection: 'off', cooldown: { mode: 'off' } },
+            garbageCollection: { mode: 'off' },
+            cleanup: { callbacks: 0, failures: 0 },
+            cooldown: { mode: 'off' },
+            warmup: {
+                samples: 1,
+                metrics: benchmark.metrics,
+                rawSamples: { status: 'recorded', reference: 'private-warmup', reason: null }
+            },
+            measurement: {
+                version: 1,
+                omitted: 2,
+                identity: {
+                    target: {
+                        semantics: {},
+                        name: 'node',
+                        version: '26',
+                        scope: 'executing-runtime',
+                        clock: 'monotonic'
+                    },
+                    collectors: []
+                },
+                invocations: [ {
+                    invocation: {
+                        execution: 'private-invocation',
+                        work: historyWork,
+                        attempt: { index: 0 },
+                        phase: 'measured',
+                        index: 0
+                    },
+                    target: {
+                        semantics: {},
+                        name: 'node',
+                        version: '26',
+                        scope: 'executing-runtime',
+                        clock: 'monotonic',
+                        instance: 'private-target',
+                        document: null
+                    },
+                    collectors: [],
+                    status: 'complete',
+                    errors: [],
+                    durationMicroseconds: 1,
+                    lifecycleMicroseconds: 2
+                } ]
+            }
+        }
+    };
+}
+
 export const testNode = suite('compact run evidence', [
+    test(
+        'retains benchmark summaries without measurement traces or attachment references',
+        function (scope: TestScope) {
+            const original = completedHistoryRecord('benchmark');
+            const benchmark = benchmarkEvidence(scope);
+            const record = compactRunRecord({
+                ...original,
+                result: {
+                    ...original.result,
+                    perTest: [ { benchmark, workId: historyWork, verdict: 'pass', durationMicroseconds: 10 } ]
+                }
+            });
+            const observed = record.result?.perTest[0]?.benchmark;
+            scope.require.defined(observed);
+            scope.assert.deepEqual(observed.metrics, benchmark.metrics);
+            scope.assert.partialDeepEqual(observed, {
+                timeline: null,
+                rawSamples: { status: 'omitted', reference: null },
+                lifecycle: {
+                    garbageCollection: { mode: 'off' },
+                    warmup: { samples: 1, rawSamples: { status: 'omitted', reference: null } },
+                    measurement: { invocations: [], omitted: 3 }
+                }
+            });
+            scope.assert.equal(JSON.stringify(record).includes('private-'), false);
+            scope.assert.equal(canonicalJson(compactRunRecord(record)), canonicalJson(record));
+            return scope.assert.collect();
+        }
+    ),
     test('retains snapshot outcomes while dropping comparison payloads', function (scope: TestScope) {
         const record = compactComparisons([ snapshot ]);
         scope.require.defined(record.result);

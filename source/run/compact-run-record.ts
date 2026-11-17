@@ -1,7 +1,40 @@
+import type { BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
+import type { MeasurementEvidence } from '../engine/measurement-evidence.ts';
 import { summarizeBaselineReports } from './baseline-report-schema.ts';
 import { historyRecordSchema } from './history-record.ts';
 
 import type { CompactRunRecord } from './run-record-types.ts';
+
+const compactSamples: BenchmarkExecutionResult['rawSamples'] = {
+    status: 'omitted',
+    reference: null,
+    reason: 'Detailed benchmark evidence was compacted.'
+};
+
+function compactMeasurements(measurement: MeasurementEvidence | null): MeasurementEvidence | null {
+    return measurement === null ? null : {
+        ...measurement,
+        omitted: measurement.omitted + measurement.invocations.length,
+        invocations: []
+    };
+}
+
+function compactBenchmark(benchmark: BenchmarkExecutionResult | null): BenchmarkExecutionResult | null {
+    if (benchmark === null) {
+        return null;
+    }
+    const { lifecycle } = benchmark;
+    return {
+        ...benchmark,
+        timeline: null,
+        rawSamples: { ...compactSamples },
+        lifecycle: lifecycle === null ? null : {
+            ...lifecycle,
+            measurement: compactMeasurements(lifecycle.measurement),
+            warmup: { ...lifecycle.warmup, rawSamples: { ...compactSamples } }
+        }
+    };
+}
 
 export function compactRunRecord(input: unknown): CompactRunRecord {
     const record = historyRecordSchema.parse(input);
@@ -42,7 +75,7 @@ export function compactRunRecord(input: unknown): CompactRunRecord {
                     workId: test.workId,
                     verdict: test.verdict,
                     durationMicroseconds: test.durationMicroseconds,
-                    benchmark: test.benchmark
+                    benchmark: compactBenchmark(test.benchmark)
                 };
             })
         }

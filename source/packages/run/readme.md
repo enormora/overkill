@@ -801,8 +801,9 @@ Use `overkill history prune --dry-run` to preview retention, then
 20 detailed records, 5 successful artifact runs, and 7 days of unsuccessful artifacts.
 Older detailed records become compact records. Comparison summaries retain write
 outcomes and counts; comparison payloads expire with detailed evidence.
-Compact records follow the summary
-count and age limits. Aggregate counters and bounded observations remain independent.
+Benchmark compaction retains metrics and lifecycle summaries, counts omitted
+invocations, and removes trace and sample references. Compact records follow the
+summary count and age limits. Aggregate counters and bounded observations remain independent.
 Artifacts can survive their detailed record and summary through per-run
 retention metadata.
 
