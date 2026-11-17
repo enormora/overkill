@@ -43,6 +43,22 @@ function assertInvocationOrder(scope: TestScope, evidence: MeasurementEvidence):
     }));
 }
 export const testNode = suite('measurement targets and attribution', [
+    test('rejects reversed and nonfinite target clock intervals', function (scope) {
+        for (const stopped of [ 9, Number.NaN ]) {
+            let readings = 0;
+            const target = targetWithClock(function readTargetClock() {
+                readings += 1;
+                return readings === 1 ? 10 : stopped;
+            });
+            const strategy = withMeasurementTarget(target, wallClockMeasurement());
+            scope.assert.throws(function () {
+                createMeasurementSample(strategy, scope.signal).sample.measure(function () {
+                    return 1;
+                });
+            }, { message: 'Measurement clock must produce a finite nonnegative interval.' });
+        }
+        return scope.assert.collect();
+    }),
     test('requires explicit target names and clock domains', function (scope) {
         const target = defaultMeasurementTarget();
         for (const identity of [ { ...target.identity, name: '' }, { ...target.identity, clock: '' } ]) {
