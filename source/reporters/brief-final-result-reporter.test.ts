@@ -49,6 +49,21 @@ export const testNode = createSuite({
     children: [
         createTestCase({
             ...metadata,
+            title: 'accepts results from runners without resource checks',
+            async body(scope: TestScope) {
+                const reporter = createBriefFinalResultReporter()(context);
+                const { resourceChecks: _resourceChecks, ...legacy } = runResultFactory.build({
+                    summary: { discovered: 1, planned: 1, passed: 1 }
+                });
+                const output: unknown = await Reflect.apply(reporter.onResult, reporter, [ legacy ]);
+                scope.assert.deepEqual(texts(output), [
+                    'done status=passed discovered=1 planned=1 executed=1 passed=1 failed=0 skipped=0 inconclusive=0 processExhausted=0 runtimePolicy=0 crashed=0 ms=0 timing="total 0 ms, execution 0 ms, overhead 0 ms"'
+                ]);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            ...metadata,
             title: 'delivers managed final output through the dispatcher',
             async body(scope: TestScope) {
                 const lines: string[] = [];

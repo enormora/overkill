@@ -53,6 +53,66 @@ export const testNode = createOverkillSuite({
     controls: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'line reporter retains lifetime findings from current runners',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const log = testDouble<LogFunction>();
+                const reporter = lineReporterWithLog(log);
+                const result: RunResult = {
+                    ...runResultFactory.build({ status: 'failed', summary: { discovered: 1, planned: 1, passed: 1 } }),
+                    resourceChecks: [ {
+                        owner: { run: 'run', id: 'owner', scope: 'per-run' },
+                        resource: 'service',
+                        revision: 1,
+                        interval: { kind: 'lifetime' },
+                        passing: 0,
+                        errors: [],
+                        status: { kind: 'complete' },
+                        failures: [ {
+                            target: 'connection',
+                            check: {
+                                kind: 'leaf',
+                                id: 'service-invariant',
+                                source: 'assert',
+                                sourceLocations: [ { kind: 'unknown' } ],
+                                path: [],
+                                diff: null,
+                                actual: { kind: 'boolean', value: false },
+                                expected: { kind: 'boolean', value: true },
+                                summary: 'Connection closed unexpectedly'
+                            }
+                        } ]
+                    } ]
+                };
+                await requireFinish(reporter)(result);
+                scope.assert(doubleUsage.calledWith, log, [ '  service (connection)' ]);
+                scope.assert(doubleUsage.calledWith, log, [ '  Connection closed unexpectedly' ]);
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'line reporter accepts results from runners without resource checks',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const log = testDouble<LogFunction>();
+                const reporter = lineReporterWithLog(log);
+                const { resourceChecks: _resourceChecks, ...legacy } = runResultFactory.build({
+                    summary: { discovered: 1, planned: 1, passed: 1 }
+                });
+                await Reflect.apply(requireFinish(reporter), reporter, [ legacy ]);
+                scope.assert(doubleUsage.callCount, log, 1);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+                    colors.green(figures.tick),
+                    '1 discovered, 1 planned, 1 executed (1 pass, 0 fail, 0 skip) in 0 ms (total 0 ms, execution 0 ms, overhead 0 ms)'
+                ]);
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints slow runner overhead after the summary',
             annotations: {},

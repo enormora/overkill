@@ -2,6 +2,7 @@ import { formatCaseId, type CaseId } from '../engine/identity.ts';
 import type { OutputLineIntent } from '../engine/reporter-output.ts';
 import { formatSourceLocation, type ReportingContext } from '../engine/reporting-context.ts';
 import type { RunResult, RunnerError, TestFailure } from '../engine/run-result.ts';
+import { reportedResourceChecks } from './resource-check-rendering.ts';
 import { primaryFailureSourceLocation } from './failure-location.ts';
 import { formatFailureSummary, formatPropertyDiagnostics } from './failure-summary.ts';
 import { witnessReplayLines } from './witness-replay-lines.ts';
@@ -117,8 +118,7 @@ export function briefSummaryIntents(result: RunResult): readonly OutputLineInten
 
 export function briefFailureIntents(result: RunResult, context: ReportingContext): readonly OutputLineIntent[] {
     return [
-        ...result
-            .resourceChecks
+        ...reportedResourceChecks(result)
             .filter(function lifetime(snapshot) {
                 return snapshot.interval.kind === 'lifetime';
             })
