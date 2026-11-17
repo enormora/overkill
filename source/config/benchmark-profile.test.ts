@@ -113,7 +113,8 @@ export const testNode = suite('benchmark profile configuration', [
                 }
             }
         })
-            .profiles.startup;
+            .profiles
+            .startup;
         scope.require.defined(profile);
         if (profile.execution.processModel !== 'worker-pool') {
             throw new Error('Expected a worker-pool benchmark.');
@@ -131,7 +132,8 @@ export const testNode = suite('benchmark profile configuration', [
                 bench: { testFamily: 'benchmark', files: benchmarkFiles, garbageCollection: 'after-sample' }
             }
         })
-            .profiles.bench;
+            .profiles
+            .bench;
         scope.require.defined(profile);
         if (profile.testFamily !== 'benchmark') {
             throw new Error('Expected benchmark profile.');

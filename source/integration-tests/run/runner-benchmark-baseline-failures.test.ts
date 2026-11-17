@@ -143,7 +143,8 @@ function diskOnlyCommand(command: RunCommand): RunCommand {
     const defaults = normalizeConfig({
         profiles: { startup: { testFamily: 'benchmark', files: { include: [ 'missing-file.bench.ts' ] } } }
     })
-        .profiles.startup;
+        .profiles
+        .startup;
     if (
         profile?.testFamily !== 'benchmark' || defaults?.testFamily !== 'benchmark' ||
         defaults.execution.processModel !== 'worker-pool'
