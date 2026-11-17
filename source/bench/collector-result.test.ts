@@ -28,6 +28,20 @@ function collectorReturning(readings: MetricReadings, completeness: CollectorCom
     };
 }
 export const testNode = suite('collector result admission', [
+    test('rejects a reading reused by another invocation', function (scope: TestScope) {
+        const collector = collectorReturning({ count: availableMetric(7, metric) }, { kind: 'complete' });
+        const strategy = measurementStrategy([ collector ]);
+        const first = createMeasurementSample(strategy, scope.signal).sample.measure(function () {
+            return 1;
+        });
+        scope.assert.partialDeepEqual(first.metrics['count'] ?? {}, { availability: 'available', value: 7 });
+        scope.assert.throws(function () {
+            createMeasurementSample(strategy, scope.signal).sample.measure(function () {
+                return 2;
+            });
+        }, { message: 'Metric reading belongs to another invocation or target.' });
+        return scope.assert.collect();
+    }),
     test('retains omitted readings as unavailable diagnostics', function (scope: TestScope) {
         const collector = collectorReturning({}, { kind: 'complete' });
         const measured = createMeasurementSample(measurementStrategy([ collector ]), scope.signal).sample.measure(
