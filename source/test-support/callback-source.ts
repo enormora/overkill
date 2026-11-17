@@ -16,7 +16,7 @@ type OwnershipFixture = SourceFixture & {
     readonly call: ast.CallExpression;
     readonly plan: TestPlan;
 };
-export function callbackSourceRange<Node extends ast.Node>(node: Node, start: number): Node {
+function callbackSourceRange<Node extends ast.Node>(node: Node, start: number): Node {
     Reflect.set(node, 'pos', start);
     Reflect.set(node, 'end', sourceFixtureText.length);
     node.forEachChild(function position(child) {
