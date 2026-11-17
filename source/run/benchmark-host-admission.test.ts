@@ -108,9 +108,9 @@ function observedHostRunner(
         },
         runtimeStateStore: {
             ...dependencies.runtimeStateStore,
-            async write() {
+            async write(file, contents) {
                 record('write');
-                throw new Error('Rejected host must not persist results.');
+                await dependencies.runtimeStateStore.write(file, contents);
             }
         },
         reporterDispatcher: {
@@ -199,18 +199,20 @@ export const testNode = suite('benchmark host admission', [
         scope.assert.equal(result.runnerErrors[0]?.subtype, 'loader');
         scope.assert.deepEqual(delivered, [
             'discover',
+            'write',
             'host',
             'worker',
             'collect',
             'runner-error',
             'run-end',
             'result',
-            'dispose'
+            'dispose',
+            'write'
         ]);
         return scope.assert.collect();
     }),
     test(
-        'retains rejected checks and reports before collection, worker creation, or writes',
+        'retains rejected checks without collecting or creating workers',
         async function (scope: TestScope) {
             const delivered: string[] = [];
             const snapshot = rejectedHost();
@@ -224,7 +226,16 @@ export const testNode = suite('benchmark host admission', [
             const result = await runner.orchestrator.bench.run(command(), { timing: null });
             assertRejectedRun(scope, result);
             assertHostEvidence(scope, result, snapshot);
-            scope.assert.deepEqual(delivered, [ 'discover', 'host', 'runner-error', 'run-end', 'result', 'dispose' ]);
+            scope.assert.deepEqual(delivered, [
+                'discover',
+                'write',
+                'host',
+                'runner-error',
+                'run-end',
+                'result',
+                'dispose',
+                'write'
+            ]);
             return scope.assert.collect();
         }
     )
