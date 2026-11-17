@@ -2,6 +2,7 @@ import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import type { TestDebugArtifact } from './run-artifact.ts';
 import type {
     PropertyCaseEvidence,
+    RunReport,
     RunResult,
     RunnerError,
     TestOutcome,
@@ -18,15 +19,6 @@ import type { TestPlanCase, TestPlanSuitePathEntry } from './test-plan.ts';
 const reporterBrand = Symbol.for('@overkill-dev/engine/reporter');
 
 export type RunFacts = Readonly<Record<string, unknown>>;
-export type RunReport = {
-    readonly context: {
-        readonly id: string | null;
-        readonly startedAt: string | null;
-        readonly facts: RunFacts | null;
-    };
-    readonly result: RunResult;
-};
-
 export type RawStandardOutputSinkDeclaration = {
     readonly kind: 'stderr-raw' | 'stdout-raw';
 };

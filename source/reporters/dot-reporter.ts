@@ -1,13 +1,7 @@
 import figures from 'figures';
 import colors from 'yoctocolors';
-import {
-    defineReporter,
-    type RunReport,
-    type DefinedReporter,
-    type RealTimeReporter,
-    type ReporterEvent
-} from '../engine/reporter.ts';
-import type { RunResult, RunnerError, TestVerdict } from '../engine/run-result.ts';
+import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from '../engine/reporter.ts';
+import type { RunReport, RunResult, RunnerError, TestVerdict } from '../engine/run-result.ts';
 import {
     formatCoverageSummaryLines,
     formatRunFactSummary,

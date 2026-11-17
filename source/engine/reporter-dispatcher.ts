@@ -24,19 +24,14 @@ import {
     runWithReporterOutputScope,
     type ReporterConsoleMethod
 } from './reporter-output-scope.ts';
-import type {
-    DefinedReporter,
-    Reporter,
-    ReporterEvent,
-    RunReport
-} from './reporter.ts';
+import type { DefinedReporter, Reporter, ReporterEvent } from './reporter.ts';
+import type { RunReport, RunResult, RunnerError } from './run-result.ts';
 import {
     createDeliveryReportingContext,
     prepareReporterDelivery,
     type PreparedDelivery,
     type FinalDelivery
 } from './reporter-delivery-preparation.ts';
-import type { RunResult, RunnerError } from './run-result.ts';
 
 type RealTimeReporterInDispatch = Extract<Reporter, { readonly kind: 'real-time'; }>;
 

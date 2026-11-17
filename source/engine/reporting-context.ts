@@ -9,8 +9,7 @@ import {
     ensureValidSourceLocation,
     resolveSourceLocation
 } from '../assertion-protocol/source-location.ts';
-import type { RunReport } from './reporter.ts';
-import type { RunResult } from './run-result.ts';
+import type { RunReport, RunResult } from './run-result.ts';
 import { resolvedFailureArtifactPolicySchema, type FailureArtifactPolicy } from './failure-artifact-policy.ts';
 import { currentFailureArtifactPolicy } from './execution-observation.ts';
 

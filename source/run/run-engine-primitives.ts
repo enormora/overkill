@@ -23,11 +23,9 @@ import type {
     ReporterDelivery as ReporterDeliveryDefinition,
     ReporterDispatcher as ReporterDispatcherDefinition
 } from '../engine/reporter-dispatcher.ts';
+import type { ReporterEvent as ReporterEventDefinition } from '../engine/reporter.ts';
 import type {
     RunReport as RunReportDefinition,
-    ReporterEvent as ReporterEventDefinition
-} from '../engine/reporter.ts';
-import type {
     OrphanedNode as OrphanedNodeDefinition,
     PerTestResult as PerTestResultDefinition,
     RunArtifact as RunArtifactDefinition,

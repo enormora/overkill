@@ -1,7 +1,7 @@
 import { defaultEngine } from '../../engine/standard-engine.ts';
 
 export type { BaselineRunReport, BaselineReportSummary } from '../../engine/baseline-report.ts';
-export type { RunReport } from '../../engine/reporter.ts';
+export type { RunReport } from '../../engine/run-result.ts';
 
 export const {
     createPropertyTestCase,

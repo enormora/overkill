@@ -1,4 +1,4 @@
-import type { RunReport } from '../engine/reporter.ts';
+import type { RunReport } from '../engine/run-result.ts';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
 import { readBenchmarkRunMetadata } from '../bench/benchmark-run-report.ts';
 import type { PerformanceBaselineEvidence } from '../baselines/performance-presentation.ts';

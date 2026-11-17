@@ -37,7 +37,7 @@ export type {
     TestOutcome,
     TestVerdict
 } from './test-result.ts';
-export type { BaselineRunReport, BaselineReportSummary } from './baseline-report.ts';
+export type { BaselineReportSummary } from './baseline-report.ts';
 
 type RunnerErrorSubtypeByName = {
     readonly witnessReplay: 'witness-replay';
@@ -482,4 +482,13 @@ export type ExecutedCase = {
     readonly result: PerTestResult;
     readonly runnerErrors: readonly RunnerError[];
     readonly durationMicroseconds: number;
+};
+
+export type RunReport = {
+    readonly context: {
+        readonly id: string | null;
+        readonly startedAt: string | null;
+        readonly facts: RunResult['preparationFacts'];
+    };
+    readonly result: RunResult;
 };

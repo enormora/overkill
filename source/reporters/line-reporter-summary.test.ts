@@ -103,7 +103,10 @@ export const testNode = createOverkillSuite({
                 const { resourceChecks: _resourceChecks, ...legacy } = runResultFactory.build({
                     summary: { discovered: 1, planned: 1, passed: 1 }
                 });
-                await Reflect.apply(requireFinish(reporter), reporter, [ legacy ]);
+                await Reflect.apply(requireFinish(reporter), reporter, [ {
+                    result: legacy,
+                    context: { id: null, startedAt: null, facts: null }
+                } ]);
                 scope.assert(doubleUsage.callCount, log, 1);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
                     colors.green(figures.tick),
