@@ -11,7 +11,7 @@ export function historyStateError(cause: unknown): RunCollectionError {
     );
 }
 
-export class UnsupportedHistoryVersionError extends RunCollectionError {
+class UnsupportedHistoryVersionError extends RunCollectionError {
     public constructor(version: number, options: Readonly<ErrorOptions>) {
         super(
             `Unsupported history schema version ${version}. Use a compatible Overkill version.`,
@@ -30,7 +30,7 @@ function parsedSchemaVersion(value: unknown): number | null {
     return typeof version === 'number' ? version : null;
 }
 
-export function historySchemaVersion(source: string): number | null {
+function historySchemaVersion(source: string): number | null {
     try {
         return parsedSchemaVersion(JSON.parse(source));
     } catch {

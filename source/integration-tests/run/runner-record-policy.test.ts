@@ -194,9 +194,8 @@ function assertSharedSelection(scope: TestScope, empty: SingleRunRecord, execute
 }
 
 function assertShardSelection(scope: TestScope, empty: SingleRunRecord, executed: SingleRunRecord): void {
-    if (empty.version !== currentRunRecordVersion || executed.version !== currentRunRecordVersion) {
-        throw new Error('Expected replay snapshots in merge inputs.');
-    }
+    scope.assert.equal(empty.version, currentRunRecordVersion);
+    scope.assert.equal(executed.version, currentRunRecordVersion);
     scope.require.defined(empty.replayPlan);
     scope.require.defined(executed.replayPlan);
     assertSharedSelection(scope, empty, executed);

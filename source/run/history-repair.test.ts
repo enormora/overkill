@@ -111,7 +111,8 @@ export const testNode = suite('history schema compatibility', [
             await store.write(`${directory}/runs/old.json`, JSON.stringify(completedHistoryRecord('old')));
             await repairHistory(store, repair);
             await repairHistory(store, repair);
-            const durations = (await readCompactHistory(store, directory))?.durations;
+            const index = await readCompactHistory(store, directory);
+            const durations = index?.durations;
             scope.assert.equal(durations?.entries[0]?.count, 1);
             scope.assert.equal(durations?.entries[0]?.observations.length, 1);
             return scope.assert.collect();

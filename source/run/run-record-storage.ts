@@ -52,7 +52,7 @@ function resultWithPersistenceError(result: RunResult, error: RunRecordError, ph
 
 type RecordStorageInput = Parameters<typeof createDebugArtifactStore>[1] & {
     readonly detail: 'compact' | 'detailed';
-    readonly committed: (record: SingleRunRecord | CompactRunRecord) => Promise<void>;
+    readonly committed: (record: CompactRunRecord | SingleRunRecord) => Promise<void>;
 };
 
 export function createRunRecordStorage(

@@ -2,7 +2,6 @@ import { runIfMain } from '#test-runner';
 import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
 import { mergeRecordFixture } from '../test-support/merge-record-fixture.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { finalizedResourceCheckResult } from '../engine/resource-check-result.ts';
 import { historyRecordSchema } from './history-record.ts';
@@ -11,7 +10,7 @@ import { recordedRunResult, serializeRunDiagnostics } from './run-record-result.
 
 import { parseRunResult } from './run-result-schema.ts';
 
-const snapshot: ResourceCheckSnapshot = {
+const snapshot = {
     owner: { run: 'record-run', id: 'record-owner', scope: 'per-run' },
     resource: 'service',
     revision: 1,
@@ -20,7 +19,7 @@ const snapshot: ResourceCheckSnapshot = {
     failures: [],
     errors: [],
     status: { kind: 'complete' }
-};
+} as const;
 export const testNode = suite('resource check records', [
     test('round trips owner attribution and bounded observation errors', function (scope) {
         const cause: Record<string, unknown> = { detail: 'observation failed' };

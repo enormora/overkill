@@ -173,7 +173,8 @@ export const testNode = suite('mutation baseline evidence', [
         scope.assert.equal(
             campaignRequestSchema
                 .safeParse({
-                    version: 1,
+                    kind: 'request',
+                    version: 2,
                     id: 0,
                     token: '00000000-0000-4000-8000-000000000000',
                     request: { kind: 'fetch' }
@@ -184,7 +185,7 @@ export const testNode = suite('mutation baseline evidence', [
         scope.assert.equal(
             campaignResponseSchema
                 .safeParse({
-                    version: 1,
+                    version: 2,
                     id: 0,
                     response: { kind: 'baseline', baseline }
                 })

@@ -1,10 +1,10 @@
-import { testNode as compactEvidence } from './compact-run-record.test.ts';
 import { runIfMain } from '#test-runner';
 import { trackRunnerErrorDelivery } from '../engine/reporter-error-delivery-tracking.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createMemoryHistoryStorage } from '../test-support/memory-history-storage.ts';
 import { runRecordPolicyFixture } from '../test-support/run-record-policy-fixture.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { testNode as compactEvidence } from './compact-run-record.test.ts';
 import { runnerResult } from './runner-result.ts';
 import { executeRecordedRun } from './recorded-run.ts';
 import { readCompactHistory } from './history-storage.ts';

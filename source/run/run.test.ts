@@ -185,7 +185,7 @@ export const testNode = createOverkillSuite({
                         },
                         scheduling: 'concurrent',
                         testFamily: 'microtest',
-                        runRecords: { persist: false, reasons: [] },
+                        runRecords: { persist: true, reasons: [ 'history' ] },
                         timingCollection: 'summary',
                         timeoutPolicy: {
                             collectionMilliseconds: 5000,
@@ -403,7 +403,7 @@ export const testNode = createOverkillSuite({
                             },
                             scheduling: 'concurrent',
                             testFamily: 'microtest',
-                            runRecords: { persist: false, reasons: [] },
+                            runRecords: { persist: true, reasons: [ 'history' ] },
                             timingCollection: 'summary',
                             timeoutPolicy: {
                                 collectionMilliseconds: 1000,
