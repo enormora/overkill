@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { StringDecoder } from 'node:string_decoder';
 import type { FailureArtifactStream } from '../attachments/failure-artifact-stream.ts';
 
