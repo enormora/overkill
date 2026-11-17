@@ -1,4 +1,3 @@
-import { Buffer } from 'node:buffer';
 import { StringDecoder } from 'node:string_decoder';
 import type { FailureArtifactStream } from '../attachments/failure-artifact-stream.ts';
 
@@ -13,15 +12,15 @@ export type LocalProcessOutput = {
 };
 
 export type LocalProcessOutputWriters = {
-    readonly appendStderr: (chunk: Buffer) => void;
-    readonly appendStdout: (chunk: Buffer) => void;
+    readonly appendStderr: (chunk: Uint8Array) => void;
+    readonly appendStdout: (chunk: Uint8Array) => void;
     readonly finishStderr: () => void;
     readonly finishStdout: () => void;
     readonly output: LocalProcessOutput;
 };
 
 type BoundedOutputBufferController = {
-    readonly append: (chunk: Buffer) => void;
+    readonly append: (chunk: Uint8Array) => void;
     readonly buffer: LocalProcessOutputBuffer;
 };
 
