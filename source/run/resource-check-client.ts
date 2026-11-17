@@ -37,7 +37,7 @@ export function resourceCheckClient(endpoint: ResourceCheckEndpoint): ResourceCh
     return client;
 }
 export async function withWorkerResourceChecks<Value>(
-    endpoint: null | ResourceCheckEndpoint,
+    endpoint: ResourceCheckEndpoint | null,
     operation: () => Promise<Value>
 ): Promise<Value> {
     if (endpoint === null) {

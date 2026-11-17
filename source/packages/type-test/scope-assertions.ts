@@ -28,7 +28,7 @@ async function scopeTarget(
     analysis: SourceAnalysis,
     initial: TypeScript.Expression,
     scope: TypeScript.Identifier
-): Promise<null | string> {
+): Promise<string | null> {
     let expression = annotatedReceiver(analysis, initial);
     const members: string[] = [];
     while (analysis.compiler.isPropertyAccessExpression(expression)) {
@@ -41,7 +41,7 @@ async function assertionCall(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
     scope: TypeScript.Identifier
-): Promise<null | TypeScript.CallExpression> {
+): Promise<TypeScript.CallExpression | null> {
     if (!analysis.compiler.isCallExpression(node)) {
         return null;
     }
@@ -170,7 +170,7 @@ export async function scopeAssertions(
 export async function assertionAnnotation(
     analysis: SourceAnalysis,
     call: TypeScript.CallExpression
-): Promise<null | string> {
+): Promise<string | null> {
     const prefix = call.expression;
     if (!analysis.compiler.isCallExpression(prefix)) {
         return null;

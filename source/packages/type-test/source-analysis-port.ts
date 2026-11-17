@@ -20,7 +20,7 @@ export type SourceChecker<Symbol extends SourceSymbol> = {
         node: TypeScript.ShorthandPropertyAssignment
     ) => Promise<Symbol | undefined>;
     readonly getResolvedSignature: (node: TypeScript.Node) => Promise<SourceSignature>;
-    readonly staticString: (node: TypeScript.Node) => Promise<null | string>;
+    readonly staticString: (node: TypeScript.Node) => Promise<string | null>;
 };
 export type SourceAnalysis = {
     readonly realpath: (path: string) => string;
@@ -49,7 +49,7 @@ function symbolIdentities(program: SourceAnalysis['program']): WeakMap<SourceSym
     programSymbolIdentities.set(program, symbols);
     return symbols;
 }
-export function isSourceNode(input: readonly TypeScript.Node[] | TypeScript.Node): input is TypeScript.Node {
+export function isSourceNode(input: TypeScript.Node | readonly TypeScript.Node[]): input is TypeScript.Node {
     return Object.hasOwn(input, 'kind');
 }
 
@@ -77,7 +77,7 @@ export function createSourceAnalysis<Symbol extends SourceSymbol>(input: SourceI
     function getSymbolAtLocation(node: TypeScript.Node): Promise<AnalyzedSymbol | undefined>;
     function getSymbolAtLocation(nodes: readonly TypeScript.Node[]): Promise<readonly (AnalyzedSymbol | undefined)[]>;
     async function getSymbolAtLocation(
-        inputNode: readonly TypeScript.Node[] | TypeScript.Node
+        inputNode: TypeScript.Node | readonly TypeScript.Node[]
     ): Promise<AnalyzedSymbol | readonly (AnalyzedSymbol | undefined)[] | undefined> {
         if (isSourceNode(inputNode)) {
             return analyzed(await input.checker.getSymbolAtLocation(inputNode));
