@@ -88,10 +88,9 @@ export type {
     BenchmarkExecutionResult,
     BenchmarkMetricSummary,
     BudgetStatistic,
-    MetricProvenance,
-    MetricReading,
     SamplingPolicy
 } from '../../engine/benchmark-result.ts';
+export type { MetricProvenance, MetricReading } from '../../engine/benchmark-metrics.ts';
 
 export type {
     CollectedFamilyRun,

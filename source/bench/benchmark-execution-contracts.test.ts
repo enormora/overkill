@@ -87,7 +87,7 @@ export const testNode = suite('benchmark execution contracts', [
                 return undefined;
             }, null);
             scope.assert.throws(function () {
-                return builderBodyForAttempt(testCase, attempt);
+                return builderBodyForAttempt(testCase, attempt, { index: 0 });
             }, { message: 'Test case does not have a builder body.' });
         }
         return scope.assert.collect();
@@ -99,7 +99,7 @@ export const testNode = suite('benchmark execution contracts', [
             return undefined;
         }, null);
         scope.assert.throws(function () {
-            return builderBodyForAttempt(unselected, attempt);
+            return builderBodyForAttempt(unselected, attempt, { index: 0 });
         }, { message: 'Benchmark execution requires a selected workload.' });
         return scope.assert.collect();
     }),
@@ -113,7 +113,8 @@ export const testNode = suite('benchmark execution contracts', [
                 ...selected,
                 workId: { ...selected.workId, workload: { name: 'missing', params: {} } }
             },
-            attempt
+            attempt,
+            { index: 0 }
         );
         await scope.assert.rejects(async function () {
             return body(scope);

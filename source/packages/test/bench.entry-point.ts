@@ -120,3 +120,22 @@ export type {
     BenchmarkTimelineEvidence,
     BenchmarkTimelineReport
 } from '../bench/bench.entry-point.ts';
+
+export { withMeasurementTarget } from '../bench/bench.entry-point.ts';
+export type {
+    MeasurementTarget,
+    TargetedMeasurement,
+    CollectorContext,
+    CollectorPreparationContext,
+    AsyncCollectorPreparationContext,
+    CollectorFinalizationContext,
+    MeasurementInvocation,
+    MeasurementTargetIdentity,
+    CollectorResult,
+    CollectorCompleteness,
+    MeasurementEvidence,
+    MeasurementInvocationEvidence
+} from '../bench/bench.entry-point.ts';
+
+export { readRawBenchmarkSamples } from '../bench/bench.entry-point.ts';
+export type { RawBenchmarkSamples, RawBenchmarkSample, ReadingAttribution } from '../bench/bench.entry-point.ts';

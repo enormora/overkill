@@ -91,10 +91,9 @@ export type {
     BenchmarkLifecycleResult,
     BenchmarkExecutionResult,
     BudgetStatistic,
-    MetricProvenance,
-    MetricReading,
     SamplingPolicy
 } from '../../engine/benchmark-result.ts';
+export type { MetricProvenance, MetricReading } from '../../engine/benchmark-metrics.ts';
 
 export {
     defaultBenchmarkLifecyclePolicy,
@@ -130,3 +129,23 @@ export type {
     BenchmarkTimelineEvidence,
     BenchmarkTimelineReport
 } from '../../engine/benchmark-timeline.ts';
+
+export { withMeasurementTarget } from '../../bench/measurement-target.ts';
+export type { MeasurementTarget, TargetedMeasurement } from '../../bench/measurement-target.ts';
+export type {
+    CollectorContext,
+    CollectorPreparationContext,
+    AsyncCollectorPreparationContext,
+    CollectorFinalizationContext
+} from '../../bench/measurement-types.ts';
+export type {
+    MeasurementInvocation,
+    MeasurementTargetIdentity,
+    CollectorResult,
+    CollectorCompleteness,
+    MeasurementEvidence,
+    MeasurementInvocationEvidence
+} from '../../engine/measurement-evidence.ts';
+
+export { readRawBenchmarkSamples } from '../../bench/benchmark-sample-data.ts';
+export type { RawBenchmarkSamples, RawBenchmarkSample, ReadingAttribution } from '../../engine/measurement-evidence.ts';

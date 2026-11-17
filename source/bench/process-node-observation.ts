@@ -1,5 +1,6 @@
 import { monitorEventLoopDelay, performance as runtimePerformance } from 'node:perf_hooks';
-import type { MetricReading } from '../engine/benchmark-result.ts';
+
+import type { MetricReading } from '../engine/benchmark-metrics.ts';
 import type { NodeProbeReport } from './process-node-readings.ts';
 import { availableMetric, unavailableMetric } from './metric-reading.ts';
 import { bytesPerBinaryKilobyte, nanosecondsPerMicrosecond } from './measurement-units.ts';

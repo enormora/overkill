@@ -60,7 +60,7 @@ export function definition(): BenchmarkDefinitionSummary {
         lifecycle: null,
         kind: 'bundle-size',
         workloads: [ { name: 'small', parameters: {} } ],
-        measurement: { mode: 'sync', collectors: [] },
+        measurement: { mode: 'sync', target: null, collectors: [] },
         diagnostics: [],
         budgets: {
             small: [ { metric: 'outputBytes', maximum: 100, minimum: null, statistic: { kind: 'observed-maximum' } } ]

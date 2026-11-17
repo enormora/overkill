@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { measurementEvidenceSchema } from '../bench/measurement-evidence-schema.ts';
 import { metricSummarySchema, benchmarkBudgetResultSchema } from '../bench/benchmark-statistics-schema.ts';
 import { normalizationEvidenceSchema } from '../bench/calibration-evidence.ts';
 import {
@@ -41,25 +42,34 @@ const legacyLifecycleResultSchema = z.strictObject({
         })
     ])
 });
+const historicalGcLifecycleVersion = 2;
+const versionTwoLifecycleResultSchema = legacyLifecycleResultSchema.extend({
+    version: z.literal(historicalGcLifecycleVersion),
+    policy: resolvedLifecyclePolicySchema,
+    garbageCollection: z
+        .discriminatedUnion('mode', [
+            z.strictObject({ mode: z.literal('off') }),
+            z.strictObject({
+                mode: z.literal('after-sample'),
+                completed: z.number().int().nonnegative(),
+                failures: z.number().int().nonnegative()
+            })
+        ])
+        .nullable()
+});
 const lifecycleResultSchema = z.union([
-    legacyLifecycleResultSchema.extend({
+    versionTwoLifecycleResultSchema.extend({
         version: z.literal(benchmarkLifecycleVersion),
-        policy: resolvedLifecyclePolicySchema,
-        garbageCollection: z
-            .discriminatedUnion('mode', [
-                z.strictObject({ mode: z.literal('off') }),
-                z.strictObject({
-                    mode: z.literal('after-sample'),
-                    completed: z.number().int().nonnegative(),
-                    failures: z.number().int().nonnegative()
-                })
-            ])
-            .nullable()
+        measurement: measurementEvidenceSchema.nullable()
+    }),
+    versionTwoLifecycleResultSchema.transform(function historicalMeasurement(value): BenchmarkLifecycleResult {
+        return { ...value, version: benchmarkLifecycleVersion, measurement: null };
     }),
     legacyLifecycleResultSchema.transform(function historicalGarbageCollection(value): BenchmarkLifecycleResult {
         return {
             ...value,
             version: benchmarkLifecycleVersion,
+            measurement: null,
             policy: { ...value.policy, garbageCollection: 'off' as const },
             garbageCollection: null
         };

@@ -94,11 +94,25 @@ async function assertMeasurementLifecycle(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(lifecycle, [ 'acquire:1', 'acquire:2', 'dispose:1', 'dispose:2' ]);
 }
 
+function assertInvocationEvidence(
+    scope: TestScope,
+    test: Awaited<ReturnType<typeof orchestrator.bench.run>>['perTest'][number]
+): void {
+    const measurement = test.benchmark?.lifecycle?.measurement;
+    scope.require.defined(measurement);
+    scope.assert.equal(measurement.invocations.length, 160);
+    scope.assert.equal(measurement.omitted, 0);
+    scope.assert.true(measurement.invocations.every(function attributedInvocation(entry) {
+        return entry.status === 'complete' && entry.invocation.attempt.index === 0 &&
+            JSON.stringify(entry.invocation.work) === JSON.stringify(test.workId);
+    }));
+}
 function assertWarmupEvidence(scope: TestScope, result: Awaited<ReturnType<typeof orchestrator.bench.run>>): void {
     for (const test of result.perTest) {
         const lifecycle = test.benchmark?.lifecycle;
         scope.require.defined(lifecycle);
         scope.assert.equal(lifecycle.warmup.samples, 32);
+        assertInvocationEvidence(scope, test);
         scope.assert.equal(lifecycle.warmup.rawSamples.status, 'recorded');
         scope.assert.deepEqual(lifecycle.cleanup, { callbacks: 160, failures: 0 });
         const artifact = result.artifacts.find(function warmupArtifact(candidate) {

@@ -1,5 +1,6 @@
 import { z } from 'zod/v4';
-import type { BudgetStatistic, BenchmarkBudgetResult, MetricReading } from '../engine/benchmark-result.ts';
+import type { BudgetStatistic, BenchmarkBudgetResult } from '../engine/benchmark-result.ts';
+import type { MetricReading } from '../engine/benchmark-metrics.ts';
 
 const provenanceSchema = z.strictObject({
     collector: z.string().min(1),

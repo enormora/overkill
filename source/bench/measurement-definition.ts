@@ -1,4 +1,5 @@
 import type { BenchmarkDefinitionSummary } from '../engine/benchmark-result.ts';
+import { readMeasurementTarget } from './measurement-target.ts';
 import type {
     AsyncMeasurementSample,
     AsyncMeasurementStrategy,
@@ -32,11 +33,20 @@ export function summarizeMeasurement(
     if (measurement.mode === 'process') {
         return processMeasurement(measurement);
     }
+    const target = readMeasurementTarget(measurement);
     return Object.freeze({
         mode: measurement.mode,
+        target: target === null ? null : {
+            name: target.identity.name,
+            version: target.identity.version,
+            scope: target.identity.scope,
+            clock: target.identity.clock,
+            semantics: target.identity.semantics
+        },
         collectors: Object.freeze(measurement.collectors.map(function collectorDefinition(collector) {
             return Object.freeze({
                 name: collector.name,
+                version: collector.version,
                 metrics: Object.freeze(collector.metrics.map(function declaration(metric) {
                     return Object.freeze({ ...metric });
                 }))

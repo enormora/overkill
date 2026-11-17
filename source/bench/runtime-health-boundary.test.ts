@@ -1,7 +1,9 @@
 import { setImmediate as nextTurn } from 'node:timers/promises';
+import { prepareAsyncTestCollector, prepareTestCollector } from '../test-support/collector-session.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
+import { processResourceCollector } from './native-metric-collectors.ts';
 import { runtimeHealthCollector } from './runtime-health-collector.ts';
-import type { AsyncCollectorSession, MetricReadings } from './measurement-types.ts';
+import type { MetricReadings } from './measurement-types.ts';
 
 function blockRuntime(milliseconds: number): void {
     const until = performance.now() + milliseconds;
@@ -19,12 +21,12 @@ function loopReadings(readings: MetricReadings): MetricReadings {
     );
 }
 
-async function stoppedSession(signal: AbortSignal): Promise<AsyncCollectorSession> {
-    const session = await runtimeHealthCollector().prepare(signal);
-    session.start();
+async function stoppedSession(signal: AbortSignal): Promise<Awaited<ReturnType<typeof prepareAsyncTestCollector>>> {
+    const session = await prepareAsyncTestCollector(runtimeHealthCollector(), signal);
+    await session.start();
     await nextTurn();
     await nextTurn();
-    session.stop();
+    await session.stop();
     return session;
 }
 
@@ -42,13 +44,28 @@ export const testNode = suite('runtime health boundaries', [
         return scope.assert.collect();
     }),
     test('does not invent loop observations while draining a synchronous region', async function (scope) {
-        const session = await runtimeHealthCollector().prepare(scope.signal);
+        const session = await prepareAsyncTestCollector(runtimeHealthCollector(), scope.signal);
         await using disposal = new AsyncDisposableStack();
         disposal.defer(session.dispose);
-        session.start();
-        session.stop();
+        await session.start();
+        await session.stop();
         const readings = await session.complete();
         scope.assert.equal(readings['eventLoopDelayMaximumMicroseconds']?.availability, 'unavailable');
+        return scope.assert.collect();
+    }),
+    test('requires both process resource snapshots before reporting counters', function (scope) {
+        for (const boundary of [ 'none', 'start', 'stop' ]) {
+            const session = prepareTestCollector(processResourceCollector(), scope.signal);
+            if (boundary === 'start') {
+                session.start();
+            } else if (boundary === 'stop') {
+                session.stop();
+            }
+            scope.assert.throws(function () {
+                return session.complete();
+            }, { message: 'Resource measurement requires start and stop.' });
+            session.dispose();
+        }
         return scope.assert.collect();
     })
 ]);

@@ -1,4 +1,4 @@
-import type { MetricProvenance, MetricReading } from '../engine/benchmark-result.ts';
+import type { MetricProvenance, MetricReading } from '../engine/benchmark-metrics.ts';
 
 export function availableMetric(value: number, provenance: MetricProvenance): MetricReading {
     if (!Number.isFinite(value)) {

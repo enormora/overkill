@@ -1,7 +1,8 @@
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { availableMetric, unavailableMetric } from '../bench/metric-reading.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
-import type { BenchmarkNormalizationEvidence, MetricReading } from '../engine/benchmark-result.ts';
+import type { BenchmarkNormalizationEvidence } from '../engine/benchmark-result.ts';
+import type { MetricReading } from '../engine/benchmark-metrics.ts';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import type { PerformanceBaselineAdapter } from './performance-adapter.ts';

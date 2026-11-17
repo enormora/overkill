@@ -1,16 +1,16 @@
-import { z } from 'zod/v4';
-import type { BenchmarkNormalizationEvidence, MetricReading } from '../engine/benchmark-result.ts';
+import { rawBenchmarkSamplesVersion, type RawBenchmarkSamples } from '../engine/measurement-evidence.ts';
+import type { BenchmarkNormalizationEvidence } from '../engine/benchmark-result.ts';
+import type { MetricReading } from '../engine/benchmark-metrics.ts';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import type { RunArtifact } from '../engine/run-result.ts';
 import { snapshotJson } from '../attachments/json-snapshot.ts';
-import { metricReadingSchema } from '../bench/benchmark-statistics-schema.ts';
+import { readRawBenchmarkSamples } from '../bench/benchmark-sample-data.ts';
 import type {
     PerformanceBaselineAdapter,
     PerformanceObservation,
     PerformanceObservationInput
 } from './performance-adapter.ts';
 
-const samplesSchema = z.record(z.string(), z.array(metricReadingSchema));
 function scaledReading(reading: MetricReading, factor: number): MetricReading {
     if (reading.availability !== 'available') {
         return reading;
@@ -23,6 +23,50 @@ function scaledReading(reading: MetricReading, factor: number): MetricReading {
 }
 function isSampleArtifact(artifact: RunArtifact): artifact is RuntimeAttachmentArtifact {
     return artifact.payload.kind === 'runtime-attachment' && artifact.payload.name === 'benchmark-samples';
+}
+function attributedSamples(value: unknown): boolean {
+    if (typeof value !== 'object' || value === null) {
+        return false;
+    }
+    return Reflect.get(value, 'version') === rawBenchmarkSamplesVersion;
+}
+type HistoricalMetricSamples = Readonly<Record<string, readonly MetricReading[]>>;
+function normalizedSampleData(
+    input: unknown,
+    normalization: BenchmarkNormalizationEvidence
+): HistoricalMetricSamples | RawBenchmarkSamples {
+    const samples = readRawBenchmarkSamples(input);
+    const metrics = Object.fromEntries(
+        Object.entries(samples.metrics).map(function normalizeMetric([ name, readings ]) {
+            const metric = Object.hasOwn(normalization.metrics, name) ? normalization.metrics[name] : undefined;
+            const factor = metric === undefined
+                ? 1
+                : metric.budgetFactor;
+            return [
+                name,
+                readings.map(function reading(observation) {
+                    if (factor === null) {
+                        throw new TypeError('Benchmark normalization is missing its budget scale.');
+                    }
+                    return { ...observation, reading: scaledReading(observation.reading, factor) };
+                })
+            ];
+        })
+    );
+    const value: HistoricalMetricSamples | RawBenchmarkSamples = attributedSamples(input)
+        ? { version: rawBenchmarkSamplesVersion, metrics }
+        : Object.fromEntries(
+            Object.entries(metrics).map(function historicalMetric([ name, readings ]) {
+                return [
+                    name,
+                    readings.map(function historicalReading(entry) {
+                        return entry.reading;
+                    })
+                ];
+            })
+        );
+
+    return value;
 }
 function normalizedPerformanceArtifacts(
     artifacts: readonly RunArtifact[],
@@ -37,24 +81,7 @@ function normalizedPerformanceArtifacts(
             return artifact;
         }
         const { payload } = artifact;
-        const samples = samplesSchema.parse(artifact.payload.content.value);
-        const value = Object.fromEntries(
-            Object.entries(samples).map(function normalizeMetric([ name, readings ]) {
-                const metric = Object.hasOwn(normalization.metrics, name) ? normalization.metrics[name] : undefined;
-                const factor = metric === undefined
-                    ? 1
-                    : metric.budgetFactor;
-                return [
-                    name,
-                    readings.map(function reading(observation) {
-                        if (factor === null) {
-                            throw new TypeError('Benchmark normalization is missing its budget scale.');
-                        }
-                        return scaledReading(observation, factor);
-                    })
-                ];
-            })
-        );
+        const value = normalizedSampleData(artifact.payload.content.value, normalization);
         const snapshot = snapshotJson(value, maxBytes);
         if (snapshot === null) {
             throw new Error('Normalized performance observation exceeds the configured artifact byte limit.');

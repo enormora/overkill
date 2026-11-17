@@ -1,4 +1,4 @@
-import type { MetricReading } from '../engine/benchmark-result.ts';
+import type { MetricReading } from '../engine/benchmark-metrics.ts';
 import type { MetricReadings } from './measurement-types.ts';
 import type { ProcessObservation } from './process-observation.ts';
 

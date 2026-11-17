@@ -16,7 +16,12 @@ import {
 } from './performance-baseline.ts';
 
 export function performanceBaselineKey(identity: PerformanceBaselineIdentity): string {
-    return canonicalIdentityJson({ ...identity, work: workIdentityProjection(identity.work) });
+    const { measurement, ...previous } = identity;
+    return canonicalIdentityJson({
+        ...previous,
+        ...measurement === null ? {} : { measurement },
+        work: workIdentityProjection(identity.work)
+    });
 }
 
 type PerformanceStoreInput = {

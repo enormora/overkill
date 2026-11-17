@@ -1,11 +1,11 @@
 import type { BenchmarkScope } from '../engine/test-node.ts';
 import type {
     BenchmarkLifecyclePolicy,
-    MetricReading,
     SamplingPolicy,
     CalibrationIdentity,
     CalibrationResult
 } from '../engine/benchmark-result.ts';
+import type { MetricReading } from '../engine/benchmark-metrics.ts';
 import type {
     AnyResourceDefinition,
     ResourceContext,

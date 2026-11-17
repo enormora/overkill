@@ -4,14 +4,18 @@ import {
     type BenchmarkCooldownResult,
     type BenchmarkLifecycleResult
 } from '../engine/benchmark-result.ts';
+import { settleMeasurementTarget } from './measurement-target-cooldown.ts';
 import { createBenchmarkGarbageCollection, type BenchmarkGarbageCollection } from './benchmark-garbage-collection.ts';
 import type { SamplingSessionInput } from './benchmark-sampling-types.ts';
 import { commitObservation, createObservationSet, summarizeObservations } from './benchmark-observation-set.ts';
 import { recordObservationSamples } from './benchmark-sampling-evidence.ts';
-import { createRuntimeCooldownDependencies, settleBenchmarkRuntime } from './benchmark-runtime-cooldown.ts';
+import { createMeasurementRecording, type MeasurementRecording } from './measurement-evidence.ts';
+import { resolveMeasurementTarget, validateTargetCooldown } from './measurement-target.ts';
 import { timelineSpan } from './timeline-context.ts';
 
 export type BenchmarkLifecycle = {
+    readonly measurement: MeasurementRecording;
+    readonly validate: () => void;
     readonly garbageCollection: BenchmarkGarbageCollection;
     readonly warmupSamples: () => number;
     readonly observeWarmup: (returned: unknown) => void;
@@ -22,15 +26,20 @@ export type BenchmarkLifecycle = {
 };
 
 export function createBenchmarkLifecycle(
-    input: Pick<SamplingSessionInput, 'budgets' | 'diagnostics' | 'lifecycle' | 'scope'>
+    input: Pick<SamplingSessionInput, 'budgets' | 'diagnostics' | 'lifecycle' | 'measurement' | 'scope'>
 ): BenchmarkLifecycle {
+    const target = resolveMeasurementTarget(
+        input.measurement,
+        input.scope.benchmarkEnvironment?.garbageCollection ?? null
+    );
+    const measurement = createMeasurementRecording(input.scope, target, input.measurement);
     const observations = createObservationSet([
         ...input.budgets.map(function metricName(budget) {
             return budget.metric;
         }),
         ...input.diagnostics
     ]);
-    const garbageCollection = createBenchmarkGarbageCollection(input);
+    const garbageCollection = createBenchmarkGarbageCollection(input, target);
     let samples = 0;
     let retained = false;
     let rawSamples: BenchmarkLifecycleResult['warmup']['rawSamples'] = {
@@ -53,6 +62,11 @@ export function createBenchmarkLifecycle(
             }
     );
     return {
+        measurement,
+        validate() {
+            garbageCollection.validate();
+            validateTargetCooldown(target, input.lifecycle.cooldown);
+        },
         garbageCollection,
         warmupSamples() {
             return samples;
@@ -72,12 +86,7 @@ export function createBenchmarkLifecycle(
             }
             const policy = input.lifecycle.cooldown;
             const settled = await timelineSpan('harness', 'cooldown', async function settleRuntime() {
-                return await settleBenchmarkRuntime(
-                    policy,
-                    input.scope.signal,
-                    previous,
-                    createRuntimeCooldownDependencies()
-                );
+                return await settleMeasurementTarget(target, policy, input.scope.signal, previous);
             });
             cooldown.write(settled.evidence);
             if (settled.error !== null) {
@@ -96,6 +105,7 @@ export function createBenchmarkLifecycle(
         snapshot() {
             return {
                 version: benchmarkLifecycleVersion,
+                measurement: measurement.snapshot(),
                 garbageCollection: garbageCollection.snapshot(),
                 policy: input.lifecycle,
                 warmup: { samples, metrics: summarizeObservations(observations), rawSamples: { ...rawSamples } },

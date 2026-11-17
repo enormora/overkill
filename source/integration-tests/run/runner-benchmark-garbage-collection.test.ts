@@ -80,7 +80,7 @@ function assertGarbageCollectionRun(scope: TestScope, result: RunResult): void {
     scope.require.defined(measured);
     scope.assert.equal(measured.metrics['exposed']?.median, 1);
     scope.assert.partialDeepEqual(measured.lifecycle ?? {}, {
-        version: 2,
+        version: 3,
         policy: { garbageCollection: 'after-sample' },
         garbageCollection: { mode: 'after-sample', completed: 3, failures: 0 }
     });

@@ -1,5 +1,6 @@
+import type { MeasurementComparisonIdentity } from '../engine/measurement-evidence.ts';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
-import type { BenchmarkNormalizationEvidence } from '../engine/benchmark-result.ts';
+import type { BenchmarkNormalizationEvidence, BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
 import type {
     BenchmarkCalibrationResult as BenchmarkCalibrationResultDefinition
 } from '../bench/host-calibration-result.ts';
@@ -20,10 +21,12 @@ export type BaselineUpdateMode = SharedBaselineUpdateMode;
 
 export const previousNormalizedPerformanceBaselineVersion = 2;
 export const normalizedPerformanceBaselineVersion = 3;
+export const measuredPerformanceBaselineVersion = 4;
 
 export type CalibrationReferenceChange = { readonly kind: 'remove' | 'write'; readonly path: string; };
 
 export type PerformanceBaselineIdentity = {
+    readonly measurement: string | null;
     readonly adapter: string;
     readonly machineClass: string;
     readonly profile: string;
@@ -41,7 +44,28 @@ type NormalizedPerformanceBaseline = PerformanceBaselineData & {
     readonly version: typeof normalizedPerformanceBaselineVersion | typeof previousNormalizedPerformanceBaselineVersion;
     readonly normalization: BenchmarkNormalizationEvidence | null;
 };
-export type StoredPerformanceBaseline = LegacyPerformanceBaseline | NormalizedPerformanceBaseline;
+type MeasuredPerformanceBaseline = PerformanceBaselineData & {
+    readonly version: typeof measuredPerformanceBaselineVersion;
+    readonly normalization: BenchmarkNormalizationEvidence | null;
+    readonly measurement: MeasurementComparisonIdentity;
+};
+type PerformanceBaselineFormats = {
+    readonly legacy: LegacyPerformanceBaseline;
+    readonly normalized: NormalizedPerformanceBaseline;
+    readonly measured: MeasuredPerformanceBaseline;
+};
+export type StoredPerformanceBaseline = PerformanceBaselineFormats[keyof PerformanceBaselineFormats];
+export function currentPerformanceNormalization(
+    baseline: StoredPerformanceBaseline
+): BenchmarkNormalizationEvidence | null {
+    switch (baseline.version) {
+        case normalizedPerformanceBaselineVersion:
+        case measuredPerformanceBaselineVersion:
+            return baseline.normalization;
+        default:
+            return null;
+    }
+}
 export type BaselineEntry<TBaseline = StoredPerformanceBaseline> = SharedBaselineEntry<TBaseline>;
 export type BaselineChange<TBaseline = StoredPerformanceBaseline> = SharedBaselineChange<TBaseline>;
 export type BaselineWriteOutcome<TBaseline = StoredPerformanceBaseline> = SharedBaselineWriteOutcome<TBaseline>;
@@ -60,12 +84,25 @@ export function performanceComparisonClass(
     );
     return `normalized:${canonicalIdentityJson(metrics)}`;
 }
+
+export function performanceMeasurementIdentity(
+    benchmark: BenchmarkExecutionResult | null
+): MeasurementComparisonIdentity | null {
+    return benchmark?.lifecycle?.measurement?.identity ?? null;
+}
+export function measurementComparisonClass(benchmark: BenchmarkExecutionResult | null): string | null {
+    const identity = performanceMeasurementIdentity(benchmark);
+    return identity === null ? null : canonicalIdentityJson(identity);
+}
 export function performanceBaselineIdentity(baseline: StoredPerformanceBaseline): PerformanceBaselineIdentity {
     return {
+        measurement: baseline.version === measuredPerformanceBaselineVersion
+            ? canonicalIdentityJson(baseline.measurement)
+            : null,
         adapter: baseline.adapter,
         machineClass: performanceComparisonClass(
             baseline.expected.calibration.machineClass,
-            baseline.version === normalizedPerformanceBaselineVersion ? baseline.normalization : null
+            currentPerformanceNormalization(baseline)
         ),
         profile: baseline.profile,
         work: baseline.work
@@ -75,8 +112,12 @@ export function performanceBaselineIdentity(baseline: StoredPerformanceBaseline)
 export type BenchmarkCalibrationResult = BenchmarkCalibrationResultDefinition;
 
 function sharedPerformanceIdentity(baseline: StoredPerformanceBaseline): BaselineIdentity {
-    const { machineClass, ...identity } = performanceBaselineIdentity(baseline);
-    return { ...identity, subtype: 'performance-baseline', comparisonContext: { machineClass } };
+    const { machineClass, measurement, ...identity } = performanceBaselineIdentity(baseline);
+    return {
+        ...identity,
+        subtype: 'performance-baseline',
+        comparisonContext: measurement === null ? { machineClass } : { machineClass, measurement }
+    };
 }
 export function stalePerformanceBaselines(
     existing: ReadonlyMap<string, StoredPerformanceBaseline>,

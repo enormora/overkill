@@ -1,6 +1,6 @@
 import { createPerformanceBaselineStore, type PerformanceBaselineStore } from '../baselines/performance-store.ts';
 import {
-    normalizedPerformanceBaselineVersion,
+    currentPerformanceNormalization,
     type StoredPerformanceBaseline
 } from '../baselines/performance-baseline.ts';
 import type { SavedCalibration } from '../engine/benchmark-result.ts';
@@ -19,10 +19,11 @@ function selectedBaseline(input: ReferenceLookup, baseline: StoredPerformanceBas
         });
 }
 function storedReferences(baseline: StoredPerformanceBaseline): readonly SavedCalibration[] {
-    if (baseline.version !== normalizedPerformanceBaselineVersion || baseline.normalization === null) {
+    const normalization = currentPerformanceNormalization(baseline);
+    if (normalization === null) {
         return [];
     }
-    return Object.entries(baseline.normalization.metrics).map(function metric([ name, evidence ]) {
+    return Object.entries(normalization.metrics).map(function metric([ name, evidence ]) {
         return {
             work: baseline.work,
             metric: name,

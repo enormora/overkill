@@ -59,7 +59,7 @@ async function runCalibration(
     observations: CalibrationObservations
 ): Promise<CalibrationResult> {
     const lifecycle = createBenchmarkLifecycle(input);
-    lifecycle.garbageCollection.validate();
+    lifecycle.validate();
     await using disposal = new AsyncDisposableStack();
     const processes = input.measurement.mode === 'process' || input.measurement.mode === 'module'
         ? createProcessSamplingSession(

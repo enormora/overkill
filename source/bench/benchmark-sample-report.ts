@@ -1,11 +1,10 @@
-import { z } from 'zod/v4';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
 import { artifactReferenceKey } from '../engine/run-artifact.ts';
 import type { RunArtifact, PerTestResult, RunResult } from '../engine/run-result.ts';
 import { workIdentityKey } from '../engine/identity.ts';
-import { metricReadingSchema } from './benchmark-statistics-schema.ts';
+import type { ReadingAttribution } from '../engine/measurement-evidence.ts';
+import { readRawBenchmarkSamples } from './benchmark-sample-data.ts';
 
-const samplesSchema = z.record(z.string(), z.array(metricReadingSchema));
 type AvailableSamples = {
     readonly kind: 'available';
     readonly metrics: Readonly<Record<string, readonly number[]>>;
@@ -35,12 +34,24 @@ function assertSampleOwner(artifact: RunArtifact, test: PerTestResult): void {
         throw new Error('Raw sample artifact belongs to another workload, runtime, case, or attempt.');
     }
 }
+function assertReadingOwner(attribution: ReadingAttribution | null, test: PerTestResult): void {
+    if (attribution === null) {
+        return;
+    }
+    const { invocation } = attribution;
+    const expected = canonicalIdentityJson([ workIdentityKey(test.workId), test.attempts.at(-1)?.attempt, 'measured' ]);
+    const actual = canonicalIdentityJson([ workIdentityKey(invocation.work), invocation.attempt, invocation.phase ]);
+    if (actual !== expected) {
+        throw new Error('Raw sample attribution differs from its recorded work or attempt.');
+    }
+}
 function availableSamples(value: unknown, test: PerTestResult): Readonly<Record<string, readonly number[]>> {
-    const parsed = samplesSchema.parse(value);
+    const parsed = readRawBenchmarkSamples(value);
     const metrics = Object.fromEntries(
-        Object.entries(parsed).map(function availableValues([ name, readings ]) {
+        Object.entries(parsed.metrics).map(function availableValues([ name, readings ]) {
             const provenance = test.benchmark?.metrics[name]?.provenance;
-            for (const reading of readings) {
+            for (const { reading, attribution } of readings) {
+                assertReadingOwner(attribution, test);
                 if (
                     reading.availability === 'available' &&
                     canonicalIdentityJson(reading.provenance) !== canonicalIdentityJson(provenance)
@@ -50,7 +61,7 @@ function availableSamples(value: unknown, test: PerTestResult): Readonly<Record<
             }
             return [
                 name,
-                readings.flatMap(function availableReading(reading) {
+                readings.flatMap(function availableReading({ reading }) {
                     return reading.availability === 'available' ? [ reading.value ] : [];
                 })
             ];

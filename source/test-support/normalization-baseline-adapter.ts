@@ -1,12 +1,21 @@
-import { z } from 'zod/v4';
-import { metricReadingSchema } from '../packages/run/benchmark-calibration.entry-point.ts';
+import type { RawBenchmarkSample } from '../engine/measurement-evidence.ts';
+import { readRawBenchmarkSamples } from '../packages/bench/bench.entry-point.ts';
 import type {
     PerformanceBaselineAdapter,
     PerformanceObservationInput,
     PerformanceObservation
 } from '../baselines/performance-adapter.ts';
 
-const sampleSchema = z.object({ value: z.array(metricReadingSchema) });
+function observedSampleValue(readings: readonly RawBenchmarkSample[]): PerformanceObservation {
+    const first = readings
+        .find(function available(entry) {
+            return entry.reading.availability === 'available';
+        })
+        ?.reading;
+    return first?.availability === 'available'
+        ? { kind: 'observed', value: first.value }
+        : { kind: 'missing', reason: 'No available benchmark samples.' };
+}
 function observedValue(input: PerformanceObservationInput): PerformanceObservation {
     const artifact = input.artifacts.find(function rawSamples(candidate) {
         return candidate.payload.kind === 'runtime-attachment' && candidate.payload.name === 'benchmark-samples';
@@ -14,13 +23,8 @@ function observedValue(input: PerformanceObservationInput): PerformanceObservati
     if (artifact?.payload.kind !== 'runtime-attachment' || artifact.payload.content.kind !== 'json') {
         return { kind: 'missing', reason: 'Raw benchmark samples are unavailable.' };
     }
-    const samples = sampleSchema.parse(artifact.payload.content.value);
-    const first = samples.value.find(function available(reading) {
-        return reading.availability === 'available';
-    });
-    return first?.availability === 'available'
-        ? { kind: 'observed', value: first.value }
-        : { kind: 'missing', reason: 'No available benchmark samples.' };
+    const samples = readRawBenchmarkSamples(artifact.payload.content.value);
+    return observedSampleValue(samples.metrics['value'] ?? []);
 }
 export function normalizationBaselineAdapter(id: string): PerformanceBaselineAdapter {
     return {

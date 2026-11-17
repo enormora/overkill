@@ -1,3 +1,4 @@
+import type { MeasurementEvidence } from '../engine/measurement-evidence.ts';
 import type { BenchmarkGarbageCollectionResult } from '../engine/benchmark-result.ts';
 import { difference, percentDifference } from './benchmark-deltas.ts';
 import type { BaselineChartRow, BenchmarkHtmlReport } from './benchmark-html-data.ts';
@@ -152,6 +153,39 @@ function garbageCollectionCells(evidence: BenchmarkGarbageCollectionResult | nul
         : [ evidence.mode, evidence.completed, evidence.failures ];
 }
 
+function measurementTable(evidence: MeasurementEvidence | null): string {
+    if (evidence === null) {
+        return '<p>Measurement attribution unavailable.</p>';
+    }
+    return `${
+        table(
+            [
+                'Phase',
+                'Invocation',
+                'Target',
+                'Clock',
+                'Measured microseconds',
+                'Lifecycle microseconds',
+                'Status',
+                'Errors'
+            ],
+            evidence.invocations.map(function invocationRow(entry) {
+                return [
+                    entry
+                        .invocation
+                        .phase,
+                    entry.invocation.index,
+                    entry.target.name,
+                    entry.target.clock,
+                    entry.durationMicroseconds,
+                    entry.lifecycleMicroseconds,
+                    entry.status,
+                    entry.errors.join('; ')
+                ];
+            })
+        )
+    }<p>Omitted invocations: ${htmlText(evidence.omitted)}</p>`;
+}
 function lifecycleTables(report: BenchmarkHtmlReport): string {
     return report
         .cases
@@ -197,7 +231,7 @@ function lifecycleTables(report: BenchmarkHtmlReport): string {
                     ];
                 })
             );
-            return `<section>${summary}${metrics}<p>Warmup raw evidence: ${
+            return `<section>${summary}${metrics}${measurementTable(lifecycle.measurement)}<p>Warmup raw evidence: ${
                 htmlText(warmup.rawSamples.status)
             }</p></section>`;
         })

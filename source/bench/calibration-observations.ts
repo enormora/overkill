@@ -1,4 +1,5 @@
-import type { MetricReading, CalibrationResult, CalibrationSnapshot } from '../engine/benchmark-result.ts';
+import type { CalibrationResult, CalibrationSnapshot } from '../engine/benchmark-result.ts';
+import type { MetricReading } from '../engine/benchmark-metrics.ts';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
 import { normalizeBenchmarkMetrics } from './benchmark-observations.ts';
 import { quantileInterval } from './benchmark-budget.ts';
