@@ -1,6 +1,6 @@
 import type * as TypeScript from 'typescript-beta/ast';
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
-import type { AnalyzedSymbol } from './source-analysis-port.ts';
+import type { AnalyzedSymbol, SourceAnalysis } from './source-analysis-port.ts';
 import {
     immutableInitializer,
     sourceChildren,
@@ -8,8 +8,7 @@ import {
     loadSourceSymbols,
     sourceDeclarations,
     sourceSymbol,
-    transparentExpression,
-    type SourceAnalysis
+    transparentExpression
 } from './source-analysis.ts';
 
 export async function supportedCall(analysis: SourceAnalysis, call: TypeScript.CallExpression): Promise<boolean> {

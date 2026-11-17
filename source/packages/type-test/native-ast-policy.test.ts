@@ -32,8 +32,8 @@ function aliasedFixture(): SourceFixture & { readonly node: ast.Identifier; } {
     const alias = makeSymbol('alias', []);
     Reflect.set(alias, 'flags', SymbolFlags.Alias);
     const target = makeSymbol('target', []);
-    fixture.symbols.set(node, alias);
-    fixture.aliases.set(alias, target);
+    fixture.bindSymbol(node, alias);
+    fixture.bindAlias(alias, target);
 
     return { ...fixture, node };
 }
@@ -49,8 +49,9 @@ export const testNode = suite('isolated native syntax analysis', [
     test('caches symbol evidence and resolves aliases once', async function (scope: TestScope) {
         const { node, ...fixture } = aliasedFixture();
         await loadSourceSymbols(fixture.analysis, [ node ]);
-        fixture.symbols.delete(node);
-        scope.assert.equal((await sourceSymbol(fixture.analysis, node))?.name, 'target');
+        fixture.forgetSymbol(node);
+        const resolved = await sourceSymbol(fixture.analysis, node);
+        scope.assert.equal(resolved?.name, 'target');
         await loadSourceSymbols(fixture.analysis, [ node ]);
         return scope.assert.collect();
     }),
@@ -70,9 +71,10 @@ export const testNode = suite('isolated native syntax analysis', [
             )
         );
         const symbol = makeSymbol('value', []);
-        fixture.symbols.set(name, symbol);
+        fixture.bindSymbol(name, symbol);
         await loadSourceSymbols(fixture.analysis, [ name ]);
-        scope.assert.equal((await sourceSymbol(fixture.analysis, name))?.name, 'value');
+        const resolved = await sourceSymbol(fixture.analysis, name);
+        scope.assert.equal(resolved?.name, 'value');
         return scope.assert.collect();
     }),
     test('does not invent symbols for unresolved references', async function (scope: TestScope) {
@@ -91,13 +93,13 @@ export const testNode = suite('isolated native syntax analysis', [
         scope.assert.equal(transparentExpression(fixture.analysis, wrapped), body);
         scope.assert.equal(transparentExpression(fixture.analysis, body), undefined);
         scope.assert.equal(await declaredBody(fixture.analysis, wrapped), body);
-        scope.assert.equal(namedBodyParameter(fixture.analysis, body), body.parameters[0].name);
+        scope.assert.equal(namedBodyParameter(fixture.analysis, body), body.parameters.at(0)?.name);
         return scope.assert.collect();
     }),
     test('rejects non-function sources and unnamed scopes', async function (scope: TestScope) {
         const { analysis } = sourceFixture();
         await scope.assert.rejects(async function () {
-            await declaredBody(analysis, ast.factory.createStringLiteral('body'));
+            await declaredBody(analysis, ast.factory.createStringLiteral('body', ast.TokenFlags.None));
         }, { message: /not a statically identifiable/u });
         const body = ast.factory.createArrowFunction(
             undefined,
@@ -117,7 +119,7 @@ export const testNode = suite('isolated native syntax analysis', [
         const fixture = sourceFixture();
         const name = ast.factory.createIdentifier('body');
         sourceTree(ast.factory.createExpressionStatement(name));
-        fixture.names.set('body', makeSymbol('body', []));
+        fixture.bindName('body', makeSymbol('body', []));
         await scope.assert.rejects(async function () {
             await declaredBody(fixture.analysis, name);
         }, { message: /ambiguous callback/u });

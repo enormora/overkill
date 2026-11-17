@@ -3,7 +3,7 @@ import { API } from 'typescript-beta/async';
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../test/test.entry-point.ts';
 import { testNode as relations } from './relation-forms.test.ts';
-import { testNode as lifetime } from './compiler-lifetime.test.ts';
+import { testNode as lifetimeTests } from './compiler-lifetime.test.ts';
 import { createCompilerLifetime } from './compiler-lifetime.ts';
 import { referenceExpression } from './native-reference-expression.ts';
 import { replaceMappedSource, type TranslatedModule } from './generated-source.ts';
@@ -48,7 +48,7 @@ async function translatedReference(originalText: string): Promise<TranslatedModu
 }
 export const testNode = suite('native assertion source mapping', [
     relations,
-    lifetime,
+    lifetimeTests,
     test('preserves leading source trivia in translated type arguments', async function (scope: TestScope) {
         const translated = await translatedReference('reference<string, /* expected type */ number>()');
         scope.assert.equal(translated.text, 'check<string>().type.toBe< /* expected type */ number>()');

@@ -8,13 +8,14 @@ import {
 import { CaseSensitivity, toRootedFilePath, pathKey } from 'typescript-beta/path';
 import {
     createSourceAnalysis,
+    isSourceNode,
     type SourceAnalysis,
     type SourceSymbol,
     type SourceSignature,
     type SourceChecker
 } from '../packages/type-test/source-analysis-port.ts';
 
-export const compilerSyntax = {
+const compilerSyntax = {
     ...syntax,
     ModuleKind,
     ModuleResolutionKind,
@@ -46,13 +47,21 @@ export function sourceSymbol(name: string, declarations: readonly syntax.Declara
 }
 export type SourceFixture = {
     readonly analysis: SourceAnalysis;
-    readonly symbols: Map<syntax.Node, SourceSymbol>;
-    readonly names: Map<string, SourceSymbol>;
-    readonly files: Map<string, syntax.SourceFile>;
-    readonly aliases: Map<SourceSymbol, SourceSymbol>;
-    readonly signatures: Map<syntax.Node, SourceSignature>;
+    readonly bindCanonicalPath: (from: string, to: string) => void;
+    readonly bindSymbol: (node: syntax.Node, symbol: SourceSymbol) => void;
+    readonly forgetSymbol: (node: syntax.Node) => void;
+    readonly bindName: (name: string, symbol: SourceSymbol) => void;
+    readonly addFile: (file: syntax.SourceFile) => void;
+    readonly bindAlias: (alias: SourceSymbol, target: SourceSymbol) => void;
+    readonly bindSignature: (node: syntax.Node, signature: SourceSignature) => void;
 };
-type SourceResponses = Pick<SourceFixture, 'symbols' | 'names' | 'files' | 'aliases' | 'signatures'>;
+type SourceResponses = {
+    readonly symbols: ReadonlyMap<syntax.Node, SourceSymbol>;
+    readonly names: ReadonlyMap<string, SourceSymbol>;
+    readonly files: ReadonlyMap<string, syntax.SourceFile>;
+    readonly aliases: ReadonlyMap<SourceSymbol, SourceSymbol>;
+    readonly signatures: ReadonlyMap<syntax.Node, SourceSignature>;
+};
 function sourceChecker(
     responses: SourceResponses
 ): SourceChecker<SourceSymbol> & {
@@ -64,9 +73,9 @@ function sourceChecker(
     function getSymbolAtLocation(node: syntax.Node): Promise<SourceSymbol | undefined>;
     function getSymbolAtLocation(nodes: readonly syntax.Node[]): Promise<(SourceSymbol | undefined)[]>;
     async function getSymbolAtLocation(
-        input: syntax.Node | readonly syntax.Node[]
-    ): Promise<SourceSymbol | undefined | (SourceSymbol | undefined)[]> {
-        return 'kind' in input ? lookup(input) : input.map(lookup);
+        input: readonly syntax.Node[] | syntax.Node
+    ): Promise<(SourceSymbol | undefined)[] | SourceSymbol | undefined> {
+        return isSourceNode(input) ? lookup(input) : input.map(lookup);
     }
     return {
         getSymbolAtLocation,
@@ -85,23 +94,46 @@ function sourceChecker(
     };
 }
 export function sourceFixture(): SourceFixture {
-    const responses: SourceResponses = {
-        symbols: new Map(),
-        names: new Map(),
-        files: new Map(),
-        aliases: new Map(),
-        signatures: new Map()
-    };
+    const canonical = new Map<string, string>();
+    const symbols = new Map<syntax.Node, SourceSymbol>();
+    const names = new Map<string, SourceSymbol>();
+    const files = new Map<string, syntax.SourceFile>();
+    const aliases = new Map<SourceSymbol, SourceSymbol>();
+    const signatures = new Map<syntax.Node, SourceSignature>();
+    const responses: SourceResponses = { symbols, names, files, aliases, signatures };
     return {
-        ...responses,
+        bindCanonicalPath(from, to) {
+            canonical.set(from, to);
+        },
+        bindSymbol(node, symbol) {
+            symbols.set(node, symbol);
+        },
+        forgetSymbol(node) {
+            symbols.delete(node);
+        },
+        bindName(name, symbol) {
+            names.set(name, symbol);
+        },
+        addFile(file) {
+            files.set(file.fileName, file);
+        },
+        bindAlias(alias, target) {
+            aliases.set(alias, target);
+        },
+        bindSignature(node, signature) {
+            signatures.set(node, signature);
+        },
         analysis: createSourceAnalysis({
+            realpath(path) {
+                return canonical.get(path) ?? path;
+            },
             compiler: compilerSyntax,
             program: {
                 async getSourceFileNames() {
-                    return Array.from(responses.files.keys());
+                    return Array.from(files.keys());
                 },
                 async getSourceFile(path) {
-                    return responses.files.get(path);
+                    return files.get(path);
                 }
             },
             checker: sourceChecker(responses)

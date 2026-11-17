@@ -1,3 +1,4 @@
+import type { SourceAnalysis } from './source-analysis-port.ts';
 import type * as TypeScript from 'typescript-beta/ast';
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
 import { sourceSymbol, sourceChildren, type SourceAnalysis } from './source-analysis.ts';
@@ -27,7 +28,7 @@ async function scopeTarget(
     analysis: SourceAnalysis,
     initial: TypeScript.Expression,
     scope: TypeScript.Identifier
-): Promise<string | null> {
+): Promise<null | string> {
     let expression = annotatedReceiver(analysis, initial);
     const members: string[] = [];
     while (analysis.compiler.isPropertyAccessExpression(expression)) {
@@ -40,7 +41,7 @@ async function assertionCall(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
     scope: TypeScript.Identifier
-): Promise<TypeScript.CallExpression | null> {
+): Promise<null | TypeScript.CallExpression> {
     if (!analysis.compiler.isCallExpression(node)) {
         return null;
     }
@@ -169,7 +170,7 @@ export async function scopeAssertions(
 export async function assertionAnnotation(
     analysis: SourceAnalysis,
     call: TypeScript.CallExpression
-): Promise<string | null> {
+): Promise<null | string> {
     const prefix = call.expression;
     if (!analysis.compiler.isCallExpression(prefix)) {
         return null;

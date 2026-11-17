@@ -32,19 +32,6 @@ function positioned<Node extends ast.Node>(node: Node, start: number): Node {
     });
     return node;
 }
-function ownedCallback(
-    name: string,
-    options: (body: ast.ArrowFunction) => readonly ast.Expression[]
-): OwnershipFixture {
-    const fixture = sourceFixture();
-    const body = sourceBody([]);
-    const call = sourceCall(ast.factory.createIdentifier(name), options(body));
-    const file = positioned(sourceFile([ ast.factory.createExpressionStatement(call) ], '/project/case.ts'), 0);
-    positioned(body, 1);
-    bindAuthoring(fixture, call, name);
-    fixture.files.set(file.fileName, file);
-    return { ...fixture, body, call, plan: ownedPlan(file) };
-}
 function bindAuthoring(fixture: SourceFixture, call: ast.CallExpression, name: string): void {
     const declaration = ast.factory.createFunctionDeclaration(
         undefined,
@@ -56,8 +43,8 @@ function bindAuthoring(fixture: SourceFixture, call: ast.CallExpression, name: s
         ast.factory.createBlock([])
     );
     sourceFile([ declaration ], '/project/source/authoring/test.ts');
-    fixture.names.set(name, sourceSymbol(name, [ declaration ]));
-    fixture.signatures.set(call, {
+    fixture.bindName(name, sourceSymbol(name, [ declaration ]));
+    fixture.bindSignature(call, {
         declaration: {
             async resolve() {
                 return declaration;
@@ -78,6 +65,19 @@ function ownedPlan(file: ast.SourceFile): TestPlan {
     };
     return { ...original, cases: [ selected ], discoveredCases: [ selected ] };
 }
+function ownedCallback(
+    name: string,
+    options: (body: ast.ArrowFunction) => readonly ast.Expression[]
+): OwnershipFixture {
+    const fixture = sourceFixture();
+    const body = sourceBody([]);
+    const call = sourceCall(ast.factory.createIdentifier(name), options(body));
+    const file = positioned(sourceFile([ ast.factory.createExpressionStatement(call) ], '/project/case.ts'), 0);
+    positioned(body, 1);
+    bindAuthoring(fixture, call, name);
+    fixture.addFile(file);
+    return { ...fixture, body, call, plan: ownedPlan(file) };
+}
 function bodyOptions(body: ast.ArrowFunction): ast.ObjectLiteralExpression {
     return ast.factory.createObjectLiteralExpression([ sourceProperty('body', body) ]);
 }
@@ -92,7 +92,7 @@ export const testNode = suite('isolated callback source ownership', [
     ...[ 'test', 'withResource', 'withResources', 'withRuntime' ].map(function (name) {
         return test(`resolves positional ${name} callback without executing it`, async function (scope: TestScope) {
             const fixture = ownedCallback(name, function (body) {
-                return [ ast.factory.createStringLiteral('case'), body ];
+                return [ ast.factory.createStringLiteral('case', ast.TokenFlags.None), body ];
             });
             scope.assert.equal(await resolveBodyOrigin(fixture.analysis, origin(fixture)), fixture.body);
             return scope.assert.collect();
@@ -150,7 +150,7 @@ export const testNode = suite('isolated callback source ownership', [
     }),
     test('rejects options with non-object source ownership', async function (scope: TestScope) {
         const fixture = ownedCallback('createTestCase', function () {
-            return [ ast.factory.createStringLiteral('options') ];
+            return [ ast.factory.createStringLiteral('options', ast.TokenFlags.None) ];
         });
         await scope.assert.rejects(async function () {
             await resolveBodyOrigin(fixture.analysis, origin(fixture));
@@ -166,7 +166,7 @@ export const testNode = suite('isolated callback source ownership', [
     }),
     test('translates owned callback modules and deduplicates their owners', async function (scope: TestScope) {
         const fixture = ownedCallback('test', function (body) {
-            return [ ast.factory.createStringLiteral('case'), body ];
+            return [ ast.factory.createStringLiteral('case', ast.TokenFlags.None), body ];
         });
         const result = await translateNativePlan(fixture.analysis, {
             ...fixture.plan,
@@ -180,7 +180,7 @@ export const testNode = suite('isolated callback source ownership', [
     test('requires ownership for executable cases and ignores skipped ones', async function (scope: TestScope) {
         const fixture = sourceFixture();
         const original = observationPlan();
-        const plan = { ...original, cases: [ { ...original.cases[0], bodyOrigin: null } ] };
+        const plan: TestPlan = { ...original, cases: [ { ...original.cases[0], bodyOrigin: null } ] };
         await scope.assert.rejects(async function () {
             await translateNativePlan(fixture.analysis, plan);
         }, { message: /no callback source ownership/u });
@@ -200,7 +200,7 @@ export const testNode = suite('isolated callback source ownership', [
         }, { message: /case.ts:1:1: Callback construction has no arguments/u });
         return scope.assert.collect();
     }),
-    ...[ 'sameType', 'assignableTo', 'assignableFrom' ].map(function (name) {
+    ...([ 'sameType', 'assignableTo', 'assignableFrom' ] as const).map(function (name) {
         return test(`recognizes adapter-owned ${name} references`, async function (scope: TestScope) {
             const fixture = sourceFixture();
             const declaration = ast.factory.createFunctionDeclaration(
@@ -208,12 +208,10 @@ export const testNode = suite('isolated callback source ownership', [
                 undefined,
                 ast.factory.createIdentifier(name),
                 undefined,
-                [],
-                undefined,
-                undefined
+                []
             );
             sourceFile([ declaration ], '/project/packages/type-test/type-test.entry-point.ts');
-            fixture.names.set(name, sourceSymbol(name, [ declaration ]));
+            fixture.bindName(name, sourceSymbol(name, [ declaration ]));
             const reference = sourceTree(sourceMember(ast.factory.createIdentifier(name), 'expressions'));
             const result = await nativeReference(fixture.analysis, reference);
             scope.assert.deepEqual(result, {

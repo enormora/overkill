@@ -1,9 +1,6 @@
 import type * as TypeScript from 'typescript-beta/ast';
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
 import type { SourceAnalysis, AnalyzedSymbol } from './source-analysis-port.ts';
-import { compilerFileSystem } from './compiler-file-system.ts';
-
-export type { SourceAnalysis } from './source-analysis-port.ts';
 
 const programSymbols = new WeakMap<
     SourceAnalysis['program'],
@@ -21,10 +18,10 @@ function sourceSymbols(analysis: SourceAnalysis): WeakMap<TypeScript.Node, Promi
 }
 
 async function canonicalSourceFile(analysis: SourceAnalysis, path: string): Promise<TypeScript.SourceFile | undefined> {
-    const canonical = compilerFileSystem.realpath(path);
+    const canonical = analysis.realpath(path);
     const names = await analysis.program.getSourceFileNames();
     const matches = names.filter(function sameFile(name) {
-        return compilerFileSystem.realpath(name) === canonical;
+        return analysis.realpath(name) === canonical;
     });
     if (matches.length > 1) {
         throw new UnsupportedEvidenceError(`Callback source has ambiguous project identities: ${path}`, undefined);
@@ -208,3 +205,5 @@ export async function validateFunctionBinding(analysis: SourceAnalysis, name: Ty
         }
     }
 }
+
+export type { SourceAnalysis } from './source-analysis-port.ts';

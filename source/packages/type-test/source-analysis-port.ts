@@ -12,7 +12,7 @@ export type AnalyzedSymbol = SourceSymbol & { readonly alias: () => Promise<Anal
 export type SourceSignature = { readonly declaration: SourceDeclaration | undefined; };
 type SymbolLookup<Symbol extends SourceSymbol> = {
     (node: TypeScript.Node): Promise<Symbol | undefined>;
-    (nodes: readonly TypeScript.Node[]): Promise<(Symbol | undefined)[]>;
+    (nodes: readonly TypeScript.Node[]): Promise<readonly (Symbol | undefined)[]>;
 };
 export type SourceChecker<Symbol extends SourceSymbol> = {
     readonly getSymbolAtLocation: SymbolLookup<Symbol>;
@@ -20,22 +20,41 @@ export type SourceChecker<Symbol extends SourceSymbol> = {
         node: TypeScript.ShorthandPropertyAssignment
     ) => Promise<Symbol | undefined>;
     readonly getResolvedSignature: (node: TypeScript.Node) => Promise<SourceSignature>;
-    readonly staticString: (node: TypeScript.Node) => Promise<string | null>;
+    readonly staticString: (node: TypeScript.Node) => Promise<null | string>;
 };
 export type SourceAnalysis = {
+    readonly realpath: (path: string) => string;
     readonly compiler: CompilerSyntax;
     readonly checker: SourceChecker<AnalyzedSymbol>;
-    readonly program: Pick<CompilerApi.Program, 'getSourceFileNames' | 'getSourceFile'>;
+    readonly program: {
+        readonly getSourceFile: (path: string) => Promise<TypeScript.SourceFile | undefined>;
+        readonly getSourceFileNames: () => Promise<readonly string[]>;
+    };
 };
 type SourceInput<Symbol extends SourceSymbol> = {
+    readonly realpath: (path: string) => string;
     readonly compiler: CompilerSyntax;
     readonly checker: SourceChecker<Symbol> & {
         readonly getAliasedSymbol: (symbol: Symbol) => Promise<Symbol | undefined>;
     };
     readonly program: SourceAnalysis['program'];
 };
+const programSymbolIdentities = new WeakMap<SourceAnalysis['program'], WeakMap<SourceSymbol, AnalyzedSymbol>>();
+function symbolIdentities(program: SourceAnalysis['program']): WeakMap<SourceSymbol, AnalyzedSymbol> {
+    const existing = programSymbolIdentities.get(program);
+    if (existing !== undefined) {
+        return existing;
+    }
+    const symbols = new WeakMap<SourceSymbol, AnalyzedSymbol>();
+    programSymbolIdentities.set(program, symbols);
+    return symbols;
+}
+export function isSourceNode(input: readonly TypeScript.Node[] | TypeScript.Node): input is TypeScript.Node {
+    return Object.hasOwn(input, 'kind');
+}
+
 export function createSourceAnalysis<Symbol extends SourceSymbol>(input: SourceInput<Symbol>): SourceAnalysis {
-    const symbols = new WeakMap<Symbol, AnalyzedSymbol>();
+    const symbols = symbolIdentities(input.program);
     function analyzed(symbol: Symbol | undefined): AnalyzedSymbol | undefined {
         if (symbol === undefined) {
             return undefined;
@@ -56,13 +75,15 @@ export function createSourceAnalysis<Symbol extends SourceSymbol>(input: SourceI
         return result;
     }
     function getSymbolAtLocation(node: TypeScript.Node): Promise<AnalyzedSymbol | undefined>;
-    function getSymbolAtLocation(nodes: readonly TypeScript.Node[]): Promise<(AnalyzedSymbol | undefined)[]>;
+    function getSymbolAtLocation(nodes: readonly TypeScript.Node[]): Promise<readonly (AnalyzedSymbol | undefined)[]>;
     async function getSymbolAtLocation(
-        inputNode: TypeScript.Node | readonly TypeScript.Node[]
-    ): Promise<AnalyzedSymbol | undefined | (AnalyzedSymbol | undefined)[]> {
-        return 'kind' in inputNode
-            ? analyzed(await input.checker.getSymbolAtLocation(inputNode))
-            : (await input.checker.getSymbolAtLocation(inputNode)).map(analyzed);
+        inputNode: readonly TypeScript.Node[] | TypeScript.Node
+    ): Promise<AnalyzedSymbol | readonly (AnalyzedSymbol | undefined)[] | undefined> {
+        if (isSourceNode(inputNode)) {
+            return analyzed(await input.checker.getSymbolAtLocation(inputNode));
+        }
+        const resolved = await input.checker.getSymbolAtLocation(inputNode);
+        return resolved.map(analyzed);
     }
     return {
         ...input,
