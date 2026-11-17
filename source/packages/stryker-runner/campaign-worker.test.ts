@@ -3,6 +3,7 @@ import { suite, test, type TestScope } from '../test/test.entry-point.ts';
 import { InvocationDeadlineExceededError } from '../run/run.entry-point.ts';
 import { memoryCampaignWorker } from '../../test-support/memory-campaign-worker.ts';
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
+import { testNode as authorityPolicy } from './campaign-authority-policy.test.ts';
 import { createCampaignSession, type CampaignWorker } from './campaign-worker.ts';
 
 const { signal } = new AbortController();
@@ -10,6 +11,7 @@ async function register(worker: CampaignWorker): Promise<void> {
     await worker.respond({ kind: 'register', root: '/project' }, signal, null);
 }
 export const testNode = suite('campaign worker authority', [
+    authorityPolicy,
     test('assigns a stable campaign identity to a canonical sandbox', async function (scope: TestScope) {
         const fixture = await memoryCampaignWorker(null);
         const result = await fixture.worker.respond({ kind: 'register', root: '/project/alias' }, signal, null);
