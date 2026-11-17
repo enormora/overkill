@@ -95,6 +95,32 @@ export const testNode = createOverkillSuite({
     controls: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            annotations: {},
+            controls: {},
+            title: 'work identity selections validate and match complete default work identities',
+            body(scope: OverkillScope) {
+                const workId = createDefaultWorkId(candidate.id);
+                const filter = { kind: 'work-id' as const, id: workId };
+                scope.assert.equal(invalidRunSelectionMessage({ kind: 'filter', filter }), null);
+                scope.assert.true(matchesRunFilter(filter, { ...candidate, workId }));
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            annotations: {},
+            controls: {},
+            title: 'workload filters exclude cases without a workload identity',
+            body(scope: OverkillScope) {
+                scope.assert.false(matchesRunFilter(equals('workload', 'small'), {
+                    ...candidate,
+                    workId: { ...candidate.workId, workload: null }
+                }));
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'work identity filters preserve exact runtime and workload bindings',
             annotations: {},

@@ -11,7 +11,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { property } from '../packages/test/property.entry-point.ts';
 import { unexecutedGenerator } from '../test-support/property-generator.ts';
-import { resolveTestPlanCollectionPolicy } from './run-selection.ts';
+import { assertCollectedRunPlanHasCases, resolveTestPlanCollectionPolicy } from './run-selection.ts';
 
 const policy = { testFamily: 'integration', propertyPolicy: null, timeoutMilliseconds: 1000, replay: null } as const;
 const metadata = {
@@ -27,6 +27,13 @@ function planFor(node: TestNode): TestPlan {
     return createTestPlan(createRoot({ title: 'root', annotations: {}, controls: {}, children: [ node ] }));
 }
 export const testNode = suite('collection policy admission', [
+    test('rejects collected plans without selected cases', function (scope: TestScope) {
+        const plan = { ...createCollectedPlan(), files: [] };
+        scope.assert.throws(function () {
+            assertCollectedRunPlanHasCases(plan);
+        }, { message: 'Run selection matched no test cases.' });
+        return scope.assert.collect();
+    }),
     test('preserves a recorded plan before current family admission', function (scope: TestScope) {
         const plan = planFor(createTestCase({ ...metadata, body: unexpectedBody }));
         const recorded = {
