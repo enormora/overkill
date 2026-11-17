@@ -75,7 +75,14 @@ try {
     assert.equal(third.status, 'passed');
     assert.deepEqual(third.maintenanceDiagnostics, []);
     const retainedRecords = (await readdir(recordsPath)).filter(file => file.endsWith('.json'));
-    assert.equal(retainedRecords.length, 2);
+    assert.equal(retainedRecords.length, 3);
+    const retained = await Promise.all(retainedRecords.map(async file =>
+        JSON.parse(await readFile(join(recordsPath, file), 'utf8'))));
+    assert.deepEqual(retained.map(record => record.detail).sort(), ['compact', 'detailed', 'detailed']);
+    const compact = retained.find(record => record.detail === 'compact');
+    assert.ok(compact);
+    assert.equal(compact.replayPlan, null);
+    assert.equal(compact.result.status, 'passed');
     assert.equal(retainedRecords.some(file => !recordFiles.includes(file)), true);
     assert.deepEqual(second.undeliveredRunnerErrors, []);
     assert.equal(typeof RunCollectionError, 'function');
