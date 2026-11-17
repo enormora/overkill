@@ -48,7 +48,12 @@ export function simulatedHttpRequest<Scenarios extends SimulationScenarioCatalog
         async serve() {
             await serveSimulatedHttpRequest({
                 baseUrl: 'https://service.test:42',
-                request,
+                request: {
+                    method: request.method,
+                    url: request.url,
+                    headers: request.headers,
+                    on: request.on.bind(request)
+                },
                 simulation,
                 transcript,
                 scope: currentTranscriptScope(),

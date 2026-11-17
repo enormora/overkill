@@ -27,7 +27,6 @@
         "@schema-hub/zod-error-formatter": "0.0.20",
         "@stdlib/stats-base-dists-binomial-quantile": "0.2.3",
         "@stryker-mutator/api": "10.0.0",
-        "@types/node": "26.6.6",
         "ansi-escapes": "7.3.0",
         "cmd-ts": "0.15.0",
         "convert-source-map": "2.0.0",

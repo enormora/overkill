@@ -22,6 +22,24 @@ function responseText(body: Uint8Array | string | null): string {
     return typeof body === 'string' ? body : decoder.decode(body ?? new Uint8Array());
 }
 export const testNode = suite('simulated HTTP request routing', [
+    test('accepts portable request bytes and scalar or repeated headers', async function (scope: TestScope) {
+        const fixture = simulatedHttpRequest(scope, simulation);
+        fixture.request.method = 'POST';
+        fixture.request.headers = { 'x-one': 'one', 'x-repeat': [ 'a', 'b' ], unused: undefined };
+        const pending = fixture.serve();
+        fixture.request.emit('data', Uint8Array.of(65, 66));
+        fixture.request.emit('end');
+        await pending;
+        scope.assert.deepEqual<unknown, unknown>(JSON.parse(responseText(fixture.response.body)), {
+            url: 'https://service.test:42/resource',
+            method: 'POST',
+            body: 'AB',
+            headers: [ [ 'x-one', 'one' ], [ 'x-repeat', 'a, b' ] ],
+            scenario: 'default'
+        });
+        scope.assert.deepEqual(fixture.errors, []);
+        return scope.assert.collect();
+    }),
     lifecycle,
     test('routes the default scenario and records its response', async function (scope: TestScope) {
         const fixture = simulatedHttpRequest(scope, simulation);

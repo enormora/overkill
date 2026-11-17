@@ -1,4 +1,4 @@
-import http, { type IncomingMessage } from 'node:http';
+import http from 'node:http';
 import {
     createHttpTranscriptRecorder,
     httpHeadersSnapshot,
@@ -80,10 +80,20 @@ type SimulatedHttpServerHandleCandidate<Simulation extends SimulationWithScenari
     readonly scenarioUrl: (scenario: string & keyof Simulation['scenarios'], path: string) => string;
     readonly transcript: HttpTranscript<{ readonly scenario: string; }>;
 };
+type SimulationRequest = {
+    readonly method: string | undefined;
+    readonly url: string | undefined;
+    readonly headers: Readonly<Record<string, string | readonly string[] | undefined>>;
+    readonly on: {
+        (event: 'data', listener: (chunk: Uint8Array) => void): unknown;
+        (event: 'error', listener: (error: unknown) => void): unknown;
+        (event: 'end', listener: () => void): unknown;
+    };
+};
 type SimulationRequestContext<Scenarios extends SimulationScenarioCatalog> = {
     readonly baseUrl: string;
     readonly recordError: (error: unknown) => void;
-    readonly request: IncomingMessage;
+    readonly request: SimulationRequest;
     readonly response: ResponseWriter;
     readonly scope: TranscriptScope | null;
     readonly simulation: SimulatedHttpServerDefinition<string, Scenarios>;
@@ -116,15 +126,15 @@ function asyncDisposeSymbol(): symbol {
     return value;
 }
 
-async function collectRequestBody(request: IncomingMessage): Promise<Uint8Array | null> {
+async function collectRequestBody(request: SimulationRequest): Promise<Uint8Array | null> {
     if (request.method === 'GET' || request.method === 'HEAD') {
         return null;
     }
 
     return await new Promise(function collectBody(resolve, reject) {
-        const chunks: Buffer[] = [];
+        const chunks: Uint8Array[] = [];
 
-        request.on('data', function recordChunk(chunk: Buffer) {
+        request.on('data', function recordChunk(chunk: Uint8Array) {
             chunks.push(chunk);
         });
         request.on('error', reject);
@@ -134,16 +144,17 @@ async function collectRequestBody(request: IncomingMessage): Promise<Uint8Array 
     });
 }
 
-function requestHeaders(request: IncomingMessage): Headers {
+function requestHeaders(request: SimulationRequest): Headers {
     const headers = new Headers();
 
     for (const [ name, value ] of Object.entries(request.headers)) {
-        if (Array.isArray(value)) {
-            for (const item of value) {
+        if (typeof value === 'string') {
+            headers.set(name, value);
+        } else {
+            const values = value ?? [];
+            for (const item of values) {
                 headers.append(name, item);
             }
-        } else if (value !== undefined) {
-            headers.set(name, value);
         }
     }
 
@@ -238,7 +249,7 @@ function sendTextResponse(response: ResponseWriter, status: number, body: string
     response.end(body);
 }
 
-async function createWebRequest(request: IncomingMessage, baseUrl: string): Promise<{
+async function createWebRequest(request: SimulationRequest, baseUrl: string): Promise<{
     readonly request: Request;
     readonly scenario: string;
 }> {
@@ -336,7 +347,7 @@ type SimulationResponse = {
 };
 
 async function prepareSimulationRequest(
-    request: IncomingMessage,
+    request: SimulationRequest,
     baseUrl: string
 ): Promise<PreparedSimulationRequest> {
     const webRequest = await createWebRequest(request, baseUrl);
@@ -434,7 +445,12 @@ function createServer<Scenarios extends SimulationScenarioCatalog>(
     const server = http.createServer(function handleRequest(request, response) {
         startGuardedRoute(
             serveSimulatedHttpRequest({
-                request,
+                request: {
+                    method: request.method,
+                    url: request.url,
+                    headers: request.headers,
+                    on: request.on.bind(request)
+                },
                 response,
                 simulation: options.simulation,
                 baseUrl: serverBaseUrl(server, options.host),
