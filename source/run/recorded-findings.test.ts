@@ -103,14 +103,14 @@ export const testNode = suite('recorded nested findings', [
             children: [ 'first finding', 'second finding' ],
             resources: [ { target: 'primary', summary: 'first finding' }, { target: null, summary: 'second finding' } ]
         });
-        scope.assert.deepEqual(
+        scope.assert.deepEqual<unknown, unknown>(
             recorded.resourceChecks[0]?.failures.map(function finding(value) {
                 return [ value.target, value.check.summary ];
             }),
             [ [ 'primary', 'first finding' ], [ null, 'second finding' ] ]
         );
         const restored = parseSerializedRunDiagnostics(JSON.parse(JSON.stringify(serializeRunDiagnostics(live))));
-        scope.assert.deepEqual(
+        scope.assert.deepEqual<unknown, unknown>(
             restored.resourceChecks[0]?.failures.map(function finding(value) {
                 return [ value.target, value.check.summary ];
             }),
