@@ -141,6 +141,54 @@ async function rejectForeignAcknowledgement(scope: TestScope, scenario: Scenario
     scope.assert.equal(scenario.sent().length, 1);
 }
 export const testNode = suite('resource check owner registry', [
+    test('flushes empty registries and ignores server response frames', async function (scope: TestScope) {
+        const registry = createResourceCheckRegistry(
+            owner.run,
+            createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
+        );
+        const socket = connection();
+        const frames: ResourceCheckFrame[] = [];
+        const send: ResourceCheckSend = function collect(frame) {
+            frames.push(frame);
+        };
+        await registry.receive(socket, send, { kind: 'result', request: 'ignored', snapshots: [], errors: [] });
+        await registry.receive(socket, send, { kind: 'flush', request: 'flush' });
+        scope.assert.deepEqual(frames, [ { kind: 'result', request: 'flush', snapshots: [], errors: [] } ]);
+        return scope.assert.collect();
+    }),
+    test('delivers retained checkpoints to registered observers', async function (scope: TestScope) {
+        const scenario = await registeredOwner(scope, 'per-run');
+        const observed: ResourceCheckSnapshot[] = [];
+        scenario.registry.observe(function checkpoint(value) {
+            observed.push(value);
+        });
+        await checkpointOwner(scenario);
+        scope.assert.deepEqual(observed, [ snapshot ]);
+        return scope.assert.collect();
+    }),
+    ...([ 'per-case', 'per-run' ] as const).map(function (resourceScope) {
+        return test(
+            `routes ${resourceScope} stops only to eligible connected consumers`,
+            async function (scope: TestScope) {
+                const scenario = await registeredOwner(scope, resourceScope);
+                const recipients: string[] = [];
+                scenario.registry.connect(scenario.socket, function deliver() {
+                    recipients.push('owner');
+                });
+                scenario.registry.connect(scenario.sibling, function deliver() {
+                    recipients.push('sibling');
+                });
+                await scenario.registry.receive(scenario.socket, scenario.send, {
+                    kind: 'stop',
+                    owner: scenario.owner,
+                    interval: attempt,
+                    cause: 'stopped'
+                });
+                scope.assert.deepEqual(recipients, resourceScope === 'per-case' ? [ 'owner' ] : [ 'owner', 'sibling' ]);
+                return scope.assert.collect();
+            }
+        );
+    }),
     ...invalidFrames.map(function invalidFrame(testCase) {
         return test(testCase.title, async function (scope) {
             const scenario = await registeredOwner(scope, 'per-run');

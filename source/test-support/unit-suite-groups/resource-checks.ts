@@ -1,3 +1,4 @@
+import { testNode as sessionPolicy } from '../../run/resource-check-session.test.ts';
 import { testNode as checkRegistry } from '../../run/resource-check-registry.test.ts';
 import { testNode as resourceCheckReportingTestNode } from '../../engine/resource-check-reporting.test.ts';
 import { testNode as resourceCheckRecordsTestNode } from '../../run/resource-check-records.test.ts';
@@ -10,6 +11,7 @@ export const testNode = createSuite({
     controls: {},
     definitionLocations: [ { kind: 'unknown' } ],
     children: [
+        sessionPolicy,
         checkRegistry,
         resourceCheckReportingTestNode,
         resourceCheckRecordsTestNode,
