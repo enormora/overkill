@@ -3,7 +3,12 @@ import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runIfMain } from '#test-runner';
-import { defineReporter, parseWitnessFile, type PropertyWitnessFile, type DefinedReporter } from '../packages/engine/engine.entry-point.ts';
+import {
+    defineReporter,
+    parseWitnessFile,
+    type PropertyWitnessFile,
+    type DefinedReporter
+} from '../packages/engine/engine.entry-point.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { normalizeConfig, orchestrator, type RunCommand } from '../packages/run/run.entry-point.ts';
 import { writeCorpusIndex } from '../test-support/corpus-index.ts';
@@ -141,14 +146,20 @@ async function assertReplayCompatibility(scope: TestScope, input: IncompatibleCo
 }
 
 function blockCorpusAfterCase(file: string): DefinedReporter {
-    return defineReporter(() => ({
-        kind: 'real-time', name: 'corpus-write-failure', sinks: [], dispose: null, onFinish: null,
-        async onEvent(event) {
-            if (event.kind === 'test-end') {
-                await writeFile(file, 'not a directory');
+    return defineReporter(function () {
+        return {
+            kind: 'real-time',
+            name: 'corpus-write-failure',
+            sinks: [],
+            dispose: null,
+            onFinish: null,
+            async onEvent(event) {
+                if (event.kind === 'test-end') {
+                    await writeFile(file, 'not a directory');
+                }
             }
-        }
-    }));
+        };
+    });
 }
 export const testNode = suite(
     'runner property corpus',

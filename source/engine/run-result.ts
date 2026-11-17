@@ -20,6 +20,7 @@ import type { RuntimeAttachmentArtifact } from './runtime-attachment.ts';
 
 import type { PerTestResult, TestAttemptResult, TestOutcome, TestVerdict } from './test-result.ts';
 
+/* eslint-disable no-barrel-files/no-barrel-files -- This result model preserves its public type surface. */
 export type {
     PropertyCaseEvidence,
     TestAttemptResult,
@@ -38,6 +39,7 @@ export type {
     TestVerdict
 } from './test-result.ts';
 export type { BaselineReportSummary } from './baseline-report.ts';
+/* eslint-enable no-barrel-files/no-barrel-files -- Result behavior follows. */
 
 type RunnerErrorSubtypeByName = {
     readonly witnessReplay: 'witness-replay';
