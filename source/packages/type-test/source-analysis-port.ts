@@ -98,3 +98,18 @@ export function createSourceAnalysis<Symbol extends SourceSymbol>(input: SourceI
         }
     };
 }
+
+export type TypeAnalysis = {
+    readonly compiler: CompilerSyntax;
+    readonly checker: {
+        readonly getParameterType: CompilerApi.Checker['getParameterType'];
+        readonly getReturnTypeOfSignature: CompilerApi.Checker['getReturnTypeOfSignature'];
+        readonly getTypeAtLocation: CompilerApi.Checker['getTypeAtLocation'];
+        readonly getTypeFromTypeNode: CompilerApi.Checker['getTypeFromTypeNode'];
+        readonly getTypeOfSymbol: CompilerApi.Checker['getTypeOfSymbol'];
+        readonly getTypePredicateOfSignature: CompilerApi.Checker['getTypePredicateOfSignature'];
+        readonly isReadonlySymbol: CompilerApi.Checker['isReadonlySymbol'];
+        readonly isTypeAssignableTo: CompilerApi.Checker['isTypeAssignableTo'];
+        readonly typeToString: CompilerApi.Checker['typeToString'];
+    };
+};

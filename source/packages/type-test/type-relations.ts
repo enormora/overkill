@@ -1,5 +1,5 @@
 import type { Type } from 'typescript-beta/async';
-import type { TypeAnalysis } from './type-analysis.ts';
+import type { TypeAnalysis } from './source-analysis-port.ts';
 import { compareEquality } from './structural-equality.ts';
 import { established, type Relation, type RelationEvidence } from './relation-evidence.ts';
 

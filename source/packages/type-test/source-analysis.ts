@@ -205,5 +205,3 @@ export async function validateFunctionBinding(analysis: SourceAnalysis, name: Ty
         }
     }
 }
-
-export type { SourceAnalysis } from './source-analysis-port.ts';

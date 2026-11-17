@@ -1,7 +1,7 @@
 import type { Type, TypeParameter, Signature, Symbol as CompilerSymbol, IndexInfo } from 'typescript-beta/async';
 
 import { sourceDeclarations } from './source-analysis.ts';
-import type { TypeAnalysis } from './type-analysis.ts';
+import type { TypeAnalysis } from './source-analysis-port.ts';
 
 import { established, type RelationEvidence } from './relation-evidence.ts';
 

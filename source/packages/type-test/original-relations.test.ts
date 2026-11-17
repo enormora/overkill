@@ -7,7 +7,7 @@ import { runNativeProject } from '../../test-support/native-type-project.ts';
 import { relationSource } from '../../test-support/type-test-relation-project.ts';
 import { loadProject, disposeProject, typeAnalysis, type FrozenProject } from './frozen-project.ts';
 import { compareRelation } from './type-relations.ts';
-import type { TypeAnalysis } from './type-analysis.ts';
+import type { TypeAnalysis } from './source-analysis-port.ts';
 
 const equal = new Set([
     'Any',

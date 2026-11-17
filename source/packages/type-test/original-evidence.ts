@@ -1,7 +1,7 @@
 import { match } from 'ts-pattern';
 import type { Type } from 'typescript-beta/async';
 import type { NativeSite } from './original-assertions.ts';
-import type { TypeAnalysis } from './type-analysis.ts';
+import type { TypeAnalysis } from './source-analysis-port.ts';
 import type { SiteEvidence } from './native-results.ts';
 import { compareRelation } from './type-relations.ts';
 

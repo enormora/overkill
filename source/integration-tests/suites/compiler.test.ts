@@ -7,6 +7,9 @@ import { testNode as adapterTestNode } from '../../packages/type-test/adapter.te
 
 import { testNode as originalRelations } from '../../packages/type-test/original-relations.test.ts';
 
+import { testNode as relations } from '../../packages/type-test/relation-forms.test.ts';
+import { testNode as lifetime } from '../../packages/type-test/compiler-lifetime.test.ts';
+
 export const testNode = createSuite({
     title: 'compiler integration',
     annotations: {},
@@ -18,6 +21,8 @@ export const testNode = createSuite({
         compilerPlanTestNode,
         frozenInputsTestNode,
         adapterTestNode,
-        originalRelations
+        originalRelations,
+        relations,
+        lifetime
     ]
 });

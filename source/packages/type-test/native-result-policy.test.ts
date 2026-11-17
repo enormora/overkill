@@ -3,11 +3,10 @@ import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../test/test.entry-point.ts';
 import { sourceCall } from '../../test-support/native-source-fixture.ts';
 import { observationPlan } from '../../test-support/observation-lifetime.ts';
-import { nativeCheckResult, type SiteEvidence } from './native-results.ts';
+import { nativeCheckResult, type SiteEvidence, type NativeCheckEvidence } from './native-results.ts';
 import { caseKey, type NativeSite } from './original-assertions.ts';
 
-type CheckInput = Parameters<typeof nativeCheckResult>[0];
-function evidence(): CheckInput {
+function evidence(): NativeCheckEvidence {
     return {
         plan: observationPlan(),
         assertionPlan: { modules: [], sites: [], issues: [] },
@@ -16,7 +15,7 @@ function evidence(): CheckInput {
         started: performance.now()
     };
 }
-function ownedSite(input: CheckInput, message: string | null): NativeSite {
+function ownedSite(input: NativeCheckEvidence, message: string | null): NativeSite {
     return {
         path: '/project/case.ts',
         range: { start: 0, end: 3 },
@@ -31,7 +30,7 @@ function ownedSite(input: CheckInput, message: string | null): NativeSite {
 function checkedSite(site: NativeSite, result: SiteEvidence['result']): SiteEvidence {
     return { site, compilerVersion: '7.1.0-beta', actual: 'string', expected: 'number', result };
 }
-function selectedEvidence(message: string | null): CheckInput & { readonly site: NativeSite; } {
+function selectedEvidence(message: string | null): NativeCheckEvidence & { readonly site: NativeSite; } {
     const input = evidence();
     const site = ownedSite(input, message);
     return { ...input, site, assertionPlan: { ...input.assertionPlan, sites: [ site ] } };

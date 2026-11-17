@@ -1,7 +1,8 @@
 import type * as TypeScript from 'typescript-beta/ast';
 import type { Relation } from './relation-evidence.ts';
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
-import { sourceSymbol, sourceDeclarations, type SourceAnalysis } from './source-analysis.ts';
+import type { SourceAnalysis } from './source-analysis-port.ts';
+import { sourceSymbol, sourceDeclarations } from './source-analysis.ts';
 
 type BindingKind = 'relation';
 type Binding = {
