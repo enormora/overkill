@@ -1,7 +1,6 @@
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase } from '../../packages/engine/engine.entry-point.ts';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
@@ -78,4 +77,4 @@ export const testNode = createSuite({
     })
 });
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

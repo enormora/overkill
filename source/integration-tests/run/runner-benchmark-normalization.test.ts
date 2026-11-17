@@ -2,7 +2,6 @@ import { isDeepStrictEqual } from 'node:util';
 import { runIfMain } from '#test-runner';
 import type { RunResult } from '../../engine/run-result.ts';
 import { normalizationCommand, normalizationReferences } from '../../test-support/benchmark-normalization-fixture.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { orchestrator, parseRunnerResult, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import { createBenchmarkHtmlReport } from '../../reporters/benchmark-html-model.ts';
@@ -175,4 +174,4 @@ export const testNode = suite('benchmark normalization process boundaries', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

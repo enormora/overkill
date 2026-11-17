@@ -148,4 +148,4 @@ export const testNode = suite('adaptive benchmark worker execution', [
     })
 ]);
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

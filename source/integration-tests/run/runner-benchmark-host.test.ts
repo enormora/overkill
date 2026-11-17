@@ -7,7 +7,6 @@ import { suite, test, type TestScope } from '../../packages/test/test.entry-poin
 import { benchmarkHostSnapshotSchema } from '../../bench/benchmark-host-snapshot.ts';
 import { collectBenchmarkHost } from '../../run/benchmark-host.ts';
 import { collectPlatformPressure } from '../../run/benchmark-host-platform.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 
 export const testNode = suite('benchmark host observer integration', [
     ...[ true, false ].map(function (cancelled) {
@@ -80,4 +79,4 @@ export const testNode = suite('benchmark host observer integration', [
     )
 ]);
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

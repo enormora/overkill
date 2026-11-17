@@ -12,7 +12,6 @@ import {
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { durationAdapter } from '../../test-support/benchmark-baseline-fixture.ts';
 import { renderResolvedRunList } from '../../run/run-list-renderer.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 
 const fixture = 'source/integration-tests/run/fixtures/workloads.bench.test.ts';
 const worker: BenchmarkExecution = {
@@ -181,4 +180,4 @@ export const testNode = suite(
     })
 );
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

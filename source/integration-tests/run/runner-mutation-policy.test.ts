@@ -13,7 +13,6 @@ import {
     type RunCommand,
     type FrozenRunCommand
 } from '../../packages/run/run.entry-point.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { createMutationRunCommand } from '../../packages/stryker-runner/mutation-execution-policy.ts';
 
 const fixture = 'source/integration-tests/run/fixtures/mutation-policy.test.ts';
@@ -113,4 +112,4 @@ export const testNode = createSuite({
     })
 });
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

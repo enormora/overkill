@@ -20,7 +20,6 @@ import {
     type RunExecutionFacts
 } from '../../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { createBenchmarkCommands } from '../../run/benchmark-commands.ts';
 import { readBenchmarkRunMetadata } from '../../bench/benchmark-run-report.ts';
 
@@ -295,4 +294,4 @@ export const testNode = createSuite({
     })
 });
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

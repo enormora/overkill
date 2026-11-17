@@ -5,7 +5,6 @@ import { join } from 'node:path';
 import { runIfMain } from '#test-runner';
 import type { Config } from '../../config/config.ts';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 
 const captureModes = [ 'buffered', 'live', 'authored' ] as const;
 const executions = [
@@ -89,4 +88,4 @@ export const testNode = suite(
     })
 );
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

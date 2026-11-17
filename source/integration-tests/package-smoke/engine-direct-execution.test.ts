@@ -31,7 +31,6 @@ import {
     type TestRoot,
     type TestScope
 } from '@overkill-dev/engine';
-import { createLineReporter } from '@overkill-dev/reporter-line';
 import { runIfMain } from '#test-runner';
 
 type SmokeCaseDefinition = {
@@ -468,4 +467,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

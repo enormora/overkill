@@ -3,7 +3,6 @@ import { rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runIfMain } from '#test-runner';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { normalizeConfig, orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
@@ -230,4 +229,4 @@ export const testNode = suite('property runner policy', [
     })
 ]);
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

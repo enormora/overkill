@@ -1,7 +1,6 @@
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { runIfMain } from '#test-runner';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite,
     createTestCase,
@@ -228,4 +227,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

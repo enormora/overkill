@@ -11,7 +11,6 @@ import {
 } from '../../test-support/benchmark-baseline-fixture.ts';
 import { createNullReporter } from '../../reporters/null-reporter.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 
 function baselineCommands(fixture: BaselineFixture): CommandLineBenchmarkCommands {
     const defaultReporter = createNullReporter();
@@ -95,4 +94,4 @@ export const testNode = suite('benchmark baseline CLI results', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

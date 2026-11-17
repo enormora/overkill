@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../../packages/engine/engine.entry-point.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { normalizeConfig, orchestrator } from '../../packages/run/run.entry-point.ts';
 import { createMutationRunCommand } from '../../packages/stryker-runner/mutation-execution-policy.ts';
 import { createMutationExecution, type MutationExecution } from './mutation-execution.test.ts';
@@ -295,4 +294,4 @@ export const testNode = createTestCase({
     ]
 });
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

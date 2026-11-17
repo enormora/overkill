@@ -2,7 +2,6 @@ import { readFile, mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
 import type { createBenchmarkHtmlReporter } from '@overkill-dev/reporter-benchmark-html';
-import { createLineReporter } from '@overkill-dev/reporter-line';
 import { runIfMain } from '#test-runner';
 import { defaultFailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
 import { benchmarkHtmlTimelineFixture } from '../../test-support/benchmark-html-fixture.ts';
@@ -73,4 +72,4 @@ export const testNode = createSuite({
         })
     ]
 });
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);
