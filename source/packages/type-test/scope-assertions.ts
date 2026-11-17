@@ -1,6 +1,7 @@
 import type * as TypeScript from 'typescript-beta/ast';
+import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
 import { sourceSymbol, sourceChildren, type SourceAnalysis } from './source-analysis.ts';
-import { nativeMatcherBinding } from './native-reference.ts';
+import { nativeRelationBinding } from './native-reference.ts';
 import type { SourceBody } from './source-ownership.ts';
 
 function annotatedReceiver(analysis: SourceAnalysis, initial: TypeScript.Expression): TypeScript.Expression {
@@ -14,7 +15,6 @@ function annotatedReceiver(analysis: SourceAnalysis, initial: TypeScript.Express
     }
     return expression;
 }
-
 async function isScope(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
@@ -23,7 +23,6 @@ async function isScope(
     return analysis.compiler.isIdentifier(node) && node.text === scope.text &&
         await sourceSymbol(analysis, node) === await sourceSymbol(analysis, scope);
 }
-
 async function scopeTarget(
     analysis: SourceAnalysis,
     initial: TypeScript.Expression,
@@ -37,7 +36,6 @@ async function scopeTarget(
     }
     return await isScope(analysis, expression, scope) ? members.toReversed().join('.') : null;
 }
-
 async function assertionCall(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
@@ -51,20 +49,24 @@ async function assertionCall(
         return node;
     }
     if (target !== null && target !== 'assert.collect') {
-        throw new Error(`Unsupported runtime operation in a checker-backed body: scope.${target}`);
+        throw new UnsupportedEvidenceError(
+            `Unsupported runtime operation in a checker-backed body: scope.${target}`,
+            undefined
+        );
     }
     return null;
 }
-
 async function rejectUnownedReference(analysis: SourceAnalysis, node: TypeScript.Node): Promise<void> {
     if (
         (analysis.compiler.isIdentifier(node) || analysis.compiler.isPropertyAccessExpression(node)) &&
-        await nativeMatcherBinding(analysis, node) !== null
+        await nativeRelationBinding(analysis, node) !== null
     ) {
-        throw new Error('Native assertion references require a direct scope.assert boundary.');
+        throw new UnsupportedEvidenceError(
+            'Native assertion references require a direct scope.assert boundary.',
+            undefined
+        );
     }
 }
-
 function allowedScopeUse(analysis: SourceAnalysis, node: TypeScript.Node, scope: TypeScript.Identifier): boolean {
     const { compiler } = analysis;
     if (node === scope || compiler.isTypeQueryNode(node.parent) || compiler.isQualifiedName(node.parent)) {
@@ -72,13 +74,11 @@ function allowedScopeUse(analysis: SourceAnalysis, node: TypeScript.Node, scope:
     }
     return compiler.isPropertyAccessExpression(node.parent) && node.parent.expression === node;
 }
-
 function boundAssertionUse(analysis: SourceAnalysis, node: TypeScript.Node): boolean {
     const { parent } = node;
     return (analysis.compiler.isCallExpression(parent) || analysis.compiler.isPropertyAccessExpression(parent)) &&
         parent.expression === node;
 }
-
 async function rejectDetachedAssertion(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
@@ -93,28 +93,29 @@ async function rejectDetachedAssertion(
         return;
     }
     if (!boundAssertionUse(analysis, node)) {
-        throw new Error('Detached assertion methods are unsupported in checker-backed bodies.');
+        throw new UnsupportedEvidenceError(
+            'Detached assertion methods are unsupported in checker-backed bodies.',
+            undefined
+        );
     }
 }
-
 async function rejectScopeForwarding(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
     scope: TypeScript.Identifier
 ): Promise<void> {
     if (await isScope(analysis, node, scope) && !allowedScopeUse(analysis, node, scope)) {
-        throw new Error('Scope forwarding is unsupported in checker-backed bodies.');
+        throw new UnsupportedEvidenceError('Scope forwarding is unsupported in checker-backed bodies.', undefined);
     }
     await rejectDetachedAssertion(analysis, node, scope);
 }
-
 async function rejectNestedAssertions(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
     scope: TypeScript.Identifier
 ): Promise<void> {
     if (await assertionCall(analysis, node, scope) !== null) {
-        throw new Error('Nested native assertion boundaries are unsupported.');
+        throw new UnsupportedEvidenceError('Nested native assertion boundaries are unsupported.', undefined);
     }
     await rejectScopeForwarding(analysis, node, scope);
     await rejectUnownedReference(analysis, node);
@@ -122,7 +123,6 @@ async function rejectNestedAssertions(
         await rejectNestedAssertions(analysis, child, scope);
     }
 }
-
 async function validateOperands(
     analysis: SourceAnalysis,
     call: TypeScript.CallExpression,
@@ -132,7 +132,6 @@ async function validateOperands(
         await rejectNestedAssertions(analysis, operand, scope);
     }
 }
-
 async function visitScopeInputs(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
@@ -145,7 +144,6 @@ async function visitScopeInputs(
         await visit(child);
     }
 }
-
 export async function scopeAssertions(
     analysis: SourceAnalysis,
     body: SourceBody,
@@ -168,7 +166,6 @@ export async function scopeAssertions(
     await visit(body);
     return calls;
 }
-
 export async function assertionAnnotation(
     analysis: SourceAnalysis,
     call: TypeScript.CallExpression
@@ -179,11 +176,14 @@ export async function assertionAnnotation(
     }
     const annotation = prefix.arguments[0];
     if (annotation === undefined || prefix.arguments.length !== 1) {
-        throw new Error('Native assertion annotations require one message.');
+        throw new UnsupportedEvidenceError('Native assertion annotations require one message.', undefined);
     }
     const message = await analysis.checker.getTypeAtLocation(annotation);
     if (!message.isStringLiteralType()) {
-        throw new Error('Native assertion annotations require a statically known string message.');
+        throw new UnsupportedEvidenceError(
+            'Native assertion annotations require a statically known string message.',
+            undefined
+        );
     }
     return message.value;
 }

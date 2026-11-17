@@ -1,4 +1,3 @@
-import type { Event as CheckerEvent } from 'tstyche/api';
 import {
     createRunResult,
     singleAttemptResult,
@@ -11,95 +10,24 @@ import {
     type RunnerError,
     type FailedCheck
 } from '../engine/engine.entry-point.ts';
-import type { CheckerRun } from './checker.entry-point.ts';
-import { caseKey, type NativeTranslation, type NativeSite } from './native-translation.ts';
-import { checkerDiagnostic, checkerDiagnosticText, type CheckerDiagnostic } from './checker-diagnostics.ts';
+import type { RelationEvidence } from './relation-evidence.ts';
+import { caseKey, type OriginalAssertionPlan, type NativeSite } from './original-assertions.ts';
 
-type AssertionEventName = 'expect:error' | 'expect:fail' | 'expect:pass';
-type AssertionEvent = Readonly<
-    Extract<CheckerEvent, [
-        AssertionEventName,
-        unknown
-    ]>
->;
-const assertionEventNames: ReadonlySet<string> = new Set([ 'expect:pass', 'expect:fail', 'expect:error' ]);
-type CompilationEventName = 'collect:error' | 'directive:error' | 'file:error';
-type CompilationEvent = Readonly<
-    Extract<CheckerEvent, [
-        CompilationEventName,
-        unknown
-    ]>
->;
-const compilationEventNames: ReadonlySet<string> = new Set([ 'file:error', 'collect:error', 'directive:error' ]);
-type SiteEvidence = {
+export type SiteEvidence = {
     readonly site: NativeSite;
-    readonly passed: boolean;
-    readonly diagnostics: readonly CheckerDiagnostic[];
+    readonly compilerVersion: string;
+    readonly actual: string;
+    readonly expected: string;
+    readonly result: RelationEvidence;
 };
-function isAssertionEvent(event: Readonly<CheckerEvent>): event is AssertionEvent {
-    return assertionEventNames.has(event[0]);
-}
-
-function isCompilationEvent(event: Readonly<CheckerEvent>): event is CompilationEvent {
-    return compilationEventNames.has(event[0]);
-}
-
-function resultSite(check: CheckerRun, translation: NativeTranslation, event: AssertionEvent): NativeSite | null {
-    const { node } = event[1].result.expect;
-    const source = node.getSourceFile();
-    const ranges = check.inputs.mapRange(source.fileName, { start: node.getStart(), end: node.end }, 'generated');
-    const module = check.inputs.modules.find(function generated(entry) {
-        return entry.kind === 'ready' && entry.path === source.fileName;
-    });
-    if (module?.kind !== 'ready') {
-        return null;
-    }
-    return translation.sites.find(function original(site) {
-        return site.path === module.provenance.originalPath && ranges.some(function overlaps(range) {
-            return range.start < site.range.end && site.range.start < range.end;
-        });
-    }) ?? null;
-}
-
-type EvidenceContext = {
-    readonly check: CheckerRun;
-    readonly translation: NativeTranslation;
-};
-function mergeEvidence(
-    context: EvidenceContext,
-    site: NativeSite,
-    event: AssertionEvent,
-    previous: SiteEvidence | undefined
-): SiteEvidence {
-    const diagnostics = event[0] === 'expect:pass' ? [] : event[1].diagnostics.map(function diagnostic(value) {
-        return checkerDiagnostic(context, value);
-    });
-    return {
-        site,
-        passed: event[0] === 'expect:pass' && previous?.passed !== false,
-        diagnostics: [ ...previous?.diagnostics ?? [], ...diagnostics ]
-    };
-}
-
-function siteEvidence(check: CheckerRun, translation: NativeTranslation): readonly SiteEvidence[] {
-    const evidence = new Map<NativeSite, SiteEvidence>();
-    const events = check.events.filter(isAssertionEvent);
-    for (const event of events) {
-        const site = resultSite(check, translation, event);
-        if (site !== null) {
-            evidence.set(site, mergeEvidence({ check, translation }, site, event, evidence.get(site)));
-        }
-    }
-    return Array.from(evidence.values());
-}
 
 function failedCheck(evidence: SiteEvidence, index: number): FailedCheck {
-    const detail = evidence.diagnostics.map(checkerDiagnosticText).join('\n');
-    const message = detail.length === 0 ? 'TSTyche assertion failed.' : detail;
+    const message =
+        `Type relation ${evidence.site.reference.relation} does not hold (TypeScript ${evidence.compilerVersion}).`;
     return {
         kind: 'foreign',
         id: String(index + 1),
-        label: 'TSTyche',
+        label: 'type-test',
         source: 'assert',
         sourceLocations: [ {
             kind: 'known',
@@ -108,18 +36,18 @@ function failedCheck(evidence: SiteEvidence, index: number): FailedCheck {
             column: evidence.site.column
         } ],
         summary: evidence.site.message ?? message,
-        actual: serializeValue(evidence.diagnostics),
-        expected: serializeValue('Passing type assertion'),
+        actual: serializeValue(evidence.actual),
+        expected: serializeValue(evidence.expected),
         diff: null,
         path: [],
-        error: { name: 'TypeAssertionError', message, stack: null, thrown: evidence.diagnostics }
+        error: { name: 'TypeAssertionError', message, stack: null, thrown: evidence.site.reference.relation }
     };
 }
 
 function assertionOutcome(results: readonly SiteEvidence[]): TestOutcome {
     const failures = results
         .filter(function failed(entry) {
-            return !entry.passed;
+            return entry.result.kind === 'established' && !entry.result.holds;
         })
         .map(failedCheck);
     const first = failures[0];
@@ -129,42 +57,73 @@ function assertionOutcome(results: readonly SiteEvidence[]): TestOutcome {
     };
 }
 
+function noAssertions(): TestOutcome {
+    return {
+        kind: 'fail',
+        failures: [ {
+            kind: 'test-contract',
+            code: 'no-assertions',
+            actual: 0,
+            expected: 'at least one native assertion',
+            summary: 'Selected type-test body has no native assertions.'
+        } ]
+    };
+}
+
+function evidenceOutcome(
+    sites: readonly NativeSite[],
+    results: readonly SiteEvidence[],
+    issue: string | null
+): TestOutcome {
+    const outcome = assertionOutcome(results);
+    if (outcome.kind === 'fail') {
+        return outcome;
+    }
+    const missing = sites.some(function missingSite(site) {
+        return results.every(function matching(entry) {
+            return entry.site !== site;
+        });
+    });
+    if (missing) {
+        return { kind: 'inconclusive', reason: 'Missing compiler assertion evidence.' };
+    }
+    if (issue !== null) {
+        return { kind: 'inconclusive', reason: issue };
+    }
+    const uncertain = results.find(function inconclusive(entry) {
+        return entry.result.kind === 'inconclusive';
+    });
+    return uncertain?.result.kind === 'inconclusive'
+        ? { kind: 'inconclusive', reason: uncertain.result.reason }
+        : outcome;
+}
+
 function caseOutcome(
     testCase: TestPlan['cases'][number],
     sites: readonly NativeSite[],
-    evidence: readonly SiteEvidence[]
+    evidence: readonly SiteEvidence[],
+    issues: OriginalAssertionPlan['issues']
 ): TestOutcome {
     if (testCase.execution.kind === 'skip') {
         return { kind: 'skip', reason: testCase.execution.reason };
     }
+    const key = caseKey(testCase);
     const owned = sites.filter(function owner(site) {
-        return site.owners.includes(caseKey(testCase));
+        return site.owners.includes(key);
+    });
+    const issue = issues.find(function ownedIssue(entry) {
+        return entry.owner === key;
     });
     if (owned.length === 0) {
-        return {
-            kind: 'fail',
-            failures: [ {
-                kind: 'test-contract',
-                code: 'no-assertions',
-                actual: 0,
-                expected: 'at least one native assertion',
-                summary: 'Selected type-test body has no native assertions.'
-            } ]
-        };
+        return issue === undefined ? noAssertions() : { kind: 'inconclusive', reason: issue.reason };
     }
-    const results = evidence.filter(function owner(entry) {
-        return entry.site.owners.includes(caseKey(testCase));
-    });
-    if (
-        owned.some(function missing(site) {
-            return results.every(function matching(entry) {
-                return entry.site !== site;
-            });
-        })
-    ) {
-        return { kind: 'inconclusive', reason: 'Missing checker assertion evidence.' };
-    }
-    return assertionOutcome(results);
+    return evidenceOutcome(
+        owned,
+        evidence.filter(function owner(entry) {
+            return entry.site.owners.includes(key);
+        }),
+        issue?.reason ?? null
+    );
 }
 
 function runError(message: string, cause: unknown): RunnerError {
@@ -178,41 +137,18 @@ function runError(message: string, cause: unknown): RunnerError {
     };
 }
 
-function compilationErrors(check: CheckerRun | null, translation: NativeTranslation): readonly RunnerError[] {
-    return check?.events.filter(isCompilationEvent).map(function compilationError(event) {
-        const diagnostics = event[1].diagnostics.map(function diagnostic(value) {
-            return checkerDiagnostic({ check, translation }, value);
-        });
-        return runError(diagnostics.map(checkerDiagnosticText).join('\n'), diagnostics);
-    }) ?? [];
-}
-
-function checkerErrors(check: CheckerRun | null, translation: NativeTranslation): readonly RunnerError[] {
-    if (check === null) {
-        return [];
-    }
-    const errors = Array.from(compilationErrors(check, translation));
-    const unowned = check.events.some(function missingOwner(event) {
-        return isAssertionEvent(event) && resultSite(check, translation, event) === null;
-    });
-    if (unowned) {
-        errors.push(runError('Checker reported an assertion without native source ownership.', null));
-    }
-    return errors;
-}
-
 type NativeCheckEvidence = {
     readonly plan: TestPlan;
-    readonly translation: NativeTranslation;
-    readonly checked: CheckerRun | null;
+    readonly assertionPlan: OriginalAssertionPlan;
+    readonly checked: readonly SiteEvidence[] | null;
     readonly error: unknown;
     readonly started: number;
 };
 const microsecondsPerMillisecond = 1000;
 function caseResults(input: NativeCheckEvidence): readonly PerTestResult[] {
-    const evidence = input.checked === null ? [] : siteEvidence(input.checked, input.translation);
+    const evidence = input.checked ?? [];
     return input.plan.cases.map(function caseResult(testCase) {
-        const outcome = caseOutcome(testCase, input.translation.sites, evidence);
+        const outcome = caseOutcome(testCase, input.assertionPlan.sites, evidence, input.assertionPlan.issues);
         const [ firstLocation, ...locations ] = testCase.definitionLocations;
         return singleAttemptResult({
             id: testCase.id,
@@ -228,16 +164,16 @@ function caseResults(input: NativeCheckEvidence): readonly PerTestResult[] {
 export function nativeCheckResult(input: NativeCheckEvidence): RunResult {
     const perTest = caseResults(input);
     const message = input.error instanceof Error ? input.error.message : 'Checker setup failed.';
-    const errors = [
-        ...checkerErrors(input.checked, input.translation),
-        ...input.error === null ? [] : [ runError(message, input.error) ]
-    ];
+    const errors = Array.from(input.error === null ? [] : [ runError(message, input.error) ]);
     if (
         perTest.some(function missing(result) {
             return result.verdict === 'inconclusive';
         })
     ) {
-        errors.push(runError('Type-test checks are inconclusive; assertion evidence is incomplete.', null));
+        const reasons = perTest.flatMap(function inconclusive(result) {
+            return result.outcome?.kind === 'inconclusive' ? [ result.outcome.reason ] : [];
+        });
+        errors.push(runError(`Type-test checks are inconclusive: ${reasons.join('; ')}`, null));
     }
     const started = input.started * microsecondsPerMillisecond;
     const completed = performance.now() * microsecondsPerMillisecond;

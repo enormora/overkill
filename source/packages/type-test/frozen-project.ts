@@ -12,7 +12,8 @@ import {
     type FrozenInputs,
     type ProjectInputObservation
 } from './frozen-inputs.ts';
-import type { NativeTranslation } from './native-translation.ts';
+import type { OriginalAssertionPlan } from './original-assertions.ts';
+import type { SourceAnalysis } from './source-analysis.ts';
 
 export type FrozenProject = {
     readonly compiler: InstalledCompiler;
@@ -90,17 +91,21 @@ export async function loadProject(
     return { ...project, ownership: ownership.move() };
 }
 
+export function sourceAnalysis(project: FrozenProject): SourceAnalysis {
+    return { compiler: project.compiler.syntax, program: project.program, checker: project.configured.checker };
+}
+
 export async function disposeProject(project: FrozenProject): Promise<void> {
     await project.ownership.disposeAsync();
 }
 
-export async function verifyFrozenProject(project: FrozenProject, translation: NativeTranslation): Promise<void> {
+export async function verifyFrozenProject(project: FrozenProject, assertionPlan: OriginalAssertionPlan): Promise<void> {
     await verifyInstalledCompiler(project.compiler);
     if (await readFile(project.projectConfigPath, 'utf8') !== project.projectText) {
         throw new Error('Type-test project configuration changed after collection.');
     }
     verifyProjectInputs(project.inputs);
-    for (const module of translation.modules) {
+    for (const module of assertionPlan.modules) {
         if (fingerprint(await readFile(module.path, 'utf8')) !== fingerprint(module.originalText)) {
             throw new Error(`Type-test source changed after collection: ${module.path}`);
         }

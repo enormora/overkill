@@ -1,5 +1,6 @@
 import type * as CompilerApi from 'typescript-beta/async';
 import type * as TypeScript from 'typescript-beta/ast';
+import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
 import {
     immutableInitializer,
     sourceChildren,
@@ -18,25 +19,21 @@ export async function supportedCall(analysis: SourceAnalysis, call: TypeScript.C
     return /\/(?:source\/(?:engine|authoring|packages\/(?:engine|test))|node_modules\/@overkill-dev\/(?:engine|test))\//u
         .test(path);
 }
-
 function storageUse(analysis: SourceAnalysis, node: TypeScript.Expression): TypeScript.Expression {
     const { parent } = node;
     return analysis.compiler.isExpression(parent) && transparentExpression(analysis, parent) === node
         ? storageUse(analysis, parent)
         : node;
 }
-
 function declarationUse(analysis: SourceAnalysis, node: TypeScript.Expression): boolean {
     return analysis.compiler.isIdentifier(node) && analysis.compiler.isVariableDeclaration(node.parent) &&
         node.parent.name === node;
 }
-
 function staticReference(analysis: SourceAnalysis, node: TypeScript.Expression): boolean {
     const { compiler } = analysis;
     return compiler.isImportSpecifier(node.parent) || compiler.isTypeQueryNode(node.parent) ||
         compiler.isQualifiedName(node.parent);
 }
-
 async function allowedUse(analysis: SourceAnalysis, node: TypeScript.Expression): Promise<boolean> {
     const use = storageUse(analysis, node);
     const { parent } = use;
@@ -48,7 +45,6 @@ async function allowedUse(analysis: SourceAnalysis, node: TypeScript.Expression)
         return argument === use;
     }) && await supportedCall(analysis, parent);
 }
-
 function storageAlias(analysis: SourceAnalysis, node: TypeScript.Expression): TypeScript.BindingName | undefined {
     const use = storageUse(analysis, node);
     const { parent } = use;
@@ -61,7 +57,6 @@ function storageAlias(analysis: SourceAnalysis, node: TypeScript.Expression): Ty
     }
     return undefined;
 }
-
 function addBindingNames(
     compiler: SourceAnalysis['compiler'],
     bindings: TypeScript.NamedImportBindings,
@@ -75,7 +70,6 @@ function addBindingNames(
         }
     }
 }
-
 function addImportNames(
     compiler: SourceAnalysis['compiler'],
     clause: TypeScript.ImportClause,
@@ -88,7 +82,6 @@ function addImportNames(
         addBindingNames(compiler, clause.namedBindings, addName);
     }
 }
-
 function referenceNames(
     analysis: SourceAnalysis,
     file: TypeScript.SourceFile,
@@ -107,7 +100,6 @@ function referenceNames(
     }
     return names;
 }
-
 async function validateStorageReference(
     analysis: SourceAnalysis,
     node: TypeScript.Expression,
@@ -117,10 +109,12 @@ async function validateStorageReference(
     if (alias !== undefined) {
         await validate(alias);
     } else if (!await allowedUse(analysis, node)) {
-        throw new Error('Callback options may be mutated or escape static source ownership.');
+        throw new UnsupportedEvidenceError(
+            'Callback options may be mutated or escape static source ownership.',
+            undefined
+        );
     }
 }
-
 async function validateFileReferences(
     analysis: SourceAnalysis,
     file: TypeScript.SourceFile,
@@ -145,7 +139,6 @@ async function validateFileReferences(
     }
     await visit(file);
 }
-
 async function validateReferences(
     analysis: SourceAnalysis,
     symbol: CompilerApi.Symbol,
@@ -162,7 +155,6 @@ async function validateReferences(
         }
     }
 }
-
 function exportedStorage(analysis: SourceAnalysis, declaration: TypeScript.Declaration): boolean {
     const { compiler } = analysis;
     if (!compiler.isVariableDeclaration(declaration) || !compiler.isVariableDeclarationList(declaration.parent)) {
@@ -177,7 +169,6 @@ function exportedStorage(analysis: SourceAnalysis, declaration: TypeScript.Decla
         return modifier.kind === compiler.SyntaxKind.ExportKeyword;
     });
 }
-
 async function validateInitializers(
     analysis: SourceAnalysis,
     symbol: CompilerApi.Symbol,
@@ -186,7 +177,7 @@ async function validateInitializers(
     const declarations = await sourceDeclarations(symbol);
     for (const declaration of declarations) {
         if (exportedStorage(analysis, declaration)) {
-            throw new Error('Exported callback options escape static source ownership.');
+            throw new UnsupportedEvidenceError('Exported callback options escape static source ownership.', undefined);
         }
         const initializer = immutableInitializer(analysis, declaration);
         if (initializer !== undefined) {
@@ -194,7 +185,6 @@ async function validateInitializers(
         }
     }
 }
-
 export async function validateCallbackStorage(analysis: SourceAnalysis, initial: TypeScript.Node): Promise<void> {
     const seen = new Set<CompilerApi.Symbol>();
     async function validate(input: TypeScript.Node): Promise<void> {

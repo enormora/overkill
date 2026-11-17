@@ -1,10 +1,13 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, writeFile, rm, mkdir } from 'node:fs/promises';
+import { mkdtemp, writeFile, rm, mkdir, chmod } from 'node:fs/promises';
 import { join, resolve as resolvePath } from 'node:path';
 import TypeScript from 'typescript';
 import { z } from 'zod';
 import type { TypeTestSettings } from '../packages/type-test/profile-settings.ts';
 import type { TestScope } from '../packages/engine/engine.entry-point.ts';
+
+const readOnlyProjectMode = 0o555;
+const writableProjectMode = 0o755;
 
 const resultSchema = z
     .object({
@@ -30,11 +33,26 @@ type ProjectRequest = {
     readonly change: ProjectChange | null;
 };
 
-function executionSource(request: ProjectRequest, selection: string): string {
+function executionSource(request: ProjectRequest): string {
     if (request.change === null) {
-        return `const result = await checkTypeTests({order:'plan',seed:{value:null},shard:{index:1,total:1},
-engine, root, selection: ${selection},
-    projectConfigPath: import.meta.dirname + '/tsconfig.json', compiler: ${JSON.stringify(request.compiler)}});`;
+        const caseSelection = request.titles === null
+            ? 'true'
+            : `${JSON.stringify(request.titles)}.includes(c.id.title)`;
+        return `let result;
+try {
+const signal = new AbortController().signal;
+await using prepared = await engine.prepareFamily({testPlan:engine.createTestPlan(root),testFamily:family,
+    settings:{projectConfigPath:import.meta.dirname+'/tsconfig.json',compiler:${JSON.stringify(request.compiler)}},
+    projectRoot:import.meta.dirname,signal});
+const workIds=prepared.testPlan.cases.filter(c=>${caseSelection}).map(c=>c.workId);
+const collected=await prepared.collect({workIds,signal});
+result=await engine.execute(collected,{signal,debug:{mode:'off'},retryPolicy:null,reporters:[],
+    execution:{mode:'serial-in-process'},runFacts:{},startedAt:new Date().toISOString()});
+} catch(error) {
+result=engine.createRunResult(engine.createTestPlan(root),[],[{subtype:'loader',cause:error,message:String(error),
+    attributedTo:null,attributedToAttempt:null,diagnostics:[]}],{startedAtMicroseconds:0,completedAtMicroseconds:0,
+    testExecutionWallTimeMicroseconds:0,processUsage:null,planStatus:'planned'});
+}`;
     }
     const path = request.change === 'source' ? 'import.meta.filename' : "import.meta.dirname+'/tsconfig.json'";
     const change = request.change === 'identity'
@@ -66,25 +84,14 @@ function fixtureSource(request: ProjectRequest): string {
     const engineImport = JSON.stringify(join(packages, 'engine/engine.entry-point.ts'));
     const authoringImport = JSON.stringify(join(packages, 'test/test.entry-point.ts'));
     const assertionImport = JSON.stringify(join(packages, 'type-test/type-test.entry-point.ts'));
-    const checkerImport = JSON.stringify(join(packages, 'type-test/check.entry-point.ts'));
     const compilerImport = JSON.stringify(join(packages, 'type-test/compiler-plan.ts'));
     const resourceImport = JSON.stringify(join(packages, 'test/resources.entry-point.ts'));
     const profileImport = JSON.stringify(join(packages, 'type-test/profile.entry-point.ts'));
-    const selection = request.titles === null ? { kind: 'all' } : {
-        kind: 'filter',
-        filter: {
-            kind: 'any',
-            filters: request.titles.map(function title(value) {
-                return { kind: 'equals', field: 'title', value };
-            })
-        }
-    };
     return `${request.prefix}import * as engine from ${engineImport};
 import { test, suite, table, defineMacro, defineParameterizedTestBody } from ${authoringImport};
 import {
     sameType as same, assignableTo, assignableFrom
 } from ${assertionImport};
-import { checkTypeTests } from ${checkerImport};
 import { prepare as prepareCompilerPlan } from ${compilerImport};
 import { defineResource, withResource } from ${resourceImport};
 import { family } from ${profileImport};
@@ -92,7 +99,7 @@ const metadata = { annotations: {}, controls: {}, definitionLocations: [{ kind: 
 let bodyCalls = 0;
 ${request.definitions}
 const root = engine.createRoot({ title: 'native', annotations: {}, controls: {}, children: nodes });
-${executionSource(request, JSON.stringify(selection))}
+${executionSource(request)}
 console.log(JSON.stringify({
     status: result.status, summary: result.summary, titles: result.perTest.map(r => r.id.title),
     errors: result.runnerErrors.map(r => r.message), bodyCalls,
@@ -150,6 +157,7 @@ async function writeProject(directory: string, request: ProjectRequest): Promise
     const config = {
         compilerOptions: {
             target: 'ESNext',
+            lib: [ 'ESNext' ],
             module: 'NodeNext',
             moduleResolution: 'NodeNext',
             jsx: 'preserve',
@@ -164,6 +172,7 @@ async function writeProject(directory: string, request: ProjectRequest): Promise
     const source = fixtureSource(request);
     await writeFile(join(directory, 'tsconfig.json'), JSON.stringify(config));
     await writeFile(join(directory, sourceName), source);
+    await writeFile(join(directory, 'dependency.ts'), 'export type Value = { readonly value: string };');
     if (!request.compiled) {
         return join(directory, sourceName);
     }
@@ -174,9 +183,13 @@ async function runProject(scope: TestScope, request: ProjectRequest): Promise<Na
     await mkdir(join(process.cwd(), 'target'), { recursive: true });
     const directory = await mkdtemp(join(process.cwd(), 'target/native-type-'));
     scope.cleanup(async function removeProject() {
+        await chmod(directory, writableProjectMode);
         await rm(directory, { recursive: true, force: true });
     });
     const path = await writeProject(directory, request);
+    if (request.change === null) {
+        await chmod(directory, readOnlyProjectMode);
+    }
     return resultSchema.parse(JSON.parse(await executeProject(path)));
 }
 

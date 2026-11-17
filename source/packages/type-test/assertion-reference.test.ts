@@ -18,7 +18,7 @@ export const testNode = suite('native type assertion references', [
                 source: 'assert',
                 sourceLocations: [ unknownSourceLocation ]
             });
-        }, { message: /requires the type-test adapter/u });
+        }, { message: /requires the type-test family/u });
         return scope.assert.collect();
     }),
     test('keeps negation and expression forms checker-only', function (scope) {
@@ -29,7 +29,7 @@ export const testNode = suite('native type assertion references', [
                 source: 'assert',
                 sourceLocations: [ unknownSourceLocation ]
             });
-        }, { message: /not toBe/u });
+        }, { message: /not sameType/u });
         scope.assert.throws(function () {
             return getCompositeAssertionReferenceRecord(sameType.expressions).run({
                 message: null,
@@ -37,7 +37,7 @@ export const testNode = suite('native type assertion references', [
                 source: 'assert',
                 sourceLocations: [ unknownSourceLocation ]
             });
-        }, { message: /requires the type-test adapter/u });
+        }, { message: /requires the type-test family/u });
         return scope.assert.collect();
     })
 ]);
