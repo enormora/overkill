@@ -62,12 +62,14 @@ function inputPath(file: string, id: string): string {
 }
 type InputReference = { readonly id: string; readonly savedAt: string | null; };
 async function inputNames(file: string): Promise<readonly string[]> {
-    return await readdir(path.join(path.dirname(file), 'inputs')).catch(function absent(error: unknown) {
+    try {
+        return await readdir(path.join(path.dirname(file), 'inputs'));
+    } catch (error: unknown) {
         if (error instanceof Error && Reflect.get(error, 'code') === 'ENOENT') {
             return [];
         }
         throw error;
-    });
+    }
 }
 async function inputSavedAt(file: string): Promise<string> {
     const metadata = await stat(file);
@@ -92,21 +94,27 @@ async function readCorpusInputs(file: string, references: readonly InputReferenc
     const inputs = await Promise.all(references.map(async function read(reference) {
         return await readCorpusInput(file, reference);
     }));
-    return { entries: inputs.flatMap(function entries(input) {
-        return input.entries;
-    }), diagnostics: inputs.flatMap(function diagnostics(input) {
-        return input.diagnostics;
-    }) };
+    return {
+        entries: inputs.flatMap(function entries(input) {
+            return input.entries;
+        }),
+        diagnostics: inputs.flatMap(function diagnostics(input) {
+            return input.diagnostics;
+        })
+    };
 }
 async function rebuildCache(file: string): Promise<CorpusCache> {
     const names = await inputNames(file);
-    const references = names.filter(function knownInput(name) {
-        return /^[a-f0-9]{64}\.json$/u.test(name);
-    }).toSorted(function alphabetical(left, right) {
-        return left.localeCompare(right);
-    }).map(function reference(name) {
-        return { id: name.slice(0, -'.json'.length), savedAt: null };
-    });
+    const references = names
+        .filter(function knownInput(name) {
+            return /^[a-f0-9]{64}\.json$/u.test(name);
+        })
+        .toSorted(function alphabetical(left, right) {
+            return left.localeCompare(right);
+        })
+        .map(function reference(name) {
+            return { id: name.slice(0, -'.json'.length), savedAt: null };
+        });
     return await readCorpusInputs(file, references);
 }
 async function readCacheIndex(file: string): Promise<CorpusCache> {
@@ -180,9 +188,15 @@ async function publishCache(file: string, entries: CorpusCache['entries']): Prom
     for (const input of entries) {
         await store.write(inputPath(file, input.id), JSON.stringify(input.entry));
     }
-    await store.write(file, JSON.stringify({ version: 1, entries: entries.map(function reference(input) {
-        return { id: input.id, savedAt: input.savedAt };
-    }) }));
+    await store.write(
+        file,
+        JSON.stringify({
+            version: 1,
+            entries: entries.map(function reference(input) {
+                return { id: input.id, savedAt: input.savedAt };
+            })
+        })
+    );
     await pruneOwnedInputs(file, entries);
 }
 async function commitCache(

@@ -36,16 +36,26 @@ async function customInput(scope: TestScope): Promise<CorpusRequest> {
         codec: { kind: 'module' as const, path: 'codec.mjs', exportName: 'default' }
     };
 }
-async function cachedWitness(
-    scope: TestScope
-): Promise<{ readonly witness: typeof propertyCorpusEntry; readonly entryId: string; readonly request: CorpusRequest; }> {
+type CachedWitness = {
+    readonly witness: typeof propertyCorpusEntry;
+    readonly entryId: string;
+    readonly request: CorpusRequest;
+};
+async function cachedWitness(scope: TestScope): Promise<CachedWitness> {
     const cwd = await directory(scope);
-    const witness = { ...propertyCorpusEntry, counterexample: capturePropertyInput(42, null, function () {
-        return undefined;
-    }) };
+    const witness = {
+        ...propertyCorpusEntry,
+        counterexample: capturePropertyInput(42, null, function () {
+            return undefined;
+        })
+    };
     const [ entryId ] = await writeCorpusIndex(path.join(cwd, 'cache.json'), [ witness ]);
     scope.require.defined(entryId);
-    return { witness, entryId, request: { cwd, source: { kind: 'path' as const, path: 'cache.json' }, codec: { kind: 'built-in' as const } } };
+    return {
+        witness,
+        entryId,
+        request: { cwd, source: { kind: 'path' as const, path: 'cache.json' }, codec: { kind: 'built-in' as const } }
+    };
 }
 export const testNode = suite('corpus compatibility', [
     test(
@@ -75,7 +85,7 @@ export const testNode = suite('corpus compatibility', [
     ),
     test('cache inspection diagnoses corrupt inputs', async function (scope: TestScope) {
         const { request, entryId } = await cachedWitness(scope);
-        await writeFile(path.join(request.cwd, 'inputs', entryId + '.json'), '{');
+        await writeFile(path.join(request.cwd, 'inputs', `${entryId}.json`), '{');
         const broken = await inspectCorpus(request);
         scope.assert.deepEqual([ broken.entries.length, broken.diagnostics.length ], [ 0, 1 ]);
         return scope.assert.collect();
@@ -85,13 +95,22 @@ export const testNode = suite('corpus compatibility', [
         const inspection = await inspectCorpus(request);
         scope.assert.deepEqual([ inspection.entries.length, inspection.diagnostics.length ], [ 1, 0 ]);
         await scope.assert.rejects(async function unselected() {
-            await promoteWitness({ ...request, destination: 'bad.json', async beforeWrite() {
-                return undefined;
-            } });
+            await promoteWitness({
+                ...request,
+                destination: 'bad.json',
+                async beforeWrite() {
+                    return undefined;
+                }
+            });
         }, { message: /explicit cache entry/v });
-        const result = await promoteWitness({ ...request, source: { kind: 'cache-entry', path: 'cache.json', entryId }, destination: 'selected.json', async beforeWrite() {
-            return undefined;
-        } });
+        const result = await promoteWitness({
+            ...request,
+            source: { kind: 'cache-entry', path: 'cache.json', entryId },
+            destination: 'selected.json',
+            async beforeWrite() {
+                return undefined;
+            }
+        });
         scope.assert.deepEqual(result.entry.witness, witness);
         return scope.assert.collect();
     })
