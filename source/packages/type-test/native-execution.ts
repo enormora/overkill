@@ -2,7 +2,13 @@ import type { Diagnostic } from 'typescript-beta/async';
 import type { TestPlan, RunResult } from '../engine/engine.entry-point.ts';
 import { parseAdapterFacts } from '../../config/adapter-facts.ts';
 import type { CollectedCheckerRun } from './checker-plan.ts';
-import { verifyFrozenProject, fingerprint, sourceAnalysis, type FrozenProject } from './frozen-project.ts';
+import {
+    verifyFrozenProject,
+    fingerprint,
+    sourceAnalysis,
+    typeAnalysis,
+    type FrozenProject
+} from './frozen-project.ts';
 import { collectOriginalAssertions, type OriginalAssertionPlan } from './original-assertions.ts';
 import { nativeCheckResult, type SiteEvidence } from './native-results.ts';
 import { evaluateSite } from './original-evidence.ts';
@@ -36,7 +42,7 @@ async function checkOriginalAssertions(
 ): Promise<readonly SiteEvidence[]> {
     await validateProject(project);
     const checked: SiteEvidence[] = [];
-    const analysis = sourceAnalysis(project);
+    const analysis = typeAnalysis(project);
     for (const site of assertionPlan.sites) {
         checked.push(await evaluateSite(analysis, site, project.compiler.version));
     }

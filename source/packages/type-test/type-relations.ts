@@ -1,10 +1,10 @@
 import type { Type } from 'typescript-beta/async';
-import type { SourceAnalysis } from './source-analysis.ts';
+import type { TypeAnalysis } from './type-analysis.ts';
 import { compareEquality } from './structural-equality.ts';
 import { established, type Relation, type RelationEvidence } from './relation-evidence.ts';
 
 export async function compareRelation(
-    analysis: SourceAnalysis,
+    analysis: TypeAnalysis,
     relation: Relation,
     actual: Type,
     expected: Type

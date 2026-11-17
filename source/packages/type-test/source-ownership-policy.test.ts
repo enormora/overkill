@@ -13,7 +13,7 @@ import {
     sourceProperty
 } from '../../test-support/native-source-fixture.ts';
 import { resolveBodyOrigin } from './source-ownership.ts';
-import { translateNativePlan } from './native-translation.ts';
+import { collectOriginalAssertions, caseKey } from './original-assertions.ts';
 import { nativeReference } from './native-reference.ts';
 
 function bodyOptions(body: ast.ArrowFunction): ast.ObjectLiteralExpression {
@@ -26,7 +26,7 @@ export const testNode = suite('isolated callback source ownership', [
         });
         const selected = fixture.plan.cases[0];
         await scope.assert.rejects(async function () {
-            await translateNativePlan(fixture.analysis, {
+            await collectOriginalAssertions(fixture.analysis, {
                 ...fixture.plan,
                 cases: [ { ...selected, controls: { ...selected.controls, timeoutMilliseconds: 1 } } ]
             });
@@ -38,22 +38,29 @@ export const testNode = suite('isolated callback source ownership', [
             return [ body ];
         });
         const selected = fixture.plan.cases[0];
-        await scope.assert.rejects(async function () {
-            await translateNativePlan(fixture.analysis, {
-                ...fixture.plan,
-                cases: [ { ...selected, bodyOrigin: { ...origin(fixture), location: { kind: 'unknown' } } } ]
-            });
-        }, { message: /at unknown source: Type-test checking requires a known callback source location/u });
+        const result = await collectOriginalAssertions(fixture.analysis, {
+            ...fixture.plan,
+            cases: [ { ...selected, bodyOrigin: { ...origin(fixture), location: { kind: 'unknown' } } } ]
+        });
+        scope.assert.equal(result.issues.length, 1);
+        scope.assert.equal(result.issues[0]?.owner, caseKey(selected));
+        scope.assert.includes(
+            result.issues[0]?.reason ?? '',
+            'at unknown source: Type-test checking requires a known callback source location'
+        );
         return scope.assert.collect();
     }),
-    test('wraps non-error compiler failures with the original callback anchor', async function (scope: TestScope) {
+    test('propagates unexpected compiler failures', async function (scope: TestScope) {
         const fixture = ownedCallback('test', function (body) {
             return [ body ];
         });
-        const checker = { ...fixture.analysis.checker, getResolvedSignature: testDouble.rejects(42) };
+        const checker = {
+            ...fixture.analysis.checker,
+            getResolvedSignature: testDouble.rejects(new Error('Compiler unavailable'))
+        };
         await scope.assert.rejects(async function () {
-            await translateNativePlan({ ...fixture.analysis, checker }, fixture.plan);
-        }, { message: /case.ts:1:1: Unknown callback source./u });
+            await collectOriginalAssertions({ ...fixture.analysis, checker }, fixture.plan);
+        }, { message: 'Compiler unavailable' });
         return scope.assert.collect();
     }),
     ...[ 'test', 'withResource', 'withResources', 'withRuntime' ].map(function (name) {
@@ -128,12 +135,12 @@ export const testNode = suite('isolated callback source ownership', [
         const fixture = ownedCallback('test', function (body) {
             return [ ast.factory.createStringLiteral('case', ast.TokenFlags.None), body ];
         });
-        const result = await translateNativePlan(fixture.analysis, {
+        const result = await collectOriginalAssertions(fixture.analysis, {
             ...fixture.plan,
             cases: [ fixture.plan.cases[0], fixture.plan.cases[0] ]
         });
         scope.assert.equal(result.modules.length, 1);
-        scope.assert.includes(result.modules[0]?.text ?? '', "from 'tstyche'");
+        scope.assert.equal(result.modules[0]?.originalText, fixture.body.getSourceFile().text);
         scope.assert.deepEqual(result.sites, []);
         return scope.assert.collect();
     }),
@@ -141,13 +148,16 @@ export const testNode = suite('isolated callback source ownership', [
         const fixture = sourceFixture();
         const original = observationPlan();
         const plan: TestPlan = { ...original, cases: [ { ...original.cases[0], bodyOrigin: null } ] };
-        await scope.assert.rejects(async function () {
-            await translateNativePlan(fixture.analysis, plan);
-        }, { message: /no callback source ownership/u });
+        const result = await collectOriginalAssertions(fixture.analysis, plan);
+        scope.assert.deepEqual(result.issues, [ {
+            owner: caseKey(plan.cases[0]),
+            reason: 'Selected type-test case has no callback source ownership.'
+        } ]);
         const selected = { ...plan.cases[0], execution: { kind: 'skip' as const, reason: 'unsupported' } };
-        scope.assert.deepEqual(await translateNativePlan(fixture.analysis, { ...plan, cases: [ selected ] }), {
+        scope.assert.deepEqual(await collectOriginalAssertions(fixture.analysis, { ...plan, cases: [ selected ] }), {
             modules: [],
-            sites: []
+            sites: [],
+            issues: []
         });
         return scope.assert.collect();
     }),
@@ -155,9 +165,10 @@ export const testNode = suite('isolated callback source ownership', [
         const fixture = ownedCallback('test', function () {
             return [];
         });
-        await scope.assert.rejects(async function () {
-            await translateNativePlan(fixture.analysis, fixture.plan);
-        }, { message: /case.ts:1:1: Callback construction has no arguments/u });
+        const result = await collectOriginalAssertions(fixture.analysis, fixture.plan);
+        scope.assert.equal(result.issues.length, 1);
+        scope.assert.equal(result.issues[0]?.owner, caseKey(fixture.plan.cases[0]));
+        scope.assert.includes(result.issues[0]?.reason ?? '', 'case.ts:1:1: Callback construction has no arguments');
         return scope.assert.collect();
     }),
     ...([ 'sameType', 'assignableTo', 'assignableFrom' ] as const).map(function (name) {
@@ -176,8 +187,7 @@ export const testNode = suite('isolated callback source ownership', [
             const result = await nativeReference(fixture.analysis, reference);
             scope.assert.deepEqual(result, {
                 kind: 'relation',
-                matcher:
-                    { sameType: 'toBe', assignableTo: 'toBeAssignableTo', assignableFrom: 'toBeAssignableFrom' }[name],
+                relation: name,
                 form: 'expressions',
                 negated: false,
                 types: []

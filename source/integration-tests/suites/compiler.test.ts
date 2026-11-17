@@ -4,7 +4,6 @@ import { testNode as compilerMatrixTestNode } from '../../packages/type-test/com
 import { testNode as compilerPlanTestNode } from '../../packages/type-test/compiler-plan.test.ts';
 import { testNode as frozenInputsTestNode } from '../../packages/type-test/frozen-inputs.test.ts';
 import { testNode as adapterTestNode } from '../../packages/type-test/adapter.test.ts';
-import { testNode as checkerTestNode } from '../../packages/type-test/checker.test.ts';
 
 import { testNode as originalRelations } from '../../packages/type-test/original-relations.test.ts';
 
@@ -19,7 +18,6 @@ export const testNode = createSuite({
         compilerPlanTestNode,
         frozenInputsTestNode,
         adapterTestNode,
-        checkerTestNode,
         originalRelations
     ]
 });

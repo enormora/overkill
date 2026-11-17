@@ -1,6 +1,7 @@
 import type { Type, TypeParameter, Signature, Symbol as CompilerSymbol, IndexInfo } from 'typescript-beta/async';
 
-import { sourceDeclarations, type SourceAnalysis } from './source-analysis.ts';
+import { sourceDeclarations } from './source-analysis.ts';
+import type { TypeAnalysis } from './type-analysis.ts';
 
 import { established, type RelationEvidence } from './relation-evidence.ts';
 
@@ -12,7 +13,7 @@ const unsupported: RelationEvidence = {
 };
 
 type Comparison = {
-    readonly analysis: SourceAnalysis;
+    readonly analysis: TypeAnalysis;
     readonly compare: (context: Comparison, actual: Type, expected: Type) => Promise<RelationEvidence>;
     readonly binders: ReadonlyMap<number, number>;
     readonly active: ReadonlySet<string>;
@@ -521,7 +522,7 @@ async function compare(context: Comparison, actual: Type, expected: Type): Promi
 }
 
 export async function compareEquality(
-    analysis: SourceAnalysis,
+    analysis: TypeAnalysis,
     actual: Type,
     expected: Type
 ): Promise<RelationEvidence> {

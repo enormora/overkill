@@ -5,9 +5,9 @@ import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../test/test.entry-point.ts';
 import { runNativeProject } from '../../test-support/native-type-project.ts';
 import { relationSource } from '../../test-support/type-test-relation-project.ts';
-import { loadProject, disposeProject, sourceAnalysis, type FrozenProject } from './frozen-project.ts';
+import { loadProject, disposeProject, typeAnalysis, type FrozenProject } from './frozen-project.ts';
 import { compareRelation } from './type-relations.ts';
-import type { SourceAnalysis } from './source-analysis.ts';
+import type { TypeAnalysis } from './type-analysis.ts';
 
 const equal = new Set([
     'Any',
@@ -126,7 +126,7 @@ function operands(types: ReadonlyMap<string, Type>, name: string): readonly [Typ
 
 async function assertEquality(
     scope: TestScope,
-    analysis: SourceAnalysis,
+    analysis: TypeAnalysis,
     types: ReadonlyMap<string, Type>
 ): Promise<void> {
     for (const name of [ ...equal, ...unequal ]) {
@@ -140,7 +140,7 @@ async function assertEquality(
 
 async function assertAssignability(
     scope: TestScope,
-    analysis: SourceAnalysis,
+    analysis: TypeAnalysis,
     types: ReadonlyMap<string, Type>
 ): Promise<void> {
     for (const name of [ 'AnyUnknown', 'NeverString', 'Literal' ]) {
@@ -158,7 +158,7 @@ async function assertAssignability(
 
 async function assertRelations(
     scope: TestScope,
-    analysis: SourceAnalysis,
+    analysis: TypeAnalysis,
     types: ReadonlyMap<string, Type>
 ): Promise<void> {
     await assertEquality(scope, analysis, types);
@@ -211,7 +211,7 @@ const nodes=[generic<'literal'>(),table({title:'static rows',cases:[1,2],test:sc
 export const testNode = suite('original-source relations', [
     test('implements the documented equality rules in the original project', async function (scope) {
         const { project, directory } = await originalProject(scope);
-        const analysis = sourceAnalysis(project);
+        const analysis = typeAnalysis(project);
         const types = await originalTypes(project, directory);
         scope.assert.deepEqual(await project.program.getSemanticDiagnostics(), []);
         await assertRelations(scope, analysis, types);

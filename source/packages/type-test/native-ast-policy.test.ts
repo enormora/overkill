@@ -23,7 +23,6 @@ import {
 import { declaredBody, namedBodyParameter } from './source-ownership.ts';
 import { scopeAssertions, assertionAnnotation } from './scope-assertions.ts';
 import { nativeReference } from './native-reference.ts';
-import { referenceExpression } from './native-reference-expression.ts';
 
 function aliasedFixture(): SourceFixture & { readonly node: ast.Identifier; } {
     const fixture = sourceFixture();
@@ -191,57 +190,6 @@ export const testNode = suite('isolated native syntax analysis', [
         await scope.assert.rejects(async function () {
             await nativeReference(fixture.analysis, reference);
         }, { message: /not an adapter-owned/u });
-        return scope.assert.collect();
-    }),
-    test('renders expression relations with precise operand ownership', function (scope: TestScope) {
-        const first = ast.factory.createIdentifier('actual');
-        const second = ast.factory.createIdentifier('expected');
-        Reflect.set(first, 'pos', 1);
-        Reflect.set(first, 'end', 7);
-        Reflect.set(second, 'pos', 8);
-        Reflect.set(second, 'end', 16);
-        const fragments = referenceExpression(
-            { kind: 'relation', matcher: 'toBe', form: 'expressions', negated: true, types: [] },
-            [ first, second ],
-            'check',
-            { start: 0, end: 20 }
-        );
-        scope.assert.deepEqual(
-            fragments.filter(function (fragment) {
-                return fragment.kind === 'copied';
-            }),
-            [
-                { kind: 'copied', original: { start: 1, end: 7 } },
-                { kind: 'copied', original: { start: 8, end: 16 } }
-            ]
-        );
-        scope.assert.includes(
-            fragments
-                .map(function (fragment) {
-                    return fragment.kind === 'anchored' ? fragment.text : '';
-                })
-                .join(''),
-            '.type.not.toBe'
-        );
-        return scope.assert.collect();
-    }),
-    test('rejects missing relation operands', function (scope: TestScope) {
-        scope.assert.throws(function () {
-            referenceExpression(
-                { kind: 'relation', matcher: 'toBe', form: 'typed', negated: false, types: [] },
-                [],
-                'check',
-                { start: 0, end: 1 }
-            );
-        }, { message: /missing an operand/u });
-        scope.assert.throws(function () {
-            referenceExpression(
-                { kind: 'relation', matcher: 'toBe', form: 'expressions', negated: false, types: [] },
-                [],
-                'check',
-                { start: 0, end: 1 }
-            );
-        }, { message: /operand count/u });
         return scope.assert.collect();
     })
 ]);

@@ -70,7 +70,7 @@ export const testNode = suite('native assertion boundary validation', [
     test('recognizes installed adapter declaration ownership', async function (scope: TestScope) {
         const fixture = ownedMatcher('/project/node_modules/@overkill-dev/type-test/index.d.ts');
         const result = await nativeReference(fixture.analysis, referenceCall('', true));
-        scope.assert.equal(result.matcher, 'toBe');
+        scope.assert.equal(result.relation, 'sameType');
         return scope.assert.collect();
     }),
     test('rejects similarly named references from application declarations', async function (scope: TestScope) {
