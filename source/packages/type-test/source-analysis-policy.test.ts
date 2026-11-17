@@ -10,6 +10,7 @@ import {
     sourceSymbol,
     sourceBody
 } from '../../test-support/native-source-fixture.ts';
+import { testNode as callbackOrigins } from './callback-origin-policy.test.ts';
 import {
     sourceSymbol as analyzedSymbol,
     sourceDeclarations,
@@ -27,7 +28,34 @@ function incompleteSymbols(nodes: readonly ast.Node[]): Promise<readonly undefin
 async function incompleteSymbols(input: ast.Node | readonly ast.Node[]): Promise<readonly undefined[] | undefined> {
     return isSourceNode(input) ? undefined : [];
 }
-function functionBinding(assigned: boolean): SourceFixture & { readonly name: ast.Identifier; } {
+type BindingUse = 'assign' | 'compare' | 'read' | 'type';
+function bindingStatement(reference: ast.Identifier, use: BindingUse): ast.Statement {
+    if (use === 'type') {
+        return ast.factory.createTypeAliasDeclaration(
+            undefined,
+            ast.factory.createIdentifier('Callback'),
+            undefined,
+            ast.factory.createTypeQueryNode(reference)
+        );
+    }
+    const value = use === 'read'
+        ? reference
+        : ast.factory.createBinaryExpression(
+            undefined,
+            reference,
+            undefined,
+            ast.factory.createToken(
+                use === 'assign'
+                    ? ast
+                        .SyntaxKind
+                        .EqualsToken
+                    : ast.SyntaxKind.EqualsEqualsEqualsToken
+            ),
+            ast.factory.createIdentifier('replacement')
+        );
+    return ast.factory.createExpressionStatement(value);
+}
+function functionBinding(use: BindingUse): SourceFixture & { readonly name: ast.Identifier; } {
     const fixture = sourceFixture();
     const name = ast.factory.createIdentifier('callback');
     const declaration = ast.factory.createFunctionDeclaration(
@@ -42,20 +70,22 @@ function functionBinding(assigned: boolean): SourceFixture & { readonly name: as
     const reference = ast.factory.createIdentifier('callback');
     Reflect.set(reference, 'pos', 1);
     Reflect.set(reference, 'end', 2);
-    const use = assigned
-        ? ast.factory.createBinaryExpression(
-            undefined,
-            reference,
-            undefined,
-            ast.factory.createToken(ast.SyntaxKind.EqualsToken),
-            ast.factory.createIdentifier('replacement')
-        )
-        : reference;
-    fixture.addFile(sourceFile([ declaration, ast.factory.createExpressionStatement(use) ], '/project/case.ts'));
+    fixture.addFile(sourceFile([ declaration, bindingStatement(reference, use) ], '/project/case.ts'));
     fixture.bindName('callback', sourceSymbol('callback', [ declaration ]));
     return { ...fixture, name };
 }
+
 export const testNode = suite('source analysis evidence', [
+    ...([ 'compare', 'type' ] as const).map(function (use) {
+        return test(`allows non-mutating function ${use} references`, async function (scope: TestScope) {
+            const fixture = functionBinding(use);
+            await validateFunctionBinding(fixture.analysis, fixture.name);
+            const symbol = await analyzedSymbol(fixture.analysis, fixture.name);
+            scope.assert.equal(symbol?.name, 'callback');
+            return scope.assert.collect();
+        });
+    }),
+    callbackOrigins,
     test('preserves symbol identity across analyses of the same program', async function (scope: TestScope) {
         const fixture = sourceFixture();
         fixture.bindName('shared', sourceSymbol('shared', []));
@@ -142,14 +172,14 @@ export const testNode = suite('source analysis evidence', [
         return scope.assert.collect();
     }),
     test('allows stable function declarations', async function (scope: TestScope) {
-        const fixture = functionBinding(false);
+        const fixture = functionBinding('read');
         await validateFunctionBinding(fixture.analysis, fixture.name);
         const symbol = await analyzedSymbol(fixture.analysis, fixture.name);
         scope.assert.equal(symbol?.name, 'callback');
         return scope.assert.collect();
     }),
     test('rejects reassigned function bindings', async function (scope: TestScope) {
-        const fixture = functionBinding(true);
+        const fixture = functionBinding('assign');
         await scope.assert.rejects(async function () {
             await validateFunctionBinding(fixture.analysis, fixture.name);
         }, { message: /cannot be reassigned/u });

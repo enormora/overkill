@@ -3,30 +3,16 @@ import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../test/test.entry-point.ts';
 import {
     sourceFixture,
+    sourceConstant,
     type SourceFixture,
     sourceSymbol,
     sourceFile,
     sourceCall,
     sourceTree
 } from '../../test-support/native-source-fixture.ts';
+import { testNode as importedOptions } from './callback-import-policy.test.ts';
 import { validateCallbackStorage, supportedCall } from './source-options.ts';
 
-function constant(name: string, initializer: ast.Expression, exported: boolean): ast.VariableStatement {
-    const declaration = ast.factory.createVariableDeclaration(
-        ast.factory.createIdentifier(name),
-        undefined,
-        undefined,
-        initializer
-    );
-    const list = ast.factory.createVariableDeclarationList([ declaration ], ast.NodeFlags.Const);
-    Reflect.set(list, 'getFirstToken', function keyword() {
-        return ast.factory.createToken(ast.SyntaxKind.ConstKeyword);
-    });
-    return ast.factory.createVariableStatement(
-        exported ? [ ast.factory.createToken(ast.SyntaxKind.ExportKeyword) ] : undefined,
-        list
-    );
-}
 function bindStorage(fixture: SourceFixture, statement: ast.VariableStatement): void {
     const declaration = statement.declarationList.declarations[0];
     if (declaration === undefined || !ast.isIdentifier(declaration.name)) {
@@ -55,7 +41,7 @@ function storageUse(
     exported: boolean
 ): SourceFixture & { readonly reference: ast.Identifier; readonly call: ast.CallExpression; } {
     const fixture = sourceFixture();
-    const binding = constant('options', ast.factory.createObjectLiteralExpression([]), exported);
+    const binding = sourceConstant('options', ast.factory.createObjectLiteralExpression([]), exported);
     const reference = ast.factory.createIdentifier('options');
     const call = sourceCall(ast.factory.createIdentifier('test'), [ reference ]);
     fixture.addFile(sourceFile([ binding, ast.factory.createExpressionStatement(call) ], '/project/case.ts'));
@@ -65,8 +51,8 @@ function storageUse(
 }
 function aliasedStorage(): SourceFixture & { readonly reference: ast.Identifier; readonly call: ast.CallExpression; } {
     const fixture = sourceFixture();
-    const original = constant('options', ast.factory.createObjectLiteralExpression([]), false);
-    const alias = constant('alias', ast.factory.createIdentifier('options'), false);
+    const original = sourceConstant('options', ast.factory.createObjectLiteralExpression([]), false);
+    const alias = sourceConstant('alias', ast.factory.createIdentifier('options'), false);
     const reference = ast.factory.createIdentifier('alias');
     const call = sourceCall(ast.factory.createIdentifier('test'), [ reference ]);
     fixture.addFile(sourceFile([ original, alias, ast.factory.createExpressionStatement(call) ], '/project/case.ts'));
@@ -77,6 +63,14 @@ function aliasedStorage(): SourceFixture & { readonly reference: ast.Identifier;
     return { ...fixture, reference, call };
 }
 export const testNode = suite('callback storage ownership', [
+    importedOptions,
+    test('leaves unbound option literals unchanged', async function (scope: TestScope) {
+        const fixture = sourceFixture();
+        const value = sourceTree(ast.factory.createObjectLiteralExpression([]));
+        await validateCallbackStorage(fixture.analysis, value);
+        scope.assert.equal(value.properties.length, 0);
+        return scope.assert.collect();
+    }),
     test('accepts constant options passed only to supported authoring APIs', async function (scope: TestScope) {
         const fixture = storageUse(false);
         await validateCallbackStorage(fixture.analysis, fixture.reference);
@@ -106,7 +100,7 @@ export const testNode = suite('callback storage ownership', [
     }),
     test('rejects callback option values used as callable expressions', async function (scope: TestScope) {
         const fixture = sourceFixture();
-        const statement = constant('options', ast.factory.createObjectLiteralExpression([]), false);
+        const statement = sourceConstant('options', ast.factory.createObjectLiteralExpression([]), false);
         const reference = ast.factory.createIdentifier('options');
         fixture.addFile(
             sourceFile(

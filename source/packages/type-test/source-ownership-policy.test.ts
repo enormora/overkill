@@ -1,94 +1,61 @@
 import * as ast from 'typescript-beta/ast';
 import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
-import type { TestPlan, TestBodyOrigin } from '../engine/engine.entry-point.ts';
+import { ownedCallback, callbackOrigin as origin } from '../../test-support/callback-source.ts';
+import { suite, test, testDouble, type TestScope } from '../test/test.entry-point.ts';
+import type { TestPlan } from '../engine/engine.entry-point.ts';
 import { observationPlan } from '../../test-support/observation-lifetime.ts';
 import {
     sourceFixture,
-    type SourceFixture,
     sourceSymbol,
     sourceTree,
     sourceFile,
-    sourceBody,
-    sourceCall,
     sourceMember,
     sourceProperty
 } from '../../test-support/native-source-fixture.ts';
 import { resolveBodyOrigin } from './source-ownership.ts';
 import { translateNativePlan } from './native-translation.ts';
-import { validateCallbackStorage } from './source-options.ts';
 import { nativeReference } from './native-reference.ts';
 
-type OwnershipFixture = SourceFixture & {
-    readonly body: ast.ArrowFunction;
-    readonly call: ast.CallExpression;
-    readonly plan: TestPlan;
-};
-function positioned<Node extends ast.Node>(node: Node, start: number): Node {
-    Reflect.set(node, 'pos', start);
-    Reflect.set(node, 'end', 7);
-    node.forEachChild(function position(child) {
-        positioned(child, start);
-    });
-    return node;
-}
-function bindAuthoring(fixture: SourceFixture, call: ast.CallExpression, name: string): void {
-    const declaration = ast.factory.createFunctionDeclaration(
-        undefined,
-        undefined,
-        ast.factory.createIdentifier(name),
-        undefined,
-        [],
-        undefined,
-        ast.factory.createBlock([])
-    );
-    sourceFile([ declaration ], '/project/source/authoring/test.ts');
-    fixture.bindName(name, sourceSymbol(name, [ declaration ]));
-    fixture.bindSignature(call, {
-        declaration: {
-            async resolve() {
-                return declaration;
-            }
-        }
-    });
-}
-function ownedPlan(file: ast.SourceFile): TestPlan {
-    const original = observationPlan();
-    const selected = {
-        ...original.cases[0],
-        bodyOrigin: {
-            body() {
-                throw new Error('Callback must stay unexecuted.');
-            },
-            location: { kind: 'known' as const, file: file.fileName, line: 1, column: 1 }
-        }
-    };
-    return { ...original, cases: [ selected ], discoveredCases: [ selected ] };
-}
-function ownedCallback(
-    name: string,
-    options: (body: ast.ArrowFunction) => readonly ast.Expression[]
-): OwnershipFixture {
-    const fixture = sourceFixture();
-    const body = sourceBody([]);
-    const call = sourceCall(ast.factory.createIdentifier(name), options(body));
-    const file = positioned(sourceFile([ ast.factory.createExpressionStatement(call) ], '/project/case.ts'), 0);
-    positioned(body, 1);
-    bindAuthoring(fixture, call, name);
-    fixture.addFile(file);
-    return { ...fixture, body, call, plan: ownedPlan(file) };
-}
 function bodyOptions(body: ast.ArrowFunction): ast.ObjectLiteralExpression {
     return ast.factory.createObjectLiteralExpression([ sourceProperty('body', body) ]);
 }
-function origin(fixture: OwnershipFixture): TestBodyOrigin {
-    const value = fixture.plan.cases[0].bodyOrigin;
-    if (value === null) {
-        throw new Error('Missing owned callback.');
-    }
-    return value;
-}
 export const testNode = suite('isolated callback source ownership', [
+    test('rejects runtime controls before translating a type-test body', async function (scope: TestScope) {
+        const fixture = ownedCallback('test', function (body) {
+            return [ body ];
+        });
+        const selected = fixture.plan.cases[0];
+        await scope.assert.rejects(async function () {
+            await translateNativePlan(fixture.analysis, {
+                ...fixture.plan,
+                cases: [ { ...selected, controls: { ...selected.controls, timeoutMilliseconds: 1 } } ]
+            });
+        }, { message: 'Type-test cases do not support runtime execution controls.' });
+        return scope.assert.collect();
+    }),
+    test('retains unknown source anchors in translation failures', async function (scope: TestScope) {
+        const fixture = ownedCallback('test', function (body) {
+            return [ body ];
+        });
+        const selected = fixture.plan.cases[0];
+        await scope.assert.rejects(async function () {
+            await translateNativePlan(fixture.analysis, {
+                ...fixture.plan,
+                cases: [ { ...selected, bodyOrigin: { ...origin(fixture), location: { kind: 'unknown' } } } ]
+            });
+        }, { message: /at unknown source: Type-test checking requires a known callback source location/u });
+        return scope.assert.collect();
+    }),
+    test('wraps non-error compiler failures with the original callback anchor', async function (scope: TestScope) {
+        const fixture = ownedCallback('test', function (body) {
+            return [ body ];
+        });
+        const checker = { ...fixture.analysis.checker, getResolvedSignature: testDouble.rejects(42) };
+        await scope.assert.rejects(async function () {
+            await translateNativePlan({ ...fixture.analysis, checker }, fixture.plan);
+        }, { message: /case.ts:1:1: Unknown callback source./u });
+        return scope.assert.collect();
+    }),
     ...[ 'test', 'withResource', 'withResources', 'withRuntime' ].map(function (name) {
         return test(`resolves positional ${name} callback without executing it`, async function (scope: TestScope) {
             const fixture = ownedCallback(name, function (body) {
@@ -155,13 +122,6 @@ export const testNode = suite('isolated callback source ownership', [
         await scope.assert.rejects(async function () {
             await resolveBodyOrigin(fixture.analysis, origin(fixture));
         }, { message: /Unsupported callback options/u });
-        return scope.assert.collect();
-    }),
-    test('leaves unbound option literals unchanged', async function (scope: TestScope) {
-        const fixture = sourceFixture();
-        const value = sourceTree(ast.factory.createObjectLiteralExpression([]));
-        await validateCallbackStorage(fixture.analysis, value);
-        scope.assert.equal(value.properties.length, 0);
         return scope.assert.collect();
     }),
     test('translates owned callback modules and deduplicates their owners', async function (scope: TestScope) {

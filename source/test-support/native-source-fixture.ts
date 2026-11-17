@@ -73,7 +73,7 @@ function sourceChecker(
     function getSymbolAtLocation(node: syntax.Node): Promise<SourceSymbol | undefined>;
     function getSymbolAtLocation(nodes: readonly syntax.Node[]): Promise<(SourceSymbol | undefined)[]>;
     async function getSymbolAtLocation(
-        input: readonly syntax.Node[] | syntax.Node
+        input: syntax.Node | readonly syntax.Node[]
     ): Promise<(SourceSymbol | undefined)[] | SourceSymbol | undefined> {
         return isSourceNode(input) ? lookup(input) : input.map(lookup);
     }
@@ -168,13 +168,14 @@ export function sourceMember(expression: syntax.Expression, name: string): synta
     );
 }
 
+export const sourceFixtureText = 'fixture';
 export function sourceFile(statements: readonly syntax.Statement[], fileName: string): syntax.SourceFile {
     const path = toRootedFilePath(fileName, undefined);
     const file = sourceTree(
         syntax.factory.createSourceFile(
             statements,
             syntax.factory.createToken(syntax.SyntaxKind.EndOfFile),
-            'fixture',
+            sourceFixtureText,
             path,
             pathKey(path, CaseSensitivity.Sensitive)
         )
@@ -198,5 +199,26 @@ export function sourceProperty(name: string, value: syntax.Expression): syntax.P
         undefined,
         syntax.factory.createKeywordTypeNode(syntax.SyntaxKind.UnknownKeyword),
         value
+    );
+}
+
+export function sourceConstant(
+    name: string,
+    initializer: syntax.Expression,
+    exported: boolean
+): syntax.VariableStatement {
+    const declaration = syntax.factory.createVariableDeclaration(
+        syntax.factory.createIdentifier(name),
+        undefined,
+        undefined,
+        initializer
+    );
+    const list = syntax.factory.createVariableDeclarationList([ declaration ], syntax.NodeFlags.Const);
+    Reflect.set(list, 'getFirstToken', function keyword() {
+        return syntax.factory.createToken(syntax.SyntaxKind.ConstKeyword);
+    });
+    return syntax.factory.createVariableStatement(
+        exported ? [ syntax.factory.createToken(syntax.SyntaxKind.ExportKeyword) ] : undefined,
+        list
     );
 }
