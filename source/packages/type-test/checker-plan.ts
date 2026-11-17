@@ -13,6 +13,8 @@ export type CollectedCheckerRun = {
 };
 
 export type CheckerPreparation = {
+    readonly dispose: () => Promise<void>;
+    readonly facts: ReadonlyDeep<JsonValue>;
     readonly testPlan: TestPlan;
     readonly collect: (plan: TestPlan) => Promise<CollectedCheckerRun>;
 };

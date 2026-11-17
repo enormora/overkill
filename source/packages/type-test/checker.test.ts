@@ -1,13 +1,26 @@
 import { mkdtemp, writeFile, readdir, rm, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { ProjectConfigKind } from 'tstyche/api';
+import { ProjectConfigKind, environmentOptions } from 'tstyche/api';
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { loadProject, disposeProject, type FrozenProject } from './frozen-project.ts';
 import { checkGeneratedInputs, type CheckerRequest } from './checker.entry-point.ts';
 import { verifyCheckerEvidence } from './checker-evidence.ts';
 
-async function writeProject(directory: string): Promise<void> {
+async function compilerProject(scope: TestScope, directory: string): Promise<FrozenProject> {
+    const frozen = await loadProject(join(directory, 'tsconfig.json'), {
+        kind: 'package',
+        specifier: 'typescript-beta',
+        version: '7.1.0-beta'
+    }, process.cwd());
+    scope.cleanup(async function () {
+        await disposeProject(frozen);
+    });
+    return frozen;
+}
+
+async function writeProject(directory: string, includeReferences: boolean): Promise<void> {
     await writeFile(join(directory, 'package.json'), JSON.stringify({ type: 'module' }));
     await mkdir(join(directory, 'dependency'));
     await mkdir(join(directory, 'config'));
@@ -34,24 +47,25 @@ async function writeProject(directory: string): Promise<void> {
         JSON.stringify({
             extends: './config/base.json',
             files: [ 'ambient.d.ts', 'input.ts', 'value.ts' ],
-            references: [ { path: './dependency' } ]
+            references: includeReferences ? [ { path: './dependency' } ] : []
         })
     );
     await writeFile(join(directory, 'ambient.d.ts'), 'declare const ambient: string;');
     await writeFile(join(directory, 'value.ts'), 'export type Value = string;');
 }
-async function fixture(scope: TestScope): Promise<CheckerRequest> {
+
+async function fixture(scope: TestScope, includeReferences: boolean): Promise<CheckerRequest> {
     const directory = await mkdtemp(join(tmpdir(), 'overkill-checker-'));
     scope.cleanup(async function () {
         await rm(directory, { recursive: true, force: true });
     });
-    await writeProject(directory);
+    await writeProject(directory, includeReferences);
     const text =
         "import { expect } from 'tstyche';\nimport type { Value } from 'alias';\nexpect<Value>().type.toBe<typeof ambient>();\nexpect<null>().type.toBeAssignableTo<string>();\n";
     const path = join(directory, 'input.ts');
     await writeFile(path, text);
     return {
-        compiler: { kind: 'local' as const },
+        project: await compilerProject(scope, directory),
         projectConfigPath: join(directory, 'tsconfig.json'),
         modules: [ {
             path,
@@ -65,18 +79,19 @@ async function fixture(scope: TestScope): Promise<CheckerRequest> {
         } ]
     };
 }
+
 export const testNode = suite('explicit checker configuration', [
-    test('preserves inherited resolution, ambient roots and references', async function (scope) {
-        const request = await fixture(scope);
+    test('preserves inherited resolution and ambient roots', async function (scope) {
+        const request = await fixture(scope, false);
         await scope.assert.rejects(async function empty() {
             await checkGeneratedInputs({ ...request, modules: [] });
         }, { message: 'No translated inputs to check.' });
         const results = await Promise.all([
             checkGeneratedInputs(request),
             checkGeneratedInputs(request),
-            checkGeneratedInputs({ ...request, compiler: { kind: 'version', version: '5.9.3' } })
+            checkGeneratedInputs(request)
         ]);
-        scope.assert.equal(results[2].compilerVersion, '5.9.3');
+        scope.assert.equal(results[2].compilerVersion, '7.1.0-beta');
         for (const result of results) {
             scope.assert.equal(
                 result
@@ -95,6 +110,32 @@ export const testNode = suite('explicit checker configuration', [
             }),
             false
         );
+        return scope.assert.collect();
+    }),
+    test('restores compiler binding after successful and failed checks', async function (scope) {
+        const request = await fixture(scope, false);
+        const previous = environmentOptions.typescriptSpecifier;
+        await checkGeneratedInputs(request);
+        scope.assert.equal(environmentOptions.typescriptSpecifier, previous);
+        await scope.assert.rejects(async function () {
+            return checkGeneratedInputs({
+                ...request,
+                modules: request.modules.map(function stale(module) {
+                    return { ...module, originalText: `${module.originalText}changed` };
+                })
+            });
+        }, { message: /Original source changed/u });
+        scope.assert.equal(environmentOptions.typescriptSpecifier, previous);
+        return scope.assert.collect();
+    }),
+    test('rejects project references before creating generated checker inputs', async function (scope) {
+        const request = await fixture(scope, true);
+        const directory = join(request.projectConfigPath, '..');
+        const before = await readdir(directory);
+        await scope.assert.rejects(async function () {
+            await checkGeneratedInputs(request);
+        }, { message: /Project references require original-source checking/u });
+        scope.assert.deepEqual(await readdir(directory), before);
         return scope.assert.collect();
     }),
     test('rejects fallback, wrong compilers and missing evidence', function (scope) {

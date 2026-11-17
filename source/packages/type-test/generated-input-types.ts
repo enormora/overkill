@@ -1,9 +1,11 @@
-import type TypeScript from 'typescript';
+import type { CompilerSyntax } from './installed-compiler.ts';
+import type { FrozenProject } from './frozen-project.ts';
 import type { ImportDiagnostic, RepairedModule } from './generated-imports.ts';
 import type { SourceRange, TranslatedModule } from './generated-source.ts';
 
 export type GeneratedInputRequest = {
-    readonly compiler: typeof TypeScript;
+    readonly compiler: CompilerSyntax;
+    readonly project: FrozenProject;
     readonly projectConfigPath: string;
     readonly modules: readonly TranslatedModule[];
 };

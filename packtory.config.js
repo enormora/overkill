@@ -314,15 +314,13 @@ export const configuration = {
             description: 'Native type assertions and TSTyche checking for Overkill.',
             roots: {
                 main: moduleRoot('packages/type-test/type-test.entry-point'),
-                profile: moduleRoot('packages/type-test/profile.entry-point'),
-                check: moduleRoot('packages/type-test/check.entry-point'),
                 backend: { javaScript: 'packages/type-test/family-backend.entry-point.js' }
             },
             packageInterface: {
-                modules: packageModules({ '.': 'main', './profile': 'profile', './check': 'check' }),
+                modules: packageModules({ '.': 'main' }),
                 privateRoots: [ 'backend' ]
             },
-            bundlePeerDependencies: [ '@overkill-dev/engine', '@overkill-dev/run' ]
+            bundlePeerDependencies: [ '@overkill-dev/engine' ]
         },
         {
             name: 'stryker-runner',

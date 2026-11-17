@@ -1,23 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
-import type TypeScript from 'typescript';
-import { isGeneratedTypeTestPath } from '../run/run.entry-point.ts';
+import type * as CompilerApi from 'typescript-beta/async';
+import { isGeneratedTypeTestPath } from '../../generated-input-path.ts';
 import { sourceFingerprint as fingerprint } from './frozen-inputs.ts';
 import { repairGeneratedImports, type ImportDiagnostic, type RepairedModule } from './generated-imports.ts';
 import { checkerCompilerOptions } from './checker-resolution.ts';
 import { validateMappings } from './generated-source.ts';
 import type { GeneratedInputRequest, GeneratedModuleResult } from './generated-input-types.ts';
 
-export function parseProject(request: GeneratedInputRequest): TypeScript.ParsedCommandLine {
-    const errors: TypeScript.Diagnostic[] = [];
-    const project = request.compiler.getParsedCommandLineOfConfigFile(request.projectConfigPath, {}, {
-        ...request.compiler.sys,
-        onUnRecoverableConfigFileDiagnostic(diagnostic) {
-            errors.push(diagnostic);
-        }
-    });
-    if (project === undefined || errors.length > 0 || project.errors.length > 0) {
+export async function parseProject(request: GeneratedInputRequest): Promise<CompilerApi.ParsedCommandLine> {
+    const project = await request.project.api.parseConfigFile(request.projectConfigPath);
+    if (project.errors.length > 0) {
         throw new Error(`Cannot parse original project: ${request.projectConfigPath}`);
     }
     return project;
@@ -79,6 +73,7 @@ function validateOriginalPath(path: string, paths: ReadonlyMap<string, string>):
         throw new Error(`Invalid or duplicate original path: ${path}`);
     }
 }
+
 async function allocatePaths(request: GeneratedInputRequest): Promise<ReadonlyMap<string, string>> {
     const paths = new Map<string, string>();
     const token = randomUUID();
@@ -92,20 +87,27 @@ async function allocatePaths(request: GeneratedInputRequest): Promise<ReadonlyMa
     }
     return paths;
 }
+
 export async function planGeneratedModules(request: GeneratedInputRequest): Promise<{
     readonly paths: ReadonlyMap<string, string>;
     readonly repaired: readonly RepairedModule[];
     readonly modules: readonly GeneratedModuleResult[];
 }> {
-    const project = parseProject(request);
+    const project = await parseProject(request);
     const paths = await allocatePaths(request);
-    const repaired = request.modules.map(function repair(module) {
-        return repairGeneratedImports(
-            request.compiler,
-            checkerCompilerOptions(request.compiler, project.options),
-            module,
-            paths
+    const repaired: RepairedModule[] = [];
+    for (const module of request.modules) {
+        repaired.push(
+            await repairGeneratedImports(
+                request.project,
+                checkerCompilerOptions(
+                    request.compiler,
+                    project.options
+                ),
+                module,
+                paths
+            )
         );
-    });
+    }
     return { paths, repaired, modules: moduleResults(repaired, paths) };
 }

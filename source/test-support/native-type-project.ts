@@ -3,7 +3,7 @@ import { mkdtemp, writeFile, rm, mkdir } from 'node:fs/promises';
 import { join, resolve as resolvePath } from 'node:path';
 import TypeScript from 'typescript';
 import { z } from 'zod';
-import type { TypeTestOptions } from '../packages/type-test/profile-settings.ts';
+import type { TypeTestSettings } from '../packages/type-test/profile-settings.ts';
 import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 
 const resultSchema = z
@@ -22,7 +22,7 @@ const resultSchema = z
 export type NativeProjectResult = z.infer<typeof resultSchema>;
 type ProjectChange = 'config' | 'identity' | 'source';
 type ProjectRequest = {
-    readonly compiler: TypeTestOptions['compiler'];
+    readonly compiler: TypeTestSettings['compiler'];
     readonly prefix: string;
     readonly definitions: string;
     readonly titles: readonly string[] | null;
@@ -41,7 +41,8 @@ engine, root, selection: ${selection},
         ? `plan={...plan,cases:[{...plan.cases[0],workId:{...plan.cases[0].workId,
     familyVariant:{family:'@overkill-dev/type-test',key:'typescript@0.0.0'}}},...plan.cases.slice(1)]};`
         : `await appendFile(${path},'\\n');`;
-    return `const settings={projectConfigPath:import.meta.dirname+'/tsconfig.json',compiler:{kind:'local'}};
+    return `const settings={projectConfigPath:import.meta.dirname+'/tsconfig.json',
+    compiler:{kind:'package',specifier:'typescript-beta',version:'7.1.0-beta'}};
 const signal=new AbortController().signal;
 await using prepared=await engine.prepareFamily({testPlan:engine.createTestPlan(root),testFamily:family,settings,
     projectRoot:import.meta.dirname,signal});
@@ -81,8 +82,7 @@ function fixtureSource(request: ProjectRequest): string {
     return `${request.prefix}import * as engine from ${engineImport};
 import { test, suite, table, defineMacro, defineParameterizedTestBody } from ${authoringImport};
 import {
-    sameType as same, assignableTo, assignableFrom, acceptsProps, applicableTo,
-    callableWith, constructableWith, instantiableWith, hasProperty, raisesTypeError, type _
+    sameType as same, assignableTo, assignableFrom
 } from ${assertionImport};
 import { checkTypeTests } from ${checkerImport};
 import { prepare as prepareCompilerPlan } from ${compilerImport};
@@ -113,7 +113,14 @@ async function executeProject(path: string): Promise<string> {
             { timeout: 90_000 },
             function completed(error, stdout, stderr) {
                 if (error !== null) {
-                    reject(new Error(stderr, { cause: error }));
+                    reject(
+                        new Error(
+                            `Type-test fixture failed (${error.code ?? error.signal ?? 'unknown exit'}): ${
+                                stderr.length === 0 ? error.message : stderr
+                            }`,
+                            { cause: error }
+                        )
+                    );
                     return;
                 }
                 resolve(stdout);
@@ -179,7 +186,7 @@ export async function runNativeProject(
     titles: readonly string[] | null
 ): Promise<NativeProjectResult> {
     return await runProject(scope, {
-        compiler: { kind: 'local' },
+        compiler: { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' },
         definitions,
         titles,
         compiled: false,
@@ -194,7 +201,7 @@ export async function runCompiledTypeProject(
     titles: readonly string[] | null
 ): Promise<NativeProjectResult> {
     return await runProject(scope, {
-        compiler: { kind: 'local' },
+        compiler: { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' },
         definitions,
         titles,
         compiled: true,
@@ -209,7 +216,7 @@ export async function runChangedTypeProject(
     change: ProjectChange
 ): Promise<NativeProjectResult> {
     return await runProject(scope, {
-        compiler: { kind: 'local' },
+        compiler: { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' },
         definitions,
         titles: null,
         compiled: false,
@@ -224,7 +231,7 @@ export async function runPrefixedTypeProject(
     prefix: string
 ): Promise<NativeProjectResult> {
     return await runProject(scope, {
-        compiler: { kind: 'local' },
+        compiler: { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' },
         definitions,
         titles: null,
         compiled: false,
@@ -243,9 +250,9 @@ export async function runMatrixTypeProject(scope: TestScope, definitions: string
         compiler: {
             kind: 'matrix',
             compilers: [
-                { kind: 'version', version: '6.0.3' },
-                { kind: 'version', version: '5.9.3' },
-                { kind: 'version', version: '6.0.3' }
+                { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' },
+                { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' },
+                { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' }
             ]
         }
     });

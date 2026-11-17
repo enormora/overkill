@@ -4,7 +4,8 @@ const compilerSelectionSchema = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('local') }).readonly(),
     z
         .strictObject({
-            kind: z.literal('version'),
+            kind: z.literal('package'),
+            specifier: z.string().min(1),
             version: z.string().regex(/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/u)
         })
         .readonly()
@@ -17,12 +18,14 @@ export const typeTestSettingsSchema = z
             z
                 .strictObject({
                     kind: z.literal('matrix'),
-                    compilers: z.tuple([ compilerSelectionSchema ]).rest(compilerSelectionSchema)
+                    compilers: z.tuple([ compilerSelectionSchema ]).rest(compilerSelectionSchema).readonly()
                 })
                 .readonly()
         ])
     })
     .readonly();
-export type TypeTestOptions = z.input<typeof typeTestSettingsSchema>;
 
-export type CompilerPolicy = TypeTestOptions['compiler'];
+export type CompilerPolicy = TypeTestSettings['compiler'];
+
+export type CompilerSelection = z.output<typeof compilerSelectionSchema>;
+export type TypeTestSettings = z.output<typeof typeTestSettingsSchema>;

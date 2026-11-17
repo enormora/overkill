@@ -1,4 +1,4 @@
-import { isGeneratedTypeTestPath } from '../run/run.entry-point.ts';
+import { isGeneratedTypeTestPath } from '../../generated-input-path.ts';
 import { createGeneratedFileOwnership, type GeneratedFileOwnership } from './generated-file-ownership.ts';
 import { planGeneratedModules, parseProject } from './generated-module-plan.ts';
 import type { RepairedModule } from './generated-imports.ts';
@@ -13,7 +13,7 @@ export type {
 } from './generated-input-types.ts';
 export { mapSourceRange } from './generated-source.ts';
 export type { SourceMapping, SourceRange, TranslatedModule } from './generated-source.ts';
-export { isGeneratedTypeTestPath } from '../run/run.entry-point.ts';
+export { isGeneratedTypeTestPath } from '../../generated-input-path.ts';
 async function writeReadyInputs(
     modules: readonly GeneratedModuleResult[],
     repaired: readonly RepairedModule[],
@@ -32,13 +32,15 @@ async function writeReadyInputs(
         await owned.write(result.path, source.module.text);
     }
 }
+
 async function prepareInputs(
     request: GeneratedInputRequest,
     owned: GeneratedFileOwnership
 ): Promise<GeneratedInputBatch> {
     const { paths, repaired, modules } = await planGeneratedModules(request);
     await writeReadyInputs(modules, repaired, owned);
-    if (parseProject(request).fileNames.some(isGeneratedTypeTestPath)) {
+    const original = await parseProject(request);
+    if (original.fileNames.some(isGeneratedTypeTestPath)) {
         throw new Error(
             'Original project discovers generated inputs; exclude .overkill-type-test-* files before checking.'
         );
@@ -53,6 +55,7 @@ async function prepareInputs(
         }
     };
 }
+
 async function usePreparedInputs<Result>(
     request: GeneratedInputRequest,
     useInputs: (inputs: GeneratedInputBatch) => Promise<Result>,

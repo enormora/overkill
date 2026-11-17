@@ -1,4 +1,4 @@
-import type TypeScript from 'typescript';
+import type * as TypeScript from 'typescript-beta/ast';
 import type { SourceFragment, SourceRange } from './generated-source.ts';
 import type { NativeReference } from './native-reference.ts';
 
@@ -20,19 +20,8 @@ function copied(node: TypeScript.Node | undefined): SourceFragment {
     return { kind: 'copied', original: { start: node.getFullStart(), end: node.end } };
 }
 
-export function needsTypeSubject(reference: NativeReference): boolean {
-    return reference.matcher === 'toAcceptProps' && reference.form === 'typed';
-}
-
 function subject(context: ExpressionContext): readonly SourceFragment[] {
     const { reference, operands, expectName } = context;
-    if (needsTypeSubject(reference)) {
-        return [
-            syntax(context, `${expectName}<${expectName}Subject<`),
-            copied(reference.types[0]),
-            syntax(context, '>>()')
-        ];
-    }
     if (reference.form === 'withActual' || reference.form === 'expressions') {
         return [ syntax(context, `${expectName}(`), copied(operands[0]), syntax(context, ')') ];
     }
@@ -41,37 +30,22 @@ function subject(context: ExpressionContext): readonly SourceFragment[] {
 
 function validateOperandCount(context: ExpressionContext): void {
     const { reference, operands } = context;
-    if (reference.kind === 'relation') {
-        const counts = { typed: 0, withActual: 1, withExpected: 1, expressions: 2 };
-        if (operands.length !== counts[reference.form]) {
-            throw new Error('Invalid native relation operand count.');
-        }
+    const counts = { typed: 0, withActual: 1, withExpected: 1, expressions: 2 };
+    if (operands.length !== counts[reference.form]) {
+        throw new Error('Invalid native relation operand count.');
     }
-    if (reference.kind === 'instantiation' && operands.length !== (reference.form === 'typed' ? 0 : 1)) {
-        throw new Error('Invalid instantiation operand count.');
-    }
-}
-
-function typedTarget(reference: NativeReference): boolean {
-    const forms: Readonly<Record<NativeReference['kind'], readonly NativeReference['form'][]>> = {
-        instantiation: [ 'typed', 'withActual' ],
-        relation: [ 'typed', 'withActual' ],
-        ability: [],
-        decorator: []
-    };
-    return forms[reference.kind].includes(reference.form);
 }
 
 function target(context: ExpressionContext): readonly SourceFragment[] {
     const { reference, operands } = context;
-    if (typedTarget(reference)) {
+    if (reference.form === 'typed' || reference.form === 'withActual') {
         return [
             syntax(context, '<'),
             copied(reference.types[reference.form === 'typed' ? 1 : 0]),
             syntax(context, '>()')
         ];
     }
-    const start = reference.form === 'withActual' || reference.form === 'expressions' ? 1 : 0;
+    const start = reference.form === 'expressions' ? 1 : 0;
     return [
         syntax(context, '('),
         ...operands.slice(start).flatMap(function operand(node, index) {

@@ -1,11 +1,11 @@
 import { createRunResult, type Engine, type TestRoot } from '../engine/engine.entry-point.ts';
 import type { RunnerResult, RunRequest } from '../run/run.entry-point.ts';
-import type { TypeTestOptions } from './profile-settings.ts';
+import type { TypeTestSettings } from './profile-settings.ts';
 import { family } from './profile.entry-point.ts';
 
 const microsecondsPerMillisecond = 1000;
 
-export type TypeTestCheckRequest = TypeTestOptions & {
+export type TypeTestCheckRequest = TypeTestSettings & {
     readonly engine: Engine;
     readonly root: TestRoot;
     readonly selection: RunRequest['selection'];

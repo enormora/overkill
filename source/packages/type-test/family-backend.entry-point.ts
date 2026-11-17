@@ -9,7 +9,7 @@ import {
     type WorkId
 } from '../engine/engine.entry-point.ts';
 import { prepare as prepareCompilerPlan } from './compiler-plan.ts';
-import { typeTestSettingsSchema, type TypeTestOptions } from './profile-settings.ts';
+import { typeTestSettingsSchema, type TypeTestSettings } from './profile-settings.ts';
 import type { CheckerPreparation, CollectedCheckerRun, PreparedCheckerRun } from './checker-plan.ts';
 
 function selectedCheckerPlan(
@@ -65,17 +65,22 @@ async function executeCheckerCollection(collected: CollectedCheckerRun, context:
     await context.report({ kind: 'artifact', artifact: checkerFactsArtifact(result, lowered.facts) });
 }
 
-export async function prepare(input: FamilyPreparationInput<TypeTestOptions>): Promise<FamilyPreparation> {
+export async function prepare(input: FamilyPreparationInput<TypeTestSettings>): Promise<FamilyPreparation> {
     const settings = typeTestSettingsSchema.parse(input.settings);
-    const preparation = await prepareCompilerPlan(input.testPlan, {
-        ...settings,
-        projectConfigPath: resolve(input.projectRoot, settings.projectConfigPath)
-    }, input.expandVariants);
+    const preparation = await prepareCompilerPlan(
+        input.testPlan,
+        {
+            ...settings,
+            projectConfigPath: resolve(input.projectRoot, settings.projectConfigPath)
+        },
+        input.projectRoot,
+        input.expandVariants
+    );
     return {
         testPlan: preparation.testPlan,
-        facts: null,
+        facts: preparation.facts,
         async dispose() {
-            return undefined;
+            await preparation.dispose();
         },
         async collect(selection) {
             const collected = await preparation.collect(selectedCheckerPlan(preparation, selection.workIds));

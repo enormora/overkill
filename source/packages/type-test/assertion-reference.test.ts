@@ -4,9 +4,11 @@ import {
     getCompositeAssertionReferenceRecord,
     unknownSourceLocation
 } from '../engine/assertion-protocol.entry-point.ts';
-import { sameType, callableWith } from './type-test.entry-point.ts';
+import { testNode as relationForms } from './relation-forms.test.ts';
+import { sameType } from './type-test.entry-point.ts';
 
 export const testNode = suite('native type assertion references', [
+    relationForms,
     test('fails ordinary execution instead of reporting a successful erased check', function (scope) {
         const reference = sameType<string, number>();
         scope.assert.throws(function () {
@@ -29,11 +31,9 @@ export const testNode = suite('native type assertion references', [
             });
         }, { message: /not toBe/u });
         scope.assert.throws(function () {
-            return getCompositeAssertionReferenceRecord(callableWith.withActual).run({
+            return getCompositeAssertionReferenceRecord(sameType.expressions).run({
                 message: null,
-                parameters: [ function () {
-                    return 1;
-                } ],
+                parameters: [ 1, 1 ],
                 source: 'assert',
                 sourceLocations: [ unknownSourceLocation ]
             });

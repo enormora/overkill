@@ -5,8 +5,8 @@ import {
     runNativeProject,
     runMatrixTypeProject,
     runPrefixedTypeProject,
-    runCompiledTypeProject,
-    runChangedTypeProject
+    runChangedTypeProject,
+    runCompiledTypeProject
 } from '../../test-support/native-type-project.ts';
 
 const basicCases = `const nodes=[
@@ -23,6 +23,7 @@ const sharedCases = `function generic<T extends string>() {
         bodyCalls++;scope.assert(assignableTo<T,string>());return scope.assert.collect();
     });
 }
+
 const parameterized=defineParameterizedTestBody((scope,data:number)=>{
     bodyCalls++;scope.assert(same<typeof data,number>());return scope.assert.collect();
 });
@@ -35,8 +36,7 @@ const nodes=[generic<'literal'>(),macro(),test('parameterized',parameterized(1))
     }
 })];`;
 
-const bindingCases = `type Limited<T extends string>={value:T};
-const nodes=[test('bindings',scope=>{
+const bindingCases = `const nodes=[test('bindings',scope=>{
     bodyCalls++;
     const value='literal' as const;
     scope.assert(same.withActual<'literal'>(),value);
@@ -44,42 +44,27 @@ const nodes=[test('bindings',scope=>{
     scope.assert(same.expressions,value,value);
     scope.assert(same.not<string,number>());
     scope.assert(assignableFrom<string,'literal'>());
-    scope.assert(callableWith<(value:string)=>number>(),'value');
-    scope.assert(callableWith.not.withActual,(value:string)=>value,42);
-    scope.assert(constructableWith<new(value:string)=>object>(),'value');
-    scope.assert(instantiableWith<Limited<_>,[string]>());
-    scope.assert(hasProperty<{value:string}>(),'value');
-    scope.assert(raisesTypeError<Limited<42>>());
-    return scope.assert.collect();
-})];`;
-
-const declarationCases = `function decorate<T extends abstract new(...args:never[])=>object>(
-    value:T, context:ClassDecoratorContext<T>
-):T { return value; }
-function Component(props:{name:string}) { return null; }
-const nodes=[test('declarations',scope=>{
-    bodyCalls++;
-    scope.assert(acceptsProps<typeof Component>(),{name:'ok'});
-    scope.assert(applicableTo<typeof decorate>(),apply=>{
-        @apply class Subject { value=1; }
-    });
-    scope.assert(applicableTo.withActual(decorate),apply=>{
-        @apply class Other { other=2; }
-    });
     return scope.assert.collect();
 })];`;
 
 export const testNode = suite('native type-test adapter', [
-    test('expands exact compilers without duplicating logical cases', async function (scope) {
+    test('checks original assertion sources behind compiled callbacks', async function (scope) {
+        const result = await runCompiledTypeProject(scope, basicCases, null);
+        scope.assert.equal(result.summary.passed, 1, { message: result.errors.join('\n') });
+        scope.assert.equal(result.summary.failed, 1);
+        scope.assert.equal(result.bodyCalls, 0);
+        return scope.assert.collect();
+    }),
+    test('deduplicates installed selections without duplicating logical cases', async function (scope) {
         const result = await runMatrixTypeProject(scope, basicCases);
-        scope.assert.equal(result.summary.passed, 2, { message: result.errors.join('\n') });
-        scope.assert.equal(result.summary.failed, 2);
+        scope.assert.equal(result.summary.passed, 1, { message: result.errors.join('\n') });
+        scope.assert.equal(result.summary.failed, 1);
         scope.assert.equal(result.logicalCaseCount, 2);
         scope.assert.deepEqual(
             Array.from(new Set(result.compilerVersions)).toSorted(function (left, right) {
                 return left.localeCompare(right);
             }),
-            [ '5.9.3', '6.0.3' ]
+            [ '7.1.0-beta' ]
         );
         scope.assert.equal(result.bodyCalls, 0);
         return scope.assert.collect();
@@ -95,37 +80,10 @@ export const testNode = suite('native type-test adapter', [
         scope.assert.equal(result.bodyCalls, 0);
         return scope.assert.collect();
     }),
-    test('preserves type-only JSX subjects and explicit generic instantiations', async function (scope) {
-        const definitions = `export function Component<T extends string>(props:{value:T}){return null;}
-        import type {Component as TypeOnlyComponent} from './cases.js';
-        function generic<T extends string>(value:T){
-            return test('generic props',scope=>{
-                bodyCalls++;scope.assert(acceptsProps<typeof TypeOnlyComponent<T>>(),{value:value});
-                return scope.assert.collect();
-            });
-        }
-        const nodes=[generic('text'),test('type only',scope=>{
-            bodyCalls++;scope.assert(acceptsProps<typeof TypeOnlyComponent>(),{value:'text'});
-            return scope.assert.collect();
-        }),test('wrong props',scope=>{
-            bodyCalls++;scope.assert(acceptsProps<typeof TypeOnlyComponent<'fixed'>>(),{value:'other'});
-            return scope.assert.collect();
-        })];`;
-        const result = await runCompiledTypeProject(scope, definitions, null);
-        scope.assert.equal(result.summary.passed, 2, {
-            message: [ ...result.errors, ...result.diagnostics ].join('\n')
-        });
-        scope.assert.equal(result.summary.failed, 1);
-        scope.assert.includes(result.diagnostics.join('\n'), 'fixed');
-        scope.assert.equal(result.bodyCalls, 0);
-        return scope.assert.collect();
-    }),
     test('preserves imports used only by translated assertions with unused checks enabled', async function (scope) {
         const referencePath = fileURLToPath(new URL('./type-test.entry-point.ts', import.meta.url));
         const definitions = `import {sameType as onlyInline} from ${JSON.stringify(referencePath)};
-        export type Placeholder = _;
-        void [same,assignableTo,assignableFrom,acceptsProps,applicableTo,callableWith,constructableWith,
-            instantiableWith,hasProperty,raisesTypeError,suite,table,defineMacro,defineParameterizedTestBody,
+        void [same,assignableTo,assignableFrom,suite,table,defineMacro,defineParameterizedTestBody,
             defineResource,withResource,family,prepareCompilerPlan,metadata];
         const nodes=[test('unused imports',scope=>{
             scope.assert(onlyInline<string,string>());return scope.assert.collect();
@@ -261,17 +219,8 @@ export const testNode = suite('native type-test adapter', [
         scope.assert.equal(result.bodyCalls, 0);
         return scope.assert.collect();
     }),
-    test('supports type, expression, negated, and ability references', async function (scope) {
+    test('supports type, expression, and negated relations', async function (scope) {
         const result = await runNativeProject(scope, bindingCases, null);
-        scope.assert.equal(result.status, 'passed', {
-            message: [ ...result.errors, ...result.diagnostics ].join('\n')
-        });
-        scope.assert.equal(result.summary.passed, 1);
-        scope.assert.equal(result.bodyCalls, 0);
-        return scope.assert.collect();
-    }),
-    test('checks JSX and decorator declarations through ordinary precompiled source maps', async function (scope) {
-        const result = await runCompiledTypeProject(scope, declarationCases, null);
         scope.assert.equal(result.status, 'passed', {
             message: [ ...result.errors, ...result.diagnostics ].join('\n')
         });
@@ -388,9 +337,12 @@ const nodes=[test('wrapped',withResource(resource,scope=>{
         const definitions = `const nodes=[test('late',scope=>{
     scope.assert(same<string,string>());return scope.assert.collect();
 })];
-const settings={projectConfigPath:import.meta.dirname+'/tsconfig.json',compiler:{kind:'local'}};
+const settings={projectConfigPath:import.meta.dirname+'/tsconfig.json',
+    compiler:{kind:'package',specifier:'typescript-beta',version:'7.1.0-beta'}};
 const existing=engine.createRoot({title:'existing',annotations:{},controls:{},children:nodes});
-const preparation=await prepareCompilerPlan(engine.createTestPlan(existing),settings);
+const preparation=await prepareCompilerPlan(engine.createTestPlan(existing),settings,import.meta.dirname);
+await using lifetime=new AsyncDisposableStack();
+lifetime.defer(()=>preparation.dispose());
 const collected=await preparation.collect(preparation.testPlan);
 const lowered=await collected.lower();
 const {appendFile}=await import('node:fs/promises');
@@ -399,17 +351,6 @@ await lowered.execute();`;
         await scope.assert.rejects(async function changedAfterLowering() {
             await runNativeProject(scope, definitions, null);
         }, { message: /configuration changed after collection/u });
-        return scope.assert.collect();
-    }),
-    test('rejects decorator aliases instead of omitting their checks', async function (scope) {
-        const definitions = declarationCases.replace(
-            '@apply class Subject { value=1; }',
-            'const box={apply}; @apply class Subject { value=1; } @box.apply class Extra {}'
-        );
-        const result = await runCompiledTypeProject(scope, definitions, null);
-        scope.assert.equal(result.status, 'failed');
-        scope.assert.equal(result.summary.passed, 0);
-        scope.assert.includes(result.errors.join('\n'), 'Decorator parameter forwarding is unsupported');
         return scope.assert.collect();
     }),
     test('rejects mixed runtime assertions', async function (scope) {

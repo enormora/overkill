@@ -1,11 +1,37 @@
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { runIfMain } from '#test-runner';
-import * as compiler from 'typescript';
+import { API, ModuleKind } from 'typescript-beta/async';
 import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { createCompilerLifetime } from './compiler-lifetime.ts';
+import type { GeneratedInputRequest } from './generated-input-types.ts';
+import { loadProject, disposeProject, type FrozenProject } from './frozen-project.ts';
 import { withGeneratedInputs, type TranslatedModule } from './generated-input.entry-point.ts';
 
-async function project(scope: TestScope): Promise<{ readonly directory: string; readonly module: TranslatedModule; }> {
+async function compilerProject(scope: TestScope, directory: string): Promise<FrozenProject> {
+    const frozen = await loadProject(join(directory, 'tsconfig.json'), {
+        kind: 'package',
+        specifier: 'typescript-beta',
+        version: '7.1.0-beta'
+    }, process.cwd());
+    scope.cleanup(async function () {
+        await disposeProject(frozen);
+    });
+    return frozen;
+}
+
+async function compilerInput(
+    scope: TestScope,
+    directory: string
+): Promise<Pick<GeneratedInputRequest, 'compiler' | 'project'>> {
+    const frozen = await compilerProject(scope, directory);
+    return { project: frozen, compiler: frozen.compiler.syntax };
+}
+
+async function project(scope: TestScope): Promise<{
+    readonly directory: string;
+    readonly module: TranslatedModule;
+}> {
     const directory = await mkdtemp(join(process.cwd(), 'target-identity-'));
     scope.cleanup(async function cleanup() {
         await rm(directory, { recursive: true, force: true });
@@ -35,23 +61,31 @@ async function project(scope: TestScope): Promise<{ readonly directory: string; 
         }
     };
 }
-function diagnostics(path: string): readonly number[] {
-    const program = compiler.createProgram([ path ], {
-        module: compiler.ModuleKind.NodeNext,
-        strict: true,
-        noEmit: true,
-        types: []
-    });
-    return compiler.getPreEmitDiagnostics(program).map(function code(diagnostic) {
-        return diagnostic.code;
+
+async function diagnostics(path: string): Promise<readonly number[]> {
+    await using lifetime = createCompilerLifetime();
+    return await lifetime.run(async function execute() {
+        await using api = new API();
+        await using program = await api.createProgram([ path ], {
+            module: ModuleKind.NodeNext,
+            strict: true,
+            noEmit: true,
+            types: []
+        });
+        return [ ...await program.getSyntacticDiagnostics(), ...await program.getSemanticDiagnostics() ].map(
+            function code(diagnostic) {
+                return diagnostic.code;
+            }
+        );
     });
 }
+
 export const testNode = suite('generated identity limits', [
     test('demonstrates the transitive nominal identity limitation', async function (scope: TestScope) {
         const { directory, module } = await project(scope);
-        scope.assert.deepEqual(diagnostics(module.path), []);
+        scope.assert.deepEqual(await diagnostics(module.path), []);
         await withGeneratedInputs({
-            compiler,
+            ...await compilerInput(scope, directory),
             projectConfigPath: join(directory, 'tsconfig.json'),
             modules: [ module ]
         }, async function check(batch) {
@@ -59,7 +93,8 @@ export const testNode = suite('generated identity limits', [
             if (result?.kind !== 'ready') {
                 throw new Error('Missing generated module.');
             }
-            scope.assert.equal(diagnostics(result.path).includes(2322), true);
+            const codes = await diagnostics(result.path);
+            scope.assert.equal(codes.includes(2322), true);
             scope.assert.equal(result.provenance.limitations.length > 0, true);
             scope.assert.deepEqual(result.provenance.repairs, []);
         });
@@ -78,7 +113,7 @@ export const testNode = suite('generated identity limits', [
             ]
         };
         await withGeneratedInputs({
-            compiler,
+            ...await compilerInput(scope, directory),
             projectConfigPath: join(directory, 'tsconfig.json'),
             modules: [ module, dependency ]
         }, async function check(batch) {
@@ -87,7 +122,7 @@ export const testNode = suite('generated identity limits', [
                 if (result.kind !== 'ready') {
                     throw new Error('Missing cycle input.');
                 }
-                scope.assert.deepEqual(diagnostics(result.path), []);
+                scope.assert.deepEqual(await diagnostics(result.path), []);
                 scope.assert.equal(result.provenance.repairs.length, 1);
             }
         });
@@ -95,7 +130,11 @@ export const testNode = suite('generated identity limits', [
     }),
     test('isolates overlapping operations on the same original', async function (scope: TestScope) {
         const { directory, module } = await project(scope);
-        const request = { compiler, projectConfigPath: join(directory, 'tsconfig.json'), modules: [ module ] };
+        const request = {
+            ...await compilerInput(scope, directory),
+            projectConfigPath: join(directory, 'tsconfig.json'),
+            modules: [ module ]
+        };
         await withGeneratedInputs(request, async function outer(first) {
             await withGeneratedInputs(request, async function inner(second) {
                 const names = await readdir(directory);

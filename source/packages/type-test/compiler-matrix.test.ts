@@ -22,11 +22,11 @@ export const testNode = suite('compiler matrix evidence', [
     test('preserves shared table ownership for each compiler', async function (scope) {
         const result = await runMatrixTypeProject(scope, sharedBody);
         scope.assert.equal(result.status, 'passed', { message: result.errors.join('\n') });
-        scope.assert.equal(result.summary.passed, 4);
+        scope.assert.equal(result.summary.passed, 2);
         scope.assert.equal(result.logicalCaseCount, 2);
-        scope.assert.deepEqual(result.compilerVersions.slice(0, 2), result.compilerVersions.slice(2, 4));
+        scope.assert.deepEqual(result.compilerVersions, [ '7.1.0-beta', '7.1.0-beta' ]);
         const compilers = new Set(result.compilerVersions);
-        scope.assert.equal(compilers.size, 2);
+        scope.assert.equal(compilers.size, 1);
         scope.assert.equal(result.bodyCalls, 0);
         return scope.assert.collect();
     }),

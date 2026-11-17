@@ -1,5 +1,5 @@
-import type TypeScript from 'typescript';
-import { sourceSymbol, type SourceAnalysis } from './source-analysis.ts';
+import type * as TypeScript from 'typescript-beta/ast';
+import { sourceSymbol, sourceChildren, type SourceAnalysis } from './source-analysis.ts';
 import { nativeMatcherBinding } from './native-reference.ts';
 import type { SourceBody } from './source-ownership.ts';
 
@@ -15,34 +15,38 @@ function annotatedReceiver(analysis: SourceAnalysis, initial: TypeScript.Express
     return expression;
 }
 
-function isScope(analysis: SourceAnalysis, node: TypeScript.Node, scope: TypeScript.Identifier): boolean {
+async function isScope(
+    analysis: SourceAnalysis,
+    node: TypeScript.Node,
+    scope: TypeScript.Identifier
+): Promise<boolean> {
     return analysis.compiler.isIdentifier(node) && node.text === scope.text &&
-        sourceSymbol(analysis, node) === sourceSymbol(analysis, scope);
+        await sourceSymbol(analysis, node) === await sourceSymbol(analysis, scope);
 }
 
-function scopeTarget(
+async function scopeTarget(
     analysis: SourceAnalysis,
     initial: TypeScript.Expression,
     scope: TypeScript.Identifier
-): string | null {
+): Promise<string | null> {
     let expression = annotatedReceiver(analysis, initial);
     const members: string[] = [];
     while (analysis.compiler.isPropertyAccessExpression(expression)) {
         members.push(expression.name.text);
         expression = annotatedReceiver(analysis, expression.expression);
     }
-    return isScope(analysis, expression, scope) ? members.toReversed().join('.') : null;
+    return await isScope(analysis, expression, scope) ? members.toReversed().join('.') : null;
 }
 
-function assertionCall(
+async function assertionCall(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
     scope: TypeScript.Identifier
-): TypeScript.CallExpression | null {
+): Promise<TypeScript.CallExpression | null> {
     if (!analysis.compiler.isCallExpression(node)) {
         return null;
     }
-    const target = scopeTarget(analysis, node.expression, scope);
+    const target = await scopeTarget(analysis, node.expression, scope);
     if (target === 'assert') {
         return node;
     }
@@ -52,10 +56,10 @@ function assertionCall(
     return null;
 }
 
-function rejectUnownedReference(analysis: SourceAnalysis, node: TypeScript.Node): void {
+async function rejectUnownedReference(analysis: SourceAnalysis, node: TypeScript.Node): Promise<void> {
     if (
         (analysis.compiler.isIdentifier(node) || analysis.compiler.isPropertyAccessExpression(node)) &&
-        nativeMatcherBinding(analysis, node) !== null
+        await nativeMatcherBinding(analysis, node) !== null
     ) {
         throw new Error('Native assertion references require a direct scope.assert boundary.');
     }
@@ -75,11 +79,16 @@ function boundAssertionUse(analysis: SourceAnalysis, node: TypeScript.Node): boo
         parent.expression === node;
 }
 
-function rejectDetachedAssertion(analysis: SourceAnalysis, node: TypeScript.Node, scope: TypeScript.Identifier): void {
+async function rejectDetachedAssertion(
+    analysis: SourceAnalysis,
+    node: TypeScript.Node,
+    scope: TypeScript.Identifier
+): Promise<void> {
     if (!analysis.compiler.isPropertyAccessExpression(node)) {
         return;
     }
-    const target = scopeTarget(analysis, node, scope)?.split('.', 1)[0];
+    const path = await scopeTarget(analysis, node, scope);
+    const target = path?.split('.', 1)[0];
     if (target !== 'assert' && target !== 'require') {
         return;
     }
@@ -88,69 +97,82 @@ function rejectDetachedAssertion(analysis: SourceAnalysis, node: TypeScript.Node
     }
 }
 
-function rejectScopeForwarding(analysis: SourceAnalysis, node: TypeScript.Node, scope: TypeScript.Identifier): void {
-    if (isScope(analysis, node, scope) && !allowedScopeUse(analysis, node, scope)) {
+async function rejectScopeForwarding(
+    analysis: SourceAnalysis,
+    node: TypeScript.Node,
+    scope: TypeScript.Identifier
+): Promise<void> {
+    if (await isScope(analysis, node, scope) && !allowedScopeUse(analysis, node, scope)) {
         throw new Error('Scope forwarding is unsupported in checker-backed bodies.');
     }
-    rejectDetachedAssertion(analysis, node, scope);
+    await rejectDetachedAssertion(analysis, node, scope);
 }
 
-function rejectNestedAssertions(analysis: SourceAnalysis, node: TypeScript.Node, scope: TypeScript.Identifier): void {
-    if (assertionCall(analysis, node, scope) !== null) {
+async function rejectNestedAssertions(
+    analysis: SourceAnalysis,
+    node: TypeScript.Node,
+    scope: TypeScript.Identifier
+): Promise<void> {
+    if (await assertionCall(analysis, node, scope) !== null) {
         throw new Error('Nested native assertion boundaries are unsupported.');
     }
-    rejectScopeForwarding(analysis, node, scope);
-    rejectUnownedReference(analysis, node);
-    analysis.compiler.forEachChild(node, function visit(child) {
-        rejectNestedAssertions(analysis, child, scope);
-    });
+    await rejectScopeForwarding(analysis, node, scope);
+    await rejectUnownedReference(analysis, node);
+    for (const child of sourceChildren(node)) {
+        await rejectNestedAssertions(analysis, child, scope);
+    }
 }
 
-function validateOperands(
+async function validateOperands(
     analysis: SourceAnalysis,
     call: TypeScript.CallExpression,
     scope: TypeScript.Identifier
-): void {
+): Promise<void> {
     for (const operand of call.arguments.slice(1)) {
-        rejectNestedAssertions(analysis, operand, scope);
+        await rejectNestedAssertions(analysis, operand, scope);
     }
 }
 
-function visitScopeInputs(
+async function visitScopeInputs(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
     scope: TypeScript.Identifier,
-    visit: (child: TypeScript.Node) => void
-): void {
-    rejectScopeForwarding(analysis, node, scope);
-    rejectUnownedReference(analysis, node);
-    analysis.compiler.forEachChild(node, visit);
+    visit: (child: TypeScript.Node) => Promise<void>
+): Promise<void> {
+    await rejectScopeForwarding(analysis, node, scope);
+    await rejectUnownedReference(analysis, node);
+    for (const child of sourceChildren(node)) {
+        await visit(child);
+    }
 }
 
-export function scopeAssertions(
+export async function scopeAssertions(
     analysis: SourceAnalysis,
     body: SourceBody,
     scope: TypeScript.Identifier
-): readonly TypeScript.CallExpression[] {
+): Promise<readonly TypeScript.CallExpression[]> {
     const calls: TypeScript.CallExpression[] = [];
-    function visit(node: TypeScript.Node): void {
+    async function visit(node: TypeScript.Node): Promise<void> {
         if (node !== body && analysis.compiler.isFunctionLike(node)) {
-            rejectNestedAssertions(analysis, node, scope);
+            await rejectNestedAssertions(analysis, node, scope);
             return;
         }
-        const call = assertionCall(analysis, node, scope);
+        const call = await assertionCall(analysis, node, scope);
         if (call !== null) {
             calls.push(call);
-            validateOperands(analysis, call, scope);
+            await validateOperands(analysis, call, scope);
             return;
         }
-        visitScopeInputs(analysis, node, scope, visit);
+        await visitScopeInputs(analysis, node, scope, visit);
     }
-    visit(body);
+    await visit(body);
     return calls;
 }
 
-export function assertionAnnotation(analysis: SourceAnalysis, call: TypeScript.CallExpression): string | null {
+export async function assertionAnnotation(
+    analysis: SourceAnalysis,
+    call: TypeScript.CallExpression
+): Promise<string | null> {
     const prefix = call.expression;
     if (!analysis.compiler.isCallExpression(prefix)) {
         return null;
@@ -159,8 +181,8 @@ export function assertionAnnotation(analysis: SourceAnalysis, call: TypeScript.C
     if (annotation === undefined || prefix.arguments.length !== 1) {
         throw new Error('Native assertion annotations require one message.');
     }
-    const message = analysis.checker.getTypeAtLocation(annotation);
-    if (!message.isStringLiteral()) {
+    const message = await analysis.checker.getTypeAtLocation(annotation);
+    if (!message.isStringLiteralType()) {
         throw new Error('Native assertion annotations require a statically known string message.');
     }
     return message.value;

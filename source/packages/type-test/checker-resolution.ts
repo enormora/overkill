@@ -1,61 +1,46 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import type TypeScript from 'typescript';
+import type * as CompilerApi from 'typescript-beta/async';
+import type { CompilerSyntax } from './installed-compiler.ts';
 
-function pathBase(options: TypeScript.CompilerOptions): string {
-    // eslint-disable-next-line sonarjs/deprecation -- Preserve existing project resolution while baseUrl remains supported.
-    const { baseUrl } = options;
-    if (baseUrl !== undefined) {
-        return baseUrl;
+function pathBase(options: CompilerApi.CompilerOptions): string {
+    const base: unknown = Reflect.get(options, 'pathsBasePath');
+    if (typeof base === 'string') {
+        return base;
     }
-    if (typeof options.pathsBasePath === 'string') {
-        return options.pathsBasePath;
-    }
-    if (typeof options.configFilePath === 'string') {
+    if (options.configFilePath !== undefined) {
         return dirname(options.configFilePath);
     }
-    throw new Error('Cannot establish the original project path mapping base.');
-}
-
-function checkerDeclarationPath(compiler: typeof TypeScript): string {
-    const target = compiler
-        .resolveModuleName(
-            'tstyche',
-            fileURLToPath(import.meta.url),
-            { module: compiler.ModuleKind.NodeNext, moduleResolution: compiler.ModuleResolutionKind.NodeNext },
-            compiler.sys,
-            undefined,
-            undefined,
-            compiler.ModuleKind.ESNext
-        )
-        .resolvedModule;
-    if (target?.resolvedFileName.endsWith('.d.ts') !== true) {
-        throw new Error('Cannot resolve installed checker declarations.');
-    }
-    return target.resolvedFileName;
+    throw new Error('Cannot establish original path mapping base.');
 }
 
 export function checkerCompilerOptions(
-    compiler: typeof TypeScript,
-    options: TypeScript.CompilerOptions
-): TypeScript.CompilerOptions {
+    _compiler: CompilerSyntax,
+    options: CompilerApi.CompilerOptions
+): CompilerApi.CompilerOptions {
     const paths = Object.fromEntries(
         Object.entries(options.paths ?? {}).map(function absolutePaths([ name, values ]) {
             return [
                 name,
-                values.map(function absolutePath(value) {
-                    return resolve(pathBase(options), value);
+                values.map(function absolutePath(path) {
+                    return resolve(pathBase(options), path);
                 })
             ];
         })
     );
     return {
         ...options,
-        paths: { ...paths, tstyche: [ checkerDeclarationPath(compiler) ] }
+        paths: {
+            ...paths,
+            tstyche: [ fileURLToPath(new URL('./dist/index.d.ts', import.meta.resolve('tstyche/package.json'))) ]
+        }
     };
 }
 
-export function comparableCompilerOptions(compiler: typeof TypeScript, options: TypeScript.CompilerOptions): unknown {
-    const { configFilePath, pathsBasePath, ...effective } = checkerCompilerOptions(compiler, options);
-    return effective;
+export function comparableCompilerOptions(compiler: CompilerSyntax, options: CompilerApi.CompilerOptions): unknown {
+    return Object.fromEntries(
+        Object.entries(checkerCompilerOptions(compiler, options)).filter(function effective([ name ]) {
+            return name !== 'configFilePath' && name !== 'pathsBasePath';
+        })
+    );
 }

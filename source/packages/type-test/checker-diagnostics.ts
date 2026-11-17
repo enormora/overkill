@@ -1,5 +1,4 @@
 import type { Diagnostic } from 'tstyche/api';
-import type { ReadonlyDeep } from 'type-fest';
 import type { CheckerRun } from './checker.entry-point.ts';
 import type { NativeTranslation } from './native-translation.ts';
 
@@ -20,7 +19,7 @@ type DiagnosticContext = { readonly check: CheckerRun; readonly translation: Nat
 
 function originalPosition(
     context: DiagnosticContext,
-    origin: ReadonlyDeep<NonNullable<Diagnostic['origin']>>,
+    origin: Readonly<NonNullable<Diagnostic['origin']>>,
     file: string,
     start: number
 ): DiagnosticLocation {
@@ -32,7 +31,7 @@ function originalPosition(
         })
         ?.originalText;
     if (text === undefined) {
-        const position = origin.sourceFile.getLineAndCharacterOfPosition(start);
+        const position = origin.file.getLocation(start);
         return { file, start, end: origin.end, line: position.line + 1, column: position.character + 1 };
     }
     const lines = text.slice(0, start).split(/\r\n|\r|\n/u);
@@ -48,9 +47,9 @@ function originalPath(context: DiagnosticContext, generated: string): string {
 
 function originalLocation(
     context: DiagnosticContext,
-    origin: ReadonlyDeep<NonNullable<Diagnostic['origin']>>
+    origin: Readonly<NonNullable<Diagnostic['origin']>>
 ): DiagnosticLocation {
-    const generated = origin.sourceFile.fileName;
+    const generated = origin.file.path;
     const file = originalPath(context, generated);
     const ranges = context.check.inputs.mapRange(generated, { start: origin.start, end: origin.end }, 'generated');
     const start = ranges.length === 0 ? origin.start : Math.min(...ranges.map(function beginning(range) {
@@ -62,7 +61,7 @@ function originalLocation(
     return { ...originalPosition(context, origin, file, start), end };
 }
 
-export function checkerDiagnostic(context: DiagnosticContext, diagnostic: ReadonlyDeep<Diagnostic>): CheckerDiagnostic {
+export function checkerDiagnostic(context: DiagnosticContext, diagnostic: Readonly<Diagnostic>): CheckerDiagnostic {
     return {
         code: diagnostic.code ?? null,
         text: typeof diagnostic.text === 'string' ? diagnostic.text : diagnostic.text.join('\n'),

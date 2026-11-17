@@ -1,4 +1,3 @@
-import { resolve } from 'node:path';
 import type { FamilyPreparationInput } from '../../engine/test-family.ts';
 import {
     createRunResult,
@@ -8,15 +7,11 @@ import {
     type TestPlan,
     type RunResult
 } from '../engine/engine.entry-point.ts';
-import {
-    parseAdapterFacts,
-    packageVersion,
-    type PackageVersion
-} from '../run/run.entry-point.ts';
-import { loadProject, verifyFrozenProject, type FrozenProject } from './frozen-project.ts';
+import { parseAdapterFacts } from '../../config/adapter-facts.ts';
+import { packageVersion, type PackageVersion } from '../../package-version.ts';
+import { loadProject, disposeProject, verifyFrozenProject, type FrozenProject } from './frozen-project.ts';
 import { collectProject } from './native-execution.ts';
-import { typeTestSettingsSchema, type TypeTestOptions } from './profile-settings.ts';
-
+import { typeTestSettingsSchema, type TypeTestSettings, type CompilerSelection } from './profile-settings.ts';
 import type { CheckerPreparation, CollectedCheckerRun, PreparedCheckerRun } from './checker-plan.ts';
 
 const microsecondsPerMillisecond = 1000;
@@ -24,10 +19,12 @@ type CompilerPlan = {
     readonly discoveredCases: TestPlan['discoveredCases'];
     readonly cases: ReadonlyMap<string, TestPlan['cases'][number]>;
     readonly projects: ReadonlyMap<string, FrozenProject>;
-    readonly requestedCompilers: TypeTestOptions['compiler'];
-    readonly versions: { readonly adapter: PackageVersion | null; readonly checker: PackageVersion | null; };
+    readonly requestedCompilers: TypeTestSettings['compiler'];
+    readonly versions: {
+        readonly adapter: PackageVersion | null;
+        readonly checker: PackageVersion | null;
+    };
 };
-
 function frozenRuntimeIdentity(runtime: RuntimeId): RuntimeId {
     return Object.freeze({
         ...runtime,
@@ -213,14 +210,7 @@ async function collectCompilerPlan(input: CompilerPlan, selected: TestPlan): Pro
 }
 
 function compilerFingerprint(project: FrozenProject): string {
-    const compilerPath = resolve(project.compiler.sys.getExecutingFilePath());
-    const compilerInput = project.inputs.files.find(function compilerFile(input) {
-        return input.path === compilerPath;
-    });
-    if (compilerInput?.value === undefined || compilerInput.value === null) {
-        throw new Error('Cannot fingerprint the selected compiler implementation.');
-    }
-    return compilerInput.value;
+    return JSON.stringify({ packageUrl: project.compiler.packageUrl, files: project.compiler.files });
 }
 
 function retainCompilerProject(existing: FrozenProject | undefined, project: FrozenProject): FrozenProject {
@@ -233,20 +223,41 @@ function retainCompilerProject(existing: FrozenProject | undefined, project: Fro
     return existing;
 }
 
-async function resolveCompilerProjects(options: TypeTestOptions): Promise<ReadonlyMap<string, FrozenProject>> {
-    const selections = options.compiler.kind === 'matrix' ? options.compiler.compilers : [ options.compiler ];
-    const unique = new Map(selections.map(function (selection) {
-        return [ JSON.stringify(selection), selection ];
-    }));
-    const projects = new Map<string, FrozenProject>();
-    for (const selection of unique.values()) {
-        const project = await loadProject(options.projectConfigPath, selection);
-        projects.set(project.compiler.version, retainCompilerProject(projects.get(project.compiler.version), project));
+type CompilerProjects = {
+    readonly projects: ReadonlyMap<string, FrozenProject>;
+    readonly ownership: AsyncDisposableStack;
+};
+type CompilerResolution = CompilerProjects & {
+    readonly options: TypeTestSettings;
+    readonly projectRoot: string;
+};
+async function retainSelectedProject(input: CompilerResolution, selection: CompilerSelection): Promise<FrozenProject> {
+    const project = await loadProject(input.options.projectConfigPath, selection, input.projectRoot);
+    input.ownership.use(project.ownership);
+    const retained = retainCompilerProject(input.projects.get(project.compiler.version), project);
+    if (retained !== project) {
+        await disposeProject(project);
     }
-    return projects;
+    return retained;
 }
 
-type FamilyVariantExpander = FamilyPreparationInput<TypeTestOptions>['expandVariants'];
+async function resolveCompilerProjects(options: TypeTestSettings, projectRoot: string): Promise<CompilerProjects> {
+    const selections = options.compiler.kind === 'matrix' ? options.compiler.compilers : [ options.compiler ];
+    const unique = new Map(selections.map(function selectionKey(selection) {
+        return [ JSON.stringify(selection), selection ];
+    }));
+    await using ownership = new AsyncDisposableStack();
+    const projects = new Map<string, FrozenProject>();
+    const input = { options, projectRoot, projects, ownership };
+    for (const selection of unique.values()) {
+        const project = await retainSelectedProject(input, selection);
+        projects.set(project.compiler.version, project);
+    }
+    return { projects, ownership: ownership.move() };
+}
+
+type FamilyVariantExpander = FamilyPreparationInput<TypeTestSettings>['expandVariants'];
+type CompilerVariantExpansion = readonly [] | readonly [FamilyVariantExpander];
 function expandCompilerWork(
     plan: TestPlan,
     projects: CompilerPlan['projects'],
@@ -267,14 +278,17 @@ function expandCompilerWork(
 export async function prepare(
     plan: TestPlan,
     settings: unknown,
-    ...expansions: readonly [] | readonly [FamilyVariantExpander]
+    projectRoot: string,
+    ...expansions: CompilerVariantExpansion
 ): Promise<CheckerPreparation> {
     const options = typeTestSettingsSchema.parse(settings);
     const [ adapter, checker ] = await Promise.all([
         packageVersion(import.meta.url),
         packageVersion(import.meta.resolve('tstyche/api'))
     ]);
-    const projects = await resolveCompilerProjects(options);
+    const group = await resolveCompilerProjects(options, projectRoot);
+    await using ownership = group.ownership;
+    const { projects } = group;
     const testPlan = expandCompilerWork(plan, projects, expansions[0]);
     const input: CompilerPlan = {
         discoveredCases: testPlan.discoveredCases,
@@ -285,8 +299,25 @@ export async function prepare(
         requestedCompilers: options.compiler,
         versions: { adapter, checker }
     };
+    const facts = parseAdapterFacts({
+        requestedCompilers: options.compiler,
+        compilers: Array.from(projects.values(), function compilerFacts(project) {
+            return {
+                version: project.compiler.version,
+                packageUrl: project.compiler.packageUrl,
+                files: project.compiler.files,
+                projectConfigPath: project.projectConfigPath,
+                inputs: project.inputs
+            };
+        })
+    });
+    const retained = ownership.move();
     return {
         testPlan,
+        facts,
+        async dispose() {
+            await retained.disposeAsync();
+        },
         async collect(selected) {
             return await collectCompilerPlan(input, selected);
         }

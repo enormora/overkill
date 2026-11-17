@@ -1,14 +1,12 @@
 import { defineTestFamily } from '../engine/engine.entry-point.ts';
-import type { ProjectProfileFiles, ProjectFamilyProfileConfig } from '../run/config.entry-point.ts';
-import { typeTestSettingsSchema, type TypeTestOptions } from './profile-settings.ts';
+import { typeTestSettingsSchema } from './profile-settings.ts';
 
-export type { CompilerPolicy, TypeTestOptions } from './profile-settings.ts';
-export type TypeTestProfileOptions = TypeTestOptions & { readonly files: ProjectProfileFiles; };
+export type { CompilerPolicy, TypeTestSettings } from './profile-settings.ts';
 export const family = defineTestFamily({
     id: '@overkill-dev/type-test',
     version: '1',
     module: { moduleUrl: import.meta.url, exportName: 'family' },
-    features: { execution: 'analysis', processModels: [ 'in-process' ], profileOptions: [] },
+    features: { execution: 'analysis', processModels: [ 'in-process', 'supervised-process' ], profileOptions: [] },
     parseSettings(input) {
         return typeTestSettingsSchema.parse(input);
     },
@@ -16,7 +14,3 @@ export const family = defineTestFamily({
         return await import('./family-backend.entry-point.ts');
     }
 });
-export function typeTestProfile(options: TypeTestProfileOptions): ProjectFamilyProfileConfig<typeof family> {
-    const { files, ...settings } = options;
-    return { testFamily: family, files, settings: typeTestSettingsSchema.parse(settings) };
-}

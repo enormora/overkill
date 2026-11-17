@@ -1,5 +1,6 @@
 import { createSuite } from '../engine/engine.entry-point.ts';
 import { testNode as orchestration } from '../../run/adapter-execution.test.ts';
+import { testNode as selection } from './compiler-selection.test.ts';
 import { testNode as matrix } from './compiler-matrix.test.ts';
 import { testNode as planning } from './compiler-plan.test.ts';
 import { testNode as frozen } from './frozen-inputs.test.ts';
@@ -13,5 +14,15 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     definitionLocations: [ { kind: 'unknown' } ],
-    children: [ matrix, planning, frozen, generated, adapter, origins, assertions, orchestration ]
+    children: [
+        selection,
+        matrix,
+        planning,
+        frozen,
+        generated,
+        adapter,
+        origins,
+        assertions,
+        orchestration
+    ]
 });
