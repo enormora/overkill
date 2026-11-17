@@ -3,9 +3,8 @@ import { join } from 'node:path';
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../test/test.entry-point.ts';
 import { frozenTypeProject } from '../../test-support/frozen-type-project.ts';
-import { projectSourceAnalysis } from './native-execution.ts';
 import { verifyProjectInputs } from './frozen-inputs.ts';
-import { loadProject, disposeProject, type FrozenProject } from './frozen-project.ts';
+import { loadProject, disposeProject, sourceAnalysis, type FrozenProject } from './frozen-project.ts';
 import { originalSourceFile } from './source-analysis.ts';
 
 const projectFiles = {
@@ -42,7 +41,7 @@ export const testNode = suite('frozen compiler inputs', [
     test('matches canonical callback paths and detects changed project links', async function (scope) {
         const { directory, alias, frozen } = await linkedProject(scope);
         const file = await originalSourceFile(
-            projectSourceAnalysis(frozen),
+            sourceAnalysis(frozen),
             await realpath(join(directory, 'original/case.ts'))
         );
         scope.assert.equal(file?.fileName, join(alias, 'case.ts'));

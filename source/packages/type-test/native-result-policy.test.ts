@@ -40,7 +40,7 @@ export const testNode = suite('native checker completion policy', [
     test('rejects executable cases without native assertions', function (scope: TestScope) {
         const result = nativeCheckResult(evidence());
         scope.assert.equal(result.status, 'failed');
-        scope.assert.partialDeepEqual<unknown, unknown>(result.perTest[0].outcome, {
+        scope.assert.partialDeepEqual<unknown, unknown>(result.perTest[0]?.outcome, {
             kind: 'fail',
             failures: [ { kind: 'test-contract', code: 'no-assertions', actual: 0 } ]
         });
@@ -50,7 +50,7 @@ export const testNode = suite('native checker completion policy', [
         const input = evidence();
         const selected = { ...input.plan.cases[0], execution: { kind: 'skip' as const, reason: 'deliberate' } };
         const result = nativeCheckResult({ ...input, plan: { ...input.plan, cases: [ selected ] } });
-        scope.assert.deepEqual(result.perTest[0].outcome, { kind: 'skip', reason: 'deliberate' });
+        scope.assert.deepEqual<unknown, unknown>(result.perTest[0]?.outcome, { kind: 'skip', reason: 'deliberate' });
         return scope.assert.collect();
     }),
     test('passes established compiler evidence owned by the selected case', function (scope: TestScope) {
@@ -60,7 +60,7 @@ export const testNode = suite('native checker completion policy', [
             checked: [ checkedSite(input.site, { kind: 'established', holds: true }) ]
         });
         scope.assert.equal(result.status, 'passed');
-        scope.assert.deepEqual(result.perTest[0].outcome, { kind: 'pass' });
+        scope.assert.deepEqual<unknown, unknown>(result.perTest[0]?.outcome, { kind: 'pass' });
         return scope.assert.collect();
     }),
     ...[ null, 'Expected matching types' ].map(function (message) {
@@ -71,7 +71,7 @@ export const testNode = suite('native checker completion policy', [
                 checked: [ checkedSite(input.site, { kind: 'established', holds: false }) ]
             });
             scope.assert.equal(result.status, 'failed');
-            scope.assert.partialDeepEqual<unknown, unknown>(result.perTest[0].outcome, {
+            scope.assert.partialDeepEqual<unknown, unknown>(result.perTest[0]?.outcome, {
                 kind: 'fail',
                 failures: [ {
                     kind: 'assertion',
@@ -93,7 +93,7 @@ export const testNode = suite('native checker completion policy', [
             ...input,
             checked: [ checkedSite({ ...input.site }, { kind: 'established', holds: true }) ]
         });
-        scope.assert.deepEqual(result.perTest[0].outcome, {
+        scope.assert.deepEqual<unknown, unknown>(result.perTest[0]?.outcome, {
             kind: 'inconclusive',
             reason: 'Missing compiler assertion evidence.'
         });
@@ -116,7 +116,10 @@ export const testNode = suite('native checker completion policy', [
                 } ]
             }
         });
-        scope.assert.deepEqual(result.perTest[0].outcome, { kind: 'inconclusive', reason: 'Unsupported callback' });
+        scope.assert.deepEqual<unknown, unknown>(result.perTest[0]?.outcome, {
+            kind: 'inconclusive',
+            reason: 'Unsupported callback'
+        });
         return scope.assert.collect();
     }),
     test('retains source issues even when all known assertions pass', function (scope: TestScope) {
@@ -136,7 +139,10 @@ export const testNode = suite('native checker completion policy', [
             },
             checked: [ checkedSite(input.site, { kind: 'established', holds: true }) ]
         });
-        scope.assert.deepEqual(result.perTest[0].outcome, { kind: 'inconclusive', reason: 'Unsupported expression' });
+        scope.assert.deepEqual<unknown, unknown>(result.perTest[0]?.outcome, {
+            kind: 'inconclusive',
+            reason: 'Unsupported expression'
+        });
         return scope.assert.collect();
     }),
     test('retains inconclusive type relations after complete source ownership', function (scope: TestScope) {
@@ -145,7 +151,10 @@ export const testNode = suite('native checker completion policy', [
             ...input,
             checked: [ checkedSite(input.site, { kind: 'inconclusive', reason: 'Unknown relation' }) ]
         });
-        scope.assert.deepEqual(result.perTest[0].outcome, { kind: 'inconclusive', reason: 'Unknown relation' });
+        scope.assert.deepEqual<unknown, unknown>(result.perTest[0]?.outcome, {
+            kind: 'inconclusive',
+            reason: 'Unknown relation'
+        });
         return scope.assert.collect();
     }),
     test('retains assertion failures ahead of missing or unsupported evidence', function (scope: TestScope) {
@@ -159,7 +168,7 @@ export const testNode = suite('native checker completion policy', [
             },
             checked: [ checkedSite(input.site, { kind: 'established', holds: false }) ]
         });
-        scope.assert.equal(result.perTest[0].verdict, 'fail');
+        scope.assert.equal(result.perTest[0]?.verdict, 'fail');
         scope.assert.deepEqual(result.runnerErrors, []);
         return scope.assert.collect();
     }),
