@@ -17,7 +17,7 @@ export const config = defineConfig({
     profiles: {
         types: {
             testFamily: family,
-            files: { include: ['source/**/*.types.ts'] },
+            files: { include: [ 'source/**/*.types.ts' ] },
             settings: {
                 projectConfigPath: './tsconfig.json',
                 compiler: {
@@ -90,7 +90,7 @@ await using prepared = await engine.prepareFamily({
     signal
 });
 const collected = await prepared.collect({
-    workIds: prepared.testPlan.cases.map(testCase => testCase.workId),
+    workIds: prepared.testPlan.cases.map((testCase) => testCase.workId),
     signal
 });
 const result = await engine.execute(collected, { ...executionOptions, signal });
