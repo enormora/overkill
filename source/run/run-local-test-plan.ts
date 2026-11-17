@@ -3,6 +3,8 @@ import {
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
 import { RunCollectionError } from './run-errors.ts';
+import { preparedFamilyMetadata } from './prepared-family-plan.ts';
+import { setFamilyCatalog } from './family-catalog.ts';
 import {
     createProfileTestPlan,
     type LocalTestPlanInput as ProfilePlanInput,
@@ -72,5 +74,9 @@ export async function createLocalTestPlan(input: LocalTestPlanInput): Promise<Lo
 export async function inspectLocalTestPlan(input: LocalTestPlanInput): Promise<LocalTestPlan['testPlan']> {
     const plan = await createLocalTestPlan(input);
     await using prepared = plan.preparation.prepared;
+    const metadata = preparedFamilyMetadata(plan.preparation, { ...prepared.facts, collection: null });
+    if (metadata !== null) {
+        setFamilyCatalog(prepared.testPlan, metadata);
+    }
     return prepared.testPlan;
 }
