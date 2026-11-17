@@ -58,13 +58,13 @@ export type StoredPerformanceBaseline = PerformanceBaselineFormats[keyof Perform
 export function currentPerformanceNormalization(
     baseline: StoredPerformanceBaseline
 ): BenchmarkNormalizationEvidence | null {
-    switch (baseline.version) {
-        case normalizedPerformanceBaselineVersion:
-        case measuredPerformanceBaselineVersion:
-            return baseline.normalization;
-        default:
-            return null;
+    if (baseline.version === normalizedPerformanceBaselineVersion) {
+        return baseline.normalization;
     }
+    if (baseline.version === measuredPerformanceBaselineVersion) {
+        return baseline.normalization;
+    }
+    return null;
 }
 export type BaselineEntry<TBaseline = StoredPerformanceBaseline> = SharedBaselineEntry<TBaseline>;
 export type BaselineChange<TBaseline = StoredPerformanceBaseline> = SharedBaselineChange<TBaseline>;
