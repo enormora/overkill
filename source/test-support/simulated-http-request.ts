@@ -22,6 +22,7 @@ type SimulatedHttpFixture = {
     readonly errors: readonly unknown[];
     readonly transcript: HttpTranscript<{ readonly scenario: string; }>;
     readonly serve: () => Promise<void>;
+    readonly failResponse: (failure: Error) => void;
 };
 export function simulatedHttpRequest<Scenarios extends SimulationScenarioCatalog>(
     scope: TestScope,
@@ -33,6 +34,7 @@ export function simulatedHttpRequest<Scenarios extends SimulationScenarioCatalog
     request.url = '/resource';
     const response = createStoredValue<ResponseState>({ status: null, statusText: null, headers: {}, body: null });
     const errors: unknown[] = [];
+    let responseFailure: Error | null = null;
     const transcript = createHttpTranscriptRecorder<{ readonly scenario: string; }>();
     scope.cleanup(function () {
         request.destroy();
@@ -44,6 +46,9 @@ export function simulatedHttpRequest<Scenarios extends SimulationScenarioCatalog
             return response.read();
         },
         errors,
+        failResponse(failure) {
+            responseFailure = failure;
+        },
         transcript: transcript.transcript,
         async serve() {
             await serveSimulatedHttpRequest({
@@ -62,6 +67,9 @@ export function simulatedHttpRequest<Scenarios extends SimulationScenarioCatalog
                 },
                 response: {
                     writeHead(...args: ResponseHeadArguments) {
+                        if (responseFailure !== null) {
+                            throw responseFailure;
+                        }
                         const [ status, statusText = null, headers = {} ] = args;
                         response.write({ ...response.read(), status, statusText, headers });
                     },

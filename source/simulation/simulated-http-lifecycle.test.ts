@@ -11,6 +11,18 @@ const simulation = defineSimulatedHttpServer({
     }
 });
 export const testNode = suite('simulated HTTP listener ownership', [
+    test('rejects unbranded definitions before creating a listener', async function (scope: TestScope) {
+        const fixture = simulatedHttpListener(simulatedListenerScenario);
+        await scope.assert.rejects(async function () {
+            await Reflect.apply(listenToSimulatedHttpServer, undefined, [ {
+                simulation: { name: simulation.name, scenarios: simulation.scenarios, handle: simulation.handle }
+            }, function () {
+                return fixture.listening;
+            } ]);
+        }, { message: 'startSimulatedHttpServer() requires a simulated HTTP server definition.' });
+        scope.assert.deepEqual(fixture.calls, []);
+        return scope.assert.collect();
+    }),
     test('exposes routed URLs and closes once across repeated disposal', async function (scope: TestScope) {
         const fixture = simulatedHttpListener(simulatedListenerScenario);
         await using server = await listenToSimulatedHttpServer({ simulation }, function () {

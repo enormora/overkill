@@ -127,7 +127,8 @@ function asyncDisposeSymbol(): symbol {
 }
 
 async function collectRequestBody(request: SimulationRequest): Promise<Uint8Array | null> {
-    if (request.method === 'GET' || request.method === 'HEAD') {
+    const method = request.method ?? 'GET';
+    if (method === 'GET' || method === 'HEAD') {
         return null;
     }
 

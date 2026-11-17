@@ -22,6 +22,43 @@ function responseText(body: Uint8Array | string | null): string {
     return typeof body === 'string' ? body : decoder.decode(body ?? new Uint8Array());
 }
 export const testNode = suite('simulated HTTP request routing', [
+    test('retains both handler failures and failures writing the error response', async function (scope: TestScope) {
+        const failure = new Error('Handler failed.');
+        const responseFailure = new Error('Response closed.');
+        const fixture = simulatedHttpRequest(
+            scope,
+            defineSimulatedHttpServer({
+                name: 'failure',
+                scenarios: { default: { title: 'failure' } },
+                handle() {
+                    throw failure;
+                }
+            })
+        );
+        fixture.failResponse(responseFailure);
+        await fixture.serve();
+        scope.assert.deepEqual(fixture.errors, [ failure, responseFailure ]);
+        scope.assert.equal(fixture.response.status, null);
+        return scope.assert.collect();
+    }),
+    test('uses the root path when an incoming request has no URL', async function (scope: TestScope) {
+        const fixture = simulatedHttpRequest(scope, simulation);
+        Reflect.deleteProperty(fixture.request, 'url');
+        await fixture.serve();
+        scope.assert.includes(responseText(fixture.response.body), '"url":"https://service.test:42/"');
+        scope.assert.deepEqual(fixture.errors, []);
+        return scope.assert.collect();
+    }),
+    test('uses GET without consuming a body when an incoming method is absent', async function (scope: TestScope) {
+        const fixture = simulatedHttpRequest(scope, simulation);
+        Reflect.deleteProperty(fixture.request, 'method');
+        const pending = fixture.serve();
+        fixture.request.emit('end');
+        await pending;
+        scope.assert.includes(responseText(fixture.response.body), '"method":"GET"');
+        scope.assert.deepEqual(fixture.errors, []);
+        return scope.assert.collect();
+    }),
     test('accepts portable request bytes and scalar or repeated headers', async function (scope: TestScope) {
         const fixture = simulatedHttpRequest(scope, simulation);
         fixture.request.method = 'POST';
