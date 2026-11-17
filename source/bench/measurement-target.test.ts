@@ -1,3 +1,4 @@
+import { canonicalJson } from '../canonical-identity.ts';
 import type { MeasurementEvidence } from '../engine/measurement-evidence.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createRoot, createTestPlan, execute, type TestCase } from '../packages/engine/engine.entry-point.ts';
@@ -263,7 +264,7 @@ export const testNode = suite('measurement targets and attribution', [
             scope.assert.throws(function historicalLifecycle() {
                 benchmarkResultSchema.parse({ ...measured, lifecycle: { ...lifecycle, version: 2 } });
             }, { name: 'ZodError' });
-            scope.assert.deepEqual(benchmarkResultSchema.parse(measured), measured);
+            scope.assert.equal(canonicalJson(benchmarkResultSchema.parse(measured)), canonicalJson(measured));
             return scope.assert.collect();
         }
     )
