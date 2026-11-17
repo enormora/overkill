@@ -13,7 +13,6 @@
         "source/test-support/body-plan-implementation.ts",
         "source/reporters/null-reporter.ts",
         "build-benchmark-html.js",
-        "lint-eslint-shard.js",
         "source/reporters/benchmark-html-browser.entry-point.ts",
         "dependency-cruiser.config.js",
         "packtory.config.js",

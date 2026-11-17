@@ -18,9 +18,6 @@ benchmark-html-browser:
 eslint *OPTIONS:
     NODE_OPTIONS="${NODE_OPTIONS:-} {{eslint-node-options}}" eslint . --cache --cache-location './target/.eslintcache' --cache-strategy content --max-warnings 0 {{OPTIONS}}
 
-eslint-shard shard='1/1':
-    NODE_OPTIONS="${NODE_OPTIONS:-} {{eslint-node-options}}" node lint-eslint-shard.js '{{shard}}'
-
 eslint-fix: (eslint '--fix')
 
 lint-filename:
@@ -42,10 +39,10 @@ lint-fix: eslint-fix
 test-unit: benchmark-html-browser
     node source/overkill.test.ts
 
-test-integration shard='1/1': benchmark-html-browser
-    node source/test-support/run-integration.ts '{{shard}}'
+test-integration: benchmark-html-browser
+    node source/test-support/run-integration.ts
 
-test-runner-integration shard='1/1': (test-integration shard)
+test-runner-integration: test-integration
 
 test-process-integration: benchmark-html-browser
     node source/integration-tests/process.test.ts

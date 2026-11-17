@@ -30,8 +30,7 @@ CI runs four categories of tests:
 - Integration tests: `npx just test-integration`. The suite in
   `source/integration-tests/repository.test.ts` owns tests that use real files,
   processes, compiler projects, or external execution boundaries. These tests
-  do not contribute to unit coverage. CI divides this suite into eight shards;
-  use `npx just test-integration 1/8` to reproduce one shard locally.
+  do not contribute to unit coverage.
   `npx just test-process-integration` runs
   the process suite on Linux and macOS.
 - Type tests: `npx just test-types`, for compile-time public API assertions.
@@ -49,9 +48,8 @@ performance-regression gate for the repository.
 
 Compilation and static analysis are separate checks. Unit and integration tests
 share one TypeScript compilation project. CI deliberately starts ESLint without
-a restored cache and reports its most expensive rules. ESLint runs in eight
-shards; use `npx just eslint-shard 1/8` to reproduce one shard locally. Every
-configured, tracked file belongs to exactly one shard.
+a restored cache and reports its most expensive rules. Use `npx just eslint`
+to run the same checks locally.
 
 ## ESLint testing
 

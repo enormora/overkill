@@ -36,12 +36,8 @@ jobs:
               run: npx just test-types
 
     eslint:
-        strategy:
-            fail-fast: false
-            matrix:
-                shard: [1, 2, 3, 4, 5, 6, 7, 8]
         runs-on: ubuntu-latest
-        name: ESLint (${{ matrix.shard }}/8)
+        name: ESLint
         permissions:
             contents: read
         steps:
@@ -57,8 +53,7 @@ jobs:
             - name: Run ESLint
               env:
                   TIMING: "25"
-                  ESLINT_SHARD: ${{ matrix.shard }}/8
-              run: npx just eslint-shard "$ESLINT_SHARD"
+              run: npx just eslint
 
     compile:
         runs-on: ubuntu-latest
@@ -104,11 +99,8 @@ jobs:
                   retention-days: 7
 
     runner-integration-tests:
-        strategy:
-            matrix:
-                shard: [1, 2, 3, 4, 5, 6, 7, 8]
         runs-on: ubuntu-latest
-        name: Integration tests (${{ matrix.shard }}/8)
+        name: Integration tests
         permissions:
             contents: read
         steps:
@@ -122,12 +114,9 @@ jobs:
             - name: Install dependencies
               run: npm ci
             - name: Assess TypeScript beta public API
-              if: matrix.shard == 1
               run: npx just test-type-test-api
             - name: Run integration tests
-              env:
-                  INTEGRATION_SHARD: ${{ matrix.shard }}/8
-              run: npx just test-integration "$INTEGRATION_SHARD"
+              run: npx just test-integration
 
     package-smoke-tests:
         runs-on: ubuntu-latest
