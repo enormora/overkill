@@ -178,12 +178,9 @@ export async function assertionAnnotation(
     if (annotation === undefined || prefix.arguments.length !== 1) {
         throw new UnsupportedEvidenceError('Native assertion annotations require one message.', undefined);
     }
-    const message = await analysis.checker.getTypeAtLocation(annotation);
-    if (!message.isStringLiteralType()) {
-        throw new UnsupportedEvidenceError(
-            'Native assertion annotations require a statically known string message.',
-            undefined
-        );
+    const message = await analysis.checker.staticString(annotation);
+    if (message === null) {
+        throw new UnsupportedEvidenceError('Native assertion annotations require a statically known string message.', undefined);
     }
-    return message.value;
+    return message;
 }

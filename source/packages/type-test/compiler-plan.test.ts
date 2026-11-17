@@ -1,11 +1,10 @@
-import { testNode as nativeMapping } from './generated-reference-mapping.test.ts';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { runIfMain } from '#test-runner';
 import { suite, test } from '../test/test.entry-point.ts';
 import { createEngine, type TestPlan, type TestScope } from '../engine/engine.entry-point.ts';
 import { frozenTypeProject } from '../../test-support/frozen-type-project.ts';
-import { testNode as lifetime } from './compiler-lifetime.test.ts';
+import { testNode as nativeMapping } from './generated-reference-mapping.test.ts';
 import type { CheckerPreparation } from './checker-plan.ts';
 import { prepare } from './compiler-plan.ts';
 import { typeTestSettingsSchema, type TypeTestSettings } from './profile-settings.ts';
@@ -58,7 +57,6 @@ async function preparedProject(scope: TestScope): Promise<PreparedProject> {
 
 export const testNode = suite('compiler planning', [
     nativeMapping,
-    lifetime,
     test('rejects empty matrices and non-exact versions', function (scope) {
         scope.assert.false(
             typeTestSettingsSchema

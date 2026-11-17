@@ -2,12 +2,11 @@ import { runIfMain } from '#test-runner';
 import { Diagnostic } from 'tstyche/api';
 import { suite, test, type TestScope } from '../test/test.entry-point.ts';
 import { observationPlan } from '../../test-support/observation-lifetime.ts';
-import { nativeCheckResult } from './native-results.ts';
+import { nativeCheckResult, type NativeCheckEvidence } from './native-results.ts';
 import { caseKey } from './native-translation.ts';
 import type { CheckerRun } from './checker.entry-point.ts';
 
-type NativeEvidence = Parameters<typeof nativeCheckResult>[0];
-function evidence(): NativeEvidence {
+function evidence(): NativeCheckEvidence {
     return {
         plan: observationPlan(),
         translation: { modules: [], sites: [] },
@@ -68,7 +67,8 @@ export const testNode = suite('native checker completion policy', [
         });
     }),
     test('preserves skipped cases without requiring checker evidence', function (scope: TestScope) {
-        const input = evidence(), original = input.plan.cases[0];
+        const input = evidence();
+        const original = input.plan.cases[0];
         const testCase = {
             ...original,
             skipReason: 'unsupported',
