@@ -507,3 +507,6 @@ export type { TestRoot } from '../../engine/test-node.ts';
 export type { PortableValue } from '../../portable-value.ts';
 
 export type { ImplementationCatalog, ImplementationDeclaration } from '../../implementation-catalog.ts';
+
+export type { ResourceCheckFailure } from '../../resource-check-protocol.ts';
+export type { ResourceCheckOwner, ResourceCheckSnapshot } from '../../resource-check-protocol.ts';

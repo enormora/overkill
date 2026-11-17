@@ -1,4 +1,8 @@
+import { randomUUID } from 'node:crypto';
+import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
+import { resourceCheckSnapshotKey } from '../resource-check-snapshot.ts';
 import { workIdentityKey, type AttemptId, type WorkId } from '../engine/identity.ts';
+import { resourceCheckClient, finalizeRemoteResourceChecks } from './resource-check-client.ts';
 import {
     workerImplementationPlan,
     withWorkerImplementations,
@@ -32,6 +36,7 @@ import type {
 import {
     selectedAssignedWork,
     type CollectedWorkerPoolTestPlan
+    // eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
 } from './worker-pool-worker-plan.ts';
 
 type ResourceWrapperAction = ResourceWrapperStep | {
@@ -290,10 +295,81 @@ async function ownerPreparationErrors(
         return failure === null ? [] : [ failure ];
     }
 }
+async function admitResourceChecks(task: WorkerPoolRunTask, testCase: TestPlanCase, attempt: AttemptId): Promise<void> {
+    if (task.lifecycle.endpoint === null) {
+        return;
+    }
+    const admission = await resourceCheckClient(task.lifecycle.endpoint).exchange({
+        kind: 'admit',
+        request: randomUUID(),
+        interval: { kind: 'attempt', work: testCase.workId, attempt }
+    });
+    if (admission.errors.length > 0) {
+        throw new AggregateError(admission.errors, 'Resource admission failed.');
+    }
+}
+type ProjectedCheckEvidence = {
+    readonly failures: PreparationFailures;
+    readonly snapshots: Checkpoints;
+};
+async function collectResourceChecks(
+    task: WorkerPoolRunTask,
+    testCase: TestPlanCase,
+    attempt: AttemptId,
+    evidence: ProjectedCheckEvidence
+): Promise<void> {
+    if (task.lifecycle.endpoint === null) {
+        return;
+    }
+    const result = await finalizeRemoteResourceChecks(task.lifecycle.endpoint, {
+        kind: 'attempt',
+        work: testCase.workId,
+        attempt
+    });
+    for (const snapshot of result.snapshots) {
+        evidence.snapshots.set(resourceCheckSnapshotKey(snapshot), snapshot);
+    }
+    if (result.errors.length > 0) {
+        throw new AggregateError(result.errors, 'Resource observation is incomplete.');
+    }
+}
+async function finishResourceChecks(
+    task: WorkerPoolRunTask,
+    testCase: TestPlanCase,
+    attempt: AttemptId,
+    evidence: ProjectedCheckEvidence
+): Promise<void> {
+    try {
+        await collectResourceChecks(task, testCase, attempt, evidence);
+    } catch (error: unknown) {
+        const key = `${workIdentityKey(testCase.workId)}:${attempt.index}`;
+        evidence.failures.set(key, [ ...evidence.failures.get(key) ?? [], {
+            attributedTo: testCase.id,
+            attributedToWork: testCase.workId,
+            attributedToAttempt: attempt,
+            cause: error,
+            diagnostics: [],
+            message: 'Resource observation finalization failed.',
+            subtype: 'fixture'
+        } ]);
+    }
+}
 export function withProjectedFailurePreparation(policy: TestRuntimePolicy, task: WorkerPoolRunTask): TestRuntimePolicy {
     const failures = new Map<string, readonly RunnerError[]>();
+    const snapshots = new Map<string, ResourceCheckSnapshot>();
     return {
         ...policy,
+        resourceChecks() {
+            return [ ...policy.resourceChecks(), ...snapshots.values() ];
+        },
+        async runAttempt(testCase, attempt, run) {
+            await admitResourceChecks(task, testCase, attempt);
+            try {
+                return await policy.runAttempt(testCase, attempt, run);
+            } finally {
+                await finishResourceChecks(task, testCase, attempt, { failures, snapshots });
+            }
+        },
         async prepareAttempt(testCase, attempt) {
             await policy.prepareAttempt(testCase, attempt);
             if (task.projectedResources.resources.length > 0) {
@@ -309,3 +385,7 @@ export function withProjectedFailurePreparation(policy: TestRuntimePolicy, task:
         }
     };
 }
+
+type PreparationFailures = Map<string, readonly RunnerError[]>;
+
+type Checkpoints = Map<string, ResourceCheckSnapshot>;

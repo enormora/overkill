@@ -431,6 +431,7 @@ function buildRunResult(overrides: RunResultOverrides = {}): RunResult {
     };
 
     return {
+        resourceChecks: [],
         artifacts: values.artifacts,
         bySuite: values.bySuite,
         orphans: buildOrphanedNodes(overrides.orphans),

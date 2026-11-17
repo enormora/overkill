@@ -1,0 +1,243 @@
+import { createConnection, type Socket } from 'node:net';
+import { randomUUID } from 'node:crypto';
+import { setTimeout as scheduleDeadline, clearTimeout as cancelDeadline } from 'node:timers';
+import { match } from 'ts-pattern';
+import { workIdentityKey } from '../engine/identity.ts';
+import { withResourceCheckDelivery, type ResourceCheckDelivery } from '../resource-check-delivery.ts';
+import { createStoredValue, type StoredValue } from '../stored-value.ts';
+import type { ResourceCheckInterval, ResourceCheckSnapshot } from '../resource-check-protocol.ts';
+import { serializeValue } from '../compare/serialized-value.ts';
+import { resourceCheckChannel, type ResourceCheckEndpoint, type ResourceCheckFrame } from './resource-check-channel.ts';
+// eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
+import { serializeRunDiagnostics } from './run-record-result.ts';
+
+type Result = Extract<ResourceCheckFrame, { readonly kind: 'result'; }>;
+type Request = Extract<ResourceCheckFrame, { readonly kind: 'admit' | 'finalize' | 'flush'; }>;
+type Consumer = {
+    readonly interval: Extract<ResourceCheckInterval, { readonly kind: 'attempt'; }>;
+    readonly cancel: (cause: unknown) => void;
+};
+type Finalize = (interval: ResourceCheckInterval) => Promise<void>;
+type Send = (frame: ResourceCheckFrame) => void;
+type Pending = { readonly resolve: (result: Result) => void; readonly reject: (error: Error) => void; };
+type ClientState = {
+    readonly socket: Socket;
+    readonly finalizers: OwnerFinalizers;
+    readonly active: ActiveConsumers;
+    readonly pending: PendingRequests;
+    readonly send: StoredValue<Send>;
+};
+type Client = {
+    readonly delivery: ResourceCheckDelivery;
+    readonly exchange: (frame: Request) => Promise<Result>;
+    readonly socket: Socket;
+};
+const clients = new Map<string, Client>();
+const acknowledgementMilliseconds = 2500;
+function failPending(state: ClientState, token: string): void {
+    for (const request of state.pending.values()) {
+        request.reject(new Error('Resource observation channel closed.'));
+    }
+    state.pending.clear();
+    clients.delete(token);
+    for (const consumer of state.active.values()) {
+        consumer.cancel(new Error('Required resource observation was lost.'));
+    }
+}
+async function finalize(
+    state: ClientState,
+    frame: Extract<ResourceCheckFrame, { readonly kind: 'finalize-owner'; }>
+): Promise<void> {
+    const operation = state.finalizers.get(frame.owner.id);
+    if (operation === undefined) {
+        throw new Error('Resource owner is unavailable.');
+    }
+    await operation(frame.interval);
+}
+async function acknowledgeOwner(
+    state: ClientState,
+    frame: Extract<ResourceCheckFrame, { readonly kind: 'finalize-owner'; }>
+): Promise<void> {
+    const results = await Promise.allSettled([ finalize(state, frame) ]);
+    const errors = results.flatMap(function error(result) {
+        return result.status === 'rejected'
+            ? [ result.reason instanceof Error ? result.reason.message : String(result.reason) ]
+            : [];
+    });
+    state.send.read()({ kind: 'finalized', request: frame.request, errors });
+}
+function matchesConsumer(
+    consumer: Consumer,
+    frame: Extract<ResourceCheckFrame, { readonly kind: 'cancel'; }>
+): boolean {
+    if (workIdentityKey(consumer.interval.work) !== workIdentityKey(frame.work)) {
+        return false;
+    }
+    return frame.interval.kind === 'lifetime' || consumer.interval.attempt.index === frame.interval.attempt.index;
+}
+function cancel(state: ClientState, frame: Extract<ResourceCheckFrame, { readonly kind: 'cancel'; }>): void {
+    for (const consumer of state.active.values()) {
+        if (matchesConsumer(consumer, frame)) {
+            consumer.cancel(frame.cause);
+        }
+    }
+}
+async function receiveOwnerFinalization(
+    state: ClientState,
+    frame: Extract<ResourceCheckFrame, { readonly kind: 'finalize-owner'; }>
+): Promise<void> {
+    try {
+        await acknowledgeOwner(state, frame);
+    } catch {
+        state.socket.destroy();
+    }
+}
+async function receive(state: ClientState, frame: ResourceCheckFrame): Promise<void> {
+    await match(frame)
+        .with({ kind: 'result' }, function resolve(value) {
+            state.pending.get(value.request)?.resolve(value);
+        })
+        .with({ kind: 'finalize-owner' }, async function finish(value) {
+            return receiveOwnerFinalization(state, value);
+        })
+        .with({ kind: 'cancel' }, function stop(value) {
+            cancel(state, value);
+        })
+        .otherwise(function ignoreClientFrames() {
+            return undefined;
+        });
+}
+function portableSnapshot(snapshot: ResourceCheckSnapshot): ResourceCheckSnapshot {
+    const [ serialized ] =
+        serializeRunDiagnostics({ resourceChecks: [ snapshot ], artifacts: [], perTest: [], runnerErrors: [] })
+            .resourceChecks;
+    if (serialized === undefined) {
+        throw new Error('Resource checkpoint serialization produced no snapshot.');
+    }
+    return serialized;
+}
+function checkpoint(state: ClientState, snapshot: ResourceCheckSnapshot): void {
+    try {
+        state.send.read()({ kind: 'checkpoint', snapshot: portableSnapshot(snapshot) });
+    } catch {
+        state.socket.destroy();
+    }
+}
+type TrackedRequest = { readonly result: Promise<Result>; readonly close: () => void; };
+function trackRequest(state: ClientState, frame: Request): TrackedRequest {
+    if (state.socket.destroyed) {
+        throw new Error('Resource observation channel closed.');
+    }
+    const completed = Promise.withResolvers<Result>();
+    const timer = scheduleDeadline(function expireRequest() {
+        completed.reject(new Error('Resource observation acknowledgement timed out.'));
+    }, acknowledgementMilliseconds);
+    state.pending.set(frame.request, completed);
+    state.socket.ref();
+    return {
+        result: completed.promise,
+        close() {
+            cancelDeadline(timer);
+            state.pending.delete(frame.request);
+            state.socket.unref();
+        }
+    };
+}
+async function exchange(state: ClientState, frame: Request): Promise<Result> {
+    const request = trackRequest(state, frame);
+    try {
+        state.send.read()(frame);
+        return await request.result;
+    } finally {
+        request.close();
+    }
+}
+function delivery(state: ClientState, run: string): ResourceCheckDelivery {
+    return {
+        kind: 'transport',
+        run,
+        async flush() {
+            await exchange(state, { kind: 'flush', request: randomUUID() });
+        },
+        register(owner, resource, consumers, operation) {
+            state.finalizers.set(owner.id, operation);
+            state.send.read()({ kind: 'register', owner, resource, consumers });
+        },
+        checkpoint(snapshot) {
+            checkpoint(state, snapshot);
+        },
+        stop(owner, interval, cause) {
+            state.send.read()({ kind: 'stop', owner, interval, cause: serializeValue(cause) });
+        },
+        active(interval, abort) {
+            const key = JSON.stringify([ workIdentityKey(interval.work), interval.attempt.index ]);
+            state.active.set(key, { interval, cancel: abort });
+            return function releaseConsumer() {
+                state.active.delete(key);
+            };
+        }
+    };
+}
+function createClient(endpoint: ResourceCheckEndpoint): Client {
+    const socket = createConnection({ port: endpoint.port, host: '127.0.0.1' });
+    const state: ClientState = {
+        socket,
+        finalizers: new Map(),
+        active: new Map(),
+        pending: new Map(),
+        send: createStoredValue<Send>(function disconnected() {
+            throw new Error('Resource channel is not connected.');
+        })
+    };
+    state.send.write(resourceCheckChannel(socket, endpoint.token, async function receiveFrame(frame) {
+        return receive(state, frame);
+    }));
+    socket.once('close', function disconnected() {
+        failPending(state, endpoint.token);
+    });
+    socket.unref();
+    return {
+        socket,
+        delivery: delivery(state, endpoint.token),
+        async exchange(frame) {
+            return await exchange(state, frame);
+        }
+    };
+}
+export function resourceCheckClient(endpoint: ResourceCheckEndpoint): Client {
+    const existing = clients.get(endpoint.token);
+    if (existing !== undefined) {
+        return existing;
+    }
+    const client = createClient(endpoint);
+    clients.set(endpoint.token, client);
+    return client;
+}
+export async function withWorkerResourceChecks<Value>(
+    endpoint: ResourceCheckEndpoint | null,
+    operation: () => Promise<Value>
+): Promise<Value> {
+    if (endpoint === null) {
+        return await operation();
+    }
+    const client = resourceCheckClient(endpoint);
+    return await withResourceCheckDelivery(client.delivery, async function runObservedTask() {
+        try {
+            return await operation();
+        } finally {
+            await client.exchange({ kind: 'flush', request: randomUUID() });
+        }
+    });
+}
+export async function finalizeRemoteResourceChecks(
+    endpoint: ResourceCheckEndpoint,
+    interval: ResourceCheckInterval
+): Promise<Result> {
+    return await resourceCheckClient(endpoint).exchange({ kind: 'finalize', request: randomUUID(), interval });
+}
+
+type OwnerFinalizers = Map<string, Finalize>;
+
+type ActiveConsumers = Map<string, Consumer>;
+
+type PendingRequests = Map<string, Pending>;

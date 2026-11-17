@@ -77,6 +77,16 @@ type ResourceDisposalRequest = {
     readonly timing: ManagedResourceLifecycleTiming;
     readonly testCases: readonly TestPlanCase[];
 };
+async function markFailedResource(record: ManagedResourceRecord): Promise<void> {
+    const checks = record.checks?.snapshots() ?? [];
+    if (
+        checks.some(function failedResource(snapshot) {
+            return snapshot.failures.length > 0 || snapshot.status.kind === 'incomplete';
+        })
+    ) {
+        await currentAttachmentExecution()?.markResourceFailure(record.boundary.key);
+    }
+}
 async function disposePreparedResource(record: ManagedResourceRecord, request: ResourceDisposalRequest): Promise<void> {
     const [ preparation ] = await Promise.allSettled([ prepareLifetimeResource(record) ]);
     const [ disposal ] = await Promise.allSettled([ disposeResourceRecord(record, request.signal, request.timing) ]);
@@ -89,6 +99,7 @@ async function disposePreparedResource(record: ManagedResourceRecord, request: R
             ]
             : [];
     });
+    await markFailedResource(record);
     if (failures.length > 0) {
         await currentAttachmentExecution()?.markResourceFailure(record.boundary.key);
         if (failures.length === 1 && failures[0] !== undefined) {

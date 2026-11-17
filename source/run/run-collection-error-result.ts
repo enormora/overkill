@@ -31,6 +31,7 @@ function createCollectionErrorRunResult(
     };
 
     return {
+        resourceChecks: [],
         artifacts: [],
         bySuite: {},
         orphans: [],

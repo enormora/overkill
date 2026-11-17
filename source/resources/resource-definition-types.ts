@@ -1,7 +1,7 @@
 import type { Except, Merge } from 'type-fest';
 import type { WorkloadParameters } from '../engine/workload-input.ts';
 import type { RuntimeAttachments } from '../engine/runtime-attachment.ts';
-import type { ResourceCheckSnapshot } from './resource-check-contract.ts';
+import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import type { ResourceWorkload, ResourceWorkloadParser } from './resource-workload-types.ts';
 import type {
     AnyResourceDefinition,

@@ -24,6 +24,7 @@ type TinypoolOptions = {
     readonly maxThreads: number;
     readonly minThreads: number;
     readonly runtime: 'worker_threads';
+    readonly useAtomics: boolean;
 };
 
 type TinypoolWorker = { readonly once: (event: 'exit', listener: () => void) => unknown; };

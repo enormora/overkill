@@ -44,6 +44,18 @@ function recordedFailure(failure: TestFailure, convert: (value: unknown) => Seri
         return { ...failure, error: { ...failure.error, thrown: convert(failure.error.thrown) } };
     }
 
+    if (failure.kind === 'resource-check') {
+        const [ first, ...remaining ] = failure.failures;
+        return {
+            ...failure,
+            failures: [
+                { ...first, check: recordedCheck(first.check, convert) },
+                ...remaining.map(function recordFinding(finding) {
+                    return { ...finding, check: recordedCheck(finding.check, convert) };
+                })
+            ]
+        };
+    }
     if (failure.kind === 'assertion') {
         const [ first, ...remaining ] = failure.checks;
         return {
@@ -118,14 +130,28 @@ function recordedArtifact(artifact: RunArtifact, convert: (value: unknown) => Se
     };
 }
 
-export type SerializedRunDiagnostics = Pick<RunRecordResult, 'artifacts' | 'perTest' | 'runnerErrors'>;
-type RunDiagnostics = Pick<RunResult, 'artifacts' | 'perTest' | 'runnerErrors'>;
+export type SerializedRunDiagnostics = Pick<
+    RunRecordResult,
+    'artifacts' | 'perTest' | 'resourceChecks' | 'runnerErrors'
+>;
+type RunDiagnostics = Pick<RunResult, 'artifacts' | 'perTest' | 'resourceChecks' | 'runnerErrors'>;
 
 function convertedDiagnostics(
     result: RunDiagnostics,
     convert: (value: unknown) => SerializedValue
 ): SerializedRunDiagnostics {
     return {
+        resourceChecks: result.resourceChecks.map(function recordSnapshot(snapshot) {
+            return {
+                ...snapshot,
+                failures: snapshot.failures.map(function recordFinding(finding) {
+                    return { ...finding, check: recordedCheck(finding.check, convert) };
+                }),
+                errors: snapshot.errors.map(function recordObservationError(error) {
+                    return { ...error, cause: convert(error.cause) };
+                })
+            };
+        }),
         artifacts: result.artifacts.map(function recordArtifact(artifact) {
             return recordedArtifact(artifact, convert);
         }),

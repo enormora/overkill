@@ -120,6 +120,10 @@ type MergedRunRecord = {
 type RunRecord = SingleRunRecord | MergedRunRecord;
 ```
 
+Current version 5 records require explicit resource-check evidence in their result.
+Historical version 4 and earlier records without that collection decode it as
+empty.
+
 Completed single records require a result. Started and interrupted attempts may
 have no result. `RunRecordRequest` preserves the request with a decimal string
 seed. `RunRecordResult` preserves result fields while projecting opaque thrown

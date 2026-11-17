@@ -275,6 +275,7 @@ type Skip = { kind: 'skip'; reason: string; };
 type Inconclusive = { kind: 'inconclusive'; reason: string; };
 
 type TestFailure =
+    | ResourceCheckFailure
     | {
         readonly kind: 'assertion';
         readonly checks: NonEmptyReadonlyArray<FailedCheck>;
@@ -1884,6 +1885,7 @@ type CompactOutcomeCounters = {
 };
 
 type RunResult = {
+    readonly resourceChecks: ReadonlyArray<ResourceCheckSnapshot>;
     readonly planStatus: 'planned' | 'empty-selection' | 'empty-shard';
     readonly summary: {
         discovered: number;
@@ -2801,6 +2803,44 @@ fail compatibility validation. Browser harnesses own their delivery path.
 Canonical: [Portable Implementation References](../architecture/package-architecture.md#portable-implementation-references).
 
 ## Resource And Runtime Descriptors
+
+Resource-check snapshots retain execution and acquisition identity independently
+of the body assertion recorder. Failed attempt checks use the terminal
+`resource-check` failure variant; shared lifetime failures affect run status
+without changing case counts. Standalone closure throws `ResourceCheckError`,
+whose `resourceChecks()` method returns retained snapshots alongside inherited
+aggregate errors.
+
+```ts
+type ResourceCheckOwner = {
+    readonly run: string;
+    readonly id: string;
+    readonly scope: ResourceScope;
+};
+type ResourceCheckInterval =
+    | { readonly kind: 'lifetime'; }
+    | { readonly kind: 'attempt'; readonly work: WorkId; readonly attempt: AttemptId; };
+type ResourceCheckCompleteness =
+    | { readonly kind: 'complete'; }
+    | { readonly kind: 'incomplete'; readonly reasons: ReadonlyArray<string>; };
+type ResourceCheckSnapshot = {
+    readonly owner: ResourceCheckOwner;
+    readonly resource: string;
+    readonly revision: number;
+    readonly interval: ResourceCheckInterval;
+    readonly passing: number;
+    readonly failures: ReadonlyArray<{ readonly target: string | null; readonly check: FailedCheck; }>;
+    readonly errors: ReadonlyArray<{ readonly interval: ResourceCheckInterval; readonly target: string | null; readonly cause: unknown; }>;
+    readonly status: ResourceCheckCompleteness | { readonly kind: 'open'; };
+};
+type ResourceCheckFailure = {
+    readonly kind: 'resource-check';
+    readonly owner: ResourceCheckOwner;
+    readonly resource: string;
+    readonly interval: Extract<ResourceCheckInterval, { readonly kind: 'attempt'; }>;
+    readonly failures: NonEmptyReadonlyArray<{ readonly target: string | null; readonly check: FailedCheck; }>;
+};
+```
 
 Runtime descriptors carry body-target requirements separately from resource
 owners and metric collectors. Browser-executed and Host-driven browser

@@ -1,7 +1,7 @@
 import { z } from 'zod/v4';
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import { sourceLocationsSchema, caseIdSchema, workIdSchema } from '../engine/identity-schema.ts';
-import { testOutcomeSchema } from '../engine/assertion-result-schema.ts';
+import { resourceCheckSnapshotSchema, testOutcomeSchema } from '../engine/assertion-result-schema.ts';
 import { runnerErrorSchema } from '../engine/runner-error-schema.ts';
 import type { RunnerResult } from './run-types.ts';
 import { propertyEvidenceSchema } from './property-evidence-schema.ts';
@@ -10,6 +10,7 @@ import { processUsageSchema, runTimingsSchema } from './run-runtime-schema.ts';
 import { benchmarkResultSchema } from './benchmark-result-schema.ts';
 
 const diagnosticFields = {
+    resourceChecks: z.array(resourceCheckSnapshotSchema).default([]),
     artifacts: z.array(runArtifactSchema),
     perTest: z.array(z.strictObject({
         property: propertyEvidenceSchema.nullable().default(null),
@@ -25,7 +26,9 @@ const diagnosticFields = {
     })),
     runnerErrors: z.array(runnerErrorSchema)
 };
-export const runDiagnosticsSchema: z.ZodType<Pick<RunResult, 'artifacts' | 'perTest' | 'runnerErrors'>> = z
+export const runDiagnosticsSchema: z.ZodType<
+    Pick<RunResult, 'artifacts' | 'perTest' | 'resourceChecks' | 'runnerErrors'>
+> = z
     .strictObject(diagnosticFields);
 export const runResultSchema: z.ZodType<RunResult> = z.strictObject({
     ...diagnosticFields,

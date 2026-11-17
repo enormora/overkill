@@ -1,3 +1,5 @@
+import { currentResourceCheckBroker } from './resource-check-broker.ts';
+import type { WorkerPoolLifecycleIdentity } from './worker-pool-protocol.ts';
 import { workUnitIdentityKey } from './work-unit-identity.ts';
 import { replayPlacementPlan } from './replay-context.ts';
 import type {
@@ -44,6 +46,7 @@ import { createRoutedPool, type WorkerPoolRoute } from './worker-pool-routing.ts
 import {
     emptyTimingSpanMetadata,
     type RunTimingMeasurement
+    // eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
 } from './run-timing-collection.ts';
 
 const workerPoolRunResourceOwnerLane = 'run-resource-owner';
@@ -130,9 +133,7 @@ export type WorkerPoolRunRuntime = {
     readonly taskResults: WorkerPoolTaskResultList;
     readonly terminalFailure: StoredRunValue<boolean>;
     readonly timing?: RunTimingMeasurement | null;
-    readonly lifecycle: {
-        readonly token: string;
-    };
+    readonly lifecycle: WorkerPoolLifecycleIdentity;
 };
 
 export type WorkerPoolRuntimeInput = {
@@ -494,6 +495,7 @@ export async function createWorkerPoolRuntime(
         terminalFailure: createStoredRunValue(false),
         timing: input.timing ?? null,
         lifecycle: {
+            endpoint: currentResourceCheckBroker()?.endpoint ?? null,
             token: dependencies.createSeed().toString()
         }
     };

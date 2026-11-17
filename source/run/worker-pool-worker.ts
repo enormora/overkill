@@ -1,3 +1,4 @@
+import { withWorkerResourceChecks } from './resource-check-client.ts';
 import {
     prepareLocalOwnerResources,
     withProjectedFailurePreparation,
@@ -51,6 +52,7 @@ import {
     postWorkerTimingSpan,
     workerPoolWorkerId,
     type WorkerTimingClock
+    // eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
 } from './worker-pool-worker-timing.ts';
 
 type TimedAssignmentPlanTask = WorkerPoolAcquireRunResourcesTask | WorkerPoolRunTask;
@@ -368,13 +370,18 @@ export async function runTask(task: WorkerPoolTask): Promise<WorkerPoolTaskOutpu
     recordWorkerStartup(task, wallClock);
 
     const command = attachmentTaskCommand(task);
-    return await runWithWorkerAttachments(
-        command?.attachmentEndpoint ?? null,
-        task.kind === 'collect' ? null : task.lifecycle.token,
-        async function executeAttachmentTask() {
-            return task.kind === 'collect'
-                ? await runCollectionTask(task, wallClock)
-                : await runClosableTask(task, wallClock);
+    return await withWorkerResourceChecks(
+        task.kind === 'collect' ? null : task.lifecycle.endpoint,
+        async function runObservedTask() {
+            return await runWithWorkerAttachments(
+                command?.attachmentEndpoint ?? null,
+                task.kind === 'collect' ? null : task.lifecycle.token,
+                async function executeAttachmentTask() {
+                    return task.kind === 'collect'
+                        ? await runCollectionTask(task, wallClock)
+                        : await runClosableTask(task, wallClock);
+                }
+            );
         }
     );
 }

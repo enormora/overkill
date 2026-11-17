@@ -1,30 +1,17 @@
 import { withDebugAttempt } from './test-debug-context.ts';
 import { caseExecutionArtifacts } from './execution-observation.ts';
-import type { CaseReportingContext, ExecuteCaseInput } from './case-attempt-context.ts';
+import type { CaseReportingContext, ExecuteCaseInput, ReportedCase } from './case-attempt-context.ts';
 import { executeTimedLeakCheckedCase } from './case-body-observation.ts';
 import {
-    hasCasePolicyErrors,
     completeCaseWithAsyncLeakPolicy
 } from './execution-async-leak-policy.ts';
 import type { ReporterDelivery } from './reporter-dispatcher.ts';
 import { reportRunnerErrorEvents } from './runner-error-reporting.ts';
 import type { PerTestResult, RunnerError } from './run-result.ts';
 import { retryPolicyAllowsAttempt } from './retry-policy.ts';
-import { caseAttemptHistory, resultWithAttemptHistory } from './test-attempt-history.ts';
+import { appendAttempt, resourceCheckedAttemptResult, caseResultWithPolicyErrors } from './case-attempt-result.ts';
 
 export type ExecutionCaseDependencies = CaseReportingContext['dependencies'];
-
-export type ReportedCase = {
-    readonly executionWindow: TimingWindow;
-    readonly reporterErrors: readonly RunnerError[];
-    readonly runnerErrors: readonly RunnerError[];
-    readonly result: PerTestResult;
-};
-
-export type TimingWindow = {
-    readonly endedAtMicroseconds: number;
-    readonly startedAtMicroseconds: number;
-};
 
 type ReportTestEndInput = {
     readonly completion: 'final' | 'retry';
@@ -103,18 +90,7 @@ async function executeAttempt(input: ExecuteCaseInput, started: boolean): Promis
         executionWindow: { endedAtMicroseconds, startedAtMicroseconds },
         reporterErrors: [ ...startErrors, ...runnerErrorNotificationErrors ],
         runnerErrors: caseRunnerErrors,
-        result: {
-            ...leakCheckedCase.executedCase.result,
-            attempts: [ {
-                property: leakCheckedCase.executedCase.result.property,
-                benchmark: leakCheckedCase.executedCase.result.benchmark,
-                attempt: { index: input.attempt },
-                durationMicroseconds: leakCheckedCase.executedCase.durationMicroseconds,
-                outcome: leakCheckedCase.executedCase.result.outcome ??
-                    leakCheckedCase.executedCase.result.attempts[0].outcome,
-                verdict: leakCheckedCase.executedCase.result.verdict
-            } ]
-        }
+        result: await resourceCheckedAttemptResult(leakCheckedCase.executedCase.result, input)
     };
 }
 
@@ -175,9 +151,7 @@ async function completeLogicalCase(input: ExecuteCaseInput, executed: ReportedCa
             ...await reportRunnerErrorEvents(input.context.reporterDelivery, errors)
         ],
         runnerErrors: [ ...executed.runnerErrors, ...errors ],
-        result: hasCasePolicyErrors(errors)
-            ? { ...executed.result, outcome: null, verdict: 'runtime-policy' }
-            : executed.result
+        result: caseResultWithPolicyErrors(executed.result, errors)
     };
 }
 
@@ -195,28 +169,6 @@ async function finishAttempt(input: ExecuteCaseInput, executed: ReportedCase, re
                 testCase: input.testCase
             }, input.context)
         ]
-    };
-}
-
-function caseHistory(completed: ReportedCase, attempts: readonly PerTestResult[]): ReportedCase {
-    return { ...completed, result: caseAttemptHistory(completed.result, attempts) };
-}
-
-function appendAttempt(previous: ReportedCase | null, completed: ReportedCase): ReportedCase {
-    if (previous === null) {
-        return caseHistory(completed, [ completed.result ]);
-    }
-    return {
-        executionWindow: {
-            ...completed.executionWindow,
-            startedAtMicroseconds: previous.executionWindow.startedAtMicroseconds
-        },
-        reporterErrors: [ ...previous.reporterErrors, ...completed.reporterErrors ],
-        runnerErrors: [ ...previous.runnerErrors, ...completed.runnerErrors ],
-        result: resultWithAttemptHistory(completed.result, [
-            ...previous.result.attempts,
-            ...caseAttemptHistory(completed.result, [ completed.result ]).attempts
-        ])
     };
 }
 

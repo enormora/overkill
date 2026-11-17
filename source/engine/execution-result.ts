@@ -169,6 +169,7 @@ export function createRunResult(
     const summary = countOutcomes(testPlan, perTest);
 
     return {
+        resourceChecks: [],
         artifacts: executionArtifacts(),
         bySuite: countSuites(testPlan, perTest),
         orphans: testPlan.orphans,

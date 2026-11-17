@@ -116,11 +116,24 @@ export function briefSummaryIntents(result: RunResult): readonly OutputLineInten
 }
 
 export function briefFailureIntents(result: RunResult, context: ReportingContext): readonly OutputLineIntent[] {
-    return result.perTest.flatMap(function finalFailureIntents(testResult) {
-        return testResult.outcome?.kind === 'fail'
-            ? testResult.outcome.failures.map(function finalFailureIntent(failure) {
-                return failureIntent(testResult.id, failure, context);
+    return [
+        ...result
+            .resourceChecks
+            .filter(function lifetime(snapshot) {
+                return snapshot.interval.kind === 'lifetime';
             })
-            : [];
-    });
+            .flatMap(function lifetimeFailures(snapshot) {
+                return snapshot.failures.map(function findingIntent(finding) {
+                    const target = finding.target === null ? '' : ` (${finding.target})`;
+                    return stdout(`fail ${snapshot.resource}${target}: ${finding.check.summary}`, null);
+                });
+            }),
+        ...result.perTest.flatMap(function finalFailureIntents(testResult) {
+            return testResult.outcome?.kind === 'fail'
+                ? testResult.outcome.failures.map(function finalFailureIntent(failure) {
+                    return failureIntent(testResult.id, failure, context);
+                })
+                : [];
+        })
+    ];
 }

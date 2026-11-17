@@ -235,6 +235,9 @@ export type {
     ResourceCheckWriter,
     ResourceCheckStopCause,
     ResourceCheckSnapshot
-} from '../../resources/resource-check-contract.ts';
+} from '../../resource-check-protocol.ts';
 
 export { defineResourceCheckObserverReference } from '../../resources/resource-check-reference.ts';
+
+export { ResourceCheckError } from '../../resources/resource-check-error.ts';
+export type { ResourceCheckOwner } from '../../resource-check-protocol.ts';

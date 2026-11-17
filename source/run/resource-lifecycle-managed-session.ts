@@ -1,4 +1,4 @@
-import type { ResourceCheckSnapshot } from '../resources/resource-check-contract.ts';
+import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import { resourceEntries } from '../resources/resource-graph.ts';
 import type {
     AnyResourceDefinition,

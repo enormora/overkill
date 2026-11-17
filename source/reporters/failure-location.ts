@@ -2,6 +2,9 @@ import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertio
 import type { TestFailure } from '../engine/run-result.ts';
 
 function firstAssertionCheck(failure: TestFailure): FailedCheck | null {
+    if (failure.kind === 'resource-check') {
+        return failure.failures[0].check;
+    }
     return failure.kind === 'assertion' ? failure.checks[0] : null;
 }
 

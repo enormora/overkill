@@ -1,3 +1,4 @@
+import type { ResourceCheckFailure, ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import type {
     FailedCheck,
     NonEmptyReadonlyArray,
@@ -18,6 +19,7 @@ import type { RunTimings } from './run-timings.ts';
 import type { RunProcessUsage } from './process-usage.ts';
 import type { CoverageArtifact, CoverageRunnerErrorCause } from './coverage-artifact.ts';
 import type { RuntimeAttachmentArtifact } from './runtime-attachment.ts';
+// eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
 import type { BenchmarkExecutionResult } from './benchmark-result.ts';
 
 export type PropertyCaseEvidence = {
@@ -83,13 +85,15 @@ export type AssertionTestFailure = {
     readonly kind: 'assertion';
 };
 
+type TestErrorDetails = {
+    readonly message: string;
+    readonly name: string;
+    readonly stack: string | null;
+    readonly thrown: unknown;
+};
+
 export type BodyErrorTestFailure = {
-    readonly error: {
-        readonly message: string;
-        readonly name: string;
-        readonly stack: string | null;
-        readonly thrown: unknown;
-    };
+    readonly error: TestErrorDetails;
     readonly kind: 'body-error';
 };
 
@@ -108,12 +112,7 @@ type TimeoutTestFailure = {
 };
 
 type CleanupErrorTestFailure = {
-    readonly error: {
-        readonly message: string;
-        readonly name: string;
-        readonly stack: string | null;
-        readonly thrown: unknown;
-    };
+    readonly error: TestErrorDetails;
     readonly kind: 'cleanup-error';
 };
 
@@ -123,16 +122,15 @@ export type HedgedDuplicateConflictFailure = {
     readonly summary: string;
 };
 
-type TestFailureTypes = readonly [
+export type TestFailure = (readonly [
     AssertionTestFailure,
     BodyErrorTestFailure,
     CleanupErrorTestFailure,
     HedgedDuplicateConflictFailure,
+    ResourceCheckFailure,
     TestContractFailure,
     TimeoutTestFailure
-];
-
-export type TestFailure = TestFailureTypes[number];
+])[number];
 
 export type FailOutcome = {
     readonly failures: NonEmptyReadonlyArray<TestFailure>;
@@ -554,6 +552,7 @@ export type OrphanedNode = {
 };
 
 export type RunResult = {
+    readonly resourceChecks: readonly ResourceCheckSnapshot[];
     readonly artifacts: readonly RunArtifact[];
     readonly bySuite: Readonly<Record<string, SuiteRunCounts>>;
     readonly orphans: readonly OrphanedNode[];

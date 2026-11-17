@@ -1037,3 +1037,8 @@ Discovery and definition counts remain global; execution counts sum across
 shards. Timing durations represent cumulative shard time, not elapsed CI time.
 Process usage is unavailable on the aggregate. Artifact references and serialized
 diagnostics remain unchanged; merge does not copy artifacts or merge coverage.
+
+Resource-check findings and finalized evidence survive worker task boundaries.
+Required observation loss fails the run and prevents retries. Run records use
+version 5 to retain resource-check snapshots; historical records without snapshots
+remain readable with an empty collection.

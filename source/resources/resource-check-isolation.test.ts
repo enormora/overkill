@@ -13,8 +13,8 @@ import {
     stopResourceCheckAttempt,
     withResourceCheckCancellation
 } from '../resource-check-cancellation.ts';
+import type { ResourceCheckInterval } from '../resource-check-protocol.ts';
 import { createResourceCheckLedger } from './resource-check-ledger.ts';
-import type { ResourceCheckInterval } from './resource-check-contract.ts';
 import { createResourceCheckSession, withResourceChecks } from './resource-checks.ts';
 import { defineResource } from './resources.ts';
 
@@ -161,9 +161,16 @@ export const testNode = createSuite({
             annotations: {},
             controls: {},
             body(scope) {
-                const ledger = createResourceCheckLedger('owner', function () {
-                    return undefined;
-                });
+                const ledger = createResourceCheckLedger(
+                    'owner',
+                    function () {
+                        return undefined;
+                    },
+                    { run: 'test-run', id: 'test-owner', scope: 'per-case' },
+                    function publish() {
+                        return undefined;
+                    }
+                );
                 const first: ResourceCheckInterval = { kind: 'attempt', work, attempt: { index: 0 } };
                 const retry: ResourceCheckInterval = { kind: 'attempt', work, attempt: { index: 1 } };
                 ledger.writer.record(first, 'page', { kind: 'pass' });
@@ -199,9 +206,16 @@ export const testNode = createSuite({
             controls: {},
             body(scope) {
                 const causes: unknown[] = [];
-                const ledger = createResourceCheckLedger('owner', function (cause) {
-                    causes.push(cause);
-                });
+                const ledger = createResourceCheckLedger(
+                    'owner',
+                    function (cause) {
+                        causes.push(cause);
+                    },
+                    { run: 'test-run', id: 'test-owner', scope: 'per-case' },
+                    function publish() {
+                        return undefined;
+                    }
+                );
                 const failure = new Error('observer transport failed');
                 ledger.writer.requestStop(
                     { kind: 'lifetime' },

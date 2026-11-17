@@ -401,6 +401,9 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
     );
 
     return {
+        resourceChecks() {
+            return [];
+        },
         recordViolation(capability, message, strictness) {
             if (!observation.open()) {
                 return;

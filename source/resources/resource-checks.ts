@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { currentResourceCheckDelivery, createResourceCheckOwner } from '../resource-check-delivery.ts';
 import { attachImplementationParticipants, readImplementationParticipants } from '../implementation-participant.ts';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { workIdentityKey, type WorkId } from '../engine/identity.ts';
@@ -13,10 +14,11 @@ import type {
     ResourceCheckCompleteness,
     ResourceCheckWriter,
     ResourceCheckSnapshot
-} from './resource-check-contract.ts';
+} from '../resource-check-protocol.ts';
 import { createResourceCheckSupervision, type ResourceCheckSupervision } from './resource-check-supervision.ts';
 import type { ResourceAcquiredHandle } from './resource-definition-types.ts';
 import type { AnyResourceDefinition, Awaitable } from './resource-definition-shape.ts';
+// eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
 import { createResourceCheckLedger, type ResourceCheckLedger } from './resource-check-ledger.ts';
 
 export type ResourceCheckObservation = {
@@ -368,6 +370,8 @@ export function createResourceCheckSession(
     handle: unknown,
     control: ResourceCheckSessionControl
 ): ResourceCheckSession {
+    const delivery = control.kind === 'managed' ? currentResourceCheckDelivery() : null;
+    const owner = createResourceCheckOwner(resource.scope);
     const phase = createStoredValue<ResourceCheckPhase>('installing');
     const cancellation: ObservationCancellation = {
         phase,
@@ -375,9 +379,17 @@ export function createResourceCheckSession(
         control,
         run: resourceCheckRunIdentity()
     };
-    const ledger = createResourceCheckLedger(resource.name, function stopOwner(cause, interval) {
-        stopObservation(cancellation, cause, interval);
-    });
+    const ledger = createResourceCheckLedger(
+        resource.name,
+        function stopOwner(cause, interval) {
+            delivery?.stop(owner, interval, cause);
+            stopObservation(cancellation, cause, interval);
+        },
+        owner,
+        function publish(snapshot) {
+            delivery?.checkpoint(snapshot);
+        }
+    );
     const state: ObservationState = {
         supervision: createResourceCheckSupervision(),
         lateCleanup: createStoredValue<readonly Promise<void>[]>([]),
@@ -393,6 +405,14 @@ export function createResourceCheckSession(
         resource,
         handle
     };
+    delivery?.register(
+        owner,
+        resource.name,
+        control.kind === 'managed' ? control.consumers : [],
+        async function finalizeDelivered(interval) {
+            await finalize(state, interval);
+        }
+    );
     return {
         assertAdmitted() {
             assertAdmitted(state);

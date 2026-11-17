@@ -3,6 +3,7 @@ import { workIdentityKey, formatCaseId, type RuntimeId, type WorkloadId } from '
 import { workloadLabel } from '../engine/workload-label.ts';
 import { formatDefinitionLocations, type ReportingContext } from '../engine/reporting-context.ts';
 import { isTestDebugArtifact, type RunResult, type RunnerError, type RunArtifact } from '../engine/run-result.ts';
+import { lifetimeResourceCheckLines } from './resource-check-rendering.ts';
 import { formatPropertyDiagnostics } from './failure-summary.ts';
 import { formatFailure } from './line-failure-rendering.ts';
 import { formatTimingSummary as formatRunTimingSummary } from './run-summary-rendering.ts';
@@ -406,7 +407,12 @@ export function problemLines(
             return `${testResult.id.title}: ${line}`;
         });
     });
-    const lines = [ ...testLines, ...runnerErrorLines, ...runArtifactLines ];
+    const lines = [
+        ...testLines,
+        ...lifetimeResourceCheckLines(result, context),
+        ...runnerErrorLines,
+        ...runArtifactLines
+    ];
 
     return [
         ...propertyLines,

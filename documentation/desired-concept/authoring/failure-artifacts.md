@@ -142,7 +142,7 @@ intentional denial while the request remains blocked; missing/excess events
 still fail. It does not authorize contact or erase a recorded failure. See
 [App Guard Decisions](./higher-test-layers.md#app-guard-decisions).
 Inability to install, enforce, or complete the required observation is an
-infrastructure error. App-guard failures are not eligible for automatic integration
+infrastructure error. Failed resource checks, including app guards, are not eligible for automatic integration
 retries. Existing runner console restrictions and ordinary assertion retry policy
 remain separate.
 

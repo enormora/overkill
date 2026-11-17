@@ -1,5 +1,10 @@
 import { expect, test } from 'tstyche';
-import { defineResource, withResourceChecks } from './resources.entry-point.ts';
+import {
+    defineResource,
+    withResourceChecks,
+    ResourceCheckError,
+    type ResourceCheckSnapshot
+} from './resources.entry-point.ts';
 
 const owner = defineResource({
     name: 'observed-service',
@@ -34,4 +39,12 @@ test('resource checks retain descriptor inference and receive the owner handle',
         };
     });
     expect(observed).type.toBe<typeof owner>();
+});
+
+test('standalone errors retain owner and interval evidence', function () {
+    const error = new ResourceCheckError('Resource checks failed.', { resourceChecks: [], errors: [] });
+    expect(error.resourceChecks()).type.toBe<readonly ResourceCheckSnapshot[]>();
+    expect<ResourceCheckSnapshot['owner']['scope']>().type.toBe<
+        'per-case' | 'per-file' | 'per-run' | 'per-suite' | 'shared-per-worker'
+    >();
 });
