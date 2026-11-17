@@ -11,7 +11,11 @@ import {
     withResourceCheckBroker,
     type ResourceCheckBroker
 } from './resource-check-broker.ts';
-import { finalizeRemoteResourceChecks, withWorkerResourceChecks } from './resource-check-client.ts';
+import {
+    finalizeRemoteResourceChecks,
+    resourceCheckClient,
+    withWorkerResourceChecks
+} from './resource-check-client.ts';
 
 const work = createDefaultWorkId({ file: null, suite: [], title: 'remote consumer', params: null });
 async function withObservedWorker(
@@ -59,6 +63,26 @@ async function assertCancellation(scope: TestScope, broker: ResourceCheckBroker,
     scope.assert.true(stopped);
 }
 export const testNode = suite('persistent resource check channel', [
+    test('closes invalid owner channels and retains incomplete registration evidence', async function (scope) {
+        await withObservedWorker(scope, async function inspect(broker) {
+            const client = resourceCheckClient(broker.endpoint);
+            const owner = { run: broker.endpoint.token, id: 'duplicate', scope: 'per-run' as const };
+            const closed = once(client.socket, 'close');
+            client.delivery.register(owner, 'duplicate-service', [ work ], async function finalize() {
+                return undefined;
+            });
+            client.delivery.register(owner, 'duplicate-service', [ work ], async function finalize() {
+                return undefined;
+            });
+            await closed;
+            scope.assert.true(
+                broker.snapshots().some(function incomplete(snapshot) {
+                    return snapshot.owner.id === 'duplicate' && snapshot.status.kind === 'incomplete';
+                })
+            );
+        });
+        return scope.assert.collect();
+    }),
     test('delivers remote findings before cancellation and fences finalization', async function (scope) {
         await withObservedWorker(scope, async function inspect(broker, worker) {
             await assertCancellation(scope, broker, worker);

@@ -27,12 +27,12 @@ type ClientState = {
     readonly pending: PendingRequests;
     readonly send: StoredValue<Send>;
 };
-type Client = {
+export type ResourceCheckClient = {
     readonly delivery: ResourceCheckDelivery;
     readonly exchange: (frame: Request) => Promise<Result>;
     readonly socket: Socket;
 };
-const clients = new Map<string, Client>();
+const clients = new Map<string, ResourceCheckClient>();
 const acknowledgementMilliseconds = 2500;
 function failPending(state: ClientState, token: string): void {
     for (const request of state.pending.values()) {
@@ -178,7 +178,7 @@ function delivery(state: ClientState, run: string): ResourceCheckDelivery {
         }
     };
 }
-function createClient(endpoint: ResourceCheckEndpoint): Client {
+function createClient(endpoint: ResourceCheckEndpoint): ResourceCheckClient {
     const socket = createConnection({ port: endpoint.port, host: '127.0.0.1' });
     const state: ClientState = {
         socket,
@@ -204,7 +204,7 @@ function createClient(endpoint: ResourceCheckEndpoint): Client {
         }
     };
 }
-export function resourceCheckClient(endpoint: ResourceCheckEndpoint): Client {
+export function resourceCheckClient(endpoint: ResourceCheckEndpoint): ResourceCheckClient {
     const existing = clients.get(endpoint.token);
     if (existing !== undefined) {
         return existing;

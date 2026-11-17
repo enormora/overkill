@@ -88,12 +88,41 @@ function pendingManagedObservation(): ManagedObservationFixture {
     };
 }
 
+async function copiedCancellationMember(): Promise<unknown> {
+    const module = new URL('../resource-check-cancellation.ts?cancellation-copy', import.meta.url);
+    const copy: unknown = await import(module.href);
+    if (typeof copy !== 'object' || copy === null) {
+        throw new TypeError('Expected a cancellation module.');
+    }
+    return Reflect.get(copy, 'stopResourceCheckAttempt');
+}
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'resource check isolation',
     annotations: {},
     controls: {},
     children: [
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'loaded module copies share active cancellation ownership',
+            annotations: {},
+            controls: {},
+            async body(scope) {
+                const stop = await copiedCancellationMember();
+                if (typeof stop !== 'function') {
+                    throw new TypeError('Expected attempt cancellation.');
+                }
+                const causes: unknown[] = [];
+                const run = resourceCheckRunIdentity();
+                await withResourceCheckCancellation(work, { index: 0 }, function cancelled(cause) {
+                    causes.push(cause);
+                }, async function stopCopiedAttempt() {
+                    Reflect.apply(stop, undefined, [ work, { index: 0 }, 'shared stop', run ]);
+                });
+                scope.assert.deepEqual(causes, [ 'shared stop' ]);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'concurrent consumers await shared observer admission',

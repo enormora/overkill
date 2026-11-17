@@ -72,6 +72,34 @@ export const testNode = suite('resource check records', [
         scope.assert.deepEqual(parseRunResult(legacy).resourceChecks, []);
         return scope.assert.collect();
     }),
+    test('complete observations preserve successful results', function (scope) {
+        const original = runResultFactory.build({ status: 'passed', planStatus: 'empty-shard' });
+        const result = finalizedResourceCheckResult(original, [ snapshot ]);
+        scope.assert.equal(result.status, 'passed');
+        scope.assert.deepEqual(result.runnerErrors, []);
+        scope.assert.equal(result.resourceChecks[0]?.passing, 2);
+        return scope.assert.collect();
+    }),
+    test('unfinished attempt evidence retains its original case and attempt attribution', function (scope: TestScope) {
+        const work = {
+            case: { file: 'owned.test.ts', title: 'owned consumer', suite: [], params: null },
+            runtimes: [],
+            workload: null,
+            familyVariant: null
+        };
+        const interval = { kind: 'attempt' as const, work, attempt: { index: 2 } };
+        const original = runResultFactory.build({});
+        const result = finalizedResourceCheckResult(original, [ { ...snapshot, interval, status: { kind: 'open' } } ]);
+        const error = result.runnerErrors[0];
+        scope.require.defined(error);
+        scope.assert.deepEqual({
+            file: error.attributedTo?.file,
+            title: error.attributedTo?.title,
+            attempt: error.attributedToAttempt?.index
+        }, { file: 'owned.test.ts', title: 'owned consumer', attempt: 2 });
+        scope.assert.deepEqual({ ...error.attributedToWork }, work);
+        return scope.assert.collect();
+    }),
     test('unfinished checkpoints prevent success without changing case counts', function (scope) {
         const original = runResultFactory.build({});
         const result = finalizedResourceCheckResult(original, [ { ...snapshot, status: { kind: 'open' } } ]);
