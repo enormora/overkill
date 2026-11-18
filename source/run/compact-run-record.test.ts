@@ -101,6 +101,31 @@ function benchmarkEvidence(scope: TestScope): BenchmarkExecutionResult {
 }
 
 export const testNode = suite('compact run evidence', [
+    test('preserves lifecycle summaries when measurement evidence is absent', function (scope: TestScope) {
+        const original = completedHistoryRecord('unmeasured');
+        const benchmark = benchmarkEvidence(scope);
+        scope.require.defined(benchmark.lifecycle);
+        const record = compactRunRecord({
+            ...original,
+            result: {
+                ...original.result,
+                perTest: [ {
+                    benchmark: { ...benchmark, lifecycle: { ...benchmark.lifecycle, measurement: null } },
+                    workId: historyWork,
+                    verdict: 'pass',
+                    durationMicroseconds: 10
+                } ]
+            }
+        });
+        scope.require.defined(record.result);
+        const observed = record.result.perTest[0]?.benchmark;
+        scope.require.defined(observed);
+        scope.assert.partialDeepEqual(observed, {
+            lifecycle: { measurement: null, warmup: { samples: 1 } }
+        });
+        scope.assert.equal(canonicalJson(compactRunRecord(record)), canonicalJson(record));
+        return scope.assert.collect();
+    }),
     test(
         'retains benchmark summaries without measurement traces or attachment references',
         function (scope: TestScope) {
