@@ -10,6 +10,8 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import { testNode as transport } from './isolated-command-policy.test.ts';
+import { testNode as hostPlans } from './host-plan-policy.test.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import type { RunCommand } from './run-types.ts';
 import { configuredFilesRunCollectionSource } from './run-collection-source.ts';
@@ -69,6 +71,8 @@ export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/worker-pool-command-planning.test.ts',
     children: [
+        hostPlans,
+        transport,
         createOverkillTestCase({
             annotations: {},
             controls: {},

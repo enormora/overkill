@@ -20,5 +20,5 @@ export function readMutationPolicyEnvironment(): Readonly<Record<string, string 
 }
 
 if (process.argv.includes(mutationPolicyProcessArgument)) {
-    await import('./mutation-policy-resolver.ts');
+    await import('./mutation-policy-resolver.entry-point.ts');
 }

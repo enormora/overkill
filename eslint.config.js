@@ -19,7 +19,20 @@ export default [
     },
     {
         ...typescriptConfig,
-        files: [ '**/*.ts' ]
+        files: [ '**/*.ts' ],
+        languageOptions: {
+            ...typescriptConfig.languageOptions,
+            parserOptions: {
+                ...typescriptConfig.languageOptions.parserOptions,
+                projectService: false,
+                project: './source/tsconfig.eslint.json',
+                tsconfigRootDir: import.meta.dirname
+            }
+        }
+    },
+    {
+        files: [ 'source/reporters/benchmark-html-browser.entry-point.ts' ],
+        languageOptions: { parserOptions: { project: './source/tsconfig.eslint-browser.json' } }
     },
     {
         ...testSupportConfig,

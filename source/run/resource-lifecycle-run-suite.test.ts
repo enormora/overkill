@@ -1,12 +1,11 @@
 import { runIfMain } from '#test-runner';
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
-import { testNode as runtimeAttachmentOwnershipTestNode } from './runtime-attachment-ownership.test.ts';
-import { testNode as runtimeAttachmentsTestNode } from './runtime-attachment-lifecycle.test.ts';
+import { testNode as acquisition } from './managed-resource-acquisition-policy.test.ts';
+import { testNode as startupClock } from './resource-startup-clock.test.ts';
+import { testNode as matrix } from './resource-lifecycle-matrix-policy.test.ts';
 import { testNode as resourceLifecycleCompositionTestNode } from './resource-lifecycle-composition.test.ts';
 import { testNode as resourceLifecycleBoundariesTestNode } from './resource-lifecycle-boundaries.test.ts';
 import { testNode as resourceLifecycleProjectionTestNode } from './resource-lifecycle-projection.test.ts';
-import { testNode as resourceLifecycleStartupBudgetTestNode } from './resource-lifecycle-startup-budget.test.ts';
-import { testNode as resourceLifecycleTimingTestNode } from './resource-lifecycle-timing.test.ts';
 import { testNode as retryResourceLifecycleTestNode } from './retry-resource-lifecycle.test.ts';
 
 export const testNode = createOverkillSuite({
@@ -15,14 +14,13 @@ export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/resource-lifecycle-run-suite.test.ts',
     children: [
-        runtimeAttachmentsTestNode,
-        runtimeAttachmentOwnershipTestNode,
+        acquisition,
+        startupClock,
+        matrix,
         retryResourceLifecycleTestNode,
         resourceLifecycleBoundariesTestNode,
         resourceLifecycleCompositionTestNode,
-        resourceLifecycleProjectionTestNode,
-        resourceLifecycleStartupBudgetTestNode,
-        resourceLifecycleTimingTestNode
+        resourceLifecycleProjectionTestNode
     ]
 });
 

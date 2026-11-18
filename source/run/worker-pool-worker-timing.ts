@@ -5,7 +5,7 @@ import type {
     RunTimingSpanKind,
     TimingSpanStatus
 } from '../engine/run-timings.ts';
-import type { WorkerPoolTask } from './worker-pool-protocol.ts';
+import type { WorkerTask as WorkerPoolTask } from './worker-pool-protocol.ts';
 import {
     createResourceLifecycleTiming,
     type ResourceLifecycleTiming

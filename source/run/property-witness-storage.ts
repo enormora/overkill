@@ -9,15 +9,22 @@ import { retainWitnessAttachment } from './witness-attachment.ts';
 import type { ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 
+export type PropertyWitnessRunInput = {
+    readonly run: () => Promise<RunResult>;
+    readonly resolved: ResolvedRun;
+    readonly dependencies: RunOrchestratorDependencies;
+    readonly session: AttachmentRecord['session'] | null;
+};
 type WitnessRun = {
     readonly resolved: ResolvedRun;
     readonly dependencies: RunOrchestratorDependencies;
     readonly session: AttachmentRecord['session'] | null;
+    readonly storage: PropertyWitnessStorageFactory;
     readonly record: () => AttachmentRecord | null;
     readonly retainRecord: (record: AttachmentRecord) => void;
 };
 type PropertyWitnessStorage = {
-    readonly store: AttachmentStorageSession['store'];
+    readonly store: Pick<AttachmentStorageSession['store'], 'finish' | 'selectedArtifacts' | 'settleResult'>;
     readonly execution: AttachmentExecution;
 };
 
@@ -109,7 +116,12 @@ export async function retainPropertyWitnessAttachments(
     }
 }
 
-async function createWitnessStorage(context: WitnessRun): Promise<PropertyWitnessStorage> {
+type WitnessStorageRequest = Pick<PropertyWitnessRunInput, 'dependencies' | 'resolved' | 'session'> & {
+    readonly retainRecord: (record: AttachmentRecord) => void;
+};
+export type PropertyWitnessStorageFactory = (input: WitnessStorageRequest) => Promise<PropertyWitnessStorage>;
+
+async function createWitnessStorage(context: WitnessStorageRequest): Promise<PropertyWitnessStorage> {
     const record = await createAttachmentRecord(context.resolved, context.dependencies, context.session);
     context.retainRecord(record);
     const store = createRunAttachmentStore(context.resolved, record, defaultAttachmentLimits);
@@ -120,7 +132,7 @@ async function createWitnessStorage(context: WitnessRun): Promise<PropertyWitnes
 }
 
 async function retainPropertyWitnesses(context: WitnessRun, result: RunResult): Promise<RunResult> {
-    const { store, execution } = await createWitnessStorage(context);
+    const { store, execution } = await context.storage(context);
     const errors: RunnerError[] = [];
     try {
         errors.push(...await retainPropertyWitnessAttachments(execution, result));
@@ -148,14 +160,14 @@ async function completeWitnessRecord(context: WitnessRun, result: RunResult): Pr
     return record === null || context.session !== null ? result : await record.session.complete(result);
 }
 
-export async function executeWithPropertyWitnesses(
-    resolved: ResolvedRun,
-    dependencies: RunOrchestratorDependencies,
-    run: () => Promise<RunResult>,
-    session: AttachmentRecord['session'] | null
+export async function executePropertyWitnessRun(
+    input: PropertyWitnessRunInput,
+    storage: PropertyWitnessStorageFactory
 ): Promise<RunResult> {
+    const { resolved, dependencies, run, session } = input;
     let record: AttachmentRecord | null = null;
     const context: WitnessRun = {
+        storage,
         resolved,
         dependencies,
         session,
@@ -180,4 +192,13 @@ export async function executeWithPropertyWitnesses(
         }
         throw error;
     }
+}
+
+export async function executeWithPropertyWitnesses(
+    resolved: ResolvedRun,
+    dependencies: RunOrchestratorDependencies,
+    run: () => Promise<RunResult>,
+    session: AttachmentRecord['session'] | null
+): Promise<RunResult> {
+    return await executePropertyWitnessRun({ resolved, dependencies, run, session }, createWitnessStorage);
 }

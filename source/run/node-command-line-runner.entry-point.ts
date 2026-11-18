@@ -1,0 +1,69 @@
+import type { Engine } from '../engine/engine.ts';
+import { createDefaultDirectReporter } from './default-direct-reporter.ts';
+import {
+    createCommandLineRunner,
+    type CommandLineRunner,
+    type CommandLineRunnerDependencies
+} from './command-line-runner.ts';
+import {
+    createCurrentProcessRunOrchestrator
+} from './current-process-run-orchestrator.entry-point.ts';
+import type { CurrentProcessRunOrchestratorDependencies } from './current-process-run-input.entry-point.ts';
+
+type NodeCommandLineRunDiscovery = CurrentProcessRunOrchestratorDependencies['discoverRunFilesWithProjectRoot'];
+type NodeCommandLineStartSupervisedChild = CurrentProcessRunOrchestratorDependencies['startSupervisedChild'];
+type NodeCommandLineStartWorkerPoolHost = CurrentProcessRunOrchestratorDependencies['startWorkerPoolHost'];
+
+type NodeCommandLineRunnerDependencies = {
+    readonly discoverRunFilesWithProjectRoot: NodeCommandLineRunDiscovery;
+    readonly loadConfig: CommandLineRunnerDependencies['loadConfig'];
+    readonly loadRunEngineModule: CurrentProcessRunOrchestratorDependencies['loadRunEngineModule'];
+    readonly loadRunTestModules: CurrentProcessRunOrchestratorDependencies['loadRunTestModules'];
+    readonly startSupervisedChild: NodeCommandLineStartSupervisedChild;
+    readonly startWorkerPoolHost: NodeCommandLineStartWorkerPoolHost;
+};
+
+export type NodeCommandLineRunnerOptions = {
+    readonly defaultEngine: Engine;
+};
+
+export type NodeCommandLineRunnerInput = NodeCommandLineRunnerOptions & {
+    readonly dependencies: NodeCommandLineRunnerDependencies;
+};
+
+export function createNodeCommandLineRunner(input: NodeCommandLineRunnerInput): CommandLineRunner {
+    const orchestrator = createCurrentProcessRunOrchestrator(input.defaultEngine, {
+        discoverRunFilesWithProjectRoot: input.dependencies.discoverRunFilesWithProjectRoot,
+        loadRunEngineModule: input.dependencies.loadRunEngineModule,
+        loadRunTestModules: input.dependencies.loadRunTestModules,
+        startSupervisedChild: input.dependencies.startSupervisedChild,
+        startWorkerPoolHost: input.dependencies.startWorkerPoolHost
+    });
+
+    return createCommandLineRunner({
+        async loadReplayCommands() {
+            const { createReplayCommands } = await import('./replay-commands.ts');
+            return createReplayCommands(input.dependencies.loadConfig, orchestrator);
+        },
+        createDefaultReporter: createDefaultDirectReporter,
+        async loadBaselineCommands() {
+            const { createBaselineCommands } = await import('./baseline-commands.ts');
+            return createBaselineCommands({
+                loadConfig: input.dependencies.loadConfig,
+                createDefaultReporter: createDefaultDirectReporter,
+                orchestrator
+            });
+        },
+        async loadBenchmarkCommands() {
+            const { createBenchmarkCommands } = await import('./benchmark-commands.ts');
+
+            return createBenchmarkCommands({
+                createDefaultReporter: createDefaultDirectReporter,
+                loadConfig: input.dependencies.loadConfig,
+                orchestrator
+            });
+        },
+        loadConfig: input.dependencies.loadConfig,
+        orchestrator
+    });
+}

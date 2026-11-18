@@ -2,6 +2,9 @@ import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { propertyCorpusPolicySchema } from '../config/property-corpus.ts';
+import { testNode as execution } from './corpus-execution-policy.test.ts';
+import { testNode as operations } from './corpus-operation-policy.test.ts';
+import { testNode as storage } from './property-corpus-storage-policy.test.ts';
 import { parseCorpusCache, boundedCorpusCache } from './property-corpus-cache.ts';
 
 const file = 'cache.json';
@@ -10,6 +13,9 @@ const previous = '2026-11-01T00:00:00.000Z';
 const recent = { id: 'recent', entry: propertyCorpusEntry, savedAt: now };
 
 export const testNode = suite('property corpus cache policy', [
+    execution,
+    operations,
+    storage,
     ...[ '{', '{"version":2,"entries":[]}' ].map(function corruptCache(content) {
         return test(`diagnoses corrupt cache ${content}`, function (scope) {
             const parsed = parseCorpusCache(content, file);

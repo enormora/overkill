@@ -4,6 +4,9 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { testNode as callRules } from './call-rule-selection.test.ts';
+import { testNode as argumentRules } from './generator-rule-selection.test.ts';
+import { testNode as fallback } from './iterator-fallback.test.ts';
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
 
@@ -16,6 +19,9 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        callRules,
+        argumentRules,
+        fallback,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testDouble.yields() returns fresh tracked iterators',

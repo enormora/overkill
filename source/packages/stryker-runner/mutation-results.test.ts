@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 import { TestStatus, DryRunStatus, MutantRunStatus } from '@stryker-mutator/api/test-runner';
-import { suite, test } from '../test/test.entry-point.ts';
+import { suite, test, type TestScope } from '../test/test.entry-point.ts';
 import {
     workIdentityKey,
     type PerTestResult,
@@ -129,6 +129,38 @@ function originAliasReply(): ResultReply {
 }
 
 export const testNode = suite('Stryker result ownership', [
+    ...[ null, {} ].map(function malformedLifecycle(data, index) {
+        return test(`rejects malformed completed mutation lifecycle ${index}`, function (scope: TestScope) {
+            const original = failedReply([], false, false);
+            const result = mutantExecutionResult(root, { ...original, data }, mutantExpectation(original));
+            scope.assert.equal(result.status, MutantRunStatus.Error);
+            if (result.status !== MutantRunStatus.Error) {
+                throw new Error('Expected invalid lifecycle evidence.');
+            }
+            scope.assert.includes(result.errorMessage, 'Invalid mutation lifecycle data.');
+            return scope.assert.collect();
+        });
+    }),
+    test('classifies a hit limit reached before collection as a timeout', function (scope: TestScope) {
+        const original = failedReply(
+            runResultFactory
+                .build({
+                    runnerErrors: [ { subtype: 'loader', cause: new Error('Stryker: Hit count limit reached (1)') } ]
+                })
+                .runnerErrors,
+            true,
+            false
+        );
+        const data = mutationLifecycleDataSchema.parse(original.data);
+        const reply = {
+            ...original,
+            result: { ...original.result, perTest: [] },
+            data: { ...data, catalog: [], selected: [], completed: [] }
+        };
+        const result = mutantExecutionResult(root, reply, mutantExpectation(original));
+        scope.assert.equal(result.status, MutantRunStatus.Timeout);
+        return scope.assert.collect();
+    }),
     classificationTestNode,
     test('matches result aliases to canonical coverage owners and killing IDs', function (scope) {
         const reply = originAliasReply();

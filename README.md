@@ -19,6 +19,38 @@ Repository tests run through the published `@overkill-dev/run` package. The
 including for package smoke tests with their own installed packages. Test files
 continue to import source modules for the code under test.
 
+## Repository checks
+
+CI runs four categories of tests:
+
+- Unit tests: `npx just test-unit-with-coverage`. This is the only unit run in CI.
+  Coverage includes production code under `source`, including `source/packages`,
+  and excludes `*.entry-point.ts`, tests, fixtures, and test support. TypeScript
+  files with no executable code are omitted from runtime coverage.
+- Integration tests: `npx just test-integration`. The suite in
+  `source/integration-tests/repository.test.ts` owns tests that use real files,
+  processes, compiler projects, or external execution boundaries. These tests
+  do not contribute to unit coverage.
+  `npx just test-process-integration` runs
+  the process suite on Linux and macOS.
+- Type tests: `npx just test-types`, for compile-time public API assertions.
+- Package smoke tests: `npx just test-package-smoke`, for installed exports,
+  declarations, CLI startup, and interoperability across package boundaries.
+  The Stryker smoke test runs one mutant against a one-line module; campaign
+  matrices belong in integration tests.
+  Publication dry runs execute as a separate CI job alongside package smoke tests.
+
+Use `npx just test-unit` for a local unit run without coverage. Keep integration
+test nodes out of the unit aggregation rooted at `source/overkill.test.ts`.
+Tests of property, benchmark, and mutation support are ordinary unit or
+integration tests of those features. CI does not run a mutation-score or
+performance-regression gate for the repository.
+
+Compilation and static analysis are separate checks. Unit and integration tests
+share one TypeScript compilation project. CI deliberately starts ESLint without
+a restored cache and reports its most expensive rules. Use `npx just eslint`
+to run the same checks locally.
+
 ## ESLint testing
 
 Install `@overkill-dev/eslint-test` to share rule definitions and named

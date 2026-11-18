@@ -3,12 +3,14 @@ import { suite, test, type TestScope } from '../packages/test/test.entry-point.t
 import { defaultRunRequest, defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
 import { passingResult, runCommandLine } from '../test-support/command-line-test-driver.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
+import { testNode as diagnosticSelection } from './run-diagnostic-policy.test.ts';
 import { parseDebugRequest, resolveDebugSelection } from './run-debug.ts';
 import { parseReplayDebugArguments } from './replay-debug-arguments.ts';
 import { copyRunRequest } from './request-snapshot.ts';
 import { resolveRunRecordPersistence } from './run-profile-facts.ts';
 
 export const testNode = suite('debug requests', [
+    diagnosticSelection,
     test('standalone debug scopes preserve selection and repeated selectors', async function (scope: TestScope) {
         const result = await runCommandLine(
             [ 'run', '--debug-scope', 'title=first', '--debug-scope', 'title=second' ],

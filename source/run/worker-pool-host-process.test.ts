@@ -1,3 +1,4 @@
+import { createDeterministicClock } from '@enormora/clock';
 import { runIfMain } from '#test-runner';
 
 import {
@@ -6,9 +7,10 @@ import {
 } from '../test-support/worker-message-port-fixture.ts';
 import { createFakeHostChild, type FakeHostChild } from '../test-support/fake-worker-pool-host-process.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
-import type { ProcessUsageSnapshot, RunProcessUsage } from '../engine/process-usage.ts';
 import {
     defaultFailureArtifactPolicy,
+    type ProcessUsageSnapshot,
+    type RunProcessUsage,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -157,6 +159,7 @@ function createPoolFixture(
     const fixture = {
         child,
         pool: createHostedWorkerPool({
+            wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),
             environmentVariables: {},
             options,
             startWorkerPoolHost(startOptions) {
@@ -241,6 +244,7 @@ function createForwardingFixture(scope: OverkillScope): ForwardingFixture {
     const child = createFakeHostChild();
     const output: string[] = [];
     const pool = createHostedWorkerPool({
+        wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),
         environmentVariables: { NODE_OPTIONS: '--inspect' },
         options: workerPoolOptions(),
         startWorkerPoolHost(options) {

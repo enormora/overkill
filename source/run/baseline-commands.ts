@@ -16,7 +16,7 @@ import type { RunOrchestrator } from './run-orchestrator-types.ts';
 import { createSystemRunTimingMeasurement } from './run-timing-collection.ts';
 import { selectBaselineProfile } from './test-profile.ts';
 
-type BaselineDependencies = CommandLineConfigDependencies & {
+export type BaselineDependencies = CommandLineConfigDependencies & {
     readonly loadConfig: ConfigLoader;
     readonly orchestrator: Pick<RunOrchestrator, 'baseline'>;
 };

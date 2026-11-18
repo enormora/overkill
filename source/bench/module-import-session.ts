@@ -1,6 +1,6 @@
-import { Transform } from 'node:stream';
+import { Transform, type Duplex } from 'node:stream';
 import { randomBytes } from 'node:crypto';
-import { createServer, type Server, type Socket } from 'node:net';
+import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import type { ReadonlyDeep } from 'type-fest';
 import { z } from 'zod/v4';
@@ -25,10 +25,23 @@ type ImportReply = {
     readonly kind: 'failed';
     readonly error: unknown;
 } | { readonly kind: 'report'; readonly report: ModuleImportReport; };
+type ModuleImportServer = {
+    readonly listening: boolean;
+    readonly once: (event: 'error', listener: (error: Error) => void) => unknown;
+    readonly listen: (port: number, host: string, ready: () => void) => unknown;
+    readonly address: () => string | { readonly port: number; } | null;
+    readonly close: (closed: (error: Error | undefined) => void) => unknown;
+};
+export type ModuleImportRuntime = {
+    readonly token: () => string;
+    readonly now: () => bigint;
+    readonly server: (accept: (socket: Duplex) => void) => ModuleImportServer;
+};
 type ModuleMessages = {
+    readonly now: () => bigint;
     readonly token: string;
-    readonly sockets: ReadonlySet<Socket>;
-    readonly addSocket: (socket: Socket) => void;
+    readonly sockets: ReadonlySet<Duplex>;
+    readonly addSocket: (socket: Duplex) => void;
     readonly reply: Readonly<PromiseWithResolvers<ImportReply>>;
     readonly progress: StoredValue<{
         readonly stage: 'complete' | 'ready' | 'waiting';
@@ -44,7 +57,7 @@ export type ModuleImportSession = {
     readonly close: () => Promise<void>;
 };
 
-function acceptReady(messages: ModuleMessages, socket: Socket): void {
+function acceptReady(messages: ModuleMessages, socket: Duplex): void {
     const previous = messages.progress.read();
     if (previous.stage !== 'waiting') {
         throw new Error('Module import became ready more than once.');
@@ -52,13 +65,13 @@ function acceptReady(messages: ModuleMessages, socket: Socket): void {
     messages.progress.write({
         ...previous,
         stage: 'ready',
-        startup: Number(process.hrtime.bigint() - previous.started) /
+        startup: Number(messages.now() - previous.started) /
             (nanosecondsPerMicrosecond * microsecondsPerMillisecond)
     });
     socket.write('import\n');
 }
 
-function receiveMessage(messages: ModuleMessages, socket: Socket, line: string): void {
+function receiveMessage(messages: ModuleMessages, socket: Duplex, line: string): void {
     const message = messageSchema.parse(JSON.parse(line));
     const previous = messages.progress.read();
     if (message.token !== messages.token || previous.stage === 'complete') {
@@ -75,7 +88,7 @@ function receiveMessage(messages: ModuleMessages, socket: Socket, line: string):
     }
 }
 
-function observeSocket(messages: ModuleMessages, socket: Socket): void {
+function observeSocket(messages: ModuleMessages, socket: Duplex): void {
     messages.addSocket(socket);
     const fail = function failed(error: unknown): void {
         messages.reply.resolve({ kind: 'failed', error });
@@ -99,9 +112,12 @@ function observeSocket(messages: ModuleMessages, socket: Socket): void {
     });
 }
 
-async function closeServer(server: Server, sockets: ReadonlySet<Socket>): Promise<void> {
+async function closeServer(server: ModuleImportServer, sockets: ReadonlySet<Duplex>): Promise<void> {
     for (const socket of sockets) {
         socket.destroy();
+    }
+    if (!server.listening) {
+        return;
     }
     await new Promise<void>(function close(resolve, reject) {
         server.close(function closed(error) {
@@ -114,7 +130,7 @@ async function closeServer(server: Server, sockets: ReadonlySet<Socket>): Promis
     });
 }
 
-function boundPort(server: Server): number {
+function boundPort(server: ModuleImportServer): number {
     const address = server.address();
     if (address === null || typeof address === 'string') {
         throw new Error('Module import requires a local socket.');
@@ -122,10 +138,30 @@ function boundPort(server: Server): number {
     return address.port;
 }
 
-export async function createModuleImportSession(): Promise<ModuleImportSession> {
-    const sockets = new Set<Socket>();
+async function listenForImport(server: ModuleImportServer, messages: ModuleMessages): Promise<number> {
+    try {
+        await new Promise<void>(function listen(resolve, reject) {
+            server.once('error', reject);
+            server.listen(0, '127.0.0.1', resolve);
+        });
+        return boundPort(server);
+    } catch (error: unknown) {
+        messages.reply.resolve({ kind: 'failed', error });
+        try {
+            await closeServer(server, messages.sockets);
+        } catch (cleanupError: unknown) {
+            throw new AggregateError([ error, cleanupError ], 'Module import startup and cleanup failed.', {
+                cause: cleanupError
+            });
+        }
+        throw error;
+    }
+}
+export async function openModuleImportSession(runtime: ModuleImportRuntime): Promise<ModuleImportSession> {
+    const sockets = new Set<Duplex>();
     const messages: ModuleMessages = {
-        token: randomBytes(tokenBytes).toString('hex'),
+        token: runtime.token(),
+        now: runtime.now,
         sockets,
         addSocket(socket) {
             sockets.add(socket);
@@ -137,15 +173,12 @@ export async function createModuleImportSession(): Promise<ModuleImportSession> 
             startup: 0
         })
     };
-    const server = createServer(observeSocket.bind(null, messages));
-    await new Promise<void>(function listen(resolve, reject) {
-        server.once('error', reject);
-        server.listen(0, '127.0.0.1', resolve);
-    });
+    const server = runtime.server(observeSocket.bind(null, messages));
+    const port = await listenForImport(server, messages);
     return {
-        arguments: [ String(boundPort(server)), messages.token ],
+        arguments: [ String(port), messages.token ],
         start() {
-            messages.progress.write({ ...messages.progress.read(), started: process.hrtime.bigint() });
+            messages.progress.write({ ...messages.progress.read(), started: messages.now() });
         },
         async report() {
             const reply = await messages.reply.promise;
@@ -165,4 +198,14 @@ export async function createModuleImportSession(): Promise<ModuleImportSession> 
             await closeServer(server, messages.sockets);
         }
     };
+}
+
+export async function createModuleImportSession(): Promise<ModuleImportSession> {
+    return await openModuleImportSession({
+        token() {
+            return randomBytes(tokenBytes).toString('hex');
+        },
+        now: process.hrtime.bigint,
+        server: createServer
+    });
 }

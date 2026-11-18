@@ -77,7 +77,7 @@ type ExecutionContext<Context> = {
     readonly run: <Value>(context: Context, run: () => Value) => Value;
 };
 
-type ExecutionErrorOwnership = {
+export type ExecutionErrorOwnership = {
     readonly runScopeStorage: ExecutionContext<RunErrorScope>;
     readonly activeCaseStorage: ExecutionContext<ActiveCaseContext>;
     readonly activeScopes: ActiveScopes;
@@ -102,7 +102,11 @@ function isErrorOwnership(value: unknown): value is ExecutionErrorOwnership {
         hasMethods(Reflect.get(value, 'processHookListeners'), [ 'install', 'removeWhenIdle' ]);
 }
 
-function createProcessHookListeners(activeScopes: ActiveScopes): ProcessHookListeners {
+export type ExecutionHookEvents = {
+    readonly prependListener: (event: HookKind, receive: (reason: unknown) => void) => unknown;
+    readonly removeListener: (event: HookKind, receive: (reason: unknown) => void) => unknown;
+};
+function createProcessHookListeners(activeScopes: ActiveScopes, events: ExecutionHookEvents): ProcessHookListeners {
     let stop: (() => void) | null = null;
     return {
         install(receive) {
@@ -112,14 +116,14 @@ function createProcessHookListeners(activeScopes: ActiveScopes): ProcessHookList
             function receiveUnhandledRejection(reason: unknown): void {
                 receive('unhandledRejection', reason);
             }
-            function receiveUncaughtException(error: Error): void {
+            function receiveUncaughtException(error: unknown): void {
                 receive('uncaughtException', error);
             }
-            process.prependListener('unhandledRejection', receiveUnhandledRejection);
-            process.prependListener('uncaughtException', receiveUncaughtException);
+            events.prependListener('unhandledRejection', receiveUnhandledRejection);
+            events.prependListener('uncaughtException', receiveUncaughtException);
             stop = function removeProcessListeners() {
-                process.removeListener('unhandledRejection', receiveUnhandledRejection);
-                process.removeListener('uncaughtException', receiveUncaughtException);
+                events.removeListener('unhandledRejection', receiveUnhandledRejection);
+                events.removeListener('uncaughtException', receiveUncaughtException);
             };
         },
         removeWhenIdle() {
@@ -131,18 +135,22 @@ function createProcessHookListeners(activeScopes: ActiveScopes): ProcessHookList
     };
 }
 
+export function createExecutionErrorOwnership(events: ExecutionHookEvents): ExecutionErrorOwnership {
+    const activeScopes = createActiveScopes();
+    return {
+        runScopeStorage: new AsyncLocalStorage<RunErrorScope>(),
+        activeCaseStorage: new AsyncLocalStorage<ActiveCaseContext>(),
+        activeScopes,
+        processHookListeners: createProcessHookListeners(activeScopes, events)
+    };
+}
+
 export function executionErrorOwnership(): ExecutionErrorOwnership {
     const existing: unknown = Reflect.get(globalThis, ownershipKey);
     if (isErrorOwnership(existing)) {
         return existing;
     }
-    const activeScopes = createActiveScopes();
-    const created = {
-        runScopeStorage: new AsyncLocalStorage<RunErrorScope>(),
-        activeCaseStorage: new AsyncLocalStorage<ActiveCaseContext>(),
-        activeScopes,
-        processHookListeners: createProcessHookListeners(activeScopes)
-    };
+    const created = createExecutionErrorOwnership(process);
     Reflect.set(globalThis, ownershipKey, created);
     return created;
 }

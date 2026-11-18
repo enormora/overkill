@@ -1,0 +1,17 @@
+{
+    "extends": "./tsconfig.tests.json",
+    "compilerOptions": {
+        "composite": false,
+        "noEmit": true,
+        "tsBuildInfoFile": "../target/buildcache/eslint.tsbuildinfo"
+    },
+    "references": [],
+    "include": [
+        "./**/*.ts",
+        "./**/*.json",
+        "../.c8rc.json"
+    ],
+    "exclude": [
+        "./reporters/benchmark-html-browser.entry-point.ts"
+    ]
+}

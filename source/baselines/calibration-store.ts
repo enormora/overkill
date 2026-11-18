@@ -23,11 +23,21 @@ export type CalibrationReferenceStore = {
         owners: (snapshot: CalibrationSnapshot) => StoredCalibration['owners']
     ) => Promise<readonly string[]>;
 };
+type CalibrationFileStatus = { readonly regular: boolean; readonly size: number; };
+export type CalibrationStoreAccess = {
+    readonly files: Pick<FileStore, 'read' | 'write'>;
+    readonly canonical: (target: string) => Promise<string>;
+    readonly ancestor: (target: string) => Promise<string>;
+    readonly names: (directory: string) => Promise<readonly string[]>;
+    readonly inspect: (target: string) => Promise<CalibrationFileStatus>;
+    readonly prepare: (directory: string) => Promise<void>;
+    readonly remove: (target: string) => Promise<void>;
+};
 type StoreLocation = {
     readonly root: string;
     readonly directory: string;
     readonly maxBytes: number;
-    readonly files: FileStore;
+    readonly access: CalibrationStoreAccess;
 };
 type ReferenceFile = { readonly name: string; readonly content: string; };
 type PublicationFailure = { readonly cause: unknown; readonly completed: readonly string[]; };
@@ -58,9 +68,9 @@ function referencePath(location: StoreLocation, reference: StoredCalibration): s
 function missingFile(error: unknown): boolean {
     return error instanceof Error && Reflect.get(error, 'code') === 'ENOENT';
 }
-async function existingRoot(root: string): Promise<string | null> {
+async function existingRoot(root: string, access: CalibrationStoreAccess): Promise<string | null> {
     try {
-        return await realpath(root);
+        return await access.canonical(root);
     } catch (error: unknown) {
         if (missingFile(error)) {
             return null;
@@ -71,7 +81,7 @@ async function existingRoot(root: string): Promise<string | null> {
 async function validateDirectory(location: StoreLocation, physicalRoot: string): Promise<void> {
     if (
         !isPathInside(location.root, location.directory) ||
-        !isPathInside(physicalRoot, await existingPathAncestor(location.directory))
+        !isPathInside(physicalRoot, await location.access.ancestor(location.directory))
     ) {
         throw new TypeError('Calibration reference directory must remain inside the project root.');
     }
@@ -88,11 +98,11 @@ async function referenceNames(directory: string): Promise<readonly string[]> {
 }
 async function readReference(location: StoreLocation, name: string): Promise<StoredCalibration> {
     const file = path.join(location.directory, name);
-    const stats = await lstat(file);
-    if (!stats.isFile() || stats.size > location.maxBytes) {
+    const stats = await location.access.inspect(file);
+    if (!stats.regular || stats.size > location.maxBytes) {
         throw new TypeError('Calibration reference is not a bounded regular file.');
     }
-    const content = await location.files.read(file);
+    const content = await location.access.files.read(file);
     const value: unknown = content === null ? null : JSON.parse(content);
     const stored = storedCalibrationSchema.parse(value);
     if (calibrationFilename(stored.profile, stored.snapshot) !== name) {
@@ -101,12 +111,12 @@ async function readReference(location: StoreLocation, name: string): Promise<Sto
     return stored;
 }
 async function readReferences(location: StoreLocation): Promise<readonly StoredCalibration[]> {
-    const physicalRoot = await existingRoot(location.root);
+    const physicalRoot = await existingRoot(location.root, location.access);
     if (physicalRoot === null) {
         return [];
     }
     await validateDirectory(location, physicalRoot);
-    const names = await referenceNames(location.directory);
+    const names = await location.access.names(location.directory);
     const selected = names
         .filter(function referenceFile(name) {
             return name.endsWith('.calibration.json');
@@ -139,7 +149,7 @@ async function publishFiles(
     record: (path: string) => void
 ): Promise<void> {
     for (const file of pending) {
-        await location.files.write(path.join(location.directory, file.name), file.content);
+        await location.access.files.write(path.join(location.directory, file.name), file.content);
         record(path.relative(location.root, path.join(location.directory, file.name)).replaceAll('\\', '/'));
     }
 }
@@ -147,9 +157,9 @@ async function publishReferences(
     location: StoreLocation,
     pending: readonly ReferenceFile[]
 ): Promise<readonly string[]> {
-    await validateDirectory(location, await realpath(location.root));
-    await mkdir(location.directory, { recursive: true });
-    await validateDirectory(location, await realpath(location.root));
+    await validateDirectory(location, await location.access.canonical(location.root));
+    await location.access.prepare(location.directory);
+    await validateDirectory(location, await location.access.canonical(location.root));
     const written: string[] = [];
     try {
         await publishFiles(location, pending, function writtenPath(filePath) {
@@ -174,7 +184,7 @@ async function removeFiles(
         if (canonicalIdentityJson(current) !== canonicalIdentityJson(reference)) {
             throw new Error('Calibration reference changed during execution.');
         }
-        await unlink(path.join(location.directory, name));
+        await location.access.remove(path.join(location.directory, name));
         record(referencePath(location, reference));
     }
 }
@@ -182,7 +192,7 @@ async function removeReferences(
     location: StoreLocation,
     references: readonly StoredCalibration[]
 ): Promise<readonly string[]> {
-    await validateDirectory(location, await realpath(location.root));
+    await validateDirectory(location, await location.access.canonical(location.root));
     for (const reference of references) {
         const current = await readReference(location, calibrationFilename(reference.profile, reference.snapshot));
         if (canonicalIdentityJson(current) !== canonicalIdentityJson(reference)) {
@@ -202,15 +212,16 @@ async function removeReferences(
     }
     return removed;
 }
-export async function createCalibrationReferenceStore(
-    input: CalibrationStoreInput
+export async function openCalibrationReferenceStore(
+    input: CalibrationStoreInput,
+    access: CalibrationStoreAccess
 ): Promise<CalibrationReferenceStore> {
     const root = path.resolve(input.projectRoot);
     const location = {
         root,
         directory: path.resolve(root, input.directory, 'calibration'),
         maxBytes: input.maxBytes,
-        files: createNodeFileStore()
+        access
     };
     if (!isPathInside(root, location.directory)) {
         throw new TypeError('Calibration reference directory must remain inside the project root.');
@@ -229,4 +240,23 @@ export async function createCalibrationReferenceStore(
             return await publishReferences(location, encodedReferences(location, profile, snapshots, owners));
         }
     };
+}
+
+export async function createCalibrationReferenceStore(
+    input: CalibrationStoreInput
+): Promise<CalibrationReferenceStore> {
+    return await openCalibrationReferenceStore(input, {
+        files: createNodeFileStore(),
+        canonical: realpath,
+        ancestor: existingPathAncestor,
+        names: referenceNames,
+        remove: unlink,
+        async inspect(target) {
+            const stats = await lstat(target);
+            return { regular: stats.isFile(), size: stats.size };
+        },
+        async prepare(directory) {
+            await mkdir(directory, { recursive: true });
+        }
+    });
 }

@@ -130,6 +130,50 @@ export const testNode = createSuite({
     ...definition,
     title: 'source/reporters/human-attachment-rendering.test.ts',
     children: [
+        ...[ false, true ].map(function (resourceProducer) {
+            return createTestCase({
+                ...definition,
+                title: `identifies automatic attachment producers for resource ${resourceProducer}`,
+                body(scope: TestScope) {
+                    const original = attachment({
+                        kind: 'text',
+                        text: 'ready',
+                        byteLength: 5,
+                        completion: { kind: 'complete' }
+                    });
+                    const producer = resourceProducer
+                        ? { kind: 'resource' as const, name: 'owner' }
+                        : { kind: 'case' as const };
+                    const artifact: RuntimeAttachmentArtifact = {
+                        ...original,
+                        payload: {
+                            ...original.payload,
+                            capture: 'automatic',
+                            producer,
+                            retention: {
+                                condition: { kind: 'resource', resource: 'owner', boundary: 'run:owner' },
+                                state: 'retained'
+                            }
+                        }
+                    };
+                    const result = runResultFactory.build({ artifacts: [ artifact ], summary: { failed: 1 } });
+                    const lines = problemLines(result, {
+                        failureArtifacts: defaultFailureArtifactPolicy,
+                        relativizeLocationPath(location) {
+                            return location.file;
+                        }
+                    }, { verbose: false });
+                    scope.assert.deepEqual(lines, [
+                        'Problems',
+                        `  attachment "evidence"${
+                            resourceProducer ? ' [owner]' : ''
+                        } (application/octet-stream, 5 bytes):`
+                    ]);
+                    return scope.assert.collect();
+                }
+            });
+        }),
+
         witnessReporting,
         createTestCase({
             ...definition,

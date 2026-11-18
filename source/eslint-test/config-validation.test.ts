@@ -1,8 +1,60 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { defineConfigTests } from '../packages/eslint-test/eslint-test.entry-point.ts';
 import { configDefinition, emptyConfigProject } from '../test-support/eslint-config.ts';
 
 export const testNode = suite('config definition validation', [
+    test('rejects inventory exclusions for rules outside the catalog', function (scope: TestScope) {
+        scope.assert.throws(function () {
+            defineConfigTests({
+                ...configDefinition([]),
+                inventories: [ {
+                    title: 'inventory',
+                    configs: 'all',
+                    catalog: { kind: 'rules', rules: [ { ruleId: 'known', deprecated: false } ] },
+                    target: { kind: 'declared' },
+                    completeness: 'all',
+                    deprecated: 'allow',
+                    exclusions: [ { ruleId: 'unknown', reason: 'not applicable' } ]
+                } ]
+            });
+        }, { message: 'Inventory exclusions must name catalog rules.' });
+        return scope.assert.collect();
+    }),
+    test('validates effective inventory paths after admitting known exclusions', function (scope: TestScope) {
+        scope.assert.throws(function () {
+            defineConfigTests({
+                ...configDefinition([]),
+                inventories: [ {
+                    title: 'inventory',
+                    configs: 'all',
+                    catalog: { kind: 'rules', rules: [ { ruleId: 'known', deprecated: false } ] },
+                    target: { kind: 'effective', filename: '../outside.js' },
+                    completeness: 'all',
+                    deprecated: 'allow',
+                    exclusions: [ { ruleId: 'known', reason: 'not applicable' } ]
+                } ]
+            });
+        }, { message: 'Project filenames must stay inside the project root.' });
+        return scope.assert.collect();
+    }),
+    test('validates expected fixed-output paths before creating fixture tests', function (scope: TestScope) {
+        scope.assert.throws(function () {
+            defineConfigTests({
+                ...configDefinition([]),
+                fixtures: [ {
+                    title: 'fix',
+                    configs: 'all',
+                    source: { kind: 'inline', filename: 'input.js', code: '' },
+                    expect: {
+                        kind: 'fix',
+                        diagnostics: { kind: 'clean' },
+                        output: { kind: 'file', filename: '../outside.js' }
+                    }
+                } ]
+            });
+        }, { message: 'Project filenames must stay inside the project root.' });
+        return scope.assert.collect();
+    }),
     ...[ [], [ 'missing' ], [ 'basic', 'basic' ] ].map(function selection(configs) {
         return test(`rejects invalid selection ${JSON.stringify(configs)}`, function (scope) {
             const input: unknown = configs;

@@ -1,6 +1,6 @@
 import { Transform, type Duplex } from 'node:stream';
 import { randomUUID } from 'node:crypto';
-import { createServer, type Server, type Socket } from 'node:net';
+import { createServer } from 'node:net';
 import { createInterface, type Interface } from 'node:readline';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createJsonFrameLimiter } from '../json-frame-limiter.ts';
@@ -19,12 +19,13 @@ export type AttachmentServer = {
     readonly finish: () => Promise<readonly AttachmentOwner[]>;
 };
 type AttachmentServerChannels = {
-    readonly accept: (socket: Socket) => void;
-    readonly finish: (server: Server) => Promise<readonly AttachmentOwner[]>;
+    readonly accept: (socket: Duplex) => void;
+    readonly finish: (server: AttachmentListener) => Promise<readonly AttachmentOwner[]>;
 };
 type AttachmentServerChannelsState = {
-    readonly store: AttachmentStore;
+    readonly store: AttachmentServerStore;
     readonly token: string;
+    readonly identity: () => string;
     readonly sockets: AttachmentSockets;
     readonly operations: AttachmentChannelOperations;
     readonly abandoned: AbandonedAttachments;
@@ -32,7 +33,7 @@ type AttachmentServerChannelsState = {
 async function attachmentServerChannelsReply(
     state: AttachmentServerChannelsState,
     line: string,
-    socket: Socket,
+    socket: Duplex,
     channel: string
 ): Promise<void> {
     const { store } = state;
@@ -55,7 +56,7 @@ async function attachmentServerChannelsReply(
 }
 type AttachmentChannelRequest = {
     readonly line: string;
-    readonly socket: Socket;
+    readonly socket: Duplex;
     readonly channel: string;
     readonly previous: Promise<void>;
     readonly queued: StoredRunValue<number>;
@@ -84,7 +85,7 @@ async function attachmentServerChannelsInterrupt(
     await previous;
     abandoned.push(...await store.finish(channel));
 }
-function observeAttachmentChannelFailures(socket: Socket, frames: Readonly<Duplex>, lines: Interface): void {
+function observeAttachmentChannelFailures(socket: Duplex, frames: Readonly<Duplex>, lines: Interface): void {
     frames.on('error', function () {
         socket.destroy();
     });
@@ -95,11 +96,11 @@ function observeAttachmentChannelFailures(socket: Socket, frames: Readonly<Duple
         socket.destroy();
     });
 }
-function attachmentServerChannelsAccept(state: AttachmentServerChannelsState, socket: Socket): void {
+function attachmentServerChannelsAccept(state: AttachmentServerChannelsState, socket: Duplex): void {
     const { sockets } = state;
 
     sockets.add(socket);
-    const channel = randomUUID();
+    const channel = state.identity();
     const frames = new Transform({ transform: createJsonFrameLimiter(attachmentMaxFrameBytes, 'Attachment') });
     const lines = createInterface({ input: socket.pipe(frames), crlfDelay: Number.POSITIVE_INFINITY });
     let queue = Promise.resolve();
@@ -126,7 +127,7 @@ function attachmentServerChannelsAccept(state: AttachmentServerChannelsState, so
 }
 async function attachmentServerChannelsFinish(
     state: AttachmentServerChannelsState,
-    server: Server
+    server: AttachmentListener
 ): Promise<readonly AttachmentOwner[]> {
     const { store } = state;
 
@@ -147,26 +148,43 @@ async function attachmentServerChannelsFinish(
     await Promise.all(state.operations.values());
     return owners;
 }
-function createAttachmentServerChannels(store: AttachmentStore, token: string): AttachmentServerChannels {
-    const sockets = new Set<Socket>();
+function createAttachmentServerChannels(
+    store: AttachmentServerStore,
+    token: string,
+    identity: () => string
+): AttachmentServerChannels {
+    const sockets = new Set<Duplex>();
     const operations = new Set<Promise<unknown>>();
     const abandoned: AttachmentOwner[] = [];
-    const state: AttachmentServerChannelsState = { store, token, sockets, operations, abandoned };
+    const state: AttachmentServerChannelsState = { store, token, identity, sockets, operations, abandoned };
     return {
         accept: attachmentServerChannelsAccept.bind(null, state),
         finish: attachmentServerChannelsFinish.bind(null, state)
     };
 }
-export async function createAttachmentServer(
-    store: AttachmentStore,
-    limits: AttachmentLimits
+type AttachmentListenerAddress = { readonly port: number; };
+type AttachmentListener = {
+    readonly once: (event: 'error', listener: (error: Error) => void) => unknown;
+    readonly listen: (port: number, host: string, callback: () => void) => unknown;
+    readonly address: () => AttachmentListenerAddress | string | null;
+    readonly close: (callback: (error: Error | undefined) => void) => unknown;
+};
+export type AttachmentServerStore = Pick<AttachmentStore, 'exchange' | 'finish'>;
+export type AttachmentServerRuntime = {
+    readonly identity: () => string;
+    readonly create: (accept: (socket: Duplex) => void) => AttachmentListener;
+};
+export async function listenForAttachments(
+    store: AttachmentServerStore,
+    limits: AttachmentLimits,
+    runtime: AttachmentServerRuntime
 ): Promise<AttachmentServer> {
-    const token = randomUUID();
-    const channels = createAttachmentServerChannels(store, token);
-    const server = createServer(function (socket) {
+    const token = runtime.identity();
+    const channels = createAttachmentServerChannels(store, token, runtime.identity);
+    const server = runtime.create(function (socket) {
         channels.accept(socket);
     });
-    await new Promise<void>(function listenForAttachments(resolve, reject) {
+    await new Promise<void>(function bindAttachmentPort(resolve, reject) {
         server.once('error', reject);
         server.listen(0, '127.0.0.1', resolve);
     });
@@ -185,9 +203,9 @@ export async function createAttachmentServer(
 }
 
 type AttachmentSockets = {
-    readonly add: (socket: Socket) => void;
-    readonly delete: (socket: Socket) => boolean;
-    readonly values: () => Iterable<Socket>;
+    readonly add: (socket: Duplex) => void;
+    readonly delete: (socket: Duplex) => boolean;
+    readonly values: () => Iterable<Duplex>;
 };
 type AttachmentChannelOperations = {
     readonly add: (operation: Promise<unknown>) => void;
@@ -198,3 +216,10 @@ type AbandonedAttachments = {
     readonly push: (...owners: readonly AttachmentOwner[]) => number;
     readonly values: () => Iterable<AttachmentOwner>;
 };
+
+export async function createAttachmentServer(
+    store: AttachmentStore,
+    limits: AttachmentLimits
+): Promise<AttachmentServer> {
+    return await listenForAttachments(store, limits, { identity: randomUUID, create: createServer });
+}

@@ -33,7 +33,6 @@ const recordSnapshotSchema = z.object({
 type RecordSnapshot = Readonly<z.infer<typeof recordSnapshotSchema>>;
 
 export type CoverageRecordFixture = {
-    readonly cleanup: () => Promise<void>;
     readonly facts: RunFacts;
     readonly records: readonly RecordSnapshot[];
     readonly request: Pick<RecordedCoverageRequest, 'command' | 'dependencies' | 'input' | 'timing'>;
@@ -59,10 +58,9 @@ function coverageFixtureDependencies(): RecordedCoverageRequest['dependencies'] 
 
 async function createCoverageRecordFixture(
     config: NormalizedConfig,
-    failedWrites: readonly number[]
+    failedWrites: readonly number[],
+    directory: string
 ): Promise<CoverageRecordFixture> {
-    await mkdir('target', { recursive: true });
-    const directory = await mkdtemp('target/coverage-record-');
     const dependencies = coverageFixtureDependencies();
     const records: RecordSnapshot[] = [];
     let writes = 0;
@@ -107,9 +105,6 @@ async function createCoverageRecordFixture(
     };
 
     return {
-        async cleanup() {
-            await rm(path.resolve(directory), { force: true, recursive: true });
-        },
         facts: createRunFacts({
             hostProcess: null,
             benchmarkHost: null,
@@ -138,10 +133,19 @@ export async function withCoverageRecordFixture<Value>(
     failedWrites: readonly number[],
     work: (fixture: CoverageRecordFixture) => Promise<Value>
 ): Promise<Value> {
-    const fixture = await createCoverageRecordFixture(config, failedWrites);
+    await mkdir('target', { recursive: true });
+    const directory = await mkdtemp('target/coverage-record-');
     try {
-        return await work(fixture);
+        return await work(await createCoverageRecordFixture(config, failedWrites, directory));
     } finally {
-        await fixture.cleanup();
+        await rm(path.resolve(directory), { force: true, recursive: true });
     }
+}
+
+export async function withMemoryCoverageRecordFixture<Value>(
+    config: NormalizedConfig,
+    failedWrites: readonly number[],
+    work: (fixture: CoverageRecordFixture) => Promise<Value>
+): Promise<Value> {
+    return await work(await createCoverageRecordFixture(config, failedWrites, 'target/coverage-record-unit'));
 }

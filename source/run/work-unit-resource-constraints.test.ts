@@ -103,6 +103,71 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             annotations: {},
             controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'workResourceConstraints() combines runtime variants and workload-dependent resources',
+            body(scope: OverkillScope) {
+                const testCase: CollectedRunCase = {
+                    ...collectedCase('runtime requirements', [
+                        { ...resource('consumer', 'per-suite', []), dependencies: [ 'supplier' ] },
+                        { ...resource('supplier', 'per-case', []), workload: 'required' }
+                    ]),
+                    resourceAttachments: {
+                        directResources: [],
+                        resourceGraph: [
+                            { ...resource('consumer', 'per-suite', []), dependencies: [ 'supplier' ] },
+                            { ...resource('supplier', 'per-case', []), workload: 'required' }
+                        ],
+                        runtimeGraphs: [
+                            {
+                                kind: 'runtime',
+                                name: 'plain',
+                                dimensions: {},
+                                resources: [],
+                                scenarioBindings: [],
+                                requirements: [ { kind: 'serial' }, { kind: 'affinity-key', key: 'tenant' }, {
+                                    kind: 'capacity-weight',
+                                    weight: 2
+                                } ]
+                            },
+                            {
+                                kind: 'runtime-matrix',
+                                name: 'matrix',
+                                resources: [],
+                                variants: [ {
+                                    id: 'variant',
+                                    runtime: {
+                                        name: 'inner',
+                                        dimensions: {},
+                                        resources: [],
+                                        scenarioBindings: [],
+                                        requirements: [ { kind: 'fault-domain', key: 'backend' }, {
+                                            kind: 'capacity-weight',
+                                            weight: 3
+                                        } ]
+                                    }
+                                } ]
+                            }
+                        ]
+                    }
+                };
+                scope.assert.deepEqual(
+                    workResourceConstraints([ workId('runtime requirements') ], collectedPlan([ testCase ])),
+                    {
+                        affinityKeys: [ 'tenant' ],
+                        capacityWeight: 6,
+                        duplicateExecution: [],
+                        faultDomains: [ 'backend' ],
+                        serialKeys: [ 'serial:runtime:plain' ],
+                        singleWorkerKeys: [ 'resource:suite:source/api.test.ts:["api"]:consumer:workload:null' ]
+                    }
+                );
+                return scope.assert.collect();
+            }
+        }),
+
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'workResourceConstraints() lowers resource scopes and requirements',
             body(scope: OverkillScope) {

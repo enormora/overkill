@@ -1,7 +1,7 @@
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { createTaskRun } from '../test-support/worker-pool-execution-state.ts';
 import { placementPlan, fakeWorkerRuntime } from './worker-pool-placement-validation.test.ts';
-import { createTaskRun } from './worker-pool-execution-state.test.ts';
 import { createPlacementTraceRecorder, type PlacementTrace } from './placement-trace.ts';
 import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from './worker-pool-runtime.ts';
 import type { WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';

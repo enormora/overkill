@@ -6,6 +6,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { defineResource } from '../resources/resources.ts';
+import { testNode as sessions } from './projected-resource-lifecycle-policy.test.ts';
 import {
     deserializeProjectedHandle,
     projectedHandle,
@@ -32,6 +33,7 @@ export const testNode = createOverkillSuite({
     ...testCaseMetadata,
     title: 'source/run/resource-lifecycle-projection.test.ts',
     children: [
+        sessions,
         createOverkillTestCase({
             ...testCaseMetadata,
             title: 'resource lifecycle projection preserves null payloads',

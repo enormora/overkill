@@ -5,7 +5,7 @@ import {
 } from '../engine/reporter.ts';
 import type {
     WorkerPoolMessage,
-    WorkerPoolTask
+    WorkerTask as WorkerPoolTask
 } from './worker-pool-protocol.ts';
 
 type WorkerPoolStreamName = 'stderr' | 'stdout';
@@ -15,6 +15,8 @@ type RestoredOutputCapture = {
 };
 
 type StreamWrite = typeof process.stdout.write;
+export type WorkerOutputStreams = Readonly<Record<WorkerPoolStreamName, { readonly write: StreamWrite; }>>;
+export type WorkerOutputTask = { readonly port: Pick<WorkerPoolTask['port'], 'postMessage'>; };
 type WriteCallback = (error?: Error | null) => void;
 type WriteChunk = Uint8Array | string;
 type WriteEncodingOrCallback = WriteCallback | string;
@@ -27,17 +29,17 @@ function outputBuffer(chunk: WriteChunk): Buffer {
     return Buffer.from(chunk);
 }
 
-function selectedStream(streamName: WorkerPoolStreamName): typeof process.stderr | typeof process.stdout {
-    return streamName === 'stdout' ? process.stdout : process.stderr;
-}
-
-function replaceStreamWrite(streamName: WorkerPoolStreamName, write: StreamWrite): () => void {
-    const stream = selectedStream(streamName);
+function replaceStreamWrite(
+    streams: WorkerOutputStreams,
+    streamName: WorkerPoolStreamName,
+    write: StreamWrite
+): () => void {
+    const stream = streams[streamName];
     const originalWrite = stream.write.bind(stream);
-    stream.write = write;
+    Object.assign(stream, { write });
 
     return function restoreStream() {
-        stream.write = originalWrite;
+        Object.assign(stream, { write: originalWrite });
     };
 }
 
@@ -53,8 +55,9 @@ function invokeWriteCallbacks(
 }
 
 function captureStream(
+    streams: WorkerOutputStreams,
     streamName: WorkerPoolStreamName,
-    task: WorkerPoolTask,
+    task: WorkerOutputTask,
     wallClock: Clock
 ): () => void {
     function writeCapturedOutput(chunk: WriteChunk, callback?: WriteCallback): boolean;
@@ -81,25 +84,10 @@ function captureStream(
         return true;
     }
 
-    return replaceStreamWrite(streamName, writeCapturedOutput);
+    return replaceStreamWrite(streams, streamName, writeCapturedOutput);
 }
 
-export function captureOutput(
-    task: WorkerPoolTask,
-    wallClock: Clock
-): RestoredOutputCapture {
-    const restoreStdout = captureStream('stdout', task, wallClock);
-    const restoreStderr = captureStream('stderr', task, wallClock);
-
-    return {
-        restore() {
-            restoreStdout();
-            restoreStderr();
-        }
-    };
-}
-
-function suppressStream(streamName: WorkerPoolStreamName): () => void {
+function suppressStream(streams: WorkerOutputStreams, streamName: WorkerPoolStreamName): () => void {
     function writeSuppressedOutput(_chunk: WriteChunk, callback?: WriteCallback): boolean;
     function writeSuppressedOutput(
         _chunk: WriteChunk,
@@ -116,22 +104,44 @@ function suppressStream(streamName: WorkerPoolStreamName): () => void {
         return true;
     }
 
-    return replaceStreamWrite(streamName, writeSuppressedOutput);
+    return replaceStreamWrite(streams, streamName, writeSuppressedOutput);
 }
 
-export function suppressOutput(): RestoredOutputCapture {
-    const restoreStdout = suppressStream('stdout');
-    const restoreStderr = suppressStream('stderr');
-
+export type WorkerOutputCapture = {
+    readonly captureOutput: (task: WorkerOutputTask, wallClock: Clock) => RestoredOutputCapture;
+    readonly suppressOutput: () => RestoredOutputCapture;
+};
+export function createWorkerOutputCapture(streams: WorkerOutputStreams): WorkerOutputCapture {
     return {
-        restore() {
-            restoreStdout();
-            restoreStderr();
+        captureOutput(task: WorkerOutputTask, wallClock: Clock): RestoredOutputCapture {
+            const restoreStdout = captureStream(streams, 'stdout', task, wallClock);
+            const restoreStderr = captureStream(streams, 'stderr', task, wallClock);
+            return {
+                restore() {
+                    restoreStdout();
+                    restoreStderr();
+                }
+            };
+        },
+        suppressOutput(): RestoredOutputCapture {
+            const restoreStdout = suppressStream(streams, 'stdout');
+            const restoreStderr = suppressStream(streams, 'stderr');
+            return {
+                restore() {
+                    restoreStdout();
+                    restoreStderr();
+                }
+            };
         }
     };
 }
 
-export function createWorkerPoolReporter(task: WorkerPoolTask): DefinedReporter {
+export const { captureOutput, suppressOutput } = createWorkerOutputCapture({
+    stdout: process.stdout,
+    stderr: process.stderr
+});
+
+export function createWorkerPoolReporter(task: WorkerOutputTask): DefinedReporter {
     return defineReporter(function createWorkerPoolRuntimeReporter() {
         return {
             dispose: null,

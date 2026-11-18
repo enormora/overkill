@@ -12,7 +12,6 @@ import {
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { microtestProfileSchema } from '../config/schema.ts';
 import { formatFailure } from '../reporters/line-failure-rendering.ts';
-import { testNode as debugLifecycle } from './test-debug-lifecycle.test.ts';
 import { testNode as debugDiagnostics } from './test-debug.test.ts';
 import { testNode as debugRecording } from './test-debug-recording.test.ts';
 import { createReportingContext } from './reporting-context.ts';
@@ -75,7 +74,6 @@ export const testNode = createSuite({
     children: [
         debugDiagnostics,
         debugRecording,
-        debugLifecycle,
         createTestCase({
             ...metadata,
             title: 'legacy reporter contexts retain default failure rendering',

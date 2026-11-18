@@ -1,5 +1,5 @@
-import { Transform } from 'node:stream';
-import { connect, type Socket } from 'node:net';
+import { Transform, type Duplex } from 'node:stream';
+import { connect } from 'node:net';
 import { createInterface } from 'node:readline';
 import { createJsonFrameLimiter } from '../json-frame-limiter.ts';
 import { createStoredRunValue, type StoredRunValue } from './supervised-run-state.ts';
@@ -13,6 +13,7 @@ import {
 } from './attachment-protocol.ts';
 import { attachmentReplySchema } from './attachment-wire-schema.ts';
 
+export type AttachmentSocket = Readonly<Duplex> & { readonly ref: () => unknown; readonly unref: () => unknown; };
 export type AttachmentConnection = {
     readonly ready: Promise<void>;
     readonly exchange: AttachmentExchange;
@@ -23,7 +24,7 @@ const jsonEscapeExpansion = 6;
 type PendingAttachmentReply = ReturnType<typeof Promise.withResolvers<AttachmentResponse>>;
 type AttachmentChannelState = {
     readonly endpoint: AttachmentEndpoint;
-    readonly socket: Socket;
+    readonly socket: AttachmentSocket;
     readonly pending: PendingAttachmentRequests;
     readonly sequence: StoredRunValue<number>;
     readonly failure: StoredRunValue<Error | null>;
@@ -124,8 +125,10 @@ async function attachmentChannelExchange(
 function observeAttachmentDisconnect(state: AttachmentChannelState, observer: () => void): void {
     state.socket.once('close', observer);
 }
-export function createAttachmentConnection(endpoint: AttachmentEndpoint): AttachmentConnection {
-    const socket: Socket = connect({ host: '127.0.0.1', port: endpoint.port });
+export function attachAttachmentConnection(
+    endpoint: AttachmentEndpoint,
+    socket: AttachmentSocket
+): AttachmentConnection {
     const pending = new Map<number, PendingAttachmentReply>();
     const sequence = createStoredRunValue<number>(0);
     const failure = createStoredRunValue<Error | null>(null);
@@ -154,3 +157,7 @@ type PendingAttachmentRequests = {
     readonly clear: () => void;
     readonly values: () => Iterable<PendingAttachmentReply>;
 };
+
+export function createAttachmentConnection(endpoint: AttachmentEndpoint): AttachmentConnection {
+    return attachAttachmentConnection(endpoint, connect({ host: '127.0.0.1', port: endpoint.port }));
+}

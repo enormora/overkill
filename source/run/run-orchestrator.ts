@@ -1,8 +1,8 @@
-import { createRunCoordinator, type RunCoordinator } from './run.ts';
+import { createRunCoordinator, type RunCoordinator } from './run-coordinator.entry-point.ts';
 import {
     createNodeRunOrchestratorDependencies,
     type NodeRunOrchestratorInput
-} from './node-run-orchestrator-dependencies.ts';
+} from './node-run-orchestrator-dependencies.entry-point.ts';
 import type { RunOrchestrator } from './run-orchestrator-types.ts';
 
 export type NodeRunCoordinator = {

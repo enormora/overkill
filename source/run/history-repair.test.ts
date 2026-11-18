@@ -3,6 +3,7 @@ import { suite, test, type TestScope } from '../packages/test/test.entry-point.t
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
 import { createMemoryHistoryStorage } from '../test-support/memory-history-storage.ts';
+import { testNode as failures } from './history-repair-failures.test.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
 import { readCompactHistory, updateCompactHistory } from './history-storage.ts';
 import { repairHistory } from './history-repair.ts';
@@ -73,6 +74,7 @@ async function writeMergeHistoryRecords(store: HistoryStorage): Promise<void> {
 }
 
 export const testNode = suite('history schema compatibility', [
+    failures,
     test(
         'repair preserves summaries and counters after detailed records are pruned',
         async function (scope: TestScope) {

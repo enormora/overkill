@@ -216,7 +216,7 @@ export const configuration = {
                 historyMaintenance: { javaScript: 'run/history-maintenance.js' },
                 localCoverage: { javaScript: 'run/run-local-coverage.js' },
                 main: moduleRoot('packages/run/run.entry-point'),
-                nodeCommandLineRunner: moduleRoot('run/node-command-line-runner'),
+                nodeCommandLineRunner: moduleRoot('run/node-command-line-runner.entry-point'),
                 nodeFamilyResolution: moduleRoot('run/node-family-resolution'),
                 recordedCoverage: { javaScript: 'run/recorded-coverage-run.js' },
                 recordedRun: { javaScript: 'run/recorded-run.js' },

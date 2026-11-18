@@ -1,27 +1,22 @@
-import { ConfigError, loadConfig } from '../run/config.entry-point.ts';
-import { orchestrator, RunResolutionError, withFileModuleBoundary } from '../run/run.entry-point.ts';
+import { ConfigError } from '../run/config.entry-point.ts';
+import type { ConfigLoader } from '../../config/config-loader.ts';
+import { type orchestrator, RunResolutionError, type withFileModuleBoundary } from '../run/run.entry-point.ts';
 import { selectMicrotestProfile } from './microtest-profile.ts';
 import { createMutationRunCommand } from './mutation-execution-policy.ts';
-import { mutationPolicyRequestSchema, type MutationPolicyResponse } from './mutation-policy-protocol.ts';
+import type { MutationPolicyRequest, MutationPolicyResponse } from './mutation-policy-protocol.ts';
 import { parseRunnerOptions } from './runner-settings-schema.ts';
-import { assertExcludedMutationFiles, sandboxModuleBoundary, sandboxRunnerOptions } from './mutation-sandbox.ts';
+import { type assertExcludedMutationFiles, sandboxModuleBoundary, sandboxRunnerOptions } from './mutation-sandbox.ts';
 
-async function readPolicyRequest(): Promise<ReturnType<typeof mutationPolicyRequestSchema.parse>> {
-    return new Promise(function receivePolicyRequest(resolve, reject) {
-        process.once('message', function decodePolicyRequest(message: unknown) {
-            try {
-                resolve(mutationPolicyRequestSchema.parse(message));
-            } catch (error: unknown) {
-                reject(
-                    error instanceof Error ? error : new Error('Invalid mutation policy request.', { cause: error })
-                );
-            }
-        });
-    });
-}
-
-async function createPolicy(): Promise<MutationPolicyResponse> {
-    const input = await readPolicyRequest();
+export type MutationPolicyRuntime = {
+    readonly load: ConfigLoader;
+    readonly freeze: typeof orchestrator.freezePolicy;
+    readonly boundary: typeof withFileModuleBoundary;
+    readonly exclude: typeof assertExcludedMutationFiles;
+};
+async function createPolicy(
+    input: MutationPolicyRequest,
+    runtime: MutationPolicyRuntime
+): Promise<MutationPolicyResponse> {
     const parsedSettings = parseRunnerOptions(input.settings);
     const { sandbox } = input;
     if (sandbox !== null && sandbox.root !== input.cwd) {
@@ -29,21 +24,21 @@ async function createPolicy(): Promise<MutationPolicyResponse> {
     }
     const settings = sandbox === null ? parsedSettings : sandboxRunnerOptions(sandbox, parsedSettings);
     const moduleBoundary = sandbox === null ? null : sandboxModuleBoundary(sandbox);
-    return await withFileModuleBoundary(moduleBoundary, async function freezeSandboxPolicy() {
+    return await runtime.boundary(moduleBoundary, async function freezeSandboxPolicy() {
         const request = { configPath: settings.configPath, cwd: input.cwd };
-        const config = await loadConfig(request);
+        const config = await runtime.load(request);
         if (sandbox !== null && config.configPath !== null) {
-            await assertExcludedMutationFiles(sandbox, [ config.configPath ], 'configuration');
+            await runtime.exclude(sandbox, [ config.configPath ], 'configuration');
         }
         const selected = selectMicrotestProfile(config, settings.profile);
         const command = createMutationRunCommand({ config, cwd: input.cwd, profile: selected.name });
-        const policy = await orchestrator.freezePolicy({
+        const policy = await runtime.freeze({
             moduleBoundary,
             command: { ...command, request: { ...command.request, paths: settings.paths } },
             source: { kind: 'config-file', request, resolvedPath: config.configPath }
         });
         if (sandbox !== null) {
-            await assertExcludedMutationFiles(
+            await runtime.exclude(
                 sandbox,
                 policy.files.map(function testModule(file) {
                     return file.path;
@@ -69,30 +64,13 @@ function failureResponse(error: unknown): MutationPolicyResponse {
     return { kind: 'error', message: error instanceof Error ? error.message : String(error) };
 }
 
-async function policyResponse(): Promise<MutationPolicyResponse> {
+export async function resolveMutationPolicyRequest(
+    input: MutationPolicyRequest,
+    runtime: MutationPolicyRuntime
+): Promise<MutationPolicyResponse> {
     try {
-        return await createPolicy();
+        return await createPolicy(input, runtime);
     } catch (error: unknown) {
         return failureResponse(error);
     }
 }
-
-async function resolveMutationPolicy(): Promise<void> {
-    const response = await policyResponse();
-    await new Promise<void>(function deliverPolicy(resolve, reject) {
-        if (process.send === undefined) {
-            reject(new Error('Mutation policy resolver requires IPC.'));
-            return;
-        }
-        process.send(response, function policyDelivered(error) {
-            if (error === null) {
-                resolve();
-            } else {
-                reject(error);
-            }
-        });
-    });
-    process.disconnect?.();
-}
-
-await resolveMutationPolicy();

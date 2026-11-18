@@ -1,3 +1,4 @@
+import diagnosticsChannel from 'node:diagnostics_channel';
 import { runIfMain } from '#test-runner';
 import { createExecutionObservation, withExecutionObservation } from '../engine/execution-observation.ts';
 import {
@@ -6,6 +7,8 @@ import {
     type RunnerError,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { testNode as moduleBoundary } from './file-module-boundary-policy.test.ts';
+import { testNode as capabilityPolicy } from './run-capability-policy.test.ts';
 import { createPermissionDenialRuntimePolicy } from './capability-policy.ts';
 import { RunCollectionError } from './run-errors.ts';
 import {
@@ -35,9 +38,7 @@ function runnerErrorCauseField(runnerError: RunnerError, field: string): unknown
 }
 
 async function readPermissionDiagnosticChannel(): Promise<PermissionDiagnosticChannel> {
-    const diagnosticsChannel = await import('node:diagnostics_channel');
-
-    return diagnosticsChannel.default.channel('node:permission-model:fs');
+    return diagnosticsChannel.channel('node:permission-model:fs');
 }
 
 function publishPermissionDiagnostic(
@@ -135,6 +136,8 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        moduleBoundary,
+        capabilityPolicy,
         ...diagnosticPolicies.map(function diagnosticPolicy(policy) {
             return createOverkillTestCase({
                 definitionLocations: [ { kind: 'unknown' } ],

@@ -180,6 +180,9 @@ export function createManagedStores(options: ResourceLifecycleStoreOptions): Man
 export function resourceProjectionRecordsFromStores(stores: ManagedLifecycleStores): ResourceProjectionRecords {
     return {
         resources: stores.records().flatMap(function toProjectionRecord(record) {
+            if (record.external) {
+                return [];
+            }
             record.checks?.assertAdmitted();
             const payload = serializeProjectedHandle(record.descriptor, record.ownerHandle, record.dependencyContext);
 

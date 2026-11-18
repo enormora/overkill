@@ -16,10 +16,15 @@ async function collectExecutionSession(
     return await initialized.collect();
 }
 
+type CollectedSessionRun = Pick<CollectedRun, 'plan' | 'run'>;
+export type CollectedSessionRuntime = {
+    readonly collect: () => Promise<CollectedSessionRun>;
+    readonly lifecycle: typeof withExecutionLifecycle;
+};
 type CollectedExecution = {
     readonly options: RunExecutionSessionOptions;
-    readonly dependencies: RunOrchestratorDependencies;
-    readonly collection: StoredValue<Promise<CollectedRun> | null>;
+    readonly runtime: CollectedSessionRuntime;
+    readonly collection: StoredValue<Promise<CollectedSessionRun> | null>;
     readonly artifacts: StoredValue<Extract<RunExecutionReply, { readonly kind: 'result'; }>['result']['artifacts']>;
 };
 
@@ -28,7 +33,7 @@ async function executeCollectedInvocation(
     lifecycle: RunExecutionLifecycle
 ): Promise<RunExecutionReply> {
     const collecting = execution.collection.read() ??
-        collectExecutionSession(execution.options, execution.dependencies);
+        execution.runtime.collect();
     execution.collection.write(collecting);
     const collected = await collecting;
     const selection = await lifecycle.select(collected.plan);
@@ -38,11 +43,11 @@ async function executeCollectedInvocation(
     return { kind: 'result', result, data: lifecycle.snapshot(), deadlineExceeded: false };
 }
 
-export function createCollectedExecutionSession(
+export function createCollectedSession(
     options: RunExecutionSessionOptions,
-    dependencies: RunOrchestratorDependencies
+    runtime: CollectedSessionRuntime
 ): ExecutionSessionEnvironment {
-    const collection = createStoredValue<Promise<CollectedRun> | null>(null);
+    const collection = createStoredValue<Promise<CollectedSessionRun> | null>(null);
     return {
         lifetime: 'reused',
         async execute(call) {
@@ -51,14 +56,14 @@ export function createCollectedExecutionSession(
                 Extract<RunExecutionReply, { readonly kind: 'result'; }>['result']['artifacts']
             >([]);
             try {
-                return await withExecutionLifecycle(
+                return await runtime.lifecycle(
                     call.transport,
                     options.command.policy.moduleBoundary,
                     call,
                     async function (lifecycle) {
                         try {
                             return await executeCollectedInvocation(
-                                { options, dependencies, collection, artifacts },
+                                { options, runtime, collection, artifacts },
                                 lifecycle
                             );
                         } finally {
@@ -83,4 +88,16 @@ export function createCollectedExecutionSession(
             }
         }
     };
+}
+
+export function createCollectedExecutionSession(
+    options: RunExecutionSessionOptions,
+    dependencies: RunOrchestratorDependencies
+): ExecutionSessionEnvironment {
+    return createCollectedSession(options, {
+        async collect() {
+            return await collectExecutionSession(options, dependencies);
+        },
+        lifecycle: withExecutionLifecycle
+    });
 }

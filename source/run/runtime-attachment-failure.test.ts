@@ -1,9 +1,8 @@
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
-import { attachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
+import { inlineAttachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { testNode as failureArtifacts } from './failure-artifact-suite.test.ts';
 import { createAttachmentExecution } from './attachment-execution.ts';
 import {
     AttachmentOperationError,
@@ -16,7 +15,7 @@ import { resultWithRuntimeAttachments } from './attachment-results.ts';
 const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const metadata = { kind: 'text', name: 'log', mediaType: 'text/plain' } as const;
 async function assertReportedError(scope: TestScope): Promise<void> {
-    const { execution } = await attachmentFixture(scope, defaultAttachmentLimits);
+    const { execution } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
     let failure: unknown = null;
     try {
         await execution.context.forProducer({ kind: 'case' }).json(metadata, undefined);
@@ -28,7 +27,7 @@ async function assertReportedError(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(await execution.finish(), []);
 }
 async function assertClosedActiveAttempt(scope: TestScope): Promise<void> {
-    const { execution } = await attachmentFixture(scope, defaultAttachmentLimits);
+    const { execution } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
     await execution.runAttempt(work, { index: 0 }, async function closeRunInsideAttempt() {
         await execution.finish();
         await scope.assert.rejects(async function rejectClosedRun() {
@@ -45,7 +44,7 @@ function rejectJsonReflection(cause: unknown): never {
 }
 
 async function assertHostileJson(scope: TestScope): Promise<void> {
-    const { execution } = await attachmentFixture(scope, defaultAttachmentLimits);
+    const { execution } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
     const value = new Proxy({}, {
         ownKeys() {
             return rejectJsonReflection(null);
@@ -94,7 +93,7 @@ async function assertTransportFailure(scope: TestScope, cause: unknown, message:
 }
 
 async function assertConsumedError(scope: TestScope): Promise<void> {
-    const { execution } = await attachmentFixture(scope, defaultAttachmentLimits);
+    const { execution } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
     await execution.runAttempt(work, { index: 2 }, async function reportCaughtError() {
         const failed = createAttachmentFailure({
             owner: { kind: 'case', work, attempt: { index: 2 } },
@@ -156,7 +155,6 @@ export const testNode = createSuite({
     ...definition,
     title: 'source/run/runtime-attachment-failure.test.ts',
     children: [
-        failureArtifacts,
         createTestCase({
             ...definition,
             title: 'reported operation errors are consumed before final collection',

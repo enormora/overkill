@@ -4,9 +4,9 @@ import { emptyPropertyCorpus } from '../engine/property-corpus.ts';
 import type { WitnessFile } from '../engine/witness-file.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { workerReplayRecord } from '../test-support/replay-record-fixture.ts';
+import { createCollectedPlan, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
 import type { CollectedRunPlan } from './run-types.ts';
-import { createCollectedPlan, fakeWorkerRuntime } from './worker-pool-execution-state.test.ts';
-import { replayExecutionPlan, withReplay } from './replay-context.ts';
+import { replayExecutionPlan, withReplay, replayPlacementPlan, currentReplaySignal } from './replay-context.ts';
 import { wirePropertyCorpus, withReplayWire } from './replay-wire.ts';
 
 const simulation: WitnessFile = {
@@ -59,6 +59,51 @@ async function selectedWitness(value: WitnessFile, execute: () => Promise<void>)
     await withReplay({ kind: 'witness', witness: value, sourceRunId: null, moduleGraph: 'current' }, null, execute);
 }
 export const testNode = suite('replay target selection', [
+    test('restores recorded order and placement with the invocation signal', async function (scope: TestScope) {
+        const runtime = fakeWorkerRuntime(createCollectedPlan());
+        const record = workerReplayRecord(runtime, null);
+        const controller = new AbortController();
+        await withReplay({ kind: 'record', record }, controller.signal, async function () {
+            const result = replayExecutionPlan(runtime.collectedPlan);
+            scope.require.defined(result);
+            scope.assert.deepEqual(
+                result.orderedCases.map(function (entry) {
+                    return entry.workId;
+                }),
+                record.identities
+            );
+            scope.assert.equal(currentReplaySignal(), controller.signal);
+            const placement = runtime.resolvedRun.facts.execution.placementPlan;
+            scope.require.defined(placement);
+            scope.assert.deepEqual(replayPlacementPlan(runtime.resolvedRun, placement), placement);
+        });
+        scope.assert.equal(currentReplaySignal(), null);
+        return scope.assert.collect();
+    }),
+    test(
+        'accepts explicit simulation resource names independently of simulation names',
+        async function (scope: TestScope) {
+            await selectedWitness({
+                ...simulation,
+                simulation: { name: 'other', payload: null },
+                resource: { name: 'counter' }
+            }, async function () {
+                scope.assert.equal(replayExecutionPlan(collectionWithCopies(1, 1)), null);
+            });
+            return scope.assert.collect();
+        }
+    ),
+    test('rejects nested property replay after its declaration changes kind', async function (scope: TestScope) {
+        await selectedWitness({
+            ...propertyCorpusEntry,
+            target: { kind: 'forall', location: { kind: 'unknown' }, occurrence: 0, key: null }
+        }, async function () {
+            scope.assert.throws(function () {
+                replayExecutionPlan(collectionWithCopies(1, 0));
+            }, { message: 'Witness property target no longer matches its declaration.' });
+        });
+        return scope.assert.collect();
+    }),
     ...[ 0, 2 ].map(function invalidSelection(count) {
         return test(`rejects a witness selecting ${count} cases`, async function (scope: TestScope) {
             await selectedWitness(propertyCorpusEntry, async function select() {

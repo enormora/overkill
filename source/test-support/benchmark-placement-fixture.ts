@@ -1,9 +1,9 @@
 import type { BenchmarkDefinitionSummary } from '../engine/benchmark-result.ts';
 import type { BenchmarkHostAssessment, HostReading } from '../bench/benchmark-host-snapshot.ts';
 import { normalizeConfig } from '../config/config.ts';
-import { createRunCoordinator, type RunCoordinator } from '../run/run.ts';
-import { createCurrentProcessRunInput } from '../run/current-process-run-input.ts';
-import { createNodeRunOrchestratorDependencies } from '../run/node-run-orchestrator-dependencies.ts';
+import { createRunCoordinator, type RunCoordinator } from '../run/run-coordinator.entry-point.ts';
+import { createCurrentProcessRunInput } from '../run/current-process-run-input.entry-point.ts';
+import { createNodeRunOrchestratorDependencies } from '../run/node-run-orchestrator-dependencies.entry-point.ts';
 import { defaultRunEngine } from '../run/default-run-engine.ts';
 import { loadRunEngineModule, loadRunTestModules, runDiscovery } from '../run/node-run-dependencies.entry-point.ts';
 import { startSupervisedChild, startWorkerPoolHost } from '../run/node-child-process-starters.ts';

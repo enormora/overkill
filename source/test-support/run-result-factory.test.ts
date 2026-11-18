@@ -7,7 +7,6 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult, TestFailure, TestOutcome } from '../engine/run-result.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
-import { testNode as publishedRunnerTestNode } from './published-runner.test.ts';
 import { runResultFactory } from './run-result-factory.ts';
 
 function defaultFailure(): unknown {
@@ -79,7 +78,6 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
-        publishedRunnerTestNode,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runResultFactory builds nested result data',

@@ -1,9 +1,9 @@
+import { createTestEngine } from '../../test-support/create-test-engine.ts';
 import { benchmarkAuthoringExports } from '../../test-support/benchmark-authoring-exports.ts';
 import {
     createEngine,
     createRoot,
     createTestPlan,
-    execute,
     ownsTestNode,
     type RunResult,
     type TestBody,
@@ -67,7 +67,8 @@ async function executeMixedTree(): Promise<MixedAuthoringExecution> {
         controls: {},
         title: 'root'
     }));
-    return { plan, result: await execute(plan), rows };
+    const engine = createTestEngine();
+    return { plan, result: await engine.execute(plan), rows };
 }
 
 function assertMixedMetadata(scope: TestScope, plan: TestPlan): void {
@@ -83,7 +84,7 @@ function assertMixedOutcomes(scope: TestScope, execution: MixedAuthoringExecutio
     scope.assert.equal(execution.result.summary.passed, 3);
     scope.assert.equal(execution.result.summary.failed, 1);
     scope.assert.equal(execution.result.summary.skipped, 1);
-    scope.assert.equal(execution.result.runnerErrors.length, 0);
+    scope.assert.deepEqual(execution.result.runnerErrors, []);
     scope.assert.deepEqual(
         execution.result.perTest.map(function verdict(entry) {
             return entry.outcome?.kind;

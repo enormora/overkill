@@ -1,3 +1,5 @@
+import { resolveBenchmarkPlacement } from './benchmark-placement.ts';
+import { resolveBenchmarkGarbageCollectionHost } from './benchmark-garbage-collection.ts';
 import { hostProcessFacts } from './run-host-process.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import { emptyWorkUnitResourceConstraints, type RunFacts, type RunRequest } from './run-types.ts';
@@ -84,7 +86,6 @@ export async function benchmarkPlacementForCases(
     if (input.profile.testFamily !== 'benchmark') {
         return null;
     }
-    const { resolveBenchmarkPlacement } = await import('./benchmark-placement.ts');
     return resolveBenchmarkPlacement({
         definitions: entries.map(selectedBenchmarkDefinition),
         host: input.benchmarkHost,
@@ -138,7 +139,6 @@ export async function resolveCollectedHost(
     }
     let { hostProcess } = input.profile.execution;
     if (input.profile.testFamily === 'benchmark') {
-        const { resolveBenchmarkGarbageCollectionHost } = await import('./benchmark-garbage-collection.ts');
         hostProcess = resolveBenchmarkGarbageCollectionHost(hostProcess, input.profile.garbageCollection, cases);
     }
     return hostProcessFacts(hostProcess);

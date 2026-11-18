@@ -5,8 +5,20 @@ import type { NodeProbeReport } from './process-node-readings.ts';
 import { availableMetric, unavailableMetric } from './metric-reading.ts';
 import { bytesPerBinaryKilobyte, nanosecondsPerMicrosecond } from './measurement-units.ts';
 
+export type NodeChildObservationRuntime = {
+    readonly histogram: () => Pick<
+        ReturnType<typeof monitorEventLoopDelay>,
+        'count' | 'disable' | 'enable' | 'max' | 'mean' | 'percentile'
+    >;
+    readonly utilization: typeof runtimePerformance.eventLoopUtilization;
+    readonly now: () => bigint;
+    readonly cpu: () => Pick<ReturnType<typeof process.cpuUsage>, 'system' | 'user'>;
+    readonly memory: () => Pick<ReturnType<typeof process.memoryUsage>, 'heapUsed' | 'rss'>;
+    readonly maximumResidentSetKilobytes: () => number;
+    readonly version: string;
+};
 type ChildRuntimeObservation = {
-    readonly histogram: ReturnType<typeof monitorEventLoopDelay>;
+    readonly histogram: ReturnType<NodeChildObservationRuntime['histogram']>;
     readonly utilization: ReturnType<typeof runtimePerformance.eventLoopUtilization>;
     readonly started: bigint;
 };
@@ -28,8 +40,8 @@ type LoopDelayMetric = 'eventLoopDelayMaximumMicroseconds' | 'eventLoopDelayMean
 type LoopMetric = LoopDelayMetric | 'eventLoopDelayPercentile95Microseconds' | 'eventLoopUtilization';
 type ChildRuntimeMetrics = Pick<NodeProbeReport['metrics'], LoopMetric>;
 
-function childCpuMetrics(): ChildCpuMetrics {
-    const cpu = process.cpuUsage();
+function childCpuMetrics(runtime: NodeChildObservationRuntime): ChildCpuMetrics {
+    const cpu = runtime.cpu();
     const provenance = { collector: 'node-child-cpu-v1', scope: 'process' as const, unit: 'microseconds' };
     return {
         processCpuUserMicroseconds: availableMetric(cpu.user, provenance),
@@ -38,14 +50,14 @@ function childCpuMetrics(): ChildCpuMetrics {
     };
 }
 
-function childMemoryMetrics(): ChildMemoryMetrics {
-    const memory = process.memoryUsage();
+function childMemoryMetrics(runtime: NodeChildObservationRuntime): ChildMemoryMetrics {
+    const memory = runtime.memory();
     const provenance = { collector: 'node-child-memory-v1', scope: 'process' as const, unit: 'bytes' };
     return {
         residentSetBytes: availableMetric(memory.rss, provenance),
         heapUsedBytes: availableMetric(memory.heapUsed, { ...provenance, scope: 'thread' }),
         processMaximumResidentSetBytes: availableMetric(
-            process.resourceUsage().maxRSS * bytesPerBinaryKilobyte,
+            runtime.maximumResidentSetKilobytes() * bytesPerBinaryKilobyte,
             provenance
         )
     };
@@ -58,13 +70,16 @@ function childLoopDelay(histogram: ChildRuntimeObservation['histogram'], value: 
         : availableMetric(value / nanosecondsPerMicrosecond, provenance);
 }
 
-function childRuntimeMetrics(observation: ChildRuntimeObservation): ChildRuntimeMetrics {
+function childRuntimeMetrics(
+    observation: ChildRuntimeObservation,
+    runtime: NodeChildObservationRuntime
+): ChildRuntimeMetrics {
     const { histogram, utilization } = observation;
     return {
         eventLoopDelayMeanMicroseconds: childLoopDelay(histogram, histogram.mean),
         eventLoopDelayMaximumMicroseconds: childLoopDelay(histogram, histogram.max),
         eventLoopDelayPercentile95Microseconds: childLoopDelay(histogram, histogram.percentile(percentile95)),
-        eventLoopUtilization: availableMetric(runtimePerformance.eventLoopUtilization(utilization).utilization, {
+        eventLoopUtilization: availableMetric(runtime.utilization(utilization).utilization, {
             collector: 'node-child-runtime-v1',
             scope: 'thread',
             unit: 'ratio'
@@ -72,25 +87,45 @@ function childRuntimeMetrics(observation: ChildRuntimeObservation): ChildRuntime
     };
 }
 
-export function observeNodeChild(): NodeChildObservation {
+export function observeChildRuntime(runtime: NodeChildObservationRuntime): NodeChildObservation {
     const observation = {
-        histogram: monitorEventLoopDelay({ samplePerIteration: true }),
-        started: process.hrtime.bigint(),
-        utilization: runtimePerformance.eventLoopUtilization()
+        histogram: runtime.histogram(),
+        started: runtime.now(),
+        utilization: runtime.utilization()
     };
     observation.histogram.enable();
     return {
         snapshot() {
             return {
                 version: 1,
-                runtime: process.version,
-                observationMicroseconds: Number(process.hrtime.bigint() - observation.started) /
+                runtime: runtime.version,
+                observationMicroseconds: Number(runtime.now() - observation.started) /
                     nanosecondsPerMicrosecond,
-                metrics: { ...childCpuMetrics(), ...childMemoryMetrics(), ...childRuntimeMetrics(observation) }
+                metrics: {
+                    ...childCpuMetrics(runtime),
+                    ...childMemoryMetrics(runtime),
+                    ...childRuntimeMetrics(observation, runtime)
+                }
             };
         },
         dispose() {
             observation.histogram.disable();
         }
     };
+}
+
+export function observeNodeChild(): NodeChildObservation {
+    return observeChildRuntime({
+        histogram() {
+            return monitorEventLoopDelay({ samplePerIteration: true });
+        },
+        utilization: runtimePerformance.eventLoopUtilization,
+        now: process.hrtime.bigint,
+        cpu: process.cpuUsage,
+        memory: process.memoryUsage,
+        maximumResidentSetKilobytes() {
+            return process.resourceUsage().maxRSS;
+        },
+        version: process.version
+    });
 }

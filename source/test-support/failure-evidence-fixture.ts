@@ -1,30 +1,27 @@
-import type { TestScope, TestBody, RunResult } from '../packages/engine/engine.entry-point.ts';
+import type { TestScope, TestBody, RunResult, WorkId } from '../packages/engine/engine.entry-point.ts';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createResourceLifecycleRuntimePolicy } from '../run/resource-lifecycle.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
 import { createTestEngine } from './create-test-engine.ts';
-import { attachmentFixtureForWork, type AttachmentFixture } from './attachment-fixture.ts';
+import { attachmentFixtureForWork, inlineAttachmentFixture, type AttachmentFixture } from './attachment-fixture.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
-export async function executeEvidence(
-    scope: TestScope,
+type EvidenceRun = AttachmentFixture & { readonly result: RunResult; };
+type EvidenceAttachments = (work: readonly WorkId[]) => Promise<AttachmentFixture>;
+async function executeWithEvidence(
     body: TestBody,
     attempts: number,
-    limits: AttachmentLimits
-): Promise<AttachmentFixture & { readonly result: RunResult; }> {
+    attachments: EvidenceAttachments
+): Promise<EvidenceRun> {
     const engine = createTestEngine();
     const plan = engine.createTestPlan(engine.createRoot({
         ...metadata,
         title: 'root',
         children: [ engine.createTestCase({ ...metadata, title: 'case', body }) ]
     }));
-    const fixture = await attachmentFixtureForWork(
-        scope,
-        limits,
-        plan.cases.map(function work(entry) {
-            return entry.workId;
-        })
-    );
+    const fixture = await attachments(plan.cases.map(function work(entry) {
+        return entry.workId;
+    }));
     const result = await runWithAttachmentExecution(fixture.execution, async function executeManagedResources() {
         return await engine.execute(plan, {
             debug: { mode: 'off' },
@@ -38,4 +35,25 @@ export async function executeEvidence(
     });
     fixture.store.settleResult(result);
     return { ...fixture, result };
+}
+
+export async function executeEvidence(
+    scope: TestScope,
+    body: TestBody,
+    attempts: number,
+    limits: AttachmentLimits
+): Promise<EvidenceRun> {
+    return await executeWithEvidence(body, attempts, async function (work) {
+        return await attachmentFixtureForWork(scope, limits, work);
+    });
+}
+
+export async function executeInlineEvidence(
+    body: TestBody,
+    attempts: number,
+    limits: AttachmentLimits
+): Promise<EvidenceRun> {
+    return await executeWithEvidence(body, attempts, async function (work) {
+        return inlineAttachmentFixture(limits, work);
+    });
 }

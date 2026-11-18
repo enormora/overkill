@@ -12,7 +12,7 @@ function isolateWorkers(options: TinypoolWorkerPoolOptions): boolean {
     return options.workerLifecycle === 'fresh-worker-per-unit';
 }
 
-function awaitWorkerExits(pool: TinypoolInstance): TinypoolInstance {
+export function observeWorkerPoolLifetime(pool: TinypoolInstance): TinypoolInstance {
     const observed = new WeakSet<TinypoolInstance['threads'][number]>();
     const exits: Promise<void>[] = [];
     const observeWorkers = function observeWorkerLifetimes(): void {
@@ -49,7 +49,7 @@ function awaitWorkerExits(pool: TinypoolInstance): TinypoolInstance {
 }
 
 export function createTinypoolWorkerPool(options: TinypoolWorkerPoolOptions): TinypoolInstance {
-    return awaitWorkerExits(
+    return observeWorkerPoolLifetime(
         new Tinypool({
             concurrentTasksPerWorker: 1,
             filename: options.filename,

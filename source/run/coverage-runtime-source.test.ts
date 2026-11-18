@@ -1,8 +1,11 @@
+import { setImmediate as finishParserInitialization } from 'node:timers/promises';
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
 import { createCoverageSourceCache } from './coverage-runtime-source.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+createCoverageSourceCache().inspect('', 'source.ts');
+await finishParserInitialization();
 
 export const testNode = createSuite({
     ...metadata,

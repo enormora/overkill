@@ -49,7 +49,10 @@ function resolvedPolicy(response: CampaignResponse): FrozenMicrotestPolicy {
     return response.policy;
 }
 
-async function initializeRegisteredRunner(input: RegisteredRunnerInitialization): Promise<ReadyMutationRunner> {
+async function initializeRegisteredRunner(
+    input: RegisteredRunnerInitialization,
+    createExecution: MutationInitializationRuntime['execute']
+): Promise<ReadyMutationRunner> {
     const { sandbox, settings, client, signal, budget } = input;
     const registered = await client.request({ kind: 'register', root: sandbox.root }, budget());
     if (registered.kind === 'timeout') {
@@ -60,7 +63,7 @@ async function initializeRegisteredRunner(input: RegisteredRunnerInitialization)
     }
     const response = await client.request({ kind: 'resolve-policy', sandbox, settings }, budget());
     const policy = resolvedPolicy(response);
-    const execution = createMutationRunnerExecution({
+    const execution = createExecution({
         policy,
         seed: settings.seed,
         freshState: settings.freshState,
@@ -80,19 +83,31 @@ async function initializeRegisteredRunner(input: RegisteredRunnerInitialization)
         })
     };
 }
-async function connectRegisteredCampaign(input: RunnerInitialization): Promise<CampaignClient> {
+async function connectRegisteredCampaign(
+    input: RunnerInitialization,
+    connect: MutationInitializationRuntime['connect']
+): Promise<CampaignClient> {
     const endpoint = campaignEndpointSchema.parse(input.options['overkillCampaign'] ?? defaultCampaignEndpoint);
-    const client = await connectCampaign(endpoint, input.signal);
+    const client = await connect(endpoint, input.signal);
     input.connected(client);
     return client;
 }
 
-export async function initializeMutationRunner(input: RunnerInitialization): Promise<ReadyMutationRunner> {
+export type MutationInitializationRuntime = {
+    readonly sandbox: typeof createMutationSandbox;
+    readonly exclude: typeof assertExcludedAdapter;
+    readonly connect: typeof connectCampaign;
+    readonly execute: typeof createMutationRunnerExecution;
+};
+export async function initializeCampaignRunner(
+    input: RunnerInitialization,
+    runtime: MutationInitializationRuntime
+): Promise<ReadyMutationRunner> {
     const settings = parseRunnerOptions(input.options['overkill']);
     input.logger.info('Overkill campaign seed: %s', settings.seed);
-    const sandbox = await createMutationSandbox({ originalRoot, cwd: process.cwd(), fileDescriptions: input.files });
-    await assertExcludedAdapter(sandbox);
-    const client = await connectRegisteredCampaign(input);
+    const sandbox = await runtime.sandbox({ originalRoot, cwd: process.cwd(), fileDescriptions: input.files });
+    await runtime.exclude(sandbox);
+    const client = await connectRegisteredCampaign(input, runtime.connect);
     try {
         return await initializeRegisteredRunner({
             sandbox,
@@ -100,9 +115,18 @@ export async function initializeMutationRunner(input: RunnerInitialization): Pro
             client,
             signal: input.signal,
             budget: input.budget
-        });
+        }, runtime.execute);
     } catch (error: unknown) {
         client.dispose();
         throw error;
     }
+}
+
+export async function initializeMutationRunner(input: RunnerInitialization): Promise<ReadyMutationRunner> {
+    return await initializeCampaignRunner(input, {
+        sandbox: createMutationSandbox,
+        exclude: assertExcludedAdapter,
+        connect: connectCampaign,
+        execute: createMutationRunnerExecution
+    });
 }

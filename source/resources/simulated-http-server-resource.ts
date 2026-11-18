@@ -130,11 +130,12 @@ function simulatedHttpScenarioSlots<
     return Object.freeze(slots);
 }
 
-export function createSimulatedHttpServerResource<
+export function defineSimulatedHttpService<
     const Name extends string,
     const Scenarios extends SimulationScenarioCatalog
 >(
-    options: SimulatedHttpServerResourceOptions<Name, Scenarios>
+    options: SimulatedHttpServerResourceOptions<Name, Scenarios>,
+    createListeningServer: typeof createSimulatedHttpListeningServer
 ): SimulatedHttpServerResource<SimulatedHttpServerDefinition<Name, Scenarios>> {
     const handlerErrors = new WeakMap<LocalHttpServer, readonly unknown[]>();
     const transcripts = new WeakMap<LocalHttpServer, SimulatedHttpLocalService['transcript']>();
@@ -150,7 +151,7 @@ export function createSimulatedHttpServerResource<
         address: options.address,
         createServer(context) {
             context.signal.throwIfAborted();
-            const listeningServer = createSimulatedHttpListeningServer(
+            const listeningServer = createListeningServer(
                 options.simulation,
                 context.address.host
             );
@@ -235,4 +236,13 @@ export function createSimulatedHttpServerResource<
         }),
         options.simulation.name
     );
+}
+
+export function createSimulatedHttpServerResource<
+    const Name extends string,
+    const Scenarios extends SimulationScenarioCatalog
+>(
+    options: SimulatedHttpServerResourceOptions<Name, Scenarios>
+): SimulatedHttpServerResource<SimulatedHttpServerDefinition<Name, Scenarios>> {
+    return defineSimulatedHttpService(options, createSimulatedHttpListeningServer);
 }

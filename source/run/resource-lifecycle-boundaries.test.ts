@@ -212,6 +212,54 @@ function assertCacheIdentityNodes(scope: TestScope): void {
     ], [ '', '', '', true, true, true, '', true, true ]);
 }
 
+function assertIncompleteResourceGraphs(scope: TestScope): void {
+    const source = scenarioCase('case', 'per-run', 'primary');
+    const original = source.resourceAttachments.resourceGraph[0];
+    scope.require.defined(original);
+    const resource = { ...original, dependencies: [ 'missing' ] };
+    const attachments = {
+        ...source.resourceAttachments,
+        resourceGraph: [ resource ],
+        directResources: [ { key: 'one', resourceName: 'database' }, { key: 'two', resourceName: 'database' }, {
+            key: 'absent',
+            resourceName: 'absent'
+        } ]
+    };
+    const testCase = { ...source, resourceAttachments: { ...attachments, runtimeGraphs: [] } };
+    scope.assert.equal(caseResourceBoundaryKeys(testCase, new Set([ 'per-run' ])).length, 1);
+    scope.assert.deepEqual(
+        caseResourceBoundaryKeys(scenarioCase('case', 'unsupported', 'primary'), new Set([ 'per-run' ])),
+        []
+    );
+}
+function assertDefaultMatrixSelection(scope: TestScope): void {
+    const source = scenarioCase('case', 'per-run', 'primary');
+    const runtime = source.resourceAttachments.runtimeGraphs[0];
+    scope.require.defined(runtime);
+    if (runtime.kind !== 'runtime') {
+        throw new Error('Expected a leaf runtime fixture.');
+    }
+    const matrix = {
+        kind: 'runtime-matrix' as const,
+        resources: [],
+        name: 'api',
+        dimensions: {},
+        requirements: [],
+        variants: [ { id: 'primary', runtime } ]
+    };
+    const testCase = {
+        ...source,
+        workId: { ...source.workId, runtimes: [] },
+        resourceAttachments: { ...source.resourceAttachments, runtimeGraphs: [ matrix ] }
+    };
+    scope.assert.equal(caseResourceBoundaryKeys(testCase, new Set([ 'per-run' ])).length, 1);
+    scope.assert.throws(function () {
+        caseResourceBoundaryKeys({
+            ...testCase,
+            resourceAttachments: { ...testCase.resourceAttachments, runtimeGraphs: [ { ...matrix, variants: [] } ] }
+        }, new Set([ 'per-run' ]));
+    }, { message: 'Runtime matrix "api" has no selected variant.' });
+}
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/run/resource-lifecycle-boundaries.test.ts',
@@ -219,6 +267,26 @@ export const testNode = createSuite({
     controls: {},
     children: [
         workloadInputValidationTestNode,
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'ignores unknown resource summaries and deduplicates shared dependencies',
+            annotations: {},
+            controls: {},
+            body(scope: TestScope) {
+                assertIncompleteResourceGraphs(scope);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'selects the default runtime matrix variant and rejects empty matrices',
+            annotations: {},
+            controls: {},
+            body(scope: TestScope) {
+                assertDefaultMatrixSelection(scope);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'scenario timing controls reusable lifecycle cache identities',

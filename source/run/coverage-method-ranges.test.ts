@@ -1,6 +1,5 @@
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
-import { testNode as conformanceTestNode } from './coverage-conformance.test.ts';
 import { normalizeCoverageMethodRanges } from './coverage-method-ranges.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
@@ -9,7 +8,6 @@ export const testNode = createSuite({
     ...metadata,
     title: 'source/run/coverage-method-ranges.test.ts',
     children: [
-        conformanceTestNode,
         ...[
             { source: 'const box = { [name', start: 14, end: 18 },
             { source: 'const box = { replace(value', start: 14, end: 26 },

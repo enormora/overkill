@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url';
 import type { RunOrchestratorDependencies } from '../run/run-orchestrator-dependencies.ts';
 import type {
     RunProcessUsage,
@@ -15,6 +16,7 @@ import { defaultRunEngine } from '../run/default-run-engine.ts';
 import { RunCollectionError } from '../run/run-errors.ts';
 import { createRunTestModuleLoader, type RunTestModuleLoader } from '../run/run-test-modules.ts';
 import type {
+    DiscoveredRunFile,
     CollectedRunPlan,
     RunCollectionRoot,
     WorkId
@@ -238,21 +240,30 @@ function deterministicRunTestNode(file: string): TestNode {
 export function createDeterministicRunTestModuleLoader(
     input: DeterministicRunTestModuleLoaderInput
 ): RunTestModuleLoader {
-    return createRunTestModuleLoader({
-        async importModule(href) {
-            const file = href.replace(/^virtual:/u, '');
+    return async function load(files, engine) {
+        return await createRunTestModuleLoader({
+            async importModule(href) {
+                const file = files
+                    .find(function matches(candidate) {
+                        return candidate.href === href;
+                    })
+                    ?.file;
+                if (file === undefined) {
+                    throw new Error('Fixture module was not discovered.');
+                }
 
-            if (file === deterministicRunFixturePaths.throwsOnImport) {
-                throw new Error('fixture import failed');
+                if (file === deterministicRunFixturePaths.throwsOnImport) {
+                    throw new Error('fixture import failed');
+                }
+
+                if (file === deterministicRunFixturePaths.loadEnvPolicy) {
+                    input.recordLoadEnvironmentMutation();
+                }
+
+                return { testNode: deterministicRunTestNode(file) };
             }
-
-            if (file === deterministicRunFixturePaths.loadEnvPolicy) {
-                input.recordLoadEnvironmentMutation();
-            }
-
-            return { testNode: deterministicRunTestNode(file) };
-        }
-    });
+        })(files, engine);
+    };
 }
 
 export const loadDeterministicRunTestModules: RunTestModuleLoader = createDeterministicRunTestModuleLoader({
@@ -397,13 +408,21 @@ export function createDeterministicProcessUsageTracker(): RunProcessUsageTracker
 
 export function deterministicRuntimeState(): Pick<
     RunOrchestratorDependencies,
-    'createHistoryStorage' | 'maintainHistory' | 'runtimeStateStore'
+    'createHistoryStorage' | 'maintainHistory' | 'readRunVersions' | 'runtimeStateStore'
 > {
     return {
         createHistoryStorage: createMemoryHistoryStorage,
+        async readRunVersions(_engine, node) {
+            return { engine: null, node, packages: {} };
+        },
         async maintainHistory() {
             return [];
         },
         runtimeStateStore: createMemoryHistoryStorage()
     };
+}
+
+export function deterministicDiscoveredFile(cwd: string, file: string): DiscoveredRunFile {
+    const filePath = `${cwd}/${file}`;
+    return { file, fileSet: null, href: pathToFileURL(filePath).href, path: filePath };
 }

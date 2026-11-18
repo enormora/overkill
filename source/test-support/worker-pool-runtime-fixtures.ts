@@ -61,6 +61,9 @@ export function fakeWorkerPoolRuntimeDependencies(): WorkerPoolRunRuntime['depen
     };
     return {
         createHistoryStorage: createMemoryHistoryStorage,
+        async readRunVersions(_engine, node) {
+            return { engine: null, node, packages: {} };
+        },
         async maintainHistory() {
             return [];
         },

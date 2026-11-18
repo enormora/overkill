@@ -125,8 +125,6 @@ export type {
 } from '../../resources/local-http-service-resource.ts';
 export type {
     LocalProcessCommand,
-    LocalProcessOutput,
-    LocalProcessOutputBuffer,
     LocalProcessOwner,
     LocalProcessServiceResourceInput,
     LocalProcessShutdown,
@@ -241,3 +239,4 @@ export { defineResourceCheckObserverReference } from '../../resources/resource-c
 
 export { ResourceCheckError } from '../../resources/resource-check-error.ts';
 export type { ResourceCheckOwner } from '../../resource-check-protocol.ts';
+export type { LocalProcessOutput, LocalProcessOutputBuffer } from '../../resources/local-process-output.ts';

@@ -365,10 +365,11 @@ function stopObservation(cancellation: ObservationCancellation, cause: unknown, 
         stopObservationLifetime(cancellation, cause);
     }
 }
-export function createResourceCheckSession(
+export function createSupervisedResourceCheckSession(
     resource: AnyResourceDefinition,
     handle: unknown,
-    control: ResourceCheckSessionControl
+    control: ResourceCheckSessionControl,
+    supervision: ResourceCheckSupervision
 ): ResourceCheckSession {
     const delivery = control.kind === 'managed' ? currentResourceCheckDelivery() : null;
     const owner = createResourceCheckOwner(resource.scope);
@@ -391,7 +392,7 @@ export function createResourceCheckSession(
         }
     );
     const state: ObservationState = {
-        supervision: createResourceCheckSupervision(),
+        supervision,
         lateCleanup: createStoredValue<readonly Promise<void>[]>([]),
         observations: createStoredValue<readonly ResourceCheckObservation[]>([]),
         cleanup: new AsyncDisposableStack(),
@@ -433,4 +434,12 @@ export function createResourceCheckSession(
             return snapshots(state);
         }
     };
+}
+
+export function createResourceCheckSession(
+    resource: AnyResourceDefinition,
+    handle: unknown,
+    control: ResourceCheckSessionControl
+): ResourceCheckSession {
+    return createSupervisedResourceCheckSession(resource, handle, control, createResourceCheckSupervision());
 }

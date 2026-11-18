@@ -17,6 +17,7 @@ export type ProcessSamplingSession = {
 };
 type ProcessBenchmarkSession = {
     readonly strategy: ProcessMeasurementStrategy;
+    readonly runtime: ProcessSamplingRuntime;
     readonly signal: AbortSignal;
     readonly evidence: ProcessEvidence;
     readonly helper: StoredValue<ProcessHelper | null>;
@@ -30,7 +31,7 @@ function getProcessHelper(session: ProcessBenchmarkSession): ProcessHelper {
     }
     const maximum = defaultAttachmentLimits.maxInlineBytes;
     const maximumBytes = Math.min(currentAttachmentLimits()?.maxInlineBytes ?? maximum, maximum);
-    const helper = session.helper.read() ?? createProcessHelper(session.strategy.instrumentation, maximumBytes);
+    const helper = session.helper.read() ?? session.runtime.helper(session.strategy.instrumentation, maximumBytes);
     session.helper.write(helper);
     return helper;
 }
@@ -52,16 +53,19 @@ async function disposeSession(session: ProcessBenchmarkSession): Promise<void> {
     }
 }
 
-export function createProcessSamplingSession(
+export type ProcessSamplingRuntime = { readonly platform: string; readonly helper: typeof createProcessHelper; };
+export function openProcessSamplingSession(
     strategy: ProcessMeasurementStrategy,
-    signal: AbortSignal
+    signal: AbortSignal,
+    runtime: ProcessSamplingRuntime
 ): ProcessSamplingSession {
-    if (process.platform !== 'linux' && process.platform !== 'darwin') {
+    if (runtime.platform !== 'linux' && runtime.platform !== 'darwin') {
         throw new MeasurementContractError('Process benchmarks support Linux and macOS.', {});
     }
     const helper = createStoredValue<ProcessHelper | null>(null);
     const session: ProcessBenchmarkSession = {
         strategy,
+        runtime,
         signal,
         helper,
         evidence: createProcessEvidence(),
@@ -88,4 +92,11 @@ export function createProcessSamplingSession(
             await disposeSession(session);
         }
     };
+}
+
+export function createProcessSamplingSession(
+    strategy: ProcessMeasurementStrategy,
+    signal: AbortSignal
+): ProcessSamplingSession {
+    return openProcessSamplingSession(strategy, signal, { platform: process.platform, helper: createProcessHelper });
 }

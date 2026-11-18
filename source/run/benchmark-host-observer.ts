@@ -15,11 +15,21 @@ const observationMilliseconds = 250;
 const nanosecondsPerMicrosecond = 1000;
 const microsecondsPerMillisecond = 1000;
 type HealthWindow = {
-    readonly histogram: ReturnType<typeof monitorEventLoopDelay>;
-    readonly observer: RuntimeObserver;
+    readonly histogram: Pick<ReturnType<typeof monitorEventLoopDelay>, 'count' | 'disable' | 'enable' | 'max' | 'mean'>;
+    readonly observer: Pick<RuntimeObserver, 'disconnect' | 'observe' | 'takeRecords'>;
     readonly entries: readonly RuntimeEntry[];
     readonly startTime: number;
-    readonly utilization: ReturnType<typeof runtimePerformance.eventLoopUtilization>;
+    readonly utilization: Readonly<ReturnType<typeof runtimePerformance.eventLoopUtilization>>;
+};
+export type BenchmarkHostObservationRuntime = {
+    readonly histogram: () => HealthWindow['histogram'];
+    readonly observer: (record: (entries: readonly RuntimeEntry[]) => void) => HealthWindow['observer'];
+    readonly now: () => number;
+    readonly utilization: (previous: HealthWindow['utilization'] | null) => HealthWindow['utilization'];
+    readonly processWindow: typeof readHostProcessWindow;
+    readonly cpu: typeof readHostCpuTimes;
+    readonly wait: (milliseconds: number, signal: AbortSignal) => Promise<void>;
+    readonly settle: (signal: AbortSignal) => Promise<void>;
 };
 type ObserverWindow = { readonly metrics: BenchmarkHostSnapshot['observer']; readonly complete: boolean; };
 type HostObservation = { readonly cpuBusy: HostReading<number>; readonly metrics: BenchmarkHostSnapshot['observer']; };
@@ -36,18 +46,18 @@ function disposeHealthWindow(window: HealthWindow): void {
     }
 }
 
-function beginHealthWindow(): HealthWindow {
-    const histogram = monitorEventLoopDelay({ samplePerIteration: true });
+function beginHealthWindow(runtime: BenchmarkHostObservationRuntime): HealthWindow {
+    const histogram = runtime.histogram();
     const entries: RuntimeEntry[] = [];
-    const observer = new RuntimeObserver(function recordGc(list) {
-        entries.push(...list.getEntries());
+    const observer = runtime.observer(function recordGc(records) {
+        entries.push(...records);
     });
     const window: HealthWindow = {
         histogram,
         observer,
         entries,
-        startTime: runtimePerformance.now(),
-        utilization: runtimePerformance.eventLoopUtilization()
+        startTime: runtime.now(),
+        utilization: runtime.utilization(null)
     };
     try {
         observer.observe({ entryTypes: [ 'gc' ] });
@@ -105,29 +115,36 @@ function healthMetrics(window: HealthWindow, stopTime: number, utilization: numb
     };
 }
 
-async function recordWindow(window: HealthWindow, signal: AbortSignal): Promise<BenchmarkHostSnapshot['observer']> {
-    const before = readHostProcessWindow();
-    await wait(observationMilliseconds, undefined, { signal });
-    const after = readHostProcessWindow();
-    const stopTime = runtimePerformance.now();
-    const { utilization } = runtimePerformance.eventLoopUtilization(window.utilization);
-    await nextTurn(undefined, { signal });
-    await nextTurn(undefined, { signal });
+async function recordWindow(
+    window: HealthWindow,
+    signal: AbortSignal,
+    runtime: BenchmarkHostObservationRuntime
+): Promise<BenchmarkHostSnapshot['observer']> {
+    const before = runtime.processWindow();
+    await runtime.wait(observationMilliseconds, signal);
+    const after = runtime.processWindow();
+    const stopTime = runtime.now();
+    const { utilization } = runtime.utilization(window.utilization);
+    await runtime.settle(signal);
+    await runtime.settle(signal);
     return { ...hostProcessMetrics(before, after), ...healthMetrics(window, stopTime, utilization) };
 }
 
-async function observeRuntime(signal: AbortSignal): Promise<ObserverWindow> {
-    const window = beginHealthWindow();
+async function observeRuntime(signal: AbortSignal, runtime: BenchmarkHostObservationRuntime): Promise<ObserverWindow> {
+    const window = beginHealthWindow(runtime);
     try {
-        return { complete: true, metrics: await recordWindow(window, signal) };
+        return { complete: true, metrics: await recordWindow(window, signal, runtime) };
     } finally {
         disposeHealthWindow(window);
     }
 }
 
-async function observeRuntimeOrUnavailable(signal: AbortSignal): Promise<ObserverWindow> {
+async function observeRuntimeOrUnavailable(
+    signal: AbortSignal,
+    runtime: BenchmarkHostObservationRuntime
+): Promise<ObserverWindow> {
     try {
-        return await observeRuntime(signal);
+        return await observeRuntime(signal, runtime);
     } catch (error: unknown) {
         if (error instanceof RunCollectionError) {
             throw error;
@@ -151,10 +168,13 @@ async function observeRuntimeOrUnavailable(signal: AbortSignal): Promise<Observe
     }
 }
 
-export async function observeBenchmarkHostWindow(signal: AbortSignal): Promise<HostObservation> {
-    const before = readHostCpuTimes();
-    const observer = await observeRuntimeOrUnavailable(signal);
-    const after = readHostCpuTimes();
+export async function observeBenchmarkHost(
+    signal: AbortSignal,
+    runtime: BenchmarkHostObservationRuntime
+): Promise<HostObservation> {
+    const before = runtime.cpu();
+    const observer = await observeRuntimeOrUnavailable(signal, runtime);
+    const after = runtime.cpu();
     const cpuBusy = observer.complete && before.availability === 'available' && after.availability === 'available'
         ? cpuBusyPercent(before.value, after.value)
         : unavailableHostReading<number>(
@@ -164,4 +184,31 @@ export async function observeBenchmarkHostWindow(signal: AbortSignal): Promise<H
             'CPU observation window is incomplete.'
         );
     return { cpuBusy, metrics: observer.metrics };
+}
+
+export async function observeBenchmarkHostWindow(signal: AbortSignal): Promise<HostObservation> {
+    return await observeBenchmarkHost(signal, {
+        histogram() {
+            return monitorEventLoopDelay({ samplePerIteration: true });
+        },
+        observer(record) {
+            return new RuntimeObserver(function records(list) {
+                record(list.getEntries());
+            });
+        },
+        now: runtimePerformance.now,
+        utilization(previous) {
+            return previous === null
+                ? runtimePerformance.eventLoopUtilization()
+                : runtimePerformance.eventLoopUtilization(previous);
+        },
+        processWindow: readHostProcessWindow,
+        cpu: readHostCpuTimes,
+        async wait(milliseconds, cancellation) {
+            await wait(milliseconds, undefined, { signal: cancellation });
+        },
+        async settle(cancellation) {
+            await nextTurn(undefined, { signal: cancellation });
+        }
+    });
 }

@@ -23,3 +23,5 @@ export const mutationPolicyResponseSchema = z.discriminatedUnion('kind', [
 ]);
 
 export type MutationPolicyResponse = z.output<typeof mutationPolicyResponseSchema>;
+
+export type MutationPolicyRequest = Readonly<z.output<typeof mutationPolicyRequestSchema>>;

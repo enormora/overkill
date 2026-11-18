@@ -17,9 +17,16 @@ export type ProcessExecutionInput = {
     readonly environment: Readonly<Record<string, string | undefined>>;
     readonly started: (pid: number) => void;
 };
+export type ProcessExecutionRuntime = {
+    readonly prepare: typeof prepareProcessLauncher;
+    readonly probe: () => Promise<ProcessProbe>;
+    readonly dispose: (child: ProcessChild) => Promise<void>;
+    readonly now: () => bigint;
+};
 type StartedProcess = { readonly child: ProcessChild; readonly time: bigint; };
 type OwnedProcess = {
     readonly child: ProcessChild;
+    readonly dispose: ProcessExecutionRuntime['dispose'];
     readonly output: ProcessOutput;
     readonly observing: StoredValue<Promise<void> | null>;
     readonly releasing: StoredValue<Promise<void> | null>;
@@ -27,6 +34,7 @@ type OwnedProcess = {
 };
 type CommandMeasurement = {
     readonly input: ProcessExecutionInput;
+    readonly runtime: ProcessExecutionRuntime;
     readonly output: ProcessOutput;
     readonly child: StoredValue<OwnedProcess | null>;
     readonly probe: StoredValue<ProcessProbe | null>;
@@ -57,7 +65,7 @@ async function withProcessCancellation<Value>(signal: AbortSignal, operation: Pr
 }
 
 async function releaseOwnedProcess(owner: OwnedProcess): Promise<void> {
-    owner.releasing.write(owner.releasing.read() ?? disposeProcessChild(owner.child));
+    owner.releasing.write(owner.releasing.read() ?? owner.dispose(owner.child));
     await owner.releasing.read();
 }
 
@@ -81,10 +89,15 @@ async function observeOwnedExit(owner: OwnedProcess): Promise<void> {
     }
 }
 
-function ownProcess(child: ProcessChild, output: ProcessOutput): OwnedProcess {
+function ownProcess(
+    child: ProcessChild,
+    output: ProcessOutput,
+    dispose: ProcessExecutionRuntime['dispose']
+): OwnedProcess {
     const owner: OwnedProcess = {
         child,
         output,
+        dispose,
         observing: createStoredValue<Promise<void> | null>(null),
         releasing: createStoredValue<Promise<void> | null>(null),
         failure: createStoredValue<string | null>(null)
@@ -121,12 +134,12 @@ function identifyMeasuredChild(measurement: CommandMeasurement, child: ProcessCh
 
 async function startMeasuredProcess(measurement: CommandMeasurement): Promise<StartedProcess> {
     measurement.input.signal.throwIfAborted();
-    const launch = await prepareProcessLauncher(measurement.input.request.kind);
-    measurement.probe.write(measurement.input.instrumentation === 'node' ? await createProcessProbe() : null);
+    const launch = await measurement.runtime.prepare(measurement.input.request.kind);
+    measurement.probe.write(measurement.input.instrumentation === 'node' ? await measurement.runtime.probe() : null);
     measurement.input.signal.throwIfAborted();
-    const time = process.hrtime.bigint();
+    const time = measurement.runtime.now();
     const child = launch(launchInput(measurement));
-    measurement.child.write(ownProcess(child, measurement.output));
+    measurement.child.write(ownProcess(child, measurement.output, measurement.runtime.dispose));
     identifyMeasuredChild(measurement, child);
     return { child, time };
 }
@@ -182,9 +195,10 @@ async function disposeMeasurement(measurement: CommandMeasurement): Promise<void
     }
 }
 
-function commandMeasurement(input: ProcessExecutionInput): CommandMeasurement {
+function commandMeasurement(input: ProcessExecutionInput, runtime: ProcessExecutionRuntime): CommandMeasurement {
     return {
         input,
+        runtime,
         output: processOutput(input.request.kind, input.maximumBytes),
         child: createStoredValue<OwnedProcess | null>(null),
         probe: createStoredValue<ProcessProbe | null>(null),
@@ -194,8 +208,11 @@ function commandMeasurement(input: ProcessExecutionInput): CommandMeasurement {
     };
 }
 
-export async function executeProcessCommand(input: ProcessExecutionInput): Promise<ProcessExecution> {
-    const measurement = commandMeasurement(input);
+export async function measureProcessCommand(
+    input: ProcessExecutionInput,
+    runtime: ProcessExecutionRuntime
+): Promise<ProcessExecution> {
+    const measurement = commandMeasurement(input, runtime);
     try {
         await measureCommand(measurement);
     } catch (error: unknown) {
@@ -212,4 +229,13 @@ export async function executeProcessCommand(input: ProcessExecutionInput): Promi
             cleanupFailure: measurement.cleanupFailure.read()
         }
         : { status: 'measured', result, cleanupFailure: measurement.cleanupFailure.read() };
+}
+
+export async function executeProcessCommand(input: ProcessExecutionInput): Promise<ProcessExecution> {
+    return await measureProcessCommand(input, {
+        prepare: prepareProcessLauncher,
+        probe: createProcessProbe,
+        dispose: disposeProcessChild,
+        now: process.hrtime.bigint
+    });
 }

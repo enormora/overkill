@@ -1,3 +1,4 @@
+import { testNode as failures } from '../../doubles/iterator-method-failures.test.ts';
 import { createSuite } from '../../packages/engine/engine.entry-point.ts';
 import { testNode as doubleUsageOrderTestNode } from '../../doubles/double-usage-order.test.ts';
 import { testNode as doubleUsageTestNode } from '../../doubles/double-usage.test.ts';
@@ -10,6 +11,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        failures,
         doubleUsageOrderTestNode,
         doubleUsageTestNode,
         protocolDoubleAssertionsTestNode,

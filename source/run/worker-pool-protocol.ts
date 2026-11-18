@@ -83,10 +83,10 @@ export type WorkerPoolAssignedUnit = {
     readonly work: readonly WorkId[];
 };
 
-type WorkerPoolCollectTask = {
+type WorkerPoolCollectTask<Port extends WorkerTaskPort = NodeMessagePort> = {
     readonly command: WorkerPoolCommand;
     readonly kind: 'collect';
-    readonly port: NodeMessagePort;
+    readonly port: Port;
 };
 
 export type WorkerPoolLifecycleIdentity = {
@@ -94,7 +94,7 @@ export type WorkerPoolLifecycleIdentity = {
     readonly token: string;
 };
 
-export type WorkerPoolRunTask = {
+export type WorkerPoolRunTask<Port extends WorkerTaskPort = NodeMessagePort> = {
     readonly workloadInputs: readonly FrozenWorkloadInput[];
     readonly assignedUnits: readonly WorkerPoolAssignedUnit[];
     readonly assignedWork: readonly WorkId[];
@@ -103,13 +103,13 @@ export type WorkerPoolRunTask = {
     readonly kind: 'run';
     readonly lane: string;
     readonly lifecycle: WorkerPoolLifecycleIdentity;
-    readonly port: NodeMessagePort;
+    readonly port: Port;
     readonly projectedResources: ResourceProjectionRecords;
     readonly runWork: readonly WorkId[];
     readonly startedAtMilliseconds: number;
 };
 
-export type WorkerPoolAcquireRunResourcesTask = {
+type WorkerPoolAcquireRunResourcesTask<Port extends WorkerTaskPort = NodeMessagePort> = {
     readonly workloadInputs: readonly FrozenWorkloadInput[];
     readonly assignedWork: readonly WorkId[];
     readonly boundaryKeys: readonly string[];
@@ -118,39 +118,39 @@ export type WorkerPoolAcquireRunResourcesTask = {
     readonly kind: 'acquire-run-resources';
     readonly lane: string;
     readonly lifecycle: WorkerPoolLifecycleIdentity;
-    readonly port: NodeMessagePort;
+    readonly port: Port;
 };
 
-export type WorkerPoolCompleteResourceOwnerWorkTask = {
+type WorkerPoolCompleteResourceOwnerWorkTask<Port extends WorkerTaskPort = NodeMessagePort> = {
     readonly boundaryKeys: readonly string[];
     readonly kind: 'complete-resource-owner-work';
     readonly lane: string;
     readonly lifecycle: WorkerPoolLifecycleIdentity;
-    readonly port: NodeMessagePort;
+    readonly port: Port;
 };
 
-export type WorkerPoolDisposeRunResourcesTask = {
+type WorkerPoolDisposeRunResourcesTask<Port extends WorkerTaskPort = NodeMessagePort> = {
     readonly kind: 'dispose-run-resources';
     readonly lane: string;
     readonly lifecycle: WorkerPoolLifecycleIdentity;
-    readonly port: NodeMessagePort;
+    readonly port: Port;
 };
 
-export type WorkerPoolDisposeLaneLifecycleTask = {
+type WorkerPoolDisposeLaneLifecycleTask<Port extends WorkerTaskPort = NodeMessagePort> = {
     readonly kind: 'dispose-lane-lifecycle';
     readonly lane: string;
     readonly lifecycle: WorkerPoolLifecycleIdentity;
-    readonly port: NodeMessagePort;
+    readonly port: Port;
 };
 
-export type WorkerPoolPrepareResourcesTask = {
+export type WorkerPoolPrepareResourcesTask<Port extends WorkerTaskPort = NodeMessagePort> = {
     readonly kind: 'prepare-resource-artifacts';
     readonly work: WorkId;
     readonly attempt: AttemptId;
     readonly lane: string;
     readonly lifecycle: WorkerPoolLifecycleIdentity;
     readonly attachmentEndpoint: AttachmentEndpoint | null;
-    readonly port: NodeMessagePort;
+    readonly port: Port;
 };
 export type WorkerPoolPreparationReply = {
     readonly kind: 'resource-artifacts-prepared';
@@ -168,6 +168,30 @@ type WorkerPoolTasksByKind = {
 };
 
 export type WorkerPoolTask = WorkerPoolTasksByKind[keyof WorkerPoolTasksByKind];
+export type WorkerTaskPort = {
+    readonly postMessage: NodeMessagePort['postMessage'];
+    readonly close: () => void;
+    readonly on: (event: 'message', listener: (message: WorkerPoolPreparationReply) => void) => unknown;
+    readonly off: (event: 'close' | 'message', listener: (message: WorkerPoolPreparationReply) => void) => unknown;
+    readonly once: (event: 'close', listener: () => void) => unknown;
+};
+type WorkerCollectTask = WorkerPoolCollectTask<WorkerTaskPort>;
+export type WorkerRunTask = WorkerPoolRunTask<WorkerTaskPort>;
+export type WorkerResourceTask = WorkerPoolAcquireRunResourcesTask<WorkerTaskPort>;
+export type WorkerDisposeResourcesTask = WorkerPoolDisposeRunResourcesTask<WorkerTaskPort>;
+export type WorkerCompleteResourcesTask = WorkerPoolCompleteResourceOwnerWorkTask<WorkerTaskPort>;
+export type WorkerDisposeLaneTask = WorkerPoolDisposeLaneLifecycleTask<WorkerTaskPort>;
+type WorkerPrepareResourcesTask = WorkerPoolPrepareResourcesTask<WorkerTaskPort>;
+type WorkerTasks = readonly [
+    WorkerCollectTask,
+    WorkerRunTask,
+    WorkerResourceTask,
+    WorkerDisposeResourcesTask,
+    WorkerCompleteResourcesTask,
+    WorkerDisposeLaneTask,
+    WorkerPrepareResourcesTask
+];
+export type WorkerTask = WorkerTasks[number];
 
 type WorkerPoolOutputMessage = {
     readonly capturedAtMicroseconds: number;

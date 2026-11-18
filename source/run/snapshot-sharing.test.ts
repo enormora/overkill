@@ -33,7 +33,6 @@ export const testNode = suite('snapshot package context sharing', [
         }
         const input = { kind: 'text', name: 'response', actual: 'hello' } as const;
         const captured = await recordSnapshotAttempt(
-            scope,
             { ...snapshotWire, mode: 'update' },
             copy.evaluateSnapshot.bind(null, input)
         );

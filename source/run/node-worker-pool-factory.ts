@@ -1,3 +1,4 @@
+import type { Clock } from '@enormora/clock';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy-snapshots.ts';
 import type {
     CreatedWorkerPool,
@@ -10,13 +11,15 @@ import { createPool } from './worker-pool-creation.ts';
 export function createWorkerPoolWithHostProcess(
     options: WorkerPoolCreationOptions,
     environmentVariables: RuntimeCapabilityPolicyEnvironment,
-    startWorkerPoolHost: WorkerPoolHostProcessStarter
+    startWorkerPoolHost: WorkerPoolHostProcessStarter,
+    wallClock: Clock
 ): CreatedWorkerPool {
     if (options.hostProcess.kind === 'direct') {
         return createPool(options);
     }
 
     return createHostedWorkerPool({
+        wallClock,
         environmentVariables,
         options,
         startWorkerPoolHost

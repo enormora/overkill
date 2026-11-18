@@ -4,11 +4,9 @@ import {
     getCompositeAssertionReferenceRecord,
     unknownSourceLocation
 } from '../engine/assertion-protocol.entry-point.ts';
-import { testNode as relationForms } from './relation-forms.test.ts';
 import { sameType } from './type-test.entry-point.ts';
 
 export const testNode = suite('native type assertion references', [
-    relationForms,
     test('fails ordinary execution instead of reporting a successful erased check', function (scope) {
         const reference = sameType<string, number>();
         scope.assert.throws(function () {

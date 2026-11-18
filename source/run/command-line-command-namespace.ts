@@ -17,6 +17,16 @@ export type CommandLineCommandLoaders = {
     readonly loadBenchmarkCommands: () => Promise<CommandLineBenchmarkCommands>;
 };
 
+export type CommandLineNamespaceRuntime = {
+    readonly history: (load: ConfigLoader) => Promise<HistoryCommands>;
+    readonly corpus: () => Promise<CorpusCommands>;
+    readonly merge: (load: ConfigLoader, request: MergeResultsRequest) => Promise<CommandLineRunnerResult>;
+    readonly replay: (
+        loaders: CommandLineCommandLoaders,
+        context: Parameters<CommandLineCommand>[0]
+    ) => Promise<CommandLineRunnerResult>;
+};
+
 export type CommandLineCommandNamespace = {
     readonly mergeResults: (request: MergeResultsRequest) => Promise<CommandLineRunnerResult>;
 
@@ -55,61 +65,52 @@ function routeBenchmarkCommand<Request>(
     };
 }
 
-async function loadHistoryCommands(loadConfig: ConfigLoader): Promise<HistoryCommands> {
-    const { createHistoryCommands } = await import('./history-commands.ts');
-    return createHistoryCommands(loadConfig);
-}
-function createHistoryRoutes(loadConfig: ConfigLoader): HistoryCommands {
+function createHistoryRoutes(loadConfig: ConfigLoader, runtime: CommandLineNamespaceRuntime): HistoryCommands {
     return {
         async list(request) {
-            const commands = await loadHistoryCommands(loadConfig);
+            const commands = await runtime.history(loadConfig);
             return await commands.list(request);
         },
         async prune(request) {
-            const commands = await loadHistoryCommands(loadConfig);
+            const commands = await runtime.history(loadConfig);
             return await commands.prune(request);
         },
         async compact(request) {
-            const commands = await loadHistoryCommands(loadConfig);
+            const commands = await runtime.history(loadConfig);
             return await commands.compact(request);
         },
         async clear(request) {
-            const commands = await loadHistoryCommands(loadConfig);
+            const commands = await runtime.history(loadConfig);
             return await commands.clear(request);
         }
     };
 }
 
-export function createCommandLineCommandNamespace(loaders: CommandLineCommandLoaders): CommandLineCommandNamespace {
+export function createCommandLineRoutes(
+    loaders: CommandLineCommandLoaders,
+    runtime: CommandLineNamespaceRuntime
+): CommandLineCommandNamespace {
     return {
         async mergeResults(request) {
-            const { mergeResultsCommand } = await import('./merge-results-command.ts');
-            return await mergeResultsCommand(loaders.loadConfig, request);
+            return await runtime.merge(loaders.loadConfig, request);
         },
         corpus: {
             async inspect(request) {
-                const { corpusCommands } = await import('./corpus-commands.ts');
-                return await corpusCommands.inspect(request);
+                const commands = await runtime.corpus();
+                return await commands.inspect(request);
             },
             async promote(request) {
-                const { corpusCommands } = await import('./corpus-commands.ts');
-                return await corpusCommands.promote(request);
+                const commands = await runtime.corpus();
+                return await commands.promote(request);
             },
             async migrate(request) {
-                const { corpusCommands } = await import('./corpus-commands.ts');
-                return await corpusCommands.migrate(request);
+                const commands = await runtime.corpus();
+                return await commands.migrate(request);
             }
         },
-        history: createHistoryRoutes(loaders.loadConfig),
+        history: createHistoryRoutes(loaders.loadConfig, runtime),
         async replayRun(context) {
-            const { createReplayCommand, replayTerminal } = await import('./replay-command.ts');
-            const commands = await loaders.loadReplayCommands();
-            return await createReplayCommand({
-                loadConfig: loaders.loadConfig,
-                isTerminal: replayTerminal.isTerminal,
-                pickRun: replayTerminal.pickRun,
-                replayRecordedRun: commands.replayRun
-            })(context);
+            return await runtime.replay(loaders, context);
         },
         async replayWitness(context) {
             const commands = await loaders.loadReplayCommands();

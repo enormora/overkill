@@ -7,6 +7,7 @@ import type {
 } from '../resources/resources.ts';
 import { callableResourceDefinition } from '../resources/resource-graph.ts';
 
+export type StartupBudgetRuntime = { readonly schedule: (milliseconds: number, expire: () => void) => () => void; };
 type StartupBudgetRequirement = {
     readonly kind: 'startup-budget-milliseconds';
     readonly minimumMilliseconds: number;
@@ -58,21 +59,22 @@ function startupBudgetMilliseconds(resource: AnyResourceDefinition): number | nu
 function createStartupBudgetTimer(
     resource: AnyResourceDefinition,
     budgetMilliseconds: number,
-    controller: AbortController
+    controller: AbortController,
+    runtime: StartupBudgetRuntime
 ): StartupBudgetTimer {
     const timeout = Promise.withResolvers<undefined>();
-    const timer = setNodeTimeout(function abortForStartupBudget() {
+    const cancel = runtime.schedule(budgetMilliseconds, function abortForStartupBudget() {
         const error = resourceStartupTimeoutError(
             `Resource "${resource.name}" exceeded startup budget of ${budgetMilliseconds} ms.`
         );
 
         controller.abort(error);
         timeout.reject(error);
-    }, budgetMilliseconds);
+    });
 
     return {
         cancel() {
-            clearNodeTimeout(timer);
+            cancel();
             timeout.resolve(undefined);
         },
         timeout: timeout.promise
@@ -91,9 +93,10 @@ function linkParentSignal(parentSignal: AbortSignal, controller: AbortController
     };
 }
 
-export async function acquireResourceWithStartupBudget(
+export async function acquireBudgetedResource(
     resource: AnyResourceDefinition,
-    context: ResourceCreationContext<ResourceMap, ResourceScenarioSlots>
+    context: ResourceCreationContext<ResourceMap, ResourceScenarioSlots>,
+    runtime: StartupBudgetRuntime
 ): Promise<unknown> {
     const budgetMilliseconds = startupBudgetMilliseconds(resource);
 
@@ -102,7 +105,7 @@ export async function acquireResourceWithStartupBudget(
     }
 
     const controller = new AbortController();
-    const timer = createStartupBudgetTimer(resource, budgetMilliseconds, controller);
+    const timer = createStartupBudgetTimer(resource, budgetMilliseconds, controller, runtime);
     const unlinkParentSignal = linkParentSignal(context.signal, controller);
 
     try {
@@ -120,4 +123,18 @@ export async function acquireResourceWithStartupBudget(
         timer.cancel();
         unlinkParentSignal();
     }
+}
+
+export async function acquireResourceWithStartupBudget(
+    resource: AnyResourceDefinition,
+    context: ResourceCreationContext<ResourceMap, ResourceScenarioSlots>
+): Promise<unknown> {
+    return await acquireBudgetedResource(resource, context, {
+        schedule(milliseconds, expire) {
+            const timer = setNodeTimeout(expire, milliseconds);
+            return function cancel() {
+                clearNodeTimeout(timer);
+            };
+        }
+    });
 }

@@ -1,6 +1,6 @@
-import type * as CompilerApi from 'typescript-beta/async';
 import type * as TypeScript from 'typescript-beta/ast';
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
+import type { AnalyzedSymbol, SourceAnalysis } from './source-analysis-port.ts';
 import {
     immutableInitializer,
     sourceChildren,
@@ -8,8 +8,7 @@ import {
     loadSourceSymbols,
     sourceDeclarations,
     sourceSymbol,
-    transparentExpression,
-    type SourceAnalysis
+    transparentExpression
 } from './source-analysis.ts';
 
 export async function supportedCall(analysis: SourceAnalysis, call: TypeScript.CallExpression): Promise<boolean> {
@@ -85,7 +84,7 @@ function addImportNames(
 function referenceNames(
     analysis: SourceAnalysis,
     file: TypeScript.SourceFile,
-    symbol: CompilerApi.Symbol
+    symbol: AnalyzedSymbol
 ): ReadonlySet<string> {
     const names = new Set([ symbol.name ]);
     for (const statement of file.statements) {
@@ -118,7 +117,7 @@ async function validateStorageReference(
 async function validateFileReferences(
     analysis: SourceAnalysis,
     file: TypeScript.SourceFile,
-    symbol: CompilerApi.Symbol,
+    symbol: AnalyzedSymbol,
     validate: (node: TypeScript.Node) => Promise<void>
 ): Promise<void> {
     const names = referenceNames(analysis, file, symbol);
@@ -141,7 +140,7 @@ async function validateFileReferences(
 }
 async function validateReferences(
     analysis: SourceAnalysis,
-    symbol: CompilerApi.Symbol,
+    symbol: AnalyzedSymbol,
     validate: (node: TypeScript.Node) => Promise<void>
 ): Promise<void> {
     const names = await analysis.program.getSourceFileNames();
@@ -171,7 +170,7 @@ function exportedStorage(analysis: SourceAnalysis, declaration: TypeScript.Decla
 }
 async function validateInitializers(
     analysis: SourceAnalysis,
-    symbol: CompilerApi.Symbol,
+    symbol: AnalyzedSymbol,
     validate: (node: TypeScript.Node) => Promise<void>
 ): Promise<void> {
     const declarations = await sourceDeclarations(symbol);
@@ -186,7 +185,7 @@ async function validateInitializers(
     }
 }
 export async function validateCallbackStorage(analysis: SourceAnalysis, initial: TypeScript.Node): Promise<void> {
-    const seen = new Set<CompilerApi.Symbol>();
+    const seen = new Set<AnalyzedSymbol>();
     async function validate(input: TypeScript.Node): Promise<void> {
         const inner = transparentExpression(analysis, input);
         if (inner !== undefined) {

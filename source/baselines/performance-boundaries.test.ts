@@ -1,6 +1,6 @@
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
+import type { RunResult } from '../packages/engine/engine.entry-point.ts';
+import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { memoryPerformanceBaselines } from '../test-support/memory-performance-baselines.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import type {
@@ -13,7 +13,11 @@ import {
     evaluatePerformanceBaseline,
     performanceBaselineError
 } from './performance-evaluation.ts';
-import { createPerformanceWorkflow, type PerformanceWorkflow } from './performance-workflow.ts';
+import {
+    createPerformanceWorkflow,
+    type PerformanceWorkflow,
+    type PerformanceWorkflowInput
+} from './performance-workflow.ts';
 
 const calibration = { context: {}, kind: 'comparable', machineClass: 'test-host', metadata: {} } as const;
 const event: BenchmarkCaseEnd = {
@@ -71,27 +75,41 @@ async function assertPendingProposal(
     scope.assert.deepEqual(await workflow.store.list(), []);
 }
 async function presentationWorkflow(
-    scope: TestScope,
     selectedAdapter: PerformanceBaselineAdapter
 ): Promise<PerformanceWorkflow> {
-    const projectRoot = await mkdtemp(path.join(tmpdir(), 'overkill-chart-events-'));
-    scope.cleanup(async function removeStore() {
-        await rm(projectRoot, { recursive: true, force: true });
-    });
     return await createPerformanceWorkflow({
         adapters: [ selectedAdapter ],
         calibration,
-        directory: 'baselines',
+        store: memoryPerformanceBaselines([]),
         maxBytes: 4096,
         mode: 'update',
-        profile: 'startup',
-        projectRoot
+        profile: 'startup'
+    });
+}
+
+async function storedWorkflow(
+    mode: PerformanceWorkflowInput['mode'],
+    existing: readonly StoredPerformanceBaseline[]
+): Promise<PerformanceWorkflow> {
+    return await createPerformanceWorkflow({
+        adapters: [ adapter ],
+        calibration,
+        store: memoryPerformanceBaselines(existing),
+        maxBytes: 4096,
+        mode,
+        profile: 'startup'
+    });
+}
+function completedRun(): RunResult {
+    return runResultFactory.build({
+        perTest: [ { id: event.case, workId: createDefaultWorkId(event.case), outcome: { kind: 'pass' } } ],
+        summary: { defined: 1, discovered: 1, planned: 1, passed: 1 }
     });
 }
 
 export const testNode = suite('performance baseline boundaries', [
     test('does not observe intermediate attempts', async function (scope: TestScope) {
-        const workflow = await presentationWorkflow(scope, {
+        const workflow = await presentationWorkflow({
             ...adapter,
             observe: testDouble.throws(new Error('Unexpected observation.'))
         });
@@ -103,7 +121,7 @@ export const testNode = suite('performance baseline boundaries', [
         return scope.assert.collect();
     }),
     test('retains non-Error observation diagnostics', async function (scope: TestScope) {
-        const workflow = await presentationWorkflow(scope, {
+        const workflow = await presentationWorkflow({
             ...adapter,
             observe: testDouble.throws('Observation unavailable.')
         });
@@ -117,7 +135,7 @@ export const testNode = suite('performance baseline boundaries', [
         return scope.assert.collect();
     }),
     test('retains proposals when chart extraction fails', async function (scope: TestScope) {
-        const workflow = await presentationWorkflow(scope, {
+        const workflow = await presentationWorkflow({
             ...adapter,
             describeMetrics: testDouble.throws(new Error('Invalid chart.'))
         });
@@ -173,10 +191,6 @@ export const testNode = suite('performance baseline boundaries', [
         return scope.assert.collect();
     }),
     test('deduplicates final events and proposes the default work identity', async function (scope: TestScope) {
-        const projectRoot = await mkdtemp(path.join(tmpdir(), 'overkill-baseline-events-'));
-        scope.cleanup(async function removeStore() {
-            await rm(projectRoot, { recursive: true, force: true });
-        });
         let observations = 0;
         const workflow = await createPerformanceWorkflow({
             adapters: [ {
@@ -187,16 +201,80 @@ export const testNode = suite('performance baseline boundaries', [
                 }
             } ],
             calibration,
-            directory: 'baselines',
+            store: memoryPerformanceBaselines([]),
             maxBytes: 4096,
             mode: 'update',
-            profile: 'startup',
-            projectRoot
+            profile: 'startup'
         });
         scope.assert.deepEqual(workflow.evaluate(event).errors, []);
         scope.assert.deepEqual(workflow.evaluate(event).errors, []);
         scope.assert.equal(observations, 1);
         await assertPendingProposal(scope, workflow);
+        return scope.assert.collect();
+    }),
+    test('applies comparison failures to the final result and its attempt', async function (scope: TestScope) {
+        const workflow = await storedWorkflow('none', []);
+        const evaluated = workflow.evaluate(event);
+        const finished = workflow.finish(completedRun(), true);
+        scope.assert.equal(evaluated.event.verdict, 'fail');
+        scope.assert.equal(finished.result.status, 'failed');
+        scope.assert.equal(finished.result.summary.failed, 1);
+        scope.assert.equal(finished.result.perTest[0]?.attempts[0].verdict, 'fail');
+        scope.assert.deepEqual(finished.errors, []);
+        return scope.assert.collect();
+    }),
+    ...[ 'apply', 'diff' ].map(function reconciliationMode(mode) {
+        return test(`removes stale baselines in ${mode} mode`, async function (scope: TestScope) {
+            const stale = { ...baseline, work: createDefaultWorkId({ ...event.case, title: 'removed' }) };
+            const workflow = await storedWorkflow(mode === 'apply' ? 'apply' : 'diff', [ baseline, stale ]);
+            workflow.evaluate(event);
+            const finished = workflow.finish(completedRun(), true);
+            scope.assert.deepEqual(finished.errors, []);
+            scope.assert.deepEqual(workflow.changes, [ { kind: 'remove', baseline: stale } ]);
+            return scope.assert.collect();
+        });
+    }),
+    test('reports stale inventory when pruning is not requested', async function (scope: TestScope) {
+        const stale = { ...baseline, work: createDefaultWorkId({ ...event.case, title: 'removed' }) };
+        const workflow = await storedWorkflow('none', [ baseline, stale ]);
+        workflow.evaluate(event);
+        const finished = workflow.finish(completedRun(), true);
+        scope.assert.equal(
+            finished.errors[0]?.message,
+            'Found 1 stale performance baselines. Use "overkill bench baseline apply".'
+        );
+        scope.assert.deepEqual(workflow.changes, []);
+        return scope.assert.collect();
+    }),
+    test('keeps pending baselines when the run inventory is incomplete', async function (scope: TestScope) {
+        const workflow = await storedWorkflow('apply', [ baseline ]);
+        const finished = workflow.finish(completedRun(), false);
+        scope.assert.deepEqual(finished.errors, []);
+        scope.assert.deepEqual(workflow.changes, []);
+        return scope.assert.collect();
+    }),
+    test('does not observe cases that already failed during execution', async function (scope: TestScope) {
+        const workflow = await storedWorkflow('update', []);
+        const failed = {
+            ...event,
+            verdict: 'inconclusive' as const,
+            outcome: { kind: 'inconclusive' as const, reason: 'not executed' }
+        };
+        scope.assert.deepEqual(workflow.evaluate(failed), { event: failed, errors: [] });
+        scope.assert.equal(workflow.present().comparisons[0]?.observation.kind, 'not-evaluated');
+        scope.assert.deepEqual(workflow.changes, []);
+        return scope.assert.collect();
+    }),
+    test('ignores stored expectations from other profiles and machine classes', async function (scope: TestScope) {
+        const foreignProfile = { ...baseline, profile: 'other' };
+        const foreignMachine = {
+            ...baseline,
+            expected: { ...baseline.expected, calibration: { ...calibration, machineClass: 'other' } }
+        };
+        const workflow = await storedWorkflow('update', [ foreignProfile, foreignMachine ]);
+        workflow.evaluate(event);
+        scope.assert.equal(workflow.changes[0]?.kind, 'create');
+        scope.assert.deepEqual(workflow.finish(completedRun(), true).errors, []);
         return scope.assert.collect();
     })
 ]);

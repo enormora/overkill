@@ -9,18 +9,18 @@ import {
 import { summaryRunTimings } from '../engine/run-timings.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import {
-    createStoredRunValue,
-    createSupervisedRunState,
-    type SupervisedRunState
-} from './supervised-run-state.ts';
-import {
     createCollectedPlan,
     createCollectedPlanWithMissingResult,
     createTaskRun,
     fakeDependencies,
     fakeWorkerRuntime,
     workerPoolResolvedRun
-} from './worker-pool-execution-state.test.ts';
+} from '../test-support/worker-pool-execution-state.ts';
+import {
+    createStoredRunValue,
+    createSupervisedRunState,
+    type SupervisedRunState
+} from './supervised-run-state.ts';
 import { createEmptyWorkerPoolResult, finishWorkerPoolRun } from './worker-pool-results.ts';
 import type { PlacementTrace } from './placement-trace.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';

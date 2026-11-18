@@ -1,13 +1,13 @@
 import { suite, test, processMeasurement, type ProcessRequest } from '../packages/bench/bench.entry-point.ts';
 import { benchmarkDefinitionSchema } from '../run/benchmark-definition-schema.ts';
-import { testNode as moduleProtocolTestNode } from './module-import-session.test.ts';
-import { testNode as processTimelineTestNode } from './process-timeline.test.ts';
+import { testNode as completionPolicy } from './process-completion-policy.test.ts';
+import { testNode as childPolicy } from './process-child-policy.test.ts';
+import { testNode as nodeObservation } from './node-child-observation.test.ts';
+import { testNode as probePolicy } from './process-probe-policy.test.ts';
+import { testNode as importPolicy } from './module-import-policy.test.ts';
 import { processEvidenceSchema } from './process-evidence.ts';
-import { testNode as moduleContractsTestNode } from './module-contracts.test.ts';
 import { parseProcessRequest, processRequestSchema } from './process-command.ts';
 import { processOutput } from './process-output.ts';
-import { testNode as moduleEvidenceTestNode } from './module-evidence.test.ts';
-import { testNode as probeProtocolTestNode } from './process-probe-session.test.ts';
 
 const command = {
     command: [ 'node', 'cli.js' ],
@@ -17,7 +17,11 @@ const command = {
 } as const;
 
 export const testNode = suite('external process contracts', [
-    moduleEvidenceTestNode,
+    completionPolicy,
+    childPolicy,
+    nodeObservation,
+    importPolicy,
+    probePolicy,
     test('reads historical process evidence without inventing module observations', function (scope) {
         const execution = {
             status: 'failed',
@@ -37,10 +41,6 @@ export const testNode = suite('external process contracts', [
         scope.assert.equal(evidence.omitted, 1);
         return scope.assert.collect();
     }),
-    moduleContractsTestNode,
-    moduleProtocolTestNode,
-    probeProtocolTestNode,
-    processTimelineTestNode,
     test('rejects incompatible stream selectors and terminal-only steps on pipes', function (scope) {
         scope.assert.false(
             processRequestSchema

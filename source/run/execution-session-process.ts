@@ -1,4 +1,4 @@
-import { fork, type ChildProcess } from 'node:child_process';
+import { fork } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { sanitizedChildEnvironment } from './supervised-child-process.ts';
 import { executionHostMessageSchema } from './execution-session-schema.ts';
@@ -32,22 +32,43 @@ async function deliverCheckpoint(
         delivery.reject(error);
     }
 }
+async function deliverReplyAfterCheckpoints(
+    reply: RunExecutionReply,
+    delivery: HostMessageDelivery,
+    checkpoints: readonly Promise<void>[]
+): Promise<void> {
+    try {
+        await Promise.all(checkpoints);
+        delivery.resolve(reply);
+    } catch (error: unknown) {
+        delivery.reject(error);
+    }
+}
 function deliverHostMessage(message: unknown, delivery: HostMessageDelivery): void {
     const decoded = executionHostMessageSchema.parse(message);
     if (decoded.kind === 'execution-checkpoint') {
         delivery.pending.add(deliverCheckpoint(decoded, delivery));
     } else {
-        delivery.resolve(decoded);
+        delivery.pending.add(deliverReplyAfterCheckpoints(decoded, delivery, Array.from(delivery.pending)));
     }
 }
 
+type FreshHostOnce = {
+    (event: 'error', listener: (error: Error) => void): unknown;
+    (event: 'exit', listener: (code: number | null, termination: string | null) => void): unknown;
+};
+type FreshExecutionChild = {
+    readonly once: FreshHostOnce;
+    readonly on: (event: 'message', listener: (message: unknown) => void) => unknown;
+    readonly send: (message: Readonly<Record<string, unknown>>, callback: (error: Error | null) => void) => boolean;
+    readonly kill: (signal: 'SIGKILL') => boolean;
+};
 type FreshExecutionHost = {
-    readonly child: ChildProcess;
+    readonly child: FreshExecutionChild;
     readonly closed: Promise<void>;
     readonly pending: Readonly<Set<Promise<void>>>;
 };
 function startFreshExecutionHost(command: FrozenRunCommand, signal: Readonly<AbortSignal>): FreshExecutionHost {
-    signal.throwIfAborted();
     const child = fork(fileURLToPath(executionSessionProcessUrl), [ executionSessionProcessArgument ], {
         cwd: command.policy.cwd,
         env: sanitizedChildEnvironment(readExecutionSessionEnvironment(), 'microtest'),
@@ -65,13 +86,20 @@ function startFreshExecutionHost(command: FrozenRunCommand, signal: Readonly<Abo
     return { child, closed, pending: new Set() };
 }
 
-export async function runFreshExecutionSession(
-    command: FrozenRunCommand,
-    transport: RunExecutionTransport,
-    timeoutMilliseconds: number,
-    observation: ExecutionSessionObservation
+export type FreshExecutionRequest = {
+    readonly command: FrozenRunCommand;
+    readonly transport: RunExecutionTransport;
+    readonly timeoutMilliseconds: number;
+    readonly observation: ExecutionSessionObservation;
+};
+export type FreshExecutionFactory = (command: FrozenRunCommand, signal: Readonly<AbortSignal>) => FreshExecutionHost;
+export async function executeFreshSession(
+    input: FreshExecutionRequest,
+    start: FreshExecutionFactory
 ): Promise<RunExecutionReply> {
-    const { child, closed, pending } = startFreshExecutionHost(command, observation.signal);
+    const { command, transport, timeoutMilliseconds, observation } = input;
+    observation.signal.throwIfAborted();
+    const { child, closed, pending } = start(command, observation.signal);
     try {
         return await new Promise<RunExecutionReply>(function (resolve, reject) {
             child.once('error', reject);
@@ -114,4 +142,13 @@ export async function runFreshExecutionSession(
         await closed;
         await Promise.all(pending);
     }
+}
+
+export async function runFreshExecutionSession(
+    command: FrozenRunCommand,
+    transport: RunExecutionTransport,
+    timeoutMilliseconds: number,
+    observation: ExecutionSessionObservation
+): Promise<RunExecutionReply> {
+    return await executeFreshSession({ command, transport, timeoutMilliseconds, observation }, startFreshExecutionHost);
 }

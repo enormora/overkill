@@ -14,6 +14,7 @@ import {
     type RunTimingSpan
 } from '../engine/run-timings.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { testNode as debug } from './human-debug-rendering-policy.test.ts';
 import { contextPrefix, problemLines } from './human-reporter-rendering.ts';
 import { formatTimingOffenderLines } from './run-summary-rendering.ts';
 import { testNode as attachmentRendering } from './human-attachment-rendering.test.ts';
@@ -165,6 +166,72 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            annotations: {},
+            controls: {},
+            title: 'human context prefixes retain nested suites when color is requested',
+            body(scope: OverkillScope) {
+                const prefix = contextPrefix([], null, [ 'root', 'child' ], { color: true, wrap: false });
+                scope.assert.includes(prefix, 'root');
+                scope.assert.includes(prefix, ' > child]');
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            annotations: {},
+            controls: {},
+            title: 'human problem output preserves workload attribution on runner errors',
+            body(scope: OverkillScope) {
+                const result = runResultFactory.build({
+                    runnerErrors: [ {
+                        message: 'worker stopped',
+                        subtype: 'loader',
+                        attributedTo: failingCaseId,
+                        attributedToWork: {
+                            ...createDefaultWorkId(failingCaseId),
+                            workload: { name: 'large', params: {} }
+                        }
+                    } ]
+                });
+                scope.assert.deepEqual(
+                    problemLines(result, {
+                        failureArtifacts: defaultFailureArtifactPolicy,
+                        relativizeLocationPath(location) {
+                            return location.file;
+                        }
+                    }, { verbose: true }),
+                    [
+                        'Problems',
+                        '  Runner error: worker stopped',
+                        '  type: loader',
+                        '  test: source/fails.test.ts: root > fails [workload=large]'
+                    ]
+                );
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            annotations: {},
+            controls: {},
+            title: 'human problem output labels case artifacts without a corresponding result',
+            body(scope: OverkillScope) {
+                const result = runResultFactory.build({ artifacts: [ caseOutputArtifact() ], perTest: [] });
+                scope.assert.deepEqual(
+                    problemLines(result, {
+                        failureArtifacts: defaultFailureArtifactPolicy,
+                        relativizeLocationPath(location) {
+                            return location.file;
+                        }
+                    }, { verbose: true }),
+                    [ 'Problems', '  passes', '    stdout:', '    visible output' ]
+                );
+                return scope.assert.collect();
+            }
+        }),
+        debug,
         attachmentRendering,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],

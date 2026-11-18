@@ -1,21 +1,27 @@
-import type { Stats } from 'node:fs';
 import { lstat } from 'node:fs/promises';
 import path from 'node:path';
-import { createNodeFileStore } from '../file-store.ts';
-import { existingPathAncestor, isPathInside } from './path-containment.ts';
+import type { FileStore } from '../file-store.ts';
+import { isPathInside } from './path-containment.ts';
 import { baselineFilename, storedOrdinaryBaselineSchema, type StoredOrdinaryBaseline } from './baseline-record.ts';
 
 type StorageInput = { readonly root: string; readonly directory: string; readonly maxBytes: number; };
-type BaselineStorage = {
+export type BaselineStorage = {
     readonly checkDirectory: (directory: string) => Promise<void>;
     readonly location: (baseline: StoredOrdinaryBaseline) => string;
     readonly encoded: (baseline: StoredOrdinaryBaseline) => string;
     readonly read: (file: string) => Promise<StoredOrdinaryBaseline | null>;
 };
 const jsonIndentation = 2;
-async function fileStats(file: string): Promise<Stats | null> {
+export type BaselineFileStatus = { readonly file: boolean; readonly link: boolean; readonly size: number; };
+export type BaselineStorageAccess = {
+    readonly files: Pick<FileStore, 'read'>;
+    readonly ancestor: (path: string) => Promise<string>;
+    readonly inspect: (path: string) => Promise<BaselineFileStatus | null>;
+};
+export async function baselineFileStatus(file: string): Promise<BaselineFileStatus | null> {
     try {
-        return await lstat(file);
+        const stats = await lstat(file);
+        return { file: stats.isFile(), link: stats.isSymbolicLink(), size: stats.size };
     } catch (error: unknown) {
         if (error instanceof Error && Reflect.get(error, 'code') === 'ENOENT') {
             return null;
@@ -23,14 +29,13 @@ async function fileStats(file: string): Promise<Stats | null> {
         throw error;
     }
 }
-export function createBaselineStorage(input: StorageInput): BaselineStorage {
-    const files = createNodeFileStore();
+export function createBaselineStorage(input: StorageInput, access: BaselineStorageAccess): BaselineStorage {
     async function checkDirectory(selected: string): Promise<void> {
-        if (!isPathInside(input.root, selected) || !isPathInside(input.root, await existingPathAncestor(selected))) {
+        if (!isPathInside(input.root, selected) || !isPathInside(input.root, await access.ancestor(selected))) {
             throw new Error('Baseline directory must remain inside the project root.');
         }
-        const stats = await fileStats(selected);
-        if (stats?.isSymbolicLink() === true) {
+        const stats = await access.inspect(selected);
+        if (stats?.link === true) {
             throw new Error('Baseline directories cannot be symbolic links.');
         }
     }
@@ -45,11 +50,11 @@ export function createBaselineStorage(input: StorageInput): BaselineStorage {
         return content;
     }
     async function validateFile(file: string): Promise<boolean> {
-        const stats = await fileStats(file);
+        const stats = await access.inspect(file);
         if (stats === null) {
             return false;
         }
-        if (!stats.isFile() || stats.size > input.maxBytes) {
+        if (!stats.file || stats.size > input.maxBytes) {
             throw new Error(`Invalid baseline file: ${path.basename(file)}`);
         }
         return true;
@@ -59,7 +64,7 @@ export function createBaselineStorage(input: StorageInput): BaselineStorage {
         if (!await validateFile(file)) {
             return null;
         }
-        const content = await files.read(file);
+        const content = await access.files.read(file);
         if (content === null) {
             throw new Error('Baseline disappeared while reading.');
         }

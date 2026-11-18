@@ -11,7 +11,6 @@ import {
     type TestScope
 } from '../engine/engine.entry-point.ts';
 import { createReportingContext } from '../../engine/reporting-context.ts';
-import { testNode as benchmarkSubpathsTestNode } from './benchmark-subpaths.test.ts';
 import * as assertSubpath from './assert.entry-point.ts';
 import * as configSubpath from './config.entry-point.ts';
 import * as reportersSubpath from './reporters.entry-point.ts';
@@ -511,8 +510,7 @@ export const testNode = createSuite({
 
                 return scope.assert.collect();
             }
-        }),
-        benchmarkSubpathsTestNode
+        })
     ]
 });
 

@@ -1,8 +1,12 @@
-import { StringDecoder } from 'node:string_decoder';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { setTimeout as wait } from 'node:timers/promises';
 import { createFailureArtifactStream, type FailureArtifactStream } from '../attachments/failure-artifact-stream.ts';
 import { currentResourceFailureContext } from '../attachments/resource-failure-context.ts';
+import {
+    createLocalProcessOutput,
+    type LocalProcessOutput,
+    type LocalProcessOutputWriters
+} from './local-process-output.ts';
 import type {
     Awaitable,
     ExecutionRequirement,
@@ -23,16 +27,6 @@ import {
     type ProjectedLocalServiceScope
 } from './local-service-resource.ts';
 
-export type LocalProcessOutputBuffer = {
-    readonly bytes: () => Uint8Array;
-    readonly text: () => string;
-};
-
-export type LocalProcessOutput = {
-    readonly stderr: LocalProcessOutputBuffer;
-    readonly stdout: LocalProcessOutputBuffer;
-};
-
 export type LocalProcessCommand = {
     readonly arguments: readonly string[];
     readonly command: string;
@@ -48,7 +42,7 @@ export type LocalProcessShutdown = {
     readonly gracefulSignal: LocalProcessSignal;
 };
 
-type LocalProcessChild = {
+export type LocalProcessChild = {
     readonly exitCode: number | null;
     readonly kill: (signal: LocalProcessSignal) => boolean;
     readonly once: (
@@ -83,15 +77,7 @@ export type LocalProcessServiceResourceInput<
     readonly shutdown: LocalProcessShutdown;
 };
 
-type LocalProcessOutputWriters = {
-    readonly appendStderr: (chunk: Buffer) => void;
-    readonly appendStdout: (chunk: Buffer) => void;
-    readonly finishStderr: () => void;
-    readonly finishStdout: () => void;
-    readonly output: LocalProcessOutput;
-};
-
-type LocalProcessDefinition<
+export type LocalProcessDefinition<
     Name extends string,
     ConsumerHandle extends LocalServiceConsumerHandle,
     Scope extends ResourceScope,
@@ -116,11 +102,6 @@ type LocalProcessDefinition<
 type ProcessInputValidation = {
     readonly outputBufferBytes: number;
     readonly shutdown: LocalProcessShutdown;
-};
-
-type BoundedOutputBufferController = {
-    readonly append: (chunk: Buffer) => void;
-    readonly buffer: LocalProcessOutputBuffer;
 };
 
 type ProjectedProcessServiceInput<
@@ -193,65 +174,6 @@ type MaybeProjectedProcessServiceInput<
     readonly shutdown: LocalProcessShutdown;
 };
 
-function createBoundedOutputBuffer(maxBytes: number): BoundedOutputBufferController {
-    let value = Buffer.alloc(0);
-
-    return {
-        append(chunk) {
-            value = Buffer.concat([ value, chunk ]);
-
-            if (value.byteLength > maxBytes) {
-                value = value.subarray(value.byteLength - maxBytes);
-            }
-        },
-        buffer: Object.freeze({
-            bytes() {
-                return new Uint8Array(value);
-            },
-            text() {
-                return value.toString('utf8');
-            }
-        })
-    };
-}
-
-function localProcessOutput(
-    maxBytes: number,
-    captures: Readonly<Record<'stderr' | 'stdout', FailureArtifactStream | null>>
-): LocalProcessOutputWriters {
-    const stdout = createBoundedOutputBuffer(maxBytes);
-    const stderr = createBoundedOutputBuffer(maxBytes);
-    const stdoutDecoder = new StringDecoder();
-    const stderrDecoder = new StringDecoder();
-
-    return {
-        appendStderr(chunk) {
-            stderr.append(chunk);
-            captures.stderr?.write(stderrDecoder.write(chunk));
-        },
-        appendStdout(chunk) {
-            stdout.append(chunk);
-            captures.stdout?.write(stdoutDecoder.write(chunk));
-        },
-        finishStderr() {
-            const tail = stderrDecoder.end();
-            if (tail.length > 0) {
-                captures.stderr?.write(tail);
-            }
-        },
-        finishStdout() {
-            const tail = stdoutDecoder.end();
-            if (tail.length > 0) {
-                captures.stdout?.write(tail);
-            }
-        },
-        output: Object.freeze({
-            stderr: stderr.buffer,
-            stdout: stdout.buffer
-        })
-    };
-}
-
 function attachOutputDrains(child: ChildProcess, output: LocalProcessOutputWriters): void {
     if (child.stdout === null || child.stderr === null) {
         throw new TypeError('Local process service requires piped stdout and stderr.');
@@ -275,22 +197,32 @@ function spawnLocalProcess(command: LocalProcessCommand, output: LocalProcessOut
     return child;
 }
 
+export type LocalProcessRuntime = {
+    readonly spawn: (command: LocalProcessCommand, output: LocalProcessOutputWriters) => LocalProcessChild;
+    readonly delay: (milliseconds: number, signal: AbortSignal) => Promise<boolean>;
+};
+const nativeProcessRuntime: LocalProcessRuntime = {
+    spawn: spawnLocalProcess,
+    async delay(milliseconds, signal) {
+        return await wait(milliseconds, false, { signal });
+    }
+};
+function earlyProcessExit(owner: LocalProcessOwner, code: number | null, signal: string | null): Error {
+    return new Error(
+        [
+            `Local process service exited before readiness: code ${String(code)}, signal ${String(signal)}.`,
+            owner.output.stderr.text()
+        ]
+            .filter(Boolean)
+            .join('\n')
+    );
+}
+
 async function processExitFailure(owner: LocalProcessOwner): Promise<never> {
     return await new Promise(function rejectOnProcessExit(_resolve, reject) {
         owner.child.once('error', reject);
         owner.child.once('exit', function rejectEarlyExit(code, signal) {
-            reject(
-                new Error(
-                    [
-                        `Local process service exited before readiness: code ${String(code)}, signal ${
-                            String(signal)
-                        }.`,
-                        owner.output.stderr.text()
-                    ]
-                        .filter(Boolean)
-                        .join('\n')
-                )
-            );
+            reject(earlyProcessExit(owner, code, signal));
         });
     });
 }
@@ -303,6 +235,9 @@ async function readyLocalProcess<
     context: LocalServiceCreationContext<Dependencies>,
     input: Pick<LocalProcessServiceResourceInput<string, ConsumerHandle, ResourceScope, Dependencies>, 'ready'>
 ): Promise<ConsumerHandle> {
+    if (owner.child.exitCode !== null || owner.child.signalCode !== null) {
+        throw earlyProcessExit(owner, owner.child.exitCode, owner.child.signalCode);
+    }
     return await Promise.race([
         input.ready(owner, context),
         processExitFailure(owner)
@@ -325,22 +260,30 @@ async function processHasExited(child: LocalProcessChild): Promise<boolean> {
     await waitForProcessExit(child);
     return true;
 }
-async function processExitWithinGrace(child: LocalProcessChild, milliseconds: number): Promise<boolean> {
+async function processExitWithinGrace(
+    child: LocalProcessChild,
+    milliseconds: number,
+    runtime: LocalProcessRuntime
+): Promise<boolean> {
     const waiting = new AbortController();
-    const exits = [ processHasExited(child), wait(milliseconds, false, { signal: waiting.signal }) ];
+    const exits = [ processHasExited(child), runtime.delay(milliseconds, waiting.signal) ];
     try {
         return await Promise.race(exits);
     } finally {
         waiting.abort();
     }
 }
-async function disposeLocalProcess(owner: LocalProcessOwner, shutdown: LocalProcessShutdown): Promise<void> {
+async function disposeLocalProcess(
+    owner: LocalProcessOwner,
+    shutdown: LocalProcessShutdown,
+    runtime: LocalProcessRuntime
+): Promise<void> {
     if (owner.child.exitCode !== null || owner.child.signalCode !== null) {
         return;
     }
 
     owner.child.kill(shutdown.gracefulSignal);
-    const graceful = await processExitWithinGrace(owner.child, shutdown.graceMilliseconds);
+    const graceful = await processExitWithinGrace(owner.child, shutdown.graceMilliseconds, runtime);
 
     if (!graceful) {
         owner.child.kill(shutdown.forceSignal);
@@ -385,13 +328,14 @@ function processCaptures(): Readonly<Record<'stderr' | 'stdout', FailureArtifact
             : createFailureArtifactStream(context, 'boundary-captured', 'stderr', 'text/plain')
     };
 }
-function localProcessDefinition<
+export function createLocalProcessServiceDefinition<
     const Name extends string,
     ConsumerHandle extends LocalServiceConsumerHandle,
     Scope extends ResourceScope,
     const Dependencies extends ResourceDependencies
 >(
-    input: LocalProcessServiceResourceInput<Name, ConsumerHandle, Scope, Dependencies>
+    input: LocalProcessServiceResourceInput<Name, ConsumerHandle, Scope, Dependencies>,
+    runtime: LocalProcessRuntime
 ): LocalProcessDefinition<Name, ConsumerHandle, Scope, Dependencies> {
     const captured = new WeakMap<LocalProcessOwner, Promise<Error | null>>();
     return {
@@ -403,11 +347,13 @@ function localProcessDefinition<
         async start(creation: LocalServiceCreationContext<Dependencies>): Promise<LocalProcessOwner> {
             const command = await input.command(creation);
             const { stdout, stderr } = processCaptures();
-            const output = localProcessOutput(input.outputBufferBytes, { stdout, stderr });
-            const child = spawnLocalProcess(command, output);
+            const output = createLocalProcessOutput(input.outputBufferBytes, { stdout, stderr });
+            const child = runtime.spawn(command, output);
             const owner = Object.freeze({ child, output: output.output });
             const closed = new Promise<void>(function resolveClosedProcess(resolve) {
-                child.once('close', resolve);
+                child.once('close', function () {
+                    resolve();
+                });
             });
             const completion = captureProcessOutput(closed, stdout, stderr);
             captured.set(owner, completion);
@@ -417,7 +363,7 @@ function localProcessDefinition<
             return await readyLocalProcess(owner, context, input);
         },
         async dispose(owner: LocalProcessOwner) {
-            await disposeLocalProcess(owner, input.shutdown);
+            await disposeLocalProcess(owner, input.shutdown, runtime);
             const error = await captured.get(owner);
             if (error !== undefined && error !== null) {
                 throw error;
@@ -451,7 +397,7 @@ function projectedProcessDefinition<
     Dependencies
 > {
     return {
-        ...localProcessDefinition(input),
+        ...createLocalProcessServiceDefinition(input, nativeProcessRuntime),
         serializeHandle: input.serializeHandle,
         deserializeHandle: input.deserializeHandle
     };
@@ -529,7 +475,7 @@ export function createLocalProcessServiceResource<
     }
 
     return defineLocalServiceResource({
-        ...localProcessDefinition(input),
+        ...createLocalProcessServiceDefinition(input, nativeProcessRuntime),
         scope: input.scope
     });
 }

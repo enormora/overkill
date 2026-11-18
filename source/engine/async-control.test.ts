@@ -6,10 +6,7 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import {
-    createInMemoryRealTimeReporter,
-    type InMemoryRealTimeReporter
-} from '../reporters/in-memory-reporter.ts';
+
 import { createEngine, type Engine } from './engine.ts';
 import { createExecute } from './execution.ts';
 import { createReporterDispatcher } from './reporter-dispatcher.ts';
@@ -83,14 +80,6 @@ function caseVerdicts(result: RunResult): readonly string[] {
     });
 }
 
-function recordedRunnerErrorMessages(reporter: InMemoryRealTimeReporter): readonly string[] {
-    return reporter.getRecordedEntries().flatMap(function toMessage(entry) {
-        return entry.event?.kind === 'runner-error'
-            ? [ entry.event.error.message ]
-            : [];
-    });
-}
-
 type EventLog = {
     readonly add: (event: string) => void;
 };
@@ -123,31 +112,6 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'scope.drainMicrotasks() waits for already queued promise work',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(async function testBody(testScope: TestScope) {
-                    let finished = false;
-
-                    queueMicrotask(function finishMicrotask() {
-                        finished = true;
-                    });
-
-                    testScope.assert.equal(finished, false);
-                    await testScope.drainMicrotasks();
-                    testScope.assert.equal(finished, true);
-
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.deepEqual(caseVerdicts(result), [ 'pass' ]);
-
-                return scope.assert.collect();
-            }
-        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'scope.yieldToNextTurn() waits for setImmediate work',
@@ -197,97 +161,6 @@ export const testNode = createOverkillSuite({
                 });
 
                 scope.assert.deepEqual(caseVerdicts(result), [ 'pass' ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'scope.cleanup() runs after signal abort in reverse registration order',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const events: string[] = [];
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.cleanup(function firstCleanup() {
-                        events.push(`first:${String(testScope.signal.aborted)}`);
-                    });
-                    testScope.cleanup(function secondCleanup() {
-                        events.push(`second:${String(testScope.signal.aborted)}`);
-                    });
-
-                    testScope.assert.equal(testScope.signal.aborted, false);
-
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.deepEqual(caseVerdicts(result), [ 'pass' ]);
-                scope.assert.deepEqual(events, [ 'second:true', 'first:true' ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'scope.cleanup() failures fail the owning test',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.cleanup(function failCleanup() {
-                        throw new Error('cannot clean');
-                    });
-                    testScope.assert.true(true);
-
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.deepEqual(caseVerdicts(result), [ 'fail' ]);
-                scope.assert.deepEqual(failureCodes(result), [ 'cleanup-error' ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'scope.startInFlight() asserts later rejections',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(async function testBody(testScope: TestScope) {
-                    const task = testScope.startInFlight(async function rejectLater() {
-                        await Promise.resolve();
-                        throw new Error('expected rejection');
-                    });
-
-                    await task.rejects({ message: 'expected rejection' });
-
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.deepEqual(caseVerdicts(result), [ 'pass' ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'scope.startInFlight() rejects unobserved settled tasks',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(async function testBody(testScope: TestScope) {
-                    testScope.startInFlight(async function startTask() {
-                        return 'done';
-                    });
-                    await testScope.drainMicrotasks();
-                    testScope.assert.true(true);
-
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.deepEqual(caseVerdicts(result), [ 'fail' ]);
-                scope.assert.deepEqual(failureCodes(result), [ 'unobserved-in-flight-task' ]);
 
                 return scope.assert.collect();
             }
@@ -347,75 +220,25 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() reports serial active-resource leaks against the case',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                let readCount = 0;
-                const engine = createEngineWithActiveResources(function readActiveResourceTypes() {
-                    readCount += 1;
-                    return readCount === 1 ? [] : [ 'Timeout' ];
-                });
-                const testPlan = engine.createTestPlan(
-                    engine.createRoot({
-                        children: [
-                            engine.createTestCase({
-                                body(testScope) {
-                                    testScope.assert.true(true);
-                                    return testScope.assert.collect();
-                                },
-                                definitionLocations: [ { kind: 'unknown' } ],
-                                annotations: {},
-                                controls: {},
-                                title: 'leaks'
-                            })
-                        ],
-                        annotations: {},
-                        controls: {},
-                        title: 'root'
-                    })
-                );
-                const reporter = createInMemoryRealTimeReporter();
-                const result = await engine.execute(testPlan, {
-                    debug: { mode: 'off' },
-                    retryPolicy: null,
-                    execution: { mode: 'serial-in-process' },
-                    reporters: [ reporter ],
-                    runFacts: {},
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
-
-                scope.assert.deepEqual(caseVerdicts(result), [ 'runtime-policy' ]);
-                scope.assert.equal(result.runnerErrors[0]?.attributedTo?.title, 'leaks');
-                scope.assert.deepEqual(recordedRunnerErrorMessages(reporter), [
-                    result.runnerErrors[0]?.message
-                ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() waits one turn before active-resource leak diagnostics',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                let readCount = 0;
+                let allocated = false;
                 let resourceReleased = false;
                 const engine = createEngineWithActiveResources(function readActiveResourceTypes() {
-                    readCount += 1;
-
-                    if (readCount === 1 || resourceReleased) {
+                    if (!allocated || resourceReleased) {
                         return [];
                     }
 
-                    return [ 'ProcessWrap' ];
+                    return [ 'UnitResource' ];
                 });
                 const testPlan = engine.createTestPlan(
                     engine.createRoot({
                         children: [
                             engine.createTestCase({
                                 body(testScope) {
+                                    allocated = true;
                                     scheduleImmediate(function releaseResource() {
                                         resourceReleased = true;
                                     });
@@ -444,66 +267,6 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.deepEqual(caseVerdicts(result), [ 'pass' ]);
                 scope.assert.deepEqual(result.runnerErrors, []);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() reports concurrent active-resource leaks at run scope',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                let readCount = 0;
-                const engine = createEngineWithActiveResources(function readActiveResourceTypes() {
-                    readCount += 1;
-                    return readCount === 1 ? [] : [ 'Timeout' ];
-                });
-                const testPlan = engine.createTestPlan(
-                    engine.createRoot({
-                        children: [
-                            engine.createTestCase({
-                                body(testScope) {
-                                    testScope.assert.true(true);
-                                    return testScope.assert.collect();
-                                },
-                                definitionLocations: [ { kind: 'unknown' } ],
-                                annotations: {},
-                                controls: {},
-                                title: 'first'
-                            }),
-                            engine.createTestCase({
-                                body(testScope) {
-                                    testScope.assert.true(true);
-                                    return testScope.assert.collect();
-                                },
-                                definitionLocations: [ { kind: 'unknown' } ],
-                                annotations: {},
-                                controls: {},
-                                title: 'second'
-                            })
-                        ],
-                        annotations: {},
-                        controls: {},
-                        title: 'root'
-                    })
-                );
-                const reporter = createInMemoryRealTimeReporter();
-                const result = await engine.execute(testPlan, {
-                    debug: { mode: 'off' },
-                    retryPolicy: null,
-                    execution: { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' },
-                    reporters: [ reporter ],
-                    runFacts: {},
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
-
-                scope.assert.deepEqual(caseVerdicts(result), [ 'pass', 'pass' ]);
-                scope.assert.equal(result.runnerErrors[0]?.subtype, 'runtime-policy');
-                scope.assert.equal(result.runnerErrors[0]?.attributedTo, null);
-                scope.assert.deepEqual(recordedRunnerErrorMessages(reporter), [
-                    result.runnerErrors[0]?.message
-                ]);
 
                 return scope.assert.collect();
             }

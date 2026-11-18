@@ -9,7 +9,7 @@ import { snapshotEvidence } from './snapshot-evidence.ts';
 
 export const testNode = suite('snapshot evidence planning', [
     test('keeps matching inline evidence and proposes changed payloads', async function (scope) {
-        const captured = await recordSnapshotAttempt(scope, { ...wire, mode: 'update' }, async function capture() {
+        const captured = await recordSnapshotAttempt({ ...wire, mode: 'update' }, async function capture() {
             await evaluateSnapshot({ kind: 'text', name: 'response', actual: 'hello' });
         });
         for (const previous of [ 'hello', 'previous' ]) {
@@ -28,7 +28,7 @@ export const testNode = suite('snapshot evidence planning', [
         return scope.assert.collect();
     }),
     test('rejects incomplete evidence alongside a valid proposal', async function (scope: TestScope) {
-        const captured = await recordSnapshotAttempt(scope, { ...wire, mode: 'update' }, async function capture() {
+        const captured = await recordSnapshotAttempt({ ...wire, mode: 'update' }, async function capture() {
             await evaluateSnapshot({ kind: 'text', name: 'response', actual: 'hello' });
         });
         const [ artifact ] = captured.artifacts;

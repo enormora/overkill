@@ -1,6 +1,6 @@
 import type { RunResult } from '../engine/run-result.ts';
 import { createCoverageRunRecord, type CoverageRunRecord } from './coverage-run-record.ts';
-import type { CoverageSession } from './coverage-session.ts';
+import type { CoverageSession } from './coverage-collection.ts';
 import { executeRecordedCoverageSession, reportCoverageError } from './recorded-coverage-session.ts';
 import { coverageExecutionCompleted, startCoverageSession } from './run-coverage.ts';
 import type { RecordedCoverageRequest } from './recorded-coverage-types.ts';

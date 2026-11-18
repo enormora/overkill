@@ -1,0 +1,9 @@
+{
+    "extends": "./tsconfig.benchmark-html-browser.json",
+    "compilerOptions": {
+        "composite": false,
+        "noEmit": true,
+        "tsBuildInfoFile": "../target/buildcache/eslint-browser.tsbuildinfo"
+    },
+    "references": []
+}

@@ -104,15 +104,22 @@ async function collectGraph(
     };
 }
 
-type GraphPreparation = { readonly prepare: (facts: readonly ImplementationFacts[]) => Promise<ImplementationGraph>; };
-export function createImplementationGraphPreparation(): GraphPreparation {
+export type GraphPreparation = {
+    readonly prepare: (facts: readonly ImplementationFacts[]) => Promise<ImplementationGraph>;
+};
+export type ImplementationGraphAccess = {
+    readonly canonical: (url: string) => Promise<string>;
+    readonly read: (url: string) => Promise<ImplementationGraphModule>;
+    readonly runtime: ImplementationGraph['runtime'];
+};
+export function createGraphPreparation(access: ImplementationGraphAccess): GraphPreparation {
     const sources = new Map<string, Promise<ImplementationGraphModule>>();
     async function readModule(url: string): Promise<ImplementationGraphModule> {
         const existing = sources.get(url);
         if (existing !== undefined) {
             return existing;
         }
-        const source = readImplementationModule(url);
+        const source = access.read(url);
         sources.set(url, source);
         return source;
     }
@@ -122,18 +129,13 @@ export function createImplementationGraphPreparation(): GraphPreparation {
                 Object.fromEntries(
                     await Promise.all(
                         graphRoots(facts).map(async function canonicalEntry(url): Promise<readonly [string, string]> {
-                            return [ url, await canonicalModuleUrl(url) ];
+                            return [ url, await access.canonical(url) ];
                         })
                     )
                 )
             );
             const graph = { ...await collectGraph(Object.values(entries), readModule), entries };
-            const runtime = Object.freeze({
-                node: process.version,
-                platform: process.platform,
-                architecture: process.arch,
-                typescript: process.features.typescript
-            });
+            const runtime = Object.freeze({ ...access.runtime });
             return Object.freeze({
                 ...graph,
                 runtime,
@@ -142,28 +144,44 @@ export function createImplementationGraphPreparation(): GraphPreparation {
         }
     };
 }
+export function createImplementationGraphPreparation(): GraphPreparation {
+    return createGraphPreparation({
+        canonical: canonicalModuleUrl,
+        read: readImplementationModule,
+        runtime: {
+            node: process.version,
+            platform: process.platform,
+            architecture: process.arch,
+            typescript: process.features.typescript
+        }
+    });
+}
 export async function prepareImplementationGraph(facts: readonly ImplementationFacts[]): Promise<ImplementationGraph> {
     return await createImplementationGraphPreparation().prepare(facts);
+}
+
+export function assertImplementationGraph(graph: ImplementationGraph, actual: ImplementationGraph): void {
+    if (!isDeepStrictEqual(actual, graph)) {
+        throw new TypeError('Implementation graph changed; prepare and collect a new run.');
+    }
 }
 
 export async function verifyImplementationGraph(
     graph: ImplementationGraph,
     facts: readonly ImplementationFacts[]
 ): Promise<void> {
-    if (!isDeepStrictEqual(await prepareImplementationGraph(facts), graph)) {
-        throw new TypeError('Implementation graph changed; prepare and collect a new run.');
-    }
+    assertImplementationGraph(graph, await prepareImplementationGraph(facts));
 }
-
-export async function withImplementationGraph<Value>(
+export async function deliverImplementationGraph<Value>(
     graph: ImplementationGraph,
-    operation: (load: (moduleUrl: string) => Promise<{ readonly namespace: unknown; }>) => Promise<Value>
+    operation: (load: (moduleUrl: string) => Promise<{ readonly namespace: unknown; }>) => Promise<Value>,
+    deliver: typeof withModuleDelivery
 ): Promise<Value> {
     const { build, ...identity } = graph;
     if (build !== implementationFingerprint(implementationGraphIdentity(identity))) {
         throw new TypeError('Invalid implementation graph identity.');
     }
-    return await withModuleDelivery(graph, async function resolveEntries(load) {
+    return await deliver(graph, async function resolveEntries(load) {
         return await operation(async function loadEntry(url) {
             const target = graph.entries[url];
             if (target === undefined) {
@@ -172,4 +190,11 @@ export async function withImplementationGraph<Value>(
             return await load(target);
         });
     });
+}
+
+export async function withImplementationGraph<Value>(
+    graph: ImplementationGraph,
+    operation: (load: (moduleUrl: string) => Promise<{ readonly namespace: unknown; }>) => Promise<Value>
+): Promise<Value> {
+    return await deliverImplementationGraph(graph, operation, withModuleDelivery);
 }

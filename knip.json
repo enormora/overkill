@@ -6,8 +6,11 @@
         "source/integration-tests/run/fixtures/custom-engine.ts",
         "source/**/*.type-test.ts",
         "source/packages/**/*.ts",
-        "source/run/node-command-line-runner.ts",
+        "source/run/node-command-line-runner.entry-point.ts",
         "source/run/worker-pool-worker.ts",
+        "source/test-support/unit-coverage.ts",
+        "source/test-support/run-integration.ts",
+        "source/test-support/body-plan-implementation.ts",
         "source/reporters/null-reporter.ts",
         "build-benchmark-html.js",
         "source/reporters/benchmark-html-browser.entry-point.ts",
@@ -22,6 +25,11 @@
         "!source/**/*.test.ts!",
         "!source/**/*.type-test.ts!"
     ],
-    "ignore": ["source/integration-tests/run/fixtures/**/*.test.ts"],
-    "ignoreDependencies": ["@ls-lint/ls-lint", "c8", "jscpd"]
+    "ignore": [
+        "source/integration-tests/run/fixtures/**/*.test.ts"
+    ],
+    "ignoreDependencies": [
+        "@ls-lint/ls-lint",
+        "jscpd"
+    ]
 }

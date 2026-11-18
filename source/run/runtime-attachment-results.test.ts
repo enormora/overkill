@@ -7,7 +7,7 @@ import {
     type RunArtifact
 } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { attachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
+import { inlineAttachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { attachmentArtifacts, attachmentMatchesAttempt, resultWithRuntimeAttachments } from './attachment-results.ts';
 import { createAttachmentFailure } from './attachment-failure.ts';
@@ -19,7 +19,7 @@ const retainEveryBranch = function retainEveryBranch(): boolean {
 };
 
 async function assertResultOwnership(scope: TestScope): Promise<void> {
-    const { execution, store } = await attachmentFixture(scope, defaultAttachmentLimits);
+    const { execution, store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
     await execution.runAttempt(work, { index: 1 }, async function captureAttempt() {
         await execution.context.forProducer({ kind: 'case' }).json({ ...metadata, mediaType: 'application/json' }, {
             ready: true
@@ -84,7 +84,7 @@ function assertConflictAttempts(scope: TestScope, artifact: RunArtifact | undefi
 }
 
 async function assertConflictRetention(scope: TestScope): Promise<void> {
-    const { execution, store } = await attachmentFixture(scope, defaultAttachmentLimits);
+    const { execution, store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
     for (const index of [ 0, 1, 2 ]) {
         await execution.runAttempt(work, { index }, async function writeRetryEvidence() {
             const writer = await execution.context.forProducer({ kind: 'case' }).open({ ...metadata, kind: 'text' });
@@ -141,7 +141,7 @@ async function assertConflictRetention(scope: TestScope): Promise<void> {
 }
 
 async function assertIndependentOutputSequence(scope: TestScope): Promise<void> {
-    const { execution, store } = await attachmentFixture(scope, defaultAttachmentLimits);
+    const { execution, store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
     await execution.context.forProducer({ kind: 'case' }).json(metadata, { ready: true });
     const attachment = store.artifacts()[0];
     scope.require.defined(attachment);

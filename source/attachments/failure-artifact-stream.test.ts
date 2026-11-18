@@ -1,6 +1,6 @@
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
-import { attachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
+import { inlineAttachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createAttachmentExecution } from '../run/attachment-execution.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
@@ -35,7 +35,7 @@ async function assertCaptureFailure(
     operation: 'close' | 'prepare' | 'write',
     closeOnOwner: boolean
 ): Promise<void> {
-    const fixture = await attachmentFixture(scope, defaultAttachmentLimits);
+    const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
     const execution = createAttachmentExecution(async function failingTransport(request) {
         if (request.kind === operation) {
             throw cause;
@@ -62,7 +62,7 @@ async function assertCaptureFailure(
 }
 async function assertBoundedUnicode(scope: TestScope): Promise<void> {
     const limits = { ...defaultAttachmentLimits, maxInlineBytes: 16 };
-    const fixture = await attachmentFixture(scope, limits);
+    const fixture = inlineAttachmentFixture(limits, [ work ]);
     await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
         await fixture.execution.runAttempt(work, { index: 0 }, async function overflowingOutput() {
             const stream = attemptStream();
@@ -82,7 +82,7 @@ async function assertBoundedUnicode(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(await fixture.execution.finish(), []);
 }
 async function assertLateEmptyCapture(scope: TestScope): Promise<void> {
-    const fixture = await attachmentFixture(scope, defaultAttachmentLimits);
+    const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
     await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
         const closedStream = await fixture.execution.runAttempt(work, { index: 0 }, async function emptyCapture() {
             const stream = attemptStream();
@@ -100,7 +100,7 @@ async function assertLateEmptyCapture(scope: TestScope): Promise<void> {
 }
 
 async function assertLateClosedCapture(scope: TestScope): Promise<void> {
-    const fixture = await attachmentFixture(scope, defaultAttachmentLimits);
+    const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
     await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
         await fixture.execution.runAttempt(work, { index: 0 }, async function closedCapture() {
             const stream = attemptStream();

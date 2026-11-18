@@ -29,9 +29,18 @@ type PerformanceStoreInput = {
     readonly maxBytes: number;
     readonly projectRoot: string;
 };
+export type PerformanceStoreAccess = {
+    readonly files: FileStore;
+    readonly canonical: (target: string) => Promise<string>;
+    readonly ancestor: (target: string) => Promise<string>;
+    readonly names: (target: string) => Promise<readonly string[]>;
+    readonly inspect: (target: string) => Promise<{ readonly regular: boolean; readonly size: number; }>;
+    readonly prepare: (target: string) => Promise<void>;
+    readonly remove: (target: string) => Promise<void>;
+};
 type StoreLocation = {
     readonly directory: string;
-    readonly files: FileStore;
+    readonly access: PerformanceStoreAccess;
     readonly maxBytes: number;
     readonly root: string;
 };
@@ -52,7 +61,7 @@ function missingFile(error: unknown): boolean {
 async function validateDirectory(location: StoreLocation): Promise<void> {
     if (
         !isPathInside(location.root, location.directory) ||
-        !isPathInside(location.root, await existingPathAncestor(location.directory))
+        !isPathInside(location.root, await location.access.ancestor(location.directory))
     ) {
         throw new Error('Performance baseline directory must remain inside the project root.');
     }
@@ -70,8 +79,8 @@ async function baselineNames(directory: string): Promise<readonly string[]> {
 }
 
 async function validateBaselineFile(location: StoreLocation, name: string, filePath: string): Promise<void> {
-    const stats = await lstat(filePath);
-    if (!stats.isFile() || stats.size > location.maxBytes) {
+    const stats = await location.access.inspect(filePath);
+    if (!stats.regular || stats.size > location.maxBytes) {
         throw new Error(`Invalid performance baseline file: ${name}`);
     }
 }
@@ -79,7 +88,7 @@ async function validateBaselineFile(location: StoreLocation, name: string, fileP
 async function readBaseline(location: StoreLocation, name: string): Promise<BaselineEntry> {
     const filePath = path.join(location.directory, name);
     await validateBaselineFile(location, name, filePath);
-    const content = await location.files.read(filePath);
+    const content = await location.access.files.read(filePath);
     if (content === null) {
         throw new Error(`Performance baseline disappeared while reading: ${name}`);
     }
@@ -97,7 +106,7 @@ async function verifyPrevious(location: StoreLocation, change: BaselineChange, f
         : JSON.stringify(
             storedPerformanceBaselineSchema.parse(change.kind === 'update' ? change.previous : change.baseline)
         );
-    const previous = await location.files.read(filePath);
+    const previous = await location.access.files.read(filePath);
     if (previous === null) {
         if (expected !== null) {
             throw new Error('Performance baseline disappeared during execution.');
@@ -115,20 +124,23 @@ async function persistBaseline(location: StoreLocation, change: BaselineChange, 
     if (snapshot === null) {
         throw new Error('Performance baseline exceeds the configured artifact byte limit.');
     }
-    await mkdir(location.directory, { recursive: true });
+    await location.access.prepare(location.directory);
     await validateDirectory(location);
     if (change.kind === 'create') {
-        await location.files.create(filePath, snapshot.encoded);
+        await location.access.files.create(filePath, snapshot.encoded);
     } else {
-        await location.files.write(filePath, snapshot.encoded);
+        await location.access.files.write(filePath, snapshot.encoded);
     }
 }
 
-export async function createPerformanceBaselineStore(input: PerformanceStoreInput): Promise<PerformanceBaselineStore> {
-    const root = await realpath(input.projectRoot);
+export async function openPerformanceBaselineStore(
+    input: PerformanceStoreInput,
+    access: PerformanceStoreAccess
+): Promise<PerformanceBaselineStore> {
+    const root = await access.canonical(input.projectRoot);
     const location: StoreLocation = {
         directory: path.resolve(root, input.directory, 'performance'),
-        files: createNodeFileStore(),
+        access,
         maxBytes: input.maxBytes,
         root
     };
@@ -136,7 +148,7 @@ export async function createPerformanceBaselineStore(input: PerformanceStoreInpu
     return {
         async list() {
             await validateDirectory(location);
-            const names = await baselineNames(location.directory);
+            const names = await access.names(location.directory);
             const selected = names
                 .filter(function performanceFile(name) {
                     return name.endsWith('.benchmark.json');
@@ -153,10 +165,27 @@ export async function createPerformanceBaselineStore(input: PerformanceStoreInpu
             const filePath = path.join(location.directory, baselineFilename(change.baseline));
             await verifyPrevious(location, change, filePath);
             if (change.kind === 'remove') {
-                await unlink(filePath);
+                await access.remove(filePath);
             } else {
                 await persistBaseline(location, change, filePath);
             }
         }
     };
+}
+
+export async function createPerformanceBaselineStore(input: PerformanceStoreInput): Promise<PerformanceBaselineStore> {
+    return await openPerformanceBaselineStore(input, {
+        files: createNodeFileStore(),
+        canonical: realpath,
+        ancestor: existingPathAncestor,
+        names: baselineNames,
+        remove: unlink,
+        async inspect(target) {
+            const stats = await lstat(target);
+            return { regular: stats.isFile(), size: stats.size };
+        },
+        async prepare(directory) {
+            await mkdir(directory, { recursive: true });
+        }
+    });
 }

@@ -1,10 +1,9 @@
-import { setTimeout as delay } from 'node:timers/promises';
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
 import { createMemoryHistoryStorage } from '../test-support/memory-history-storage.ts';
-import { repairHistory } from './history-repair.ts';
+import { repairHistory, createHistoryRepair } from './history-repair.ts';
 import { readCompactHistory, updateCompactHistory } from './history-storage.ts';
 
 const directory = '/project/state';
@@ -98,17 +97,21 @@ export const testNode = suite('history repair failures', [
         return scope.assert.collect();
     }),
     test('automatic repair stops when enumeration exhausts its time budget', async function (scope: TestScope) {
+        let elapsed = 0;
+        const repair = createHistoryRepair(function () {
+            return elapsed;
+        });
         const memory = createMemoryHistoryStorage();
         await memory.write(`${directory}/runs/record.json`, JSON.stringify(completedHistoryRecord('record')));
         const store = {
             ...memory,
             async list(recordDirectory: string) {
-                await delay(2100);
+                elapsed = 2100;
                 return await memory.list(recordDirectory);
             }
         };
         await scope.assert.rejects(async function exhaustedBudget() {
-            await repairHistory(store, { ...context, mode: 'automatic' });
+            await repair(store, { ...context, mode: 'automatic' });
         }, { message: /overkill history compact/ });
         scope.assert.equal(await store.read(`${directory}/history/index.json`), null);
         return scope.assert.collect();

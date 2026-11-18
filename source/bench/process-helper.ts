@@ -1,4 +1,4 @@
-import { fork, type ChildProcess } from 'node:child_process';
+import { fork } from 'node:child_process';
 import { clearTimeout as clearTimer, setTimeout as startTimer } from 'node:timers';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { processHelperEntryPointUrl } from '../packages/bench/process-helper.entry-point.ts';
@@ -15,13 +15,31 @@ import { withinProcessDeadline } from './process-deadline.ts';
 import { timelineContext } from './timeline-context.ts';
 
 type PendingProcess = Readonly<PromiseWithResolvers<ProcessExecution>> & { readonly id: number; };
+export type ProcessHelperChild = {
+    readonly connected: boolean;
+    readonly send: (message: ProcessHelperRequest, callback: (error: Error | null) => void) => boolean;
+    readonly kill: (signal: 'SIGKILL') => boolean;
+    readonly stderr: { readonly on: (event: 'data', listener: (chunk: Buffer) => void) => unknown; } | null;
+    readonly on: {
+        (event: 'error', listener: (error: Error) => void): unknown;
+        (event: 'message', listener: (value: unknown) => void): unknown;
+        (event: 'close', listener: (code: number | null, signal: string | null) => void): unknown;
+    };
+};
+export type ProcessHelperRuntime = {
+    readonly connect: () => ProcessHelperChild;
+    readonly schedule: (callback: () => void, milliseconds: number) => () => void;
+    readonly signalGroup: typeof signalProcessGroup;
+    readonly deadline: typeof withinProcessDeadline;
+};
 type HelperConnection = {
-    readonly child: ChildProcess;
+    readonly child: ProcessHelperChild;
+    readonly runtime: ProcessHelperRuntime;
     readonly ready: Readonly<PromiseWithResolvers<undefined>>;
     readonly closed: Readonly<PromiseWithResolvers<undefined>>;
     readonly instrumentation: ProcessInstrumentation;
     readonly maximumBytes: number;
-    readonly startup: StoredValue<ReturnType<typeof startTimer> | null>;
+    readonly startup: StoredValue<(() => void) | null>;
     readonly pending: StoredValue<PendingProcess | null>;
     readonly group: StoredValue<number | null>;
     readonly sequence: StoredValue<number>;
@@ -59,7 +77,7 @@ function sendHelperRequest(connection: HelperConnection, message: ProcessHelperR
 function clearStartup(connection: HelperConnection): void {
     const timer = connection.startup.read();
     if (timer !== null) {
-        clearTimer(timer);
+        timer();
     }
 }
 
@@ -127,7 +145,7 @@ function receiveHelperReply(connection: HelperConnection, value: unknown): void 
 function disconnectedHelper(connection: HelperConnection, code: number | null, signal: string | null): void {
     clearStartup(connection);
     try {
-        signalProcessGroup(connection.group.read(), 'SIGKILL');
+        connection.runtime.signalGroup(connection.group.read(), 'SIGKILL');
     } catch (error: unknown) {
         failHelper(connection, new Error('Could not terminate the helper target group.', { cause: error }));
     }
@@ -210,31 +228,32 @@ async function closeHelper(connection: HelperConnection): Promise<void> {
         sendHelperRequest(connection, { kind: 'close' });
     }
     try {
-        await withinProcessDeadline(
+        await connection.runtime.deadline(
             connection.closed.promise,
             helperShutdownMilliseconds,
             'Process helper shutdown exceeded 1000 milliseconds.'
         );
     } catch (error: unknown) {
-        signalProcessGroup(connection.group.read(), 'SIGKILL');
+        connection.runtime.signalGroup(connection.group.read(), 'SIGKILL');
         connection.child.kill('SIGKILL');
         await connection.closed.promise;
         throw error;
     }
 }
 
-function helperConnection(instrumentation: ProcessInstrumentation, maximumBytes: number): HelperConnection {
+function helperConnection(
+    instrumentation: ProcessInstrumentation,
+    maximumBytes: number,
+    runtime: ProcessHelperRuntime
+): HelperConnection {
     return {
-        child: fork(processHelperEntryPointUrl, [], {
-            detached: true,
-            execArgv: [],
-            stdio: [ 'ignore', 'ignore', 'pipe', 'ipc' ]
-        }),
+        runtime,
+        child: runtime.connect(),
         ready: Promise.withResolvers<undefined>(),
         closed: Promise.withResolvers<undefined>(),
         instrumentation,
         maximumBytes,
-        startup: createStoredValue<ReturnType<typeof startTimer> | null>(null),
+        startup: createStoredValue<(() => void) | null>(null),
         pending: createStoredValue<PendingProcess | null>(null),
         group: createStoredValue<number | null>(null),
         sequence: createStoredValue(0),
@@ -243,9 +262,13 @@ function helperConnection(instrumentation: ProcessInstrumentation, maximumBytes:
     };
 }
 
-export function createProcessHelper(instrumentation: ProcessInstrumentation, maximumBytes: number): ProcessHelper {
-    const connection = helperConnection(instrumentation, maximumBytes);
-    connection.startup.write(startTimer(function startupExpired() {
+export function connectProcessHelper(
+    instrumentation: ProcessInstrumentation,
+    maximumBytes: number,
+    runtime: ProcessHelperRuntime
+): ProcessHelper {
+    const connection = helperConnection(instrumentation, maximumBytes, runtime);
+    connection.startup.write(runtime.schedule(function startupExpired() {
         failHelper(connection, new Error('Process helper did not become ready within 5000 milliseconds.'));
         connection.child.kill('SIGKILL');
     }, helperStartupMilliseconds));
@@ -261,4 +284,24 @@ export function createProcessHelper(instrumentation: ProcessInstrumentation, max
             await closeHelper(connection);
         }
     };
+}
+
+export function createProcessHelper(instrumentation: ProcessInstrumentation, maximumBytes: number): ProcessHelper {
+    return connectProcessHelper(instrumentation, maximumBytes, {
+        connect() {
+            return fork(processHelperEntryPointUrl, [], {
+                detached: true,
+                execArgv: [],
+                stdio: [ 'ignore', 'ignore', 'pipe', 'ipc' ]
+            });
+        },
+        schedule(callback, milliseconds) {
+            const timer = startTimer(callback, milliseconds);
+            return function () {
+                clearTimer(timer);
+            };
+        },
+        signalGroup: signalProcessGroup,
+        deadline: withinProcessDeadline
+    });
 }

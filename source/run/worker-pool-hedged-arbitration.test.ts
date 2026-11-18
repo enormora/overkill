@@ -12,12 +12,12 @@ import {
 import { workIdentityKey } from '../engine/identity.ts';
 import { summaryRunTimings } from '../engine/run-timings.ts';
 import { debugArtifactFixture } from '../test-support/debug-artifact-fixture.ts';
-import { createSupervisedRunState } from './supervised-run-state.ts';
 import {
     createCollectedPlan,
     createTaskRun,
     fakeWorkerRuntime
-} from './worker-pool-execution-state.test.ts';
+} from '../test-support/worker-pool-execution-state.ts';
+import { createSupervisedRunState } from './supervised-run-state.ts';
 import {
     recordCancelledHedgedTaskRun,
     recordCompletedHedgedTaskRun,

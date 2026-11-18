@@ -4,7 +4,9 @@ import {
     normalizeConfig,
     orchestrator,
     type FrozenMicrotestPolicy,
-    type RunExecutionReply
+    type RunExecutionReply,
+    type RunExecutionSession,
+    type RunExecutionSessionOptions
 } from '../run/run.entry-point.ts';
 import type { CampaignClient } from './campaign-client.ts';
 import { mutationLifecycleUrl } from './mutation-lifecycle.ts';
@@ -16,20 +18,24 @@ export type MutationRunnerExecution = {
     readonly dispose: () => Promise<void>;
 };
 
-type MutationRunnerExecutionInput = {
+export type MutationRunnerExecutionInput = {
     readonly policy: FrozenMicrotestPolicy;
     readonly seed: string;
     readonly freshState: boolean;
     readonly client: CampaignClient;
     readonly signal: AbortSignal;
 };
-export function createMutationRunnerExecution(input: MutationRunnerExecutionInput): MutationRunnerExecution {
+export type MutationExecutionSessionFactory = (options: RunExecutionSessionOptions) => RunExecutionSession;
+export function createCampaignMutationExecution(
+    input: MutationRunnerExecutionInput,
+    createSession: MutationExecutionSessionFactory
+): MutationRunnerExecution {
     const { policy, seed, freshState, client, signal } = input;
     let loaded: 'pristine' | 'runtime' | 'static' = 'pristine';
     const lifecycle = { moduleUrl: mutationLifecycleUrl, exportName: 'createMutationLifecycle' };
     const fresh = freshState || policy.profile.execution.processModel === 'supervised-process';
     const { outputRenderer } = normalizeConfig({});
-    const local = fresh ? null : orchestrator.createExecutionSession({
+    const local = fresh ? null : createSession({
         command: {
             kind: 'frozen-policy',
             policy,
@@ -79,4 +85,8 @@ export function createMutationRunnerExecution(input: MutationRunnerExecutionInpu
             }
         }
     };
+}
+
+export function createMutationRunnerExecution(input: MutationRunnerExecutionInput): MutationRunnerExecution {
+    return createCampaignMutationExecution(input, orchestrator.createExecutionSession);
 }

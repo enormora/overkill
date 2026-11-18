@@ -1,11 +1,11 @@
 import { DryRunStatus, TestStatus } from '@stryker-mutator/api/test-runner';
-import { suite, test } from '../test/test.entry-point.ts';
+import { collectedMutationPlan } from '../../test-support/mutation-plan-fixture.ts';
+import { suite, test, type TestScope } from '../test/test.entry-point.ts';
 import { workIdentityKey, type PerTestResult, type RunExecutionReply } from '../run/run.entry-point.ts';
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { runResultFactory } from '../../test-support/run-result-factory.ts';
-import { testNode as executionTestNode } from '../../integration-tests/run/runner-stryker-dry-run.test.ts';
 import { dryMutationResult } from './dry-run-results.ts';
-import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
+import { mutationLifecycleDataSchema, mutationCatalog } from './mutation-catalog.ts';
 import { testNode as mutantResultsTestNode } from './mutation-results.test.ts';
 import { testNode as precedenceTestNode } from './mutation-precedence.test.ts';
 
@@ -41,9 +41,70 @@ function withOutcome(reply: ResultReply, outcome: PerTestResult['outcome']): Res
 }
 
 export const testNode = suite('structured dry-run results', [
+    test('returns timeouts for valid interrupted lifecycle evidence', function (scope: TestScope) {
+        const { reply } = mutationCoverageFixture('off');
+        scope.assert.deepEqual(
+            dryMutationResult('/project', { kind: 'timeout', data: reply.data, artifacts: [] }, 'off', expectation),
+            { status: DryRunStatus.Timeout, reason: 'Dry run exceeded its deadline.' }
+        );
+        return scope.assert.collect();
+    }),
+    test('reports authoritative full-suite coverage from the shared baseline', function (scope: TestScope) {
+        const fixture = mutationCoverageFixture('all');
+        const baseline = {
+            ...fixture.baseline,
+            coverage: { ...fixture.baseline.coverage, static: { baselineOnly: 7 } }
+        };
+        const result = dryMutationResult('/project', fixture.reply, 'all', { ...expectation, baseline });
+        scope.assert.partialDeepEqual<unknown, unknown>(result, {
+            status: DryRunStatus.Complete,
+            mutantCoverage: { static: { baselineOnly: 7, mutant: 3 }, perTest: {} }
+        });
+        scope.assert.deepEqual(baseline.coverage.static, { baselineOnly: 7 });
+        return scope.assert.collect();
+    }),
+    test('includes parameter labels in the dry-run display name', function (scope: TestScope) {
+        const result = runResultFactory.build({
+            summary: { planned: 1, passed: 1 },
+            perTest: [ {
+                id: { file: 'case.ts', suite: [ 'suite' ], title: 'case', params: 'value=42' },
+                outcome: { kind: 'pass' }
+            } ]
+        });
+        const catalog = mutationCatalog(
+            '/project',
+            collectedMutationPlan(result.perTest.map(function (entry) {
+                return entry.workId;
+            }))
+        );
+        const selected = catalog.map(function (entry) {
+            return entry.id;
+        });
+        const reply = {
+            kind: 'result',
+            result,
+            deadlineExceeded: false,
+            data: {
+                catalog,
+                selected,
+                completed: selected,
+                coverage: { static: {}, perTest: {} },
+                bailed: false,
+                caseFailures: [],
+                infrastructureErrors: [],
+                hitLimitExceeded: false
+            }
+        } as const;
+        const actual = dryMutationResult('/project', reply, 'off', expectation);
+        if (actual.status !== DryRunStatus.Complete) {
+            throw new Error('Expected completed dry-run evidence.');
+        }
+        scope.assert.equal(actual.tests[0]?.name, 'suite > case > value=42');
+        return scope.assert.collect();
+    }),
+
     precedenceTestNode,
     mutantResultsTestNode,
-    executionTestNode,
     test('reports mixed outcomes with structural identities and fractional millisecond durations', function (scope) {
         const { reply } = mutationCoverageFixture('perTest');
         const data = mutationLifecycleDataSchema.parse(reply.data);
