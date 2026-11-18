@@ -27,7 +27,7 @@ export function recordHistoryMaintenanceDiagnostic(message: string): void {
     deadlines.getStore()?.recordDiagnostic(message);
 }
 
-export function historyMaintenanceNow(): number {
+function historyMaintenanceNow(): number {
     return deadlines.getStore()?.now() ?? performance.now();
 }
 

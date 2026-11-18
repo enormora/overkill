@@ -161,7 +161,7 @@ async function readCacheIndex(file: string, access: PropertyCorpusAccess): Promi
     const index = corpusIndexSchema.parse(JSON.parse(source));
     return await readCorpusInputs(file, index.entries, access);
 }
-export async function loadCorpusCache(file: string, access: PropertyCorpusAccess): Promise<CorpusCache> {
+async function loadCorpusCache(file: string, access: PropertyCorpusAccess): Promise<CorpusCache> {
     try {
         return await readCacheIndex(file, access);
     } catch (error: unknown) {
