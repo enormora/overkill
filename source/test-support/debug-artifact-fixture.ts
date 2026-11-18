@@ -1,4 +1,9 @@
-import { isTestDebugArtifact, type RunResult, type TestDebugArtifact } from '../packages/engine/engine.entry-point.ts';
+import {
+    isTestDebugArtifact,
+    type RunResult,
+    type TestDebugArtifact,
+    type WorkId
+} from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from './create-test-engine.ts';
 
 type DebugArtifactFixture = { readonly artifact: TestDebugArtifact; readonly result: RunResult; };
@@ -32,4 +37,21 @@ export async function debugArtifactFixture(title: string): Promise<DebugArtifact
         throw new Error('Expected debug evidence from the fixture.');
     }
     return { artifact, result };
+}
+
+const checkpointDurationMicroseconds = 5;
+export async function debugArtifactForWork(work: WorkId): Promise<TestDebugArtifact> {
+    const { artifact } = await debugArtifactFixture('owned debug case');
+    return {
+        ...artifact,
+        id: {
+            ...artifact.id,
+            familyVariant: work.familyVariant,
+            runtimes: work.runtimes,
+            workload: work.workload,
+            attempt: { index: 0 },
+            scope: { kind: 'case', case: work.case, activeCases: [ work.case ], confidence: 'active-case' }
+        },
+        payload: { ...artifact.payload, durationMicroseconds: checkpointDurationMicroseconds }
+    };
 }

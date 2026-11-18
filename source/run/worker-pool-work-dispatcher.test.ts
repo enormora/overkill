@@ -387,6 +387,42 @@ export const testNode = createOverkillSuite({
     children: [
         createOverkillTestCase({
             ...testCaseMetadata,
+            title: 'worker-pool dynamic dispatcher releases constraints before retrying work',
+            body(scope: OverkillScope) {
+                const plan = retainedReservationPlan();
+                const lane = firstLane(plan);
+                const dispatcher = createWorkDispatcher(fakeWorkerRuntime(plan), plan);
+                const lease = pullRequiredLease(dispatcher, lane);
+                dispatcher.finish(lease, { learnWarmth: false, retainReservation: false, workerCrashed: true });
+                dispatcher.requeue({
+                    previousAttempt: lease.members[0].attempt,
+                    traceUnit: lease.traceUnit,
+                    unit: lease.unit
+                });
+                const retry = pullRequiredLease(dispatcher, lane);
+                assertFreshReservation(scope, retry);
+                scope.assert.equal(retry.members[0].attempt, 'attempt-2');
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'worker-pool dynamic dispatcher shares hard-key reservations within a batch',
+            body(scope: OverkillScope) {
+                const original = batchingPlan('reuse');
+                const plan = { ...original, units: original.units.map(constrainedUnit) };
+                const dispatcher = createWorkDispatcher(fakeWorkerRuntime(plan), plan);
+                const lease = pullRequiredLease(dispatcher, firstLane(plan));
+                scope.assert.equal(lease.members.length, 2);
+                scope.assert.deepEqual(lease.reservation.hardKeys, [ 'database' ]);
+                scope.assert.deepEqual(lease.reservation.faultDomains, [ 'rack', 'rack' ]);
+                dispatcher.finish(lease, { learnWarmth: false, retainReservation: false, workerCrashed: false });
+                scope.assert.equal(dispatcher.pull(firstLane(plan)), null);
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher retains partial leases on their lane',
             body(scope: OverkillScope) {
                 const plan = retainedReservationPlan();

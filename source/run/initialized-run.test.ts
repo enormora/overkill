@@ -3,7 +3,7 @@ import { createSuite, createTestCase } from '../packages/engine/engine.entry-poi
 import { orchestrator, type RunOrchestrator } from '../packages/run/run.entry-point.ts';
 import { collectedRunCommand } from '../test-support/collected-run-fixtures.ts';
 import { defaultMicrotestProfile, defaultRunConfig } from '../test-support/run-command-factory.ts';
-import { createCurrentProcessRunOrchestrator } from './current-process-run-orchestrator.ts';
+import { createCurrentProcessRunOrchestrator } from './current-process-run-orchestrator.entry-point.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import { loadRunEngineModule, loadRunTestModules, runDiscovery } from './node-run-dependencies.entry-point.ts';
 import { startSupervisedChild, startWorkerPoolHost } from './node-child-process-starters.ts';

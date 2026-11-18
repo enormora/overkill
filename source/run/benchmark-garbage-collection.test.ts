@@ -2,7 +2,7 @@ import { suite, test, type TestScope } from '../packages/test/test.entry-point.t
 import { definition } from '../test-support/benchmark-placement-fixture.ts';
 import { defaultBenchmarkLifecyclePolicy } from '../bench/benchmark-lifecycle-policy.ts';
 import type { BenchmarkGarbageCollectionRequest } from '../engine/benchmark-result.ts';
-import { createCollectedPlan } from './worker-pool-placement-planning.test.ts';
+import { createCollectedPlan } from '../test-support/worker-pool-placement.ts';
 import type { CollectedRunCase } from './run-types.ts';
 import { resolveBenchmarkGarbageCollectionHost } from './benchmark-garbage-collection.ts';
 

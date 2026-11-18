@@ -7,6 +7,7 @@ import {
     compareHistoryRuns,
     assertHistoryRunId,
     detailedRecordState,
+    type HistoryAccess,
     type DetailedRecordState
 } from './history-state-access.ts';
 import { readRequiredCompactHistory } from './history-storage.ts';
@@ -43,7 +44,14 @@ function currentTimestamp(): string {
     return now.toISOString();
 }
 
-export function createHistory(options: HistoryOptions): History {
+export type HistoryRuntime = {
+    readonly now: () => string;
+    readonly inspect: typeof detailedRecordState;
+    readonly repair: typeof repairHistory;
+    readonly prune: typeof pruneHistory;
+    readonly remove: (path: string) => Promise<void>;
+};
+export function openHistory(access: HistoryAccess, runtime: HistoryRuntime): History {
     const {
         directory,
         policy,
@@ -54,9 +62,9 @@ export function createHistory(options: HistoryOptions): History {
         assertOwnedLocation,
         diagnostics,
         removeAbandonedOwners
-    } = createHistoryAccess(options, createNodeHistoryStorage);
+    } = access;
     async function repair(mode: 'automatic' | 'explicit'): Promise<HistoryRepairResult> {
-        const result = await repairHistory({
+        const result = await runtime.repair({
             ...store,
             async withLock(operation) {
                 return await guarded(async function repairIdleHistory() {
@@ -69,7 +77,7 @@ export function createHistory(options: HistoryOptions): History {
                     return operationResult;
                 });
             }
-        }, { directory, policy, now: currentTimestamp(), mode });
+        }, { directory, policy, now: runtime.now(), mode });
         return { ...result, diagnostics: [ ...diagnostics(), ...result.diagnostics ] };
     }
     return {
@@ -83,7 +91,7 @@ export function createHistory(options: HistoryOptions): History {
                         .map(async function publicSummary(summary) {
                             const { replayable, ...fields } = summary;
                             assertHistoryRunId(summary.id);
-                            const availability = await detailedRecordState(path.join(runs, `${summary.id}.json`));
+                            const availability = await runtime.inspect(path.join(runs, `${summary.id}.json`));
                             const replay = replayAvailability(availability, replayable, summary.status);
                             return { ...fields, replay };
                         })
@@ -103,7 +111,7 @@ export function createHistory(options: HistoryOptions): History {
                         return path.join(directory, name);
                     });
                 for (const target of paths) {
-                    await rm(target, { recursive: true, force: true });
+                    await runtime.remove(target);
                 }
                 return { paths, diagnostics: diagnostics() };
             });
@@ -112,12 +120,24 @@ export function createHistory(options: HistoryOptions): History {
             return await guarded(async function pruneIdleHistory() {
                 await assertOwnedLocation();
                 await assertIdle();
-                const result = await pruneHistory({ directory, policy, store }, request);
+                const result = await runtime.prune({ directory, policy, store }, request);
                 if (!request.dryRun) {
                     await removeAbandonedOwners();
                 }
-                return { ...result, diagnostics: diagnostics() };
+                return { ...result, diagnostics: [ ...diagnostics(), ...result.diagnostics ] };
             });
         }
     };
+}
+
+export function createHistory(options: HistoryOptions): History {
+    return openHistory(createHistoryAccess(options, createNodeHistoryStorage), {
+        now: currentTimestamp,
+        inspect: detailedRecordState,
+        repair: repairHistory,
+        prune: pruneHistory,
+        async remove(target) {
+            await rm(target, { recursive: true, force: true });
+        }
+    });
 }

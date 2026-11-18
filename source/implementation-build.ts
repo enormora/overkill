@@ -1,5 +1,5 @@
 import type { Except } from 'type-fest';
-import type { DeliveredModule } from './module-loading-scope.ts';
+import type { DeliveredModule } from './module-delivery.ts';
 import type { ImplementationPackage } from './implementation-source.ts';
 import type { ImplementationSourceMap } from './implementation-source-map.ts';
 import { implementationFingerprint } from './implementation-fingerprint.ts';

@@ -10,13 +10,14 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { debugArtifactFixture } from '../test-support/debug-artifact-fixture.ts';
-import { createSupervisedRunState } from './supervised-run-state.ts';
-import type { WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
 import {
     createCollectedPlan,
     createTaskRun,
     fakeWorkerRuntime
-} from './worker-pool-execution-state.test.ts';
+} from '../test-support/worker-pool-execution-state.ts';
+import { testNode as evidence } from './worker-event-evidence-policy.test.ts';
+import { createSupervisedRunState } from './supervised-run-state.ts';
+import type { WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
 import { handleWorkerMessage, recordTaskPermissionFailure } from './worker-pool-task-events.ts';
 import type { WorkerPoolMessage } from './worker-pool-protocol.ts';
 import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from './worker-pool-runtime.ts';
@@ -285,6 +286,7 @@ export const testNode = createOverkillSuite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-task-events.test.ts',
     children: [
+        evidence,
         createOverkillTestCase({
             ...testCaseMetadata,
             title: 'worker completion replaces its checkpoint and retains placement identity',

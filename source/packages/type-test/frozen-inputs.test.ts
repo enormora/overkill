@@ -5,6 +5,7 @@ import { suite, test, type TestScope } from '../test/test.entry-point.ts';
 import { frozenTypeProject } from '../../test-support/frozen-type-project.ts';
 import { verifyProjectInputs } from './frozen-inputs.ts';
 import { loadProject, disposeProject, type FrozenProject } from './frozen-project.ts';
+import { projectSourceAnalysis } from './native-execution.ts';
 import { originalSourceFile } from './source-analysis.ts';
 
 const projectFiles = {
@@ -40,11 +41,10 @@ async function linkedProject(scope: TestScope): Promise<{
 export const testNode = suite('frozen compiler inputs', [
     test('matches canonical callback paths and detects changed project links', async function (scope) {
         const { directory, alias, frozen } = await linkedProject(scope);
-        const file = await originalSourceFile({
-            compiler: frozen.compiler.syntax,
-            checker: frozen.configured.checker,
-            program: frozen.program
-        }, await realpath(join(directory, 'original/case.ts')));
+        const file = await originalSourceFile(
+            projectSourceAnalysis(frozen),
+            await realpath(join(directory, 'original/case.ts'))
+        );
         scope.assert.equal(file?.fileName, join(alias, 'case.ts'));
         verifyProjectInputs(frozen.inputs);
         await unlink(alias);

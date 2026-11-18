@@ -1,4 +1,4 @@
-import type { RunResult, TestScope } from '../packages/engine/engine.entry-point.ts';
+import type { RunResult } from '../packages/engine/engine.entry-point.ts';
 import { snapshot } from '../packages/baselines/baselines.entry-point.ts';
 import type { SnapshotInput } from '../baselines/snapshot-context.ts';
 import {
@@ -10,7 +10,7 @@ import { runSnapshotAttempt } from '../run/snapshot-attempt.ts';
 import { snapshotIdentity } from '../run/snapshot-identity.ts';
 import { captureSnapshot } from '../run/snapshot-value.ts';
 import { createTestEngine } from './create-test-engine.ts';
-import { attachmentFixture, attachmentWork, type AttachmentFixture } from './attachment-fixture.ts';
+import { inlineAttachmentFixture, attachmentWork, type AttachmentFixture } from './attachment-fixture.ts';
 
 type SnapshotRun = NonNullable<Parameters<typeof runWithSnapshotRun>[0]>;
 type RecordedSnapshot<Value> = {
@@ -29,11 +29,10 @@ export function storedSnapshot(input: SnapshotInput): SnapshotRun['entries'][num
 }
 
 export async function recordSnapshotAttempt<Value>(
-    scope: TestScope,
     wire: SnapshotRun,
     body: () => Promise<Value>
 ): Promise<RecordedSnapshot<Value>> {
-    const fixture = await attachmentFixture(scope, defaultAttachmentLimits);
+    const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ attachmentWork ]);
     async function capture(): Promise<Value> {
         return await runSnapshotAttempt(attachmentWork, body);
     }
@@ -47,7 +46,7 @@ export async function recordSnapshotAttempt<Value>(
     return { value, artifacts: fixture.store.artifacts() };
 }
 
-export async function executeSnapshot(scope: TestScope, wire: SnapshotRun, input: SnapshotInput): Promise<RunResult> {
+export async function executeSnapshot(wire: SnapshotRun, input: SnapshotInput): Promise<RunResult> {
     const engine = createTestEngine();
     const plan = engine.createTestPlan(engine.createRoot({
         title: 'snapshot consumer',
@@ -71,7 +70,7 @@ export async function executeSnapshot(scope: TestScope, wire: SnapshotRun, input
             }
         }) ]
     }));
-    const captured = await recordSnapshotAttempt(scope, wire, async function executeConsumer() {
+    const captured = await recordSnapshotAttempt(wire, async function executeConsumer() {
         return await engine.execute(plan);
     });
     return captured.value;

@@ -1,4 +1,4 @@
-import { createClock } from '@enormora/clock';
+import type { Clock } from '@enormora/clock';
 import { envelopeMessage, childProcessEnvelope } from './child-process-protocol.ts';
 import { observeChildShutdown, startChildShutdown } from './child-process-shutdown.ts';
 import { kill, type SupervisedChildProcess } from './supervised-child-process.ts';
@@ -10,6 +10,7 @@ import {
 import { workerPoolHostMessageSchema, workerPoolHostCommandSchema } from './worker-pool-host-protocol-schema.ts';
 
 type HostTransport = {
+    readonly wallClock: Clock;
     readonly child: SupervisedChildProcess;
     readonly configured: () => void;
     readonly failed: (error: Error) => void;
@@ -105,7 +106,7 @@ export function observeHostTransport(transport: HostTransport): void {
     transport.child.on('message', observer.receive);
     transport.child.on('error', observer.fail);
     transport.child.on('disconnect', observer.disconnect);
-    observeChildShutdown(transport.child, createClock(), function reportShutdownTimeout() {
+    observeChildShutdown(transport.child, transport.wallClock, function reportShutdownTimeout() {
         observer.fail(new Error('Hosted worker-pool shutdown exceeded one second.'));
     }, function finishAfterDraining() {
         observer.exit();

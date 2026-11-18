@@ -9,7 +9,7 @@ import {
 import { defineResource, withResources } from '../packages/test/resources.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
-import { attachmentFixtureForWork } from '../test-support/attachment-fixture.ts';
+import { inlineAttachmentFixture } from '../test-support/attachment-fixture.ts';
 import { createResourceLifecycleRuntimePolicy } from './resource-lifecycle.ts';
 import { runWithAttachmentExecution } from './resource-lifecycle-state.ts';
 
@@ -48,8 +48,7 @@ async function assertLifecycleEvidence(scope: TestScope): Promise<void> {
     const plan = engine.createTestPlan(
         engine.createRoot({ ...definition, title: 'lifecycle', children: [ resourceLifecycleCase(engine) ] })
     );
-    const { execution, store } = await attachmentFixtureForWork(
-        scope,
+    const { execution, store } = inlineAttachmentFixture(
         defaultAttachmentLimits,
         plan.cases.map(function selectedWork(testCase) {
             return testCase.workId;

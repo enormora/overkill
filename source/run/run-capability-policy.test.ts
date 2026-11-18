@@ -1,3 +1,4 @@
+import diagnosticsChannel from 'node:diagnostics_channel';
 import { runIfMain } from '#test-runner';
 import type { NormalizedConfig, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
 import {
@@ -7,7 +8,7 @@ import {
     type RunnerError,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
@@ -199,9 +200,7 @@ function installNoPolicyRestriction(): () => void {
 }
 
 async function readPermissionDiagnosticChannel(): Promise<PermissionDiagnosticChannel> {
-    const diagnosticsChannel = await import('node:diagnostics_channel');
-
-    return diagnosticsChannel.default.channel('node:permission-model:fs');
+    return diagnosticsChannel.channel('node:permission-model:fs');
 }
 
 function publishPermissionDiagnostic(
@@ -234,7 +233,7 @@ export const testNode = createOverkillSuite({
             ...testMetadata,
 
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand({
                     config: defaultRunConfig({
                         profiles: {
@@ -282,7 +281,7 @@ export const testNode = createOverkillSuite({
             ...testMetadata,
 
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
                 const profileReporter: NonNullable<NormalizedConfig['reporters']>[number] = defineReporter(
                     function profileMemoryReporter() {
                         return {

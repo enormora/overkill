@@ -9,7 +9,7 @@ import {
     createCollectedPlan,
     fakeReporterDelivery,
     fakeWorkerRuntime
-} from './worker-pool-execution-state.test.ts';
+} from '../test-support/worker-pool-execution-state.ts';
 import {
     reportRunStart,
     startPoolProcessUsageTracking

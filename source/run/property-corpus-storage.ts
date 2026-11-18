@@ -4,7 +4,7 @@ import path from 'node:path';
 import lockfile from 'proper-lockfile';
 import { z } from 'zod/v4';
 import type { PropertyCorpusSnapshot } from '../engine/property-corpus.ts';
-import { createNodeFileStore } from '../file-store.ts';
+import { createNodeFileStore, type FileStore } from '../file-store.ts';
 import {
     propertyWitnessSchema,
     type PropertyWitnessFile
@@ -17,23 +17,45 @@ import {
     type CorpusDiagnostic
 } from './property-corpus-cache.ts';
 
+export type CorpusDirectoryEntry = { readonly name: string; readonly kind: 'directory' | 'file' | 'other'; };
+export type PropertyCorpusAccess = {
+    readonly files: Pick<FileStore, 'read' | 'write'>;
+    readonly directory: (target: string) => Promise<boolean>;
+    readonly children: (target: string) => Promise<readonly CorpusDirectoryEntry[]>;
+    readonly prepare: (target: string) => Promise<void>;
+    readonly lock: (target: string) => Promise<() => Promise<void>>;
+    readonly savedAt: (target: string) => Promise<string>;
+    readonly remove: (target: string) => Promise<void>;
+    readonly now: () => string;
+};
+export type PropertyCorpusRead = {
+    readonly projectRoot: string;
+    readonly directory: string;
+    readonly profile: string;
+    readonly policy: PropertyCorpusPolicy;
+};
+export type PropertyCorpusWrite = {
+    readonly directory: string;
+    readonly profile: string;
+    readonly policy: PropertyCorpusPolicy;
+    readonly entries: readonly PropertyWitnessFile[];
+};
 function cachePath(directory: string, profile: string): string {
     const identity = createHash('sha256').update(profile).digest('hex');
     return path.join(directory, 'corpus', identity, 'index.json');
 }
 
-async function entryPaths(target: string): Promise<readonly string[]> {
-    const metadata = await stat(target);
-    if (!metadata.isDirectory()) {
+async function entryPaths(target: string, access: PropertyCorpusAccess): Promise<readonly string[]> {
+    if (!await access.directory(target)) {
         return [ target ];
     }
-    const entries = await readdir(target, { withFileTypes: true });
+    const entries = await access.children(target);
     const paths = await Promise.all(entries.map(async function discover(entry) {
         const child = path.join(target, entry.name);
-        if (entry.isDirectory()) {
-            return await entryPaths(child);
+        if (entry.kind === 'directory') {
+            return await entryPaths(child, access);
         }
-        return entry.isFile() && entry.name.endsWith('.json') ? [ child ] : [];
+        return entry.kind === 'file' && entry.name.endsWith('.json') ? [ child ] : [];
     }));
     return paths.flat();
 }
@@ -42,9 +64,9 @@ function parsedWitness(content: string | null): PropertyWitnessFile {
     return propertyWitnessSchema.parse(JSON.parse(content ?? 'null'));
 }
 
-async function readCheckedInEntry(file: string): Promise<PropertyWitnessFile> {
+async function readCheckedInEntry(file: string, access: PropertyCorpusAccess): Promise<PropertyWitnessFile> {
     try {
-        return parsedWitness(await createNodeFileStore().read(file));
+        return parsedWitness(await access.files.read(file));
     } catch (error: unknown) {
         throw new Error(`Cannot read checked-in corpus entry ${file}.`, { cause: error });
     }
@@ -61,9 +83,12 @@ function inputPath(file: string, id: string): string {
     return path.join(path.dirname(file), 'inputs', `${id}.json`);
 }
 type InputReference = { readonly id: string; readonly savedAt: string | null; };
-async function inputNames(file: string): Promise<readonly string[]> {
+async function inputNames(file: string, access: PropertyCorpusAccess): Promise<readonly string[]> {
     try {
-        return await readdir(path.join(path.dirname(file), 'inputs'));
+        const children = await access.children(path.join(path.dirname(file), 'inputs'));
+        return children.map(function name(child) {
+            return child.name;
+        });
     } catch (error: unknown) {
         if (error instanceof Error && Reflect.get(error, 'code') === 'ENOENT') {
             return [];
@@ -71,28 +96,39 @@ async function inputNames(file: string): Promise<readonly string[]> {
         throw error;
     }
 }
-async function inputSavedAt(file: string): Promise<string> {
-    const metadata = await stat(file);
-    return metadata.mtime.toISOString();
+async function inputSavedAt(file: string, access: PropertyCorpusAccess): Promise<string> {
+    return await access.savedAt(file);
 }
-async function readSavedInput(file: string, reference: InputReference): Promise<CorpusCache['entries'][number]> {
+async function readSavedInput(
+    file: string,
+    reference: InputReference,
+    access: PropertyCorpusAccess
+): Promise<CorpusCache['entries'][number]> {
     const input = inputPath(file, reference.id);
-    const entry = parsedWitness(await createNodeFileStore().read(input));
+    const entry = parsedWitness(await access.files.read(input));
     if (corpusEntryIdentity(entry) !== reference.id) {
         throw new Error('Corpus input identity differs from its reference.');
     }
-    return { id: reference.id, entry, savedAt: reference.savedAt ?? await inputSavedAt(input) };
+    return { id: reference.id, entry, savedAt: reference.savedAt ?? await inputSavedAt(input, access) };
 }
-async function readCorpusInput(file: string, reference: InputReference): Promise<CorpusCache> {
+async function readCorpusInput(
+    file: string,
+    reference: InputReference,
+    access: PropertyCorpusAccess
+): Promise<CorpusCache> {
     try {
-        return { entries: [ await readSavedInput(file, reference) ], diagnostics: [] };
+        return { entries: [ await readSavedInput(file, reference, access) ], diagnostics: [] };
     } catch (error: unknown) {
         return { entries: [], diagnostics: [ { path: inputPath(file, reference.id), reason: String(error) } ] };
     }
 }
-async function readCorpusInputs(file: string, references: readonly InputReference[]): Promise<CorpusCache> {
+async function readCorpusInputs(
+    file: string,
+    references: readonly InputReference[],
+    access: PropertyCorpusAccess
+): Promise<CorpusCache> {
     const inputs = await Promise.all(references.map(async function read(reference) {
-        return await readCorpusInput(file, reference);
+        return await readCorpusInput(file, reference, access);
     }));
     return {
         entries: inputs.flatMap(function entries(input) {
@@ -103,8 +139,8 @@ async function readCorpusInputs(file: string, references: readonly InputReferenc
         })
     };
 }
-async function rebuildCache(file: string): Promise<CorpusCache> {
-    const names = await inputNames(file);
+async function rebuildCache(file: string, access: PropertyCorpusAccess): Promise<CorpusCache> {
+    const names = await inputNames(file, access);
     const references = names
         .filter(function knownInput(name) {
             return /^[a-f0-9]{64}\.json$/u.test(name);
@@ -115,56 +151,61 @@ async function rebuildCache(file: string): Promise<CorpusCache> {
         .map(function reference(name) {
             return { id: name.slice(0, -'.json'.length), savedAt: null };
         });
-    return await readCorpusInputs(file, references);
+    return await readCorpusInputs(file, references, access);
 }
-async function readCacheIndex(file: string): Promise<CorpusCache> {
-    const source = await createNodeFileStore().read(file);
+async function readCacheIndex(file: string, access: PropertyCorpusAccess): Promise<CorpusCache> {
+    const source = await access.files.read(file);
     if (source === null) {
-        return await rebuildCache(file);
+        return await rebuildCache(file, access);
     }
     const index = corpusIndexSchema.parse(JSON.parse(source));
-    return await readCorpusInputs(file, index.entries);
+    return await readCorpusInputs(file, index.entries, access);
 }
-export async function readCorpusCache(file: string): Promise<CorpusCache> {
+export async function loadCorpusCache(file: string, access: PropertyCorpusAccess): Promise<CorpusCache> {
     try {
-        return await readCacheIndex(file);
+        return await readCacheIndex(file, access);
     } catch (error: unknown) {
-        const recovered = await rebuildCache(file);
+        const recovered = await rebuildCache(file, access);
         return { ...recovered, diagnostics: [ { path: file, reason: String(error) }, ...recovered.diagnostics ] };
     }
 }
 
-export async function readPropertyCorpus(
-    projectRoot: string,
-    directory: string,
-    profile: string,
-    policy: PropertyCorpusPolicy
+export async function loadPropertyCorpus(
+    input: PropertyCorpusRead,
+    access: PropertyCorpusAccess
 ): Promise<PropertyCorpusSnapshot> {
+    const { projectRoot, directory, profile, policy } = input;
     const files = await Promise.all(policy.checkedIn.map(async function discover(target) {
-        return await entryPaths(path.resolve(projectRoot, target));
+        return await entryPaths(path.resolve(projectRoot, target), access);
     }));
     const paths = Array.from(new Set(files.flat())).toSorted(function alphabetic(left, right) {
         return left.localeCompare(right);
     });
-    const checkedIn = await Promise.all(paths.map(readCheckedInEntry));
-    const cache = await readCorpusCache(cachePath(directory, profile));
+    const checkedIn = await Promise.all(paths.map(async function readEntry(file) {
+        return await readCheckedInEntry(file, access);
+    }));
+    const cache = await loadCorpusCache(cachePath(directory, profile), access);
     return {
         checkedIn,
-        localCache: cache.entries.map(function input(entry) {
+        localCache: cache.entries.map(function cachedInput(entry) {
             return entry.entry;
         }),
         diagnostics: cache.diagnostics
     };
 }
 
-async function pruneOwnedInputs(file: string, entries: CorpusCache['entries']): Promise<void> {
+async function pruneOwnedInputs(
+    file: string,
+    entries: CorpusCache['entries'],
+    access: PropertyCorpusAccess
+): Promise<void> {
     const identities = new Set(entries.map(function identity(input) {
         return input.id;
     }));
-    const stored = await rebuildCache(file);
+    const stored = await rebuildCache(file, access);
     for (const input of stored.entries) {
         if (!identities.has(input.id)) {
-            await rm(inputPath(file, input.id));
+            await access.remove(inputPath(file, input.id));
         }
     }
 }
@@ -175,16 +216,20 @@ function recoverableIndex(source: string): unknown {
         return null;
     }
 }
-async function checkIndexOverwrite(file: string): Promise<void> {
-    const source = await createNodeFileStore().read(file);
+async function checkIndexOverwrite(file: string, access: PropertyCorpusAccess): Promise<void> {
+    const source = await access.files.read(file);
     const index = source === null ? null : recoverableIndex(source);
     if (index !== null) {
         corpusIndexSchema.parse(index);
     }
 }
-async function publishCache(file: string, entries: CorpusCache['entries']): Promise<void> {
-    await checkIndexOverwrite(file);
-    const store = createNodeFileStore();
+async function publishCache(
+    file: string,
+    entries: CorpusCache['entries'],
+    access: PropertyCorpusAccess
+): Promise<void> {
+    await checkIndexOverwrite(file, access);
+    const store = access.files;
     for (const input of entries) {
         await store.write(inputPath(file, input.id), JSON.stringify(input.entry));
     }
@@ -197,37 +242,93 @@ async function publishCache(file: string, entries: CorpusCache['entries']): Prom
             })
         })
     );
-    await pruneOwnedInputs(file, entries);
+    await pruneOwnedInputs(file, entries, access);
 }
 async function commitCache(
     file: string,
     policy: PropertyCorpusPolicy,
-    entries: readonly PropertyWitnessFile[]
+    entries: readonly PropertyWitnessFile[],
+    access: PropertyCorpusAccess
 ): Promise<readonly CorpusDiagnostic[]> {
-    const now = new Date();
-    const next = boundedCorpusCache(await readCorpusCache(file), entries, { file, policy, now: now.toISOString() });
+    const next = boundedCorpusCache(await loadCorpusCache(file, access), entries, { file, policy, now: access.now() });
     if (next.entries !== null) {
-        await publishCache(file, next.entries);
+        await publishCache(file, next.entries, access);
     }
     return next.diagnostics;
 }
 
+export async function persistPropertyCorpus(
+    input: PropertyCorpusWrite,
+    access: PropertyCorpusAccess
+): Promise<readonly CorpusDiagnostic[]> {
+    const { directory, profile, policy, entries } = input;
+    if (entries.length === 0) {
+        return [];
+    }
+    const file = cachePath(directory, profile);
+    const parent = path.dirname(file);
+    await access.prepare(parent);
+    const release = await access.lock(parent);
+    try {
+        return await commitCache(file, policy, entries, access);
+    } finally {
+        await release();
+    }
+}
+
+function nativeCorpusAccess(): PropertyCorpusAccess {
+    return {
+        files: createNodeFileStore(),
+        async directory(target) {
+            const metadata = await stat(target);
+            return metadata.isDirectory();
+        },
+        async children(target) {
+            const entries = await readdir(target, { withFileTypes: true });
+            return entries.map(function child(entry): CorpusDirectoryEntry {
+                if (entry.isFile()) {
+                    return { name: entry.name, kind: 'file' };
+                }
+                return {
+                    name: entry.name,
+                    kind: entry.isDirectory() ? 'directory' : 'other'
+                };
+            });
+        },
+        async prepare(target) {
+            await mkdir(target, { recursive: true });
+        },
+        async lock(target) {
+            return await lockfile.lock(target, { retries: { retries: 50, minTimeout: 25, maxTimeout: 100 } });
+        },
+        remove: rm,
+        async savedAt(file) {
+            const metadata = await stat(file);
+            return metadata.mtime.toISOString();
+        },
+        now() {
+            const now = new Date();
+            return now.toISOString();
+        }
+    };
+}
+export async function readPropertyCorpus(
+    projectRoot: string,
+    directory: string,
+    profile: string,
+    policy: PropertyCorpusPolicy
+): Promise<PropertyCorpusSnapshot> {
+    return await loadPropertyCorpus({ projectRoot, directory, profile, policy }, nativeCorpusAccess());
+}
 export async function savePropertyCorpus(
     directory: string,
     profile: string,
     policy: PropertyCorpusPolicy,
     entries: readonly PropertyWitnessFile[]
 ): Promise<readonly CorpusDiagnostic[]> {
-    if (entries.length === 0) {
-        return [];
-    }
-    const file = cachePath(directory, profile);
-    const parent = path.dirname(file);
-    await mkdir(parent, { recursive: true });
-    const release = await lockfile.lock(parent, { retries: { retries: 50, minTimeout: 25, maxTimeout: 100 } });
-    try {
-        return await commitCache(file, policy, entries);
-    } finally {
-        await release();
-    }
+    return await persistPropertyCorpus({ directory, profile, policy, entries }, nativeCorpusAccess());
+}
+
+export async function readCorpusCache(file: string): Promise<CorpusCache> {
+    return await loadCorpusCache(file, nativeCorpusAccess());
 }

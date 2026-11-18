@@ -6,6 +6,7 @@ import {
     type TestOutcome
 } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { testNode as nestedFindings } from './recorded-findings.test.ts';
 import { recordedRunResult, serializeRunDiagnostics, parseSerializedRunDiagnostics } from './run-record-result.ts';
 
 function opaqueFailure(): TestOutcome {
@@ -161,6 +162,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        nestedFindings,
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'round trips bounded diagnostic evidence without serializing it twice',

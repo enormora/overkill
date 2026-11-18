@@ -1,5 +1,3 @@
-import type { DefinedReporter } from '../engine/reporter.ts';
-
 import type { LoadedConfig, ConfigLoadRequest } from '../config/config-loader.ts';
 import type { WitnessReplayHandler } from './witness-replay-cli.ts';
 import type {
@@ -17,18 +15,14 @@ import {
     type CommandLineRunTestsRequest,
     type CommandLineRunnerResult as CommandLineRunnerResultShape
 } from './command-line-command.ts';
-import {
-    createCommandLineCommandNamespace,
-    type CommandLineCommandNamespace,
-    type CommandLineCommandLoaders
-} from './command-line-command-namespace.ts';
+import { createCommandLineCommandNamespace } from './command-line-native-loaders.entry-point.ts';
+import type { CommandLineCommandNamespace, CommandLineCommandLoaders } from './command-line-command-namespace.ts';
 
 import {
     assertOrdinaryCommandProfile,
     runTestsWithLoadedConfig,
     listTestsWithLoadedConfig
 } from './command-line-execution.ts';
-import { createDefaultDirectReporter } from './default-direct-reporter.ts';
 import {
     createSystemRunTimingMeasurement,
     emptyTimingSpanMetadata
@@ -95,8 +89,4 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
             }
         }
     };
-}
-
-export async function loadDefaultLineReporter(): Promise<DefinedReporter> {
-    return await createDefaultDirectReporter();
 }

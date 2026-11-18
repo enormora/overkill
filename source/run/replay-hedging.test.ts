@@ -3,7 +3,7 @@ import { suite, test, type TestScope } from '../packages/test/test.entry-point.t
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { withRecordedWorkerTrace } from '../test-support/replay-record-fixture.ts';
 import type { RunResult } from '../engine/run-result.ts';
-import { createCollectedPlan, createTaskRun, fakeWorkerRuntime } from './worker-pool-execution-state.test.ts';
+import { createCollectedPlan, createTaskRun, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
 import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from './worker-pool-runtime.ts';
 import type { PlacementTrace } from './placement-trace.ts';
 import {

@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import { createServer, type Server, type Socket } from 'node:net';
+import { createClock } from '@enormora/clock';
 import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import {
     createResourceCheckRegistry,
@@ -70,7 +71,7 @@ function createBrokerServer(
 }
 export async function withResourceCheckBroker<Value>(operation: () => Promise<Value>): Promise<Value> {
     const token = randomUUID();
-    const registry = createResourceCheckRegistry(token);
+    const registry = createResourceCheckRegistry(token, createClock());
     const sockets = new Set<Socket>();
     const server = createBrokerServer(token, registry, sockets);
     const broker: ResourceCheckBroker = {

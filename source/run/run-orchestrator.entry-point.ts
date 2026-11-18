@@ -1,4 +1,4 @@
-import { createCurrentProcessRunCoordinator } from './current-process-run-orchestrator.ts';
+import { createCurrentProcessRunCoordinator } from './current-process-run-orchestrator.entry-point.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import {
     loadRunEngineModule,

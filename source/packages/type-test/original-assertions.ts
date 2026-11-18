@@ -1,7 +1,7 @@
 import type * as TypeScript from 'typescript-beta/ast';
 import { resolveSourceLocation, type TestBodyOrigin, type TestPlan } from '../engine/engine.entry-point.ts';
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
-import type { SourceAnalysis } from './source-analysis.ts';
+import type { SourceAnalysis } from './source-analysis-port.ts';
 import { resolveBodyOrigin, namedBodyParameter, type SourceBody } from './source-ownership.ts';
 import { nativeReference, type NativeReference } from './native-reference.ts';
 import { scopeAssertions, assertionAnnotation } from './scope-assertions.ts';

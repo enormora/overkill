@@ -2,7 +2,7 @@ import { createClock } from '@enormora/clock';
 import { withRunIdentity } from '../execution-ownership.ts';
 import { createReporterDispatcher, type ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import { createBriefFinalResultReporter } from '../reporters/brief-final-result-reporter.ts';
-import { createMergedRecordStorage } from './merged-record-storage.ts';
+import { createMergedRecordStorage } from './merged-record-storage.entry-point.ts';
 import { maintainHistory } from './history-maintenance.ts';
 import type { MergeResultsCommand, MergedRunRecord } from './merge-results-types.ts';
 import { formatRunnerErrorDiagnostics } from './command-line-command.ts';
@@ -38,7 +38,7 @@ async function deliverResult(storage: MergedStorage, delivery: ReporterDelivery)
 async function completeMerge(
     command: MergeResultsCommand,
     storage: MergedStorage,
-    dispatcher: ReturnType<typeof mergeDispatcher>
+    dispatcher: MergedSessionRuntime['dispatcher']
 ): Promise<MergedRunRecord> {
     await storage.persist('started');
     const profile = command.config.profiles[storage.current().facts.execution.profile];
@@ -55,7 +55,7 @@ async function completeMerge(
 async function runMerge(
     command: MergeResultsCommand,
     storage: MergedStorage,
-    dispatcher: ReturnType<typeof mergeDispatcher>
+    dispatcher: MergedSessionRuntime['dispatcher']
 ): Promise<MergedRunRecord> {
     try {
         return await completeMerge(command, storage, dispatcher);
@@ -68,18 +68,25 @@ async function runMerge(
         await storage.release();
     }
 }
-export async function executeMergedRecord(
+export type MergedSessionRuntime = {
+    readonly dispatcher: Pick<
+        ReturnType<typeof createReporterDispatcher>,
+        'createFinalDelivery' | 'trackRunnerErrorDelivery'
+    >;
+    readonly maintain: typeof maintainHistory;
+};
+export async function runMergedRecordSession(
     command: MergeResultsCommand,
-    initial: MergedRunRecord
+    storage: MergedStorage,
+    runtime: MergedSessionRuntime
 ): Promise<MergedRecordOutcome> {
-    const storage = await createMergedRecordStorage(command, initial);
-    const dispatcher = mergeDispatcher();
+    const { dispatcher } = runtime;
     const tracked = await dispatcher.trackRunnerErrorDelivery(async function deliverMergedRecord() {
-        return await withRunIdentity(initial, async function deliverOwnedMerge() {
+        return await withRunIdentity(storage.current(), async function deliverOwnedMerge() {
             return await runMerge(command, storage, dispatcher);
         });
     });
-    const maintenance = await maintainHistory(
+    const maintenance = await runtime.maintain(
         { projectRoot: command.cwd, config: command.config },
         performance.now.bind(performance)
     );
@@ -92,4 +99,14 @@ export async function executeMergedRecord(
             ...maintenance
         ]
     };
+}
+
+export async function executeMergedRecord(
+    command: MergeResultsCommand,
+    initial: MergedRunRecord
+): Promise<MergedRecordOutcome> {
+    return await runMergedRecordSession(command, await createMergedRecordStorage(command, initial), {
+        dispatcher: mergeDispatcher(),
+        maintain: maintainHistory
+    });
 }

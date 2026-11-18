@@ -1,5 +1,3 @@
-import { mkdir } from 'node:fs/promises';
-import properLockfile from 'proper-lockfile';
 import type { BaselineWriteOutcome } from '../baselines/baseline-model.ts';
 import type { OrdinaryBaselineChange, StoredOrdinaryBaseline } from './baseline-record.ts';
 
@@ -11,8 +9,7 @@ export type BaselineStoreCommit = {
 type PublicationInput = {
     readonly validate: (changes: readonly OrdinaryBaselineChange[]) => Promise<void>;
     readonly apply: (change: OrdinaryBaselineChange) => Promise<void>;
-    readonly directory: string;
-    readonly checkDirectory: (directory: string) => Promise<void>;
+    readonly acquire: () => Promise<() => Promise<void>>;
 };
 export function createBaselinePublication(
     input: PublicationInput
@@ -55,10 +52,7 @@ export function createBaselinePublication(
         if (changes.length === 0) {
             return { outcome: { kind: 'written', changes: [] }, errors: [] };
         }
-        await input.checkDirectory(input.directory);
-        await mkdir(input.directory, { recursive: true });
-        await input.checkDirectory(input.directory);
-        const release = await properLockfile.lock(input.directory, { realpath: false });
+        const release = await input.acquire();
         const committed = await validateAndPublish(changes);
         return await releasePublication(release, committed);
     };

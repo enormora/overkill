@@ -18,7 +18,6 @@ import {
 } from './engine/body-reference-plan.ts';
 import {
     implementationCatalogSchema,
-    mergeImplementationCatalogs,
     type ImplementationCatalog
 } from './implementation-catalog.ts';
 import { workIdentityKey } from './engine/identity.ts';
@@ -107,56 +106,7 @@ export const testNode = suite('portable implementation catalogs', [
         scope.assert(doubleUsage.calledOnce, body.reference.parseInput);
         return scope.assert.collect();
     }),
-    test('rejects merging catalogs prepared under different project roots', async function (scope) {
-        await fixture(scope, async function conflict(catalog) {
-            scope.assert.throws(function mergeRoots() {
-                mergeImplementationCatalogs([ catalog, {
-                    ...catalog,
-                    projectRoot: join(catalog.projectRoot, 'other')
-                } ]);
-            }, { message: 'Implementation project roots differ.' });
-        });
-        return scope.assert.collect();
-    }),
-    test('rejects merging catalogs from different native runtimes', async function (scope) {
-        await fixture(scope, async function conflict(catalog) {
-            const changed = {
-                ...catalog,
-                builds: catalog.builds.map(function runtime(build) {
-                    return { ...build, graph: { ...build.graph, runtime: { ...build.graph.runtime, node: 'v0.0.0' } } };
-                })
-            };
-            scope.assert.throws(function mergeRuntimes() {
-                mergeImplementationCatalogs([ catalog, changed ]);
-            }, { message: 'Implementation runtimes differ.' });
-        });
-        return scope.assert.collect();
-    }),
-    test('rejects catalogs that resolve the same entry to different modules', async function (scope) {
-        await fixture(scope, async function conflict(catalog) {
-            const changed = {
-                ...catalog,
-                builds: catalog.builds.map(function entryResolution(build) {
-                    return {
-                        ...build,
-                        graph: {
-                            ...build.graph,
-                            entries: Object.fromEntries(
-                                Object.entries(build.graph.entries).map(function redirect([ key, url ]) {
-                                    const target = new URL('other.mjs', url);
-                                    return [ key, target.href ];
-                                })
-                            )
-                        }
-                    };
-                })
-            };
-            scope.assert.throws(function mergeEntries() {
-                mergeImplementationCatalogs([ catalog, changed ]);
-            }, { message: 'Implementation entry resolutions differ.' });
-        });
-        return scope.assert.collect();
-    }),
+
     test(
         'collects data-only identity without evaluating modules or admitting excluded invalid work',
         async function (scope) {
@@ -168,44 +118,6 @@ export const testNode = suite('portable implementation catalogs', [
             });
             return scope.assert.collect();
         }
-    ),
-    test('retains assignments from distinct shards sharing the same module build', async function (scope) {
-        await fixture(scope, async function combine(catalog) {
-            const other = {
-                ...catalog,
-                builds: catalog.builds.map(function shard(build) {
-                    return {
-                        ...build,
-                        assignments: build.assignments.map(function assignment(entry) {
-                            return { ...entry, key: `another:${entry.key}` };
-                        })
-                    };
-                })
-            };
-            const merged = mergeImplementationCatalogs([ catalog, other ]);
-            scope.assert.equal(merged?.builds.length, 1);
-            scope.assert.equal(merged?.builds[0]?.assignments.length, 2);
-        });
-        return scope.assert.collect();
-    }),
-    test('rejects conflicting parsed input for overlapping work', async function (scope) {
-        await fixture(scope, async function conflict(catalog) {
-            const changed = {
-                ...catalog,
-                builds: catalog.builds.map(function input(build) {
-                    return {
-                        ...build,
-                        assignments: build.assignments.map(function assignment(entry) {
-                            return { ...entry, facts: { ...entry.facts, input: 'changed' } };
-                        })
-                    };
-                })
-            };
-            scope.assert.throws(function merge() {
-                mergeImplementationCatalogs([ catalog, changed ]);
-            }, { message: 'Implementation assignments differ.' });
-        });
-        return scope.assert.collect();
-    })
+    )
 ]);
 await runIfMain(import.meta, testNode);

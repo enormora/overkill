@@ -1,7 +1,7 @@
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { workerReplayRecord } from '../test-support/replay-record-fixture.ts';
-import { createCollectedPlan, fakeWorkerRuntime } from './worker-pool-execution-state.test.ts';
+import { createCollectedPlan, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
 import { replayRecordSchema } from './replay-record-schema.ts';
 import { prepareRecordedReplay } from './replay-preparation.ts';
 import type { PreparedReplay } from './replay-types.ts';

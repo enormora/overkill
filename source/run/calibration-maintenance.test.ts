@@ -75,6 +75,86 @@ function maintenance(remove: MaintenanceInput['store']['remove']): MaintenanceIn
     };
 }
 export const testNode = suite('calibration maintenance failures', [
+    ...([ 'apply', 'diff', 'none' ] as const).map(function (mode) {
+        return test(`retains maintenance report in ${mode} mode`, async function (scope: TestScope) {
+            const original = maintenance(async function () {
+                return [ 'calibration/old.json' ];
+            });
+            const session = calibrationMaintenanceSession({
+                ...original,
+                input: { ...original.input, request: { ...original.input.request, baselineUpdateMode: mode } }
+            });
+            scope.require.defined(session);
+            const result = await session.finalize(successful);
+            const report = readCalibrationReferenceReport(result);
+            scope.require.defined(report);
+            scope.assert.equal(report.outcome, mode === 'apply' ? 'written' : 'read-only');
+            scope.assert.equal(result.status, mode === 'none' ? 'failed' : 'passed');
+            return scope.assert.collect();
+        });
+    }),
+    test('delegates result preparation and finalization to the baseline session', async function (scope: TestScope) {
+        const calls: string[] = [];
+        const original = maintenance(unexpectedOperation);
+        const failed = runResultFactory.build({ status: 'failed' });
+        const baseline: NonNullable<MaintenanceInput['baseline']> = {
+            reporterDispatcher: original.dependencies.reporterDispatcher,
+            prepareResult(result) {
+                calls.push('prepare');
+                return result;
+            },
+            async finalize() {
+                calls.push('finalize');
+                return failed;
+            }
+        };
+        const session = calibrationMaintenanceSession({ ...original, baseline });
+        scope.require.defined(session);
+        scope.assert.equal(session.prepareResult(successful), successful);
+        scope.assert.deepEqual({ dispatcher: session.reporterDispatcher, result: await session.finalize(failed) }, {
+            dispatcher: baseline.reporterDispatcher,
+            result: failed
+        });
+        scope.assert.deepEqual(calls, [ 'prepare', 'finalize' ]);
+        return scope.assert.collect();
+    }),
+    ...[ { paths: [ 'selected.bench.ts' ] }, { selection: { kind: 'none' as const } } ].map(function (request) {
+        return test(
+            `skips maintenance for incomplete inventory ${JSON.stringify(request)}`,
+            function (scope: TestScope) {
+                const original = maintenance(unexpectedOperation);
+                scope.assert.equal(
+                    calibrationMaintenanceSession({
+                        ...original,
+                        input: {
+                            ...original.input,
+                            request: {
+                                ...original
+                                    .input
+                                    .request,
+                                ...request
+                            }
+                        }
+                    }),
+                    null
+                );
+                return scope.assert.collect();
+            }
+        );
+    }),
+    test('returns the baseline when no references exist', function (scope: TestScope) {
+        scope.assert.equal(
+            calibrationMaintenanceSession({ ...maintenance(unexpectedOperation), references: [] }),
+            null
+        );
+        return scope.assert.collect();
+    }),
+    test('prepares results without a baseline', function (scope: TestScope) {
+        const session = calibrationMaintenanceSession(maintenance(unexpectedOperation));
+        scope.require.defined(session);
+        scope.assert.equal(session.prepareResult(successful), successful);
+        return scope.assert.collect();
+    }),
     test('preserves references outside the selected shard', function (scope: TestScope) {
         const original = maintenance(unexpectedOperation);
         const input = { ...original.input, request: { ...original.input.request, shard: { index: 1, total: 2 } } };

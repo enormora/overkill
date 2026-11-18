@@ -1,6 +1,6 @@
-import { createClock } from '@enormora/clock';
+import { createClock, createDeterministicClock, type Clock } from '@enormora/clock';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import { createRunCoordinator, type RunCoordinator } from '../run/run.ts';
+import { createRunCoordinator, type RunCoordinator } from '../run/run-coordinator.entry-point.ts';
 import type { RunOrchestratorDependencies } from '../run/run-orchestrator-dependencies.ts';
 import type { CollectedRunPlan, WorkId } from '../run/run-types.ts';
 import { supervisedAssignedWork } from '../run/supervised-protocol.ts';
@@ -21,30 +21,13 @@ import {
     deterministicCollectedRunPlan,
     deterministicRunCollection,
     deterministicRunEngine,
+    deterministicDiscoveredFile,
     deterministicRuntimeState
 } from './deterministic-run-fixtures.ts';
 
 type RunOrchestrator = RunCoordinator['orchestrator'];
 
 const deterministicSeed = 99n;
-
-type DeterministicDiscoveredFile = {
-    readonly file: string;
-    readonly fileSet: null;
-    readonly href: string;
-    readonly path: string;
-};
-
-function discoveredFile(cwd: string, file: string): DeterministicDiscoveredFile {
-    const filePath = `${cwd}/${file}`;
-
-    return {
-        file,
-        fileSet: null,
-        href: `virtual:${file}`,
-        path: filePath
-    };
-}
 
 function installNoPolicyRestriction(): () => void {
     return function restoreNoPolicyRestriction(): void {
@@ -258,9 +241,9 @@ type DeterministicRunCoordinator = {
 
 function createDeterministicRunCoordinatorWithDependencies(
     createSeed: () => bigint,
-    createWorkerPool: RunOrchestratorDependencies['createWorkerPool']
+    createWorkerPool: RunOrchestratorDependencies['createWorkerPool'],
+    wallClock: Clock
 ): DeterministicRunCoordinator {
-    const wallClock = createClock();
     const environment: Record<string, string | undefined> = {};
     const reporterDispatcher = createReporterDispatcher({
         stderr: {
@@ -290,7 +273,7 @@ function createDeterministicRunCoordinatorWithDependencies(
             }
 
             const files = request.paths.map(function toDiscoveredFile(file) {
-                return discoveredFile(request.cwd, file);
+                return deterministicDiscoveredFile(request.cwd, file);
             });
             const firstFile = files[0];
 
@@ -363,7 +346,7 @@ function createDeterministicRunCoordinatorWithDependencies(
 function createDeterministicRunCoordinatorWithSeed(
     createSeed: () => bigint
 ): DeterministicRunCoordinator {
-    return createDeterministicRunCoordinatorWithDependencies(createSeed, createMissingWorkerPool);
+    return createDeterministicRunCoordinatorWithDependencies(createSeed, createMissingWorkerPool, createClock());
 }
 
 export function createDeterministicRunOrchestratorWithSeed(createSeed: () => bigint): RunOrchestrator {
@@ -382,11 +365,26 @@ export function createDeterministicRunCoordinator(): DeterministicRunCoordinator
     });
 }
 
+export function createUnitRunCoordinator(): DeterministicRunCoordinator {
+    return createDeterministicRunCoordinatorWithDependencies(
+        function createSeed() {
+            return deterministicSeed;
+        },
+        createMissingWorkerPool,
+        createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
+    );
+}
+
+export function createUnitRunOrchestrator(): RunOrchestrator {
+    return createUnitRunCoordinator().orchestrator;
+}
+
 export function createDeterministicWorkerPoolCollectionCoordinator(): DeterministicRunCoordinator {
     return createDeterministicRunCoordinatorWithDependencies(
         function createSeed() {
             return deterministicSeed;
         },
-        createCollectionOnlyWorkerPool
+        createCollectionOnlyWorkerPool,
+        createClock()
     );
 }

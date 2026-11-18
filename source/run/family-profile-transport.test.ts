@@ -2,6 +2,7 @@ import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { createSuite, defineTestFamily, type FamilyModuleReference } from '../packages/engine/engine.entry-point.ts';
 import { normalizeConfig } from '../packages/run/run.entry-point.ts';
+import { testNode as replayProfiles } from './family-replay-profile-policy.test.ts';
 import { freezeProfileFamily } from './family-profile-transport.ts';
 import type { FrozenFamilyDefinition } from './family-catalog.ts';
 import type { RunCollectionSource } from './run-types.ts';
@@ -90,6 +91,7 @@ function recordedSource(definition: FrozenFamilyDefinition | null): RunCollectio
 }
 
 export const testNode = suite('family transport provenance', [
+    replayProfiles,
     test('retains explicit configuration for direct entrypoints', function (scope) {
         scope.assert.deepEqual(
             transport(moduleReference, {

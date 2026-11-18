@@ -1,7 +1,7 @@
 import { glob } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { CoverageReport, V8CoverageEntry } from 'monocart-coverage-reports';
+import type { V8CoverageEntry } from 'monocart-coverage-reports';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { CoverageSourcePolicy } from '../config/types.ts';
 import { prepareLoadedCoverageSources } from './coverage-loaded-sources.ts';
@@ -23,12 +23,35 @@ type CoverageSourceInput = {
     readonly rawDataDirectory: string;
     readonly sourceScope: CoverageSourceScope;
 };
-type CoverageSourceRequest = CoverageSourceInput & { readonly cache: CoverageSourceCache; };
-type CoverageReportOptions = NonNullable<ConstructorParameters<typeof CoverageReport>[0]>;
-type CoverageAllOptions = NonNullable<CoverageReportOptions['all']>;
+export type CoverageSourceAccess = {
+    readonly cache: CoverageSourceCache;
+    readonly batches: (directory: string) => Promise<readonly CoverageNativeBatch[]>;
+    readonly files: (
+        scope: Extract<CoverageSourceScope, { readonly mode: 'all'; }>,
+        root: string
+    ) => AsyncIterable<string>;
+};
+
+type CoverageSourceRequest = CoverageSourceInput & { readonly access: CoverageSourceAccess; };
+
+export function createCoverageSourceAccess(): CoverageSourceAccess {
+    return {
+        cache: createCoverageSourceCache(),
+        batches: readNativeCoverageBatches,
+        files(scope, root) {
+            return glob(scope.include, { cwd: root, exclude: scope.exclude });
+        }
+    };
+}
 type AllFileEntry = {
     readonly source: string;
     readonly url: string;
+};
+
+type CoverageAllOptions = {
+    readonly dir: string;
+    readonly filter: (filePath: string) => boolean;
+    readonly transformer: (entry: AllFileEntry) => Promise<void>;
 };
 
 function sourceFilePath(sourcePath: string, projectRoot: string): string {
@@ -92,7 +115,7 @@ async function isRuntimeSourceFile(filePath: string, request: CoverageSourceRequ
         return true;
     }
 
-    return request.cache.inspect(await request.cache.read(filePath), filePath).hasRuntime;
+    return request.access.cache.inspect(await request.access.cache.read(filePath), filePath).hasRuntime;
 }
 
 async function allRuntimeFiles(
@@ -100,10 +123,7 @@ async function allRuntimeFiles(
     sourceScope: Extract<CoverageSourceScope, { readonly mode: 'all'; }>
 ): Promise<ReadonlySet<string>> {
     const runtimeFiles = new Set<string>();
-    const matchedFiles = glob(sourceScope.include, {
-        cwd: request.projectRoot,
-        exclude: sourceScope.exclude
-    });
+    const matchedFiles = request.access.files(sourceScope, request.projectRoot);
 
     for await (const relativePath of matchedFiles) {
         const filePath = path.resolve(request.projectRoot, relativePath);
@@ -132,13 +152,15 @@ function allFilesOptions(request: CoverageSourceRequest, runtimeFiles: ReadonlyS
         },
         async transformer(entry: AllFileEntry) {
             if (isTypeScriptCoverageSource(entry.url)) {
-                Object.assign(entry, { source: request.cache.inspect(entry.source, fileURLToPath(entry.url)).source });
+                Object.assign(entry, {
+                    source: request.access.cache.inspect(entry.source, fileURLToPath(entry.url)).source
+                });
             }
         }
     };
 }
 
-export async function prepareCoverageSources(input: CoverageSourceInput): Promise<{
+export async function prepareCoverageSources(input: CoverageSourceInput, access: CoverageSourceAccess): Promise<{
     readonly all: CoverageAllOptions | null;
     readonly batches: readonly CoverageNativeBatch[];
     readonly entryIncluded: (entry: V8CoverageEntry) => boolean;
@@ -146,11 +168,11 @@ export async function prepareCoverageSources(input: CoverageSourceInput): Promis
     readonly onEntry: (entry: V8CoverageEntry) => Promise<void>;
     readonly sourcePath: (sourcePath: string, info: Readonly<Record<string, unknown>>) => string;
 }> {
-    const request = { ...input, cache: createCoverageSourceCache() };
-    const batches = await readNativeCoverageBatches(request.rawDataDirectory);
+    const request = { ...input, access };
+    const batches = await access.batches(request.rawDataDirectory);
     const loaded = await prepareLoadedCoverageSources({
         batches,
-        cache: request.cache,
+        cache: request.access.cache,
         excludedFiles: request.sourceScope.excludedFiles,
         includeSource(filePath) {
             return includedSourceFile(filePath, request);
@@ -178,9 +200,9 @@ export async function prepareCoverageSources(input: CoverageSourceInput): Promis
             if (map !== undefined) {
                 Object.assign(entry, { sourceMap: map });
             } else if (isTypeScriptCoverageSource(fileURLToPath(entry.url))) {
-                const source = await request.cache.read(fileURLToPath(entry.url));
+                const source = await request.access.cache.read(fileURLToPath(entry.url));
 
-                prepareNativeTypeScriptCoverage(entry, request.cache.inspect(source, fileURLToPath(entry.url)));
+                prepareNativeTypeScriptCoverage(entry, request.access.cache.inspect(source, fileURLToPath(entry.url)));
             }
         },
         sourcePath(sourcePath, info) {

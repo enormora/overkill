@@ -6,17 +6,17 @@ import {
     type WorkId
 } from '../packages/engine/engine.entry-point.ts';
 import type { ResourceScope } from '../resources/resources.ts';
+import {
+    createCollectedPlan,
+    fakeWorkerRuntime,
+    createTaskRun
+} from '../test-support/worker-pool-execution-state.ts';
 import { createResourceOwnershipPlan } from './execution-plan-resolution.ts';
 import {
     acquireWorkerPoolResourceLifecycle,
     disposeWorkerPoolResourceLifecycles,
     createResourcePreparationChannel
 } from './worker-pool-resource-lifecycle-execution.ts';
-import {
-    createCollectedPlan,
-    fakeWorkerRuntime,
-    createTaskRun
-} from './worker-pool-execution-state.test.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import type {

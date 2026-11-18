@@ -1,28 +1,13 @@
 import { runIfMain } from '#test-runner';
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as mergeResults } from './merge-results-suite.test.ts';
-import { testNode as debugArtifacts } from './debug-artifact-storage.test.ts';
-import { testNode as policy } from './run-record-policy.test.ts';
 import { testNode as session } from './run-record-session.test.ts';
-import { testNode as reasons } from './run-record-reasons.test.ts';
-import { testNode as invocation } from './run-record-invocation.test.ts';
-import { testNode as attachments } from './run-record-attachments.test.ts';
-import { testNode as propertyWitnesses } from './property-witness-storage.test.ts';
 
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'run record persistence',
     annotations: {},
     controls: {},
-    children: [
-        mergeResults,
-        debugArtifacts,
-        session,
-        policy,
-        reasons,
-        invocation,
-        attachments,
-        propertyWitnesses
-    ]
+    children: [ mergeResults, session ]
 });
 await runIfMain(import.meta, testNode);

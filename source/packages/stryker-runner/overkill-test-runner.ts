@@ -1,7 +1,9 @@
+import { createClock } from '@enormora/clock';
 import { commonTokens, tokens } from '@stryker-mutator/api/plugin';
 import type { FileDescriptions } from '@stryker-mutator/api/core';
 import type { Logger } from '@stryker-mutator/api/logging';
 import { DryRunStatus, MutantRunStatus, type TestRunner } from '@stryker-mutator/api/test-runner';
+import { initializeMutationRunner } from './mutation-runner-initialization.ts';
 import { createMutationRunnerLifecycle } from './mutation-runner-lifecycle.ts';
 import { createMutationBaseline } from './mutation-baseline.ts';
 import { createMutationRunnerInvocations } from './mutation-runner-invocations.ts';
@@ -12,7 +14,10 @@ export function createOverkillTestRunner(
     fileDescriptions: FileDescriptions,
     logger: Readonly<Pick<Logger, 'info'>>
 ): Required<TestRunner> {
-    const lifecycle = createMutationRunnerLifecycle(options, fileDescriptions, logger);
+    const lifecycle = createMutationRunnerLifecycle(options, fileDescriptions, logger, {
+        clock: createClock(),
+        initialize: initializeMutationRunner
+    });
     const invocations = createMutationRunnerInvocations(createMutationBaseline(), options['ignoreStatic'] === true);
     return {
         async capabilities() {

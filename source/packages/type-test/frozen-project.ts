@@ -13,7 +13,7 @@ import {
     type ProjectInputObservation
 } from './frozen-inputs.ts';
 import type { OriginalAssertionPlan } from './original-assertions.ts';
-import type { SourceAnalysis } from './source-analysis.ts';
+import type { TypeAnalysis } from './source-analysis-port.ts';
 
 export type FrozenProject = {
     readonly compiler: InstalledCompiler;
@@ -91,8 +91,8 @@ export async function loadProject(
     return { ...project, ownership: ownership.move() };
 }
 
-export function sourceAnalysis(project: FrozenProject): SourceAnalysis {
-    return { compiler: project.compiler.syntax, program: project.program, checker: project.configured.checker };
+export function typeAnalysis(project: FrozenProject): TypeAnalysis {
+    return { compiler: project.compiler.syntax, checker: project.configured.checker };
 }
 
 export async function disposeProject(project: FrozenProject): Promise<void> {

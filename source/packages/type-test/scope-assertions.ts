@@ -1,6 +1,7 @@
 import type * as TypeScript from 'typescript-beta/ast';
+import type { SourceAnalysis } from './source-analysis-port.ts';
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
-import { sourceSymbol, sourceChildren, type SourceAnalysis } from './source-analysis.ts';
+import { sourceSymbol, sourceChildren } from './source-analysis.ts';
 import { nativeRelationBinding } from './native-reference.ts';
 import type { SourceBody } from './source-ownership.ts';
 
@@ -178,12 +179,12 @@ export async function assertionAnnotation(
     if (annotation === undefined || prefix.arguments.length !== 1) {
         throw new UnsupportedEvidenceError('Native assertion annotations require one message.', undefined);
     }
-    const message = await analysis.checker.getTypeAtLocation(annotation);
-    if (!message.isStringLiteralType()) {
+    const message = await analysis.checker.staticString(annotation);
+    if (message === null) {
         throw new UnsupportedEvidenceError(
             'Native assertion annotations require a statically known string message.',
             undefined
         );
     }
-    return message.value;
+    return message;
 }

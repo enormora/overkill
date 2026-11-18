@@ -4,7 +4,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
-import { testNode as familyCompatibility } from './family-record-compatibility.test.ts';
+import { testNode as familyRecordCompatibility } from './family-record-compatibility.test.ts';
 import { runRecordVersions } from './run-record-versions.ts';
 
 async function withMetadataDirectory<Value>(work: (directory: string) => Promise<Value>): Promise<Value> {
@@ -22,7 +22,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
-        familyCompatibility,
+        familyRecordCompatibility,
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'finds verified engine package metadata without importing its module',

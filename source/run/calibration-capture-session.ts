@@ -13,7 +13,7 @@ type CaptureSessionInput = {
     readonly store: CalibrationReferenceStore;
     readonly profile: string;
     readonly maxBytes: number;
-    readonly dependencies: RunOrchestratorDependencies;
+    readonly dependencies: Pick<RunOrchestratorDependencies, 'reporterDispatcher' | 'wallClock'>;
 };
 function capturedReferences(result: RunResult): readonly CalibrationSnapshot[] {
     const snapshots = new Map<string, CalibrationSnapshot>();

@@ -8,7 +8,7 @@ export function readExecutionSessionEnvironment(): Readonly<Record<string, strin
 }
 
 async function startExecutionSessionHost(): Promise<void> {
-    await import('./execution-session-host.ts');
+    await import('./execution-session-host.entry-point.ts');
 }
 
 if (

@@ -8,6 +8,10 @@ import { readWitnessReplayFile, decodeReplayInput } from './replay-input.ts';
 import type { PreparedReplay, ReplayContext, ReplayWitnessInput } from './replay-types.ts';
 import { profilePropertyPolicy } from './run-profile-facts.ts';
 
+export type WitnessReplayAccess = {
+    readonly read: typeof readWitnessReplayFile;
+    readonly verify: typeof verifyWitnessSource;
+};
 type WitnessCommandContext = Readonly<Record<PropertyKey, never>> | { readonly propertyReplay: PropertyWitnessFile; };
 export function propertyWitnessCommand(witness: WitnessFile | null): WitnessCommandContext {
     return witness?.kind === 'property' ? { propertyReplay: witness } : {};
@@ -18,16 +22,17 @@ function witnessSourceRun(input: ReplayWitnessInput): string | null {
     const [ id, ...parts ] = relative.split(path.sep);
     return id !== undefined && /^[A-Za-z0-9_-]+$/u.test(id) && parts.length > 0 ? id : null;
 }
-export async function prepareWitnessReplay(
-    input: ReplayContext & ReplayWitnessInput
+export async function resolveWitnessReplay(
+    input: ReplayContext & ReplayWitnessInput,
+    access: WitnessReplayAccess
 ): Promise<PreparedReplay> {
-    const raw = await readWitnessReplayFile(path.resolve(input.cwd, input.path));
+    const raw = await access.read(path.resolve(input.cwd, input.path));
     const witness = decodeReplayInput(raw, parseWitnessFile);
     const { file } = witness.case;
     if (file === null || path.isAbsolute(file) || file.split(/[\\/]/u).includes('..')) {
         invalidRequest('Witness must identify a project-relative source module.');
     }
-    await verifyWitnessSource(input.cwd, file);
+    await access.verify(input.cwd, file);
     return {
         replay: { kind: 'witness', witness, sourceRunId: witnessSourceRun(input), moduleGraph: 'fresh' },
         command: {
@@ -87,15 +92,18 @@ function replayProfile(command: ReplayWitnessCommand): string {
     return selected;
 }
 
-export async function preparePropertyReplay(command: ReplayWitnessCommand): Promise<PreparedReplay> {
-    const prepared = await prepareWitnessReplay({
+export async function resolvePropertyReplay(
+    command: ReplayWitnessCommand,
+    access: WitnessReplayAccess
+): Promise<PreparedReplay> {
+    const prepared = await resolveWitnessReplay({
         debug: requestedDebug(command.request),
         cwd: command.cwd,
         config: command.config,
         signal: null,
         path: command.request.path,
         profile: replayProfile(command)
-    });
+    }, access);
     return {
         ...prepared,
         replay: prepared.replay.kind === 'witness' ? { ...prepared.replay, moduleGraph: 'current' } : prepared.replay,
@@ -111,4 +119,11 @@ export async function preparePropertyReplay(command: ReplayWitnessCommand): Prom
             }
         }
     };
+}
+
+export async function prepareWitnessReplay(input: ReplayContext & ReplayWitnessInput): Promise<PreparedReplay> {
+    return await resolveWitnessReplay(input, { read: readWitnessReplayFile, verify: verifyWitnessSource });
+}
+export async function preparePropertyReplay(command: ReplayWitnessCommand): Promise<PreparedReplay> {
+    return await resolvePropertyReplay(command, { read: readWitnessReplayFile, verify: verifyWitnessSource });
 }

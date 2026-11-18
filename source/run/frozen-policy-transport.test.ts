@@ -1,9 +1,9 @@
 import { resolve } from 'node:path';
 import { runIfMain } from '#test-runner';
+import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { normalizeConfig } from '../packages/run/config.entry-point.ts';
 import {
-    orchestrator,
     parseFrozenMicrotestPolicy,
     type FrozenMicrotestPolicy
 } from '../packages/run/run.entry-point.ts';
@@ -15,13 +15,14 @@ import { frozenSupervisedCommandSchema } from './frozen-supervised-command-schem
 const file = 'source/integration-tests/run/fixtures/throws-on-import.test.ts';
 
 async function freezePolicy(): Promise<FrozenMicrotestPolicy> {
-    return await orchestrator.freezePolicy({
+    const command = createMutationRunCommand({
+        cwd: process.cwd(),
+        profile: 'unit',
+        config: normalizeConfig({ profiles: { unit: { testFamily: 'microtest', files: { include: [ file ] } } } })
+    });
+    return await createUnitRunOrchestrator().freezePolicy({
         moduleBoundary: null,
-        command: createMutationRunCommand({
-            cwd: process.cwd(),
-            profile: 'unit',
-            config: normalizeConfig({ profiles: { unit: { testFamily: 'microtest', files: { include: [ file ] } } } })
-        }),
+        command: { ...command, request: { ...command.request, paths: [ file ] } },
         source: { kind: 'memory' }
     });
 }

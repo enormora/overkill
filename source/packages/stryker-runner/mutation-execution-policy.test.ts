@@ -1,7 +1,7 @@
 import { defaultFailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
 import { suite, test } from '../test/test.entry-point.ts';
 import { normalizeConfig } from '../run/run.entry-point.ts';
-import { createDeterministicRunOrchestrator } from '../../test-support/create-deterministic-run-orchestrator.ts';
+import { createUnitRunOrchestrator } from '../../test-support/create-deterministic-run-orchestrator.ts';
 import type { TestScope } from '../engine/engine.entry-point.ts';
 import { createMutationRunCommand } from './mutation-execution-policy.ts';
 import { selectMicrotestProfile } from './microtest-profile.ts';
@@ -29,7 +29,7 @@ export const testNode = suite('mutation execution policy', [
                 });
                 const command = createMutationRunCommand({ config, cwd: process.cwd(), profile: 'unit' });
                 const { profile } = selectMicrotestProfile(config, 'unit');
-                const resolved = await createDeterministicRunOrchestrator().resolve({
+                const resolved = await createUnitRunOrchestrator().resolve({
                     ...command,
                     request: { ...command.request, paths: [ fixture ] }
                 });
@@ -91,7 +91,7 @@ export const testNode = suite('mutation execution policy', [
     test('serial request intent leaves ordinary coverage available', async function (scope: TestScope) {
         const config = normalizeConfig({ profiles: { unit: { testFamily: 'microtest' } } });
         const command = createMutationRunCommand({ config, cwd: process.cwd(), profile: 'unit' });
-        const resolved = await createDeterministicRunOrchestrator().resolve({
+        const resolved = await createUnitRunOrchestrator().resolve({
             ...command,
             request: { ...command.request, coverage: true, paths: [ fixture ] }
         });

@@ -1,6 +1,8 @@
 import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import {
+    createRunResult,
+    type ExecuteOptions,
     defineTestFamily,
     type Engine,
     type TestFamily,
@@ -12,7 +14,12 @@ import { family as runtimeFamily } from '../integration-tests/run/fixtures/impor
 import { family as analysisFamily } from '../integration-tests/run/fixtures/imported-analysis-family.ts';
 import { testNode as recordPlanTestNode } from './prepared-family-plan.test.ts';
 import { familyCatalog, type CollectedFamilyMetadata, type FrozenFamilyDefinition } from './family-catalog.ts';
-import { registerImportedHostFamilyPlan, transferHostFamilyPlan } from './host-family-plan.ts';
+import {
+    executeHostFamily,
+    registerHostFamilyPlan,
+    registerImportedHostFamilyPlan,
+    transferHostFamilyPlan
+} from './host-family-plan.ts';
 
 type HostFamilyScenario = {
     readonly engine: Engine;
@@ -94,7 +101,70 @@ function observedRuntimeCollection(record: (event: string) => void): TestFamily<
     });
 }
 
+const epoch = new Date(0);
+const executionOptions: ExecuteOptions = {
+    debug: { mode: 'off' },
+    retryPolicy: null,
+    execution: { mode: 'serial-in-process' },
+    reporters: [],
+    runFacts: {},
+    startedAt: epoch.toISOString(),
+    runtimePolicy: null,
+    timeoutPolicy: null,
+    processBudgets: null,
+    processUsageTracker: null,
+    propertyRun: { seed: 0n, projectRoot: null }
+};
+
 export const testNode = suite('host family catalogs', [
+    ...[ runtimeFamily, analysisFamily ].map(function executionAdmission(family) {
+        return test(
+            `admits selected ${family.features.execution} work to the host driver`,
+            async function (scope: TestScope) {
+                const context = await prepareHost(family);
+                const first = context.catalog.cases[0];
+                scope.require.defined(first);
+                const selected = { ...context.catalog, cases: [ first ] as const };
+                const expected = createRunResult(selected, [], [], {
+                    planStatus: 'planned',
+                    processUsage: null,
+                    startedAtMicroseconds: 0,
+                    completedAtMicroseconds: 0,
+                    testExecutionWallTimeMicroseconds: 0
+                });
+                const admitted: unknown[] = [];
+                const result = await executeHostFamily(context.catalog, selected, async function (input, options) {
+                    admitted.push(input);
+                    const fields = [
+                        'runtimePolicy',
+                        'timeoutPolicy',
+                        'processBudgets',
+                        'processUsageTracker',
+                        'propertyRun'
+                    ];
+                    scope.assert.deepEqual(
+                        fields.map(function present(field) {
+                            return Object.hasOwn(options ?? {}, field);
+                        }),
+                        fields.map(function () {
+                            return family.features.execution === 'runtime';
+                        })
+                    );
+                    return expected;
+                }, executionOptions);
+                scope.assert.equal(result, expected);
+                scope.assert.equal(admitted.length, 1);
+                return scope.assert.collect();
+            }
+        );
+    }),
+    test('rejects imported identities registered as built-in host families', function (scope) {
+        const context = hostScenario(runtimeFamily);
+        scope.assert.throws(function () {
+            registerHostFamilyPlan(context.source, context.engine, runtimeFamily.id, '/project');
+        }, { message: 'Imported families require explicit host resolution.' });
+        return scope.assert.collect();
+    }),
     recordPlanTestNode,
     ...[ runtimeFamily, analysisFamily ].map(function familyCollection(family) {
         return test(`collects exact selected facts for ${family.id} without invoking bodies`, async function (scope) {

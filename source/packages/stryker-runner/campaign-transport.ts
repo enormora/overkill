@@ -1,10 +1,15 @@
 import { deserialize, serialize } from 'node:v8';
-import type { Socket } from 'node:net';
+import type { Duplex } from 'node:stream';
+
+export type CampaignSocket = Readonly<Pick<Duplex, 'destroy' | 'destroyed' | 'on' | 'once' | 'read' | 'write'>> & {
+    readonly ref: () => unknown;
+    readonly unref: () => unknown;
+};
 
 const maximumFrameBytes = 134_217_728;
 const headerBytes = 4;
 
-function nextFrameLength(socket: Socket): number | null {
+function nextFrameLength(socket: CampaignSocket): number | null {
     const header: unknown = socket.read(headerBytes);
     if (header === null) {
         return null;
@@ -18,7 +23,7 @@ function nextFrameLength(socket: Socket): number | null {
     }
     return length;
 }
-function readFrameBody(socket: Socket, length: number): Buffer | null {
+function readFrameBody(socket: CampaignSocket, length: number): Buffer | null {
     const body: unknown = socket.read(length);
     if (body === null) {
         return null;
@@ -30,7 +35,7 @@ function readFrameBody(socket: Socket, length: number): Buffer | null {
 }
 
 function receiveNextFrame(
-    socket: Socket,
+    socket: CampaignSocket,
     receive: (message: unknown) => void,
     admission: Readonly<Map<'frame', number>>
 ): boolean {
@@ -49,7 +54,7 @@ function receiveNextFrame(
 }
 
 function receiveAvailableFrames(
-    socket: Socket,
+    socket: CampaignSocket,
     receive: (message: unknown) => void,
     admission: Readonly<Map<'frame', number>>
 ): void {
@@ -59,7 +64,7 @@ function receiveAvailableFrames(
     }
 }
 
-export function receiveCampaignFrames(socket: Socket, receive: (message: unknown) => void): void {
+export function receiveCampaignFrames(socket: CampaignSocket, receive: (message: unknown) => void): void {
     const admission = new Map<'frame', number>();
     socket.on('readable', function receiveReadyFrames() {
         try {
@@ -69,7 +74,7 @@ export function receiveCampaignFrames(socket: Socket, receive: (message: unknown
         }
     });
 }
-export async function sendCampaignFrame(socket: Socket, message: unknown): Promise<void> {
+export async function sendCampaignFrame(socket: CampaignSocket, message: unknown): Promise<void> {
     const body = serialize(message);
     if (body.length > maximumFrameBytes) {
         throw new Error('Campaign frame exceeds its size limit.');

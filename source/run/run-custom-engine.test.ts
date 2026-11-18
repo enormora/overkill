@@ -10,7 +10,7 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import type { NormalizedConfig } from '../config/types.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import {
@@ -112,7 +112,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const orchestrator = createDeterministicRunOrchestrator();
+                const orchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function runWithCustomSupervisedEngine() {
                     await orchestrator.run(createRunCommand({
@@ -135,7 +135,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const orchestrator = createDeterministicRunOrchestrator();
+                const orchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function runWithEmptyModuleUrl() {
                     await orchestrator.run(invalidCustomEngineCommand({
@@ -236,7 +236,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const orchestrator = createDeterministicRunOrchestrator();
+                const orchestrator = createUnitRunOrchestrator();
                 const result = await orchestrator.run(customEngineCommand('engine', 'value'));
 
                 scope.assert.equal(result.summary.passed, 1);
@@ -251,7 +251,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const orchestrator = createDeterministicRunOrchestrator();
+                const orchestrator = createUnitRunOrchestrator();
                 const resolvedRun = await orchestrator.resolve(customEngineCommand('getEngine', 'getter'));
                 const firstCase = resolvedRun.facts.cases[0];
 
@@ -273,7 +273,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const orchestrator = createDeterministicRunOrchestrator();
+                const orchestrator = createUnitRunOrchestrator();
                 const invalidValueResult = await orchestrator.run(customEngineCommand('invalidEngine', 'value'));
                 const asyncGetterResult = await orchestrator.run(customEngineCommand('getAsyncEngine', 'getter'));
 
@@ -295,7 +295,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const orchestrator = createDeterministicRunOrchestrator();
+                const orchestrator = createUnitRunOrchestrator();
                 const result = await orchestrator.run(customEngineCommand('engine', 'value', [ passingFixturePath ]));
 
                 scope.assert.equal(

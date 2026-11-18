@@ -1,7 +1,7 @@
 import type { RunResult } from '../engine/run-result.ts';
 import type { CoverageRunnerErrorCause } from '../engine/coverage-artifact.ts';
 import type { CoveragePolicy, ProfileConfig } from '../config/types.ts';
-import type { CoverageSession, CoverageSessionRequest } from './coverage-session.ts';
+import type { CoverageSession, CoverageSessionRequest } from './coverage-collection.ts';
 import { RunCollectionError } from './run-errors.ts';
 
 const interruptedCoverageErrorSubtypes = new Set<string>([ 'crash', 'loader', 'process-exhaustion' ]);
@@ -36,11 +36,14 @@ function coverageSetupError(error: unknown): RunCollectionError {
     );
 }
 
-export async function startCoverageSession(request: CoverageSessionRequest): Promise<CoverageSession> {
+export async function openCoverageSession(
+    request: CoverageSessionRequest,
+    load: (request: CoverageSessionRequest) => Promise<CoverageSession>
+): Promise<CoverageSession> {
     let session: CoverageSession | null = null;
 
     try {
-        session = await loadCoverageSession(request);
+        session = await load(request);
         await session.start();
 
         return session;
@@ -66,4 +69,8 @@ export function coverageExecutionCompleted(result: RunResult): boolean {
         result.runnerErrors.every(function coverageWasNotInterrupted(error) {
             return !interruptedCoverageErrorSubtypes.has(error.subtype);
         });
+}
+
+export async function startCoverageSession(request: CoverageSessionRequest): Promise<CoverageSession> {
+    return await openCoverageSession(request, loadCoverageSession);
 }

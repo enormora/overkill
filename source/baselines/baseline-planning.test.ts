@@ -1,7 +1,5 @@
 import { testNode as recordedPolicy } from '../run/recorded-baseline-policy.test.ts';
 import { testNode as ordinaryExecution } from '../run/ordinary-baseline-suite.test.ts';
-import { testNode as ordinaryStorage } from '../run/baseline-store.test.ts';
-import { testNode as publication } from '../run/baseline-session.test.ts';
 import { testNode as ordinaryAdapters } from '../run/baseline-adapter.test.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
@@ -23,8 +21,6 @@ const identity: BaselineIdentity = {
 };
 export const testNode = suite('baseline contracts', [
     ordinaryAdapters,
-    publication,
-    ordinaryStorage,
     recordedPolicy,
     ordinaryExecution,
     test('preserves expectations without calling proposal callbacks', function (scope: TestScope) {

@@ -1,12 +1,11 @@
 import { execFile } from 'node:child_process';
 import { extname } from 'node:path';
 import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { suite, test } from '../packages/test/test.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
-import { registerExecutionDisposal, withRunnerInfrastructure } from '../execution-ownership.ts';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import type { TestPlanCase } from './test-plan.ts';
 import { createExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
-import { createExecutionObservation, withExecutionObservation } from './execution-observation.ts';
 
 function guardCase(): TestPlanCase {
     const engine = createTestEngine();
@@ -154,15 +153,6 @@ async function unscopedHookProbe(): Promise<string> {
     return await executeOwnershipProbe(script, [ observer ]);
 }
 
-async function rejectedObservationValue(operation: Promise<unknown>): Promise<unknown> {
-    try {
-        await operation;
-        return null;
-    } catch (error: unknown) {
-        return error;
-    }
-}
-
 export const testNode = suite('native error ownership', [
     test('attributes unscoped errors to the sole active boundary', async function (scope) {
         scope.assert.equal(
@@ -221,41 +211,6 @@ export const testNode = suite('native error ownership', [
             attributedToWork: null,
             attributedToAttempt: null
         } ]);
-        return scope.assert.collect();
-    }),
-    test('preserves operation and observation shutdown failures', async function (scope: TestScope) {
-        const operationError = new Error('operation sentinel');
-        const shutdownError = new Error('shutdown sentinel');
-        const operation = withExecutionObservation(async function failedOperation() {
-            registerExecutionDisposal(function failedShutdown() {
-                throw shutdownError;
-            });
-            throw operationError;
-        });
-        const error = await rejectedObservationValue(operation);
-        scope.require.instanceOf(error, AggregateError);
-        scope.assert.equal(error.errors[0], operationError);
-        const shutdown: unknown = error.errors[1];
-        scope.require.instanceOf(shutdown, AggregateError);
-        scope.assert.deepEqual(shutdown.errors, [ shutdownError ]);
-        return scope.assert.collect();
-    }),
-    test('attempts every disposer and immediately disposes registrations after stop', function (scope) {
-        const observation = createExecutionObservation();
-        const stopped: string[] = [];
-        observation.register(function failingDisposal() {
-            stopped.push('first');
-            throw new Error('disposal sentinel');
-        });
-        observation.register(function independentDisposal() {
-            stopped.push('second');
-        });
-        scope.assert.throws(observation.stop, { message: 'Execution observation shutdown failed.' });
-        observation.register(function lateDisposal() {
-            stopped.push('late');
-        });
-        observation.stop();
-        scope.assert.deepEqual(stopped, [ 'first', 'second', 'late' ]);
         return scope.assert.collect();
     })
 ]);

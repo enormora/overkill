@@ -1,5 +1,6 @@
-import { Socket } from 'node:net';
+import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 import { runIfMain } from '#test-runner';
+import { createStoredValue } from '../stored-value.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import type { ResourceCheckOwner, ResourceCheckSnapshot } from '../resource-check-protocol.ts';
@@ -7,9 +8,22 @@ import type { ResourceCheckFrame } from './resource-check-channel.ts';
 import {
     createResourceCheckRegistry,
     type ResourceCheckRegistry,
-    type ResourceCheckSend
+    type ResourceCheckSend,
+    type ResourceCheckConnection
 } from './resource-check-registry.ts';
 
+type RegistryConnection = ResourceCheckConnection & { readonly destroy: () => void; };
+function connection(): RegistryConnection {
+    const destroyed = createStoredValue(false);
+    return {
+        get destroyed() {
+            return destroyed.read();
+        },
+        destroy() {
+            destroyed.write(true);
+        }
+    };
+}
 const work = createDefaultWorkId({ file: null, suite: [], title: 'consumer', params: null });
 const otherWork = createDefaultWorkId({ file: null, suite: [], title: 'other consumer', params: null });
 const attempt = { kind: 'attempt', work, attempt: { index: 0 } } as const;
@@ -25,16 +39,18 @@ const snapshot: ResourceCheckSnapshot = {
     status: { kind: 'complete' }
 };
 type Scenario = {
+    readonly clock: DeterministicClock;
     readonly registry: ResourceCheckRegistry;
     readonly owner: ResourceCheckOwner;
-    readonly socket: Socket;
-    readonly sibling: Socket;
+    readonly socket: RegistryConnection;
+    readonly sibling: RegistryConnection;
     readonly send: ResourceCheckSend;
     readonly sent: () => readonly ResourceCheckFrame[];
 };
 async function registeredOwner(scope: TestScope, resourceScope: ResourceCheckOwner['scope']): Promise<Scenario> {
-    const registry = createResourceCheckRegistry(owner.run);
-    const sockets = { owner: new Socket(), sibling: new Socket() };
+    const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+    const registry = createResourceCheckRegistry(owner.run, clock);
+    const sockets = { owner: connection(), sibling: connection() };
     const frames: ResourceCheckFrame[] = [];
     const registered = { ...owner, scope: resourceScope };
     scope.cleanup(function closeSockets() {
@@ -51,6 +67,7 @@ async function registeredOwner(scope: TestScope, resourceScope: ResourceCheckOwn
         consumers: [ work ]
     });
     return {
+        clock,
         registry,
         owner: registered,
         socket: sockets.owner,
@@ -106,7 +123,7 @@ async function checkpointOwner(scenario: Scenario): Promise<void> {
 async function finalizeInterval(
     scenario: Scenario,
     interval: ResourceCheckSnapshot['interval'],
-    socket: Socket
+    socket: RegistryConnection
 ): Promise<void> {
     await scenario.registry.receive(socket, scenario.send, { kind: 'finalize', request: 'finalize', interval });
 }
@@ -124,6 +141,54 @@ async function rejectForeignAcknowledgement(scope: TestScope, scenario: Scenario
     scope.assert.equal(scenario.sent().length, 1);
 }
 export const testNode = suite('resource check owner registry', [
+    test('flushes empty registries and ignores server response frames', async function (scope: TestScope) {
+        const registry = createResourceCheckRegistry(
+            owner.run,
+            createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
+        );
+        const socket = connection();
+        const frames: ResourceCheckFrame[] = [];
+        const send: ResourceCheckSend = function collect(frame) {
+            frames.push(frame);
+        };
+        await registry.receive(socket, send, { kind: 'result', request: 'ignored', snapshots: [], errors: [] });
+        await registry.receive(socket, send, { kind: 'flush', request: 'flush' });
+        scope.assert.deepEqual(frames, [ { kind: 'result', request: 'flush', snapshots: [], errors: [] } ]);
+        return scope.assert.collect();
+    }),
+    test('delivers retained checkpoints to registered observers', async function (scope: TestScope) {
+        const scenario = await registeredOwner(scope, 'per-run');
+        const observed: ResourceCheckSnapshot[] = [];
+        scenario.registry.observe(function checkpoint(value) {
+            observed.push(value);
+        });
+        await checkpointOwner(scenario);
+        scope.assert.deepEqual(observed, [ snapshot ]);
+        return scope.assert.collect();
+    }),
+    ...([ 'per-case', 'per-run' ] as const).map(function (resourceScope) {
+        return test(
+            `routes ${resourceScope} stops only to eligible connected consumers`,
+            async function (scope: TestScope) {
+                const scenario = await registeredOwner(scope, resourceScope);
+                const recipients: string[] = [];
+                scenario.registry.connect(scenario.socket, function deliver() {
+                    recipients.push('owner');
+                });
+                scenario.registry.connect(scenario.sibling, function deliver() {
+                    recipients.push('sibling');
+                });
+                await scenario.registry.receive(scenario.socket, scenario.send, {
+                    kind: 'stop',
+                    owner: scenario.owner,
+                    interval: attempt,
+                    cause: 'stopped'
+                });
+                scope.assert.deepEqual(recipients, resourceScope === 'per-case' ? [ 'owner' ] : [ 'owner', 'sibling' ]);
+                return scope.assert.collect();
+            }
+        );
+    }),
     ...invalidFrames.map(function invalidFrame(testCase) {
         return test(testCase.title, async function (scope) {
             const scenario = await registeredOwner(scope, 'per-run');
@@ -176,7 +241,9 @@ export const testNode = suite('resource check owner registry', [
     }),
     test('reports finalization acknowledgements that never arrive', async function (scope) {
         const scenario = await registeredOwner(scope, 'per-run');
-        await finalizeInterval(scenario, attempt, scenario.socket);
+        const waiting = finalizeInterval(scenario, attempt, scenario.socket);
+        scenario.clock.advanceByMilliseconds(2000);
+        await waiting;
         const response = scenario.sent()[1];
         scope.assert.true(
             response?.kind === 'result' && response

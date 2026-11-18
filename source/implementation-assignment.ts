@@ -11,8 +11,17 @@ import {
     type ImplementationActivation,
     type ImplementationParticipant
 } from './implementation-participant.ts';
-import type { ImplementationGraph } from './implementation-graph.ts';
+import type {
+    ImplementationGraph,
+    GraphPreparation,
+    verifyImplementationGraph as graphVerification,
+    withImplementationGraph as graphDelivery
+} from './implementation-graph.ts';
 
+export type ImplementationAssignmentGraph = {
+    readonly verifyImplementationGraph: typeof graphVerification;
+    readonly withImplementationGraph: typeof graphDelivery;
+};
 export type ImplementationAssignment = Pick<ImplementationParticipant, 'binding' | 'key' | 'role' | 'scope'> & {
     readonly facts: ImplementationFacts;
 };
@@ -43,22 +52,23 @@ export function assignmentFacts(request: ImplementationAssignmentRequest): reado
     });
 }
 
-export async function prepareImplementationAssignments(
-    request: ImplementationAssignmentRequest
+export async function prepareImplementationAssignmentGraph(
+    request: ImplementationAssignmentRequest,
+    prepareGraph: GraphPreparation['prepare']
 ): Promise<PreparedImplementationAssignments> {
     request.signal.throwIfAborted();
     const assignments = assignmentFacts(request);
-    const { prepareImplementationGraph } = await import('./implementation-graph.ts');
-    const graph = await prepareImplementationGraph(assignments.map(function facts(assignment) {
+    const graph = await prepareGraph(assignments.map(function facts(assignment) {
         return assignment.facts;
     }));
     request.signal.throwIfAborted();
     return Object.freeze({ assignments: Object.freeze(assignments), graph });
 }
 
-export async function withImplementationAdmission<Value>(
+export async function admitImplementationAssignments<Value>(
     request: ImplementationAssignmentRequest & { readonly prepared: PreparedImplementationAssignments; },
-    operation: (activations: readonly ImplementationActivation[]) => Promise<Value>
+    operation: (activations: readonly ImplementationActivation[]) => Promise<Value>,
+    loadGraph: () => Promise<ImplementationAssignmentGraph>
 ): Promise<Value> {
     request.signal.throwIfAborted();
     const assignments = assignmentFacts(request);
@@ -79,11 +89,7 @@ export async function withImplementationAdmission<Value>(
     ) {
         throw new TypeError('Implementation assignments changed; prepare and collect a new run.');
     }
-    const { verifyImplementationGraph, withImplementationGraph } = await withRunnerInfrastructure(
-        async function graph() {
-            return await import('./implementation-graph.ts');
-        }
-    );
+    const { verifyImplementationGraph, withImplementationGraph } = await loadGraph();
     await withRunnerInfrastructure(async function verify() {
         await verifyImplementationGraph(
             request.prepared.graph,
@@ -111,23 +117,10 @@ export async function withImplementationAdmission<Value>(
     });
 }
 
-export async function withPreparedImplementationAssignments<Value>(
-    request: ImplementationAssignmentRequest & { readonly prepared: PreparedImplementationAssignments; },
-    operation: () => Promise<Value>
-): Promise<Value> {
-    return await withImplementationAdmission(request, async function activate(activations) {
-        return await withImplementationActivations(activations, operation);
-    });
-}
-
 export type ImplementationPreparationSession = {
     readonly prepare: (request: ImplementationAssignmentRequest) => Promise<PreparedImplementationAssignments>;
 };
-export async function createImplementationPreparationSession(): Promise<ImplementationPreparationSession> {
-    const { createImplementationGraphPreparation } = await withRunnerInfrastructure(async function graph() {
-        return await import('./implementation-graph.ts');
-    });
-    const preparation = createImplementationGraphPreparation();
+export function createPreparedAssignmentSession(preparation: GraphPreparation): ImplementationPreparationSession {
     return {
         async prepare(request) {
             request.signal.throwIfAborted();
@@ -141,4 +134,38 @@ export async function createImplementationPreparationSession(): Promise<Implemen
             return { assignments, graph };
         }
     };
+}
+
+export async function prepareImplementationAssignments(
+    request: ImplementationAssignmentRequest
+): Promise<PreparedImplementationAssignments> {
+    return await prepareImplementationAssignmentGraph(request, async function prepare(facts) {
+        const { prepareImplementationGraph } = await import('./implementation-graph.ts');
+        return await prepareImplementationGraph(facts);
+    });
+}
+export async function withImplementationAdmission<Value>(
+    request: ImplementationAssignmentRequest & { readonly prepared: PreparedImplementationAssignments; },
+    operation: (activations: readonly ImplementationActivation[]) => Promise<Value>
+): Promise<Value> {
+    return await admitImplementationAssignments(request, operation, async function loadGraph() {
+        return await withRunnerInfrastructure(async function graph() {
+            return await import('./implementation-graph.ts');
+        });
+    });
+}
+export async function createImplementationPreparationSession(): Promise<ImplementationPreparationSession> {
+    const { createImplementationGraphPreparation } = await withRunnerInfrastructure(async function graph() {
+        return await import('./implementation-graph.ts');
+    });
+    return createPreparedAssignmentSession(createImplementationGraphPreparation());
+}
+
+export async function withPreparedImplementationAssignments<Value>(
+    request: ImplementationAssignmentRequest & { readonly prepared: PreparedImplementationAssignments; },
+    operation: () => Promise<Value>
+): Promise<Value> {
+    return await withImplementationAdmission(request, async function activate(activations) {
+        return await withImplementationActivations(activations, operation);
+    });
 }

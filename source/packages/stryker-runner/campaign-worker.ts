@@ -69,10 +69,17 @@ function registeredRoot(roots: ReadonlyMap<'sandbox', string>): string {
     return sandbox;
 }
 
-export function createCampaignWorker(
-    baselines: Readonly<Map<string, CampaignBaseline>>,
-    campaigns: Readonly<Map<string, string>>
-): CampaignWorker {
+export type CampaignWorkerRuntime = {
+    readonly canonicalRoot: (path: string) => Promise<string>;
+    readonly identify: () => string;
+    readonly policy: typeof initializeMutationPolicy;
+    readonly execution: typeof createOwnedExecution;
+};
+type CampaignState = {
+    readonly baselines: Readonly<Map<string, CampaignBaseline>>;
+    readonly campaigns: Readonly<Map<string, string>>;
+};
+export function createCampaignSession(state: CampaignState, runtime: CampaignWorkerRuntime): CampaignWorker {
     const cancellation = new AbortController();
     const ownership = {
         root: new Map<'sandbox', string>(),
@@ -86,10 +93,10 @@ export function createCampaignWorker(
             throw new Error('Campaign worker is already registered.');
         }
         ownership.registering.add('started');
-        const root = await realpath(sandbox);
+        const root = await runtime.canonicalRoot(sandbox);
         ownership.root.set('sandbox', root);
-        const campaign = campaigns.get(root) ?? randomUUID();
-        campaigns.set(root, campaign);
+        const campaign = state.campaigns.get(root) ?? runtime.identify();
+        state.campaigns.set(root, campaign);
         return { kind: 'registered', campaign };
     }
     async function release(): Promise<CampaignResponse> {
@@ -116,7 +123,7 @@ export function createCampaignWorker(
         timeoutMilliseconds: number
     ): Promise<CampaignResponse> {
         validateSession(request);
-        const execution = ownership.session.get('active') ?? createOwnedExecution(request.session);
+        const execution = ownership.session.get('active') ?? runtime.execution(request.session);
         ownership.session.set('active', execution);
         ownership.sessionInput.set('active', request.session);
         return await execution.run({
@@ -133,7 +140,7 @@ export function createCampaignWorker(
         if (request.sandbox.root !== cwd || ownership.authority.has('frozen')) {
             throw new Error('Campaign policy registration is invalid.');
         }
-        const policy = await initializeMutationPolicy({
+        const policy = await runtime.policy({
             cwd,
             sandbox: request.sandbox,
             settings: parseRunnerOptions(request.settings),
@@ -165,10 +172,10 @@ export function createCampaignWorker(
             return await resolvePolicy(request, signal);
         }
         if (request.kind === 'publish') {
-            return publishBaseline(baselines, sandbox, request.baseline);
+            return publishBaseline(state.baselines, sandbox, request.baseline);
         }
         if (request.kind === 'fetch') {
-            return fetchBaseline(baselines, sandbox);
+            return fetchBaseline(state.baselines, sandbox);
         }
         return await invoke(request, signal, invocationTimeout(timeoutMilliseconds));
     }
@@ -191,4 +198,16 @@ export function createCampaignWorker(
             await ownership.session.get('active')?.dispose();
         }
     };
+}
+
+export function createCampaignWorker(
+    baselines: Readonly<Map<string, CampaignBaseline>>,
+    campaigns: Readonly<Map<string, string>>
+): CampaignWorker {
+    return createCampaignSession({ baselines, campaigns }, {
+        canonicalRoot: realpath,
+        identify: randomUUID,
+        policy: initializeMutationPolicy,
+        execution: createOwnedExecution
+    });
 }

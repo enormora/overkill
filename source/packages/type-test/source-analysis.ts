@@ -1,35 +1,27 @@
-import type * as CompilerApi from 'typescript-beta/async';
 import type * as TypeScript from 'typescript-beta/ast';
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
-import type { CompilerSyntax } from './installed-compiler.ts';
-import { compilerFileSystem } from './compiler-file-system.ts';
-
-export type SourceAnalysis = {
-    readonly compiler: CompilerSyntax;
-    readonly checker: CompilerApi.Checker;
-    readonly program: CompilerApi.Program;
-};
+import type { SourceAnalysis, AnalyzedSymbol } from './source-analysis-port.ts';
 
 const programSymbols = new WeakMap<
-    CompilerApi.Program,
-    WeakMap<TypeScript.Node, Promise<CompilerApi.Symbol | undefined>>
+    SourceAnalysis['program'],
+    WeakMap<TypeScript.Node, Promise<AnalyzedSymbol | undefined>>
 >();
 
-function sourceSymbols(analysis: SourceAnalysis): WeakMap<TypeScript.Node, Promise<CompilerApi.Symbol | undefined>> {
+function sourceSymbols(analysis: SourceAnalysis): WeakMap<TypeScript.Node, Promise<AnalyzedSymbol | undefined>> {
     const existing = programSymbols.get(analysis.program);
     if (existing !== undefined) {
         return existing;
     }
-    const cache = new WeakMap<TypeScript.Node, Promise<CompilerApi.Symbol | undefined>>();
+    const cache = new WeakMap<TypeScript.Node, Promise<AnalyzedSymbol | undefined>>();
     programSymbols.set(analysis.program, cache);
     return cache;
 }
 
 async function canonicalSourceFile(analysis: SourceAnalysis, path: string): Promise<TypeScript.SourceFile | undefined> {
-    const canonical = compilerFileSystem.realpath(path);
+    const canonical = analysis.realpath(path);
     const names = await analysis.program.getSourceFileNames();
     const matches = names.filter(function sameFile(name) {
-        return compilerFileSystem.realpath(name) === canonical;
+        return analysis.realpath(name) === canonical;
     });
     if (matches.length > 1) {
         throw new UnsupportedEvidenceError(`Callback source has ambiguous project identities: ${path}`, undefined);
@@ -68,12 +60,12 @@ export async function loadSourceSymbols(
     if (symbols.length !== nodes.length) {
         throw new Error('Incomplete compiler symbol evidence.');
     }
-    const aliases = new Map<CompilerApi.Symbol, Promise<CompilerApi.Symbol | undefined>>();
+    const aliases = new Map<AnalyzedSymbol, Promise<AnalyzedSymbol | undefined>>();
     const queries = nodes.map(async function cacheSymbol(node, index) {
         const symbol = symbols[index];
         const isAlias = symbol?.flags === analysis.compiler.SymbolFlags.Alias;
         const lookup = isAlias
-            ? aliases.get(symbol) ?? analysis.checker.getAliasedSymbol(symbol)
+            ? aliases.get(symbol) ?? symbol.alias()
             : Promise.resolve(symbol);
         if (isAlias) {
             aliases.set(symbol, lookup);
@@ -98,20 +90,20 @@ export async function originalSourceFile(
 async function referencedSymbol(
     analysis: SourceAnalysis,
     node: TypeScript.Node
-): Promise<CompilerApi.Symbol | undefined> {
+): Promise<AnalyzedSymbol | undefined> {
     const location = analysis.compiler.isIdentifier(node) ? node.parent : node;
     const symbol = await (analysis.compiler.isShorthandPropertyAssignment(location)
         ? analysis.checker.getShorthandAssignmentValueSymbol(location)
         : analysis.checker.getSymbolAtLocation(node));
     return symbol?.flags === analysis.compiler.SymbolFlags.Alias
-        ? await analysis.checker.getAliasedSymbol(symbol)
+        ? await symbol.alias()
         : symbol;
 }
 
 export async function sourceSymbol(
     analysis: SourceAnalysis,
     node: TypeScript.Node
-): Promise<CompilerApi.Symbol | undefined> {
+): Promise<AnalyzedSymbol | undefined> {
     const cache = sourceSymbols(analysis);
     const existing = cache.get(node);
     if (existing !== undefined) {
@@ -130,7 +122,9 @@ export function sourceChildren(node: TypeScript.Node): readonly TypeScript.Node[
     return children;
 }
 
-export async function sourceDeclarations(symbol: CompilerApi.Symbol): Promise<readonly TypeScript.Declaration[]> {
+export async function sourceDeclarations(
+    symbol: Pick<AnalyzedSymbol, 'declarations'>
+): Promise<readonly TypeScript.Declaration[]> {
     const declarations = await Promise.all(symbol.declarations.map(async function resolveDeclaration(handle) {
         return await handle.resolve();
     }));

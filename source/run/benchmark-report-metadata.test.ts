@@ -8,7 +8,7 @@ import { createRunFacts } from './run-facts.ts';
 import { withBenchmarkErrorMetadata } from './benchmark-report-metadata.ts';
 import type { RunCommand, ResolvedRun } from './run-types.ts';
 
-function metadataCommand(processModel: 'supervised-process' | 'worker-pool'): RunCommand {
+export function metadataCommand(processModel: 'supervised-process' | 'worker-pool'): RunCommand {
     return {
         config: normalizeConfig({
             profiles: {

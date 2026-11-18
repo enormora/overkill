@@ -1,4 +1,4 @@
-import { createClock } from '@enormora/clock';
+import { createDeterministicClock } from '@enormora/clock';
 import {
     createRoot,
     createTestPlan,
@@ -22,7 +22,7 @@ import {
     type CalibrationResource,
     type BenchmarkExecutionResult
 } from '../packages/bench/bench.entry-point.ts';
-import { attachmentFixtureForWork } from './attachment-fixture.ts';
+import { inlineAttachmentFixture } from './attachment-fixture.ts';
 
 const referenceThroughput = 400;
 const lifecycle = { garbageCollection: 'off', warmupSamples: 0, cooldown: { mode: 'off' } } as const;
@@ -59,7 +59,7 @@ export async function executeMachine(
     node: TestCase,
     benchmarkEnvironment: BenchmarkExecutionEnvironment
 ): Promise<RunResult> {
-    const clock = createClock();
+    const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
     const execute = createExecute({
         wallClock: clock,
         asyncLeakDiagnostics: 'enabled',
@@ -137,7 +137,7 @@ export async function recordedMachine(
     });
     const work = preview.perTest[0]?.workId;
     scope.require.defined(work);
-    const fixture = await attachmentFixtureForWork(scope, defaultAttachmentLimits, [ work ]);
+    const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
     const result = await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
         return await fixture.execution.runAttempt(work, { index: 0 }, async function measuredAttempt() {
             return await measuredMachine(cost, machineClass, value, function () {

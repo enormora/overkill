@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { createNodeFileStore } from '../file-store.ts';
-import { readCorpusEntries, type CorpusCandidate } from './corpus-source.ts';
+import { readCorpusEntries, type CorpusCandidate, type CorpusCandidates } from './corpus-source.ts';
 import { inspectCorpusInput } from './corpus-codec.ts';
 import {
     CorpusOperationError,
@@ -11,13 +11,19 @@ import {
     type CorpusWriteResult
 } from './corpus-types.ts';
 
+export type CorpusRuntime = {
+    readonly read: (request: CorpusRequest) => Promise<CorpusCandidates>;
+    readonly inspect: typeof inspectCorpusInput;
+    readonly create: (destination: string, content: string) => Promise<void>;
+};
 const indentation = 2;
 
 async function inspectCandidate(
     request: CorpusRequest,
-    candidate: CorpusCandidate
+    candidate: CorpusCandidate,
+    runtime: CorpusRuntime
 ): Promise<CorpusEntryInspection> {
-    const decoded = await inspectCorpusInput(request, candidate.entry, false);
+    const decoded = await runtime.inspect(request, candidate.entry, false);
     return {
         entryId: candidate.id,
         witness: decoded.witness,
@@ -36,9 +42,9 @@ async function deliverPreview(
     }
 }
 
-async function publish(destination: string, content: string): Promise<void> {
+async function publish(destination: string, content: string, runtime: CorpusRuntime): Promise<void> {
     try {
-        await createNodeFileStore().create(destination, content);
+        await runtime.create(destination, content);
     } catch (error: unknown) {
         const code = error instanceof Error && Reflect.get(error, 'code') === 'EEXIST'
             ? 'destination-conflict'
@@ -50,13 +56,14 @@ async function publish(destination: string, content: string): Promise<void> {
 async function publishCandidate(
     request: CorpusWriteRequest,
     candidate: CorpusCandidate,
-    migrate: boolean
+    migrate: boolean,
+    runtime: CorpusRuntime
 ): Promise<CorpusWriteResult> {
     const destination = path.resolve(request.cwd, request.destination);
     if (destination === path.resolve(request.cwd, request.source.path)) {
         throw new CorpusOperationError('Source and destination must differ.', { cause: null }, 'destination-conflict');
     }
-    const decoded = await inspectCorpusInput(request, candidate.entry, migrate);
+    const decoded = await runtime.inspect(request, candidate.entry, migrate);
     const entryId = candidate.id;
     const entry = { entryId, witness: decoded.witness, preview: decoded.output };
     const content = `${JSON.stringify(decoded.witness, null, indentation)}\n`;
@@ -64,12 +71,16 @@ async function publishCandidate(
         source: { entryId, witness: candidate.entry, preview: decoded.source },
         output: entry
     });
-    await publish(destination, content);
+    await publish(destination, content, runtime);
     return { destination, entry };
 }
 
-async function writeCorpus(request: CorpusWriteRequest, migrate: boolean): Promise<CorpusWriteResult> {
-    const source = await readCorpusEntries(request);
+async function writeCorpus(
+    request: CorpusWriteRequest,
+    migrate: boolean,
+    runtime: CorpusRuntime
+): Promise<CorpusWriteResult> {
+    const source = await runtime.read(request);
     const [ candidate ] = source.entries;
     if (
         candidate === undefined || source.entries.length !== 1 ||
@@ -81,16 +92,16 @@ async function writeCorpus(request: CorpusWriteRequest, migrate: boolean): Promi
             'selection'
         );
     }
-    return await publishCandidate(request, candidate, migrate);
+    return await publishCandidate(request, candidate, migrate, runtime);
 }
 
-export async function inspectCorpus(request: CorpusRequest): Promise<CorpusInspection> {
-    const source = await readCorpusEntries(request);
+async function inspectCorpusWithRuntime(request: CorpusRequest, runtime: CorpusRuntime): Promise<CorpusInspection> {
+    const source = await runtime.read(request);
     const entries = [];
     const diagnostics = Array.from(source.diagnostics);
     for (const candidate of source.entries) {
         try {
-            entries.push(await inspectCandidate(request, candidate));
+            entries.push(await inspectCandidate(request, candidate, runtime));
         } catch (error: unknown) {
             if (request.source.kind === 'cache-entry' || candidate.id === null) {
                 throw error;
@@ -101,10 +112,39 @@ export async function inspectCorpus(request: CorpusRequest): Promise<CorpusInspe
     return { sourcePath: path.resolve(request.cwd, request.source.path), entries, diagnostics };
 }
 
-export async function promoteWitness(request: CorpusWriteRequest): Promise<CorpusWriteResult> {
-    return await writeCorpus(request, false);
+export type CorpusOperations = {
+    readonly inspect: (request: CorpusRequest) => Promise<CorpusInspection>;
+    readonly promote: (request: CorpusWriteRequest) => Promise<CorpusWriteResult>;
+    readonly migrate: (request: CorpusWriteRequest) => Promise<CorpusWriteResult>;
+};
+export function createCorpusOperations(runtime: CorpusRuntime): CorpusOperations {
+    return {
+        async inspect(request: CorpusRequest) {
+            return await inspectCorpusWithRuntime(request, runtime);
+        },
+        async promote(request: CorpusWriteRequest) {
+            return await writeCorpus(request, false, runtime);
+        },
+        async migrate(request: CorpusWriteRequest) {
+            return await writeCorpus(request, true, runtime);
+        }
+    };
 }
-
+function nativeCorpusOperations(): CorpusOperations {
+    return createCorpusOperations({
+        read: readCorpusEntries,
+        inspect: inspectCorpusInput,
+        async create(destination, content) {
+            await createNodeFileStore().create(destination, content);
+        }
+    });
+}
+export async function inspectCorpus(request: CorpusRequest): Promise<CorpusInspection> {
+    return await nativeCorpusOperations().inspect(request);
+}
+export async function promoteWitness(request: CorpusWriteRequest): Promise<CorpusWriteResult> {
+    return await nativeCorpusOperations().promote(request);
+}
 export async function migrateCorpus(request: CorpusWriteRequest): Promise<CorpusWriteResult> {
-    return await writeCorpus(request, true);
+    return await nativeCorpusOperations().migrate(request);
 }

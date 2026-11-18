@@ -6,7 +6,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
-import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defineFixedReporter } from '../test-support/reporter-definition.ts';
 import {
     defaultMicrotestProfile,
@@ -139,7 +139,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
                 const importFailureResult = await runOrchestrator.run(createRunCommand({
                     config: supervisedCollectionConfig,
                     cwd: process.cwd(),
@@ -204,7 +204,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const lifecycle = createReporterLifecycleRecorder();
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand({
                     config: defaultRunConfig({
                         profiles: supervisedCollectionConfig.profiles,
@@ -238,7 +238,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
                 const result = await runOrchestrator.runWithReporterDelivery(createRunCommand({
                     config: defaultRunConfig({
                         profiles: supervisedCollectionConfig.profiles,

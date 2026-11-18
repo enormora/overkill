@@ -57,11 +57,19 @@ function propertySeeds(
     return { project: definition.project, sources };
 }
 
-function configurationChecks(definition: ConfigDefinition<string>): readonly TestCase[] {
+export type ConfigTestOperations = {
+    readonly inventory: typeof inventoryCheck;
+    readonly file: typeof fileCheck;
+    readonly fixture: typeof fixtureCheck;
+};
+function configurationChecks(
+    definition: ConfigDefinition<string>,
+    operations: ConfigTestOperations
+): readonly TestCase[] {
     const inventories = definition.inventories.flatMap(function inventory(entry) {
         return selectedConfigs(definition, entry.configs).map(function variant([ name, source ]) {
             return configCase(`${entry.title}: ${name}`, 'Rule inventory', async function run(scope) {
-                await inventoryCheck(definition, source, entry, scope);
+                await operations.inventory(definition, source, entry, scope);
                 return null;
             });
         });
@@ -69,7 +77,7 @@ function configurationChecks(definition: ConfigDefinition<string>): readonly Tes
     const files = definition.files.flatMap(function file(entry) {
         return selectedConfigs(definition, entry.configs).map(function variant([ name, source ]) {
             return configCase(`${entry.title}: ${name}`, 'Effective configuration', async function run(scope) {
-                await fileCheck(definition, source, entry, scope);
+                await operations.file(definition, source, entry, scope);
                 return null;
             });
         });
@@ -77,11 +85,14 @@ function configurationChecks(definition: ConfigDefinition<string>): readonly Tes
     return [ ...inventories, ...files ];
 }
 
-function configurationFixtures(definition: ConfigDefinition<string>): readonly TestCase[] {
+function configurationFixtures(
+    definition: ConfigDefinition<string>,
+    operations: ConfigTestOperations
+): readonly TestCase[] {
     return definition.fixtures.flatMap(function fixture(entry) {
         return selectedConfigs(definition, entry.configs).map(function variant([ name, source ]) {
             return configCase(`${entry.title}: ${name}`, 'Config fixture', async function run(scope) {
-                return await fixtureCheck(definition, source, entry, scope);
+                return await operations.fixture(definition, source, entry, scope);
             });
         });
     });
@@ -98,17 +109,24 @@ function configurationProperties(definition: ConfigDefinition<string>): readonly
     });
 }
 
-export function defineConfigTests<const Name extends string>(definition: ConfigDefinition<Name>): ConfigTests {
+export function createConfigTests<const Name extends string>(
+    definition: ConfigDefinition<Name>,
+    operations: ConfigTestOperations
+): ConfigTests {
     validateConfigDefinition(definition);
     return {
         checks: defineMacro(function checks() {
-            return suite(definition.name, configurationChecks(definition));
+            return suite(definition.name, configurationChecks(definition, operations));
         }),
         fixtures: defineMacro(function fixtures() {
-            return suite(definition.name, configurationFixtures(definition));
+            return suite(definition.name, configurationFixtures(definition, operations));
         }),
         properties: defineMacro(function properties() {
             return suite(definition.name, configurationProperties(definition));
         })
     };
+}
+
+export function defineConfigTests<const Name extends string>(definition: ConfigDefinition<Name>): ConfigTests {
+    return createConfigTests(definition, { inventory: inventoryCheck, file: fileCheck, fixture: fixtureCheck });
 }

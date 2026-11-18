@@ -1,7 +1,8 @@
-import { readFile } from 'node:fs/promises';
 import { isDeepStrictEqual } from 'node:util';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
+import historicalState from './fixtures/property-graph-state-v1.json' with { type: 'json' };
+import historicalCustom from './fixtures/property-custom-v1.json' with { type: 'json' };
 import { defineCodec } from './property-codec.ts';
 import { capturePropertyInput, decodePropertyInput, migratePropertyInput } from './property-graph.ts';
 import { createPropertyWork, propertyExhaustion } from './property-work.ts';
@@ -11,7 +12,7 @@ function consume(): void {
 }
 
 async function fixture(name: string): Promise<unknown> {
-    return JSON.parse(await readFile(new URL(`./fixtures/${name}.json`, import.meta.url), 'utf8'));
+    return structuredClone(name === 'property-custom-v1' ? historicalCustom : historicalState);
 }
 
 const dateCodec = defineCodec<Date>({
@@ -171,7 +172,7 @@ export const testNode = suite('property decoder compatibility', [
     ),
     test('migration preserves cancellation and work exhaustion', async function (scope) {
         const input = await fixture('property-custom-v1');
-        const work = createPropertyWork({ ...defaultPropertyPolicy, maxWork: 1 }, AbortSignal.timeout(60_000));
+        const work = createPropertyWork({ ...defaultPropertyPolicy, maxWork: 1 }, scope.signal);
         try {
             migratePropertyInput(input, dateCodec, work.context.consumeWork);
             throw new Error('Migration must exhaust work.');

@@ -9,7 +9,7 @@ import {
     withBaselineVerdicts,
     type BaselineCaseEnd
 } from './baseline-outcomes.ts';
-import { createOrdinaryBaselineStore, type OrdinaryBaselineStore } from './baseline-store.ts';
+import type { OrdinaryBaselineStore } from './baseline-store.ts';
 import {
     baselineFilename,
     ordinaryBaselineIdentity,
@@ -119,11 +119,7 @@ function createEvaluationState(
     };
 }
 export async function createOrdinaryBaselineWorkflow(input: BaselineWorkflowInput): Promise<OrdinaryBaselineWorkflow> {
-    const store = await createOrdinaryBaselineStore({
-        directory: input.policy.directory,
-        projectRoot: input.projectRoot,
-        maxBytes: input.maxBytes
-    });
+    const { store } = input;
     const entries = await store.list();
     const existing = new Map(
         entries

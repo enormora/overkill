@@ -1,6 +1,6 @@
 import type { BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { attachmentFixture, attachmentWork } from '../test-support/attachment-fixture.ts';
+import { inlineAttachmentFixture, attachmentWork } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
 import { workload } from './workload.ts';
@@ -55,7 +55,7 @@ export const testNode = suite('benchmark raw evidence', [
         return scope.assert.collect();
     }),
     test('records raw readings with provenance through the attachment coordinator', async function (scope: TestScope) {
-        const fixture = await attachmentFixture(scope, defaultAttachmentLimits);
+        const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ attachmentWork ]);
         const observations = sampleObservations();
         const recorded = await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
             return await fixture.execution.runAttempt(attachmentWork, { index: 0 }, async function ownedAttempt() {
@@ -79,12 +79,12 @@ export const testNode = suite('benchmark raw evidence', [
         return scope.assert.collect();
     }),
     test('reports attachment limits as omitted raw evidence', async function (scope) {
-        const fixture = await attachmentFixture(scope, {
+        const fixture = inlineAttachmentFixture({
             ...defaultAttachmentLimits,
             maxInlineBytes: 1,
             maxArtifactBytes: 1,
             maxScopeBytes: 1
-        });
+        }, [ attachmentWork ]);
         const observations = createMetricObservations();
         observations.append(availableMetric(3, { collector: 'custom', scope: 'custom', unit: 'bytes' }));
         const recorded = await runWithAttachmentExecution(fixture.execution, async function ownedRun() {

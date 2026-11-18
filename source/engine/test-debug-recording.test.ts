@@ -36,6 +36,73 @@ function completedAttempt(): DebugAttempt {
 }
 
 export const testNode = suite('debug recording boundaries', [
+    test('drops oversized timeline labels while preserving body completion', function (scope: TestScope) {
+        const attempt = createDebugAttempt(work);
+        attempt.assertion({ ...assertion, message: 'x'.repeat(11 * 1024 * 1024) });
+        attempt.completeBody({ kind: 'returned' });
+        scope.assert.deepEqual({
+            dropped: attempt.snapshot().dropped,
+            kinds: attempt.snapshot().timeline.map(function (entry) {
+                return entry.kind;
+            })
+        }, { dropped: 1, kinds: [ 'body-end' ] });
+        return scope.assert.collect();
+    }),
+    test('limits recording providers and ignores registration after completion', function (scope: TestScope) {
+        const attempt = createDebugAttempt(work);
+        for (let index = 0; index < 101; index += 1) {
+            attempt.includeRecording({
+                name: 'recording',
+                recorded() {
+                    return [ 42 ];
+                }
+            });
+        }
+        scope.assert.equal(attempt.recordingProviders().length, 100);
+        scope.assert.equal(attempt.snapshot().dropped, 1);
+        attempt.close();
+        attempt.includeRecording({
+            name: 'late',
+            recorded() {
+                throw new Error('Late provider must not run.');
+            }
+        });
+        scope.assert.equal(attempt.recordingProviders().length, 100);
+        return scope.assert.collect();
+    }),
+    test('rejects oversized provider metadata without exhausting later recordings', function (scope: TestScope) {
+        const attempt = createDebugAttempt(work);
+        attempt.includeRecording({
+            name: 'x'.repeat(11 * 1024 * 1024),
+            recorded() {
+                return [];
+            }
+        });
+        attempt.includeRecording({
+            name: 'retained',
+            recorded() {
+                return [ 42 ];
+            }
+        });
+        scope.assert.deepEqual(
+            attempt.recordingProviders().map(function (provider) {
+                return { name: provider.name, values: provider.recorded() };
+            }),
+            [ { name: 'retained', values: [ 42 ] } ]
+        );
+        scope.assert.equal(attempt.snapshot().dropped, 1);
+        return scope.assert.collect();
+    }),
+    test('ignores module observation belonging to a different active attempt', function (scope: TestScope) {
+        const attempt = createDebugAttempt(work);
+        const other = createDebugAttempt({ ...work, case: { ...work.case, title: 'other' } });
+        attempt.record('body-start', null);
+        debugAttempts.run(other, function () {
+            captureDebugModule(attempt, { ...moduleObservation, start: process.hrtime.bigint() });
+        });
+        scope.assert.deepEqual(attempt.snapshot().moduleLoads, []);
+        return scope.assert.collect();
+    }),
     test('a completed attempt ignores late trace evidence', function (scope: TestScope) {
         const attempt = completedAttempt();
         const snapshot = attempt.snapshot();

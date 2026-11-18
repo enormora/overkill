@@ -2,10 +2,40 @@ import type { Diagnostic } from 'typescript-beta/async';
 import type { TestPlan, RunResult } from '../engine/engine.entry-point.ts';
 import { parseAdapterFacts } from '../../config/adapter-facts.ts';
 import type { CollectedCheckerRun } from './checker-plan.ts';
-import { verifyFrozenProject, fingerprint, sourceAnalysis, type FrozenProject } from './frozen-project.ts';
+import {
+    verifyFrozenProject,
+    fingerprint,
+    typeAnalysis,
+    type FrozenProject
+} from './frozen-project.ts';
 import { collectOriginalAssertions, type OriginalAssertionPlan } from './original-assertions.ts';
 import { nativeCheckResult, type SiteEvidence } from './native-results.ts';
 import { evaluateSite } from './original-evidence.ts';
+
+import { createSourceAnalysis, type SourceAnalysis } from './source-analysis-port.ts';
+import { compilerFileSystem } from './compiler-file-system.ts';
+
+export function projectSourceAnalysis(project: FrozenProject): SourceAnalysis {
+    const { checker } = project.configured;
+    return createSourceAnalysis({
+        realpath: compilerFileSystem.realpath,
+        compiler: project.compiler.syntax,
+        program: project.program,
+        checker: {
+            getSymbolAtLocation: checker.getSymbolAtLocation.bind(checker),
+            getAliasedSymbol: checker.getAliasedSymbol.bind(checker),
+            getShorthandAssignmentValueSymbol: checker.getShorthandAssignmentValueSymbol.bind(checker),
+            async getResolvedSignature(node) {
+                const signature = await checker.getResolvedSignature(node);
+                return { declaration: signature.declaration };
+            },
+            async staticString(node) {
+                const value = await checker.getTypeAtLocation(node);
+                return value.isStringLiteralType() ? value.value : null;
+            }
+        }
+    });
+}
 
 function projectDiagnostic(diagnostic: Diagnostic): string {
     const position = diagnostic.startPosition;
@@ -36,7 +66,7 @@ async function checkOriginalAssertions(
 ): Promise<readonly SiteEvidence[]> {
     await validateProject(project);
     const checked: SiteEvidence[] = [];
-    const analysis = sourceAnalysis(project);
+    const analysis = typeAnalysis(project);
     for (const site of assertionPlan.sites) {
         checked.push(await evaluateSite(analysis, site, project.compiler.version));
     }
@@ -59,7 +89,7 @@ async function executeNative(
 }
 
 export async function collectProject(plan: TestPlan, project: FrozenProject): Promise<CollectedCheckerRun> {
-    const assertionPlan = await collectOriginalAssertions(sourceAnalysis(project), plan);
+    const assertionPlan = await collectOriginalAssertions(projectSourceAnalysis(project), plan);
     const compilerOptions = project.project.options;
     const configurationJson = JSON.stringify({
         options: compilerOptions,

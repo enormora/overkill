@@ -2,7 +2,7 @@ import { createDeterministicClock } from '@enormora/clock';
 import { z } from 'zod/v4';
 import { normalizeConfig } from '../config/config.ts';
 import type { ResolvedRunInput } from '../run/run-input-resolution.ts';
-import type { RunRecordExecutionDependencies } from '../run/recorded-run.ts';
+import type { RunRecordExecutionDependencies } from '../run/run-record-input.ts';
 import { createMemoryHistoryStorage } from './memory-history-storage.ts';
 import { defaultRunRequest } from './run-command-factory.ts';
 
@@ -51,6 +51,9 @@ export function runRecordPolicyFixture(persist: 'always' | 'on-demand', record: 
         input,
         dependencies: {
             createHistoryStorage: createMemoryHistoryStorage,
+            async readRunVersions(_engine, node) {
+                return { engine: null, node, packages: {} };
+            },
             async maintainHistory() {
                 return [];
             },

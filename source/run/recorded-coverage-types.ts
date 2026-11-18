@@ -1,5 +1,5 @@
 import type { RunResult } from '../engine/run-result.ts';
-import type { CoverageSession } from './coverage-session.ts';
+import type { CoverageSession } from './coverage-collection.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { RunRecordSession } from './run-record.ts';

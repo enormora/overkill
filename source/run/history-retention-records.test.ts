@@ -1,6 +1,9 @@
 import { runIfMain } from '#test-runner';
+import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
+import { withReplay } from './replay-context.ts';
+import { testNode as reconstruction } from './retention-catalog-policy.test.ts';
 import { selectHistoryRemovals } from './history-retention-records.ts';
 
 const now = '2026-10-30T00:00:00.000Z';
@@ -28,6 +31,53 @@ const catalog = {
     }))
 };
 export const testNode = suite('record and artifact retention', [
+    ...([ null, 'old-pass' ] as const).map(function (sourceRunId) {
+        return test(
+            `protects retained replay source ${String(sourceRunId)} during pruning`,
+            async function (scope: TestScope) {
+                await withReplay(
+                    { kind: 'witness', witness: propertyCorpusEntry, sourceRunId, moduleGraph: 'current' },
+                    null,
+                    async function () {
+                        const result = selectHistoryRemovals(catalog, '/state/runs', {
+                            ...defaultHistoryPolicy,
+                            detailedRunLimit: 0,
+                            runSummaryRetentionDays: 1,
+                            successfulArtifactRunLimit: 0
+                        }, now);
+                        scope.assert.deepEqual(
+                            result
+                                .removedRecords
+                                .toSorted(function alphabetical(left, right) {
+                                    return left.localeCompare(right);
+                                }),
+                            sourceRunId === null
+                                ? [
+                                    '/state/runs/boundary-fail.json',
+                                    '/state/runs/expired-error.json',
+                                    '/state/runs/old-pass.json'
+                                ]
+                                : [
+                                    '/state/runs/boundary-fail.json',
+                                    '/state/runs/expired-error.json'
+                                ]
+                        );
+                        scope.assert.deepEqual(
+                            result.removedArtifacts.toSorted(function alphabetical(left, right) {
+                                return left.localeCompare(right);
+                            }),
+                            sourceRunId === null
+                                ? [ '/state/runs/expired-error', '/state/runs/new-pass', '/state/runs/old-pass' ]
+                                : [ '/state/runs/expired-error', '/state/runs/new-pass' ]
+                        );
+                    }
+                );
+                return scope.assert.collect();
+            }
+        );
+    }),
+
+    reconstruction,
     test('unclassified artifact directories cannot be selected for deletion', function (scope: TestScope) {
         scope.assert.throws(function () {
             return selectHistoryRemovals({ ...catalog, metadata: new Map() }, '/state/runs', defaultHistoryPolicy, now);

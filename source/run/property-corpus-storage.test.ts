@@ -5,7 +5,6 @@ import { runIfMain } from '#test-runner';
 import { test, suite, type TestScope } from '../packages/test/test.entry-point.ts';
 import { propertyCorpusPolicySchema } from '../config/property-corpus.ts';
 import { propertyCorpusEntry as entry } from '../test-support/property-corpus.ts';
-import { testNode as cachePolicy } from './property-corpus-cache.test.ts';
 import { readPropertyCorpus, savePropertyCorpus } from './property-corpus-storage.ts';
 
 async function corpusDirectory(scope: TestScope): Promise<string> {
@@ -108,7 +107,6 @@ export const testNode = suite('property corpus storage', [
         }, { code: 'ENOTDIR' });
         return scope.assert.collect();
     }),
-    cachePolicy,
     test('recovers a corrupt local cache on the next save', async function (scope) {
         const directory = await corruptCorpus(scope);
         const policy = propertyCorpusPolicySchema.parse({});

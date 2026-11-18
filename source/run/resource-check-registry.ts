@@ -1,22 +1,27 @@
 import { randomUUID } from 'node:crypto';
-import { setTimeout as scheduleDeadline, clearTimeout as cancelDeadline } from 'node:timers';
-import type { Socket } from 'node:net';
+import type { Clock } from '@enormora/clock';
 import { match } from 'ts-pattern';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { resourceCheckSnapshotKey } from '../resource-check-snapshot.ts';
 import { workIdentityKey, type WorkId } from '../engine/identity.ts';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import type { ResourceCheckInterval, ResourceCheckOwner, ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import type { ResourceCheckFrame } from './resource-check-channel.ts';
 
+export type ResourceCheckConnection = { readonly destroyed: boolean; };
 export type ResourceCheckSend = (frame: ResourceCheckFrame) => void;
 type RegisteredOwner = {
     readonly owner: ResourceCheckOwner;
     readonly consumers: readonly WorkId[];
-    readonly socket: Socket;
+    readonly socket: ResourceCheckConnection;
     readonly send: ResourceCheckSend;
 };
-type PendingFinalization = { readonly socket: Socket; readonly finish: (errors: readonly string[]) => void; };
+type PendingFinalization = {
+    readonly socket: ResourceCheckConnection;
+    readonly finish: (errors: readonly string[]) => void;
+};
 type Registry = {
+    readonly clock: Clock;
     readonly run: string;
     readonly owners: OwnerRegistrations;
     readonly snapshots: Checkpoints;
@@ -41,11 +46,11 @@ function matchingAttempt(snapshot: ResourceCheckSnapshot, interval: ResourceChec
     return snapshot.interval.attempt.index === interval.attempt.index &&
         workIdentityKey(snapshot.interval.work) === workIdentityKey(interval.work);
 }
-function visibleTo(owner: RegisteredOwner, consumer: Socket): boolean {
+function visibleTo(owner: RegisteredOwner, consumer: ResourceCheckConnection): boolean {
     const local = owner.owner.scope === 'per-case' || owner.owner.scope === 'shared-per-worker';
     return !local || owner.socket === consumer;
 }
-function visibleSnapshots(state: Registry, consumer: Socket): readonly ResourceCheckSnapshot[] {
+function visibleSnapshots(state: Registry, consumer: ResourceCheckConnection): readonly ResourceCheckSnapshot[] {
     return Array.from(state.snapshots.values()).filter(function visible(snapshot) {
         const owner = state.owners.get(snapshot.owner.id);
         return owner !== undefined && visibleTo(owner, consumer);
@@ -64,7 +69,7 @@ function requiresFinalization(state: Registry, owner: RegisteredOwner, interval:
 }
 function register(
     state: Registry,
-    socket: Socket,
+    socket: ResourceCheckConnection,
     send: ResourceCheckSend,
     frame: Extract<ResourceCheckFrame, { readonly kind: 'register'; }>
 ): void {
@@ -85,7 +90,12 @@ function register(
     state.snapshots.set(resourceCheckSnapshotKey(snapshot), snapshot);
     state.listener.read()(snapshot);
 }
-function ownerFor(state: Registry, socket: Socket, id: string, interval: ResourceCheckInterval): RegisteredOwner {
+function ownerFor(
+    state: Registry,
+    socket: ResourceCheckConnection,
+    id: string,
+    interval: ResourceCheckInterval
+): RegisteredOwner {
     const owner = state.owners.get(id);
     if (owner?.socket !== socket) {
         throw new Error('Resource owner channel mismatch.');
@@ -95,7 +105,7 @@ function ownerFor(state: Registry, socket: Socket, id: string, interval: Resourc
     }
     return owner;
 }
-function checkpoint(state: Registry, socket: Socket, snapshot: ResourceCheckSnapshot): void {
+function checkpoint(state: Registry, socket: ResourceCheckConnection, snapshot: ResourceCheckSnapshot): void {
     const owner = ownerFor(state, socket, snapshot.owner.id, snapshot.interval);
     if (owner.owner.run !== snapshot.owner.run || owner.owner.scope !== snapshot.owner.scope) {
         throw new Error('Resource check execution mismatch.');
@@ -108,7 +118,11 @@ function checkpoint(state: Registry, socket: Socket, snapshot: ResourceCheckSnap
     state.snapshots.set(key, snapshot);
     state.listener.read()(snapshot);
 }
-function stop(state: Registry, socket: Socket, frame: Extract<ResourceCheckFrame, { readonly kind: 'stop'; }>): void {
+function stop(
+    state: Registry,
+    socket: ResourceCheckConnection,
+    frame: Extract<ResourceCheckFrame, { readonly kind: 'stop'; }>
+): void {
     const owner = ownerFor(state, socket, frame.owner.id, frame.interval);
     if (frame.interval.kind === 'lifetime' || owner.owner.scope === 'per-case') {
         state.stopped.add(owner.owner.id);
@@ -132,14 +146,16 @@ async function finalizeOwner(
 ): Promise<readonly string[]> {
     return new Promise(function awaitOwnerFinalization(resolve) {
         const request = randomUUID();
-        const timer = scheduleDeadline(function finalizationExpired() {
-            state.pending.delete(request);
-            resolve([ 'Resource owner finalization acknowledgement timed out.' ]);
-        }, finalizationMilliseconds);
+        const timer = withRunnerInfrastructure(function scheduleFinalization() {
+            return state.clock.setTimeout(function finalizationExpired() {
+                state.pending.delete(request);
+                resolve([ 'Resource owner finalization acknowledgement timed out.' ]);
+            }, finalizationMilliseconds);
+        });
         state.pending.set(request, {
             socket: owner.socket,
             finish(errors) {
-                cancelDeadline(timer);
+                state.clock.clearTimeout(timer);
                 state.pending.delete(request);
                 resolve(errors);
             }
@@ -150,7 +166,7 @@ async function finalizeOwner(
 async function finalize(
     state: Registry,
     frame: Extract<ResourceCheckFrame, { readonly kind: 'finalize'; }>,
-    socket: Socket,
+    socket: ResourceCheckConnection,
     send: ResourceCheckSend
 ): Promise<void> {
     const selected = Array.from(state.owners.values()).filter(function owning(owner) {
@@ -169,7 +185,7 @@ async function finalize(
 function admit(
     state: Registry,
     frame: Extract<ResourceCheckFrame, { readonly kind: 'admit'; }>,
-    socket: Socket,
+    socket: ResourceCheckConnection,
     send: ResourceCheckSend
 ): void {
     const rejected = Array.from(state.owners.values()).some(function unavailable(owner) {
@@ -185,7 +201,7 @@ function admit(
 }
 function finalized(
     state: Registry,
-    socket: Socket,
+    socket: ResourceCheckConnection,
     frame: Extract<ResourceCheckFrame, { readonly kind: 'finalized'; }>
 ): void {
     const request = state.pending.get(frame.request);
@@ -195,7 +211,7 @@ function finalized(
 }
 async function receive(
     state: Registry,
-    socket: Socket,
+    socket: ResourceCheckConnection,
     send: ResourceCheckSend,
     frame: ResourceCheckFrame
 ): Promise<void> {
@@ -230,7 +246,7 @@ async function receive(
             return undefined;
         });
 }
-function interruptOwner(state: Registry, socket: Socket, snapshot: ResourceCheckSnapshot): void {
+function interruptOwner(state: Registry, socket: ResourceCheckConnection, snapshot: ResourceCheckSnapshot): void {
     if (state.owners.get(snapshot.owner.id)?.socket !== socket || snapshot.status.kind !== 'open') {
         return;
     }
@@ -242,7 +258,7 @@ function interruptOwner(state: Registry, socket: Socket, snapshot: ResourceCheck
     state.snapshots.set(resourceCheckSnapshotKey(snapshot), interrupted);
     state.listener.read()(interrupted);
 }
-function disconnect(state: Registry, socket: Socket): void {
+function disconnect(state: Registry, socket: ResourceCheckConnection): void {
     state.sends.delete(socket);
     for (const snapshot of state.snapshots.values()) {
         interruptOwner(state, socket, snapshot);
@@ -256,12 +272,17 @@ function disconnect(state: Registry, socket: Socket): void {
 export type ResourceCheckRegistry = {
     readonly snapshots: () => readonly ResourceCheckSnapshot[];
     readonly observe: (listener: (snapshot: ResourceCheckSnapshot) => void) => void;
-    readonly connect: (socket: Socket, send: ResourceCheckSend) => void;
-    readonly disconnect: (socket: Socket) => void;
-    readonly receive: (socket: Socket, send: ResourceCheckSend, frame: ResourceCheckFrame) => Promise<void>;
+    readonly connect: (socket: ResourceCheckConnection, send: ResourceCheckSend) => void;
+    readonly disconnect: (socket: ResourceCheckConnection) => void;
+    readonly receive: (
+        socket: ResourceCheckConnection,
+        send: ResourceCheckSend,
+        frame: ResourceCheckFrame
+    ) => Promise<void>;
 };
-export function createResourceCheckRegistry(run: string): ResourceCheckRegistry {
+export function createResourceCheckRegistry(run: string, clock: Clock): ResourceCheckRegistry {
     const state: Registry = {
+        clock,
         run,
         owners: new Map(),
         snapshots: new Map(),
@@ -299,4 +320,4 @@ type StoppedOwners = Set<string>;
 
 type Finalizations = Map<string, PendingFinalization>;
 
-type Connections = Map<Socket, ResourceCheckSend>;
+type Connections = Map<ResourceCheckConnection, ResourceCheckSend>;

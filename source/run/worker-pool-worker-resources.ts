@@ -24,13 +24,13 @@ import {
 import { resourceLifecycleBoundaryUseCounts } from './resource-lifecycle-boundaries.ts';
 import type { ResourceWrapperStep } from './resource-lifecycle-composition.ts';
 import type {
-    WorkerPoolAcquireRunResourcesTask,
-    WorkerPoolCompleteResourceOwnerWorkTask,
-    WorkerPoolDisposeLaneLifecycleTask,
+    WorkerResourceTask as WorkerPoolAcquireRunResourcesTask,
+    WorkerCompleteResourcesTask as WorkerPoolCompleteResourceOwnerWorkTask,
+    WorkerDisposeLaneTask as WorkerPoolDisposeLaneLifecycleTask,
     WorkerPoolDisposeResourceOutput,
-    WorkerPoolDisposeRunResourcesTask,
+    WorkerDisposeResourcesTask as WorkerPoolDisposeRunResourcesTask,
     WorkerPoolRunResourceOutput,
-    WorkerPoolRunTask,
+    WorkerRunTask as WorkerPoolRunTask,
     WorkerPoolPreparationReply
 } from './worker-pool-protocol.ts';
 import {
@@ -241,14 +241,23 @@ export async function prepareLocalOwnerResources(
 
 function observePreparationReplies(
     task: WorkerPoolRunTask,
-    receive: (reply: WorkerPoolPreparationReply) => void,
-    closed: () => void
+    request: string,
+    completed: PromiseWithResolvers<readonly RunnerError[]>
 ): () => void {
-    task.port.on('message', receive);
-    task.port.once('close', closed);
+    function receivePreparation(message: WorkerPoolPreparationReply): void {
+        if (message.request === request) {
+            completed.resolve(message.runnerErrors);
+        }
+    }
+    function rejectClosedPreparation(): void {
+        completed.reject(new Error('Resource owner preparation channel closed.'));
+    }
+
+    task.port.on('message', receivePreparation);
+    task.port.once('close', rejectClosedPreparation);
     return function stopObservingPreparation() {
-        task.port.off('message', receive);
-        task.port.off('close', closed);
+        task.port.off('message', receivePreparation);
+        task.port.off('close', rejectClosedPreparation);
     };
 }
 async function remoteOwnerPreparation(
@@ -258,17 +267,13 @@ async function remoteOwnerPreparation(
 ): Promise<readonly RunnerError[]> {
     const request = `${workIdentityKey(work)}:${attempt.index}`;
     const completed = Promise.withResolvers<readonly RunnerError[]>();
-    function receivePreparation(message: WorkerPoolPreparationReply): void {
-        if (message.request === request) {
-            completed.resolve(message.runnerErrors);
-        }
-    }
-    function rejectClosedPreparation(): void {
-        completed.reject(new Error('Resource owner preparation channel closed.'));
-    }
-    const stop = observePreparationReplies(task, receivePreparation, rejectClosedPreparation);
+    const stop = observePreparationReplies(task, request, completed);
     try {
         task.port.postMessage({ kind: 'prepare-resource-artifacts', request, work, attempt }, []);
+    } catch (error: unknown) {
+        completed.reject(error);
+    }
+    try {
         return await completed.promise;
     } finally {
         stop();

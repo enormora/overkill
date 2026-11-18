@@ -1,6 +1,7 @@
 import { observingInfrastructure } from '../execution-ownership.ts';
 import {
     executionErrorOwnership,
+    type ExecutionErrorOwnership,
     type HookKind,
     type ExecutionBoundary,
     type ExecutionPhase,
@@ -58,7 +59,7 @@ export type ExecutionGlobalErrorObserver = {
     readonly takeErrors: () => readonly RunnerError[];
 };
 
-const { runScopeStorage, activeCaseStorage, activeScopes, processHookListeners } = executionErrorOwnership();
+const nativeOwnership = executionErrorOwnership();
 
 function createStoredValue<Value>(initialValue: Value): StoredValue<Value> {
     let currentValue = initialValue;
@@ -350,7 +351,8 @@ function errorForScope(input: HookFailureInput): RunnerError {
     return permissionErrorForScope(input) ?? ownedHookError(input);
 }
 
-function currentTargetScopes(): readonly RunErrorScope[] {
+function currentTargetScopes(ownership: ExecutionErrorOwnership): readonly RunErrorScope[] {
+    const { runScopeStorage, activeScopes } = ownership;
     const currentScope = runScopeStorage.getStore();
 
     if (currentScope !== undefined && activeScopes.includes(currentScope)) {
@@ -360,16 +362,21 @@ function currentTargetScopes(): readonly RunErrorScope[] {
     return activeScopes.all();
 }
 
-function receiveHookFailure(hook: HookKind, reason: unknown): void {
+function receiveHookFailure(ownership: ExecutionErrorOwnership, hook: HookKind, reason: unknown): void {
+    const { runScopeStorage, activeCaseStorage, activeScopes } = ownership;
     const activeCase = observingInfrastructure() ? null : activeCaseStorage.getStore() ?? null;
     const ambiguousScope = runScopeStorage.getStore() === undefined && activeScopes.size() > 1;
 
-    for (const scope of currentTargetScopes()) {
+    for (const scope of currentTargetScopes(ownership)) {
         scope.recordError(errorForScope({ activeCase, ambiguousScope, hook, reason, scope }));
     }
 }
 
-export function createExecutionGlobalErrorObserver(boundary: ExecutionBoundary): ExecutionGlobalErrorObserver {
+export function createOwnedGlobalErrorObserver(
+    boundary: ExecutionBoundary,
+    ownership: ExecutionErrorOwnership
+): ExecutionGlobalErrorObserver {
+    const { runScopeStorage, activeCaseStorage, activeScopes, processHookListeners } = ownership;
     const scope = createRunErrorScope(boundary);
     scope.observation.register(function stopOwnedGlobalObserver() {
         scope.stop();
@@ -388,7 +395,9 @@ export function createExecutionGlobalErrorObserver(boundary: ExecutionBoundary):
             return scope.onFatalError(handler);
         },
         async runBoundary(run) {
-            processHookListeners.install(receiveHookFailure);
+            processHookListeners.install(function receive(hook, reason) {
+                receiveHookFailure(ownership, hook, reason);
+            });
             activeScopes.add(scope);
 
             try {
@@ -433,10 +442,43 @@ export function createExecutionGlobalErrorObserver(boundary: ExecutionBoundary):
 }
 
 export function observeActiveCaseWork(receive: (work: WorkId) => void): () => void {
-    const scope = runScopeStorage.getStore();
+    const scope = nativeOwnership.runScopeStorage.getStore();
     return scope === undefined
         ? function stopAbsentObserver() {
             return undefined;
         }
         : scope.observeActiveWork(receive);
+}
+
+export function createExecutionGlobalErrorObserver(boundary: ExecutionBoundary): ExecutionGlobalErrorObserver {
+    return createOwnedGlobalErrorObserver(boundary, nativeOwnership);
+}
+
+async function collectionFailure(observer: ExecutionGlobalErrorObserver): Promise<never> {
+    await observer.fatalSignal();
+    const errors = observer.takeErrors();
+    throw new AggregateError(
+        errors,
+        errors[0]?.message ?? 'Test collection failed after a process-level runtime error.',
+        { cause: errors[0] ?? null }
+    );
+}
+export async function observeCollection<Plan>(
+    collect: () => Promise<Plan>,
+    observer: ExecutionGlobalErrorObserver
+): Promise<Plan> {
+    try {
+        return await observer.runBoundary(async function () {
+            return await observer.runPhase('collection', async function () {
+                const failure = collectionFailure(observer);
+                const resolved = await Promise.race([ collect(), failure ]);
+                if (observer.hasFatalError()) {
+                    await failure;
+                }
+                return resolved;
+            });
+        });
+    } finally {
+        observer.stop();
+    }
 }

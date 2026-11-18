@@ -4,15 +4,16 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import type { NormalizedConfig } from '../config/types.ts';
+import { testNode as requests } from './run-request-validation-policy.test.ts';
+import { testNode as frozenSource } from './frozen-policy-validation-policy.test.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
-import { testNode as serialRequestTestNode } from './run-serial-request.test.ts';
 import { validateRunInput } from './run-validation.ts';
 
 type RunCommandParts = {
@@ -47,14 +48,15 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
-        serialRequestTestNode,
+        requests,
+        frozenSource,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'programmatic calls can omit debug activation',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const orchestrator = createDeterministicRunOrchestrator();
+                const orchestrator = createUnitRunOrchestrator();
                 const { debug: _debug, ...request } = defaultRequest;
                 const command = {
                     config: defaultConfig,
@@ -95,7 +97,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
                 const invalidShardCases = [
                     { message: 'Shard total must be a positive safe integer.', shard: { index: 1, total: 0 } },
                     { message: 'Shard total must be a positive safe integer.', shard: { index: 1, total: 1.5 } },
@@ -124,7 +126,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function runInvalidRequest() {
                     await runOrchestrator.run(createRunCommand({

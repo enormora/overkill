@@ -19,7 +19,7 @@ export const mutationSandboxSchema = z
 
 export type MutationSandbox = z.output<typeof mutationSandboxSchema>;
 
-type MutationSandboxInput = {
+export type MutationSandboxInput = {
     readonly originalRoot: string;
     readonly cwd: string;
     readonly fileDescriptions: FileDescriptions;
@@ -42,9 +42,9 @@ function originalFiles(root: string, descriptions: FileDescriptions): MutationSa
     });
 }
 
-async function existingModulePath(path: string): Promise<string | null> {
+async function existingModulePath(path: string, canonical: SandboxPaths['canonical']): Promise<string | null> {
     try {
-        return await realpath(path);
+        return await canonical(path);
     } catch (error: unknown) {
         if (error instanceof Error && Reflect.get(error, 'code') === 'ENOENT') {
             return null;
@@ -56,13 +56,16 @@ async function existingModulePath(path: string): Promise<string | null> {
 async function sharedModuleRoots(
     root: string,
     originalRoot: string,
-    files: MutationSandbox['files']
+    files: MutationSandbox['files'],
+    paths: SandboxPaths
 ): Promise<readonly string[]> {
     const bootstrapRoot = dirname(dirname(import.meta.dirname));
     const roots = [ root, bootstrapRoot ].flatMap(function moduleSearchRoots(directory) {
-        return createRequire(pathToFileURL(resolve(directory, 'package.json'))).resolve.paths('overkill') ?? [];
+        return paths.moduleRoots(directory);
     });
-    const existingRoots = await Promise.all([ bootstrapRoot, ...roots ].map(existingModulePath));
+    const existingRoots = await Promise.all([ bootstrapRoot, ...roots ].map(async function existing(path) {
+        return await existingModulePath(path, paths.canonical);
+    }));
     const sharedRoots = Array.from(
         new Set(
             existingRoots
@@ -89,10 +92,17 @@ async function sharedModuleRoots(
     return sharedRoots;
 }
 
-export async function createMutationSandbox(input: MutationSandboxInput): Promise<MutationSandbox> {
-    const root = await realpath(input.cwd);
+export type SandboxPaths = {
+    readonly canonical: (path: string) => Promise<string>;
+    readonly moduleRoots: (directory: string) => readonly string[];
+};
+export async function prepareMutationSandbox(
+    input: MutationSandboxInput,
+    paths: SandboxPaths
+): Promise<MutationSandbox> {
+    const root = await paths.canonical(input.cwd);
     const files = originalFiles(input.originalRoot, input.fileDescriptions);
-    const sharedRoots = await sharedModuleRoots(root, input.originalRoot, files);
+    const sharedRoots = await sharedModuleRoots(root, input.originalRoot, files, paths);
     return mutationSandboxSchema.parse({
         originalRoot: input.originalRoot,
         root,
@@ -130,8 +140,12 @@ export function sandboxRunnerOptions(
     };
 }
 
-async function sandboxFileOrigin(sandbox: MutationSandbox, path: string): Promise<string> {
-    const canonicalPath = await existingModulePath(path) ?? path;
+async function sandboxFileOrigin(
+    sandbox: MutationSandbox,
+    path: string,
+    canonical: SandboxPaths['canonical']
+): Promise<string> {
+    const canonicalPath = await existingModulePath(path, canonical) ?? path;
     const file = projectRelativePath(sandbox.root, canonicalPath);
     if (file === null) {
         throw new ConfigError(`Mutation target escapes the Stryker sandbox: ${path}`);
@@ -139,21 +153,22 @@ async function sandboxFileOrigin(sandbox: MutationSandbox, path: string): Promis
     return file.replaceAll('\\', '/');
 }
 
-export async function assertExcludedMutationFiles(
+export async function validateProtectedMutationFiles(
     sandbox: MutationSandbox,
     paths: readonly string[],
-    role: string
+    role: string,
+    canonical: SandboxPaths['canonical']
 ): Promise<void> {
     const targets = sandbox.files.filter(function mutationTarget(file) {
         return file.mutationTarget;
     });
     const selected = new Set(
         await Promise.all(targets.map(async function targetOrigin(file) {
-            return sandboxFileOrigin(sandbox, resolve(sandbox.root, file.file));
+            return sandboxFileOrigin(sandbox, resolve(sandbox.root, file.file), canonical);
         }))
     );
     const origins = await Promise.all(paths.map(async function protectedOrigin(path) {
-        return sandboxFileOrigin(sandbox, path);
+        return sandboxFileOrigin(sandbox, path, canonical);
     }));
     const conflicts = origins.filter(function selectedFile(file) {
         return selected.has(file);
@@ -161,6 +176,22 @@ export async function assertExcludedMutationFiles(
     if (conflicts.length > 0) {
         throw new ConfigError(`Exclude ${role} from Stryker mutate: ${conflicts.join(', ')}`);
     }
+}
+
+export async function createMutationSandbox(input: MutationSandboxInput): Promise<MutationSandbox> {
+    return await prepareMutationSandbox(input, {
+        canonical: realpath,
+        moduleRoots(directory) {
+            return createRequire(pathToFileURL(resolve(directory, 'package.json'))).resolve.paths('overkill') ?? [];
+        }
+    });
+}
+export async function assertExcludedMutationFiles(
+    sandbox: MutationSandbox,
+    paths: readonly string[],
+    role: string
+): Promise<void> {
+    await validateProtectedMutationFiles(sandbox, paths, role, realpath);
 }
 
 export async function assertExcludedAdapter(sandbox: MutationSandbox): Promise<void> {

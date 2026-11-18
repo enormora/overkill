@@ -2,11 +2,7 @@ import { runIfMain } from '#test-runner';
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as workerPoolDistributionTestNode } from './worker-pool-distribution-suite.test.ts';
 import { testNode as workerPoolExecutionSuiteTestNode } from './worker-pool-execution-suite.test.ts';
-import { testNode as workerPoolLifecycleTestNode } from './worker-pool-lifecycle.test.ts';
-import { testNode as workerPoolPlacementTasksTestNode } from './worker-pool-placement-tasks.test.ts';
 import { testNode as workerPoolPlacementValidationTestNode } from './worker-pool-placement-validation.test.ts';
-import { testNode as workerPoolPlanningTestNode } from './worker-pool-planning.test.ts';
-import { testNode as workerPoolRunTestNode } from './worker-pool-run.test.ts';
 import { testNode as workerPoolRuntimeTestNode } from './worker-pool-runtime-suite.test.ts';
 
 export const testNode = createOverkillSuite({
@@ -17,11 +13,7 @@ export const testNode = createOverkillSuite({
     children: [
         workerPoolDistributionTestNode,
         workerPoolExecutionSuiteTestNode,
-        workerPoolLifecycleTestNode,
-        workerPoolPlacementTasksTestNode,
         workerPoolPlacementValidationTestNode,
-        workerPoolPlanningTestNode,
-        workerPoolRunTestNode,
         workerPoolRuntimeTestNode
     ]
 });

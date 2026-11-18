@@ -1,6 +1,6 @@
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope, type RunResult } from '../packages/engine/engine.entry-point.ts';
-import { withCoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
+import { withMemoryCoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
 import { defaultMicrotestProfile, defaultRunConfig } from '../test-support/run-command-factory.ts';
 import { createDeterministicRunTestModuleLoader } from '../test-support/deterministic-run-fixtures.ts';
 import { coverageBaselineSession, assertCoverageBaseline } from '../test-support/coverage-baseline-fixture.ts';
@@ -42,7 +42,7 @@ export const testNode = createSuite({
             annotations: {},
             controls: {},
             async body(scope: TestScope) {
-                return await withCoverageRecordFixture(
+                return await withMemoryCoverageRecordFixture(
                     defaultRunConfig({
                         profiles: { microtest: defaultMicrotestProfile({ execution: { processModel: 'in-process' } }) }
                     }),

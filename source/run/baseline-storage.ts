@@ -1,10 +1,9 @@
-import type { Stats } from 'node:fs';
-import { lstat, unlink } from 'node:fs/promises';
+import { lstat } from 'node:fs/promises';
 import path from 'node:path';
 import type { z } from 'zod/v4';
 import type { BaselineChange } from '../baselines/baseline-model.ts';
-import { createNodeFileStore } from '../file-store.ts';
-import { existingPathAncestor, isPathInside } from './path-containment.ts';
+import type { FileStore } from '../file-store.ts';
+import { isPathInside } from './path-containment.ts';
 
 type StorageInput<Baseline> = {
     readonly schema: z.ZodType<Baseline>;
@@ -13,7 +12,7 @@ type StorageInput<Baseline> = {
     readonly directory: string;
     readonly maxBytes: number;
 };
-type BaselineStorage<Baseline> = {
+export type BaselineStorage<Baseline> = {
     readonly validate: (change: BaselineChange<Baseline>) => Promise<void>;
     readonly apply: (change: BaselineChange<Baseline>) => Promise<void>;
     readonly checkDirectory: (directory: string) => Promise<void>;
@@ -22,9 +21,17 @@ type BaselineStorage<Baseline> = {
     readonly read: (file: string) => Promise<Baseline | null>;
 };
 const jsonIndentation = 2;
-async function fileStats(file: string): Promise<Stats | null> {
+export type BaselineFileStatus = { readonly file: boolean; readonly link: boolean; readonly size: number; };
+export type BaselineStorageAccess = {
+    readonly files: FileStore;
+    readonly remove: (path: string) => Promise<void>;
+    readonly ancestor: (path: string) => Promise<string>;
+    readonly inspect: (path: string) => Promise<BaselineFileStatus | null>;
+};
+export async function baselineFileStatus(file: string): Promise<BaselineFileStatus | null> {
     try {
-        return await lstat(file);
+        const stats = await lstat(file);
+        return { file: stats.isFile(), link: stats.isSymbolicLink(), size: stats.size };
     } catch (error: unknown) {
         if (error instanceof Error && Reflect.get(error, 'code') === 'ENOENT') {
             return null;
@@ -32,14 +39,16 @@ async function fileStats(file: string): Promise<Stats | null> {
         throw error;
     }
 }
-export function createBaselineStorage<Baseline>(input: StorageInput<Baseline>): BaselineStorage<Baseline> {
-    const files = createNodeFileStore();
+export function createBaselineStorage<Baseline>(
+    input: StorageInput<Baseline>,
+    access: BaselineStorageAccess
+): BaselineStorage<Baseline> {
     async function checkDirectory(selected: string): Promise<void> {
-        if (!isPathInside(input.root, selected) || !isPathInside(input.root, await existingPathAncestor(selected))) {
+        if (!isPathInside(input.root, selected) || !isPathInside(input.root, await access.ancestor(selected))) {
             throw new Error('Baseline directory must remain inside the project root.');
         }
-        const stats = await fileStats(selected);
-        if (stats?.isSymbolicLink() === true) {
+        const stats = await access.inspect(selected);
+        if (stats?.link === true) {
             throw new Error('Baseline directories cannot be symbolic links.');
         }
     }
@@ -54,11 +63,11 @@ export function createBaselineStorage<Baseline>(input: StorageInput<Baseline>): 
         return content;
     }
     async function validateFile(file: string): Promise<boolean> {
-        const stats = await fileStats(file);
+        const stats = await access.inspect(file);
         if (stats === null) {
             return false;
         }
-        if (!stats.isFile() || stats.size > input.maxBytes) {
+        if (!stats.file || stats.size > input.maxBytes) {
             throw new Error(`Invalid baseline file: ${path.basename(file)}`);
         }
         return true;
@@ -68,7 +77,7 @@ export function createBaselineStorage<Baseline>(input: StorageInput<Baseline>): 
         if (!await validateFile(file)) {
             return null;
         }
-        const content = await files.read(file);
+        const content = await access.files.read(file);
         if (content === null) {
             throw new Error('Baseline disappeared while reading.');
         }
@@ -94,11 +103,11 @@ export function createBaselineStorage<Baseline>(input: StorageInput<Baseline>): 
         await validate(change);
         const file = location(change.baseline);
         if (change.kind === 'remove') {
-            await unlink(file);
+            await access.remove(file);
         } else if (change.kind === 'create') {
-            await files.create(file, encoded(change.baseline));
+            await access.files.create(file, encoded(change.baseline));
         } else {
-            await files.write(file, encoded(change.baseline));
+            await access.files.write(file, encoded(change.baseline));
         }
     }
     return { checkDirectory, location, encoded, read, validate, apply };

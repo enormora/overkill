@@ -13,7 +13,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
-import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
@@ -64,7 +64,7 @@ export const testNode = createOverkillSuite({
             title: 'orchestrator.resolve() rejects live capture for microtest profiles',
             ...emptyTestData,
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveMicrotestLiveCapture() {
                     await runOrchestrator.resolve(createRunCommand({
@@ -86,7 +86,7 @@ export const testNode = createOverkillSuite({
             title: 'orchestrator.resolve() rejects worker counts for non-worker-pool profiles',
             ...emptyTestData,
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveMicrotestWorkerCount() {
                     await runOrchestrator.resolve(createRunCommand({
@@ -108,7 +108,7 @@ export const testNode = createOverkillSuite({
             title: 'orchestrator.resolve() rejects capture controls for microtest profiles',
             ...emptyTestData,
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveMicrotestCaptureControls() {
                     await runOrchestrator.resolve(createRunCommand({
@@ -129,7 +129,7 @@ export const testNode = createOverkillSuite({
             title: 'orchestrator.resolve() returns frozen run facts for explicit paths',
             ...emptyTestData,
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
                 const resolvedRun = await runOrchestrator.resolve(createRunCommand({
                     config: defaultConfig,
                     cwd: process.cwd(),
@@ -212,7 +212,7 @@ export const testNode = createOverkillSuite({
             title: 'orchestrator.resolve() generates a seed when the request does not provide one',
             ...emptyTestData,
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
                 const resolvedRun = await runOrchestrator.resolve(createRunCommand({
                     config: defaultConfig,
                     cwd: process.cwd(),
@@ -233,7 +233,7 @@ export const testNode = createOverkillSuite({
             title: 'orchestrator.resolve() rejects empty input without profile file discovery',
             ...emptyTestData,
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveEmptyPaths() {
                     await runOrchestrator.resolve(createRunCommand({
@@ -257,7 +257,7 @@ export const testNode = createOverkillSuite({
             title: 'orchestrator.resolve() rejects invalid negative seeds',
             ...emptyTestData,
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveInvalidSeed() {
                     await runOrchestrator.resolve(createRunCommand({
@@ -281,7 +281,7 @@ export const testNode = createOverkillSuite({
             title: 'orchestrator.resolve() rejects unknown profiles',
             ...emptyTestData,
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveUnknownProfile() {
                     await runOrchestrator.resolve(createRunCommand({
@@ -305,7 +305,7 @@ export const testNode = createOverkillSuite({
             title: 'orchestrator.resolve() rejects process budget overrides without measurement',
             ...emptyTestData,
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveInvalidProcessUsage() {
                     await runOrchestrator.resolve(createRunCommand({
@@ -336,7 +336,7 @@ export const testNode = createOverkillSuite({
             ...emptyTestData,
             async body(scope: OverkillScope) {
                 const reporter = createInMemoryRealTimeReporter();
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand({
                     config: {
                         ...defaultConfig,
@@ -443,7 +443,7 @@ export const testNode = createOverkillSuite({
             title: 'orchestrator.run() executes the supervised process profile in a child process',
             ...emptyTestData,
             async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
+                const runOrchestrator = createUnitRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand({
                     config: defaultRunConfig({
                         profiles: {

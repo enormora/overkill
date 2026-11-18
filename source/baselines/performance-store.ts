@@ -1,9 +1,11 @@
 import { createHash } from 'node:crypto';
-import { readdir, realpath } from 'node:fs/promises';
+import { mkdir, readdir, realpath, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
 import { workIdentityProjection } from '../engine/identity.ts';
-import { createBaselineStorage } from '../run/baseline-storage.ts';
+import { createBaselineStorage, baselineFileStatus, type BaselineStorageAccess } from '../run/baseline-storage.ts';
+import { createNodeFileStore } from '../file-store.ts';
+import { existingPathAncestor } from '../run/path-containment.ts';
 import { storedPerformanceBaselineSchema } from './performance-schema.ts';
 import {
     performanceBaselineIdentity,
@@ -36,8 +38,16 @@ async function baselineNames(directory: string): Promise<readonly string[]> {
         throw error;
     }
 }
-export async function createPerformanceBaselineStore(input: PerformanceStoreInput): Promise<PerformanceBaselineStore> {
-    const root = await realpath(input.projectRoot);
+export type PerformanceStoreAccess = BaselineStorageAccess & {
+    readonly canonical: (target: string) => Promise<string>;
+    readonly names: (target: string) => Promise<readonly string[]>;
+    readonly prepare: (target: string) => Promise<void>;
+};
+export async function openPerformanceBaselineStore(
+    input: PerformanceStoreInput,
+    access: PerformanceStoreAccess
+): Promise<PerformanceBaselineStore> {
+    const root = await access.canonical(input.projectRoot);
     const directory = path.resolve(root, input.directory, 'performance');
     const storage = createBaselineStorage({
         root,
@@ -48,12 +58,25 @@ export async function createPerformanceBaselineStore(input: PerformanceStoreInpu
             const key = performanceBaselineKey(performanceBaselineIdentity(baseline));
             return `${createHash('sha256').update(key).digest('hex')}.benchmark.json`;
         }
+    }, {
+        ...access,
+        files: {
+            read: access.files.read,
+            async create(file, content) {
+                await access.prepare(path.dirname(file));
+                await access.files.create(file, content);
+            },
+            async write(file, content) {
+                await access.prepare(path.dirname(file));
+                await access.files.write(file, content);
+            }
+        }
     });
     await storage.checkDirectory(directory);
     return {
         async list() {
             await storage.checkDirectory(directory);
-            const names = await baselineNames(directory);
+            const names = await access.names(directory);
             return await Array.fromAsync(
                 names
                     .filter(function baseline(name) {
@@ -74,4 +97,18 @@ export async function createPerformanceBaselineStore(input: PerformanceStoreInpu
         },
         apply: storage.apply
     };
+}
+
+export async function createPerformanceBaselineStore(input: PerformanceStoreInput): Promise<PerformanceBaselineStore> {
+    return await openPerformanceBaselineStore(input, {
+        files: createNodeFileStore(),
+        canonical: realpath,
+        ancestor: existingPathAncestor,
+        inspect: baselineFileStatus,
+        names: baselineNames,
+        remove: unlink,
+        async prepare(directory) {
+            await mkdir(directory, { recursive: true });
+        }
+    });
 }

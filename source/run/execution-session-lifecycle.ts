@@ -71,8 +71,11 @@ function validatedLifecycle(
     };
 }
 
-async function loadExecutionLifecycle(transport: RunExecutionTransport): Promise<RunExecutionLifecycle> {
-    const module: unknown = await import(transport.lifecycle.moduleUrl);
+async function loadExecutionLifecycle(
+    transport: RunExecutionTransport,
+    load: (url: string) => Promise<unknown>
+): Promise<RunExecutionLifecycle> {
+    const module: unknown = await load(transport.lifecycle.moduleUrl);
     const factory: unknown = typeof module === 'object' && module !== null
         ? Reflect.get(module, transport.lifecycle.exportName)
         : null;
@@ -115,21 +118,43 @@ async function runOwnedLifecycle<Value>(
     return execution.value;
 }
 
-export async function withExecutionLifecycle<Value>(
-    transport: RunExecutionTransport,
-    boundary: FileModuleBoundary | null,
-    observation: ExecutionSessionObservation,
+export type ExecutionLifecycleInput = {
+    readonly transport: RunExecutionTransport;
+    readonly boundary: FileModuleBoundary | null;
+    readonly observation: ExecutionSessionObservation;
+    readonly load: (url: string) => Promise<unknown>;
+};
+export async function runExecutionLifecycle<Value>(
+    input: ExecutionLifecycleInput,
     run: (lifecycle: RunExecutionLifecycle) => Promise<Value>
 ): Promise<Value> {
+    const { transport, boundary, observation, load } = input;
     return await withExecutionSession(transport, async function () {
         return await withFileModuleBoundary(boundary, async function () {
             const lifecycle = validatedLifecycle(
                 await withRunnerInfrastructure(async function bootstrapLifecycle() {
-                    return await loadExecutionLifecycle(transport);
+                    return await loadExecutionLifecycle(transport, load);
                 }),
                 observation
             );
             return await runOwnedLifecycle(lifecycle, run);
         });
     });
+}
+
+export async function withExecutionLifecycle<Value>(
+    transport: RunExecutionTransport,
+    boundary: FileModuleBoundary | null,
+    observation: ExecutionSessionObservation,
+    run: (lifecycle: RunExecutionLifecycle) => Promise<Value>
+): Promise<Value> {
+    return await runExecutionLifecycle({
+        transport,
+        boundary,
+        observation,
+        load: async function load(url) {
+            const namespace: unknown = await import(url);
+            return namespace;
+        }
+    }, run);
 }

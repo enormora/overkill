@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { runInNewContext } from 'node:vm';
+import { createDeterministicClock } from '@enormora/clock';
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
 import { observeHostTransport } from './worker-pool-host-transport.ts';
@@ -40,6 +41,7 @@ function hostFixture(deliveryFailure: Error | null): HostFixture {
         stdout: null
     };
     observeHostTransport({
+        wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),
         child,
         configured() {
             return undefined;

@@ -1,10 +1,10 @@
 import { resolve } from 'node:path';
-import { createClock } from '@enormora/clock';
-import { createNodeFileStore } from '../file-store.ts';
+import type { FileStore } from '../file-store.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import { serializeRunDiagnostics } from './run-record-result.ts';
 import { runRecordPersistenceError } from './run-record-error.ts';
-import { createNodeHistoryStorage } from './node-history-storage.ts';
+import { historyRecordSchema } from './history-record.ts';
+import type { HistoryStorage } from './history-storage-types.ts';
 import { updateCompactHistory } from './history-storage.ts';
 import type { MergeResultsCommand, MergedRunRecord } from './merge-results-types.ts';
 
@@ -14,14 +14,19 @@ export type MergedRecordStorage = {
     readonly retainErrors: (errors: readonly RunnerError[]) => void;
     readonly release: () => Promise<void>;
 };
-export async function createMergedRecordStorage(
+export type MergedRecordRuntime = {
+    readonly files: Pick<FileStore, 'write'>;
+    readonly history: HistoryStorage;
+    readonly now: () => string;
+};
+export async function openMergedRecordStorage(
     command: MergeResultsCommand,
-    initial: MergedRunRecord
+    initial: MergedRunRecord,
+    runtime: MergedRecordRuntime
 ): Promise<MergedRecordStorage> {
     const directory = resolve(command.cwd, command.config.runtimeStateDir);
     const file = resolve(directory, 'runs', `${initial.id}.json`);
-    const store = createNodeFileStore();
-    const history = createNodeHistoryStorage(directory, command.config.history);
+    const { files: store, history } = runtime;
     const release = await history.beginRun(initial.id);
     let current = initial;
     function retainErrors(errors: readonly RunnerError[]): void {
@@ -48,11 +53,10 @@ export async function createMergedRecordStorage(
     }
     async function write(): Promise<void> {
         await store.write(file, `${JSON.stringify(current)}\n`);
-        const now = new Date(createClock().currentUnixEpochMilliseconds);
-        await updateCompactHistory(history, current, {
+        await updateCompactHistory(history, historyRecordSchema.parse(current), {
             directory,
             policy: command.config.history,
-            now: now.toISOString(),
+            now: runtime.now(),
             testFamily: current.facts.execution.testFamily
         });
     }

@@ -1,7 +1,7 @@
 import { match } from 'ts-pattern';
 import type { Type } from 'typescript-beta/async';
 import type { NativeSite } from './original-assertions.ts';
-import type { SourceAnalysis } from './source-analysis.ts';
+import type { TypeAnalysis } from './source-analysis-port.ts';
 import type { SiteEvidence } from './native-results.ts';
 import { compareRelation } from './type-relations.ts';
 
@@ -34,7 +34,7 @@ function validateOperands(site: NativeSite): void {
     }
 }
 
-async function operandTypes(analysis: SourceAnalysis, site: NativeSite): Promise<readonly [Type, Type]> {
+async function operandTypes(analysis: TypeAnalysis, site: NativeSite): Promise<readonly [Type, Type]> {
     const { reference, call } = site;
     const operands = call.arguments.slice(1);
     validateOperands(site);
@@ -52,7 +52,7 @@ async function operandTypes(analysis: SourceAnalysis, site: NativeSite): Promise
 }
 
 export async function evaluateSite(
-    analysis: SourceAnalysis,
+    analysis: TypeAnalysis,
     site: NativeSite,
     compilerVersion: string
 ): Promise<SiteEvidence> {

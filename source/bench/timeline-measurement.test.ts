@@ -1,5 +1,5 @@
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { attachmentFixture, attachmentWork, type AttachmentFixture } from '../test-support/attachment-fixture.ts';
+import { inlineAttachmentFixture, attachmentWork, type AttachmentFixture } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits, type AttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
 import {
@@ -45,11 +45,10 @@ async function recordAuthoredEvents(scope: TestScope): Promise<void> {
 }
 
 async function captureTimeline(
-    scope: TestScope,
     limits: AttachmentLimits,
     operation: () => Promise<void>
 ): Promise<AttachmentFixture> {
-    const fixture = await attachmentFixture(scope, limits);
+    const fixture = inlineAttachmentFixture(limits, [ attachmentWork ]);
     await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
         await fixture.execution.runAttempt(attachmentWork, { index: 0 }, async function attempt() {
             await withBenchmarkTimeline(
@@ -83,7 +82,7 @@ export const testNode = suite('benchmark timelines', [
         return scope.assert.collect();
     }),
     test('retains authored failures, synchronous values, and overlapping spans', async function (scope: TestScope) {
-        const fixture = await captureTimeline(scope, defaultAttachmentLimits, recordAuthoredEvents.bind(null, scope));
+        const fixture = await captureTimeline(defaultAttachmentLimits, recordAuthoredEvents.bind(null, scope));
         scope.assert.partialDeepEqual(authoredEvents(fixture), [
             { name: '<marker>', phase: 'measured', sample: 1 },
             { name: 'value', outcome: 'complete' },
@@ -119,7 +118,7 @@ export const testNode = suite('benchmark timelines', [
         return scope.assert.collect();
     }),
     test('reports event and attachment byte omissions without breaking execution', async function (scope: TestScope) {
-        const fixture = await captureTimeline(scope, {
+        const fixture = await captureTimeline({
             ...defaultAttachmentLimits,
             maxInlineBytes: 1,
             maxArtifactBytes: 1

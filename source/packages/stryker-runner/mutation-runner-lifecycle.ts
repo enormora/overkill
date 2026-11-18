@@ -1,4 +1,4 @@
-import { createClock } from '@enormora/clock';
+import type { Clock } from '@enormora/clock';
 import {
     ConfigError,
     createInvocationBudget,
@@ -6,10 +6,10 @@ import {
     isInvocationCancellation,
     type InvocationBudget
 } from '../run/run.entry-point.ts';
-import {
+import type {
     initializeMutationRunner,
-    type ReadyMutationRunner,
-    type RunnerInitialization
+    ReadyMutationRunner,
+    RunnerInitialization
 } from './mutation-runner-initialization.ts';
 import type { CampaignClient } from './campaign-client.ts';
 
@@ -91,13 +91,19 @@ async function runBudgetInvocation<Value extends { readonly status: string; }>(
     }
 }
 
+export type MutationRunnerRuntime = {
+    readonly clock: Clock;
+    readonly initialize: typeof initializeMutationRunner;
+};
+
 export function createMutationRunnerLifecycle(
     options: RunnerInitialization['options'],
     files: Readonly<RunnerInitialization['files']>,
-    logger: RunnerInitialization['logger']
+    logger: RunnerInitialization['logger'],
+    runtime: MutationRunnerRuntime
 ): MutationRunnerLifecycle {
     const controller = new AbortController();
-    const clock = createClock();
+    const { clock } = runtime;
     let initialization: Promise<ReadyMutationRunner> | null = null;
     let initializationBudget: InvocationBudget | null = null;
     const ownership = {
@@ -112,7 +118,7 @@ export function createMutationRunnerLifecycle(
         }
         initializationBudget = budget;
         const initializing = initialization ??
-            initializeMutationRunner({
+            runtime.initialize({
                 options,
                 files,
                 logger,

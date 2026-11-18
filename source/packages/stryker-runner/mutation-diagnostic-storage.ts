@@ -55,45 +55,66 @@ function isRuntimeAttachment(
 ): artifact is Extract<DiagnosticArtifact, { readonly payload: { readonly kind: 'runtime-attachment'; }; }> {
     return artifact.payload.kind === 'runtime-attachment';
 }
-async function assertArtifactSize(file: string, bytes: number): Promise<void> {
-    const information = await stat(file);
-    if (information.size !== bytes) {
-        throw new Error('Diagnostic attachment size differs from its delivered metadata.');
+export type MutationDiagnosticStorageRuntime = {
+    readonly size: (file: string) => Promise<number>;
+    readonly createDirectory: (directory: string) => Promise<void>;
+    readonly copy: (source: string, destination: string) => Promise<void>;
+    readonly write: (file: string, content: string) => Promise<void>;
+};
+export function createMutationDiagnosticStorage(
+    runtime: MutationDiagnosticStorageRuntime
+): (context: MutationDiagnosticContext, document: MutationDiagnosticDocument) => Promise<void> {
+    async function assertArtifactSize(file: string, bytes: number): Promise<void> {
+        const size = await runtime.size(file);
+        if (size !== bytes) {
+            throw new Error('Diagnostic attachment size differs from its delivered metadata.');
+        }
     }
-}
-async function retainArtifactFile(
-    root: string,
-    directory: string,
-    artifact: DiagnosticArtifact,
-    index: number
-): Promise<DiagnosticArtifact> {
-    if (!isRuntimeAttachment(artifact) || artifact.payload.content.kind !== 'file') {
-        return artifact;
+    async function retainArtifactFile(
+        root: string,
+        directory: string,
+        artifact: DiagnosticArtifact,
+        index: number
+    ): Promise<DiagnosticArtifact> {
+        if (!isRuntimeAttachment(artifact) || artifact.payload.content.kind !== 'file') {
+            return artifact;
+        }
+        const { content } = artifact.payload;
+        const source = path.resolve(root, content.path);
+        const destination = path.join(directory, 'files', `${index}.bin`);
+        await assertArtifactSize(source, content.byteLength);
+        await runtime.createDirectory(path.dirname(destination));
+        await runtime.copy(source, destination);
+        await assertArtifactSize(destination, content.byteLength);
+        return {
+            ...artifact,
+            payload: { ...artifact.payload, content: { ...content, path: `files/${index}.bin` } }
+        };
     }
-    const { content } = artifact.payload;
-    const source = path.resolve(root, content.path);
-    const destination = path.join(directory, 'files', `${index}.bin`);
-    await assertArtifactSize(source, content.byteLength);
-    await mkdir(path.dirname(destination), { recursive: true });
-    await copyFile(source, destination);
-    await assertArtifactSize(destination, content.byteLength);
-    return {
-        ...artifact,
-        payload: { ...artifact.payload, content: { ...content, path: `files/${index}.bin` } }
+    return async function writeMutationDiagnostics(
+        context: MutationDiagnosticContext,
+        document: MutationDiagnosticDocument
+    ): Promise<void> {
+        const directory = path.join(context.directory, context.campaign, document.id);
+        const artifacts: DiagnosticArtifact[] = [];
+        for (const [ index, artifact ] of document.diagnostics.artifacts.entries()) {
+            artifacts.push(await retainArtifactFile(context.root, directory, artifact, index));
+        }
+        const content = { ...document, diagnostics: { ...document.diagnostics, artifacts } };
+        await runtime.write(
+            path.join(directory, 'diagnostics.json'),
+            `${JSON.stringify(content, null, jsonIndentation)}\n`
+        );
     };
 }
-export async function writeMutationDiagnostics(
-    context: MutationDiagnosticContext,
-    document: MutationDiagnosticDocument
-): Promise<void> {
-    const directory = path.join(context.directory, context.campaign, document.id);
-    const artifacts: DiagnosticArtifact[] = [];
-    for (const [ index, artifact ] of document.diagnostics.artifacts.entries()) {
-        artifacts.push(await retainArtifactFile(context.root, directory, artifact, index));
-    }
-    const content = { ...document, diagnostics: { ...document.diagnostics, artifacts } };
-    await createNodeFileStore().write(
-        path.join(directory, 'diagnostics.json'),
-        `${JSON.stringify(content, null, jsonIndentation)}\n`
-    );
-}
+export const writeMutationDiagnostics = createMutationDiagnosticStorage({
+    async size(file) {
+        const information = await stat(file);
+        return information.size;
+    },
+    async createDirectory(directory) {
+        await mkdir(directory, { recursive: true });
+    },
+    copy: copyFile,
+    write: createNodeFileStore().write
+});

@@ -30,11 +30,21 @@ export const config = defineConfig({
                 createBenchmarkHtmlReporter({ outputFile: 'target/mutation-cost/report.html' })
             ]
         },
-        repository: {
+        unit: {
+            ...testPolicy,
+            testFamily: 'microtest',
+            execution: { processModel: 'in-process', scheduling: 'serial' },
+            files: { include: [ 'source/overkill.test.ts' ] }
+        },
+        integration: {
             ...testPolicy,
             files: {
                 include: [ 'source/**/*.test.ts' ],
-                exclude: [ 'source/integration-tests/run/fixtures/**/*.test.ts' ]
+                exclude: [
+                    'source/overkill.test.ts',
+                    'source/integration-tests/package-smoke/**/*.test.ts',
+                    'source/integration-tests/run/fixtures/**/*.test.ts'
+                ]
             }
         },
         packageSmoke: {

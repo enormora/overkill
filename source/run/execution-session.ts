@@ -41,14 +41,14 @@ function deadlineCancelledReply(
 }
 
 async function completeInvocation(
-    environment: Promise<ExecutionSessionEnvironment>,
+    environment: () => Promise<ExecutionSessionEnvironment>,
     execution: InvocationExecution
 ): Promise<RunExecutionReply> {
     const { invocation, budget, lifecycle, data } = execution;
     const { signal } = budget;
     signal.throwIfAborted();
     const transport = executionTransportSchema.parse({ lifecycle, data: structuredClone(invocation.data) });
-    const initialized = await environment;
+    const initialized = await environment();
     signal.throwIfAborted();
     const reply = await initialized.execute({
         transport,
@@ -65,7 +65,7 @@ async function completeInvocation(
 }
 
 async function executeInvocation(
-    environment: Promise<ExecutionSessionEnvironment>,
+    environment: () => Promise<ExecutionSessionEnvironment>,
     invocation: RunExecutionInvocation,
     budget: InvocationBudget,
     lifecycle: RunExecutionSessionOptions['lifecycle']
@@ -99,16 +99,19 @@ function executionLifetime(options: RunExecutionSessionOptions): RunExecutionSes
     return fresh ? 'fresh' : 'reused';
 }
 
-export function createExecutionSession(
+export type ExecutionSessionRuntime = Pick<RunOrchestratorDependencies, 'createSeed' | 'wallClock'> & {
+    readonly initialize: (options: RunExecutionSessionOptions) => Promise<ExecutionSessionEnvironment>;
+};
+export function createManagedExecutionSession(
     supplied: RunExecutionSessionOptions,
-    dependencies: RunOrchestratorDependencies
+    runtime: ExecutionSessionRuntime
 ): RunExecutionSession {
-    const options = normalizeExecutionSessionOptions(supplied, dependencies.createSeed);
+    const options = normalizeExecutionSessionOptions(supplied, runtime.createSeed);
     const environment = createStoredValue<Promise<ExecutionSessionEnvironment> | null>(null);
     const disposed = new AbortController();
     const active = createStoredValue<Promise<RunExecutionReply> | null>(null);
     async function initializedEnvironment(): Promise<ExecutionSessionEnvironment> {
-        const initialized = environment.read() ?? initializeExecutionEnvironment(options, dependencies);
+        const initialized = environment.read() ?? runtime.initialize(options);
         environment.write(initialized);
         return initialized;
     }
@@ -123,8 +126,8 @@ export function createExecutionSession(
                 disposed.signal,
                 ...invocation.signal === null ? [] : [ invocation.signal ]
             ]);
-            const budget = createInvocationBudget(invocation.timeoutMilliseconds, signal, dependencies.wallClock);
-            const running = executeInvocation(initializedEnvironment(), invocation, budget, options.lifecycle);
+            const budget = createInvocationBudget(invocation.timeoutMilliseconds, signal, runtime.wallClock);
+            const running = executeInvocation(initializedEnvironment, invocation, budget, options.lifecycle);
             active.write(running);
             try {
                 return await running;
@@ -137,4 +140,17 @@ export function createExecutionSession(
             await active.read();
         }
     };
+}
+
+export function createExecutionSession(
+    supplied: RunExecutionSessionOptions,
+    dependencies: RunOrchestratorDependencies
+): RunExecutionSession {
+    return createManagedExecutionSession(supplied, {
+        wallClock: dependencies.wallClock,
+        createSeed: dependencies.createSeed,
+        async initialize(options) {
+            return await initializeExecutionEnvironment(options, dependencies);
+        }
+    });
 }

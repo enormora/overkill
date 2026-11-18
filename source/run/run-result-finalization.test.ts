@@ -1,7 +1,7 @@
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
-import { withCoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
-import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import { withMemoryCoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
+import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultRunConfig } from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createCoverageRunRecord } from './coverage-run-record.ts';
@@ -18,7 +18,7 @@ export const testNode = createSuite({
         annotations: {},
         controls: {},
         async body(scope) {
-            return await withCoverageRecordFixture(
+            return await withMemoryCoverageRecordFixture(
                 defaultRunConfig(),
                 [],
                 async function assertCoverageCheckpoint(fixture) {
@@ -32,7 +32,7 @@ export const testNode = createSuite({
                             paths: [ 'source/integration-tests/run/fixtures/passing.test.ts' ]
                         }
                     };
-                    const run = await createDeterministicRunOrchestrator().resolve(command);
+                    const run = await createUnitRunOrchestrator().resolve(command);
                     const attempt = await createCoverageRunRecord(
                         process.cwd(),
                         fixture.request.input,

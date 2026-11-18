@@ -1,4 +1,4 @@
-import { connect, type Socket } from 'node:net';
+import { connect } from 'node:net';
 import type { InvocationBudget } from '../run/run.entry-point.ts';
 import {
     campaignEndpointSchema,
@@ -8,7 +8,7 @@ import {
     type CampaignRequest,
     type CampaignResponse
 } from './campaign-protocol.ts';
-import { receiveCampaignFrames, sendCampaignFrame } from './campaign-transport.ts';
+import { receiveCampaignFrames, sendCampaignFrame, type CampaignSocket } from './campaign-transport.ts';
 
 export type CampaignClient = {
     readonly request: (request: CampaignRequest, budget: InvocationBudget | null) => Promise<CampaignResponse>;
@@ -17,7 +17,7 @@ export type CampaignClient = {
 };
 type PendingRequest = Readonly<PromiseWithResolvers<CampaignResponse>>;
 type CampaignConnection = {
-    readonly socket: Socket;
+    readonly socket: CampaignSocket;
     readonly requests: Readonly<Map<number, PendingRequest>>;
     readonly endpoint: CampaignEndpoint;
 };
@@ -49,7 +49,7 @@ function observeConnection(connection: CampaignConnection, signal: AbortSignal):
         }
     });
 }
-async function awaitConnection(socket: Socket): Promise<void> {
+async function awaitConnection(socket: CampaignSocket): Promise<void> {
     await new Promise<void>(function (resolve, reject) {
         socket.once('connect', resolve);
         socket.once('error', reject);
@@ -157,13 +157,15 @@ function admittedReply(reply: CampaignResponse): CampaignResponse {
     }
     return reply;
 }
-export async function connectCampaign(endpoint: CampaignEndpoint, signal: AbortSignal): Promise<CampaignClient> {
-    const settings = campaignEndpointSchema.parse(endpoint);
-    signal.throwIfAborted();
+export async function attachCampaignClient(
+    endpoint: CampaignEndpoint,
+    signal: AbortSignal,
+    socket: CampaignSocket
+): Promise<CampaignClient> {
     const connection: CampaignConnection = {
-        socket: connect({ host: '127.0.0.1', port: settings.port }),
+        socket,
         requests: new Map(),
-        endpoint: settings
+        endpoint
     };
     const identifiers = { next: 0 };
     observeConnection(connection, signal);
@@ -181,4 +183,10 @@ export async function connectCampaign(endpoint: CampaignEndpoint, signal: AbortS
             connection.socket.destroy();
         }
     };
+}
+
+export async function connectCampaign(endpoint: CampaignEndpoint, signal: AbortSignal): Promise<CampaignClient> {
+    const settings = campaignEndpointSchema.parse(endpoint);
+    signal.throwIfAborted();
+    return await attachCampaignClient(settings, signal, connect({ host: '127.0.0.1', port: settings.port }));
 }

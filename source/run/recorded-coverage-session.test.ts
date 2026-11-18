@@ -1,6 +1,6 @@
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
-import { withCoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
+import { withMemoryCoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
 import { defaultRunConfig } from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createCoverageRunRecord } from './coverage-run-record.ts';
@@ -18,7 +18,7 @@ export const testNode = createSuite({
             annotations: {},
             controls: {},
             async body(scope) {
-                return await withCoverageRecordFixture(
+                return await withMemoryCoverageRecordFixture(
                     defaultRunConfig(),
                     [],
                     async function assertCleanupFailure(fixture) {
@@ -59,7 +59,7 @@ export const testNode = createSuite({
             annotations: {},
             controls: {},
             async body(scope) {
-                return await withCoverageRecordFixture(
+                return await withMemoryCoverageRecordFixture(
                     defaultRunConfig(),
                     [],
                     async function assertCombinedFailure(fixture) {

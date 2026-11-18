@@ -6,7 +6,6 @@ import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { analysisFixture, type EvidenceMode } from '../test-support/family-analysis-fixture.ts';
 import type { TestPlan, Engine } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
-import { testNode as familyPolicy } from './family-profile-policy.test.ts';
 import type { RunCommand } from './run-types.ts';
 
 function fixtureCommand(record: (event: string) => void, mode: EvidenceMode): RunCommand {
@@ -39,7 +38,6 @@ function analysisPlan(engine: Engine): TestPlan {
 }
 
 export const testNode = suite('family profile execution', [
-    familyPolicy,
     test('executes imported analysis through engine evidence and disposal', async function (scope) {
         const events: string[] = [];
         const coordinator = createDeterministicRunCoordinator();

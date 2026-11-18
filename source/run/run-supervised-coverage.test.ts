@@ -1,6 +1,9 @@
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
-import { withCoverageRecordFixture, type CoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
+import {
+    withMemoryCoverageRecordFixture,
+    type CoverageRecordFixture
+} from '../test-support/coverage-record-fixture.ts';
 import { defaultRunConfig } from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
@@ -128,7 +131,7 @@ export const testNode = createSuite({
             annotations: {},
             controls: {},
             async body(scope) {
-                return await withCoverageRecordFixture(
+                return await withMemoryCoverageRecordFixture(
                     defaultRunConfig(),
                     failFacts ? [ 2 ] : [],
                     async function verifySupervisedAttempt(fixture) {

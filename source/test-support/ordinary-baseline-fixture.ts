@@ -29,7 +29,7 @@ export type OrdinaryBaselineFixture = ObservationControl & {
     readonly entries: () => Promise<readonly OrdinaryBaselineEntry[]>;
     readonly store: () => Promise<OrdinaryBaselineStore>;
 };
-function createObservationAdapter(payloadKind: 'binary' | 'text'): ObservationControl {
+export function createObservationAdapter(payloadKind: 'binary' | 'text'): ObservationControl {
     let actual = 42;
     let tolerance = 0;
     let observations = 0;

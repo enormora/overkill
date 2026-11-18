@@ -1,13 +1,13 @@
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { withCoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
+import { withMemoryCoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
 import { defaultMicrotestProfile, defaultRunConfig } from '../test-support/run-command-factory.ts';
 import { createDeterministicRunTestModuleLoader } from '../test-support/deterministic-run-fixtures.ts';
 import type { ReplayRunRecord } from './replay-record-types.ts';
 import { startSupervisedChild } from './node-child-process-starters.ts';
 import { replayRecordSchema } from './replay-record-schema.ts';
 import type { RunnerResult, DiscoveredRunFile } from './run-types.ts';
-import { createRunCoordinator } from './run.ts';
+import { createRunCoordinator } from './run-coordinator.entry-point.ts';
 
 const sourceFile = 'source/integration-tests/run/fixtures/passing.test.ts';
 const config = defaultRunConfig({
@@ -47,7 +47,7 @@ function assertReplayedWork(
 }
 export const testNode = suite('public replay execution', [
     test('restores a recorded selection without invoking current discovery', async function (scope: TestScope) {
-        await withCoverageRecordFixture(config, [], async function recordedProject(fixture) {
+        await withMemoryCoverageRecordFixture(config, [], async function recordedProject(fixture) {
             const files = new Map<string, string>();
             let replaying = false;
             const { orchestrator } = createRunCoordinator({

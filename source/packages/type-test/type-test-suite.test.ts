@@ -1,28 +1,26 @@
 import { createSuite } from '../engine/engine.entry-point.ts';
-import { testNode as orchestration } from '../../run/adapter-execution.test.ts';
-import { testNode as selection } from './compiler-selection.test.ts';
-import { testNode as matrix } from './compiler-matrix.test.ts';
-import { testNode as planning } from './compiler-plan.test.ts';
-import { testNode as frozen } from './frozen-inputs.test.ts';
-import { testNode as adapter } from './adapter.test.ts';
+import { testNode as assertionPolicy } from './native-assertion-policy.test.ts';
+import { testNode as analysisPolicy } from './source-analysis-policy.test.ts';
+import { testNode as storagePolicy } from './callback-storage-policy.test.ts';
+import { testNode as ownershipPolicy } from './source-ownership-policy.test.ts';
+import { testNode as nativeSyntax } from './native-ast-policy.test.ts';
+import { testNode as nativeResultPolicy } from './native-result-policy.test.ts';
 import { testNode as origins } from './body-origin.test.ts';
-import { testNode as originalRelations } from './original-relations.test.ts';
 import { testNode as assertions } from './assertion-reference.test.ts';
 
 export const testNode = createSuite({
-    title: 'type-test integration',
+    title: 'type-test adapter',
     annotations: {},
     controls: {},
     definitionLocations: [ { kind: 'unknown' } ],
     children: [
-        selection,
-        matrix,
-        planning,
-        frozen,
-        adapter,
+        assertionPolicy,
+        analysisPolicy,
+        storagePolicy,
+        ownershipPolicy,
+        nativeSyntax,
         origins,
         assertions,
-        originalRelations,
-        orchestration
+        nativeResultPolicy
     ]
 });

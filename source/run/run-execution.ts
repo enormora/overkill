@@ -1,3 +1,4 @@
+import { executeRecordedRun } from './recorded-run.ts';
 import { runnerResult } from './runner-result.ts';
 import { readResolvedRunInput, type RunInvocation } from './run-input-resolution.ts';
 import { cancelledRunResult } from './run-cancellation.ts';
@@ -49,7 +50,6 @@ async function executeCommand(
     if (!shouldRecord) {
         return await executePreparedInvocation(invocation, { ...execution, record: null });
     }
-    const { executeRecordedRun } = await import('./recorded-run.ts');
     return await executeRecordedRun(
         resolvedCommand.cwd,
         resolvedInput,

@@ -4,6 +4,7 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { testNode as metadata } from './disposable-metadata-policy.test.ts';
 import { rule } from './double-rule.ts';
 import {
     testAsyncDisposable,
@@ -24,6 +25,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        metadata,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'testIterator.yields() creates a well-formed consumable iterator',

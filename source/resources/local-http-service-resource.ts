@@ -303,6 +303,12 @@ function localHttpDefinition<
 ): LocalHttpDefinition<Name, LocalHttpResourceHandle<ConsumerHandle, unknown>, Scope, Dependencies> {
     const observers = new WeakMap<LocalHttpServer, LocalHttpTranscriptObserver>();
     const captures = new WeakMap<LocalHttpServer, HttpFailureCapture>();
+    async function closeObservation(server: LocalHttpServer): Promise<void> {
+        observers.get(server)?.dispose();
+        observers.delete(server);
+        await captures.get(server)?.close();
+        captures.delete(server);
+    }
 
     return {
         name: input.name,
@@ -343,12 +349,12 @@ function localHttpDefinition<
             try {
                 await closeServer(server);
             } finally {
-                observers.get(server)?.dispose();
-                observers.delete(server);
-                await captures.get(server)?.close();
-                captures.delete(server);
+                try {
+                    await closeObservation(server);
+                } finally {
+                    await input.dispose(server, context);
+                }
             }
-            await input.dispose(server, context);
         }
     };
 }

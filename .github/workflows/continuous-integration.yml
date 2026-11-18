@@ -31,9 +31,29 @@ jobs:
             - name: Install dependencies
               run: npm ci
             - name: Run static analysis
-              run: npx just lint
+              run: npx just lint-filename lint-unused-code lint-dependencies lint-duplication
             - name: Type tests
               run: npx just test-types
+
+    eslint:
+        runs-on: ubuntu-latest
+        name: ESLint
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - name: Use Node.js from package metadata
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: package.json
+            - name: Install dependencies
+              run: npm ci
+            - name: Run ESLint
+              env:
+                  TIMING: "25"
+              run: npx just eslint
 
     compile:
         runs-on: ubuntu-latest
@@ -68,9 +88,7 @@ jobs:
                   node-version-file: package.json
             - name: Install dependencies
               run: npm ci
-            - name: Run unit tests
-              run: npx just test-unit
-            - name: Check test coverage
+            - name: Run unit tests with coverage
               run: npx just test-unit-with-coverage
             - name: Retain unit coverage report
               if: ${{ !cancelled() }}
@@ -82,7 +100,7 @@ jobs:
 
     runner-integration-tests:
         runs-on: ubuntu-latest
-        name: Runner integration tests
+        name: Integration tests
         permissions:
             contents: read
         steps:
@@ -97,12 +115,12 @@ jobs:
               run: npm ci
             - name: Assess TypeScript beta public API
               run: npx just test-type-test-api
-            - name: Run runner integration tests
-              run: npx just test-runner-integration
+            - name: Run integration tests
+              run: npx just test-integration
 
-    package-dry-run:
+    package-smoke-tests:
         runs-on: ubuntu-latest
-        name: Package dry run
+        name: Package smoke tests
         permissions:
             contents: read
         steps:
@@ -117,15 +135,31 @@ jobs:
               run: npm ci
             - name: Run package smoke tests
               run: npx just test-package-smoke
+
+    publish-dry-run:
+        runs-on: ubuntu-latest
+        name: Publish dry run
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - name: Use Node.js from package metadata
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: package.json
+            - name: Install dependencies
+              run: npm ci
             - name: Publish dry run
               run: npx just publish-dry-run
 
-    process-benchmarks:
+    process-integration-tests:
         strategy:
             matrix:
                 os: [ubuntu-latest, macos-26-intel]
         runs-on: ${{ matrix.os }}
-        name: Process benchmarks (${{ matrix.os }})
+        name: Process integration tests (${{ matrix.os }})
         permissions:
             contents: read
         steps:
@@ -136,12 +170,7 @@ jobs:
               with:
                   node-version-file: package.json
             - run: npm ci
-            - run: node build-benchmark-html.js
-            - run: node source/integration-tests/run/process-execution.test.ts
-            - run: node source/integration-tests/run/process-lifetime.test.ts
-            - run: node source/integration-tests/run/process-owner-death.test.ts
-            - run: node source/integration-tests/run/runner-external-process.test.ts
-            - run: node source/integration-tests/run/runner-module-imports.test.ts
+            - run: npx just test-process-integration
 
     workflow-security:
         runs-on: ubuntu-latest

@@ -5,6 +5,10 @@ import { percentScale } from '../config/benchmark-host.ts';
 import { hostNumber, unavailableHostReading } from './benchmark-host-reading.ts';
 import { collectDarwinPressure } from './benchmark-host-darwin.ts';
 
+export type PlatformPressureRuntime = {
+    readonly read: (file: string, signal: AbortSignal) => Promise<string>;
+    readonly darwin: typeof collectDarwinPressure;
+};
 type PlatformPressure = BenchmarkHostSnapshot['platformPressure'];
 const maximumProbeBytes = 65_536;
 const pressureFieldNameSchema = z.enum([ 'avg10', 'avg60', 'avg300', 'total' ]);
@@ -53,18 +57,26 @@ export function parseLinuxPressure(text: string, source: string): PlatformPressu
     }));
 }
 
-async function readPressureFile(source: string, signal: AbortSignal): Promise<PlatformPressure> {
-    const text = await readFile(source, { encoding: 'utf8', signal });
+async function readPressureFile(
+    source: string,
+    signal: AbortSignal,
+    read: PlatformPressureRuntime['read']
+): Promise<PlatformPressure> {
+    const text = await read(source, signal);
     if (Buffer.byteLength(text) > maximumProbeBytes) {
         throw new TypeError('PSI probe exceeded its output limit.');
     }
     return parseLinuxPressure(text, source);
 }
 
-async function linuxPressure(resource: string, signal: AbortSignal): Promise<PlatformPressure> {
+async function linuxPressure(
+    resource: string,
+    signal: AbortSignal,
+    read: PlatformPressureRuntime['read']
+): Promise<PlatformPressure> {
     const source = `/proc/pressure/${resource}`;
     try {
-        return await readPressureFile(source, signal);
+        return await readPressureFile(source, signal, read);
     } catch (error: unknown) {
         return {
             'some.avg10': unavailableHostReading(
@@ -79,18 +91,31 @@ async function linuxPressure(resource: string, signal: AbortSignal): Promise<Pla
     }
 }
 
-export async function collectPlatformPressure(platform: string, signal: AbortSignal): Promise<PlatformPressure> {
+export async function collectHostPlatformPressure(
+    platform: string,
+    signal: AbortSignal,
+    runtime: PlatformPressureRuntime
+): Promise<PlatformPressure> {
     if (platform === 'darwin') {
-        return await collectDarwinPressure(signal);
+        return await runtime.darwin(signal);
     }
     if (platform !== 'linux') {
         return {};
     }
     const readings = await Promise.all([ 'cpu', 'memory', 'io' ].map(async function pressure(resource) {
-        const values = await linuxPressure(resource, signal);
+        const values = await linuxPressure(resource, signal, runtime.read);
         return Object.entries(values).map(function nameReading([ key, value ]) {
             return [ `linux.${resource}.${key}`, value ] as const;
         });
     }));
     return Object.fromEntries(readings.flat());
+}
+
+export async function collectPlatformPressure(platform: string, signal: AbortSignal): Promise<PlatformPressure> {
+    return await collectHostPlatformPressure(platform, signal, {
+        darwin: collectDarwinPressure,
+        async read(file, readSignal) {
+            return await readFile(file, { encoding: 'utf8', signal: readSignal });
+        }
+    });
 }

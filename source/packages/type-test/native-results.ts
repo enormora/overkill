@@ -137,7 +137,7 @@ function runError(message: string, cause: unknown): RunnerError {
     };
 }
 
-type NativeCheckEvidence = {
+export type NativeCheckEvidence = {
     readonly plan: TestPlan;
     readonly assertionPlan: OriginalAssertionPlan;
     readonly checked: readonly SiteEvidence[] | null;

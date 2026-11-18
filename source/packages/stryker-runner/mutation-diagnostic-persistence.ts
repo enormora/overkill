@@ -21,7 +21,12 @@ type MutationInvocationDiagnostics = {
     readonly record: (reply: RunExecutionReply) => void;
     readonly complete: (result: MutationResult) => Promise<void>;
 };
+export type MutationDiagnosticRuntime = {
+    readonly write: typeof writeMutationDiagnostics;
+    readonly identifier: () => string;
+};
 type DiagnosticInvocation = {
+    readonly runtime: MutationDiagnosticRuntime;
     readonly context: MutationDiagnosticContext;
     readonly execution: MutationDiagnosticExecution;
     readonly budget: InvocationBudget;
@@ -99,7 +104,7 @@ async function writeInvocationDiagnostics(state: DiagnosticInvocation, failure: 
     if (error === null && empty) {
         return;
     }
-    await writeMutationDiagnostics(context, {
+    await state.runtime.write(context, {
         version: 1,
         kind: 'mutation',
         detail: 'detailed',
@@ -165,21 +170,27 @@ async function runDiagnosticInvocation<Value extends MutationResult>(
     await completeInvocation(state, result);
     return result;
 }
-export async function withMutationDiagnosticPersistence<Value extends MutationResult>(
-    context: MutationDiagnosticContext,
-    execution: MutationDiagnosticExecution,
-    budget: InvocationBudget,
-    run: (diagnostics: MutationInvocationDiagnostics) => Promise<Value>
+type MutationDiagnosticInvocation<Value extends MutationResult> = {
+    readonly context: MutationDiagnosticContext;
+    readonly execution: MutationDiagnosticExecution;
+    readonly budget: InvocationBudget;
+    readonly run: (diagnostics: MutationInvocationDiagnostics) => Promise<Value>;
+};
+export async function recordMutationInvocation<Value extends MutationResult>(
+    input: MutationDiagnosticInvocation<Value>,
+    runtime: MutationDiagnosticRuntime
 ): Promise<Value> {
+    const { context, execution, budget, run } = input;
     let reply: RunExecutionReply | null = null;
     let storageFailed = false;
     let completion: { readonly result: MutationResult; readonly expired: boolean; } | null = null;
     const started = new Date();
     const state: DiagnosticInvocation = {
+        runtime,
         context,
         execution,
         budget,
-        invocation: randomUUID(),
+        invocation: runtime.identifier(),
         startedAt: started.toISOString(),
         status() {
             return completion === null ? 'interrupted' : 'completed';
@@ -209,4 +220,16 @@ export async function withMutationDiagnosticPersistence<Value extends MutationRe
     } catch (error: unknown) {
         return await failedMutationInvocation(state, error);
     }
+}
+
+export async function withMutationDiagnosticPersistence<Value extends MutationResult>(
+    context: MutationDiagnosticContext,
+    execution: MutationDiagnosticExecution,
+    budget: InvocationBudget,
+    run: (diagnostics: MutationInvocationDiagnostics) => Promise<Value>
+): Promise<Value> {
+    return await recordMutationInvocation({ context, execution, budget, run }, {
+        identifier: randomUUID,
+        write: writeMutationDiagnostics
+    });
 }

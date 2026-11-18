@@ -1,4 +1,5 @@
 import { createClock, type Clock } from '@enormora/clock';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import type { Awaitable } from './resource-definition-shape.ts';
 
 const microsecondsPerMillisecond = 1000;
@@ -19,9 +20,11 @@ function observationDeadline<Value>(
     function abortObservation(): void {
         interrupted.reject(signal.reason);
     }
-    const timer = clock.setTimeout(function expireObservation() {
-        controller.abort(new Error('Resource observation deadline exceeded.'));
-    }, Math.max(0, milliseconds));
+    const timer = withRunnerInfrastructure(function scheduleObservation() {
+        return clock.setTimeout(function expireObservation() {
+            controller.abort(new Error('Resource observation deadline exceeded.'));
+        }, Math.max(0, milliseconds));
+    });
     signal.addEventListener('abort', abortObservation, { once: true });
     if (milliseconds <= 0 || signal.aborted) {
         controller.abort(new Error('Resource observation deadline exceeded.'));

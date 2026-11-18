@@ -24,7 +24,6 @@ import {
     performanceBaselineError
 } from './performance-evaluation.ts';
 import {
-    createPerformanceBaselineStore,
     performanceBaselineKey,
     type PerformanceBaselineStore
 } from './performance-store.ts';
@@ -32,11 +31,10 @@ import {
 export type PerformanceWorkflowInput = {
     readonly adapters: readonly PerformanceBaselineAdapter[];
     readonly calibration: ComparableCalibration;
-    readonly directory: string;
+    readonly store: PerformanceBaselineStore;
     readonly maxBytes: number;
     readonly mode: BaselineUpdateMode;
     readonly profile: string;
-    readonly projectRoot: string;
 };
 type PerformancePresentationResult = {
     readonly comparisons: readonly PerformanceBaselineEvidence[];
@@ -299,7 +297,7 @@ function belongsToRun(input: PerformanceWorkflowInput, baseline: StoredPerforman
     return sameProfile && (sameMachine || portable);
 }
 export async function createPerformanceWorkflow(input: PerformanceWorkflowInput): Promise<PerformanceWorkflow> {
-    const store = await createPerformanceBaselineStore(input);
+    const { store } = input;
     const entries = await store.list();
     const state = createWorkflowState(
         new Map(

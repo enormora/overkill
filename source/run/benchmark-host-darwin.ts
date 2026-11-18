@@ -4,6 +4,7 @@ import type { BenchmarkHostSnapshot, HostReading } from '../bench/benchmark-host
 import { percentScale } from '../config/benchmark-host.ts';
 import { hostNumber, unavailableHostReading } from './benchmark-host-reading.ts';
 
+export type DarwinPressureProbe = (executable: string, args: readonly string[], signal: AbortSignal) => Promise<string>;
 type PlatformPressure = BenchmarkHostSnapshot['platformPressure'];
 const maximumProbeBytes = 65_536;
 const probeTimeoutMilliseconds = 250;
@@ -58,9 +59,9 @@ async function readProbe(executable: string, args: readonly string[], signal: Ab
     }
 }
 
-async function thermalPressure(signal: AbortSignal): Promise<PlatformPressure> {
+async function thermalPressure(signal: AbortSignal, probe: DarwinPressureProbe): Promise<PlatformPressure> {
     try {
-        return parseDarwinCpuLimits(await readProbe('/usr/bin/pmset', [ '-g', 'therm' ], signal));
+        return parseDarwinCpuLimits(await probe('/usr/bin/pmset', [ '-g', 'therm' ], signal));
     } catch (error: unknown) {
         const reason = error instanceof Error ? error.message : String(error);
         return Object.fromEntries([ 'CPU_Speed_Limit', 'CPU_Scheduler_Limit' ].map(function unavailable(name) {
@@ -69,8 +70,8 @@ async function thermalPressure(signal: AbortSignal): Promise<PlatformPressure> {
     }
 }
 
-async function readMemoryPressure(signal: AbortSignal): Promise<HostReading<number>> {
-    const output = await readProbe('/usr/sbin/sysctl', [ '-n', 'kern.memorystatus_vm_pressure_level' ], signal);
+async function readMemoryPressure(signal: AbortSignal, probe: DarwinPressureProbe): Promise<HostReading<number>> {
+    const output = await probe('/usr/sbin/sysctl', [ '-n', 'kern.memorystatus_vm_pressure_level' ], signal);
     const encoded = z.string().regex(/^\d+$/u).parse(output.trim());
     const value = memoryPressureCodeSchema.parse(Number(encoded));
     return hostNumber(memorySource, 'host', 'native-code', function pressureCode() {
@@ -78,9 +79,9 @@ async function readMemoryPressure(signal: AbortSignal): Promise<HostReading<numb
     });
 }
 
-async function memoryPressure(signal: AbortSignal): Promise<HostReading<number>> {
+async function memoryPressure(signal: AbortSignal, probe: DarwinPressureProbe): Promise<HostReading<number>> {
     try {
-        return await readMemoryPressure(signal);
+        return await readMemoryPressure(signal, probe);
     } catch (error: unknown) {
         return unavailableHostReading(
             memorySource,
@@ -91,7 +92,14 @@ async function memoryPressure(signal: AbortSignal): Promise<HostReading<number>>
     }
 }
 
-export async function collectDarwinPressure(signal: AbortSignal): Promise<PlatformPressure> {
-    const [ thermal, memory ] = await Promise.all([ thermalPressure(signal), memoryPressure(signal) ]);
+export async function collectDarwinHostPressure(
+    signal: AbortSignal,
+    probe: DarwinPressureProbe
+): Promise<PlatformPressure> {
+    const [ thermal, memory ] = await Promise.all([ thermalPressure(signal, probe), memoryPressure(signal, probe) ]);
     return { ...thermal, darwinMemoryPressureCode: memory };
+}
+
+export async function collectDarwinPressure(signal: AbortSignal): Promise<PlatformPressure> {
+    return await collectDarwinHostPressure(signal, readProbe);
 }

@@ -3,9 +3,9 @@ import { mergeRecordFixture } from '../test-support/merge-record-fixture.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { workerReplayRecord } from '../test-support/replay-record-fixture.ts';
 import { implementationFingerprint } from '../implementation-fingerprint.ts';
+import { createCollectedPlan, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
 import type { ReplayRunRecord } from './replay-record-types.ts';
 import { mergeCompatibilityConflicts } from './merge-results-compatibility.ts';
-import { createCollectedPlan, fakeWorkerRuntime } from './worker-pool-execution-state.test.ts';
 import { replayRecordSchema } from './replay-record-schema.ts';
 import { currentRunRecordVersion } from './run-record-format.ts';
 
