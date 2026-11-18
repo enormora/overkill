@@ -41,7 +41,73 @@ async function checkedInDirectory(scope: TestScope): Promise<string> {
     return directory;
 }
 
+async function damageCachedInput(directory: string, content: string | null): Promise<void> {
+    const inputs = path.join(path.dirname(await cachedFile(directory)), 'inputs');
+    const names = await readdir(inputs);
+    const file = path.join(inputs, names[0] ?? 'missing');
+    if (content === null) {
+        await rm(file);
+    } else {
+        await writeFile(file, content);
+    }
+}
+
 export const testNode = suite('property corpus storage', [
+    ...[ {
+        name: 'missing',
+        content: null,
+        reason: 'Invalid input'
+    }, {
+        name: 'mismatched',
+        content: JSON.stringify({ ...entry, counterexample: { ...entry.counterexample, payload: [ 99 ] } }),
+        reason: 'identity differs'
+    } ]
+        .map(function damagedReference(input) {
+            return test(`diagnoses ${input.name} referenced inputs without scheduling them`, async function (scope) {
+                const directory = await corpusDirectory(scope);
+                const policy = propertyCorpusPolicySchema.parse({});
+                await savePropertyCorpus(directory, 'laws', policy, [ entry ]);
+                await damageCachedInput(directory, input.content);
+                const snapshot = await readPropertyCorpus(directory, directory, 'laws', policy);
+                scope.assert.deepEqual(snapshot.localCache, []);
+                scope.assert.equal(snapshot.diagnostics.length, 1);
+                scope.assert.equal(snapshot.diagnostics[0]?.reason.includes(input.reason), true);
+                return scope.assert.collect();
+            });
+        }),
+    test('prunes superseded supported input files after publishing the bounded index', async function (scope) {
+        const directory = await corpusDirectory(scope);
+        const policy = propertyCorpusPolicySchema.parse({ localCache: { maxEntries: 1 } });
+        await savePropertyCorpus(directory, 'laws', policy, [ entry ]);
+        const inputs = path.join(path.dirname(await cachedFile(directory)), 'inputs');
+        await savePropertyCorpus(directory, 'laws', policy, [ {
+            ...entry,
+            counterexample: { ...entry.counterexample, payload: [ 43 ] }
+        } ]);
+        const names = await readdir(inputs);
+        const snapshot = await readPropertyCorpus(directory, directory, 'laws', policy);
+        scope.assert.equal(names.length, 1);
+        scope.assert.deepEqual(
+            snapshot.localCache.map(function payload(input) {
+                return input.counterexample.payload;
+            }),
+            [ [ 43 ] ]
+        );
+        return scope.assert.collect();
+    }),
+    test('rejects unreadable input directories instead of replacing their index', async function (scope) {
+        const directory = await corpusDirectory(scope);
+        const policy = propertyCorpusPolicySchema.parse({});
+        await savePropertyCorpus(directory, 'laws', policy, [ entry ]);
+        const file = await cachedFile(directory);
+        await rm(path.join(path.dirname(file), 'inputs'), { recursive: true });
+        await writeFile(path.join(path.dirname(file), 'inputs'), 'blocked');
+        await rm(file);
+        await scope.assert.rejects(async function unreadableInputs() {
+            return await readPropertyCorpus(directory, directory, 'laws', policy);
+        }, { code: 'ENOTDIR' });
+        return scope.assert.collect();
+    }),
     cachePolicy,
     test('recovers a corrupt local cache on the next save', async function (scope) {
         const directory = await corruptCorpus(scope);
