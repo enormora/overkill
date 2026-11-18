@@ -41,7 +41,7 @@ export const testNode = suite('attachment run recording', [
         const fixture = await attachmentRecording(null);
         const record = await createAttachmentRecord(fixture.resolved, fixture.dependencies, fixture.session);
         scope.assert.equal(record.session, fixture.session);
-        scope.assert.deepEqual(fixture.calls, [ 'facts' ]);
+        scope.assert.deepEqual(fixture.calls, [ 'details', 'facts' ]);
         fixture.clock.advanceByMilliseconds(1);
         scope.assert.equal(record.captureTime(), 1000);
         return scope.assert.collect();

@@ -4,7 +4,6 @@ import path from 'node:path';
 import { text } from 'node:stream/consumers';
 import { fileURLToPath } from 'node:url';
 import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
-import { createLineReporter } from '@overkill-dev/reporter-line';
 import { runIfMain } from '#test-runner';
 import { readProcessEnvironment } from '../../run/node-host-readers.ts';
 
@@ -208,4 +207,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

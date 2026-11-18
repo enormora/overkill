@@ -26,7 +26,14 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(reporter.name, 'null');
                 scope.assert.deepEqual(reporter.sinks, []);
 
-                await reporter.onResult(runResultFactory.build());
+                await reporter.onResult({
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    },
+                    result: runResultFactory.build()
+                });
 
                 return scope.assert.collect();
             }

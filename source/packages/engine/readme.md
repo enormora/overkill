@@ -197,8 +197,10 @@ Reporter lifecycle:
 
 - `RealTimeReporter` receives `ReporterEvent` values while a run executes.
   Use it for terminal output, IDE integrations, and other live consumers.
-- `FinalResultReporter` receives the completed `RunResult` once after the
-  run finishes. Use it for reports, archives, and machine-readable output.
+- `FinalResultReporter` receives `{ context, result }` once after the run finishes.
+  `context` contains nullable run identity, start time, and available facts;
+  `result` is the completed `RunResult`. The real-time `onFinish` callback uses
+  the same `RunReport`. Direct engine callers may have no persisted run identity. Use it for reports, archives, and machine-readable output.
 - `dispose` is required and nullable on both reporter lifecycles. When
   present, `execute()` calls it exactly once after the run or after reporter
   validation fails.
@@ -213,6 +215,10 @@ Reporter lifecycle:
   failures, and `dispose` failures are not sent back through reporters.
 - A reporter has one lifecycle. If a package needs both modes, expose two
   reporters that share the same internal formatting or recording logic.
+
+`RunResult.baselineReports` contains typed snapshot and benchmark comparisons.
+`preparationFacts` preserves available context when preparation fails. Core run
+metadata and comparison reports do not require JSON attachments.
 
 Reporter sinks:
 

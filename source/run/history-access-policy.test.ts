@@ -70,7 +70,7 @@ export const testNode = suite('history access ownership policy', [
             await scope.assert.rejects(async function () {
                 await fixture.access.guarded(fixture.access.assertIdle);
             }, { type: HistoryMaintenanceDeferredError });
-        });
+        }, performance.now.bind(performance));
         return scope.assert.collect();
     }),
     test('checks remote ownership leases before reclaiming metadata', async function (scope: TestScope) {

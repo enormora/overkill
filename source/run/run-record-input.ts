@@ -1,15 +1,16 @@
 import path from 'node:path';
 import { ulid } from 'ulid';
 import { currentReplayWitness } from './replay-context.ts';
+import { resolveRunRecordPersistence } from './run-profile-facts.ts';
 import { currentRunRecordVersion } from './run-record-format.ts';
-import type { HistoryStorage } from './history-storage-types.ts';
 import type { SingleRunRecord, RunRecordVersions } from './run-record-types.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import { runEngineFacts } from './run-support.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 
 export type RunRecordDependencies = {
-    readonly history: HistoryStorage;
+    readonly history: ReturnType<RunOrchestratorDependencies['createHistoryStorage']>;
+    readonly detail: 'compact' | 'detailed';
     readonly maintainHistory: () => Promise<readonly string[]>;
     readonly createId: () => string;
     readonly node: RunOrchestratorDependencies['node'];
@@ -84,6 +85,7 @@ export function initialRecord(
         id: dependencies.createId(),
         identities: [],
         kind: 'single',
+        detail: 'detailed',
         loader: input.config.loader,
         placementTrace: null,
         request: { ...input.request, seed: { value: seed } },
@@ -110,7 +112,9 @@ export async function createRunRecordDependencies(
     input: RunRecordInput,
     dependencies: RunRecordExecutionDependencies
 ): Promise<RunRecordDependencies> {
+    const persistence = resolveRunRecordPersistence(input.request, input.profile);
     return {
+        detail: persistence.reasons.includes('history') ? 'compact' : 'detailed',
         async maintainHistory() {
             try {
                 return await dependencies.maintainHistory({ projectRoot: input.projectRoot, config: input.config });

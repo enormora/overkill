@@ -90,6 +90,7 @@ export const readRetentionCatalog = createRetentionCatalogReader({ status: lstat
 type Removals = {
     readonly successfulRuns: ReadonlySet<string>;
     readonly retainedRecords: ReadonlySet<string>;
+    readonly detailedRecords: ReadonlySet<string>;
     readonly removedRecords: readonly string[];
     readonly removedArtifacts: readonly string[];
 };
@@ -101,6 +102,38 @@ function replaySourceIds(): readonly string[] {
     const id = replay.kind === 'record' ? replay.record.id : replay.sourceRunId;
     return id === null ? [] : [ id ];
 }
+function retainedRecordEvidence(
+    present: readonly Metadata[],
+    policy: HistoryOptions['config']['history'],
+    now: string
+): Pick<Removals, 'detailedRecords' | 'retainedRecords'> {
+    const detailedRecords = new Set(
+        present
+            .filter(function detailed(value) {
+                return value.detail === 'detailed';
+            })
+            .slice(0, policy.detailedRunLimit)
+            .map(function identity(value) {
+                return value.id;
+            })
+    );
+    const retainedRecords = new Set(
+        present
+            .filter(function recent(value) {
+                return Date.parse(value.startedAt) >=
+                    Date.parse(now) - policy.runSummaryRetentionDays * millisecondsPerDay;
+            })
+            .slice(0, policy.runSummaryLimit)
+            .map(function identity(value) {
+                return value.id;
+            })
+    );
+    for (const id of replaySourceIds()) {
+        retainedRecords.add(id);
+        detailedRecords.add(id);
+    }
+    return { detailedRecords, retainedRecords };
+}
 export function selectHistoryRemovals(
     catalog: RetentionCatalog,
     runs: string,
@@ -110,16 +143,10 @@ export function selectHistoryRemovals(
     checkHistoryMaintenanceBudget();
     const { metadata, records, artifactDirectories } = catalog;
     const ordered = Array.from(metadata.values()).toSorted(compareHistoryRuns);
-    const retainedRecords = new Set(
-        ordered
-            .filter(function (value) {
-                return records.includes(path.join(runs, `${value.id}.json`));
-            })
-            .slice(0, policy.detailedRunLimit)
-            .map(function (value) {
-                return value.id;
-            })
-    );
+    const present = ordered.filter(function stored(value) {
+        return records.includes(path.join(runs, `${value.id}.json`));
+    });
+    const { detailedRecords, retainedRecords } = retainedRecordEvidence(present, policy, now);
     const successful = new Set(
         ordered
             .filter(function (value) {
@@ -130,12 +157,8 @@ export function selectHistoryRemovals(
                 return value.id;
             })
     );
-    for (const id of replaySourceIds()) {
-        retainedRecords.add(id);
-    }
     const removedRecords = records.filter(function (value) {
-        return !retainedRecords.has(path.basename(value, '.json')) &&
-            !replaySourceIds().includes(path.basename(value, '.json'));
+        return !retainedRecords.has(path.basename(value, '.json'));
     });
     const removedArtifacts = artifactDirectories.filter(function expired(target) {
         if (replaySourceIds().includes(path.basename(target))) {
@@ -151,5 +174,5 @@ export function selectHistoryRemovals(
                 Date.parse(now) - policy.failingArtifactRetentionDays * millisecondsPerDay;
     });
 
-    return { retainedRecords, removedRecords, removedArtifacts, successfulRuns: successful };
+    return { retainedRecords, detailedRecords, removedRecords, removedArtifacts, successfulRuns: successful };
 }

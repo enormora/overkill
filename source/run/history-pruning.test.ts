@@ -37,7 +37,10 @@ export const testNode = suite('history pruning repair boundaries', [
             scope.assert.equal(await store.read(recordPath), JSON.stringify(record));
             await history.compact();
             await history.prune({ dryRun: false });
-            scope.assert.equal(await store.read(recordPath), null);
+            scope.assert.partialDeepEqual<unknown, unknown>(JSON.parse(await store.read(recordPath) ?? 'null'), {
+                detail: 'compact',
+                replayPlan: null
+            });
         });
         return scope.assert.collect();
     }),
@@ -52,7 +55,9 @@ export const testNode = suite('history pruning repair boundaries', [
             const index = await readCompactHistory(store, directory);
             scope.assert.equal(index?.cases[0]?.counters.passed, 1);
             await history.prune({ dryRun: false });
-            scope.assert.equal(await store.read(recordPath), null);
+            scope.assert.partialDeepEqual<unknown, unknown>(JSON.parse(await store.read(recordPath) ?? 'null'), {
+                detail: 'compact'
+            });
         });
         return scope.assert.collect();
     })

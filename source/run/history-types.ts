@@ -15,6 +15,7 @@ export type HistoryRunSummary = Except<StoredSummary, 'replayable'> & {
     readonly replay: 'available' | 'available-interrupted' | 'pruned' | 'unavailable';
 };
 export type HistoryPruneResult = {
+    readonly compactedRecords: number;
     readonly diagnostics: readonly string[];
     readonly kind: 'applied' | 'dry-run';
     readonly paths: readonly string[];

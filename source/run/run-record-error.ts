@@ -1,4 +1,5 @@
-import type { RunnerError } from '../engine/run-result.ts';
+import type { RunResult, RunnerError } from '../engine/run-result.ts';
+import { createResultFromResolutionError } from './run-collection-error-result.ts';
 import { RunCollectionError } from './run-errors.ts';
 
 export type RunRecordPhase = 'checkpoint' | 'complete' | 'facts' | 'interrupt' | 'start';
@@ -29,4 +30,13 @@ export function runRecordPersistenceError(filePath: string, phase: RunRecordPhas
     return new RunRecordError(filePath, {
         cause: { error, kind: 'run-record-persistence', path: filePath, phase }
     }, phase);
+}
+
+export function interruptedRunResult(error: unknown): RunResult {
+    return createResultFromResolutionError(
+        new RunCollectionError('Run interrupted before completion.', {
+            cause: error
+        }, 'crash'),
+        null
+    );
 }

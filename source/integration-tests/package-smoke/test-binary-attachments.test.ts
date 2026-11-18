@@ -4,7 +4,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod/v4';
 import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
-import { createLineReporter } from '@overkill-dev/reporter-line';
 import { runIfMain } from '#test-runner';
 
 const directory = fileURLToPath(new URL('.', import.meta.url));
@@ -83,7 +82,7 @@ const configScript = [
     "    profiles: { attachments: { testFamily: 'integration', files: { include: ['attachment-smoke.test.mjs'] } } },",
     '    reporters: [defineReporter(function() { return {',
     "        kind: 'final-result', name: 'attachment-observer', dispose: null, sinks: [{kind: 'stdout-raw-primary'}],",
-    '        onResult(result) {',
+    '        onResult({ result }) {',
     "            if (result.status !== 'passed') process.stderr.write(JSON.stringify(result));",
     '            process.stdout.write(JSON.stringify({status: result.status, artifacts: result.artifacts}));',
     '        }',
@@ -245,4 +244,4 @@ export const testNode = createSuite({
         })
     ]
 });
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

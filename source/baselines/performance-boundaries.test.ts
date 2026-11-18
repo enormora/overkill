@@ -47,6 +47,8 @@ const adapter: PerformanceBaselineAdapter = {
     }
 };
 const baseline: StoredPerformanceBaseline = {
+    normalization: null,
+    measurement: null,
     adapter: adapter.id,
     expected: { calibration, value: 1 },
     profile: 'startup',

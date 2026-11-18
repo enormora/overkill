@@ -1,6 +1,7 @@
 import { runIfMain } from '#test-runner';
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as publication } from './history-retention-policy.test.ts';
+import { testNode as evidence } from './compact-run-record.test.ts';
 import { testNode as runnerResults } from './runner-result.test.ts';
 import { testNode as compact } from './compact-history.test.ts';
 import { testNode as duration } from './duration-history-retention.test.ts';
@@ -11,6 +12,6 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     definitionLocations: [ { kind: 'unknown' } ],
-    children: [ publication, runnerResults, compact, duration, records ]
+    children: [ publication, evidence, runnerResults, compact, duration, records ]
 });
 await runIfMain(import.meta, testNode);

@@ -12,6 +12,7 @@ export const testNode = suite('history retention catalog reconstruction', [
             scope.assert.deepEqual(catalog.artifactDirectories, [ '/project/state/runs/retained' ]);
             scope.assert.deepEqual(Array.from(catalog.metadata.values()), [ {
                 version: 1,
+                detail: 'detailed',
                 id: 'retained',
                 startedAt: '2026-10-29T00:00:00.000Z',
                 status: 'passed'

@@ -54,6 +54,10 @@ export async function attachmentRecording(failure: Error | null): Promise<Attach
         },
         session: {
             id: 'record',
+            startedAt: '2026-10-30T00:00:00.000Z',
+            requireDetails() {
+                calls.push('details');
+            },
             path: '/project/record.json',
             async start() {
                 calls.push('start');
@@ -68,7 +72,7 @@ export async function attachmentRecording(failure: Error | null): Promise<Attach
                 calls.push('placement');
             },
             async complete(result) {
-                return { ...result, maintenanceDiagnostics: [] };
+                return { context: { id: null, startedAt: null, facts: null }, ...result, maintenanceDiagnostics: [] };
             },
             async interrupt() {
                 calls.push('interrupt');

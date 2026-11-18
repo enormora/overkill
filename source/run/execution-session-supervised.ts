@@ -43,7 +43,7 @@ export async function runSupervisedExecutionSession(
         return observation.result.read()?.artifacts ?? [];
     };
     try {
-        const { maintenanceDiagnostics, ...result } = await withExecutionSession(
+        const { maintenanceDiagnostics, context, ...result } = await withExecutionSession(
             call.transport,
             async function () {
                 return await operations.run(options.command, { signal, timing: null });

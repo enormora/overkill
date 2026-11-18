@@ -1,4 +1,4 @@
-import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
@@ -129,7 +129,7 @@ function witnessReport(): WitnessReport {
             name: 'witness observer',
             sinks: [],
             dispose: null,
-            onResult(result) {
+            onResult({ result }) {
                 delivered = propertyWitnesses(result);
             }
         };
@@ -162,21 +162,20 @@ export const testNode = suite('property witness storage', [
             }
         );
     }),
-    test('passing properties do not create witness files or run records', async function (scope: TestScope) {
+    test('passing properties retain compact records without witness files', async function (scope: TestScope) {
         const project = await witnessProject(scope, 'in-process', true);
         const result = await orchestrator.run(project.command);
         scope.assert.equal(result.summary.passed, 1);
         scope.assert.deepEqual(result.runnerErrors, []);
         scope.assert.deepEqual(propertyWitnesses(result), []);
         const files = await readdir(path.join(project.cwd, '.overkill'), { recursive: true });
-        scope.assert.false(files.some(function witnessOrRecord(file) {
-            return file === 'witnesses' || file === 'runs';
-        }));
+        scope.assert.false(files.includes('witnesses'));
         return scope.assert.collect();
     }),
     test('witness write failures preserve confirmed evidence and fail the run', async function (scope: TestScope) {
         const project = await witnessProject(scope, 'in-process', false);
-        await writeFile(path.join(project.cwd, '.overkill'), 'blocked');
+        await mkdir(path.join(project.cwd, '.overkill'), { recursive: true });
+        await writeFile(path.join(project.cwd, '.overkill', 'witnesses'), 'blocked');
         const result = await orchestrator.run(project.command);
         scope.assert.equal(result.summary.failed, 1);
         scope.assert.true(result.runnerErrors.some(function artifactFailure(error) {

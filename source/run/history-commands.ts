@@ -41,12 +41,16 @@ const operations: Readonly<Record<keyof HistoryCommands, HistoryOperation>> = {
     async prune(history, request) {
         const result = await history.prune({ dryRun: request.dryRun });
         const action = request.dryRun ? 'Would remove' : 'Removed';
+        const compaction = request.dryRun ? 'Would compact' : 'Compacted';
         return {
             fallbackDiagnostics: result.diagnostics,
             stdoutLines: [
                 ...result.paths.map(function removalLine(value) {
                     return `${action} ${value}`;
                 }),
+                ...result.compactedRecords === 0
+                    ? []
+                    : [ `${compaction} ${result.compactedRecords} detailed records.` ],
                 `${action} ${result.removedSummaries} summaries, ${result.removedCases} cases, ` +
                 `${result.removedWorkEntries} work entries.`
             ]

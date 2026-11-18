@@ -1,6 +1,7 @@
 import type { ReadonlyDeep } from 'type-fest';
 import { z } from 'zod';
 import { caseIdSchema as caseId } from '../engine/identity-schema.ts';
+import { durationHistoryStateSchema } from './duration-history-storage.ts';
 
 const timestamp = z.iso.datetime({ offset: true });
 const count = z.number().int().nonnegative();
@@ -23,6 +24,7 @@ const receipt = z.strictObject({
 export const compactHistorySchema = z.strictObject({
     version: z.literal(1),
     updatedAt: timestamp,
+    durations: durationHistoryStateSchema,
     summaries: z.array(summary),
     receipts: z.array(receipt),
     cases: z.array(z.strictObject({

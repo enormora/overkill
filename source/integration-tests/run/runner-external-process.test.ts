@@ -4,7 +4,6 @@ import { join } from 'node:path';
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { normalizeConfig, orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 
 import { assertCompletedBenchmarks } from './process-evidence-assertions.test.ts';
@@ -52,4 +51,4 @@ export const testNode = suite(
     })
 );
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

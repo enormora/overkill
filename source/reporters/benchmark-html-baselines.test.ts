@@ -1,6 +1,6 @@
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
-import { performanceReportArtifact } from '../baselines/performance-report.ts';
+import { withPerformanceBaselineReport } from '../baselines/performance-report.ts';
 import type { PerformanceMetricComparison } from '../baselines/performance-adapter.ts';
 import type { PerformanceObservationEvidence } from '../baselines/performance-presentation.ts';
 import type { BaselineChange } from '../baselines/performance-baseline.ts';
@@ -25,12 +25,10 @@ function policyReport(
     if (measured === undefined) {
         throw new Error('Expected benchmark fixture.');
     }
-    const artifact = performanceReportArtifact({
+    const artifact = withPerformanceBaselineReport({
         result,
-        capturedAtMicroseconds: 0,
         maxBytes: 4096,
         report: {
-            version: 2,
             calibration,
             changes,
             writeOutcome: { kind: 'read-only' },
@@ -44,7 +42,7 @@ function policyReport(
             } ]
         }
     });
-    return createBenchmarkHtmlReport({ ...result, artifacts: [ ...result.artifacts, artifact ] });
+    return createBenchmarkHtmlReport({ result: artifact, context: { id: null, startedAt: null, facts: null } });
 }
 function baselineReport(metrics: readonly PerformanceMetricComparison[]): BenchmarkHtmlReport {
     return policyReport(metrics, observation, []);
@@ -111,6 +109,8 @@ export const testNode = suite('benchmark HTML baseline comparisons', [
         const change: BaselineChange = {
             kind: 'create',
             baseline: {
+                normalization: null,
+                measurement: null,
                 adapter: 'latency',
                 expected: observation.actual,
                 profile: 'benchmark',

@@ -36,10 +36,10 @@ function defineBenchmarkHtmlReporter(
                 name: 'benchmark-html',
                 dispose: null,
                 sinks: [ { kind: 'file', path } ] as const,
-                async onResult(result) {
-                    const report = createBenchmarkHtmlReport(result);
+                async onResult(report) {
+                    const model = createBenchmarkHtmlReport(report);
                     const source = await dependencies.readClient();
-                    await dependencies.files.write(path, renderBenchmarkHtml(report, source));
+                    await dependencies.files.write(path, renderBenchmarkHtml(model, source));
                 }
             };
         }

@@ -7,6 +7,8 @@ import { createPerformanceBaselineStore, performanceBaselineKey } from './perfor
 import { performanceBaselineIdentity, type StoredPerformanceBaseline } from './performance-baseline.ts';
 
 const baseline: StoredPerformanceBaseline = {
+    normalization: null,
+    measurement: null,
     adapter: 'duration',
     expected: {
         calibration: { context: {}, kind: 'comparable', machineClass: 'test-host', metadata: {} },
@@ -120,7 +122,7 @@ export const testNode = suite('performance baseline storage', [
                 await store.apply({ baseline, kind: 'create' });
                 await scope.assert.rejects(async function duplicateCreate() {
                     await store.apply({ baseline, kind: 'create' });
-                }, { message: 'Performance baseline changed during execution. Run the command again.' });
+                }, { message: 'Baseline changed during execution. Run the command again.' });
                 const [ entry ] = await store.list();
                 scope.require.defined(entry);
                 const filePath = path.join(directory, entry.path);
@@ -128,7 +130,7 @@ export const testNode = suite('performance baseline storage', [
                 await writeFile(filePath, JSON.stringify(edited));
                 await scope.assert.rejects(async function replaceEditedBaseline() {
                     await store.apply({ baseline, kind: 'update', previous: baseline });
-                }, { message: 'Performance baseline changed during execution. Run the command again.' });
+                }, { message: 'Baseline changed during execution. Run the command again.' });
                 await assertPersistedBaseline(scope, filePath, edited);
             });
             return scope.assert.collect();
@@ -148,7 +150,7 @@ export const testNode = suite('performance baseline storage', [
                             maxBytes: 4096,
                             projectRoot: directory
                         });
-                    }, { message: 'Performance baseline directory must remain inside the project root.' });
+                    }, { message: 'Baseline directory must remain inside the project root.' });
                 }
             });
             return scope.assert.collect();
@@ -182,7 +184,7 @@ export const testNode = suite('performance baseline storage', [
             await mkdir(filePath);
             await scope.assert.rejects(async function directoryEntry() {
                 await store.list();
-            }, { message: /Invalid performance baseline file:/ });
+            }, { message: /Invalid baseline file:/ });
         });
         return scope.assert.collect();
     }),
@@ -195,7 +197,7 @@ export const testNode = suite('performance baseline storage', [
             await rename(filePath, path.join(path.dirname(filePath), 'wrong.benchmark.json'));
             await scope.assert.rejects(async function wrongIdentity() {
                 await store.list();
-            }, { message: /Performance baseline path does not match its identity:/ });
+            }, { message: /Baseline path does not match its identity./ });
         });
         return scope.assert.collect();
     }),
@@ -209,7 +211,7 @@ export const testNode = suite('performance baseline storage', [
                 await rm(path.join(directory, entry.path));
                 await scope.assert.rejects(async function vanishedExpectation() {
                     await store.apply({ baseline, kind: 'update', previous: baseline });
-                }, { message: 'Performance baseline disappeared during execution.' });
+                }, { message: 'Baseline changed during execution. Run the command again.' });
                 const bounded = await createPerformanceBaselineStore({
                     directory: 'small',
                     maxBytes: 1,
@@ -217,7 +219,7 @@ export const testNode = suite('performance baseline storage', [
                 });
                 await scope.assert.rejects(async function oversizedWrite() {
                     await bounded.apply({ baseline, kind: 'create' });
-                }, { message: 'Performance baseline exceeds the configured artifact byte limit.' });
+                }, { message: 'Baseline exceeds the configured artifact byte limit.' });
                 scope.assert.deepEqual(await bounded.list(), []);
             });
             return scope.assert.collect();

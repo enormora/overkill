@@ -2,7 +2,6 @@ import { isDeepStrictEqual } from 'node:util';
 import { runIfMain } from '#test-runner';
 import type { RunResult } from '../../engine/run-result.ts';
 import { normalizationCommand, normalizationReferences } from '../../test-support/benchmark-normalization-fixture.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { orchestrator, parseRunnerResult, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import { createBenchmarkHtmlReport } from '../../reporters/benchmark-html-model.ts';
@@ -13,7 +12,15 @@ function assertChartScales(scope: TestScope, result: RunResult): void {
     scope.assert.true(
         isDeepStrictEqual(parseRunnerResult(result).perTest[0]?.benchmark, result.perTest[0]?.benchmark)
     );
-    const { groups } = createBenchmarkHtmlReport(result).charts;
+    const { groups } = createBenchmarkHtmlReport({
+        result,
+        context: {
+            id: null,
+            startedAt: null,
+            facts: null
+        }
+    })
+        .charts;
     scope.assert.equal(groups.length, 2);
     scope.assert.true(groups.some(function rawGroup(group) {
         return group.name.includes('raw)');
@@ -142,7 +149,20 @@ export const testNode = suite('benchmark normalization process boundaries', [
             }),
             [ 0.5, 100 ]
         );
-        scope.assert.equal(createBenchmarkHtmlReport(result).charts.groups.length, 3);
+        scope.assert.equal(
+            createBenchmarkHtmlReport({
+                result,
+                context: {
+                    id: null,
+                    startedAt: null,
+                    facts: null
+                }
+            })
+                .charts
+                .groups
+                .length,
+            3
+        );
         return scope.assert.collect();
     }),
     test('normalizes automatically without captured references', async function (scope: TestScope) {
@@ -154,4 +174,4 @@ export const testNode = suite('benchmark normalization process boundaries', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

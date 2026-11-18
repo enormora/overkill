@@ -1,7 +1,14 @@
 import path from 'node:path';
+import { storedOrdinaryBaselineSchema, baselineFilename, type StoredOrdinaryBaseline } from '../run/baseline-record.ts';
 import { openOrdinaryBaselineStore, type OrdinaryBaselineAccess } from '../run/baseline-store.ts';
 import { createBaselineStorage, type BaselineStorage } from '../run/baseline-storage.ts';
 
+export const ordinaryStorageFormat = {
+    schema: storedOrdinaryBaselineSchema,
+    relativePath(baseline: StoredOrdinaryBaseline) {
+        return path.join(baseline.subtype, baselineFilename(baseline));
+    }
+};
 export const ordinaryStorageInput = { projectRoot: '/project', directory: 'baselines', maxBytes: 65_536 };
 type OrdinaryStorageScenario = {
     readonly ancestor: string;
@@ -19,7 +26,7 @@ type OrdinaryStorageFixture = {
     readonly access: OrdinaryBaselineAccess;
     readonly files: ReadonlyMap<string, string>;
     readonly events: readonly string[];
-    readonly storage: BaselineStorage;
+    readonly storage: BaselineStorage<StoredOrdinaryBaseline>;
     readonly store: Awaited<ReturnType<typeof openOrdinaryBaselineStore>>;
     readonly seed: (file: string, content: string) => void;
 };
@@ -75,7 +82,8 @@ export async function ordinaryBaselineStorage(scenario: OrdinaryStorageScenario)
             };
         }
     };
-    const storage = createBaselineStorage({
+    const storage = createBaselineStorage<StoredOrdinaryBaseline>({
+        ...ordinaryStorageFormat,
         root: '/project',
         directory: '/project/baselines',
         maxBytes: ordinaryStorageInput.maxBytes

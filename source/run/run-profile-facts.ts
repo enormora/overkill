@@ -133,5 +133,5 @@ export function resolveRunRecordPersistence(request: RunRequest, profile: Profil
     const reasons = candidates.flatMap(function requestedReason([ enabled, reason ]) {
         return enabled ? [ reason ] : [];
     });
-    return { persist: reasons.length > 0, reasons };
+    return { persist: true, reasons: reasons.length === 0 ? [ 'history' ] : reasons };
 }

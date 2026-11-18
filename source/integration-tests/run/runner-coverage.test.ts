@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { runIfMain } from '#test-runner';
 
@@ -6,6 +6,7 @@ import { defaultHistoryPolicy } from '../../config/history-policy.ts';
 import {
     orchestrator,
     type SingleRunRecord,
+    type CompactRunRecord,
     type RunRequest,
     type CoveragePolicy,
     type NormalizedConfig,
@@ -24,7 +25,6 @@ import {
 } from '../../packages/engine/engine.entry-point.ts';
 import { generateCoverageReports } from '../../run/coverage-reporting.ts';
 import { defaultCoveragePolicy } from '../../config/defaults.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { loadCoverageFixtures } from './fixtures/coverage-files.ts';
 
 const coverageFixturePath = 'source/integration-tests/run/fixtures/coverage.test.ts';
@@ -211,10 +211,30 @@ async function assertCoverageRun(
     return artifact;
 }
 
-async function assertNoCoverageState(scope: TestScope): Promise<void> {
+async function assertCompactOutcomeWithoutCoverage(
+    scope: TestScope,
+    directory: string,
+    result: RunResult
+): Promise<void> {
+    const entries = await readdir(path.join(directory, 'runs'));
+    const records = entries.filter(function recordFile(name) {
+        return name.endsWith('.json');
+    });
+    scope.assert.equal(records.length, 1);
+    const record = JSON.parse(
+        await readFile(path.join(directory, 'runs', records[0] ?? 'missing'), 'utf8')
+    ) as CompactRunRecord;
+    scope.assert.partialDeepEqual({ record, status: result.status, artifacts: result.artifacts }, {
+        record: { detail: 'compact', status: 'completed', replayPlan: null, result: { status: 'passed' } },
+        status: 'passed',
+        artifacts: []
+    });
+}
+
+async function assertCompactRunWithoutCoverage(scope: TestScope): Promise<void> {
     const config = {
         ...coverageConfig('in-process', 10_000, defaultCoveragePolicy, 'serial'),
-        runtimeStateDir: 'target/coverage-disabled-integration'
+        runtimeStateDir: await mkdtemp('target/coverage-disabled-integration-')
     };
     const command = { config, cwd: process.cwd(), engine: { kind: 'default' as const }, request: coverageRequest() };
     const resolved = await orchestrator.resolve(command);
@@ -223,10 +243,7 @@ async function assertNoCoverageState(scope: TestScope): Promise<void> {
         await stat(path.join(config.runtimeStateDir, 'runs'));
     }, { code: 'ENOENT' });
     const result = await orchestrator.run({ ...command, request: { ...command.request, coverage: false } });
-    scope.assert.equal(result.status, 'passed');
-    await scope.assert.rejects(async function readOrdinaryState() {
-        await stat(path.join(config.runtimeStateDir, 'runs'));
-    }, { code: 'ENOENT' });
+    await assertCompactOutcomeWithoutCoverage(scope, config.runtimeStateDir, result);
 }
 
 async function latestCrashRawDirectory(): Promise<string> {
@@ -337,11 +354,11 @@ export const testNode = createSuite({
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            title: 'ordinary runs and coverage resolution create no run records',
+            title: 'resolution writes no record and ordinary runs retain compact outcomes',
             annotations: {},
             controls: {},
             async body(scope) {
-                await assertNoCoverageState(scope);
+                await assertCompactRunWithoutCoverage(scope);
                 return scope.assert.collect();
             }
         }),
@@ -439,4 +456,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

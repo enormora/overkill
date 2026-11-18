@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { z } from 'zod/v4';
 import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
-import { createLineReporter } from '@overkill-dev/reporter-line';
 import { runIfMain } from '#test-runner';
 import { normalizedBenchConfigScript, normalizedBenchFixtureScript } from './normalization-scripts.test.ts';
 import {
@@ -315,4 +314,4 @@ export const testNode = createSuite({
     title: 'source/integration-tests/package-smoke/bench.test.ts'
 });
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

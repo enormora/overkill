@@ -33,8 +33,9 @@ function source(id: string, span: RunTimingSpan): MergeSource {
     return {
         path: id,
         record: mergeRecordSchema.parse({
-            version: 2,
+            version: 1,
             kind: 'single',
+            detail: 'detailed',
             status: 'completed',
             id,
             facts,

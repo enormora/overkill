@@ -48,16 +48,30 @@ async function assertPreview(scope: TestScope, root: string, service: History, f
     const summaries = await service.list();
     scope.assert.equal(summaries[0]?.replay, 'available');
     const preview = await service.prune({ dryRun: true });
-    scope.assert.deepEqual(preview.paths, [ fixture.recordPath ]);
+    scope.assert.deepEqual(preview.paths, []);
+    scope.assert.equal(preview.compactedRecords, 1);
     scope.assert.equal(await readFile(fixture.recordPath, 'utf8'), fixture.recordSource);
     scope.assert.equal(await readFile(path.join(root, 'state/history/index.json'), 'utf8'), before);
 }
 async function assertPrunedArtifacts(scope: TestScope, service: History, fixture: HistoryFixture): Promise<void> {
     const applied = await service.prune({ dryRun: false });
-    scope.assert.deepEqual(applied.paths, [ fixture.recordPath ]);
+    scope.assert.deepEqual(applied.paths, []);
+    scope.assert.equal(applied.compactedRecords, 1);
+    scope.assert.partialDeepEqual<unknown, unknown>(
+        JSON.parse(
+            await readFile(
+                fixture.recordPath,
+                'utf8'
+            )
+        ),
+        {
+            detail: 'compact',
+            replayPlan: null
+        }
+    );
     scope.assert.equal(await readFile(fixture.artifactPath, 'utf8'), 'evidence');
     const summaries = await service.list();
-    scope.assert.equal(summaries[0]?.replay, 'pruned');
+    scope.assert.equal(summaries[0]?.replay, 'unavailable');
     await service.compact();
     await service.prune({ dryRun: false });
     scope.assert.equal(await readFile(fixture.artifactPath, 'utf8'), 'evidence');
@@ -77,7 +91,16 @@ async function recordThenPrune(root: string, service: History, outcome: Recorded
             startedAt: outcome.startedAt,
             result: {
                 ...record.result,
-                runnerErrors: outcome.status === 'runner-error' ? [ { message: 'runner error' } ] : []
+                runnerErrors: outcome.status === 'runner-error'
+                    ? [ {
+                        attributedTo: null,
+                        attributedToAttempt: null,
+                        cause: null,
+                        diagnostics: [],
+                        subtype: 'runtime-state',
+                        message: 'runner error'
+                    } ]
+                    : []
             }
         })
     );

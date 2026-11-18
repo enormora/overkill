@@ -40,7 +40,7 @@ export const config={profiles:{cases:{...${policySource},testFamily:family}}};`
 }
 
 function assertFamilyRecord(scope: TestScope, record: ReplayRunRecord): void {
-    scope.assert.equal(record.version, 5);
+    scope.assert.equal(record.version, 1);
     scope.assert.equal(record.facts.implementations, null);
     scope.assert.equal(record.replayPlan.implementations, null);
     scope.assert.equal(record.facts.family?.id, family.id);

@@ -74,7 +74,7 @@ function createReporterLifecycleRecorder(): ReporterLifecycleRecorder {
             onEvent(event) {
                 entries.push(`event:${event.kind}`);
             },
-            onFinish(result) {
+            onFinish({ result }) {
                 entries.push(`finish:${result.runnerErrors[0]?.message ?? 'none'}`);
             },
             sinks: [ { kind: 'memory' } ]

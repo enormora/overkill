@@ -8,7 +8,7 @@ import { executeRecordedRun } from './recorded-run.ts';
 import { resolveRunRecordPersistence } from './run-profile-facts.ts';
 
 const reasons = [
-    [ 'on-demand', false, false, [] ],
+    [ 'on-demand', false, false, [ 'history' ] ],
     [ 'on-demand', true, false, [ 'request' ] ],
     [ 'on-demand', false, true, [ 'coverage' ] ],
     [ 'on-demand', true, true, [ 'request', 'coverage' ] ],

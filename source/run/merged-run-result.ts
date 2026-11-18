@@ -82,6 +82,9 @@ export function mergedRunResult(sources: NonEmptyReadonlyArray<MergeSource>): Ru
     return {
         ...first.record.result,
         ...mergeOutcomes(results),
+        baselineReports: results.flatMap(function comparisons(result) {
+            return result.baselineReports;
+        }),
         resourceChecks: results.flatMap(function retainedChecks(result) {
             return result.resourceChecks;
         }),

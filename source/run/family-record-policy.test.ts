@@ -28,27 +28,34 @@ function familyProfile(definition: TestFamily<null>): DefinedFamilyProfile {
 }
 
 export const testNode = suite('family recording policy', [
-    ...([ 2, 3 ] as const).map(function mergedVersion(version) {
-        return test(`inspects merged version ${version} without resolving family modules`, function (scope) {
-            const record = completedHistoryRecord('historical-merged');
-            const parsed = historyRecordSchema.parse({
-                ...record,
-                kind: 'merged',
-                version,
-                facts: {
-                    execution: {
-                        ...record.execution,
-                        profile: record.request.profile,
-                        testFamily: '@missing/checker'
-                    }
-                }
-            });
-            scope.assert.equal(parsed.version, version);
-            scope.assert.equal(parsed.facts?.execution.testFamily, '@missing/checker');
-            scope.assert.equal(parsed.request.profile, record.request.profile);
-            scope.assert.equal(parsed.replayPlan, null);
+    ...[ 2, 3 ].map(function unsupportedVersion(version) {
+        return test(`rejects unsupported record version ${version}`, function (scope) {
+            scope.assert.throws(function parseFutureRecord() {
+                historyRecordSchema.parse({ ...completedHistoryRecord('unsupported'), version });
+            }, { name: 'ZodError' });
             return scope.assert.collect();
         });
+    }),
+    test('inspects merged v1 records without resolving family modules', function (scope) {
+        const record = completedHistoryRecord('historical-merged');
+        const parsed = historyRecordSchema.parse({
+            ...record,
+            kind: 'merged',
+            version: 1,
+            facts: {
+                ...record.facts,
+                execution: {
+                    ...record.execution,
+                    profile: record.request.profile,
+                    testFamily: '@missing/checker'
+                }
+            }
+        });
+        scope.assert.equal(parsed.version, 1);
+        scope.assert.equal(parsed.facts?.execution.testFamily, '@missing/checker');
+        scope.assert.equal(parsed.request.profile, record.request.profile);
+        scope.assert.equal(parsed.replayPlan, null);
+        return scope.assert.collect();
     }),
     test('rejects replacement of a recorded family with a built-in profile', async function (scope: TestScope) {
         const current = normalizeConfig({ profiles: { custom: { testFamily: 'microtest' } } }).profiles['custom'];
@@ -97,27 +104,25 @@ export const testNode = suite('family recording policy', [
         }, { message: 'Frozen family identity or implementation version changed; collect a new run.' });
         return scope.assert.collect();
     }),
-    ...([ 1, 2, 3 ] as const).map(function historicalVersion(version) {
-        return test(`inspects version ${version} without resolving family modules`, function (scope) {
-            const record = completedHistoryRecord('historical');
-            const parsed = historyRecordSchema.parse({
-                ...record,
-                version,
-                facts: { execution: { testFamily: '@missing/checker' } },
-                replayProfile: {
-                    kind: 'family',
-                    family: {
-                        id: '@missing/checker',
-                        version: 'historical',
-                        module: { moduleUrl: 'file:///missing/checker.ts', exportName: 'family' }
-                    },
-                    policy: {}
-                }
-            });
-            scope.assert.equal(parsed.version, version);
-            scope.assert.equal(parsed.facts?.execution.testFamily, '@missing/checker');
-            return scope.assert.collect();
+    test('inspects v1 records without resolving family modules', function (scope) {
+        const record = completedHistoryRecord('historical');
+        const parsed = historyRecordSchema.parse({
+            ...record,
+            version: 1,
+            facts: { ...record.facts, execution: { testFamily: '@missing/checker' } },
+            replayProfile: {
+                kind: 'family',
+                family: {
+                    id: '@missing/checker',
+                    version: 'historical',
+                    module: { moduleUrl: 'file:///missing/checker.ts', exportName: 'family' }
+                },
+                policy: {}
+            }
         });
+        scope.assert.equal(parsed.version, 1);
+        scope.assert.equal(parsed.facts?.execution.testFamily, '@missing/checker');
+        return scope.assert.collect();
     })
 ]);
 await runIfMain(import.meta, testNode);

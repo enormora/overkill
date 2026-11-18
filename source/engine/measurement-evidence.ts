@@ -63,7 +63,7 @@ export type ReadingAttribution = {
     readonly target: MeasurementTargetIdentity;
 };
 export type RawBenchmarkSample = { readonly reading: MetricReading; readonly attribution: ReadingAttribution | null; };
-export const rawBenchmarkSamplesVersion = 2;
+export const rawBenchmarkSamplesVersion = 1;
 export type RawBenchmarkSamples = {
     readonly version: typeof rawBenchmarkSamplesVersion;
     readonly metrics: Readonly<Record<string, readonly RawBenchmarkSample[]>>;

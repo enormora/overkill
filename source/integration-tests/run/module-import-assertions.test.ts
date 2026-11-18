@@ -59,7 +59,17 @@ function assertSamplePhases(scope: TestScope, timeline: BenchmarkTimelineReport)
 }
 
 function assertHtmlTimeline(scope: TestScope, result: RunResult): void {
-    const html = renderBenchmarkHtml(createBenchmarkHtmlReport(result), '');
+    const html = renderBenchmarkHtml(
+        createBenchmarkHtmlReport({
+            result,
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            }
+        }),
+        ''
+    );
     scope.assert.includes(html, 'Benchmark timelines');
     scope.assert.includes(html, 'authored import');
 }

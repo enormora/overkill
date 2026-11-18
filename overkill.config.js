@@ -3,7 +3,6 @@ import {
     createBenchmarkHtmlReporter
 } from './source/packages/reporter-benchmark-html/reporter-benchmark-html.entry-point.ts';
 import { createLineReporter } from './source/packages/reporter-line/reporter-line.entry-point.ts';
-import { createBriefReporter } from './source/packages/reporter-brief/reporter-brief.entry-point.ts';
 
 const testPolicy = {
     testFamily: 'integration',
@@ -35,8 +34,7 @@ export const config = defineConfig({
             ...testPolicy,
             testFamily: 'microtest',
             execution: { processModel: 'in-process', scheduling: 'serial' },
-            files: { include: [ 'source/overkill.test.ts' ] },
-            reporters: [ createBriefReporter() ]
+            files: { include: [ 'source/overkill.test.ts' ] }
         },
         integration: {
             ...testPolicy,
@@ -47,8 +45,7 @@ export const config = defineConfig({
                     'source/integration-tests/package-smoke/**/*.test.ts',
                     'source/integration-tests/run/fixtures/**/*.test.ts'
                 ]
-            },
-            reporters: [ createBriefReporter() ]
+            }
         },
         packageSmoke: {
             ...testPolicy,

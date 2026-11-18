@@ -2,6 +2,7 @@ import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { writeCorpusIndex } from '../test-support/corpus-index.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { capturePropertyInput } from '../property/property-graph.ts';
 import { inspectCorpus, promoteWitness, migrateCorpus } from '../packages/run/run.entry-point.ts';
@@ -35,48 +36,64 @@ async function customInput(scope: TestScope): Promise<CorpusRequest> {
         codec: { kind: 'module' as const, path: 'codec.mjs', exportName: 'default' }
     };
 }
+type CachedWitness = {
+    readonly witness: typeof propertyCorpusEntry;
+    readonly entryId: string;
+    readonly request: CorpusRequest;
+};
+async function cachedWitness(scope: TestScope): Promise<CachedWitness> {
+    const cwd = await directory(scope);
+    const witness = {
+        ...propertyCorpusEntry,
+        counterexample: capturePropertyInput(42, null, function () {
+            return undefined;
+        })
+    };
+    const [ entryId ] = await writeCorpusIndex(path.join(cwd, 'cache.json'), [ witness ]);
+    scope.require.defined(entryId);
+    return {
+        witness,
+        entryId,
+        request: { cwd, source: { kind: 'path' as const, path: 'cache.json' }, codec: { kind: 'built-in' as const } }
+    };
+}
 export const testNode = suite('corpus compatibility', [
-    test('promotion retains historical versions while migration writes the current codec', async function (scope) {
-        const request = await customInput(scope);
-        const promotion = await promoteWitness({
-            ...request,
-            destination: 'promoted.json',
-            async beforeWrite() {
-                return undefined;
-            }
-        });
-        const migration = await migrateCorpus({
-            ...request,
-            destination: 'migrated.json',
-            async beforeWrite() {
-                return undefined;
-            }
-        });
-        scope.assert.equal(promotion.entry.witness.counterexample.codec.version, 1);
-        scope.assert.equal(migration.entry.witness.counterexample.codec.version, 3);
-        scope.assert.deepEqual(promotion.entry.preview, migration.entry.preview);
-        scope.assert.deepEqual(promotion.entry.witness.case, migration.entry.witness.case);
+    test(
+        'promotion retains historical versions while migration writes the current codec',
+        async function (scope: TestScope) {
+            const request = await customInput(scope);
+            const promotion = await promoteWitness({
+                ...request,
+                destination: 'promoted.json',
+                async beforeWrite() {
+                    return undefined;
+                }
+            });
+            const migration = await migrateCorpus({
+                ...request,
+                destination: 'migrated.json',
+                async beforeWrite() {
+                    return undefined;
+                }
+            });
+            scope.assert.equal(promotion.entry.witness.counterexample.codec.version, 1);
+            scope.assert.equal(migration.entry.witness.counterexample.codec.version, 3);
+            scope.assert.deepEqual(promotion.entry.preview, migration.entry.preview);
+            scope.assert.deepEqual(promotion.entry.witness.case, migration.entry.witness.case);
+            return scope.assert.collect();
+        }
+    ),
+    test('cache inspection diagnoses corrupt inputs', async function (scope: TestScope) {
+        const { request, entryId } = await cachedWitness(scope);
+        await writeFile(path.join(request.cwd, 'inputs', `${entryId}.json`), '{');
+        const broken = await inspectCorpus(request);
+        scope.assert.deepEqual([ broken.entries.length, broken.diagnostics.length ], [ 0, 1 ]);
         return scope.assert.collect();
     }),
-    test('cache inspection diagnoses bad entries and promotion requires explicit selection', async function (scope) {
-        const cwd = await directory(scope);
-        const witness = {
-            ...propertyCorpusEntry,
-            counterexample: capturePropertyInput(42, null, function () {
-                return undefined;
-            })
-        };
-        await writeFile(
-            path.join(cwd, 'cache.json'),
-            JSON.stringify({ version: 1, entries: [ null, { id: 'chosen', savedAt: '', entry: witness } ] })
-        );
-        const request = {
-            cwd,
-            source: { kind: 'path' as const, path: 'cache.json' },
-            codec: { kind: 'built-in' as const }
-        };
+    test('cache promotion requires explicit selection', async function (scope: TestScope) {
+        const { request, entryId, witness } = await cachedWitness(scope);
         const inspection = await inspectCorpus(request);
-        scope.assert.deepEqual([ inspection.entries.length, inspection.diagnostics.length ], [ 1, 1 ]);
+        scope.assert.deepEqual([ inspection.entries.length, inspection.diagnostics.length ], [ 1, 0 ]);
         await scope.assert.rejects(async function unselected() {
             await promoteWitness({
                 ...request,
@@ -88,7 +105,7 @@ export const testNode = suite('corpus compatibility', [
         }, { message: /explicit cache entry/v });
         const result = await promoteWitness({
             ...request,
-            source: { kind: 'cache-entry', path: 'cache.json', entryId: 'chosen' },
+            source: { kind: 'cache-entry', path: 'cache.json', entryId },
             destination: 'selected.json',
             async beforeWrite() {
                 return undefined;

@@ -134,7 +134,9 @@ export function createBriefReporter(): DefinedReporter<RealTimeReporter<BriefRep
                 return [];
             },
 
-            onFinish: briefSummaryIntents
+            onFinish({ result }) {
+                return briefSummaryIntents(result);
+            }
         };
     });
 }

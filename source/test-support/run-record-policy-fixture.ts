@@ -7,6 +7,7 @@ import { createMemoryHistoryStorage } from './memory-history-storage.ts';
 import { defaultRunRequest } from './run-command-factory.ts';
 
 const recordSnapshot = z.object({
+    detail: z.enum([ 'compact', 'detailed' ]),
     id: z.string(),
     status: z.enum([ 'started', 'completed', 'interrupted' ]),
     result: z.object({ status: z.enum([ 'passed', 'failed' ]) }).nullable()

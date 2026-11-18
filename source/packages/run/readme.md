@@ -592,9 +592,8 @@ and snapshots use a shared reference-workload scale across hardware.
 `overkill bench calibrate` optionally captures display references for the selected
 benchmark profile. `orchestrator.bench.calibrate(command, { timing: null })` exposes
 the same operation. Capture skips benchmark bodies and unrelated fixtures. Reference
-files live under the baseline directory's `calibration` subdirectory. Version 4
-`benchmark-run` artifacts and `RunFacts.benchmarkNormalization` retain reference
-inputs. See the [benchmark guide](../bench/readme.md#calibration-and-normalization)
+files live under the baseline directory's `calibration` subdirectory.
+`RunFacts.benchmarkNormalization` retains reference inputs. See the [benchmark guide](../bench/readme.md#calibration-and-normalization)
 for scaling, uncertainty, saved expectations, and stale-reference maintenance.
 
 `runCpuCalibrationWorkload()` from `@overkill-dev/run/benchmark-calibration` runs
@@ -716,34 +715,34 @@ See the baselines package documentation for authoring and update examples.
 
 ## Run recording
 
-Profiles accept `runRecords: { persist: 'on-demand' | 'always' }`, defaulting to
-`on-demand`. Use `overkill run --record` or `RunRequest.record: true` to persist
-one invocation. Coverage and resource attachment workflows require records
-independently of that default.
+Every ordinary invocation saves a compact run record with outcomes, timings,
+benchmark summaries, and comparison reports. Profiles accept
+`runRecords: { persist: 'on-demand' | 'always' }`, defaulting to `on-demand`.
+Use `overkill run --record`, `RunRequest.record: true`, or `persist: 'always'`
+to retain replay and diagnostic details. Coverage and attachment workflows also
+retain details. Internal worker and mutation tasks do not create ordinary history.
 
 `RunRequest.recordForMerge: true` persists a shard record and defers compact
 history. It requires `shard.total > 1` and `record: false`, including for
 profiles with `persist: 'always'`. Use the same explicit seed for every shard.
 
-Records live at `<runtimeStateDir>/runs/<id>.json`. Explicit recording starts
-before runner-owned imports. Artifact-only recording starts after collection
-identifies attachment scopes, before resources or cases execute. Reusable
-collection is read-only; each execution receives a fresh record ID.
+Records live at `<runtimeStateDir>/runs/<id>.json`. Recording starts before
+runner-owned imports. Reusable collection is read-only; each execution receives
+a fresh record ID. `detail: 'compact' | 'detailed'` identifies the retained evidence.
 
-Version 4 records retain portable implementation inputs, realm, version, and
+Detailed version 1 records retain portable implementation inputs, realm, version, and
 module/build/source-map identity. Executors revalidate this evidence before
 acquisition or case execution. Source code, input parsers, callbacks, and native
 handles are not record or dispatch payloads. Replay rejects implementation drift;
 merge checks overlapping module and input identities across shards.
 
-Versions 2 and 3 retain a bodyless replay plan and normalized profile policy
+Detailed records retain a bodyless replay plan and normalized profile policy
 alongside resolved facts before execution. They preserve collection counts,
 orphan metadata, selected identities, and case controls when execution is
 interrupted. Witness replay records retain their concrete input for subsequent replay.
-Reporter callbacks come from the current configuration. Version 1
-records remain readable by history; records without replay snapshots are unavailable
-for replay. Historical records do not gain implementation provenance when read.
-They can replay inline work, but cannot introduce referenced implementations.
+Reporter callbacks come from the current configuration. Records without replay
+snapshots are unavailable for replay. The version 1 format replaces the earlier
+development formats; existing records must be regenerated.
 
 Required write failures fail the command. Completed records include reporter
 and cleanup errors; escaping exceptions leave interrupted records.
@@ -751,8 +750,9 @@ and cleanup errors; escaping exceptions leave interrupted records.
 ## Compact history
 
 Persisted runs other than merge inputs update run summaries and case outcomes under
-`runtimeStateDir/history/index.json`. Duration history remains under
-`duration-history/work-durations.json`; ordinary unrecorded runs can warm it.
+`runtimeStateDir/history/index.json`. The same document contains duration
+observations and ingestion receipts. Completion publishes outcomes and durations
+in one atomic write. Scheduling reads the same committed snapshot.
 
 Top-level `history` config controls `observationsPerIdentity` (20),
 `runSummaryLimit` (500), `runSummaryRetentionDays` (90),
@@ -760,7 +760,8 @@ Top-level `history` config controls `observationsPerIdentity` (20),
 `staleLockMilliseconds` (120000). Summary count and age limits both apply.
 Placement still uses the latest eight duration samples within 30 days.
 
-History is derived state, not a replay source. Interrupted runs do not add
+Aggregates survive record pruning. Repair can recover retained records, but reports
+possible loss when source records have already expired. Interrupted runs do not add
 case/work observations. Persistence failures fail the run. History CLI,
 `--last-failed` selects the newest failed case outcomes from compact history and
 automatically records the run. Combine it with ordinary filters. Valid history
@@ -781,7 +782,8 @@ starts after the deadline; in-flight filesystem operations finish before the
 lock is released and can exceed the budget. Large backlogs may require explicit
 `overkill history prune`. Interrupted attempts wait for later maintenance.
 
-Runner returns extend the engine result with `maintenanceDiagnostics`, an array
+Runner returns extend the engine result with `context` (run ID, start time, and
+available facts) and `maintenanceDiagnostics`, an array
 of messages also printed by the CLI after reporting. These messages never
 change verdicts or exit codes. Budget exhaustion, contention, and active runs
 quietly defer maintenance. Use `parseRunnerResult` for the extended result;
@@ -796,7 +798,12 @@ history from retained records and reports potential recovery losses.
 Use `overkill history prune --dry-run` to preview retention, then
 `overkill history prune` to apply it. Global `history.detailedRunLimit`,
 `successfulArtifactRunLimit`, and `failingArtifactRetentionDays` default to
-20 records, 5 successful artifact runs, and 7 days of unsuccessful artifacts.
+20 detailed records, 5 successful artifact runs, and 7 days of unsuccessful artifacts.
+Older detailed records become compact records. Comparison summaries retain write
+outcomes and counts; comparison payloads expire with detailed evidence.
+Benchmark compaction retains metrics and lifecycle summaries, counts omitted
+invocations, and removes trace and sample references. Compact records follow the
+summary count and age limits. Aggregate counters and bounded observations remain independent.
 Artifacts can survive their detailed record and summary through per-run
 retention metadata.
 
@@ -878,7 +885,8 @@ handlers against fresh resources.
 Property profiles replay JSON entries named by `corpus.checkedIn`. Paths are
 relative to the project root; directories are searched recursively. Missing
 paths and incompatible checked-in entries fail. Test execution only writes the
-bounded local cache under `runtimeStateDir/corpus`; it never promotes or
+bounded local cache under `runtimeStateDir/corpus`. The cache index references
+separately saved witness inputs and can be rebuilt from them. Execution never promotes or
 migrates repository entries. See the property package's regression corpus
 documentation for limits, confirmation, and nested target identity.
 
@@ -967,9 +975,8 @@ a mismatch fails without trying another implementation. Definitions without a
 replayable source remain local. Workers validate the exact implementation version,
 normalized settings, preparation facts, and frozen catalog before execution.
 
-`RunFacts.family` retains preparation and selected collection facts. New records
-use version `4`; historical versions `1`, `2`, and `3` remain inspectable without
-importing family modules. Reproduction requires the recorded implementation
+`RunFacts.family` retains preparation and selected collection facts in detailed
+version 1 records. Earlier development formats must be regenerated. Reproduction requires the recorded implementation
 version and compatible inputs. Changed implementations require a new run.
 
 ### Debug mode
@@ -1031,7 +1038,7 @@ Real-time reporters receive no events or completion callbacks.
 
 Aggregate history is committed after reporting. Shards recorded for merging
 remain excluded. Reporter and persistence failures fail the aggregate. Merged
-records carry format version 4 and started/completed/interrupted lifecycle status.
+records carry format version 1 and started/completed/interrupted lifecycle status.
 
 Discovery and definition counts remain global; execution counts sum across
 shards. Timing durations represent cumulative shard time, not elapsed CI time.
@@ -1039,6 +1046,6 @@ Process usage is unavailable on the aggregate. Artifact references and serialize
 diagnostics remain unchanged; merge does not copy artifacts or merge coverage.
 
 Resource-check findings and finalized evidence survive worker task boundaries.
-Required observation loss fails the run and prevents retries. Run records use
-version 5 to retain resource-check snapshots; historical records without snapshots
-remain readable with an empty collection.
+Required observation loss fails the run and prevents retries. Version 1 run
+records require explicit resource-check snapshots in their results, including an
+empty collection when no checks were recorded.

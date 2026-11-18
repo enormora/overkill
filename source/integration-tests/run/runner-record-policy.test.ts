@@ -194,9 +194,8 @@ function assertSharedSelection(scope: TestScope, empty: SingleRunRecord, execute
 }
 
 function assertShardSelection(scope: TestScope, empty: SingleRunRecord, executed: SingleRunRecord): void {
-    if (empty.version !== currentRunRecordVersion || executed.version !== currentRunRecordVersion) {
-        throw new Error('Expected replay snapshots in merge inputs.');
-    }
+    scope.assert.equal(empty.version, currentRunRecordVersion);
+    scope.assert.equal(executed.version, currentRunRecordVersion);
     scope.require.defined(empty.replayPlan);
     scope.require.defined(executed.replayPlan);
     assertSharedSelection(scope, empty, executed);
@@ -243,12 +242,8 @@ async function assertShardRecords(scope: TestScope, directory: string): Promise<
     assertShardSelection(scope, empty, executed);
 }
 
-async function readHistoryFiles(directory: string): Promise<readonly string[]> {
-    const stateDir = path.join(directory, '.overkill');
-    return await Promise.all([
-        readFile(path.join(stateDir, 'history', 'index.json'), 'utf8'),
-        readFile(path.join(stateDir, 'duration-history', 'work-durations.json'), 'utf8')
-    ]);
+async function readHistorySnapshot(directory: string): Promise<string> {
+    return await readFile(path.join(directory, '.overkill', 'history', 'index.json'), 'utf8');
 }
 
 async function assertShardExitCodes(scope: TestScope, directory: string): Promise<void> {
@@ -291,11 +286,11 @@ async function assertShardExecution(scope: TestScope, mode: ExecutionMode): Prom
     const directory = await createRecordedProject(scope, mode);
     await writeLastFailedCase(directory, true);
     scope.assert.equal(await executeRunCommand(directory, [ 'run', '--record' ]), 0);
-    const before = await readHistoryFiles(directory);
+    const before = await readHistorySnapshot(directory);
     await writeLastFailedCase(directory, false);
     await assertShardExitCodes(scope, directory);
     await assertShardRecords(scope, directory);
-    scope.assert.deepEqual(await readHistoryFiles(directory), before);
+    scope.assert.equal(await readHistorySnapshot(directory), before);
     await assertRetainedHistory(scope, directory);
 }
 

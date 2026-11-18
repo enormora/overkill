@@ -1,6 +1,7 @@
 import { propertyWitnessSchema } from '../engine/witness-file.ts';
 import { createCorpusOperations, type CorpusOperations } from '../run/corpus.ts';
-import { loadCorpusEntries } from '../run/corpus-source.ts';
+import { corpusIndexSchema } from '../run/property-corpus-storage.ts';
+import { loadCorpusEntries, type CorpusSourceAccess } from '../run/corpus-source.ts';
 import type { CorpusRequest, CorpusWriteRequest, CorpusWritePreview } from '../run/corpus-types.ts';
 import { propertyCorpusEntry } from './property-corpus.ts';
 
@@ -9,9 +10,25 @@ export function corpusIndex(ids: readonly string[]): string {
     return JSON.stringify({
         version: 1,
         entries: ids.map(function (id) {
-            return { id, savedAt: '2026-11-01', entry: corpusWitness };
+            return { id, savedAt: '2026-11-01T00:00:00.000Z' };
         })
     });
+}
+export function corpusSource(content: string): CorpusSourceAccess {
+    return {
+        async readFile() {
+            return content;
+        },
+        async readCache() {
+            const index = corpusIndexSchema.parse(JSON.parse(content));
+            return {
+                entries: index.entries.map(function entry(reference) {
+                    return { ...reference, entry: corpusWitness };
+                }),
+                diagnostics: []
+            };
+        }
+    };
 }
 export const corpusRequest: CorpusRequest = {
     cwd: '/project',
@@ -41,12 +58,15 @@ export function corpusOperations(
     const previews: CorpusWritePreview[] = [];
     const operations = createCorpusOperations({
         async read(request) {
-            return await loadCorpusEntries(request, async function (target) {
-                calls.push(`read:${target}`);
-                if (faults.read !== null) {
-                    throw faults.read;
+            return await loadCorpusEntries(request, {
+                ...corpusSource(content),
+                async readFile(target) {
+                    calls.push(`read:${target}`);
+                    if (faults.read !== null) {
+                        throw faults.read;
+                    }
+                    return content;
                 }
-                return content;
             });
         },
         async inspect(_request, witness, migrate) {

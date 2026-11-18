@@ -7,7 +7,6 @@ import { testNode as failures } from './history-repair-failures.test.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
 import { readCompactHistory, updateCompactHistory } from './history-storage.ts';
 import { repairHistory } from './history-repair.ts';
-import { readDurationState } from './duration-history-storage.ts';
 
 const directory = '/project/state';
 const context = { directory, policy: defaultHistoryPolicy, now: historyTimestamp, testFamily: 'microtest' };
@@ -21,31 +20,6 @@ async function assertPrunedHistory(scope: TestScope, store: HistoryStorage): Pro
     scope.assert.equal(summary.id, 'pruned');
     scope.assert.equal(summary.replayable, false);
     scope.assert.equal(index.cases[0]?.counters.passed, 1);
-}
-
-async function writeLegacyDurationRecord(store: HistoryStorage): Promise<void> {
-    const record = completedHistoryRecord('old');
-    const entries = record.result.perTest.map(function legacyEntry(result) {
-        return {
-            work: result.workId,
-            observations: [ {
-                durationMicroseconds: 10,
-                observedAt: historyTimestamp,
-                metadata: {
-                    profile: 'unit',
-                    testFamily: 'microtest',
-                    processModel: 'in-process',
-                    scheduling: 'serial',
-                    workerLifecycle: null
-                }
-            } ]
-        };
-    });
-    await store.write(
-        `${directory}/duration-history/work-durations.json`,
-        JSON.stringify({ version: 2, updatedAt: historyTimestamp, entries })
-    );
-    await store.write(`${directory}/runs/old.json`, JSON.stringify(record));
 }
 
 async function writeMergeHistoryRecords(store: HistoryStorage): Promise<void> {
@@ -100,7 +74,7 @@ export const testNode = suite('history schema compatibility', [
         await writeMergeHistoryRecords(store);
         const repaired = await repairHistory(store, repair);
         const index = await readCompactHistory(store, directory);
-        const durations = await readDurationState(store, directory, historyTimestamp);
+        const durations = index?.durations;
         scope.require.defined(index);
         scope.require.defined(durations);
         scope.assert.deepEqual({
@@ -114,25 +88,33 @@ export const testNode = suite('history schema compatibility', [
         }, { rebuilt: 1, dataLoss: false, summaries: 1, runId: 'legacy', passes: 1, receipts: 1, durations: 1 });
         return scope.assert.collect();
     }),
-    test('older readable schemas repair before the next persisted run is ingested', async function (scope: TestScope) {
+    test('ingestion rejects older schemas without overwriting them', async function (scope: TestScope) {
         const store = createMemoryHistoryStorage();
         await updateCompactHistory(store, completedHistoryRecord('old'), context);
         const index = await readCompactHistory(store, directory);
         scope.require.defined(index);
         await store.write(`${directory}/history/index.json`, JSON.stringify({ ...index, version: 0 }));
-        await updateCompactHistory(store, { ...completedHistoryRecord('new'), status: 'started' }, context);
-        const repaired = await readCompactHistory(store, directory);
-        scope.assert.equal(repaired?.version, 1);
-        scope.assert.equal(repaired?.cases[0]?.counters.passed, 1);
+        await scope.assert.rejects(async function unsupportedIndex() {
+            await updateCompactHistory(store, { ...completedHistoryRecord('new'), status: 'started' }, context);
+        }, { message: /overkill history compact/ });
+        scope.assert.equal(
+            await store.read(`${directory}/history/index.json`),
+            JSON.stringify({
+                ...index,
+                version: 0
+            })
+        );
         return scope.assert.collect();
     }),
     test(
-        'legacy samples survive migration without being imported twice from older records',
+        'repair restores duration observations from retained runs without double counting',
         async function (scope: TestScope) {
             const store = createMemoryHistoryStorage();
-            await writeLegacyDurationRecord(store);
+            await store.write(`${directory}/runs/old.json`, JSON.stringify(completedHistoryRecord('old')));
             await repairHistory(store, repair);
-            const durations = await readDurationState(store, directory, historyTimestamp);
+            await repairHistory(store, repair);
+            const index = await readCompactHistory(store, directory);
+            const durations = index?.durations;
             scope.assert.equal(durations?.entries[0]?.count, 1);
             scope.assert.equal(durations?.entries[0]?.observations.length, 1);
             return scope.assert.collect();

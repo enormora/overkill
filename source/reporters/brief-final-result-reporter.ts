@@ -15,7 +15,7 @@ export function createBriefFinalResultReporter(): DefinedReporter<FinalResultRep
             name: 'brief-final-result',
             sinks: briefReporterSinks,
 
-            onResult(result) {
+            onResult({ result }) {
                 return [
                     ...briefFailureIntents(result, context),
                     ...result.runnerErrors.map(runnerErrorIntent),

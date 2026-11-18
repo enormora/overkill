@@ -7,7 +7,7 @@ import { createCollectedPlan, fakeWorkerRuntime } from '../test-support/worker-p
 import type { ReplayRunRecord } from './replay-record-types.ts';
 import { mergeCompatibilityConflicts } from './merge-results-compatibility.ts';
 import { replayRecordSchema } from './replay-record-schema.ts';
-import { currentRunRecordVersion, previousRunRecordVersion, familyRunRecordVersion } from './run-record-format.ts';
+import { currentRunRecordVersion } from './run-record-format.ts';
 
 function record(): ReplayRunRecord {
     return workerReplayRecord(fakeWorkerRuntime(createCollectedPlan()), null);
@@ -51,34 +51,10 @@ export const testNode = suite('recorded implementation provenance', [
         } ]);
         return scope.assert.collect();
     }),
-    test('rejects legacy shard evidence when another shard records implementations', function (scope) {
-        const current = mergeRecordFixture('current', 1, 1);
-        const historical = mergeRecordFixture('historical', 2, 1);
-        const conflicts = mergeCompatibilityConflicts([ {
-            path: 'current',
-            record: {
-                ...current,
-                version: currentRunRecordVersion,
-                facts: { ...current.facts, implementations: implementationEvidence() }
-            }
-        }, { path: 'historical', record: historical } ]);
-        scope.assert.equal(
-            conflicts.some(function missing(conflict) {
-                return conflict.field === 'implementations' && conflict.reason === 'missing-evidence';
-            }),
-            true
-        );
-        return scope.assert.collect();
-    }),
-    test('normalizes historical records without fabricating implementation identity', function (scope) {
-        for (const version of [ previousRunRecordVersion, familyRunRecordVersion ]) {
-            const historical = structuredClone(record());
-            Reflect.deleteProperty(historical.facts, 'implementations');
-            Reflect.deleteProperty(historical.replayPlan, 'implementations');
-            const parsed = replayRecordSchema.parse({ ...historical, version });
-            scope.assert.equal(parsed.version, version);
-            scope.assert.equal(parsed.facts.implementations, null);
-            scope.assert.equal(parsed.replayPlan.implementations, null);
+    test('rejects superseded run-record versions', function (scope) {
+        const current = record();
+        for (const version of [ 2, 3, 4, 5 ]) {
+            scope.assert.false(replayRecordSchema.safeParse({ ...current, version }).success);
         }
         return scope.assert.collect();
     }),

@@ -6,7 +6,6 @@ import { createMemoryHistoryStorage } from '../test-support/memory-history-stora
 import { readCompactHistory, updateCompactHistory } from './history-storage.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
 import { repairHistory } from './history-repair.ts';
-import { durationIndexProjection, readDurationState } from './duration-history-storage.ts';
 
 const directory = '/project/state';
 const context = { directory, policy: defaultHistoryPolicy, now: historyTimestamp, testFamily: 'microtest' };
@@ -14,18 +13,10 @@ const repair = { ...context, mode: 'explicit' as const };
 
 async function assertOneCommittedSample(scope: TestScope, store: HistoryStorage): Promise<void> {
     const index = await readCompactHistory(store, directory);
-    const durations = await readDurationState(store, directory, historyTimestamp);
     scope.require.defined(index);
-    scope.require.defined(durations);
     scope.assert.equal(index.cases[0]?.counters.passed, 1);
     scope.assert.equal(index.cases[0]?.observations.length, 1);
-    scope.assert.equal(durations.entries[0]?.count, 1);
-}
-
-async function assertInvisibleDuration(scope: TestScope, store: HistoryStorage): Promise<void> {
-    const state = await readDurationState(store, directory, historyTimestamp);
-    scope.require.defined(state);
-    scope.assert.equal(durationIndexProjection(state, new Set()).entries[0]?.observations.length, 0);
+    scope.assert.equal(index.durations.entries[0]?.count, 1);
 }
 
 function failFirstHistoryWrite(memory: HistoryStorage): HistoryStorage {
@@ -62,17 +53,18 @@ export const testNode = suite('history persistence', [
         const state = await readCompactHistory(store, directory);
         scope.assert.equal(state?.summaries[0]?.status, 'interrupted');
         scope.assert.equal(state?.cases.length, 0);
-        scope.assert.equal(await readDurationState(store, directory, historyTimestamp), null);
+        scope.require.defined(state);
+        scope.assert.equal(state.durations.entries.length, 0);
         return scope.assert.collect();
     }),
-    test('partial completion stays invisible until repair commits its receipt once', async function (scope: TestScope) {
+    test('failed aggregate publication leaves no partial durations or receipt', async function (scope: TestScope) {
         const store = failFirstHistoryWrite(createMemoryHistoryStorage());
         const record = completedHistoryRecord('run');
         await store.write(`${directory}/runs/run.json`, JSON.stringify(record));
         await scope.assert.rejects(async function interruptedCommit() {
             await updateCompactHistory(store, record, context);
         }, { message: 'Disk unavailable' });
-        await assertInvisibleDuration(scope, store);
+        scope.assert.equal(await readCompactHistory(store, directory), null);
         await repairHistory(store, repair);
         await repairHistory(store, repair);
         await assertOneCommittedSample(scope, store);

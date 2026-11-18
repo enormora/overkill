@@ -18,10 +18,7 @@ export const testNode = suite('benchmark baseline publication', [
                 mode,
                 result: baselineCaseResult,
                 completeInventory: true,
-                maxBytes: 4096,
-                capturedAtMicroseconds() {
-                    return 42;
-                }
+                maxBytes: 4096
             });
             const report = readPerformanceBaselineReport(result);
             scope.require.defined(report);
@@ -49,10 +46,7 @@ export const testNode = suite('benchmark baseline publication', [
                 } ]
             },
             completeInventory: true,
-            maxBytes: 4096,
-            capturedAtMicroseconds() {
-                return 0;
-            }
+            maxBytes: 4096
         });
         scope.assert.equal(readPerformanceBaselineReport(result)?.writeOutcome.kind, 'blocked');
         scope.assert.deepEqual(fixture.applied, []);
@@ -65,10 +59,7 @@ export const testNode = suite('benchmark baseline publication', [
             mode: 'update',
             result: baselineCaseResult,
             completeInventory: true,
-            maxBytes: 4096,
-            capturedAtMicroseconds() {
-                return 0;
-            }
+            maxBytes: 4096
         });
         scope.assert.equal(result.status, 'failed');
         scope.assert.equal(readPerformanceBaselineReport(result)?.writeOutcome.kind, 'failed');
@@ -84,10 +75,7 @@ export const testNode = suite('benchmark baseline publication', [
             mode: 'update',
             result: baselineCaseResult,
             completeInventory: true,
-            maxBytes: 1,
-            capturedAtMicroseconds() {
-                return 0;
-            }
+            maxBytes: 1
         });
         scope.assert.equal(result.status, 'failed');
         scope.assert.deepEqual(fixture.applied, []);

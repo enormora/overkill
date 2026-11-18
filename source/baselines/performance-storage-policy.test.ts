@@ -40,7 +40,7 @@ export const testNode = suite('performance storage policy', [
     }),
     test('rejects lexical and physical directory escapes', async function (scope: TestScope) {
         const fixture = await performanceStorage(performanceStorageScenario);
-        const message = 'Performance baseline directory must remain inside the project root.';
+        const message = 'Baseline directory must remain inside the project root.';
         await scope.assert.rejects(
             async function () {
                 return openPerformanceBaselineStore(
@@ -63,7 +63,7 @@ export const testNode = suite('performance storage policy', [
         await scope.assert.rejects(async function () {
             return fixture.store.apply({ kind: 'create', baseline });
         }, {
-            message: 'Performance baseline changed during execution. Run the command again.'
+            message: 'Baseline changed during execution. Run the command again.'
         });
         scope.assert.deepEqual(
             await storedValues(fixture.store),
@@ -76,14 +76,14 @@ export const testNode = suite('performance storage policy', [
         await scope.assert.rejects(async function () {
             return fixture.store.apply({ kind: 'remove', baseline });
         }, {
-            message: 'Performance baseline disappeared during execution.'
+            message: 'Baseline changed during execution. Run the command again.'
         });
         await fixture.store.apply({ kind: 'create', baseline });
         const changed = { ...baseline, expected: { ...baseline.expected, value: { maximum: 300 } } };
         await scope.assert.rejects(async function () {
             return fixture.store.apply({ kind: 'remove', baseline: changed });
         }, {
-            message: 'Performance baseline changed during execution. Run the command again.'
+            message: 'Baseline changed during execution. Run the command again.'
         });
         return scope.assert.collect();
     }),
@@ -92,7 +92,7 @@ export const testNode = suite('performance storage policy', [
         await scope.assert.rejects(async function () {
             return fixture.store.apply({ kind: 'create', baseline });
         }, {
-            message: 'Performance baseline exceeds the configured artifact byte limit.'
+            message: 'Baseline exceeds the configured artifact byte limit.'
         });
         scope.assert.deepEqual(fixture.events, []);
         return scope.assert.collect();
@@ -103,14 +103,14 @@ export const testNode = suite('performance storage policy', [
         await scope.assert.rejects(async function () {
             return fixture.store.list();
         }, {
-            message: 'Invalid performance baseline file: invalid.benchmark.json'
+            message: 'Invalid baseline file: invalid.benchmark.json'
         });
         const bounded = await performanceStorage({ ...performanceStorageScenario, maxBytes: 1 });
         bounded.seed('baselines/performance/large.benchmark.json', '{}');
         await scope.assert.rejects(async function () {
             return bounded.store.list();
         }, {
-            message: 'Invalid performance baseline file: large.benchmark.json'
+            message: 'Invalid baseline file: large.benchmark.json'
         });
         return scope.assert.collect();
     }),
@@ -120,7 +120,7 @@ export const testNode = suite('performance storage policy', [
         await scope.assert.rejects(async function () {
             return fixture.store.list();
         }, {
-            message: 'Performance baseline disappeared while reading: missing.benchmark.json'
+            message: 'Baseline disappeared while reading.'
         });
         return scope.assert.collect();
     }),
@@ -132,7 +132,7 @@ export const testNode = suite('performance storage policy', [
         await scope.assert.rejects(async function () {
             return fixture.store.list();
         }, {
-            message: 'Performance baseline path does not match its identity: wrong.benchmark.json'
+            message: 'Baseline path does not match its identity.'
         });
         return scope.assert.collect();
     })

@@ -163,7 +163,16 @@ export const testNode = createOverkillSuite({
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);
 
-                await reporter.onFinish?.(runResultFactory.build({ artifacts: [ coverageArtifact ] }));
+                await reporter.onFinish?.({
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    },
+                    result: runResultFactory.build({
+                        artifacts: [ coverageArtifact ]
+                    })
+                });
 
                 scope.assert(
                     doubleUsage.calledWith,
@@ -305,11 +314,18 @@ export const testNode = createOverkillSuite({
                 const log = testDouble<LogFunction>();
                 const reporter = lineReporterWithLog(log);
 
-                await reporter.onFinish?.(runResultFactory.build({
-                    artifacts: [ runOutputArtifact('collection error output\n') ],
-                    runnerErrors: [ { message: 'cannot collect', subtype: 'loader' } ],
-                    summary: { failed: 1 }
-                }));
+                await reporter.onFinish?.({
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    },
+                    result: runResultFactory.build({
+                        artifacts: [ runOutputArtifact('collection error output\n') ],
+                        runnerErrors: [ { message: 'cannot collect', subtype: 'loader' } ],
+                        summary: { failed: 1 }
+                    })
+                });
 
                 scope.assert(doubleUsage.callCount, log, 6);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ 'Problems' ]);

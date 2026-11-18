@@ -3,7 +3,7 @@ import type { ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import type { BaselineWriteOutcome, BaselineUpdateMode } from '../baselines/baseline-model.ts';
 import { baselineRunnerError, successfulBaselineRun } from './baseline-outcomes.ts';
-import { ordinaryBaselineReportArtifact, type OrdinaryBaselineReport } from './baseline-report.ts';
+import { withOrdinaryBaselineReport, type OrdinaryBaselineReport } from './baseline-report.ts';
 import type { StoredOrdinaryBaseline } from './baseline-record.ts';
 import type { OrdinaryBaselineWorkflow } from './baseline-workflow.ts';
 import type { RunResultSession } from './run-support.ts';
@@ -18,15 +18,15 @@ type WriteOutcome = BaselineWriteOutcome<StoredOrdinaryBaseline>;
 type BaselineCommit = { readonly outcome: WriteOutcome; readonly errors: readonly RunnerError[]; };
 type NotifyErrors = (errors: readonly RunnerError[]) => Promise<readonly RunnerError[]>;
 function baselineReport(input: SessionInput, outcome: WriteOutcome): OrdinaryBaselineReport {
-    return { version: 1, changes: input.workflow.changes, warnings: input.workflow.warnings, writeOutcome: outcome };
+    return { changes: input.workflow.changes, warnings: input.workflow.warnings, writeOutcome: outcome };
 }
 async function validateAndPublish(input: SessionInput, result: RunResult): Promise<BaselineCommit> {
-    ordinaryBaselineReportArtifact(
+    withOrdinaryBaselineReport(
         result,
         baselineReport(input, { kind: 'failed', writtenChanges: input.workflow.changes }),
         input.maxBytes
     );
-    ordinaryBaselineReportArtifact(
+    withOrdinaryBaselineReport(
         result,
         baselineReport(input, { kind: 'written', changes: input.workflow.changes }),
         input.maxBytes
@@ -60,8 +60,8 @@ async function retainReport(
     notify: NotifyErrors
 ): Promise<RunResult> {
     try {
-        const artifact = ordinaryBaselineReportArtifact(result, baselineReport(input, outcome), input.maxBytes);
-        return { ...result, artifacts: [ ...result.artifacts, artifact ] };
+        const artifact = withOrdinaryBaselineReport(result, baselineReport(input, outcome), input.maxBytes);
+        return artifact;
     } catch (error: unknown) {
         const failure = baselineRunnerError(error, null);
         return appendRunnerErrors(result, [ failure, ...await notify([ failure ]) ]);

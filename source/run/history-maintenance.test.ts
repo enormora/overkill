@@ -42,7 +42,10 @@ export const testNode = suite('automatic history maintenance', [
             const config = normalizeConfig({ history: { lockTimeoutMilliseconds: 0 } });
             const store = createNodeHistoryStorage(path.join(projectRoot, '.overkill'), config.history);
             await store.withLock(async function holdProjectLock() {
-                scope.assert.deepEqual(await maintainHistory({ projectRoot, config }), []);
+                scope.assert.deepEqual(
+                    await maintainHistory({ projectRoot, config }, performance.now.bind(performance)),
+                    []
+                );
             });
         });
         return scope.assert.collect();
@@ -54,7 +57,7 @@ export const testNode = suite('automatic history maintenance', [
             await mkdir(lock);
             const expired = new Date(0);
             await utimes(lock, expired, expired);
-            scope.assert.deepEqual(await maintainHistory({ projectRoot, config }), [
+            scope.assert.deepEqual(await maintainHistory({ projectRoot, config }, performance.now.bind(performance)), [
                 'Stale history lock was recovered.'
             ]);
         });
@@ -63,22 +66,37 @@ export const testNode = suite('automatic history maintenance', [
     test('zero budget leaves runtime state absent', async function (scope: TestScope) {
         await inProject(async function (projectRoot) {
             const config = normalizeConfig({ history: { automaticMaintenanceBudgetMilliseconds: 0 } });
-            scope.assert.deepEqual(await maintainHistory({ projectRoot, config }), []);
+            scope.assert.deepEqual(
+                await maintainHistory({ projectRoot, config }, performance.now.bind(performance)),
+                []
+            );
             await scope.assert.rejects(async function () {
                 await readFile(path.join(projectRoot, '.overkill/history/index.json'));
             }, { code: 'ENOENT' });
         });
         return scope.assert.collect();
     }),
-    test('completed records are pruned without removing their summaries', async function (scope: TestScope) {
+    test('detailed records are compacted without removing their summaries', async function (scope: TestScope) {
         await inProject(async function (projectRoot) {
             const { config, history, target } = await createRecordedHistory(projectRoot);
-            scope.assert.deepEqual(await maintainHistory({ projectRoot, config }), []);
+            scope.assert.deepEqual(
+                await maintainHistory({ projectRoot, config }, performance.now.bind(performance)),
+                []
+            );
             const summaries = await history.list();
-            scope.assert.equal(summaries[0]?.replay, 'pruned');
-            await scope.assert.rejects(async function () {
-                await readFile(target);
-            }, { code: 'ENOENT' });
+            scope.assert.equal(summaries[0]?.replay, 'unavailable');
+            scope.assert.partialDeepEqual<unknown, unknown>(
+                JSON.parse(
+                    await readFile(
+                        target,
+                        'utf8'
+                    )
+                ),
+                {
+                    detail: 'compact',
+                    replayPlan: null
+                }
+            );
         });
         return scope.assert.collect();
     }),
@@ -88,7 +106,10 @@ export const testNode = suite('automatic history maintenance', [
             const store = createNodeHistoryStorage(path.join(projectRoot, '.overkill'), config.history);
             const release = await store.beginRun('active');
             try {
-                scope.assert.deepEqual(await maintainHistory({ projectRoot, config }), []);
+                scope.assert.deepEqual(
+                    await maintainHistory({ projectRoot, config }, performance.now.bind(performance)),
+                    []
+                );
             } finally {
                 await release();
             }
@@ -97,7 +118,12 @@ export const testNode = suite('automatic history maintenance', [
     }),
     test('missing history returns a repair diagnostic', async function (scope: TestScope) {
         await inProject(async function (projectRoot) {
-            const diagnostics = await maintainHistory({ projectRoot, config: normalizeConfig({}) });
+            const diagnostics = await maintainHistory({
+                projectRoot,
+                config: normalizeConfig({})
+            }, function fixedTime() {
+                return 0;
+            });
             scope.assert.equal(diagnostics.length, 1);
             scope.assert.includes(diagnostics[0] ?? '', 'history compact');
         });
@@ -110,7 +136,7 @@ export const testNode = suite('automatic history maintenance', [
             await scope.assert.rejects(async function () {
                 await withinHistoryMaintenanceBudget(0, async function () {
                     await store.write(path.join(projectRoot, 'unexpected'), 'value');
-                });
+                }, performance.now.bind(performance));
             }, { type: HistoryMaintenanceDeferredError });
             await scope.assert.rejects(async function () {
                 await readFile(path.join(projectRoot, 'unexpected'));

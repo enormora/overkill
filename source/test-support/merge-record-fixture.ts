@@ -6,8 +6,9 @@ import { runResultFactory } from './run-result-factory.ts';
 export function mergeRecordFixture(id: string, index: number, passed: number): MergeRecord {
     const result = runResultFactory.build({});
     return mergeRecordSchema.parse({
-        version: 2,
+        version: 1,
         kind: 'single',
+        detail: 'detailed',
         status: 'completed',
         id,
         facts: { ...facts, reproducibility: { ...facts.reproducibility, shard: { index, total: 2 } } },

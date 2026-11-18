@@ -54,6 +54,8 @@ type ExpectedRunnerErrorSubtypeByName = {
 };
 type ExpectedRunnerErrorSubtype = ExpectedRunnerErrorSubtypeByName[keyof ExpectedRunnerErrorSubtypeByName];
 type RunResultKeys = readonly [
+    'baselineReports',
+    'preparationFacts',
     'artifacts',
     'bySuite',
     'orphans',

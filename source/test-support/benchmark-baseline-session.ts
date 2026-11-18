@@ -1,4 +1,3 @@
-import { createDeterministicClock } from '@enormora/clock';
 import { normalizeConfig } from '../config/config.ts';
 import type { BenchmarkBaselineSessionInput } from '../run/benchmark-baseline-session.ts';
 import type { PerformanceBaselineStore } from '../baselines/performance-store.ts';
@@ -42,7 +41,6 @@ export function benchmarkBaselineSessionFixture(input: BenchmarkSessionScenario)
         events: reporting.events,
         input: {
             calibration: { kind: 'comparable', context: {}, metadata: {}, machineClass: 'unit-host' },
-            clock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),
             profile: { ...profile, attachments: { ...profile.attachments, maxArtifactBytes: input.maxBytes } },
             projectRoot: '/project',
             reporterDispatcher: reporting.dispatcher,

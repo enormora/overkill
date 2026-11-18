@@ -17,7 +17,6 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 
 type RetryFixture = { readonly path: string; readonly timeouts: TimeoutPolicy | null; };
 const fixture: RetryFixture = { path: 'source/integration-tests/run/fixtures/retry-policy.test.ts', timeouts: null };
@@ -250,4 +249,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

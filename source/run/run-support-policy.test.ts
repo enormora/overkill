@@ -61,8 +61,8 @@ export const testNode = suite('run support policy boundaries', [
     test('attaches benchmark collection failure metadata through run finalization', async function (scope: TestScope) {
         const command = metadataCommand('supervised-process');
         const result = await withRunErrorMetadata(runResultFactory.build(), command, null);
-        scope.assert.equal(readBenchmarkRunMetadata(result)?.execution.profile, 'startup');
-        scope.assert.equal(result.artifacts.length, 1);
+        scope.assert.equal(readBenchmarkRunMetadata(result.preparationFacts)?.execution.profile, 'startup');
+        scope.assert.equal(result.artifacts.length, 0);
         return scope.assert.collect();
     })
 ]);

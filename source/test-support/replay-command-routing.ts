@@ -11,7 +11,11 @@ type ReplayCommandFixture = {
 };
 export function replayCommandRouting(failure: 'execute' | 'load' | 'none'): ReplayCommandFixture {
     const calls: { readonly kind: string; readonly command: unknown; }[] = [];
-    const result = { ...baselineCaseResult, maintenanceDiagnostics: [ 'maintenance diagnostic' ] };
+    const result = {
+        context: { id: null, startedAt: null, facts: null },
+        ...baselineCaseResult,
+        maintenanceDiagnostics: [ 'maintenance diagnostic' ]
+    };
     function dispatch(kind: string): ReplayOperations['replayWithReporterDelivery'] {
         return async function (command) {
             calls.push({ kind, command });

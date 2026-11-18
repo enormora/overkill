@@ -1,7 +1,7 @@
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
-import { completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
+import { historyFacts, completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
 import { emptyCompactHistory, ingestCompactRecord } from './compact-history.ts';
 import { historyRunSummary, recordDurationContributions, caseOutcomes } from './history-outcomes.ts';
 
@@ -32,7 +32,17 @@ export const testNode = suite('history outcomes', [
         function (scope: TestScope) {
             const record = completedHistoryRecord('run');
             const failed = { ...record.result, summary: { ...record.result.summary, failed: 1, inconclusive: 1 } };
-            const runnerError = { ...failed, runnerErrors: [ 'infrastructure' ] };
+            const runnerError = {
+                ...failed,
+                runnerErrors: [ {
+                    attributedTo: null,
+                    attributedToAttempt: null,
+                    cause: null,
+                    diagnostics: [],
+                    message: 'infrastructure',
+                    subtype: 'runtime-state' as const
+                } ]
+            };
             scope.assert.equal(
                 historyRunSummary({ ...record, status: 'interrupted', result: runnerError }, 'microtest').status,
                 'interrupted'
@@ -83,7 +93,7 @@ export const testNode = suite('history outcomes', [
         scope.assert.equal(caseOutcomes(record).size, 0);
         scope.assert.equal(recordDurationContributions(record).length, 0);
         scope.assert.equal(
-            recordDurationContributions({ ...record, facts: { execution: { testFamily: 'microtest' } } }).length,
+            recordDurationContributions({ ...record, facts: historyFacts('microtest') }).length,
             0
         );
         return scope.assert.collect();
@@ -105,7 +115,7 @@ export const testNode = suite('history outcomes', [
         const observations = recordDurationContributions({
             ...record,
             execution: { processModel: 'worker-pool', scheduling: 'serial', workerLifecycle: 'reuse' },
-            facts: { execution: { testFamily: 'integration' } }
+            facts: historyFacts('integration')
         });
         scope.assert.equal(observations[0]?.observation.metadata.workerLifecycle, 'reuse');
         scope.assert.equal(observations[0]?.observation.metadata.testFamily, 'integration');

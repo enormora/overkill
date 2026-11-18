@@ -28,7 +28,17 @@ export const testNode = suite('benchmark HTML timeline evidence and deltas', [
             readBenchmarkTimeline(result, measured)?.events[0]?.name,
             '<script>alert("marker")</script>'
         );
-        const html = renderBenchmarkHtml(createBenchmarkHtmlReport(result), '');
+        const html = renderBenchmarkHtml(
+            createBenchmarkHtmlReport({
+                result,
+                context: {
+                    id: null,
+                    startedAt: null,
+                    facts: null
+                }
+            }),
+            ''
+        );
         scope.assert.includes(html, '&lt;script&gt;alert');
         scope.assert.false(html.includes('<script>alert("marker")</script>'));
         scope.assert.includes(html, 'omitted');

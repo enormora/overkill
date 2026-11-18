@@ -14,7 +14,6 @@ import {
     type BenchmarkGarbageCollectionPolicy
 } from '../../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 
 const fixture = 'source/integration-tests/run/fixtures/garbage-collection.bench.test.ts';
 type Boundary = 'fresh-worker-per-unit' | 'reuse' | 'supervised-process';
@@ -80,7 +79,6 @@ function assertGarbageCollectionRun(scope: TestScope, result: RunResult): void {
     scope.require.defined(measured);
     scope.assert.equal(measured.metrics['exposed']?.median, 1);
     scope.assert.partialDeepEqual(measured.lifecycle ?? {}, {
-        version: 3,
         policy: { garbageCollection: 'after-sample' },
         garbageCollection: { mode: 'after-sample', completed: 3, failures: 0 }
     });
@@ -194,4 +192,4 @@ export const testNode = suite('benchmark GC process boundaries', [
     })
 ]);
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

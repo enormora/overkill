@@ -14,7 +14,6 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 
 const fixtureRoot = 'source/integration-tests/run/fixtures/';
 const scenarios = [ 'unloaded', 'threshold', 'types-only', 'missing-sources', 'broken-map' ] as const;
@@ -173,4 +172,4 @@ export const testNode = createSuite({
     })
 });
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

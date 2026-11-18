@@ -18,17 +18,8 @@ import {
     readBaselineContents,
     type BaselineFixture
 } from '../../test-support/benchmark-baseline-fixture.ts';
+import { readBenchmarkRunMetadata } from '../../bench/benchmark-run-report.ts';
 import { readPerformanceBaselineReport } from '../../baselines/performance-report.ts';
-
-function withoutBenchmarkMetadata(result: BenchmarkBaselineRunResult['result']): BenchmarkBaselineRunResult['result'] {
-    return {
-        ...result,
-        artifacts: result.artifacts.filter(function retainOtherArtifacts(artifact) {
-            return artifact.payload.kind !== 'runtime-attachment' ||
-                artifact.payload.name !== 'benchmark-run';
-        })
-    };
-}
 
 function benchmarkProfile(scope: TestScope, fixture: BaselineFixture): BenchmarkProfileConfig {
     const profile = fixture.command.config.profiles['startup'];
@@ -145,7 +136,7 @@ export const testNode = suite('benchmark HTML runner integration', [
         await assertRenderedDelivery(scope, profile.execution);
         return scope.assert.collect();
     }),
-    test('preserves results when metadata exceeds the artifact limit', async function (scope: TestScope) {
+    test('keeps benchmark facts outside artifact byte limits', async function (scope: TestScope) {
         const fixture = await createBenchmarkBaselineFixture(scope, {
             processModel: 'supervised-process',
             scheduling: 'serial',
@@ -153,17 +144,21 @@ export const testNode = suite('benchmark HTML runner integration', [
         });
         const command = metadataLimitedCommand(scope, fixture);
         const delivery = await orchestrator.bench.baseline.bootstrap(fixture.command, { timing: null });
-        const originalResult = withoutBenchmarkMetadata(delivery.result);
+        const originalResult = { ...delivery.result, preparationFacts: null };
         const result = withBenchmarkErrorMetadata(originalResult, command, null);
-        scope.assert.equal(result.status, 'failed');
-        scope.assert.equal(result.perTest.length, originalResult.perTest.length);
-        scope.assert.equal(result.artifacts.length, originalResult.artifacts.length);
-        scope.assert.equal(
-            result.runnerErrors.at(-1)?.message,
-            'benchmark-run report exceeds the configured artifact byte limit.'
-        );
+        scope.assert.deepEqual({
+            status: result.status,
+            perTest: result.perTest,
+            artifacts: result.artifacts,
+            runnerErrors: result.runnerErrors
+        }, {
+            status: originalResult.status,
+            perTest: originalResult.perTest,
+            artifacts: originalResult.artifacts,
+            runnerErrors: originalResult.runnerErrors
+        });
+        scope.assert.equal(readBenchmarkRunMetadata(result.preparationFacts)?.execution.profile, 'startup');
         return scope.assert.collect();
     })
 ]);
-const { createLineReporter } = await import('../../packages/reporter-line/reporter-line.entry-point.ts');
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

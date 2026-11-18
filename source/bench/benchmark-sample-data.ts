@@ -10,26 +10,6 @@ const attributedSamplesSchema = z.strictObject({
         z.array(z.strictObject({ reading: metricReadingSchema, attribution: readingAttributionSchema.nullable() }))
     )
 });
-const historicalSamplesSchema = z.record(z.string(), z.array(metricReadingSchema)).transform(
-    function historicalAttribution(metrics): RawBenchmarkSamples {
-        return {
-            version: rawBenchmarkSamplesVersion,
-            metrics: Object.fromEntries(
-                Object
-                    .entries(metrics)
-                    .map(function historicalMetric([ name, readings ]) {
-                        return [
-                            name,
-                            readings.map(function historicalReading(reading) {
-                                return { reading, attribution: null };
-                            })
-                        ];
-                    })
-            )
-        };
-    }
-);
-const samplesSchema: z.ZodType<RawBenchmarkSamples> = z.union([ attributedSamplesSchema, historicalSamplesSchema ]);
 export function readRawBenchmarkSamples(value: unknown): RawBenchmarkSamples {
-    return samplesSchema.parse(value);
+    return attributedSamplesSchema.parse(value);
 }

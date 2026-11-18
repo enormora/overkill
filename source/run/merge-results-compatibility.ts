@@ -2,7 +2,6 @@ import { isDeepStrictEqual } from 'node:util';
 import { mergeImplementationCatalogs } from '../implementation-catalog.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { workIdentityKey } from '../engine/identity.ts';
-import { currentRunRecordVersion } from './run-record-format.ts';
 import type { MergeSource } from './merge-results-input.ts';
 
 type MergeIdentityField = 'family' | 'implementations' | 'profile' | 'selected-identities';
@@ -91,49 +90,24 @@ function sourceConflicts(reference: MergeSource, source: MergeSource): readonly 
     });
 }
 
-function missingImplementationEvidence(
-    sources: NonEmptyReadonlyArray<MergeSource>
-): readonly MergeCompatibilityConflict[] {
-    const reference = sources.find(function evidence(source) {
-        return source.record.facts.implementations !== null;
-    });
-    if (reference === undefined) {
-        return [];
-    }
-    return sources
-        .filter(function missing(source) {
-            return source.record.version < currentRunRecordVersion && source.record.facts.implementations === null;
-        })
-        .map(function conflict(source) {
-            return {
-                field: 'implementations',
-                reason: 'missing-evidence',
-                referencePath: reference.path,
-                sourcePath: source.path
-            };
-        });
-}
 export function mergeCompatibilityConflicts(
     sources: NonEmptyReadonlyArray<MergeSource>
 ): readonly MergeCompatibilityConflict[] {
-    return [
-        ...missingImplementationEvidence(sources),
-        ...sources.flatMap(function compare(source): readonly MergeCompatibilityConflict[] {
-            const conflicts = sourceConflicts(sources[0], source);
-            try {
-                mergeImplementationCatalogs([
-                    sources[0].record.facts.implementations,
-                    source.record.facts.implementations
-                ]);
-            } catch {
-                return [ ...conflicts, {
-                    field: 'implementations',
-                    reason: 'mismatch',
-                    referencePath: sources[0].path,
-                    sourcePath: source.path
-                } ];
-            }
-            return conflicts;
-        })
-    ];
+    return sources.flatMap(function compare(source): readonly MergeCompatibilityConflict[] {
+        const conflicts = sourceConflicts(sources[0], source);
+        try {
+            mergeImplementationCatalogs([
+                sources[0].record.facts.implementations,
+                source.record.facts.implementations
+            ]);
+        } catch {
+            return [ ...conflicts, {
+                field: 'implementations',
+                reason: 'mismatch',
+                referencePath: sources[0].path,
+                sourcePath: source.path
+            } ];
+        }
+        return conflicts;
+    });
 }

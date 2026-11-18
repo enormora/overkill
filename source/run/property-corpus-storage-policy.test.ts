@@ -36,7 +36,7 @@ export const testNode = suite('property corpus storage policy', [
         const otherProfile = await loadPropertyCorpus({ ...fixture.input, profile: 'other' }, fixture.access);
         scope.assert.deepEqual(sameProfile.localCache, [ propertyCorpusEntry ]);
         scope.assert.deepEqual(otherProfile.localCache, []);
-        scope.assert.deepEqual(fixture.events, [ 'prepare', 'lock', 'write', 'release' ]);
+        scope.assert.deepEqual(fixture.events, [ 'prepare', 'lock', 'write', 'write', 'release' ]);
         return scope.assert.collect();
     }),
     test('skips empty publications without creating storage or locks', async function (scope: TestScope) {

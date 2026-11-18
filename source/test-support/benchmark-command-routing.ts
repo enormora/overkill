@@ -2,8 +2,7 @@ import type { CommandLineBenchmarkCommands, CommandLineBenchmarkRunRequest } fro
 import { normalizeConfig } from '../config/config.ts';
 import { createBenchmarkCommands } from '../run/benchmark-commands.ts';
 import type { BenchmarkCommandDependencies } from '../run/benchmark-command-policy.ts';
-import type { BenchmarkBaselineRunResult } from '../run/run-types.ts';
-import { calibrationReferenceReportArtifact } from '../bench/calibration-report.ts';
+import type { BenchmarkBaselineRunResult, RunnerResult } from '../run/run-types.ts';
 import { createNullReporter } from '../reporters/null-reporter.ts';
 import { baselineCaseResult } from './baseline-case-fixture.ts';
 import { storedPerformanceFixture } from './performance-storage.ts';
@@ -19,22 +18,18 @@ type BenchmarkCommandRouting = {
 export function benchmarkCommandRouting(failure: Error | null): BenchmarkCommandRouting {
     const calls: BenchmarkCommandCall[] = [];
     const defaultReporter = createNullReporter();
-    const result = {
+    const result: RunnerResult = {
         ...baselineCaseResult,
+        context: { id: null, startedAt: null, facts: null },
         maintenanceDiagnostics: [],
-        artifacts: [
-            calibrationReferenceReportArtifact({
-                result: baselineCaseResult,
-                report: {
-                    version: 1,
-                    changes: [ { kind: 'write', path: 'calibration/reference.json' } ],
-                    completed: [ 'calibration/reference.json' ],
-                    outcome: 'written'
-                },
-                maxBytes: 65_536,
-                capturedAtMicroseconds: 0
-            })
-        ]
+        baselineReports: [ {
+            kind: 'calibration',
+            report: {
+                changes: [ { kind: 'write', path: 'calibration/reference.json' } ],
+                completed: [ 'calibration/reference.json' ],
+                outcome: 'written'
+            }
+        } ]
     };
     const baselineResult: BenchmarkBaselineRunResult = {
         writeOutcome: { kind: 'read-only' },

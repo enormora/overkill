@@ -2,7 +2,6 @@ import { execFile } from 'node:child_process';
 import { z } from 'zod/v4';
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../../packages/engine/engine.entry-point.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { parseRunnerResult } from '../../packages/run/run.entry-point.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
@@ -134,4 +133,4 @@ export const testNode = createSuite({
             })
     ]
 });
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

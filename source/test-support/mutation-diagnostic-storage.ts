@@ -40,6 +40,11 @@ function diagnosticDocument(file: boolean): MutationDiagnosticDocument {
         : exchangedAttachment;
     return {
         version: 1,
+        kind: 'mutation',
+        detail: 'detailed',
+        id: 'invocation',
+        startedAt: '2026-10-30T00:00:00.000Z',
+        status: 'completed',
         campaign: 'campaign',
         invocation: 'invocation',
         seed: '42',

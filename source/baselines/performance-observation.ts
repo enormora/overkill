@@ -24,17 +24,10 @@ function scaledReading(reading: MetricReading, factor: number): MetricReading {
 function isSampleArtifact(artifact: RunArtifact): artifact is RuntimeAttachmentArtifact {
     return artifact.payload.kind === 'runtime-attachment' && artifact.payload.name === 'benchmark-samples';
 }
-function attributedSamples(value: unknown): boolean {
-    if (typeof value !== 'object' || value === null) {
-        return false;
-    }
-    return Reflect.get(value, 'version') === rawBenchmarkSamplesVersion;
-}
-type HistoricalMetricSamples = Readonly<Record<string, readonly MetricReading[]>>;
 function normalizedSampleData(
     input: unknown,
     normalization: BenchmarkNormalizationEvidence
-): HistoricalMetricSamples | RawBenchmarkSamples {
+): RawBenchmarkSamples {
     const samples = readRawBenchmarkSamples(input);
     const metrics = Object.fromEntries(
         Object.entries(samples.metrics).map(function normalizeMetric([ name, readings ]) {
@@ -53,20 +46,7 @@ function normalizedSampleData(
             ];
         })
     );
-    const value: HistoricalMetricSamples | RawBenchmarkSamples = attributedSamples(input)
-        ? { version: rawBenchmarkSamplesVersion, metrics }
-        : Object.fromEntries(
-            Object.entries(metrics).map(function historicalMetric([ name, readings ]) {
-                return [
-                    name,
-                    readings.map(function historicalReading(entry) {
-                        return entry.reading;
-                    })
-                ];
-            })
-        );
-
-    return value;
+    return { version: rawBenchmarkSamplesVersion, metrics };
 }
 function normalizedPerformanceArtifacts(
     artifacts: readonly RunArtifact[],

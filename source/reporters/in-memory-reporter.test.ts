@@ -44,7 +44,7 @@ export const testNode = createOverkillSuite({
                 }
 
                 await runtimeReporter.onEvent(runStartEvent);
-                await onFinish(runResult);
+                await onFinish({ context: { id: null, startedAt: null, facts: null }, result: runResult });
 
                 scope.assert.deepEqual(reporter.getRecordedEntries(), [
                     { event: runStartEvent, result: null, type: 'event' },
@@ -64,7 +64,14 @@ export const testNode = createOverkillSuite({
                 const runtimeReporter = reporter(reportingContext);
                 const runResult: RunResult = runResultFactory.build();
 
-                await runtimeReporter.onResult(runResult);
+                await runtimeReporter.onResult({
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    },
+                    result: runResult
+                });
 
                 scope.assert.deepEqual(reporter.getRecordedEntries(), [ {
                     event: null,
@@ -108,7 +115,14 @@ export const testNode = createOverkillSuite({
                 const runtimeReporter = reporter(reportingContext);
                 const runResult: RunResult = runResultFactory.build();
 
-                await runtimeReporter.onResult(runResult);
+                await runtimeReporter.onResult({
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    },
+                    result: runResult
+                });
 
                 scope.assert.equal(runtimeReporter.kind, 'final-result');
                 scope.assert.deepEqual(reporter.getRecordedEntries(), [ {

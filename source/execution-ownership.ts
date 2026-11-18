@@ -29,21 +29,21 @@ export type ObservationOwner = {
 
 const observationKey = Symbol.for('@overkill-dev/engine/executionObservation');
 
-function isObservationStorage(value: unknown): value is AsyncLocalStorage<ObservationOwner> {
+function isExecutionStorage<Value>(value: unknown): value is AsyncLocalStorage<Value> {
     return value instanceof AsyncLocalStorage;
 }
 
-function sharedObservationStorage(): AsyncLocalStorage<ObservationOwner> {
-    const existing: unknown = Reflect.get(globalThis, observationKey);
-    if (isObservationStorage(existing)) {
+function sharedExecutionStorage<Value>(key: symbol): AsyncLocalStorage<Value> {
+    const existing: unknown = Reflect.get(globalThis, key);
+    if (isExecutionStorage<Value>(existing)) {
         return existing;
     }
-    const created = new AsyncLocalStorage<ObservationOwner>();
-    Reflect.set(globalThis, observationKey, created);
+    const created = new AsyncLocalStorage<Value>();
+    Reflect.set(globalThis, key, created);
     return created;
 }
 
-const ownership = sharedObservationStorage();
+const ownership = sharedExecutionStorage<ObservationOwner>(observationKey);
 
 export function observingInfrastructure(): boolean {
     return ownership.getStore()?.kind === 'infrastructure';
@@ -77,4 +77,13 @@ export function currentExecutionOwner(): ObservationOwner | undefined {
 }
 export function withExecutionOwner<Value>(owner: ObservationOwner, operation: () => Value): Value {
     return ownership.run(owner, operation);
+}
+
+export type RunIdentity = { readonly id: string; readonly startedAt: string; };
+const runIdentities = sharedExecutionStorage<RunIdentity>(Symbol.for('@overkill-dev/run/identity'));
+export function currentRunIdentity(): RunIdentity | null {
+    return runIdentities.getStore() ?? null;
+}
+export function withRunIdentity<Value>(identity: RunIdentity, operation: () => Value): Value {
+    return runIdentities.run(identity, operation);
 }

@@ -11,7 +11,6 @@ import {
     performanceBaselineFixtureFile,
     type BaselineFixture
 } from '../../test-support/benchmark-baseline-fixture.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 
 const execution = { processModel: 'supervised-process', maxConcurrency: 1, scheduling: 'serial' } as const;
 
@@ -348,4 +347,4 @@ export const testNode = suite('benchmark baseline failure boundaries', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

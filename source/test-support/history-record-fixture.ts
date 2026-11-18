@@ -17,11 +17,28 @@ export type CompletedHistoryFixture = Extract<HistoryRecord, { readonly status: 
     readonly facts: { readonly implementations: null; };
 };
 
+export function historyFacts(
+    testFamily: string
+): NonNullable<HistoryRecord['facts']> & { readonly implementations: null; } {
+    return {
+        environment: null,
+        benchmarkHost: null,
+        benchmarkPlacement: null,
+        benchmarkCalibration: null,
+        benchmarkNormalization: null,
+        execution: { testFamily },
+        implementations: null
+    };
+}
+
 export function completedHistoryRecord(id: string): CompletedHistoryFixture {
     return {
         id,
         kind: 'single',
         version: currentRunRecordVersion,
+        detail: 'detailed',
+        identities: null,
+        versions: null,
         replayPlan: deterministicCollectedRunPlan('test.ts'),
         replayProfile: recordedReplayProfile(
             defaultMicrotestProfile({ execution: { processModel: 'in-process', scheduling: 'serial' } })
@@ -30,14 +47,34 @@ export function completedHistoryRecord(id: string): CompletedHistoryFixture {
         startedAt: historyTimestamp,
         request: { profile: 'unit', recordForMerge: false },
         execution: { processModel: 'in-process', scheduling: 'serial' },
-        facts: { execution: { testFamily: 'microtest' }, implementations: null },
+        facts: historyFacts('microtest'),
         result: {
+            preparationFacts: null,
+            baselineReports: [],
             resourceChecks: [],
             status: 'passed',
             runnerErrors: [],
-            summary: { failed: 0, crashed: 0, processExhausted: 0, runtimePolicy: 0, inconclusive: 0 },
-            timings: { summary: { totalWallTimeMicroseconds: 100 } },
+            summary: {
+                defined: 1,
+                discovered: 1,
+                planned: 1,
+                passed: 1,
+                skipped: 0,
+                failed: 0,
+                crashed: 0,
+                processExhausted: 0,
+                runtimePolicy: 0,
+                inconclusive: 0
+            },
+            timings: {
+                summary: {
+                    totalWallTimeMicroseconds: 100,
+                    runnerOverheadWallTimeMicroseconds: 0,
+                    testExecutionWallTimeMicroseconds: 100
+                }
+            },
             perTest: [ {
+                benchmark: null,
                 verdict: 'pass',
                 durationMicroseconds: 10,
                 workId: historyWork

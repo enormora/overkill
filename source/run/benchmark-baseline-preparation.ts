@@ -69,7 +69,6 @@ export async function prepareBenchmarkBaselineRun(
         session: normalization.maintain(
             await baseline.createBenchmarkBaselineSession({
                 calibration,
-                clock: dependencies.wallClock,
                 profile: input.profile,
                 projectRoot: input.projectRoot,
                 reporterDispatcher: dependencies.reporterDispatcher,

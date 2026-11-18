@@ -4,8 +4,10 @@ import { suite, test, type TestScope } from '../packages/test/test.entry-point.t
 import {
     ordinaryBaselineStorage,
     ordinaryStorageScenario,
+    ordinaryStorageFormat,
     ordinaryStorageInput
 } from '../test-support/ordinary-baseline-storage.ts';
+import type { StoredOrdinaryBaseline } from './baseline-record.ts';
 import { openOrdinaryBaselineStore } from './baseline-store.ts';
 import { createBaselineStorage } from './baseline-storage.ts';
 
@@ -52,8 +54,8 @@ export const testNode = suite('ordinary baseline storage policy', [
     }),
     test('enforces serialized artifact limits before writing', async function (scope: TestScope) {
         const fixture = await ordinaryBaselineStorage(ordinaryStorageScenario);
-        const storage = createBaselineStorage(
-            { root: '/project', directory: '/project/baselines', maxBytes: 1 },
+        const storage = createBaselineStorage<StoredOrdinaryBaseline>(
+            { ...ordinaryStorageFormat, root: '/project', directory: '/project/baselines', maxBytes: 1 },
             fixture.access
         );
         scope.assert.throws(function () {
@@ -84,7 +86,12 @@ export const testNode = suite('ordinary baseline storage policy', [
         await scope.assert.rejects(async function () {
             return await fixture.storage.read(file);
         }, { message: /Invalid baseline file/u });
-        const storage = createBaselineStorage({ root: '/project', directory: '/project/baselines', maxBytes: 1 }, {
+        const storage = createBaselineStorage<StoredOrdinaryBaseline>({
+            ...ordinaryStorageFormat,
+            root: '/project',
+            directory: '/project/baselines',
+            maxBytes: 1
+        }, {
             ...fixture.access,
             async inspect() {
                 return { file: true, link: false, size: ordinaryStorageInput.maxBytes };

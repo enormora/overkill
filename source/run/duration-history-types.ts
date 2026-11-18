@@ -1,11 +1,8 @@
 import type { DurationHistoryInput, DurationHistoryObservation, WorkId, WorkUnit } from './run-types.ts';
 
-export const durationHistoryIndexVersion = 2;
-
 export type DurationHistoryIndex = {
     readonly entries: readonly DurationHistoryEntry[];
     readonly updatedAt: string;
-    readonly version: typeof durationHistoryIndexVersion;
 };
 
 type DurationHistoryEntry = {

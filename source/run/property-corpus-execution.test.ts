@@ -3,9 +3,15 @@ import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runIfMain } from '#test-runner';
-import { parseWitnessFile, type PropertyWitnessFile } from '../packages/engine/engine.entry-point.ts';
+import {
+    defineReporter,
+    parseWitnessFile,
+    type PropertyWitnessFile,
+    type DefinedReporter
+} from '../packages/engine/engine.entry-point.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { normalizeConfig, orchestrator, type RunCommand } from '../packages/run/run.entry-point.ts';
+import { writeCorpusIndex } from '../test-support/corpus-index.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 
 async function corpusCommand(scope: TestScope, processModel: 'in-process' | 'supervised-process'): Promise<RunCommand> {
@@ -112,15 +118,7 @@ async function assertLocalCompatibility(scope: TestScope, input: IncompatibleCor
         createHash('sha256').update('laws').digest('hex')
     );
     await mkdir(cache, { recursive: true });
-    await writeFile(
-        path.join(cache, 'index.json'),
-        JSON.stringify({
-            version: 1,
-            entries: [
-                { id: 'incompatible', savedAt: '2026-11-06T00:00:00.000Z', entry: incompatible }
-            ]
-        })
-    );
+    await writeCorpusIndex(path.join(cache, 'index.json'), [ incompatible ]);
     const local = await orchestrator.run(command);
     scope.assert.includes(JSON.stringify(local.perTest), 'Skipped incompatible');
     scope.assert.equal(
@@ -147,6 +145,22 @@ async function assertReplayCompatibility(scope: TestScope, input: IncompatibleCo
     }));
 }
 
+function blockCorpusAfterCase(file: string): DefinedReporter {
+    return defineReporter(function () {
+        return {
+            kind: 'real-time',
+            name: 'corpus-write-failure',
+            sinks: [],
+            dispose: null,
+            onFinish: null,
+            async onEvent(event) {
+                if (event.kind === 'test-end') {
+                    await writeFile(file, 'not a directory');
+                }
+            }
+        };
+    });
+}
 export const testNode = suite(
     'runner property corpus',
     [
@@ -224,11 +238,10 @@ export const testNode = suite(
         }),
         test('retains confirmed failures when local persistence fails', async function (scope) {
             const command = await corpusCommand(scope, 'in-process');
-            const blocked = path.join(command.config.runtimeStateDir, 'blocked');
-            await writeFile(blocked, 'not a directory');
+            const blocked = path.join(command.config.runtimeStateDir, 'corpus');
             const result = await orchestrator.run({
                 ...command,
-                config: { ...command.config, runtimeStateDir: blocked }
+                config: { ...command.config, reporters: [ blockCorpusAfterCase(blocked) ] }
             });
             scope.assert.equal(result.summary.failed, 1);
             scope.assert.true(result.runnerErrors.some(function corpusWriteFailure(error) {

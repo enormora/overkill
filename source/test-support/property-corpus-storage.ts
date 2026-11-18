@@ -79,6 +79,12 @@ export function propertyCorpusStorage(input: CorpusStorageScenario): CorpusStora
                     events.push('release');
                 };
             },
+            async remove(target) {
+                files.delete(target);
+            },
+            async savedAt() {
+                return '2026-10-30T00:00:00.000Z';
+            },
             now() {
                 return '2026-10-30T00:00:00.000Z';
             }

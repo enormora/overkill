@@ -31,6 +31,8 @@ type DiagnosticInvocation = {
     readonly execution: MutationDiagnosticExecution;
     readonly budget: InvocationBudget;
     readonly invocation: string;
+    readonly startedAt: string;
+    readonly status: () => 'completed' | 'interrupted';
     readonly reply: () => RunExecutionReply | null;
     readonly record: (reply: RunExecutionReply) => void;
     readonly storageFailed: () => boolean;
@@ -104,6 +106,11 @@ async function writeInvocationDiagnostics(state: DiagnosticInvocation, failure: 
     }
     await state.runtime.write(context, {
         version: 1,
+        kind: 'mutation',
+        detail: 'detailed',
+        id: state.invocation,
+        startedAt: state.startedAt,
+        status: state.status(),
         campaign: context.campaign,
         invocation: state.invocation,
         seed: context.seed,
@@ -177,12 +184,17 @@ export async function recordMutationInvocation<Value extends MutationResult>(
     let reply: RunExecutionReply | null = null;
     let storageFailed = false;
     let completion: { readonly result: MutationResult; readonly expired: boolean; } | null = null;
+    const started = new Date();
     const state: DiagnosticInvocation = {
         runtime,
         context,
         execution,
         budget,
         invocation: runtime.identifier(),
+        startedAt: started.toISOString(),
+        status() {
+            return completion === null ? 'interrupted' : 'completed';
+        },
         reply() {
             return reply;
         },

@@ -22,7 +22,7 @@ export const testNode = suite('history lock acquisition policy', [
             const release = await fixture.acquire();
             scope.assert.deepEqual(historyMaintenanceDiagnostics(), [ 'Stale history lock was recovered.' ]);
             await release();
-        });
+        }, performance.now.bind(performance));
         return scope.assert.collect();
     }),
     test('does not mark a current lock as stale', async function (scope: TestScope) {
@@ -31,7 +31,7 @@ export const testNode = suite('history lock acquisition policy', [
             const release = await fixture.acquire();
             scope.assert.deepEqual(historyMaintenanceDiagnostics(), []);
             await release();
-        });
+        }, performance.now.bind(performance));
         return scope.assert.collect();
     }),
     test('retries contended locks with bounded waits before acquiring', async function (scope: TestScope) {
@@ -65,7 +65,11 @@ export const testNode = suite('history lock acquisition policy', [
     test('defers bounded maintenance after lock contention exhausts its deadline', async function (scope: TestScope) {
         const fixture = historyLockAcquisition({ ...historyLockScenario, failures: 2, locked: true }, 10);
         await scope.assert.rejects(async function () {
-            await withinHistoryMaintenanceBudget(Number.MAX_SAFE_INTEGER, fixture.acquire);
+            await withinHistoryMaintenanceBudget(
+                Number.MAX_SAFE_INTEGER,
+                fixture.acquire,
+                performance.now.bind(performance)
+            );
         }, { name: 'HistoryMaintenanceDeferredError' });
         scope.assert.deepEqual(fixture.waits, [ 10 ]);
         return scope.assert.collect();
@@ -86,7 +90,7 @@ export const testNode = suite('history lock acquisition policy', [
     test('checks the maintenance deadline before touching the lock', async function (scope: TestScope) {
         const fixture = historyLockAcquisition(historyLockScenario, 100);
         await scope.assert.rejects(async function () {
-            await withinHistoryMaintenanceBudget(0, fixture.acquire);
+            await withinHistoryMaintenanceBudget(0, fixture.acquire, performance.now.bind(performance));
         }, { name: 'HistoryMaintenanceDeferredError' });
         scope.assert.deepEqual(fixture.attempts, []);
         scope.assert.deepEqual(fixture.calls, []);

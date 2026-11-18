@@ -2,17 +2,16 @@ import { suite, test, type TestScope } from '../packages/test/test.entry-point.t
 import { historyRetention, historyRetentionScenario } from '../test-support/history-retention.ts';
 import { applyHistoryRetention } from './history-pruning.ts';
 import { readCompactHistory } from './history-storage.ts';
-import { durationStatePath, readDurationState } from './duration-history-storage.ts';
 
 export const testNode = suite('history retention publication', [
     test('previews record and artifact removals without changing storage', async function (scope: TestScope) {
         const fixture = await historyRetention(historyRetentionScenario);
         const result = await applyHistoryRetention(fixture.context, { dryRun: true }, fixture.runtime);
         scope.assert.deepEqual<unknown, unknown>(result, {
+            compactedRecords: 1,
             kind: 'dry-run',
             diagnostics: [],
             paths: [
-                '/project/state/runs/new.json',
                 '/project/state/runs/old.json',
                 '/project/state/runs/new',
                 '/project/state/runs/old'
@@ -37,7 +36,10 @@ export const testNode = suite('history retention publication', [
             }),
             [ { id: 'new', replayable: false } ]
         );
-        scope.assert.deepEqual<unknown, unknown>(fixture.written, [ '/project/state/history/index.json' ]);
+        scope.assert.deepEqual<unknown, unknown>(fixture.written, [
+            '/project/state/runs/new.json',
+            '/project/state/history/index.json'
+        ]);
         return scope.assert.collect();
     }),
     test(
@@ -57,7 +59,13 @@ export const testNode = suite('history retention publication', [
             ]);
             scope.assert.equal(
                 await fixture.context.store.read('/project/state/runs/new/retention.json'),
-                JSON.stringify({ version: 1, id: 'new', startedAt: '2026-10-29T00:00:00.000Z', status: 'passed' })
+                JSON.stringify({
+                    version: 1,
+                    detail: 'detailed',
+                    id: 'new',
+                    startedAt: '2026-10-29T00:00:00.000Z',
+                    status: 'passed'
+                })
             );
             return scope.assert.collect();
         }
@@ -94,20 +102,18 @@ export const testNode = suite('history retention publication', [
             exact: failure
         });
         scope.assert.equal(await fixture.context.store.read('/project/state/history/index.json'), fixture.initial);
-        scope.assert.deepEqual<unknown, unknown>(fixture.written, []);
+        scope.assert.deepEqual<unknown, unknown>(fixture.written, [ '/project/state/runs/new.json' ]);
         return scope.assert.collect();
     }),
-    test('publishes duration retention state before the updated compact index', async function (scope: TestScope) {
-        const fixture = await historyRetention({ ...historyRetentionScenario, durations: true });
+    test('publishes duration retention and summaries in a single history index', async function (scope: TestScope) {
+        const fixture = await historyRetention(historyRetentionScenario);
         await applyHistoryRetention(fixture.context, { dryRun: false }, fixture.runtime);
-        const durations = await readDurationState(
-            fixture.context.store,
-            fixture.context.directory,
-            '2026-10-30T00:00:00.000Z'
-        );
-        scope.assert.equal(durations?.version, 3);
+        const index = await readCompactHistory(fixture.context.store, fixture.context.directory);
+        scope.assert.equal(index?.version, 1);
+        scope.assert.equal(index?.durations.entries[0]?.count, 2);
+        scope.assert.equal(index?.durations.entries[0]?.observations.length, 2);
         scope.assert.deepEqual<unknown, unknown>(fixture.written, [
-            durationStatePath(fixture.context.directory),
+            '/project/state/runs/new.json',
             '/project/state/history/index.json'
         ]);
         return scope.assert.collect();

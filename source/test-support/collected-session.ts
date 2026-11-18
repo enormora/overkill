@@ -31,7 +31,11 @@ export async function collectedSession(fault: CollectedSessionFault): Promise<Co
     const lifecycle = executionLifecycle(fault.dispose);
     let collections = 0;
     const runs: unknown[] = [];
-    const result = { ...fixture.reply.result, maintenanceDiagnostics: [ 'maintenance' ] };
+    const result = {
+        context: { id: null, startedAt: null, facts: null },
+        ...fixture.reply.result,
+        maintenanceDiagnostics: [ 'maintenance' ]
+    };
     async function run(invocation: Parameters<CollectedRun['run']>[0]): ReturnType<CollectedRun['run']> {
         runs.push(invocation);
         if (fault.execute !== null) {

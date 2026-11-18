@@ -19,8 +19,14 @@ export const testNode = suite('benchmark HTML output integration', [
         const reporter = createBenchmarkHtmlReporter({ outputFile })(
             createReportingContext({ projectRoot: process.cwd() })
         );
-        await reporter.onResult(benchmarkHtmlFixture('first'));
-        await reporter.onResult(benchmarkHtmlFixture('replacement'));
+        await reporter.onResult({
+            result: benchmarkHtmlFixture('first'),
+            context: { id: null, startedAt: null, facts: null }
+        });
+        await reporter.onResult({
+            result: benchmarkHtmlFixture('replacement'),
+            context: { id: null, startedAt: null, facts: null }
+        });
         const html = await readFile(outputFile, 'utf8');
         scope.assert.includes(html, 'replacement');
         scope.assert.includes(html, 'renderBenchmarkCharts');

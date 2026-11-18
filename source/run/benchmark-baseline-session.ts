@@ -1,4 +1,3 @@
-import type { Clock } from '@enormora/clock';
 import { createPerformanceBaselineStore, type PerformanceBaselineStore } from '../baselines/performance-store.ts';
 import type { ReporterDispatcher, ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import type { RunnerError } from '../engine/run-result.ts';
@@ -13,7 +12,6 @@ import type { RunResultSession } from './run-support.ts';
 export type BenchmarkBaselineSession = RunResultSession;
 export type BenchmarkBaselineSessionInput = {
     readonly calibration: ComparableCalibration;
-    readonly clock: Clock;
     readonly profile: BenchmarkProfileConfig;
     readonly projectRoot: string;
     readonly reporterDispatcher: ReporterDispatcher;
@@ -85,9 +83,6 @@ export async function openBenchmarkBaselineSession(
         async finalize(result) {
             return await finalizeBenchmarkBaselines({
                 calibration,
-                capturedAtMicroseconds() {
-                    return Number(input.clock.currentMonotonicMicroseconds);
-                },
                 completeInventory: request.paths.length === 0 && request.selection.kind === 'all' &&
                     request.shard.total === 1,
                 maxBytes: profile.attachments.maxArtifactBytes,

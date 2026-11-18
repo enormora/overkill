@@ -55,7 +55,10 @@ export const testNode = createSuite({
                 const { resourceChecks: _resourceChecks, ...legacy } = runResultFactory.build({
                     summary: { discovered: 1, planned: 1, passed: 1 }
                 });
-                const output: unknown = await Reflect.apply(reporter.onResult, reporter, [ legacy ]);
+                const output: unknown = await Reflect.apply(reporter.onResult, reporter, [ {
+                    result: legacy,
+                    context: { id: null, startedAt: null, facts: null }
+                } ]);
                 scope.assert.deepEqual(texts(output), [
                     'done status=passed discovered=1 planned=1 executed=1 passed=1 failed=0 skipped=0 inconclusive=0 processExhausted=0 runtimePolicy=0 crashed=0 ms=0 timing="total 0 ms, execution 0 ms, overhead 0 ms"'
                 ]);
@@ -137,7 +140,6 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-
         createTestCase({
             ...metadata,
             title: 'renders final causes and runner errors before counts with located annotations',
@@ -169,9 +171,26 @@ export const testNode = createSuite({
                     summary: { discovered: 10, planned: 8, failed: 1, passed: 2 }
                 });
                 const reporter = createBriefFinalResultReporter()(context);
-                const output = await reporter.onResult(result) ?? [];
+                const output = await reporter.onResult({
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    },
+                    result
+                }) ?? [];
                 assertFinalDiagnostics(scope, output);
-                scope.assert.deepEqual(await reporter.onResult(result) ?? [], output);
+                scope.assert.deepEqual(
+                    await reporter.onResult({
+                        context: {
+                            id: null,
+                            startedAt: null,
+                            facts: null
+                        },
+                        result
+                    }) ?? [],
+                    output
+                );
                 scope.assert.true(createBriefFinalResultReporter()(context) !== reporter);
                 return scope.assert.collect();
             }
@@ -184,8 +203,25 @@ export const testNode = createSuite({
                     const result = runResultFactory.build({ planStatus });
                     const realTime = createBriefReporter()(context);
                     scope.require.notNull(realTime.onFinish);
-                    const output = await createBriefFinalResultReporter()(context).onResult(result);
-                    scope.assert.deepEqual(output ?? [], await realTime.onFinish(result) ?? []);
+                    const output = await createBriefFinalResultReporter()(context).onResult({
+                        context: {
+                            id: null,
+                            startedAt: null,
+                            facts: null
+                        },
+                        result
+                    });
+                    scope.assert.deepEqual(
+                        output ?? [],
+                        await realTime.onFinish({
+                            context: {
+                                id: null,
+                                startedAt: null,
+                                facts: null
+                            },
+                            result
+                        }) ?? []
+                    );
                     scope.assert.equal(texts(output).length, 1);
                     scope.assert.true(texts(output)[0]?.startsWith('done '));
                 }
@@ -221,7 +257,16 @@ export const testNode = createSuite({
                         };
                     })
                 };
-                const output = texts(await createBriefFinalResultReporter()(context).onResult(result));
+                const output = texts(
+                    await createBriefFinalResultReporter()(context).onResult({
+                        context: {
+                            id: null,
+                            startedAt: null,
+                            facts: null
+                        },
+                        result
+                    })
+                );
                 scope.assert.deepEqual(output, [
                     'fail source/example.test.ts root > passes: final failure',
                     'done status=failed discovered=0 planned=0 executed=4 passed=1 failed=1 retried=4 skipped=0 inconclusive=1 processExhausted=0 runtimePolicy=0 crashed=1 ms=0 timing="total 0 ms, execution 0 ms, overhead 0 ms"'

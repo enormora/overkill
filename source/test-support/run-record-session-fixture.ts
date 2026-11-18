@@ -70,6 +70,7 @@ export function recordFixtureWithStorageProbe(
     const writes: RecordSessionSnapshot[] = [];
     let attempts = 0;
     const session = createRunRecordSession('/project/subdirectory', input, {
+        detail: 'detailed',
         history: createMemoryHistoryStorage(),
         async maintainHistory() {
             return [];
@@ -104,6 +105,7 @@ export function recordFixture(failedWrites: readonly number[]): RecordFixture {
 
 export function recordUnresolvedSeed(): void {
     createRunRecordSession('/project', { ...input, request: { ...input.request, seed: { value: null } } }, {
+        detail: 'detailed',
         history: createMemoryHistoryStorage(),
         async maintainHistory() {
             return [];

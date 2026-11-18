@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod/v4';
-import type { ReadonlyDeep } from 'type-fest';
+import { inputDocumentFields } from '../stored-input.ts';
+import type { SnapshotBaseline } from '../baselines/baseline-values.ts';
 import { workIdSchema } from '../engine/identity-schema.ts';
 import { baselineIdentityKey } from '../baselines/baseline-planning.ts';
 import type { BaselineChange, BaselineEntry, BaselineIdentity } from '../baselines/baseline-model.ts';
@@ -11,7 +12,7 @@ const payloadSchema = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('binary'), base64: z.base64() })
 ]);
 export const storedOrdinaryBaselineSchema = z.strictObject({
-    version: z.literal(1),
+    ...inputDocumentFields,
     adapter: z.string().min(1),
     profile: z.string().min(1),
     subtype: z.enum([ 'content-snapshot', 'terminal-snapshot', 'visual-snapshot' ]),
@@ -19,7 +20,7 @@ export const storedOrdinaryBaselineSchema = z.strictObject({
     comparisonContext: z.record(z.string(), z.string()),
     payload: payloadSchema
 });
-export type StoredOrdinaryBaseline = ReadonlyDeep<z.infer<typeof storedOrdinaryBaselineSchema>>;
+export type StoredOrdinaryBaseline = SnapshotBaseline;
 export type OrdinaryBaselineChange = BaselineChange<StoredOrdinaryBaseline>;
 export type OrdinaryBaselineEntry = BaselineEntry<StoredOrdinaryBaseline>;
 export function persistBaselinePayload(payload: BaselinePayload): StoredOrdinaryBaseline['payload'] {

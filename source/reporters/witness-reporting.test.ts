@@ -36,7 +36,7 @@ export const testNode = suite('witness reporting', [
                 }
             } ]
         });
-        const output = await reporter.onFinish(result);
+        const output = await reporter.onFinish({ context: { id: null, startedAt: null, facts: null }, result });
         scope.assert.includes(JSON.stringify(output), "Replay: overkill replay-witness 'witnesses/input.json'");
         return scope.assert.collect();
     })

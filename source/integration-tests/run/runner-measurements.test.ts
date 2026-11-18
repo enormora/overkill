@@ -15,7 +15,6 @@ import {
     type BenchmarkExecution,
     type RunCommand
 } from '../../packages/run/run.entry-point.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { artifactReferenceKey } from '../../engine/run-artifact.ts';
 
@@ -204,4 +203,4 @@ export const testNode = createSuite({
     })
 });
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

@@ -10,7 +10,6 @@ import {
     defineReporter,
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import type { DefinedReporter, Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import { defaultCoveragePolicy, normalizeHistoryPolicy } from '../../config/defaults.ts';
@@ -368,4 +367,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

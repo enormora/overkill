@@ -4,12 +4,9 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { RunResult } from '../engine/run-result.ts';
-import { runResultFactory } from '../test-support/run-result-factory.ts';
 import type { DurationHistoryIndex, DurationHistoryPlacement, DurationHistoryStore } from './duration-history-types.ts';
 import {
     readDurationHistoryIndex,
-    resultWithUpdatedDurationHistory,
     selectDurationHistoryPlacement
 } from './duration-history.ts';
 import {
@@ -19,16 +16,12 @@ import {
     type WorkUnit
 } from './run-types.ts';
 import {
-    createCollectedPlan,
-    workerPoolResolvedRun
-} from './worker-pool-runtime.test.ts';
-import {
     workerPoolLanes,
     workerPoolPlacementAssignments
 } from './worker-pool-lanes.ts';
 
 function historyIndex(entries: DurationHistoryIndex['entries'], updatedAt: string): DurationHistoryIndex {
-    return { entries, updatedAt, version: 2 };
+    return { entries, updatedAt };
 }
 
 const now = Date.parse('2026-09-17T00:00:00.000Z');
@@ -41,20 +34,6 @@ type FallbackPlacements = {
     readonly mixedUnit: WorkUnit;
     readonly partial: DurationHistoryPlacement;
     readonly stale: DurationHistoryPlacement;
-};
-
-type RecordedDurationHistoryStore = {
-    readonly store: DurationHistoryStore;
-    readonly writes: readonly string[];
-};
-
-type DurationHistoryUpdateResults = {
-    readonly failedResult: RunResult;
-    readonly finiteResult: RunResult;
-    readonly infiniteResult: RunResult;
-    readonly persistedResult: RunResult;
-    readonly unchangedResult: RunResult;
-    readonly writes: readonly string[];
 };
 
 function work(title: string): WorkId {
@@ -178,18 +157,6 @@ async function readHistoryFailure(
     }
 }
 
-function assertMigratedHistory(scope: OverkillScope, migrated: DurationHistoryIndex): void {
-    const migratedRuntime = migrated.entries[0]?.work.runtimes[0];
-
-    scope.require.defined(migratedRuntime);
-    scope.assert.deepEqual(migratedRuntime.scenarios, {});
-    const migratedWork = migrated.entries[0]?.work;
-    scope.require.defined(migratedWork);
-    const placement = selectDurationHistoryPlacement([ unit('legacy', [ migratedWork ]) ], migrated, now);
-
-    scope.assert.equal(placement.unitDuration?.(unit('legacy', [ migratedWork ])), 100);
-}
-
 function fallbackPlacements(): FallbackPlacements {
     const sampledWork = work('sampled');
     const unsampledWork = work('unsampled');
@@ -232,89 +199,6 @@ function fallbackPlacements(): FallbackPlacements {
         partial: selectDurationHistoryPlacement([ mixedUnit ], sampledIndex, now),
         stale: selectDurationHistoryPlacement([ unit('sampled', [ sampledWork ]) ], staleIndex, now)
     };
-}
-
-function runResultForWork(sampleWork: WorkId, durationMicroseconds: number): RunResult {
-    return runResultFactory.build({
-        perTest: [
-            {
-                id: sampleWork.case,
-                durationMicroseconds,
-                workId: sampleWork
-            }
-        ]
-    });
-}
-
-function recordingDurationHistoryStore(): RecordedDurationHistoryStore {
-    const writes: string[] = [];
-
-    return {
-        store: {
-            async read() {
-                return null;
-            },
-            async write(_filePath, content) {
-                writes.push(content);
-            }
-        },
-        writes
-    };
-}
-
-async function durationHistoryUpdateResults(): Promise<DurationHistoryUpdateResults> {
-    const resolvedRun = workerPoolResolvedRun(createCollectedPlan());
-    const sampleWork = work('persisted');
-    const finiteResult = runResultForWork(sampleWork, 12);
-    const infiniteResult = runResultForWork(sampleWork, Number.POSITIVE_INFINITY);
-    const recordingStore = recordingDurationHistoryStore();
-    const unchangedResult = await resultWithUpdatedDurationHistory(
-        recordingStore.store,
-        resolvedRun,
-        infiniteResult,
-        now
-    );
-    const persistedResult = await resultWithUpdatedDurationHistory(
-        recordingStore.store,
-        resolvedRun,
-        finiteResult,
-        now
-    );
-    const failedResult = await resultWithUpdatedDurationHistory(
-        {
-            async read() {
-                return null;
-            },
-            async write() {
-                throw new Error('Write failed.');
-            }
-        },
-        resolvedRun,
-        finiteResult,
-        now
-    );
-
-    return {
-        failedResult,
-        finiteResult,
-        infiniteResult,
-        persistedResult,
-        unchangedResult,
-        writes: recordingStore.writes
-    };
-}
-
-function assertDurationHistoryUpdateResults(
-    scope: OverkillScope,
-    results: DurationHistoryUpdateResults
-): void {
-    scope.assert.equal(results.unchangedResult, results.infiniteResult);
-    scope.assert.equal(results.persistedResult, results.finiteResult);
-    scope.assert.equal(results.writes.length, 1);
-    scope.assert.equal(
-        results.failedResult.runnerErrors[0]?.message,
-        'Failed to write duration history.'
-    );
 }
 
 export const testNode = createOverkillSuite({
@@ -364,7 +248,7 @@ export const testNode = createOverkillSuite({
                     async read(filePath) {
                         requestedPath = filePath;
 
-                        return JSON.stringify({ entries: [], updatedAt: observedAt(now), version: 3 });
+                        return JSON.stringify({ entries: [], updatedAt: observedAt(now), version: 1 });
                     },
                     async write() {
                         return undefined;
@@ -379,7 +263,7 @@ export const testNode = createOverkillSuite({
                     }
                 }, '.overkill');
 
-                scope.assert.equal(requestedPath, `${absoluteRuntimeStateDir}/duration-history/work-durations.json`);
+                scope.assert.equal(requestedPath, `${absoluteRuntimeStateDir}/history/index.json`);
                 scope.assert.equal(
                     invalidShapeMessage,
                     'History state is unavailable. Run overkill history compact to repair it.'
@@ -415,49 +299,6 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(placement.facts?.samples[0]?.durationMicroseconds, 50);
                 scope.assert.equal(placement.unitDuration?.(selectedUnit), 50);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'duration history migrates version 1 runtime identities',
-            async body(scope: OverkillScope) {
-                const migrated = await readDurationHistoryIndex(
-                    {
-                        async read() {
-                            return JSON.stringify({
-                                entries: [ {
-                                    observations: [ observation(100, now) ],
-                                    work: {
-                                        familyVariant: null,
-                                        case: {
-                                            file: 'source/legacy.test.ts',
-                                            params: null,
-                                            suite: [],
-                                            title: 'legacy'
-                                        },
-                                        runtimes: [ { dimensions: {}, name: 'api', variantId: null } ],
-                                        workload: null
-                                    }
-                                } ],
-                                updatedAt: observedAt(now),
-                                version: 1
-                            });
-                        },
-                        async write() {
-                            return undefined;
-                        }
-                    },
-                    process.cwd(),
-                    '.overkill'
-                );
-
-                scope.require.defined(migrated);
-                scope.assert.equal(migrated.version, 2);
-                assertMigratedHistory(scope, migrated);
 
                 return scope.assert.collect();
             }
@@ -511,19 +352,6 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(sparsePlacement.facts, null);
                 scope.assert.equal(sparsePlacement.unitDuration, null);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'duration history persists finite result samples and reports write errors',
-            async body(scope: OverkillScope) {
-                const results = await durationHistoryUpdateResults();
-
-                assertDurationHistoryUpdateResults(scope, results);
 
                 return scope.assert.collect();
             }

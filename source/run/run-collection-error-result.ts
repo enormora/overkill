@@ -31,6 +31,8 @@ function createCollectionErrorRunResult(
     };
 
     return {
+        preparationFacts: null,
+        baselineReports: [],
         resourceChecks: [],
         artifacts: [],
         bySuite: {},

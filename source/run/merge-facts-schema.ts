@@ -24,7 +24,16 @@ const execution = {
     ...replayPlanningFields.execution.shape,
     runRecords: z.object({
         persist: z.boolean(),
-        reasons: z.array(z.enum([ 'request', 'last-failed', 'merge', 'coverage', 'debug', 'profile', 'artifact' ]))
+        reasons: z.array(z.enum([
+            'history',
+            'request',
+            'last-failed',
+            'merge',
+            'coverage',
+            'debug',
+            'profile',
+            'artifact'
+        ]))
     }),
     benchmarkGarbageCollection: z.enum([ 'off', 'after-sample' ]).nullable(),
     propertyPolicy: propertyPolicySchema.nullable(),

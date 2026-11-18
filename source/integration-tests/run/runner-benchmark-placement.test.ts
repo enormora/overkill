@@ -60,11 +60,11 @@ function assertExecution(
     result: Awaited<ReturnType<RunOrchestrator['bench']['run']>>,
     scenario: PlacementScenario
 ): void {
-    const metadata = readBenchmarkRunMetadata(result);
+    const metadata = readBenchmarkRunMetadata(result.context.facts);
     scope.require.defined(metadata);
     scope.assert.deepEqual(result.runnerErrors, []);
     scope.assert.equal(result.summary.passed, 2);
-    scope.assert.equal(metadata.version, 4);
+    scope.assert.false(Object.hasOwn(metadata, 'version'));
     scope.assert.equal(
         metadata.execution.workerCount,
         scenario.execution.processModel === 'worker-pool' ? scenario.expectedWorkers : null
@@ -148,4 +148,4 @@ export const testNode = suite('adaptive benchmark worker execution', [
     })
 ]);
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

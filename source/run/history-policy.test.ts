@@ -37,13 +37,11 @@ export const testNode = suite('history operations and replay availability', [
         scope.assert.deepEqual(await fixture.history.list(), []);
         return scope.assert.collect();
     }),
-    test('repairs legacy compact state automatically before listing', async function (scope: TestScope) {
+    test('requires explicit repair for unsupported history indexes', async function (scope: TestScope) {
         const fixture = await historyPolicy(idleHistoryScenario, 'pruned', 'legacy');
-        const summaries = await fixture.history.list();
-        scope.assert.equal(summaries.length, 3);
-        scope.assert.true(summaries.every(function (summary) {
-            return summary.replay === 'pruned';
-        }));
+        await scope.assert.rejects(fixture.history.list, { message: /overkill history compact/ });
+        await fixture.history.compact();
+        scope.assert.deepEqual(await fixture.history.list(), []);
         return scope.assert.collect();
     }),
     test('compacts retained history under ownership protection', async function (scope: TestScope) {

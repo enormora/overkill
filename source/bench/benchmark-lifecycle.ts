@@ -1,8 +1,7 @@
 import { createStoredValue } from '../stored-value.ts';
-import {
-    benchmarkLifecycleVersion,
-    type BenchmarkCooldownResult,
-    type BenchmarkLifecycleResult
+import type {
+    BenchmarkCooldownResult,
+    BenchmarkLifecycleResult
 } from '../engine/benchmark-result.ts';
 import { settleMeasurementTarget } from './measurement-target-cooldown.ts';
 import { createBenchmarkGarbageCollection, type BenchmarkGarbageCollection } from './benchmark-garbage-collection.ts';
@@ -104,7 +103,6 @@ export function createBenchmarkLifecycle(
         },
         snapshot() {
             return {
-                version: benchmarkLifecycleVersion,
                 measurement: measurement.snapshot(),
                 garbageCollection: garbageCollection.snapshot(),
                 policy: input.lifecycle,

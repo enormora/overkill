@@ -111,14 +111,17 @@ async function reportProgressRun(terminal: FakeTerminal): Promise<void> {
         suitePath: suitePathFromCase(failingCaseId),
         verdict: 'fail'
     });
-    await reporter.onFinish?.(runResultFactory.build({
-        perTest: [
-            { id: passingCaseId },
-            { id: failingCaseId, outcome: { kind: 'fail' }, verdict: 'fail' }
-        ],
-        summary: { discovered: 2, failed: 1, passed: 1, planned: 2 },
-        totalWallTimeMicroseconds: 3000
-    }));
+    await reporter.onFinish?.({
+        context: { id: null, startedAt: null, facts: null },
+        result: runResultFactory.build({
+            perTest: [
+                { id: passingCaseId },
+                { id: failingCaseId, outcome: { kind: 'fail' }, verdict: 'fail' }
+            ],
+            summary: { discovered: 2, failed: 1, passed: 1, planned: 2 },
+            totalWallTimeMicroseconds: 3000
+        })
+    });
 }
 
 export const testNode = createOverkillSuite({

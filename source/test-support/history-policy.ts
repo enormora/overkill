@@ -68,6 +68,7 @@ export async function historyPolicy(
         async prune(_context, request) {
             pruned.push(request);
             return {
+                compactedRecords: 0,
                 kind: request.dryRun ? 'dry-run' : 'applied',
                 paths: [ '/project/.overkill/runs/old.json' ],
                 diagnostics: [ 'pruned diagnostic' ],

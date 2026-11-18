@@ -52,7 +52,10 @@ export const testNode = suite('line reporter completion policy', [
     test('prints successful summaries', async function (scope: TestScope) {
         const { lines, reporter } = lineFixture();
         scope.require.notNull(reporter.onFinish);
-        await reporter.onFinish(runResultFactory.build({ status: 'passed', summary: { planned: 1, passed: 1 } }));
+        await reporter.onFinish({
+            result: runResultFactory.build({ status: 'passed', summary: { planned: 1, passed: 1 } }),
+            context: { id: null, startedAt: null, facts: null }
+        });
         scope.assert.includes(lines.join('\n'), '1 pass');
         scope.assert.equal(lines[0]?.startsWith(`${colors.green(figures.tick)} `), true);
         return scope.assert.collect();

@@ -126,6 +126,7 @@ function createScheduledSession(
 function requirePassedExecution(reply: RunExecutionReply): void {
     assert.ok(reply.kind === 'result', JSON.stringify(reply));
     assert.equal(Object.hasOwn(reply.result, 'maintenanceDiagnostics'), false);
+    assert.equal(Object.hasOwn(reply.result, 'context'), false);
     assert.equal(reply.result.status, 'passed', JSON.stringify(reply));
 }
 

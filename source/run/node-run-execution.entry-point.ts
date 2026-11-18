@@ -47,7 +47,7 @@ export function createNodeExecutionDependencies(input: NodeExecutionInput): Node
         async maintainHistory(options) {
             return await withRunnerInfrastructure(async function maintain() {
                 const { maintainHistory } = await import('./history-maintenance.ts');
-                return await maintainHistory(options);
+                return await maintainHistory(options, performance.now.bind(performance));
             });
         },
         createProcessUsageTracker(options) {

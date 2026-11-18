@@ -4,6 +4,8 @@ import { createDefaultWorkId, createCaseId } from '../engine/identity.ts';
 import type { StoredPerformanceBaseline } from '../baselines/performance-baseline.ts';
 
 export const storedPerformanceFixture: StoredPerformanceBaseline = {
+    normalization: null,
+    measurement: null,
     adapter: 'duration',
     expected: {
         calibration: { context: {}, kind: 'comparable', machineClass: 'unit-host', metadata: {} },
@@ -69,7 +71,9 @@ export async function performanceStorage(input: PerformanceStorageScenario): Pro
                 });
         },
         async inspect(target) {
-            return { regular: input.regular, size: Buffer.byteLength(content.get(target) ?? '') };
+            return content.has(target)
+                ? { file: input.regular, link: false, size: Buffer.byteLength(content.get(target) ?? '') }
+                : null;
         },
         async prepare() {
             events.push('prepare');

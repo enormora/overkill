@@ -45,7 +45,7 @@ export function createBaselineOperations(operations: RunOperations<RunCommand>):
                 request: { ...command.request, baselineUpdateMode: mode }
             }, options);
             const report: OrdinaryBaselineReport = readOrdinaryBaselineReport(delivered.result) ??
-                { version: 1, changes: [], warnings: [], writeOutcome: { kind: 'blocked' } };
+                { changes: [], warnings: [], writeOutcome: { kind: 'blocked' } };
             return {
                 ...delivered,
                 changes: report.changes,

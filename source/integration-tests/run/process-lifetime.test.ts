@@ -1,6 +1,5 @@
 import { runIfMain } from '#test-runner';
 import { suite, test } from '../../packages/test/test.entry-point.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { processMeasurement, type ProcessRequest } from '../../packages/bench/bench.entry-point.ts';
 import { createProcessSamplingSession } from '../../bench/process-sampling.ts';
 
@@ -55,4 +54,4 @@ export const testNode = suite('process sample lifetime', [
     })
 ]);
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

@@ -3,7 +3,7 @@ import type { RecordedCoverageExecution } from './recorded-coverage-types.ts';
 import { currentReplay } from './replay-context.ts';
 import { createResolvedRunFromCollection } from './run-collected-resolution.ts';
 import { executeEmptyShardRun } from './run-empty-shard.ts';
-import { finalizeResultWithDurationHistory } from './run-state-finalization.ts';
+import { finalizeRunEvidence } from './run-state-finalization.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { RunCommand, ResolvedRun } from './run-types.ts';
@@ -44,7 +44,7 @@ async function executeEmptyReplay(
             status: runStatusFromPlan(result.summary, result.runnerErrors, planStatus)
         };
         const covered = options.coverage === null ? restored : await options.coverage.finalize(restored);
-        return await finalizeResultWithDurationHistory(options.dependencies, run, covered, null);
+        return await finalizeRunEvidence(run, covered, null);
     }, null);
 }
 async function executeRequestedEmptyReplay(

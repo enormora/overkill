@@ -16,7 +16,11 @@ type OrdinaryCommandRouting = {
 export function ordinaryCommandRouting(scenario: OrdinaryCommandScenario): OrdinaryCommandRouting {
     const calls: string[] = [];
     const result: BaselineRunResult = {
-        result: { ...baselineCaseResult, maintenanceDiagnostics: [] },
+        result: {
+            context: { id: null, startedAt: null, facts: null },
+            ...baselineCaseResult,
+            maintenanceDiagnostics: []
+        },
         changes: scenario.changes ? [ { kind: 'create', baseline: storedBaseline } ] : [],
         warnings: [ 'baseline warning' ],
         writeOutcome: { kind: 'read-only' },

@@ -1,18 +1,18 @@
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
+import { compactRunRecord } from './compact-run-record.ts';
+import type { RecordCatalogInput } from './history-retention-metadata.ts';
 import { checkHistoryMaintenanceBudget } from './history-maintenance-budget.ts';
-import type { HistoryStorage } from './history-storage-types.ts';
-import { readCompactHistory } from './history-storage.ts';
-import { historyStateError } from './history-state-error.ts';
+import { readRequiredCompactHistory } from './history-storage.ts';
 import { retainCompactHistory } from './compact-history.ts';
-import { readDurationState, durationStatePath, ingestDurationState } from './duration-history-storage.ts';
+import { ingestDurationState } from './duration-history-storage.ts';
 import { readRetentionCatalog, selectHistoryRemovals } from './history-retention-records.ts';
 import type { HistoryOptions, HistoryPruneRequest, HistoryPruneResult } from './history-types.ts';
 
 type PruneContext = {
     readonly directory: string;
     readonly policy: HistoryOptions['config']['history'];
-    readonly store: HistoryStorage;
+    readonly store: RecordCatalogInput['store'];
 };
 export type HistoryRetentionRuntime = {
     readonly now: () => string;
@@ -22,7 +22,8 @@ export type HistoryRetentionRuntime = {
 type RetentionContext = PruneContext & { readonly runtime: HistoryRetentionRuntime; };
 type RetentionWrite = Pick<RetentionContext, 'directory' | 'runtime' | 'store'> & {
     readonly next: ReturnType<typeof retainCompactHistory>;
-    readonly nextDurations: Awaited<ReturnType<typeof readDurationState>>;
+    readonly nextDurations: RetentionWrite['next']['durations'];
+    readonly downgrades: readonly string[];
     readonly result: HistoryPruneResult;
     readonly metadata: Awaited<ReturnType<typeof readRetentionCatalog>>['metadata'];
     readonly artifactDirectories: readonly string[];
@@ -37,35 +38,34 @@ async function writeArtifactRetention(input: RetentionWrite): Promise<void> {
         await store.write(path.join(target, 'retention.json'), JSON.stringify(metadata.get(path.basename(target))));
     }
 }
+async function compactDetailedRecords(input: RetentionWrite): Promise<void> {
+    for (const file of input.downgrades) {
+        checkHistoryMaintenanceBudget();
+        const source = await input.store.read(file);
+        if (source === null) {
+            throw new Error('Record disappeared during retention.');
+        }
+        checkHistoryMaintenanceBudget();
+        await input.store.write(file, JSON.stringify(compactRunRecord(JSON.parse(source))));
+    }
+}
 async function applyRetention(input: RetentionWrite): Promise<void> {
     const { store, directory, next, nextDurations, result } = input;
     await writeArtifactRetention(input);
+    await compactDetailedRecords(input);
     for (const target of result.paths) {
         checkHistoryMaintenanceBudget();
         await input.runtime.remove(target);
     }
-    if (nextDurations !== null) {
-        await store.write(durationStatePath(directory), JSON.stringify(nextDurations));
-    }
-    await store.write(path.join(directory, 'history', 'index.json'), JSON.stringify(next));
+    await store.write(
+        path.join(directory, 'history', 'index.json'),
+        JSON.stringify({ ...next, durations: nextDurations })
+    );
 }
 
-async function requiredIndex(context: PruneContext): Promise<ReturnType<typeof retainCompactHistory>> {
-    const index = await readCompactHistory(context.store, context.directory);
-    if (index === null) {
-        throw historyStateError('Compact history is missing.');
-    }
-    return index;
-}
 function currentTimestamp(): string {
     const now = new Date();
     return now.toISOString();
-}
-async function retainedDurations(context: PruneContext, now: string): Promise<RetentionWrite['nextDurations']> {
-    const state = await readDurationState(context.store, context.directory, now);
-    return state === null
-        ? null
-        : ingestDurationState(state, [], { run: null, policy: context.policy, now, source: 'repair' });
 }
 function removalResult(
     request: HistoryPruneRequest,
@@ -74,6 +74,7 @@ function removalResult(
     after: RetentionWrite['next']
 ): HistoryPruneResult {
     return {
+        compactedRecords: 0,
         kind: request.dryRun ? 'dry-run' : 'applied',
         diagnostics: [],
         paths,
@@ -84,7 +85,7 @@ function removalResult(
 }
 async function prepareRetention(context: RetentionContext, request: HistoryPruneRequest): Promise<RetentionWrite> {
     const now = context.runtime.now();
-    const index = await requiredIndex(context);
+    const index = await readRequiredCompactHistory(context.store, context.directory);
     const catalog = await context.runtime.catalog({
         store: context.store,
         runs: path.join(context.directory, 'runs'),
@@ -97,14 +98,17 @@ async function prepareRetention(context: RetentionContext, request: HistoryPrune
         {
             ...index,
             summaries: index.summaries.map(function replayAvailability(value) {
-                return { ...value, replayable: value.replayable && removals.retainedRecords.has(value.id) };
+                return { ...value, replayable: value.replayable && removals.detailedRecords.has(value.id) };
             })
         },
         context.policy,
         now
     );
-    const durations = await readDurationState(context.store, context.directory, now);
-    const nextDurations = await retainedDurations(context, now);
+    const nextDurations = ingestDurationState(index.durations, [], {
+        run: null,
+        policy: context.policy,
+        now
+    });
     const artifactDirectories = Array.from(
         new Set([
             ...catalog.artifactDirectories,
@@ -114,16 +118,23 @@ async function prepareRetention(context: RetentionContext, request: HistoryPrune
                 })
         ])
     );
+    const downgrades = catalog.records.filter(function expiredDetails(file) {
+        const id = path.basename(file, '.json');
+        return removals.retainedRecords.has(id) && !removals.detailedRecords.has(id) &&
+            catalog.metadata.get(id)?.detail === 'detailed';
+    });
     const result = removalResult(request, [ ...removals.removedRecords, ...removals.removedArtifacts ], index, next);
     return {
         ...context,
+        downgrades,
         next,
         nextDurations,
         metadata: catalog.metadata,
         artifactDirectories,
         result: {
             ...result,
-            removedWorkEntries: (durations?.entries.length ?? 0) - (nextDurations?.entries.length ?? 0)
+            compactedRecords: downgrades.length,
+            removedWorkEntries: index.durations.entries.length - nextDurations.entries.length
         }
     };
 }

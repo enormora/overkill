@@ -20,7 +20,6 @@ import {
     type RunExecutionFacts
 } from '../../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { createBenchmarkCommands } from '../../run/benchmark-commands.ts';
 import { readBenchmarkRunMetadata } from '../../bench/benchmark-run-report.ts';
 
@@ -180,18 +179,18 @@ function assertBenchmarkArtifacts(scope: TestScope, result: RunResult): void {
     }));
 }
 
-function assertBenchmarkHostMetadata(scope: TestScope, result: RunResult, observer: BenchmarkObserver): void {
-    const runMetadata = readBenchmarkRunMetadata(result);
-    scope.require.defined(runMetadata?.host);
-    scope.assert.equal(runMetadata.version, 4);
-    scope.assert.equal(runMetadata.calibration, null);
-    scope.assert.equal(runMetadata.host.snapshot.version, 1);
+function assertBenchmarkHostMetadata(scope: TestScope, _result: RunResult, observer: BenchmarkObserver): void {
     const start = observer.events.find(function runStart(event) {
         return event.kind === 'run-start';
     });
     if (start?.kind !== 'run-start') {
         throw new Error('Missing benchmark start facts.');
     }
+    const runMetadata = readBenchmarkRunMetadata(start.facts);
+    scope.require.defined(runMetadata?.host);
+    scope.assert.false(Object.hasOwn(runMetadata, 'version'));
+    scope.assert.equal(runMetadata.calibration, null);
+    scope.assert.equal(runMetadata.host.snapshot.version, 1);
     scope.assert.equal(canonicalIdentityJson(start.facts['benchmarkHost']), canonicalIdentityJson(runMetadata.host));
     scope.assert.equal(
         canonicalIdentityJson(start.facts['benchmarkPlacement']),
@@ -295,4 +294,4 @@ export const testNode = createSuite({
     })
 });
 
-await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });
+await runIfMain(import.meta, testNode);

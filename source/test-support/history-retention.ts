@@ -3,21 +3,18 @@ import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { emptyCompactHistory, ingestCompactRecord } from '../run/compact-history.ts';
 import type { HistoryRetentionRuntime } from '../run/history-pruning.ts';
 import { manifestSchema } from '../run/history-retention-metadata.ts';
-import { durationStatePath, emptyDurationState } from '../run/duration-history-storage.ts';
 import { createMemoryHistoryStorage } from './memory-history-storage.ts';
 import { completedHistoryRecord } from './history-record-fixture.ts';
 
 type HistoryRetentionScenario = {
     readonly missingIndex: boolean;
     readonly keepRecords: boolean;
-    readonly durations: boolean;
     readonly expired: boolean;
     readonly removalFailure: Error | null;
 };
 export const historyRetentionScenario: HistoryRetentionScenario = {
     missingIndex: false,
     keepRecords: false,
-    durations: false,
     expired: false,
     removalFailure: null
 };
@@ -55,8 +52,8 @@ export async function historyRetention(input: HistoryRetentionScenario): Promise
     if (!input.missingIndex) {
         await memory.write(`${historyDirectory}/history/index.json`, JSON.stringify(index));
     }
-    if (input.durations) {
-        await memory.write(durationStatePath(historyDirectory), JSON.stringify(emptyDurationState(now)));
+    for (const record of records) {
+        await memory.write(`${historyDirectory}/runs/${record.id}.json`, JSON.stringify(record));
     }
     return {
         context: {

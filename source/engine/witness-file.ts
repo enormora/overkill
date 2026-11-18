@@ -1,10 +1,11 @@
 import type { JsonValue } from 'type-fest';
 import { z } from 'zod/v4';
+import { inputDocumentFields } from '../stored-input.ts';
 import { caseIdSchema, runtimeIdSchema, sourceLocationSchema } from './identity-schema.ts';
 
 const codecIdentity = z.strictObject({ name: z.string(), version: z.number().int().positive() });
 const witnessHeaderSchema = z.strictObject({
-    version: z.literal(1),
+    ...inputDocumentFields,
     producedBy: z.strictObject({ library: z.string(), libraryVersion: z.string() }),
     case: caseIdSchema
 });

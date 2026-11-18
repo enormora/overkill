@@ -311,7 +311,7 @@ export const testNode = createOverkillSuite({
                 }
 
                 await reportTestEnd(reporter, passingCaseId, { kind: 'pass' });
-                await onFinish(result);
+                await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
 
                 scope.assert.equal(
                     terminal.text(),
@@ -409,7 +409,7 @@ export const testNode = createOverkillSuite({
                     throw new TypeError('Expected dot reporter to expose onFinish.');
                 }
 
-                await onFinish(result);
+                await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
 
                 scope.assert.equal(
                     terminal.text(),
@@ -453,8 +453,8 @@ export const testNode = createOverkillSuite({
                     throw new TypeError('Expected dot reporter to expose onFinish.');
                 }
 
-                await onFinish(result);
-                await onFinish(result);
+                await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
+                await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
 
                 scope.assert.equal(
                     terminal.text(),
@@ -503,7 +503,14 @@ export const testNode = createOverkillSuite({
                     throw new TypeError('Expected dot reporter to expose onFinish.');
                 }
 
-                await onFinish(runResultFactory.build());
+                await onFinish({
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    },
+                    result: runResultFactory.build()
+                });
                 await reporter.onEvent({
                     error: {
                         attributedToAttempt: null,

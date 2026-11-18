@@ -1,4 +1,5 @@
 import { runIfMain } from '#test-runner';
+import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -7,6 +8,7 @@ import {
 import { testNode as policy } from './reporting-policy-context.test.ts';
 import {
     createReportingContext,
+    createRunReportingContext,
     formatAssertionSourceLocations,
     formatSourceLocation,
     relativizeSourceLocationPath
@@ -19,6 +21,31 @@ export const testNode = createOverkillSuite({
     controls: {},
     children: [
         policy,
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'run reports accept absent and partial preparation facts',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const reporting = createRunReportingContext();
+                const result = runResultFactory.build();
+                reporting.observeFacts(null);
+                scope.assert.equal(reporting.report(result).context.facts, null);
+                reporting.observeFacts({ environment: { projectRoot: '  ' }, execution: {} });
+                scope.assert.deepEqual<unknown, unknown>(reporting.report(result).context.facts, {
+                    environment: { projectRoot: '  ' },
+                    execution: {}
+                });
+                scope.assert.equal(
+                    formatSourceLocation(
+                        { kind: 'known', file: '/repo/test.ts', line: 1, column: null },
+                        reporting.context
+                    ),
+                    '/repo/test.ts:1'
+                );
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'relativizeSourceLocationPath() renders files below project root as relative paths',

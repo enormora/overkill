@@ -2,7 +2,7 @@ import ansiEscapes from 'ansi-escapes';
 import figures from 'figures';
 import colors from 'yoctocolors';
 import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from '../engine/reporter.ts';
-import type { RunResult } from '../engine/run-result.ts';
+import type { RunReport } from '../engine/run-result.ts';
 import type { TerminalOutput } from './terminal.ts';
 import { treeResultLines, type TreeReporterOptions } from './tree-reporter.ts';
 
@@ -102,7 +102,7 @@ export function createProgressReporter(
                 }
             },
 
-            onFinish(result: RunResult) {
+            onFinish({ result }: RunReport) {
                 clearProgress();
                 for (const line of treeResultLines(result, context, options)) {
                     writeLine(line);

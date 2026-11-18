@@ -1,61 +1,60 @@
 import type { ReadonlyDeep } from 'type-fest';
 import { z } from 'zod/v4';
-import type { RunResult } from '../engine/run-result.ts';
 import { benchmarkNormalizationContextSchema } from './calibration-evidence.ts';
 import { benchmarkCalibrationSchema } from './calibration-schema.ts';
 import { benchmarkPlacementFactsSchema, benchmarkHostAssessmentSchema } from './benchmark-host-snapshot.ts';
 
-export const benchmarkRunMetadataVersion = 4;
-const placementMetadataVersion = 3;
-const hostMetadataVersion = 2;
-
-const legacyMetadataSchema = z.strictObject({
-    version: z.literal(1),
-    node: z.strictObject({ arch: z.string(), platform: z.string(), version: z.string() }),
-    execution: z.strictObject({
+export const benchmarkRunFactsSchema = z.object({
+    environment: z.object({ node: z.object({ arch: z.string(), platform: z.string(), version: z.string() }) }),
+    execution: z.object({
+        testFamily: z.literal('benchmark'),
         profile: z.string(),
         processModel: z.string(),
         scheduling: z.string(),
         maxConcurrency: z.union([ z.number(), z.literal('unlimited') ]),
-        workerCount: z.number().nullable(),
-        workerLifecycle: z.string().nullable()
+        workerCount: z.object({ resolved: z.number() }).nullable().default(null),
+        workerLifecycle: z.string().nullable().default(null)
     }),
-    calibration: benchmarkCalibrationSchema.nullable()
+    benchmarkCalibration: benchmarkCalibrationSchema.nullable(),
+    benchmarkHost: benchmarkHostAssessmentSchema.nullable(),
+    benchmarkPlacement: benchmarkPlacementFactsSchema.nullable(),
+    benchmarkNormalization: benchmarkNormalizationContextSchema.nullable()
 });
-const hostMetadataSchema = legacyMetadataSchema.extend({
-    version: z.literal(hostMetadataVersion),
-    host: benchmarkHostAssessmentSchema.nullable()
-});
-const placementMetadataSchema = hostMetadataSchema.extend({
-    version: z.literal(placementMetadataVersion),
-    placement: benchmarkPlacementFactsSchema.nullable()
-});
-const metadataSchema = placementMetadataSchema.extend({
-    version: z.literal(benchmarkRunMetadataVersion),
-    normalization: benchmarkNormalizationContextSchema.nullable()
-});
-export type BenchmarkRunMetadata = ReadonlyDeep<z.infer<typeof metadataSchema>>;
-const recordedMetadataSchema = z.union([
-    metadataSchema,
-    placementMetadataSchema.transform(function historicalNormalization(value): BenchmarkRunMetadata {
-        return { ...value, version: benchmarkRunMetadataVersion, normalization: null };
-    }),
-    hostMetadataSchema.transform(function historicalPlacement(value): BenchmarkRunMetadata {
-        return { ...value, version: benchmarkRunMetadataVersion, placement: null, normalization: null };
-    }),
-    legacyMetadataSchema.transform(function legacyHostMetadata(value): BenchmarkRunMetadata {
-        return { ...value, version: benchmarkRunMetadataVersion, host: null, placement: null, normalization: null };
-    })
-]);
-export const benchmarkRunMediaType = 'application/vnd.overkill.benchmark-run+json';
-export function readBenchmarkRunMetadata(result: RunResult): BenchmarkRunMetadata | null {
-    for (const artifact of result.artifacts) {
-        if (
-            artifact.id.scope.kind === 'run' && artifact.payload.kind === 'runtime-attachment' &&
-            artifact.payload.mediaType === benchmarkRunMediaType && artifact.payload.content.kind === 'json'
-        ) {
-            return recordedMetadataSchema.parse(artifact.payload.content.value);
-        }
+export type BenchmarkRunMetadata = ReadonlyDeep<{
+    readonly node: z.output<typeof benchmarkRunFactsSchema>['environment']['node'];
+    readonly execution: {
+        readonly profile: string;
+        readonly processModel: string;
+        readonly scheduling: string;
+        readonly maxConcurrency: number | 'unlimited';
+        readonly workerCount: number | null;
+        readonly workerLifecycle: string | null;
+    };
+    readonly calibration: z.output<typeof benchmarkRunFactsSchema>['benchmarkCalibration'];
+    readonly host: z.output<typeof benchmarkRunFactsSchema>['benchmarkHost'];
+    readonly placement: z.output<typeof benchmarkRunFactsSchema>['benchmarkPlacement'];
+    readonly normalization: z.output<typeof benchmarkRunFactsSchema>['benchmarkNormalization'];
+}>;
+export function readBenchmarkRunMetadata(facts: Readonly<Record<string, unknown>> | null): BenchmarkRunMetadata | null {
+    const parsed = benchmarkRunFactsSchema.safeParse(facts);
+    if (!parsed.success) {
+        return null;
     }
-    return null;
+    const value = parsed.data;
+    const { execution } = value;
+    return {
+        node: value.environment.node,
+        execution: {
+            profile: execution.profile,
+            processModel: execution.processModel,
+            scheduling: execution.scheduling,
+            maxConcurrency: execution.maxConcurrency,
+            workerCount: execution.workerCount?.resolved ?? null,
+            workerLifecycle: execution.workerLifecycle
+        },
+        calibration: value.benchmarkCalibration,
+        host: value.benchmarkHost,
+        placement: value.benchmarkPlacement,
+        normalization: value.benchmarkNormalization
+    };
 }

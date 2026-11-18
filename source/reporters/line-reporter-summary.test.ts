@@ -86,7 +86,7 @@ export const testNode = createOverkillSuite({
                         } ]
                     } ]
                 };
-                await requireFinish(reporter)(result);
+                await requireFinish(reporter)({ result, context: { id: null, startedAt: null, facts: null } });
                 scope.assert(doubleUsage.calledWith, log, [ '  service (connection)' ]);
                 scope.assert(doubleUsage.calledWith, log, [ '  Connection closed unexpectedly' ]);
                 return scope.assert.collect();
@@ -103,7 +103,10 @@ export const testNode = createOverkillSuite({
                 const { resourceChecks: _resourceChecks, ...legacy } = runResultFactory.build({
                     summary: { discovered: 1, planned: 1, passed: 1 }
                 });
-                await Reflect.apply(requireFinish(reporter), reporter, [ legacy ]);
+                await Reflect.apply(requireFinish(reporter), reporter, [ {
+                    result: legacy,
+                    context: { id: null, startedAt: null, facts: null }
+                } ]);
                 scope.assert(doubleUsage.callCount, log, 1);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
                     colors.green(figures.tick),
@@ -148,7 +151,14 @@ export const testNode = createOverkillSuite({
                     }
                 });
 
-                await requireFinish(reporter)(runResult);
+                await requireFinish(reporter)({
+                    result: runResult,
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    }
+                });
 
                 scope.assert(doubleUsage.callCount, log, 3);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ 'Slow runner overhead:' ]);
@@ -178,7 +188,14 @@ export const testNode = createOverkillSuite({
                     totalWallTimeMicroseconds: 10_000
                 });
 
-                await requireFinish(reporter)(runResult);
+                await requireFinish(reporter)({
+                    result: runResult,
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    }
+                });
 
                 scope.assert(doubleUsage.callCount, log, 1);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
@@ -213,7 +230,14 @@ export const testNode = createOverkillSuite({
                     totalWallTimeMicroseconds: 15_000
                 });
 
-                await requireFinish(reporter)(runResult);
+                await requireFinish(reporter)({
+                    result: runResult,
+                    context: {
+                        id: null,
+                        startedAt: null,
+                        facts: null
+                    }
+                });
 
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
                     errorSymbol,

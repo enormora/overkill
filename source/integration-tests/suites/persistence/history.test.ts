@@ -1,3 +1,4 @@
+import { testNode as access } from '../../../run/history-state-access.test.ts';
 import { createSuite } from '../../../packages/engine/engine.entry-point.ts';
 import { testNode as nodeHistoryStorageTestNode } from '../../../run/node-history-storage.test.ts';
 import { testNode as historyTestNode } from '../../../run/history.test.ts';
@@ -13,6 +14,7 @@ export const testNode = createSuite({
     controls: {},
     definitionLocations: [ { kind: 'unknown' } ],
     children: [
+        access,
         nodeHistoryStorageTestNode,
         historyTestNode,
         historyCliTestNode,

@@ -2,6 +2,7 @@ import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import type { TestDebugArtifact } from './run-artifact.ts';
 import type {
     PropertyCaseEvidence,
+    RunReport,
     RunResult,
     RunnerError,
     TestOutcome,
@@ -18,7 +19,6 @@ import type { TestPlanCase, TestPlanSuitePathEntry } from './test-plan.ts';
 const reporterBrand = Symbol.for('@overkill-dev/engine/reporter');
 
 export type RunFacts = Readonly<Record<string, unknown>>;
-
 export type RawStandardOutputSinkDeclaration = {
     readonly kind: 'stderr-raw' | 'stdout-raw';
 };
@@ -248,7 +248,7 @@ type ManagedOutputEventCallback = (
 ) => OptionalReporterOutput | Promise<OptionalReporterOutput>;
 
 type ManagedOutputFinishCallback = (
-    result: RunResult
+    report: RunReport
 ) => OptionalReporterOutput | Promise<OptionalReporterOutput>;
 
 type RealTimeReporterWithOutput<Sinks extends readonly SinkDeclaration[]> = BaseRealTimeReporter<Sinks> & {
@@ -258,7 +258,7 @@ type RealTimeReporterWithOutput<Sinks extends readonly SinkDeclaration[]> = Base
 
 type RealTimeReporterWithoutOutput<Sinks extends readonly SinkDeclaration[]> = BaseRealTimeReporter<Sinks> & {
     readonly onEvent: (event: ReporterEvent) => Promise<void> | void;
-    readonly onFinish: ((result: RunResult) => Promise<void> | void) | null;
+    readonly onFinish: ((report: RunReport) => Promise<void> | void) | null;
 };
 
 type BaseFinalResultReporter<Sinks extends readonly SinkDeclaration[]> = {
@@ -269,7 +269,7 @@ type BaseFinalResultReporter<Sinks extends readonly SinkDeclaration[]> = {
 };
 
 type ManagedOutputResultCallback = (
-    result: RunResult
+    report: RunReport
 ) => OptionalReporterOutput | Promise<OptionalReporterOutput>;
 
 type FinalResultReporterWithOutput<Sinks extends readonly SinkDeclaration[]> = BaseFinalResultReporter<Sinks> & {
@@ -277,7 +277,7 @@ type FinalResultReporterWithOutput<Sinks extends readonly SinkDeclaration[]> = B
 };
 
 type FinalResultReporterWithoutOutput<Sinks extends readonly SinkDeclaration[]> = BaseFinalResultReporter<Sinks> & {
-    readonly onResult: (result: RunResult) => Promise<void> | void;
+    readonly onResult: (report: RunReport) => Promise<void> | void;
 };
 
 export type RealTimeReporter<Sinks extends readonly SinkDeclaration[] = readonly SinkDeclaration[]> =

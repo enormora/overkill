@@ -28,7 +28,7 @@ export async function propertyWitnessRun(
             if (scenario === 'complete') {
                 throw failure;
             }
-            return { ...result, maintenanceDiagnostics: [] };
+            return { context: { id: null, startedAt: null, facts: null }, ...result, maintenanceDiagnostics: [] };
         },
         async interrupt() {
             events.push('interrupt');

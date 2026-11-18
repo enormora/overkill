@@ -1,3 +1,4 @@
+import { canonicalJson } from '../canonical-identity.ts';
 import type { MeasurementEvidence } from '../engine/measurement-evidence.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createRoot, createTestPlan, execute, type TestCase } from '../packages/engine/engine.entry-point.ts';
@@ -233,7 +234,7 @@ export const testNode = suite('measurement targets and attribution', [
         return scope.assert.collect();
     }),
     test(
-        'decodes historical lifecycle evidence with absent measurement attribution',
+        'rejects independently versioned lifecycle evidence',
         async function (scope: TestScope) {
             const result = await runBenchmark(benchmark('historical', {
                 kind: 'runtime',
@@ -260,8 +261,10 @@ export const testNode = suite('measurement targets and attribution', [
             scope.require.defined(measured);
             scope.require.defined(measured.lifecycle);
             const { measurement: _measurement, ...lifecycle } = measured.lifecycle;
-            const historical = benchmarkResultSchema.parse({ ...measured, lifecycle: { ...lifecycle, version: 2 } });
-            scope.assert.equal(historical.lifecycle?.measurement, null);
+            scope.assert.throws(function historicalLifecycle() {
+                benchmarkResultSchema.parse({ ...measured, lifecycle: { ...lifecycle, version: 2 } });
+            }, { name: 'ZodError' });
+            scope.assert.equal(canonicalJson(benchmarkResultSchema.parse(measured)), canonicalJson(measured));
             return scope.assert.collect();
         }
     )

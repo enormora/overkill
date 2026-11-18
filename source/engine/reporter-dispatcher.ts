@@ -24,18 +24,14 @@ import {
     runWithReporterOutputScope,
     type ReporterConsoleMethod
 } from './reporter-output-scope.ts';
-import type {
-    DefinedReporter,
-    Reporter,
-    ReporterEvent
-} from './reporter.ts';
+import type { DefinedReporter, Reporter, ReporterEvent } from './reporter.ts';
+import type { RunReport, RunResult, RunnerError } from './run-result.ts';
 import {
     createDeliveryReportingContext,
     prepareReporterDelivery,
     type PreparedDelivery,
     type FinalDelivery
 } from './reporter-delivery-preparation.ts';
-import type { RunResult, RunnerError } from './run-result.ts';
 
 type RealTimeReporterInDispatch = Extract<Reporter, { readonly kind: 'real-time'; }>;
 
@@ -380,7 +376,7 @@ async function reportEvent(
 
 async function reportResult(
     context: ReporterDispatchContext,
-    result: RunResult
+    report: RunReport
 ): Promise<readonly RunnerError[]> {
     const results = await Promise.all(context.reporters.map(async function reportFinalResult(
         reporter
@@ -390,7 +386,7 @@ async function reportResult(
                 context.dependencies,
                 reporter,
                 function reportResultToFinalReporter(): ReturnType<ReporterCallback> {
-                    return reporter.onResult(result);
+                    return reporter.onResult(report);
                 }
             );
         }
@@ -404,7 +400,7 @@ async function reportResult(
             context.dependencies,
             reporter,
             function reportResultToRealTimeReporter(): ReturnType<ReporterCallback> {
-                return onFinish(result);
+                return onFinish(report);
             }
         );
     }));
@@ -533,7 +529,7 @@ async function createReporterDelivery(
             return await reportEvent(context, event);
         },
         async reportResult(result) {
-            return await reportResult(context, result);
+            return await reportResult(context, runReporting.report(result));
         }
     };
 }

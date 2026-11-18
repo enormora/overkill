@@ -32,11 +32,11 @@ function assertRejectedRun(scope: TestScope, result: RunResult): void {
     scope.assert.equal(result.status, 'failed');
     scope.assert.equal(result.summary.planned, 0);
     scope.assert.equal(result.runnerErrors[0]?.subtype, 'measurement');
-    scope.assert.equal(result.artifacts.length, 1);
+    scope.assert.equal(result.artifacts.length, 0);
 }
 
 function assertHostEvidence(scope: TestScope, result: RunResult, snapshot: BenchmarkHostSnapshot): void {
-    const host = readBenchmarkRunMetadata(result)?.host;
+    const host = readBenchmarkRunMetadata(result.preparationFacts)?.host;
     scope.require.defined(host);
     scope.assert.equal(canonicalIdentityJson(host.snapshot), canonicalIdentityJson(snapshot));
     scope.assert.deepEqual(
@@ -108,9 +108,9 @@ function observedHostRunner(
         },
         runtimeStateStore: {
             ...dependencies.runtimeStateStore,
-            async write() {
+            async write(file, contents) {
                 record('write');
-                throw new Error('Rejected host must not persist results.');
+                await dependencies.runtimeStateStore.write(file, contents);
             }
         },
         reporterDispatcher: {
@@ -178,7 +178,7 @@ export const testNode = suite('benchmark host admission', [
             scope.assert.equal(result.summary.planned, 0);
             scope.assert.equal(result.runnerErrors[0]?.subtype, 'measurement');
             scope.assert.equal(result.runnerErrors[0]?.message, 'Native observer unavailable.');
-            scope.assert.equal(readBenchmarkRunMetadata(result)?.host, null);
+            scope.assert.equal(readBenchmarkRunMetadata(result.preparationFacts)?.host, null);
             return scope.assert.collect();
         }
     ),
@@ -193,24 +193,26 @@ export const testNode = suite('benchmark host admission', [
             'fails'
         );
         const result = await runner.orchestrator.bench.run(acceptedCommand(), { timing: null });
-        const host = readBenchmarkRunMetadata(result)?.host;
+        const host = readBenchmarkRunMetadata(result.preparationFacts)?.host;
         scope.require.defined(host);
         scope.assert.equal(canonicalIdentityJson(host.snapshot), canonicalIdentityJson(snapshot));
         scope.assert.equal(result.runnerErrors[0]?.subtype, 'loader');
         scope.assert.deepEqual(delivered, [
             'discover',
+            'write',
             'host',
             'worker',
             'collect',
             'runner-error',
             'run-end',
             'result',
-            'dispose'
+            'dispose',
+            'write'
         ]);
         return scope.assert.collect();
     }),
     test(
-        'retains rejected checks and reports before collection, worker creation, or writes',
+        'retains rejected checks without collecting or creating workers',
         async function (scope: TestScope) {
             const delivered: string[] = [];
             const snapshot = rejectedHost();
@@ -224,7 +226,16 @@ export const testNode = suite('benchmark host admission', [
             const result = await runner.orchestrator.bench.run(command(), { timing: null });
             assertRejectedRun(scope, result);
             assertHostEvidence(scope, result, snapshot);
-            scope.assert.deepEqual(delivered, [ 'discover', 'host', 'runner-error', 'run-end', 'result', 'dispose' ]);
+            scope.assert.deepEqual(delivered, [
+                'discover',
+                'write',
+                'host',
+                'runner-error',
+                'run-end',
+                'result',
+                'dispose',
+                'write'
+            ]);
             return scope.assert.collect();
         }
     )

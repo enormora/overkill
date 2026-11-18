@@ -76,6 +76,7 @@ import type {
     ExecuteDependencies,
     OrphanedNode,
     RunResult,
+    RunReport,
     TestPlan,
     TestPlanCase,
     ImplementationCatalog,
@@ -252,7 +253,7 @@ type RunExecutionBaseFacts = {
     readonly verbose: false;
 };
 
-type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
+export type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
     readonly assignmentPolicy: WorkerPoolAssignmentPolicy;
     readonly dispatchPolicy: WorkerPoolDispatchPolicy;
     readonly hedging: WorkerPoolHedgingPolicy;
@@ -278,7 +279,7 @@ export type RunHostProcessFacts = {
     readonly kind: 'direct';
 };
 
-type RunSingleProcessExecutionFacts = RunExecutionBaseFacts & {
+export type RunSingleProcessExecutionFacts = RunExecutionBaseFacts & {
     readonly processModel: MicrotestProcessModel | 'supervised-process';
 };
 
@@ -366,7 +367,10 @@ export type ResolvedRun = {
     readonly request: RunRequest;
 };
 
-export type RunnerResult = RunResult & { readonly maintenanceDiagnostics: readonly string[]; };
+export type RunnerResult = RunResult & {
+    readonly context: RunReport['context'];
+    readonly maintenanceDiagnostics: readonly string[];
+};
 export type RunReporterDeliveryResult = {
     readonly deliveredRunnerErrors: readonly RunResult['runnerErrors'][number][];
     readonly result: RunnerResult;

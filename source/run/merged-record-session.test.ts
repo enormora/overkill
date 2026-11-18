@@ -15,12 +15,10 @@ async function prepare(directory: string): Promise<MergeResultsCommand> {
     return { config: defaultRunConfig({}), cwd: directory, inputs: [ { kind: 'directory', path: '.' } ] };
 }
 function assertRecordVersions(scope: TestScope, current: MergedRunRecord): void {
-    scope.assert.equal(current.version, 5);
-    const historical = structuredClone(current);
-    Reflect.deleteProperty(historical.facts, 'family');
-    const legacy = mergedRecordSchema.parse({ ...historical, version: 2 });
-    scope.assert.equal(legacy.version, 2);
-    scope.assert.equal(legacy.facts.family, null);
+    scope.assert.equal(current.version, 1);
+    for (const version of [ 2, 3, 4, 5 ]) {
+        scope.assert.false(mergedRecordSchema.safeParse({ ...current, version }).success);
+    }
 }
 async function assertRetained(scope: TestScope, command: MergeResultsCommand, merged: MergedRunRecord): Promise<void> {
     const retained = mergedRecordSchema.parse(JSON.parse(

@@ -2,17 +2,15 @@ import { runIfMain } from '#test-runner';
 import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
 import { mergeRecordFixture } from '../test-support/merge-record-fixture.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { finalizedResourceCheckResult } from '../engine/resource-check-result.ts';
 import { historyRecordSchema } from './history-record.ts';
 import { mergeRecordSchema } from './merge-results-schema.ts';
-import { currentRunRecordVersion, implementationRunRecordVersion } from './run-record-format.ts';
 import { recordedRunResult, serializeRunDiagnostics } from './run-record-result.ts';
-// eslint-disable-next-line import/max-dependencies -- Record round trips cover run results and compact history projections.
+
 import { parseRunResult } from './run-result-schema.ts';
 
-const snapshot: ResourceCheckSnapshot = {
+const snapshot = {
     owner: { run: 'record-run', id: 'record-owner', scope: 'per-run' },
     resource: 'service',
     revision: 1,
@@ -21,7 +19,7 @@ const snapshot: ResourceCheckSnapshot = {
     failures: [],
     errors: [],
     status: { kind: 'complete' }
-};
+} as const;
 export const testNode = suite('resource check records', [
     test('round trips owner attribution and bounded observation errors', function (scope) {
         const cause: Record<string, unknown> = { detail: 'observation failed' };
@@ -42,15 +40,22 @@ export const testNode = suite('resource check records', [
         }, { passing: 2, retained: true });
         return scope.assert.collect();
     }),
-    test('version 4 records remain readable while current records require evidence', function (scope) {
+    test('requires explicit resource-check evidence in version 1 records', function (scope) {
         const record = mergeRecordFixture('resource-record', 1, 1);
         const result: Record<string, unknown> = { ...record.result };
         delete result['resourceChecks'];
-        const restored = mergeRecordSchema.parse({ ...record, version: implementationRunRecordVersion, result });
-        scope.assert.deepEqual(restored.result.resourceChecks, []);
         scope.assert.false(
-            mergeRecordSchema.safeParse({ ...record, version: currentRunRecordVersion, result }).success
+            mergeRecordSchema.safeParse({ ...record, result }).success
         );
+        return scope.assert.collect();
+    }),
+    test('rejects superseded shard and history formats', function (scope) {
+        const shard = mergeRecordFixture('shard', 1, 1);
+        const history = completedHistoryRecord('history');
+        for (const version of [ 2, 3, 4, 5 ]) {
+            scope.assert.false(mergeRecordSchema.safeParse({ ...shard, version }).success);
+            scope.assert.false(historyRecordSchema.safeParse({ ...history, version }).success);
+        }
         return scope.assert.collect();
     }),
     test('history projections retain owner and interval evidence', function (scope: TestScope) {

@@ -3,9 +3,9 @@ import type { FileStore } from '../file-store.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import { serializeRunDiagnostics } from './run-record-result.ts';
 import { runRecordPersistenceError } from './run-record-error.ts';
+import { historyRecordSchema } from './history-record.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
 import { updateCompactHistory } from './history-storage.ts';
-import { historyRecordSchema } from './history-record.ts';
 import type { MergeResultsCommand, MergedRunRecord } from './merge-results-types.ts';
 
 export type MergedRecordStorage = {

@@ -3,7 +3,7 @@ import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import { sourceLocationsSchema, caseIdSchema, workIdSchema } from '../engine/identity-schema.ts';
 import { resourceCheckSnapshotSchema, testOutcomeSchema } from '../engine/assertion-result-schema.ts';
 import { runnerErrorSchema } from '../engine/runner-error-schema.ts';
-import type { RunnerResult } from './run-types.ts';
+import { baselineReportsSchema } from './baseline-report-schema.ts';
 import { propertyEvidenceSchema } from './property-evidence-schema.ts';
 import { runArtifactSchema, testAttemptSchema, verdictSchema } from './run-artifact-schema.ts';
 import { processUsageSchema, runTimingsSchema } from './run-runtime-schema.ts';
@@ -30,8 +30,31 @@ export const runDiagnosticsSchema: z.ZodType<
     Pick<RunResult, 'artifacts' | 'perTest' | 'resourceChecks' | 'runnerErrors'>
 > = z
     .strictObject(diagnosticFields);
+const runSummarySchema = z.strictObject({
+    crashed: z.number(),
+    defined: z.number(),
+    discovered: z.number(),
+    failed: z.number(),
+    inconclusive: z.number(),
+    passed: z.number(),
+    planned: z.number(),
+    processExhausted: z.number(),
+    runtimePolicy: z.number(),
+    skipped: z.number()
+});
+
+export const runObservationFields = {
+    resourceChecks: diagnosticFields.resourceChecks,
+    runnerErrors: z.array(runnerErrorSchema),
+    baselineReports: baselineReportsSchema,
+    summary: runSummarySchema,
+    timings: runTimingsSchema.pick({ summary: true })
+};
+
 export const runResultSchema: z.ZodType<RunResult> = z.strictObject({
     ...diagnosticFields,
+    ...runObservationFields,
+    preparationFacts: z.record(z.string(), z.json()).nullable(),
     bySuite: z.record(
         z.string(),
         z.strictObject({ discovered: z.number(), executed: z.number(), planned: z.number() })
@@ -47,32 +70,11 @@ export const runResultSchema: z.ZodType<RunResult> = z.strictObject({
     planStatus: z.enum([ 'empty-selection', 'empty-shard', 'planned' ]),
     processUsage: processUsageSchema.nullable(),
     status: z.enum([ 'failed', 'passed' ]),
-    summary: z.strictObject({
-        crashed: z.number(),
-        defined: z.number(),
-        discovered: z.number(),
-        failed: z.number(),
-        inconclusive: z.number(),
-        passed: z.number(),
-        planned: z.number(),
-        processExhausted: z.number(),
-        runtimePolicy: z.number(),
-        skipped: z.number()
-    }),
     timings: runTimingsSchema
 });
 
 export function parseRunResult(value: unknown): RunResult {
     return runResultSchema.parse(value);
-}
-
-export function parseRunnerResult(value: unknown): RunnerResult {
-    const { maintenanceDiagnostics, ...result } = z
-        .looseObject({
-            maintenanceDiagnostics: z.array(z.string())
-        })
-        .parse(value);
-    return { ...parseRunResult(result), maintenanceDiagnostics };
 }
 
 export function parseRunnerError(value: unknown): RunnerError {

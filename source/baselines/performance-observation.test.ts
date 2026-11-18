@@ -1,3 +1,4 @@
+import { benchmarkSampleFixture } from '../test-support/benchmark-html-fixture.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { availableMetric, unavailableMetric } from '../bench/metric-reading.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
@@ -48,11 +49,11 @@ function samples(readings: readonly MetricReading[]): RuntimeAttachmentArtifact 
             content: {
                 kind: 'json',
                 byteLength: 0,
-                value: {
+                value: benchmarkSampleFixture({
                     value: readings,
                     bytes: [ availableMetric(17, provenance) ],
                     constructor: [ availableMetric(19, provenance) ]
-                }
+                })
             }
         }
     };
@@ -108,14 +109,21 @@ export const testNode = suite('performance observation normalization', [
             );
             scope.assert.deepEqual(observed, {
                 kind: 'observed',
-                value: {
+                value: benchmarkSampleFixture({
                     value: [ availableMetric(10, provenance), unavailable ],
                     bytes: [ availableMetric(17, provenance) ],
                     constructor: [ availableMetric(19, provenance) ]
-                }
+                })
             });
             scope.assert.partialDeepEqual(artifact.payload.content, {
-                value: { value: [ availableMetric(100, provenance), unavailable ] }
+                value: {
+                    metrics: {
+                        value: [ { reading: availableMetric(100, provenance), attribution: null }, {
+                            reading: unavailable,
+                            attribution: null
+                        } ]
+                    }
+                }
             });
             return scope.assert.collect();
         }
@@ -127,11 +135,11 @@ export const testNode = suite('performance observation normalization', [
             observePerformance(adapter, { artifacts: [ other ], calibration, work }, normalization(10), 4096),
             {
                 kind: 'observed',
-                value: {
+                value: benchmarkSampleFixture({
                     value: [ availableMetric(100, provenance) ],
                     bytes: [ availableMetric(17, provenance) ],
                     constructor: [ availableMetric(19, provenance) ]
-                }
+                })
             }
         );
         return scope.assert.collect();

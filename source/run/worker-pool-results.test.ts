@@ -87,6 +87,8 @@ function emptyShardResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
 
 function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
     return {
+        preparationFacts: null,
+        baselineReports: [],
         resourceChecks: [],
         artifacts: [],
         bySuite: {},
