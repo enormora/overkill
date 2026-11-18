@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'tstyche';
-import type { RunResult } from '../engine/engine.entry-point.ts';
+import type { RunReport, RunResult } from '../engine/engine.entry-point.ts';
 import type {
     orchestrator,
     RunCommandInput,
@@ -23,7 +23,12 @@ describe('public runner lifecycle', function () {
     test('exposes typed transport parsers and seed generation', function () {
         expect<typeof parseRunResult>().type.toBe<(value: unknown) => RunResult>();
         expect<typeof parseRunnerResult>().type.toBe<(value: unknown) => RunnerResult>();
-        expect<RunnerResult>().type.toBe<RunResult & { readonly maintenanceDiagnostics: readonly string[]; }>();
+        expect<RunnerResult>().type.toBe<
+            RunResult & {
+                readonly context: RunReport['context'];
+                readonly maintenanceDiagnostics: readonly string[];
+            }
+        >();
         expect<typeof parseRunSelection>().type.toBe<(value: unknown) => RunSelection>();
         expect<typeof parseRunnerError>().type.toBe<(value: unknown) => RunResult['runnerErrors'][number]>();
         expect<typeof createRandomRunSeed>().type.toBe<() => bigint>();
