@@ -310,6 +310,14 @@ or worker ran it.
 
 ## Identity And Reproducibility
 
+Repository-shared storage does not add checkout, branch, revision, or absolute
+cwd to `CaseId`, `WorkId`, or baseline identity. Records retain originating
+checkout and project identity separately. Matching logical work across checkouts
+does not establish matching code or inputs. Artifact references inside the
+shared store are store-relative; source locations remain repository-relative.
+Inspection survives deletion of an originating worktree. See
+[Shared Storage And Portable Evidence](./reproducibility.md#shared-storage-and-portable-evidence).
+
 A run record includes the resolved set of identities. Replaying a run with
 `overkill replay <run-id>` restores:
 

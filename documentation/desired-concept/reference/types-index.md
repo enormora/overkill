@@ -884,6 +884,8 @@ type NormalizedConfig = {
 };
 
 type HistoryConfig = {
+    readonly maxRunBytes: number | null;
+    readonly maxStoreBytes: number | null;
     readonly detailedRunLimit: number;
     readonly successfulArtifactRunLimit: number;
     readonly failingArtifactRetentionDays: number;
@@ -1185,6 +1187,7 @@ type RunSelection =
     | { readonly filter: RunFilter; readonly kind: 'filter'; };
 
 type RunRequest = {
+    readonly diagnosticVolume: 'bounded' | 'unbounded';
     readonly lastFailed: boolean;
     readonly paths: ReadonlyArray<string>;
     readonly selection: RunSelection;
@@ -1412,6 +1415,7 @@ type RunSingleProcessExecutionFacts = RunExecutionBaseFacts & {
 type RunExecutionFacts = RunSingleProcessExecutionFacts | RunWorkerPoolExecutionFacts;
 
 type RunFacts = {
+    readonly diagnosticVolume: 'bounded' | 'unbounded';
     readonly family: import('@overkill-dev/engine').FamilyRunFacts;
     readonly benchmarkHost: BenchmarkHostAssessment | null;
     readonly benchmarkPlacement: BenchmarkPlacementFacts | null;
@@ -1778,6 +1782,29 @@ type RunRecordLineage = {
 
 type RunRecordStatus = 'started' | 'completed' | 'interrupted';
 
+type RunOrigin = {
+    readonly project: string;
+    readonly checkout: string;
+    readonly cwd: string;
+    readonly worktree: string;
+    readonly branch: string | null;
+    readonly revision: string | null;
+};
+
+type HistoryScope = 'checkout' | 'project';
+
+type RunInspectionQuery = {
+    readonly work: ReadonlyArray<WorkId>;
+    readonly attempts: ReadonlyArray<number>;
+    readonly failures: ReadonlyArray<string>;
+    readonly sections: ReadonlyArray<
+        'summary' | 'facts' | 'diagnostics' | 'diffs' | 'output' | 'artifacts'
+    >;
+    readonly limit: number;
+    readonly maxBytes: number;
+    readonly cursor: string | null;
+};
+
 type RunRecordRequest = Omit<RunRequest, 'seed'> & {
     readonly seed: { readonly value: string; };
 };
@@ -1800,6 +1827,7 @@ type FileStore = import('@overkill-dev/run').FileStore;
 declare function createNodeFileStore(): FileStore;
 
 type SingleRunRecord = {
+    readonly origin: RunOrigin;
     readonly id: string; // ULID
     readonly kind: 'single';
     readonly version: 2;
@@ -1825,6 +1853,7 @@ type SingleRunRecord = {
 };
 
 type MergedRunRecord = {
+    readonly origins: NonEmptyReadonlyArray<RunOrigin>;
     readonly id: string; // ULID
     readonly kind: 'merged';
     readonly version: 2;
@@ -1854,6 +1883,7 @@ type HistoryReplayAvailability =
     | 'unavailable';
 
 type HistoryRunSummary = {
+    readonly origins: NonEmptyReadonlyArray<RunOrigin>;
     readonly id: string;
     readonly startedAt: string;
     readonly profile: ProfileName;
@@ -1864,6 +1894,7 @@ type HistoryRunSummary = {
 };
 
 type CompactCaseHistory = {
+    readonly checkout: string;
     readonly id: CaseId;
     readonly lastRunId: string;
     readonly lastOutcome: TestVerdict;
@@ -1873,6 +1904,7 @@ type CompactCaseHistory = {
 };
 
 type CompactWorkHistory = {
+    readonly checkout: string;
     readonly id: WorkId;
     readonly lastRunId: string;
     readonly durationMicroseconds: ReadonlyArray<number>;

@@ -1079,11 +1079,12 @@ weaken the frozen-plan model:
 
 ### Duration History
 
-Duration history is a compact derived index under
-`runtimeStateDir/duration-history/work-durations.json`, not a requirement to
-persist every hot-path run as a full `RunRecord`.
+Duration history is a projection of the shared compact index at
+`runtimeStateDir/history/index.json`, not a requirement to persist every
+hot-path run as a full `RunRecord`. It uses the originating checkout's
+observations; another worktree's samples do not silently seed scheduling.
 
-The index stores recent duration observations keyed only by `WorkId`. Each
+The index stores recent duration observations keyed by checkout and `WorkId`. Each
 observation also carries diagnostic metadata: profile, process model,
 scheduling, test family, and worker lifecycle when present. Metadata explains
 where the sample came from; it does not decide identity or eligibility. This

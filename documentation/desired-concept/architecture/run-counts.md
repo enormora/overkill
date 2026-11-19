@@ -85,6 +85,26 @@ both browser modes, matrices, retries, and remote result delivery.
 
 ## Data Model
 
+### Completion Receipt
+
+Brief completion output and retained-run inspection reuse the frozen selected
+work set and authoritative final results to report selected, completed, and
+unfinished work, plus passed, failed, skipped, and inconclusive verdict counts.
+Keep these work-level counts separate from logical discovered/defined counts.
+An attempted or interrupted item is not necessarily completed; do not derive
+completed work from `executed` alone. A terminal failed or inconclusive result
+counts as completed; work without a terminal result remains unfinished.
+Retries and diagnostic groups do not multiply work counts.
+
+Report normal completion versus interruption and runner errors separately from
+test verdicts. Report evidence completeness independently, including capture,
+serialization, storage, and rendering omissions. Missing retained plan or result
+data makes the corresponding count unavailable, not zero. A receipt is a compact
+projection of existing facts, not a second execution-status authority or a
+requirement for per-test telemetry or persistence.
+
+### Summary Fields
+
 Run counts add three fields to `RunResult.summary`: `discovered`,
 `planned`, and `defined`. They also add two top-level fields to `RunResult`:
 `bySuite` and

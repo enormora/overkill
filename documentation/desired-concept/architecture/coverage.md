@@ -259,14 +259,14 @@ runner trusts to grant FS-write to, several rules apply.
 
 ### Default And Why It Exists
 
-The default is `.overkill/runs/<run-id>/coverage/` because that path
-is:
+The default is `<runtimeStateDir>/runs/<run-id>/coverage/`, using the resolved
+repository-shared store in Git projects and project-local `.overkill` otherwise.
+That path is:
 
-- inside the project (always writable; no permission surprises)
+- inside the selected runtime-state store (validated before granting writes)
 - per-run (no overwrite races between concurrent runs)
-- garbage-collected with the run record (no disk-fill over time)
-- hidden from source control (`.overkill/` is conventionally
-  gitignored)
+- subject to shared storage budgets and run-artifact retention
+- outside tracked application source by default
 
 A user who overrides the default trades one or more of those
 properties. A path like `coverage/` matches the convention some CI
@@ -289,7 +289,9 @@ configured path, follows symlinks, and refuses to start workers if
 the result:
 
 - is `/`, `/etc`, `/usr`, or another well-known system path
-- contains a symlink that escapes the project root - same caveat
+- contains a symlink that escapes the project root or explicitly resolved
+  runtime-state store; shared-store grants remain scoped to this run's coverage
+  directory, never the whole common Git directory - same caveat
   as [Microtests And Capabilities § Capability Defaults](../authoring/microtests-and-capabilities.md#capability-defaults), with
   extra weight because the path is user-supplied
 

@@ -463,6 +463,12 @@ Source: [Package Architecture](../architecture/package-architecture.md), [Types 
 
 ## RunRecord
 
+Run records use repository-shared storage across linked Git worktrees by default.
+Store-relative artifacts and repository-relative source locations keep retained
+evidence inspectable after the originating checkout is removed. Origin is
+provenance, separate from work identity. See
+[Shared Storage And Portable Evidence](../architecture/reproducibility.md#shared-storage-and-portable-evidence).
+
 The persisted artifact describing one completed run or one derived aggregate.
 `kind: 'single'` records contain `RunFacts` plus outcomes, artifacts, summary,
 runner errors, runtime metadata, and record status for one execution.

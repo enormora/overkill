@@ -146,7 +146,13 @@ baseline artifacts, witnesses, or corpus entries.
 | `overkill history compact`                           | Rebuild or repair the compact history index from retained detailed records.         | same                                                                                                              |
 | `overkill history clear`                             | Delete run history state under `runtimeStateDir`; requires confirmation or `--yes`. | same                                                                                                              |
 
-`history list` shows run id, start time, selected profile, test family,
+`history list` and `history case` accept `--scope checkout|project`, defaulting
+to `checkout`. Project scope includes originating-checkout identity on every
+observation. Exact run ids in `history show` and `history compare` address any
+record in the shared project namespace. This does not change the checkout-local
+scope of automatic `--last-failed` selection or duration-history scheduling.
+
+`history list` shows run id, origin, start time, selected profile, test family,
 aggregate status, duration, and replay availability. Aggregate status is one
 of `passed`, `failed`, `runner-error`, `interrupted`, or `inconclusive`.
 
@@ -164,6 +170,21 @@ no matching case history, corrupt data, unsupported schemas, or unavailable
 comparison results produce a nonzero exit. A readable summary whose details were
 pruned remains inspectable. Read commands never execute tests or write runtime
 state. Inspection and replay remain separate operations.
+
+`history show` accepts repeatable `--work <key>`, `--attempt <index>`, and
+`--failure <key>` selectors using keys printed by inspection. `--section`
+selects summary, facts, diagnostics, diffs, output, or artifacts and may repeat.
+`--limit`, `--max-bytes`, and `--cursor` bound and continue evidence queries.
+Omitted selectors inspect the whole run; omitted sections use a compact summary
+and diagnostic preview. Default pages contain at most 100 entries and 32 KiB of
+rendered text, including continuation metadata. Typed inspection uses the same
+selection/projection model with structured work identities. Query omissions and
+unavailable evidence remain explicit. These options never execute tests or
+rewrite records. See [Selective Evidence Queries](../architecture/reproducibility.md#selective-evidence-queries).
+
+Maintenance applies to the shared project namespace across checkouts. Changing
+retention or storage policy requires explicit maintenance with no live writers;
+ordinary runs never adopt conflicting policy silently.
 
 `history clear` deletes detailed run records, per-run artifacts, compact run
 summaries, and compact case/work history. It does not delete baselines,
@@ -299,6 +320,14 @@ Process usage measurement and budgets come from the selected profile's
 See [Runtime Behavior § Process Budgets](../architecture/runtime-behavior.md#process-budgets).
 
 ## Output And Capture
+
+`--unbounded-diagnostics` requests expanded diagnostic volume for this run.
+It lifts capture/serialization volume caps and the per-run storage
+cap, while preserving cycle detection, traversal-work limits, timeouts, and the
+shared-store ceiling. It does not enable debug, persistence, or unsupported
+capture, and it does not disable human rendering limits. The programmatic
+equivalent is `RunRequest.diagnosticVolume: 'unbounded'`; ordinary requests use
+`'bounded'`. See [Failure Artifacts](../authoring/failure-artifacts.md#serialization-storage-and-rendering-boundaries).
 
 | Flag           | Behavior                                                                 | Reference                                                                                               |
 | -------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
