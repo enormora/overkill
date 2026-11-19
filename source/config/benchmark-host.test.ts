@@ -32,7 +32,7 @@ export const testNode = suite('benchmark host configuration', [
             };
             const copied = copyConfig(original);
             scope.assert.deepEqual(copied, original);
-            scope.assert.notEqual(copied.profiles['sample']?.execution, original.profiles.sample.execution);
+            scope.assert.notEqual(copied.profiles.sample?.execution, original.profiles.sample.execution);
             return scope.assert.collect();
         });
     }),
@@ -48,7 +48,7 @@ export const testNode = suite('benchmark host configuration', [
         });
         const copied = copyConfig(original);
         scope.assert.deepEqual(copied, original);
-        scope.assert.notEqual(copied.profiles['sample']?.execution, original.profiles['sample']?.execution);
+        scope.assert.notEqual(copied.profiles.sample?.execution, original.profiles.sample?.execution);
         return scope.assert.collect();
     }),
     test('requires every limit in direct normalized configuration', function (scope: TestScope) {

@@ -39,8 +39,8 @@ export const testNode = suite('measurement evidence ownership', [
         const instrumented = recordingFor(processMeasurement({ instrumentation: 'node' })).snapshot();
         const raw = recordingFor(processMeasurement({ instrumentation: 'off' })).snapshot();
         scope.assert.notDeepEqual(instrumented.identity, raw.identity);
-        scope.assert.equal(instrumented.identity.target.semantics['instrumentation'], 'node');
-        scope.assert.equal(raw.identity.target.semantics['instrumentation'], 'off');
+        scope.assert.equal(instrumented.identity.target.semantics.instrumentation, 'node');
+        scope.assert.equal(raw.identity.target.semantics.instrumentation, 'off');
         return scope.assert.collect();
     }),
     test('bounds retained invocations and records omitted evidence', function (scope) {

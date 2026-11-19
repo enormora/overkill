@@ -50,7 +50,7 @@ export function projectedResourceLifecycle(): ProjectedLifecycleFixture {
                     signal,
                     { acquisitionFailure: 'Acquire failed.', disposalFailure: 'Dispose failed.' }
                 );
-                return composed.directResources['owner'];
+                return composed.directResources.owner;
             });
         }
     };

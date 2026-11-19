@@ -94,7 +94,7 @@ export const testNode = suite('coverage collection lifecycle', [
             const session = await createCoverageCollection(request, fixture.runtime);
             await session.start();
             await session.start();
-            scope.assert.equal(fixture.environment['NODE_V8_COVERAGE'], request.paths.rawDataDirectory);
+            scope.assert.equal(fixture.environment.NODE_V8_COVERAGE, request.paths.rawDataDirectory);
             await session.finalize(runResultFactory.build(), true);
             await session.dispose();
             scope.assert.deepEqual(fixture.commands, [
@@ -109,7 +109,7 @@ export const testNode = suite('coverage collection lifecycle', [
                 'disconnect',
                 'report'
             ]);
-            scope.assert.deepEqual({ directory: fixture.environment['NODE_V8_COVERAGE'], writes: fixture.writes }, {
+            scope.assert.deepEqual({ directory: fixture.environment.NODE_V8_COVERAGE, writes: fixture.writes }, {
                 directory: 'previous',
                 writes: [ { result: [], timestamp: 1 } ]
             });
@@ -203,7 +203,7 @@ export const testNode = suite('coverage collection lifecycle', [
             environment: { NODE_DISABLE_COMPILE_CACHE: '1', NODE_V8_COVERAGE: request.paths.rawDataDirectory },
             writablePath: `${request.paths.rawDataDirectory}/*`
         });
-        scope.assert.equal(fixture.environment['NODE_V8_COVERAGE'], 'previous');
+        scope.assert.equal(fixture.environment.NODE_V8_COVERAGE, 'previous');
         return scope.assert.collect();
     }),
     test('disposes a session before it starts without touching the profiler', async function (scope: TestScope) {
@@ -212,7 +212,7 @@ export const testNode = suite('coverage collection lifecycle', [
         await session.dispose();
         await session.dispose();
         scope.assert.deepEqual(fixture.commands, [ 'paths' ]);
-        scope.assert.equal(fixture.environment['NODE_V8_COVERAGE'], 'previous');
+        scope.assert.equal(fixture.environment.NODE_V8_COVERAGE, 'previous');
         return scope.assert.collect();
     }),
     test('disposes a started session once and restores its environment', async function (scope: TestScope) {
@@ -256,7 +256,7 @@ export const testNode = suite('coverage collection lifecycle', [
                 scope.assert.equal(result.status, 'failed');
                 scope.assert.equal(result.runnerErrors[0]?.subtype, 'coverage');
                 scope.assert.equal(result.runnerErrors[0]?.message, `Coverage failed: ${command} failed`);
-                scope.assert.equal(fixture.environment['NODE_V8_COVERAGE'], 'previous');
+                scope.assert.equal(fixture.environment.NODE_V8_COVERAGE, 'previous');
                 scope.assert.deepEqual(fixture.reports, []);
                 return scope.assert.collect();
             }

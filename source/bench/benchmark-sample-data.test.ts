@@ -18,7 +18,7 @@ export const testNode = suite('versioned benchmark samples', [
             target: { ...context.target.identity, document: 'document-one' }
         };
         const parsed = readRawBenchmarkSamples({ version: 1, metrics: { value: [ { reading, attribution } ] } });
-        scope.assert.deepEqual(parsed.metrics['value'] ?? [], [ { reading, attribution } ]);
+        scope.assert.deepEqual(parsed.metrics.value ?? [], [ { reading, attribution } ]);
         return scope.assert.collect();
     }),
     test('rejects unsupported formats instead of treating metadata as metrics', function (scope) {

@@ -34,7 +34,7 @@ export const testNode = suite('collector result admission', [
         const first = createMeasurementSample(strategy, scope.signal).sample.measure(function () {
             return 1;
         });
-        scope.assert.partialDeepEqual(first.metrics['count'] ?? {}, { availability: 'available', value: 7 });
+        scope.assert.partialDeepEqual(first.metrics.count ?? {}, { availability: 'available', value: 7 });
         scope.assert.throws(function () {
             createMeasurementSample(strategy, scope.signal).sample.measure(function () {
                 return 2;
@@ -49,7 +49,7 @@ export const testNode = suite('collector result admission', [
                 return 1;
             }
         );
-        const reading = measured.metrics['count'];
+        const reading = measured.metrics.count;
         scope.require.defined(reading);
         if (reading.availability !== 'unavailable') {
             throw new Error('Expected an unavailable collector reading.');
@@ -71,7 +71,7 @@ export const testNode = suite('collector result admission', [
                 return 1;
             }
         );
-        const reading = measured.metrics['count'];
+        const reading = measured.metrics.count;
         scope.require.defined(reading);
         if (reading.availability !== 'unavailable') {
             throw new Error('Expected an unavailable collector reading.');

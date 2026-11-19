@@ -23,7 +23,7 @@ const snapshot = {
 export const testNode = suite('resource check records', [
     test('round trips owner attribution and bounded observation errors', function (scope) {
         const cause: Record<string, unknown> = { detail: 'observation failed' };
-        cause['cycle'] = cause;
+        cause.cycle = cause;
         const resourceChecks = [ {
             ...snapshot,
             errors: [ { interval: snapshot.interval, target: 'service-target', cause } ],
@@ -43,7 +43,7 @@ export const testNode = suite('resource check records', [
     test('requires explicit resource-check evidence in version 1 records', function (scope) {
         const record = mergeRecordFixture('resource-record', 1, 1);
         const result: Record<string, unknown> = { ...record.result };
-        delete result['resourceChecks'];
+        delete result.resourceChecks;
         scope.assert.false(
             mergeRecordSchema.safeParse({ ...record, result }).success
         );
@@ -73,7 +73,7 @@ export const testNode = suite('resource check records', [
     }),
     test('historical result decoding supplies an empty resource collection', function (scope) {
         const legacy: Record<string, unknown> = { ...runResultFactory.build({}) };
-        delete legacy['resourceChecks'];
+        delete legacy.resourceChecks;
         scope.assert.deepEqual(parseRunResult(legacy).resourceChecks, []);
         return scope.assert.collect();
     }),

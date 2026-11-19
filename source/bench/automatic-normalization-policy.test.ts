@@ -21,8 +21,8 @@ export const testNode = suite('automatic normalization policy', [
             }),
             [ 'durationMicroseconds', 'operationsPerSecond', 'processCpuTotalMicroseconds' ]
         );
-        scope.assert.equal(resolved.normalization['durationMicroseconds']?.calibration, cpuCalibration());
-        scope.assert.equal(resolved.normalization['operationsPerSecond']?.scaling, 'inverse');
+        scope.assert.equal(resolved.normalization.durationMicroseconds?.calibration, cpuCalibration());
+        scope.assert.equal(resolved.normalization.operationsPerSecond?.scaling, 'inverse');
         scope.assert.false(Object.hasOwn(resolved.normalization, 'bytes'));
         return scope.assert.collect();
     }),
@@ -44,7 +44,7 @@ export const testNode = suite('automatic normalization policy', [
         function (scope: TestScope) {
             const normalized = definition(processMeasurement({ instrumentation: 'node' }));
             const raw = definition(rawMeasurement(wallClockMeasurement()));
-            scope.assert.equal(normalized.normalization['processCpuTotalMicroseconds']?.scaling, 'proportional');
+            scope.assert.equal(normalized.normalization.processCpuTotalMicroseconds?.scaling, 'proportional');
             scope.assert.deepEqual(raw.normalization, {});
             return scope.assert.collect();
         }
@@ -58,7 +58,7 @@ export const testNode = suite('automatic normalization policy', [
         });
         const resolved = definition(strategy);
         scope.assert.deepEqual(Object.keys(resolved.normalization), [ 'durationMicroseconds' ]);
-        scope.assert.equal(resolved.normalization['durationMicroseconds']?.calibration, calibration);
+        scope.assert.equal(resolved.normalization.durationMicroseconds?.calibration, calibration);
         return scope.assert.collect();
     })
 ]);

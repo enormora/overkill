@@ -110,9 +110,9 @@ function assertErrorProtocol(scope: OverkillScope, fixture: ProtocolFixture): vo
     scope.assert.equal(fixture.serializedError.resource, '/project/output.txt');
     scope.assert.equal(fixture.deserializedError.name, 'TypeError');
     scope.assert.equal(fixture.deserializedError.message, 'boom');
-    scope.assert.equal(deserializedFields['code'], 'ERR_ACCESS_DENIED');
-    scope.assert.equal(deserializedFields['permission'], 'FileSystemWrite');
-    scope.assert.equal(deserializedFields['resource'], '/project/output.txt');
+    scope.assert.equal(deserializedFields.code, 'ERR_ACCESS_DENIED');
+    scope.assert.equal(deserializedFields.permission, 'FileSystemWrite');
+    scope.assert.equal(deserializedFields.resource, '/project/output.txt');
 }
 
 function assertFallbackErrorProtocol(scope: OverkillScope, fixture: ProtocolFixture): void {

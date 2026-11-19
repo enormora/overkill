@@ -286,7 +286,7 @@ function createCoverageSessionContext(
         runtime,
         lifecycle: createCoverageLifecycle(),
         paths,
-        previousCoverageEnvironment: environment['NODE_V8_COVERAGE'],
+        previousCoverageEnvironment: environment.NODE_V8_COVERAGE,
         request
     };
 }
