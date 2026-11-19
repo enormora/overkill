@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { FailedCheck } from '../packages/engine/engine.entry-point.ts';
 import type { RunResult, PropertyCaseEvidence } from '../engine/run-result.ts';
 import type { CoverageArtifact } from '../engine/coverage-artifact.ts';
@@ -68,7 +68,7 @@ function summaryEvidence(): RunResult {
         })
     };
 }
-export const testNode = suite('brief final evidence rendering', [
+export const testNode = authoredSuite('brief final evidence rendering', [
     test('renders property diagnostics and collected unit coverage summaries', function (scope: TestScope) {
         const lines = briefSummaryIntents(summaryEvidence()).map(function text(intent) {
             return intent.text;
@@ -105,4 +105,3 @@ export const testNode = suite('brief final evidence rendering', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

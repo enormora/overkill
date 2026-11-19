@@ -1,7 +1,8 @@
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     createTemporaryDirectoryResource,
     defineImplementationReference,
@@ -12,7 +13,7 @@ import {
     type ResourceReference,
     type ResourceOwnerReference
 } from '../packages/resources/resources.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { withResources } from '../packages/test/resources.entry-point.ts';
 import {
     type BodyReference,
@@ -108,7 +109,7 @@ async function withOwnerModule<Value>(
     return await use(directory);
 }
 
-export const testNode = suite('engine resource references', [
+export const testNode = authoredSuite('engine resource references', [
     test('preloads wrapped resource implementations before executing a case', async function (scope) {
         await withOwnerModule(
             scope.signal,
@@ -250,4 +251,3 @@ export const testNode = suite('engine resource references', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,9 +1,8 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { z } from 'zod/v4';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import {
     createTemporaryDirectoryResource,
     defineImplementationReference,
@@ -99,8 +98,8 @@ function consumerReference(directory: string, exportName: string): ResourceConsu
     }));
 }
 
-export const testNode = suite('referenced resource sessions', [
-    test('requires a consumer projection for per-run resources', function (scope) {
+export const testNode = authoredSuite('referenced resource sessions', [
+    authoredTest('requires a consumer projection for per-run resources', function (scope) {
         scope.assert.throws(function missingConsumer() {
             defineResourceReference({
                 ...declaration,
@@ -113,7 +112,7 @@ export const testNode = suite('referenced resource sessions', [
         return scope.assert.collect();
     }),
     ...([ 'per-case', 'shared-per-worker' ] as const).map(function localScope(resourceScope) {
-        return test(`rejects consumer projections for ${resourceScope} resources`, function (scope) {
+        return authoredTest(`rejects consumer projections for ${resourceScope} resources`, function (scope) {
             scope.assert.throws(function incompatibleConsumer() {
                 defineResourceReference({
                     ...declaration,
@@ -126,7 +125,7 @@ export const testNode = suite('referenced resource sessions', [
             return scope.assert.collect();
         });
     }),
-    test('requires an owner projection before admitting a consumer', async function (scope) {
+    authoredTest('requires an owner projection before admitting a consumer', async function (scope) {
         await fixture(scope.signal, async function execute(directory) {
             const resource = defineResourceReference({
                 ...declaration,
@@ -142,7 +141,7 @@ export const testNode = suite('referenced resource sessions', [
         return scope.assert.collect();
     }),
     ...([ 'owner', 'consumer' ] as const).map(function scenarioExposure(role) {
-        return test(`requires ${role} exposure for request-routed scenarios`, async function (scope) {
+        return authoredTest(`requires ${role} exposure for request-routed scenarios`, async function (scope) {
             await fixture(scope.signal, async function execute(directory) {
                 const resource = defineResourceReference({
                     ...declaration,
@@ -164,7 +163,7 @@ export const testNode = suite('referenced resource sessions', [
             return scope.assert.collect();
         });
     }),
-    test('exposes consumer handles through request-routed scenario views', async function (scope) {
+    authoredTest('exposes consumer handles through request-routed scenario views', async function (scope) {
         await fixture(scope.signal, async function execute(directory) {
             const resource = defineResourceReference({
                 ...declaration,
@@ -183,7 +182,7 @@ export const testNode = suite('referenced resource sessions', [
         });
         return scope.assert.collect();
     }),
-    test('rejects invalid consumer callbacks before acquiring owner handles', async function (scope) {
+    authoredTest('rejects invalid consumer callbacks before acquiring owner handles', async function (scope) {
         await fixture(scope.signal, async function execute(directory) {
             const resource = defineResourceReference({
                 ...declaration,
@@ -199,44 +198,47 @@ export const testNode = suite('referenced resource sessions', [
         });
         return scope.assert.collect();
     }),
-    test('preserves owner disposal failures after closing implementation delivery', async function (scope: TestScope) {
-        await fixture(scope.signal, async function execute(directory) {
-            await writeFile(
-                join(directory, 'dispose.mjs'),
-                'export async function close(){throw new Error("dispose failed")}'
-            );
-            const resource = defineResourceReference({
-                ...declaration,
-                name: 'failing-disposal',
-                owner: ownerReference(directory, 'owner'),
-                consumer: null
+    authoredTest(
+        'preserves owner disposal failures after closing implementation delivery',
+        async function (scope: TestScope) {
+            await fixture(scope.signal, async function execute(directory) {
+                await writeFile(
+                    join(directory, 'dispose.mjs'),
+                    'export async function close(){throw new Error("dispose failed")}'
+                );
+                const resource = defineResourceReference({
+                    ...declaration,
+                    name: 'failing-disposal',
+                    owner: ownerReference(directory, 'owner'),
+                    consumer: null
+                });
+                const session = await startResources({
+                    projectRoot: directory,
+                    resources: { resource },
+                    signal: scope.signal
+                });
+                let failure: unknown = null;
+                try {
+                    await session.disposeOnce({ signal: scope.signal });
+                } catch (error: unknown) {
+                    failure = error;
+                }
+                scope.require.instanceOf(failure, ResourceLifecycleError);
+                scope.assert.deepEqual(
+                    failure.failures().map(function describe(entry) {
+                        return {
+                            phase: entry.phase,
+                            resourceName: entry.resourceName,
+                            message: entry.cause instanceof Error ? entry.cause.message : String(entry.cause)
+                        };
+                    }),
+                    [ { phase: 'dispose', resourceName: 'failing-disposal', message: 'dispose failed' } ]
+                );
             });
-            const session = await startResources({
-                projectRoot: directory,
-                resources: { resource },
-                signal: scope.signal
-            });
-            let failure: unknown = null;
-            try {
-                await session.disposeOnce({ signal: scope.signal });
-            } catch (error: unknown) {
-                failure = error;
-            }
-            scope.require.instanceOf(failure, ResourceLifecycleError);
-            scope.assert.deepEqual(
-                failure.failures().map(function describe(entry) {
-                    return {
-                        phase: entry.phase,
-                        resourceName: entry.resourceName,
-                        message: entry.cause instanceof Error ? entry.cause.message : String(entry.cause)
-                    };
-                }),
-                [ { phase: 'dispose', resourceName: 'failing-disposal', message: 'dispose failed' } ]
-            );
-        });
-        return scope.assert.collect();
-    }),
-    test('starts a rooted runtime with referenced native handles', async function (scope) {
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('starts a rooted runtime with referenced native handles', async function (scope) {
         await fixture(scope.signal, async function execute(directory) {
             const resource = defineResourceReference({
                 ...declaration,
@@ -255,7 +257,7 @@ export const testNode = suite('referenced resource sessions', [
         });
         return scope.assert.collect();
     }),
-    test('keeps native owner handles and frozen dynamic imports through disposal', async function (scope) {
+    authoredTest('keeps native owner handles and frozen dynamic imports through disposal', async function (scope) {
         await fixture(scope.signal, async function execute(directory) {
             const resource = defineResourceReference({
                 ...declaration,
@@ -278,7 +280,7 @@ export const testNode = suite('referenced resource sessions', [
         });
         return scope.assert.collect();
     }),
-    test('exposes native owner handles with request-routed scenario views', async function (scope) {
+    authoredTest('exposes native owner handles with request-routed scenario views', async function (scope) {
         await fixture(scope.signal, async function execute(directory) {
             const resource = defineResourceReference({
                 ...declaration,
@@ -296,7 +298,7 @@ export const testNode = suite('referenced resource sessions', [
         });
         return scope.assert.collect();
     }),
-    test('projects portable payloads into separate consumer handles', async function (scope) {
+    authoredTest('projects portable payloads into separate consumer handles', async function (scope) {
         await fixture(scope.signal, async function execute(directory) {
             const resource = defineResourceReference({
                 ...declaration,
@@ -315,7 +317,7 @@ export const testNode = suite('referenced resource sessions', [
         });
         return scope.assert.collect();
     }),
-    test('rejects native handles returned as projection payloads', async function (scope) {
+    authoredTest('rejects native handles returned as projection payloads', async function (scope) {
         await fixture(scope.signal, async function execute(directory) {
             const resource = defineResourceReference({
                 ...declaration,
@@ -330,7 +332,7 @@ export const testNode = suite('referenced resource sessions', [
         });
         return scope.assert.collect();
     }),
-    test('validates every named implementation before admitting acquisition', async function (scope) {
+    authoredTest('validates every named implementation before admitting acquisition', async function (scope) {
         await fixture(scope.signal, async function execute(directory) {
             const valid = defineResourceReference({
                 ...declaration,
@@ -352,4 +354,3 @@ export const testNode = suite('referenced resource sessions', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

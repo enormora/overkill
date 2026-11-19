@@ -1,20 +1,14 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
     isTestDebugArtifact,
     type PerTestResult,
     type ReporterEvent,
     type RunnerError,
-    type TestDebugArtifact,
-    type TestScope as OverkillScope
+    type TestDebugArtifact
 } from '../packages/engine/engine.entry-point.ts';
 import { debugArtifactFixture } from '../test-support/debug-artifact-fixture.ts';
-import {
-    createCollectedPlan,
-    createTaskRun,
-    fakeWorkerRuntime
-} from '../test-support/worker-pool-execution-state.ts';
+import { createCollectedPlan, createTaskRun, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
 import { testNode as evidence } from './worker-event-evidence-policy.test.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import type { WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
@@ -282,12 +276,12 @@ async function workerCheckpointCompletion(hasCompletedArtifact: boolean): Promis
     };
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-task-events.test.ts',
     children: [
         evidence,
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker completion replaces its checkpoint and retains placement identity',
             async body(scope: OverkillScope) {
@@ -302,7 +296,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker completion retains its checkpoint when native evidence is missing',
             async body(scope: OverkillScope) {
@@ -313,7 +307,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool task events buffer starts and clear completed timeouts',
             body(scope: OverkillScope) {
@@ -331,7 +325,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool task events record reporter delivery errors',
             async body(scope: OverkillScope) {
@@ -342,7 +336,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool task events complete the active placement attempt',
             body(scope: OverkillScope) {
@@ -374,7 +368,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool task events ignore ordinary task errors for permission handling',
             body(scope: OverkillScope) {
@@ -397,7 +391,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool task events record run-level permission task failures',
             body(scope: OverkillScope) {
@@ -412,7 +406,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool task events attribute permission task failures to the active case',
             body(scope: OverkillScope) {
@@ -432,5 +426,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

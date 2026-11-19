@@ -1,6 +1,8 @@
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { z } from 'zod/v4';
 import { TestStatus, DryRunStatus, MutantRunStatus } from '@stryker-mutator/api/test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+
 import {
     workIdentityKey,
     type PerTestResult,
@@ -128,9 +130,9 @@ function originAliasReply(): ResultReply {
     };
 }
 
-export const testNode = suite('Stryker result ownership', [
+export const testNode = authoredSuite('Stryker result ownership', [
     ...[ null, {} ].map(function malformedLifecycle(data, index) {
-        return test(`rejects malformed completed mutation lifecycle ${index}`, function (scope: TestScope) {
+        return authoredTest(`rejects malformed completed mutation lifecycle ${index}`, function (scope: TestScope) {
             const original = failedReply([], false, false);
             const result = mutantExecutionResult(root, { ...original, data }, mutantExpectation(original));
             scope.assert.equal(result.status, MutantRunStatus.Error);
@@ -141,7 +143,7 @@ export const testNode = suite('Stryker result ownership', [
             return scope.assert.collect();
         });
     }),
-    test('classifies a hit limit reached before collection as a timeout', function (scope: TestScope) {
+    authoredTest('classifies a hit limit reached before collection as a timeout', function (scope: TestScope) {
         const original = failedReply(
             runResultFactory
                 .build({
@@ -162,7 +164,7 @@ export const testNode = suite('Stryker result ownership', [
         return scope.assert.collect();
     }),
     classificationTestNode,
-    test('matches result aliases to canonical coverage owners and killing IDs', function (scope) {
+    authoredTest('matches result aliases to canonical coverage owners and killing IDs', function (scope) {
         const reply = originAliasReply();
         const dry = dryMutationResult(root, reply, 'perTest', { kind: 'dry', baseline: null, testFiles: null });
         const mutant = mutantExecutionResult(root, reply, mutantExpectation(reply));
@@ -187,7 +189,7 @@ export const testNode = suite('Stryker result ownership', [
         });
         return scope.assert.collect();
     }),
-    test('excludes intentional skips from the number of executed mutant tests', function (scope) {
+    authoredTest('excludes intentional skips from the number of executed mutant tests', function (scope) {
         const reply = includeIntentionalSkip(failedReply([], false, false));
         const mutant = mutantExecutionResult(root, reply, mutantExpectation(reply));
         const dry = dryMutationResult(root, reply, 'off', { kind: 'dry', baseline: null, testFiles: null });
@@ -199,7 +201,7 @@ export const testNode = suite('Stryker result ownership', [
         scope.assert.equal(dry.tests[1]?.status, TestStatus.Skipped);
         return scope.assert.collect();
     }),
-    test('preserves lifecycle failures when instrumentation also exceeded its hit limit', function (scope) {
+    authoredTest('preserves lifecycle failures when instrumentation also exceeded its hit limit', function (scope) {
         const reply = failedReply([], true, false);
         const result = mutantExecutionResult(root, {
             artifacts: [],
@@ -219,7 +221,7 @@ export const testNode = suite('Stryker result ownership', [
         });
         return scope.assert.collect();
     }),
-    test('reports a confirmed assertion kill with its structural identity and actual count', function (scope) {
+    authoredTest('reports a confirmed assertion kill with its structural identity and actual count', function (scope) {
         const reply = failedReply([], false, false);
         const result = mutantExecutionResult(root, reply, mutantExpectation(reply));
         if (result.status !== MutantRunStatus.Killed) {
@@ -234,7 +236,7 @@ export const testNode = suite('Stryker result ownership', [
         );
         return scope.assert.collect();
     }),
-    test('keeps infrastructure errors ahead of kills and expired deadlines', function (scope) {
+    authoredTest('keeps infrastructure errors ahead of kills and expired deadlines', function (scope) {
         const errors = runResultFactory
             .build({ runnerErrors: [ { subtype: 'reporter', message: 'delivery failed' } ] })
             .runnerErrors;
@@ -251,7 +253,7 @@ export const testNode = suite('Stryker result ownership', [
         scope.assert.true(result.errorMessage.includes('assertion'));
         return scope.assert.collect();
     }),
-    test('keeps tracked hit limits and deadlines ahead of kills', function (scope) {
+    authoredTest('keeps tracked hit limits and deadlines ahead of kills', function (scope) {
         scope.assert.equal(
             mutantExecutionResult(root, failedReply([], true, false), mutantExpectation(failedReply([], true, false)))
                 .status,
@@ -264,7 +266,7 @@ export const testNode = suite('Stryker result ownership', [
         );
         return scope.assert.collect();
     }),
-    test('rejects cleanup failures even when the case also timed out', function (scope) {
+    authoredTest('rejects cleanup failures even when the case also timed out', function (scope) {
         const reply = failedReply([], false, false);
         const first = reply.result.perTest[0];
         if (first === undefined) {
@@ -294,7 +296,7 @@ export const testNode = suite('Stryker result ownership', [
         scope.assert.equal(result.status, 'error');
         return scope.assert.collect();
     }),
-    test('requires child-local lifecycle observations before reporting a kill', function (scope) {
+    authoredTest('requires child-local lifecycle observations before reporting a kill', function (scope) {
         const reply = failedReply([], false, false);
         const data = z.looseObject({ completed: z.array(z.string()) }).parse(reply.data);
         const result = mutantExecutionResult(
@@ -305,7 +307,7 @@ export const testNode = suite('Stryker result ownership', [
         scope.assert.equal(result.status, 'error');
         return scope.assert.collect();
     }),
-    test('reports failed baseline tests without discarding their stable dry-run identity', function (scope) {
+    authoredTest('reports failed baseline tests without discarding their stable dry-run identity', function (scope) {
         const reply = failedReply([], false, false);
         const result = dryMutationResult(root, reply, 'off', { kind: 'dry', baseline: null, testFiles: null });
         if (result.status !== DryRunStatus.Complete) {

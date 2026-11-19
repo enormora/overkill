@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { gen, property } from '../packages/property/property.entry-point.ts';
 import {
     linearizability,
@@ -76,8 +76,8 @@ const definition: LinearizabilityDefinition<number, number, unknown, null> = {
     maxWork: 100
 };
 
-export const testNode = suite('linearizability authoring contracts', [
-    test('preserves non-enumerable model callbacks', async function (scope) {
+export const testNode = authoredSuite('linearizability authoring contracts', [
+    authoredTest('preserves non-enumerable model callbacks', async function (scope) {
         const result = await executePropertyNode(
             property({
                 title: 'non-enumerable model',
@@ -98,7 +98,7 @@ export const testNode = suite('linearizability authoring contracts', [
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    test('rejects invalid budgets and callbacks before executing user code', function (scope) {
+    authoredTest('rejects invalid budgets and callbacks before executing user code', function (scope) {
         const created: number[] = [];
         const declaration = {
             ...definition,
@@ -119,7 +119,7 @@ export const testNode = suite('linearizability authoring contracts', [
         return scope.assert.collect();
     }),
     ...malformedPrograms.map(function ({ title, input }) {
-        return test(`rejects ${title} before system creation`, async function (scope) {
+        return authoredTest(`rejects ${title} before system creation`, async function (scope) {
             const created: number[] = [];
             const body = linearizability({
                 ...definition,
@@ -153,7 +153,7 @@ export const testNode = suite('linearizability authoring contracts', [
         return 1;
     } ]
         .map(function (expected, index) {
-            return test(`preserves synchronous output ${index}`, async function (scope) {
+            return authoredTest(`preserves synchronous output ${index}`, async function (scope) {
                 const result = await executePropertyNode(
                     property({
                         title: 'synchronous output',
@@ -188,5 +188,3 @@ export const testNode = suite('linearizability authoring contracts', [
             });
         })
 ]);
-
-await runIfMain(import.meta, testNode);

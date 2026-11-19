@@ -1,20 +1,14 @@
-import { runIfMain } from '#test-runner';
-import { defineNarrowingCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
+
 import type { AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
 import type {
     AssertionSource,
     ResolvableSourceLocation,
     SourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
-import {
-    createRecordingAssertFacadeWithLocation,
-    type AssertAssertionFacade
-} from './assertion-facade.ts';
+import { createRecordingAssertFacadeWithLocation, type AssertAssertionFacade } from './assertion-facade.ts';
 
 type AssertRecording = {
     readonly facade: AssertAssertionFacade;
@@ -240,160 +234,140 @@ function recordAssertNodes(facade: AssertAssertionFacade): void {
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/engine/assertion-facade.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'createRecordingAssertFacade() records every built-in assertion node',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const recording = createAssertRecording();
+export const testNode = suite('source/engine/assertion-facade.test.ts', [
+    test('createRecordingAssertFacade() records every built-in assertion node', function (scope: OverkillScope) {
+        const recording = createAssertRecording();
 
-                recordAssertNodes(recording.facade);
+        recordAssertNodes(recording.facade);
 
-                scope.assert.deepEqual(assertionChecks(recording.records), [
-                    'array',
-                    'array-contains-partial',
-                    'between',
-                    'boolean',
-                    'deep-equal',
-                    'defined',
-                    'empty',
-                    'ends-with',
-                    'equal',
-                    'fail',
-                    'false',
-                    'function',
-                    'greater-than',
-                    'greater-than-or-equal',
-                    'has-property',
-                    'includes',
-                    'instance-of',
-                    'length',
-                    'less-than',
-                    'less-than-or-equal',
-                    'match',
-                    'members-partial-deep-equal',
-                    'not-deep-equal',
-                    'not-empty',
-                    'not-equal',
-                    'not-match',
-                    'not-null',
-                    'null',
-                    'number',
-                    'object',
-                    'partial-deep-equal',
-                    'starts-with',
-                    'string',
-                    'true',
-                    'undefined',
-                    'composite'
-                ]);
-                scope.assert.deepEqual(
-                    recordSources(recording.records),
-                    expectedRecordSources(recording.records, 'assert')
-                );
-                scope.assert.deepEqual(recordLocations(recording.records), expectedRecordLocations(recording.records));
+        scope.assert.deepEqual(assertionChecks(recording.records), [
+            'array',
+            'array-contains-partial',
+            'between',
+            'boolean',
+            'deep-equal',
+            'defined',
+            'empty',
+            'ends-with',
+            'equal',
+            'fail',
+            'false',
+            'function',
+            'greater-than',
+            'greater-than-or-equal',
+            'has-property',
+            'includes',
+            'instance-of',
+            'length',
+            'less-than',
+            'less-than-or-equal',
+            'match',
+            'members-partial-deep-equal',
+            'not-deep-equal',
+            'not-empty',
+            'not-equal',
+            'not-match',
+            'not-null',
+            'null',
+            'number',
+            'object',
+            'partial-deep-equal',
+            'starts-with',
+            'string',
+            'true',
+            'undefined',
+            'composite'
+        ]);
+        scope.assert.deepEqual(
+            recordSources(recording.records),
+            expectedRecordSources(recording.records, 'assert')
+        );
+        scope.assert.deepEqual(recordLocations(recording.records), expectedRecordLocations(recording.records));
 
-                const samples = assertPayloadSamples(recording.records);
-                scope.require.defined(samples.instanceOf);
-                scope.require(instanceOfAssertAssertionNode, samples.instanceOf);
-                scope.assert.deepEqual(
-                    {
-                        array: samples.array,
-                        between: samples.between,
-                        hasProperty: samples.hasProperty,
-                        instanceOf: samples.instanceOf
-                    },
-                    {
-                        array: {
-                            actual: [ 1 ],
-                            check: 'array',
-                            sourceLocations: [ testLocation ],
-                            message: 'array',
-                            source: 'assert'
-                        },
-                        between: {
-                            actual: 2,
-                            check: 'between',
-                            sourceLocations: [ testLocation ],
-                            maximum: 3,
-                            message: null,
-                            minimum: 1,
-                            source: 'assert'
-                        },
-                        hasProperty: {
-                            actual: { name: 'Ada' },
-                            check: 'has-property',
-                            key: 'name',
-                            sourceLocations: [ testLocation ],
-                            message: null,
-                            source: 'assert'
-                        },
-                        instanceOf: {
-                            actual: samples.instanceOf.actual,
-                            check: 'instance-of',
-                            expected: Error,
-                            sourceLocations: [ testLocation ],
-                            message: null,
-                            source: 'assert'
-                        }
-                    }
-                );
-
-                return scope.assert.collect();
+        const samples = assertPayloadSamples(recording.records);
+        scope.require.defined(samples.instanceOf);
+        scope.require(instanceOfAssertAssertionNode, samples.instanceOf);
+        scope.assert.deepEqual(
+            {
+                array: samples.array,
+                between: samples.between,
+                hasProperty: samples.hasProperty,
+                instanceOf: samples.instanceOf
+            },
+            {
+                array: {
+                    actual: [ 1 ],
+                    check: 'array',
+                    sourceLocations: [ testLocation ],
+                    message: 'array',
+                    source: 'assert'
+                },
+                between: {
+                    actual: 2,
+                    check: 'between',
+                    sourceLocations: [ testLocation ],
+                    maximum: 3,
+                    message: null,
+                    minimum: 1,
+                    source: 'assert'
+                },
+                hasProperty: {
+                    actual: { name: 'Ada' },
+                    check: 'has-property',
+                    key: 'name',
+                    sourceLocations: [ testLocation ],
+                    message: null,
+                    source: 'assert'
+                },
+                instanceOf: {
+                    actual: samples.instanceOf.actual,
+                    check: 'instance-of',
+                    expected: Error,
+                    sourceLocations: [ testLocation ],
+                    message: null,
+                    source: 'assert'
+                }
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'createRecordingAssertFacade() records async rejects assertions through pending sink',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const recording = createAssertRecording();
+        );
 
-                await recording.facade.rejects(async function rejectExpectedError() {
-                    await Promise.reject(new Error('expected'));
-                }, { message: 'expected' });
+        return scope.assert.collect();
+    }),
+    test(
+        'createRecordingAssertFacade() records async rejects assertions through pending sink',
+        async function (scope: OverkillScope) {
+            const recording = createAssertRecording();
 
-                scope.assert.deepEqual(assertionChecks(recording.records), [ 'composite' ]);
-                scope.assert.deepEqual(
-                    recordSources(recording.records),
-                    expectedRecordSources(recording.records, 'assert')
-                );
-                scope.assert.deepEqual(recordLocations(recording.records), expectedRecordLocations(recording.records));
+            await recording.facade.rejects(async function rejectExpectedError() {
+                await Promise.reject(new Error('expected'));
+            }, { message: 'expected' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'createRecordingAssertFacade() applies annotated messages without requiring the builder API',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const recording = createAssertRecording();
+            scope.assert.deepEqual(assertionChecks(recording.records), [ 'composite' ]);
+            scope.assert.deepEqual(
+                recordSources(recording.records),
+                expectedRecordSources(recording.records, 'assert')
+            );
+            scope.assert.deepEqual(recordLocations(recording.records), expectedRecordLocations(recording.records));
 
-                recording.facade.annotated('annotated value').empty([]);
-                recording.facade.annotated('base message').empty([], { message: 'option value' });
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'createRecordingAssertFacade() applies annotated messages without requiring the builder API',
+        function (scope: OverkillScope) {
+            const recording = createAssertRecording();
 
-                scope.assert.deepEqual(
-                    recording.records.map(function messageOf(record) {
-                        return record.message;
-                    }),
-                    [ 'annotated value', 'option value' ]
-                );
-                scope.assert.equal(Object.hasOwn(recording.facade, 'collect'), false);
+            recording.facade.annotated('annotated value').empty([]);
+            recording.facade.annotated('base message').empty([], { message: 'option value' });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+            scope.assert.deepEqual(
+                recording.records.map(function messageOf(record) {
+                    return record.message;
+                }),
+                [ 'annotated value', 'option value' ]
+            );
+            scope.assert.equal(Object.hasOwn(recording.facade, 'collect'), false);
 
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

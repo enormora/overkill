@@ -1,13 +1,14 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { workerTaskOutput } from '../test-support/worker-task-output.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { createCollectedPlan, createTaskRun, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
 import { recordBatchStarted, recordBatchCompleted } from './worker-pool-task-events.ts';
 
-export const testNode = suite('worker task output and batch boundaries', [
+export const testNode = authoredSuite('worker task output and batch boundaries', [
     ...([ 'stdout', 'stderr' ] as const).flatMap(function (stream) {
         return ([ 'buffered', 'live' ] as const).map(function (capture) {
-            return test(`delivers ${capture} ${stream} output`, function (scope: TestScope) {
+            return authoredTest(`delivers ${capture} ${stream} output`, function (scope: TestScope) {
                 const fixture = workerTaskOutput(capture);
                 fixture.deliver(stream);
                 scope.assert.deepEqual(fixture.live, capture === 'live' ? [ `${stream}:worker output` ] : []);
@@ -22,7 +23,7 @@ export const testNode = suite('worker task output and batch boundaries', [
             });
         });
     }),
-    test('records matching batch boundaries for every assigned attempt', function (scope: TestScope) {
+    authoredTest('records matching batch boundaries for every assigned attempt', function (scope: TestScope) {
         const runtime = fakeWorkerRuntime(createCollectedPlan());
         const task = createTaskRun(runtime.runState);
         task.envelopeId.write('envelope-1');
@@ -36,7 +37,7 @@ export const testNode = suite('worker task output and batch boundaries', [
         }, { kind: 'batch-completed', attempts: [ 'attempt-1' ], envelopeId: 'envelope-1', lane: 'worker-1' } ]);
         return scope.assert.collect();
     }),
-    test('omits batch boundaries for individual task dispatch', function (scope: TestScope) {
+    authoredTest('omits batch boundaries for individual task dispatch', function (scope: TestScope) {
         const runtime = fakeWorkerRuntime(createCollectedPlan());
         const task = createTaskRun(runtime.runState);
         recordBatchStarted(task, runtime);
@@ -45,4 +46,3 @@ export const testNode = suite('worker task output and batch boundaries', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

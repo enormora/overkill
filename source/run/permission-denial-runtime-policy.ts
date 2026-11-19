@@ -118,7 +118,7 @@ function tryRecordPermissionError(record: (error: RunnerError) => void, error: R
     }
 }
 
-export function createPermissionDenialRuntimePolicy(): TestRuntimePolicy {
+export function createPermissionDenialRuntimePolicy(options: PermissionDiagnosticsOptions): TestRuntimePolicy {
     const observation = createExecutionObservation();
     const caseErrors = new Map<string, RunnerError[]>();
     const runErrors: RunnerError[] = [];
@@ -142,7 +142,7 @@ export function createPermissionDenialRuntimePolicy(): TestRuntimePolicy {
         function recordWithoutThrowing(error) {
             tryRecordPermissionError(record, error);
         },
-        { auditDiagnostics: 'ignore', auditEnabled: readPermissionAuditEnabled() }
+        options
     );
 
     return {

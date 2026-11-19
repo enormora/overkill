@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import type { ExecuteOptions } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 
@@ -43,14 +43,14 @@ async function sampleScope(input: ExecuteOptions | undefined): Promise<ScopeSamp
     return observation;
 }
 
-export const testNode = suite('case scope compatibility', [
-    test('defaults omitted execution seeds to zero', async function (scope) {
+export const testNode = authoredSuite('case scope compatibility', [
+    authoredTest('defaults omitted execution seeds to zero', async function (scope) {
         const explicit = await sampleScope({ ...options, seed: 0n });
         scope.assert.deepEqual(await sampleScope(undefined), explicit);
         scope.assert.deepEqual(await sampleScope(options), explicit);
         return scope.assert.collect();
     }),
-    test('inherits legacy property seeds and honors explicit seed precedence', async function (scope) {
+    authoredTest('inherits legacy property seeds and honors explicit seed precedence', async function (scope) {
         const explicit = await sampleScope({ ...options, seed: 42n });
         scope.assert.deepEqual(
             await sampleScope({
@@ -69,7 +69,7 @@ export const testNode = suite('case scope compatibility', [
         );
         return scope.assert.collect();
     }),
-    test('rejects non-bigint execution seeds', async function (scope) {
+    authoredTest('rejects non-bigint execution seeds', async function (scope) {
         for (const seed of [ undefined, null, 42, '42' ]) {
             const input = { ...options, seed: 42n };
             Reflect.set(input, 'seed', seed);
@@ -80,7 +80,7 @@ export const testNode = suite('case scope compatibility', [
         return scope.assert.collect();
     }),
     ...([ 'assert', 'require' ] as const).map(function assertionContracts(method) {
-        return test(`throwing scopes retain ${method} reference validation`, async function (scope) {
+        return authoredTest(`throwing scopes retain ${method} reference validation`, async function (scope) {
             const engine = createTestEngine();
             const result = await engine.execute(
                 engine.createTestPlan(engine.createRoot({
@@ -115,5 +115,3 @@ export const testNode = suite('case scope compatibility', [
         });
     })
 ]);
-
-await runIfMain(import.meta, testNode);

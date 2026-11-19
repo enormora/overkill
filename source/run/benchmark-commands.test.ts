@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import {
     normalizeConfig,
     type Config,
@@ -141,7 +141,7 @@ async function invokeBenchmark(
         });
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'benchmark commands',
     verbs.flatMap(function commandTests(verb) {
         return [
@@ -237,5 +237,3 @@ export const testNode = suite(
         ];
     })
 );
-
-await runIfMain(import.meta, testNode);

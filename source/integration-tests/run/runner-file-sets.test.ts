@@ -1,10 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../../config/history-policy.ts';
 import {
     defaultFailureArtifactPolicy,
-    createSuite,
-    createTestCase,
     defineOutputRenderer,
     defineReporter,
     type TestScope
@@ -132,43 +130,29 @@ function createRunCommand(): RunCommand {
     };
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/integration-tests/run/runner-file-sets.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'runner records profile file sets in run facts',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const resolvedRun = await orchestrator.resolve(createRunCommand());
+export const testNode = suite('source/integration-tests/run/runner-file-sets.test.ts', [
+    test('runner records profile file sets in run facts', async function (scope: TestScope) {
+        const resolvedRun = await orchestrator.resolve(createRunCommand());
 
-                scope.assert.deepEqual(
-                    resolvedRun.facts.cases.map(function toCaseFileSet(testCase) {
-                        return {
-                            file: testCase.id.file,
-                            fileSet: testCase.fileSet
-                        };
-                    }),
-                    [
-                        {
-                            file: integrationFixturePath,
-                            fileSet: 'integration'
-                        },
-                        {
-                            file: unitFixturePath,
-                            fileSet: 'unit'
-                        }
-                    ]
-                );
+        scope.assert.deepEqual(
+            resolvedRun.facts.cases.map(function toCaseFileSet(testCase) {
+                return {
+                    file: testCase.id.file,
+                    fileSet: testCase.fileSet
+                };
+            }),
+            [
+                {
+                    file: integrationFixturePath,
+                    fileSet: 'integration'
+                },
+                {
+                    file: unitFixturePath,
+                    fileSet: 'unit'
+                }
+            ]
+        );
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

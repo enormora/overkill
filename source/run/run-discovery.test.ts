@@ -1,11 +1,7 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createVirtualRunDiscovery } from '../test-support/virtual-run-discovery.ts';
 import type { ProfileFiles } from '../config/types.ts';
 import type { RunDiscovery } from './run-discovery-types.ts';
@@ -77,372 +73,298 @@ async function rejectInvalidFileShapes(
     }, { message: 'Run path must not be duplicated: example.test.ts' });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-discovery.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'discoverRunFiles() resolves canonical file identities under cwd',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const discovery = createDiscovery([ 'nested/example.test.ts' ]);
-                const files = await discovery.discoverRunFiles({
-                    cwd,
-                    paths: [ 'nested/example.test.ts' ],
-                    profileFiles: null
-                });
+export const testNode = suite('source/run/run-discovery.test.ts', [
+    test('discoverRunFiles() resolves canonical file identities under cwd', async function (scope: OverkillScope) {
+        const discovery = createDiscovery([ 'nested/example.test.ts' ]);
+        const files = await discovery.discoverRunFiles({
+            cwd,
+            paths: [ 'nested/example.test.ts' ],
+            profileFiles: null
+        });
 
-                scope.assert.deepEqual(files, [ discoveredFile('nested/example.test.ts', null) ]);
+        scope.assert.deepEqual(files, [ discoveredFile('nested/example.test.ts', null) ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'discoverRunFiles() discovers profile files with separate excludes',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const discovery = createDiscovery([
-                    'source/unit/a.test.ts',
-                    'source/unit/b.test.ts',
-                    'source/integration/slow.test.ts'
-                ]);
-                const files = await discovery.discoverRunFiles({
-                    cwd,
-                    paths: [],
-                    profileFiles: profileFiles({
-                        exclude: [ 'source/integration/**/*.test.ts' ],
-                        include: [ 'source/**/*.test.ts', 'source/unit/a.test.ts' ]
-                    })
-                });
+        return scope.assert.collect();
+    }),
+    test('discoverRunFiles() discovers profile files with separate excludes', async function (scope: OverkillScope) {
+        const discovery = createDiscovery([
+            'source/unit/a.test.ts',
+            'source/unit/b.test.ts',
+            'source/integration/slow.test.ts'
+        ]);
+        const files = await discovery.discoverRunFiles({
+            cwd,
+            paths: [],
+            profileFiles: profileFiles({
+                exclude: [ 'source/integration/**/*.test.ts' ],
+                include: [ 'source/**/*.test.ts', 'source/unit/a.test.ts' ]
+            })
+        });
 
-                scope.assert.deepEqual(files, [
-                    discoveredFile('source/unit/a.test.ts', null),
-                    discoveredFile('source/unit/b.test.ts', null)
-                ]);
+        scope.assert.deepEqual(files, [
+            discoveredFile('source/unit/a.test.ts', null),
+            discoveredFile('source/unit/b.test.ts', null)
+        ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'discoverRunFiles() annotates explicit files with profile file sets',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const discovery = createDiscovery([
-                    'source/unit/a.test.ts',
-                    'source/integration/b.test.ts'
-                ]);
-                const files = await discovery.discoverRunFiles({
-                    cwd,
-                    paths: [ 'source/unit/a.test.ts' ],
-                    profileFiles: profileFiles({
-                        sets: {
-                            unit: {
-                                exclude: [],
-                                include: [ 'source/unit/**/*.test.ts' ]
-                            }
-                        }
-                    })
-                });
-
-                scope.assert.deepEqual(files, [ discoveredFile('source/unit/a.test.ts', 'unit') ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'discoverRunFiles() rejects invalid profile file set shapes',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const discovery = createDiscovery([ 'source/unit/a.test.ts' ]);
-
-                await scope.assert.rejects(async function discoverEmptyFileSets() {
-                    await discovery.discoverRunFiles({
-                        cwd,
-                        paths: [],
-                        profileFiles: profileFiles({ sets: {} })
-                    });
-                }, { message: 'Invalid profile files.sets: at least one file set is required.' });
-                await scope.assert.rejects(async function discoverInvalidFileSetName() {
-                    await discovery.discoverRunFiles({
-                        cwd,
-                        paths: [],
-                        profileFiles: profileFiles({
-                            sets: {
-                                'bad name': {
-                                    exclude: [],
-                                    include: [ 'source/**/*.test.ts' ]
-                                }
-                            }
-                        })
-                    });
-                }, {
-                    message: 'Invalid profile file set name "bad name". ' +
-                        'Profile file set names may only contain letters, numbers, dots, underscores, and hyphens.'
-                });
-                await scope.assert.rejects(async function discoverUnmatchedExplicitFileSet() {
-                    await discovery.discoverRunFiles({
-                        cwd,
-                        paths: [ 'source/unit/a.test.ts' ],
-                        profileFiles: profileFiles({
-                            sets: {
-                                integration: {
-                                    exclude: [],
-                                    include: [ 'source/integration/**/*.test.ts' ]
-                                }
-                            }
-                        })
-                    });
-                }, { message: 'Profile files.sets.integration matched no test files.' });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'discoverRunFiles() ignores profile glob matches that are not files',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const discovery = createVirtualRunDiscovery({
-                    cwd,
-                    directories: [ 'source/unit' ],
-                    files: [ 'source/unit/a.test.ts' ],
-                    realpaths: {}
-                });
-                const files = await discovery.discoverRunFiles({
-                    cwd,
-                    paths: [],
-                    profileFiles: profileFiles({
+        return scope.assert.collect();
+    }),
+    test('discoverRunFiles() annotates explicit files with profile file sets', async function (scope: OverkillScope) {
+        const discovery = createDiscovery([
+            'source/unit/a.test.ts',
+            'source/integration/b.test.ts'
+        ]);
+        const files = await discovery.discoverRunFiles({
+            cwd,
+            paths: [ 'source/unit/a.test.ts' ],
+            profileFiles: profileFiles({
+                sets: {
+                    unit: {
                         exclude: [],
-                        include: [ 'source/**' ]
-                    })
-                });
+                        include: [ 'source/unit/**/*.test.ts' ]
+                    }
+                }
+            })
+        });
 
-                scope.assert.deepEqual(files, [ discoveredFile('source/unit/a.test.ts', null) ]);
+        scope.assert.deepEqual(files, [ discoveredFile('source/unit/a.test.ts', 'unit') ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'discoverRunFiles() reports empty profile discovery',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const discovery = createDiscovery([]);
+        return scope.assert.collect();
+    }),
+    test('discoverRunFiles() rejects invalid profile file set shapes', async function (scope: OverkillScope) {
+        const discovery = createDiscovery([ 'source/unit/a.test.ts' ]);
 
-                await scope.assert.rejects(async function discoverEmptyProfileFiles() {
-                    await discovery.discoverRunFiles({
-                        cwd,
-                        paths: [],
-                        profileFiles: profileFiles({
+        await scope.assert.rejects(async function discoverEmptyFileSets() {
+            await discovery.discoverRunFiles({
+                cwd,
+                paths: [],
+                profileFiles: profileFiles({ sets: {} })
+            });
+        }, { message: 'Invalid profile files.sets: at least one file set is required.' });
+        await scope.assert.rejects(async function discoverInvalidFileSetName() {
+            await discovery.discoverRunFiles({
+                cwd,
+                paths: [],
+                profileFiles: profileFiles({
+                    sets: {
+                        'bad name': {
                             exclude: [],
                             include: [ 'source/**/*.test.ts' ]
-                        })
-                    });
-                }, { message: 'Profile file discovery matched no test files.' });
+                        }
+                    }
+                })
+            });
+        }, {
+            message: 'Invalid profile file set name "bad name". ' +
+                'Profile file set names may only contain letters, numbers, dots, underscores, and hyphens.'
+        });
+        await scope.assert.rejects(async function discoverUnmatchedExplicitFileSet() {
+            await discovery.discoverRunFiles({
+                cwd,
+                paths: [ 'source/unit/a.test.ts' ],
+                profileFiles: profileFiles({
+                    sets: {
+                        integration: {
+                            exclude: [],
+                            include: [ 'source/integration/**/*.test.ts' ]
+                        }
+                    }
+                })
+            });
+        }, { message: 'Profile files.sets.integration matched no test files.' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'discoverRunFiles() filters profile discovery by directory operands',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const discovery = createDiscovery([
-                    'source/unit/a.test.ts',
-                    'source/unit/nested/b.test.ts',
-                    'source/integration/c.test.ts'
-                ]);
-                const files = await discovery.discoverRunFiles({
-                    cwd,
-                    paths: [ 'source/unit', 'source/unit/nested' ],
-                    profileFiles: profileFiles({
-                        exclude: [],
-                        include: [ 'source/**/*.test.ts' ]
-                    })
-                });
+        return scope.assert.collect();
+    }),
+    test('discoverRunFiles() ignores profile glob matches that are not files', async function (scope: OverkillScope) {
+        const discovery = createVirtualRunDiscovery({
+            cwd,
+            directories: [ 'source/unit' ],
+            files: [ 'source/unit/a.test.ts' ],
+            realpaths: {}
+        });
+        const files = await discovery.discoverRunFiles({
+            cwd,
+            paths: [],
+            profileFiles: profileFiles({
+                exclude: [],
+                include: [ 'source/**' ]
+            })
+        });
 
-                scope.assert.deepEqual(files, [
-                    discoveredFile('source/unit/a.test.ts', null),
-                    discoveredFile('source/unit/nested/b.test.ts', null)
-                ]);
+        scope.assert.deepEqual(files, [ discoveredFile('source/unit/a.test.ts', null) ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'discoverRunFiles() rejects ineffective and mixed directory filters',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const discovery = createVirtualRunDiscovery({
-                    cwd,
-                    directories: [ 'source/empty' ],
-                    files: [ 'source/unit/a.test.ts' ],
-                    realpaths: {}
-                });
-                const files = profileFiles({
+        return scope.assert.collect();
+    }),
+    test('discoverRunFiles() reports empty profile discovery', async function (scope: OverkillScope) {
+        const discovery = createDiscovery([]);
+
+        await scope.assert.rejects(async function discoverEmptyProfileFiles() {
+            await discovery.discoverRunFiles({
+                cwd,
+                paths: [],
+                profileFiles: profileFiles({
                     exclude: [],
                     include: [ 'source/**/*.test.ts' ]
-                });
+                })
+            });
+        }, { message: 'Profile file discovery matched no test files.' });
 
-                await scope.assert.rejects(async function discoverMixedPaths() {
-                    await discovery.discoverRunFiles({
-                        cwd,
-                        paths: [ 'source/unit/a.test.ts', 'source/unit' ],
-                        profileFiles: files
-                    });
-                }, { message: 'Run paths must not mix files and directories.' });
-                await scope.assert.rejects(async function discoverIneffectiveDirectory() {
-                    await discovery.discoverRunFiles({
-                        cwd,
-                        paths: [ 'source' ],
-                        profileFiles: files
-                    });
-                }, { message: 'Directory run path did not narrow profile file discovery: source' });
-                await scope.assert.rejects(async function discoverEmptyDirectory() {
-                    await discovery.discoverRunFiles({
-                        cwd,
-                        paths: [ 'source/empty' ],
-                        profileFiles: files
-                    });
-                }, { message: 'Directory run path matched no profile-discovered test files: source/empty' });
-                await scope.assert.rejects(async function discoverDuplicateDirectory() {
-                    await discovery.discoverRunFiles({
-                        cwd,
-                        paths: [ 'source/unit', 'source/unit' ],
-                        profileFiles: files
-                    });
-                }, { message: 'Run path must not be duplicated: source/unit' });
+        return scope.assert.collect();
+    }),
+    test('discoverRunFiles() filters profile discovery by directory operands', async function (scope: OverkillScope) {
+        const discovery = createDiscovery([
+            'source/unit/a.test.ts',
+            'source/unit/nested/b.test.ts',
+            'source/integration/c.test.ts'
+        ]);
+        const files = await discovery.discoverRunFiles({
+            cwd,
+            paths: [ 'source/unit', 'source/unit/nested' ],
+            profileFiles: profileFiles({
+                exclude: [],
+                include: [ 'source/**/*.test.ts' ]
+            })
+        });
 
-                return scope.assert.collect();
+        scope.assert.deepEqual(files, [
+            discoveredFile('source/unit/a.test.ts', null),
+            discoveredFile('source/unit/nested/b.test.ts', null)
+        ]);
+
+        return scope.assert.collect();
+    }),
+    test('discoverRunFiles() rejects ineffective and mixed directory filters', async function (scope: OverkillScope) {
+        const discovery = createVirtualRunDiscovery({
+            cwd,
+            directories: [ 'source/empty' ],
+            files: [ 'source/unit/a.test.ts' ],
+            realpaths: {}
+        });
+        const files = profileFiles({
+            exclude: [],
+            include: [ 'source/**/*.test.ts' ]
+        });
+
+        await scope.assert.rejects(async function discoverMixedPaths() {
+            await discovery.discoverRunFiles({
+                cwd,
+                paths: [ 'source/unit/a.test.ts', 'source/unit' ],
+                profileFiles: files
+            });
+        }, { message: 'Run paths must not mix files and directories.' });
+        await scope.assert.rejects(async function discoverIneffectiveDirectory() {
+            await discovery.discoverRunFiles({
+                cwd,
+                paths: [ 'source' ],
+                profileFiles: files
+            });
+        }, { message: 'Directory run path did not narrow profile file discovery: source' });
+        await scope.assert.rejects(async function discoverEmptyDirectory() {
+            await discovery.discoverRunFiles({
+                cwd,
+                paths: [ 'source/empty' ],
+                profileFiles: files
+            });
+        }, { message: 'Directory run path matched no profile-discovered test files: source/empty' });
+        await scope.assert.rejects(async function discoverDuplicateDirectory() {
+            await discovery.discoverRunFiles({
+                cwd,
+                paths: [ 'source/unit', 'source/unit' ],
+                profileFiles: files
+            });
+        }, { message: 'Run path must not be duplicated: source/unit' });
+
+        return scope.assert.collect();
+    }),
+    test('discoverRunFiles() rejects directory symlinks outside cwd', async function (scope: OverkillScope) {
+        const discovery = createVirtualRunDiscovery({
+            cwd,
+            directories: [ 'outside-link', '/outside' ],
+            files: [],
+            realpaths: {
+                'outside-link': '/outside'
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'discoverRunFiles() rejects directory symlinks outside cwd',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const discovery = createVirtualRunDiscovery({
-                    cwd,
-                    directories: [ 'outside-link', '/outside' ],
-                    files: [],
-                    realpaths: {
-                        'outside-link': '/outside'
-                    }
-                });
+        });
 
-                await scope.assert.rejects(async function discoverOutsideDirectoryLink() {
-                    await discovery.discoverRunFiles({
-                        cwd,
-                        paths: [ 'outside-link' ],
-                        profileFiles: profileFiles({
-                            exclude: [],
-                            include: [ '**/*.test.ts' ]
-                        })
-                    });
-                }, { message: 'Run path must stay inside cwd: outside-link' });
+        await scope.assert.rejects(async function discoverOutsideDirectoryLink() {
+            await discovery.discoverRunFiles({
+                cwd,
+                paths: [ 'outside-link' ],
+                profileFiles: profileFiles({
+                    exclude: [],
+                    include: [ '**/*.test.ts' ]
+                })
+            });
+        }, { message: 'Run path must stay inside cwd: outside-link' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'discoverRunFiles() rejects unsupported profile glob syntax',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const discovery = createDiscovery([]);
+        return scope.assert.collect();
+    }),
+    test('discoverRunFiles() rejects unsupported profile glob syntax', async function (scope: OverkillScope) {
+        const discovery = createDiscovery([]);
 
-                await scope.assert.rejects(async function discoverBlankInclude() {
-                    await discovery.discoverRunFiles({
-                        cwd,
-                        paths: [],
-                        profileFiles: profileFiles({
-                            exclude: [],
-                            include: [ ' ' ]
-                        })
-                    });
-                }, { message: 'Profile files.include glob pattern must not be blank.' });
-                await scope.assert.rejects(async function discoverNegatedInclude() {
-                    await discovery.discoverRunFiles({
-                        cwd,
-                        paths: [],
-                        profileFiles: profileFiles({
-                            exclude: [],
-                            include: [ '!source/**/*.test.ts' ]
-                        })
-                    });
-                }, { message: 'Profile files.include negated glob patterns are not supported.' });
-                await scope.assert.rejects(async function discoverNegatedExclude() {
-                    await discovery.discoverRunFiles({
-                        cwd,
-                        paths: [],
-                        profileFiles: profileFiles({
-                            exclude: [ '!source/**/*.slow.test.ts' ],
-                            include: [ 'source/**/*.test.ts' ]
-                        })
-                    });
-                }, { message: 'Profile files.exclude negated glob patterns are not supported.' });
-                await scope.assert.rejects(async function discoverAbsoluteInclude() {
-                    await discovery.discoverRunFiles({
-                        cwd,
-                        paths: [],
-                        profileFiles: profileFiles({
-                            exclude: [],
-                            include: [ '/project/source/**/*.test.ts' ]
-                        })
-                    });
-                }, { message: 'Profile files.include glob pattern must be relative to cwd.' });
-                await scope.assert.rejects(async function discoverParentExclude() {
-                    await discovery.discoverRunFiles({
-                        cwd,
-                        paths: [],
-                        profileFiles: profileFiles({
-                            exclude: [ '../outside/**/*.test.ts' ],
-                            include: [ 'source/**/*.test.ts' ]
-                        })
-                    });
-                }, { message: 'Profile files.exclude glob pattern must not contain parent segments.' });
+        await scope.assert.rejects(async function discoverBlankInclude() {
+            await discovery.discoverRunFiles({
+                cwd,
+                paths: [],
+                profileFiles: profileFiles({
+                    exclude: [],
+                    include: [ ' ' ]
+                })
+            });
+        }, { message: 'Profile files.include glob pattern must not be blank.' });
+        await scope.assert.rejects(async function discoverNegatedInclude() {
+            await discovery.discoverRunFiles({
+                cwd,
+                paths: [],
+                profileFiles: profileFiles({
+                    exclude: [],
+                    include: [ '!source/**/*.test.ts' ]
+                })
+            });
+        }, { message: 'Profile files.include negated glob patterns are not supported.' });
+        await scope.assert.rejects(async function discoverNegatedExclude() {
+            await discovery.discoverRunFiles({
+                cwd,
+                paths: [],
+                profileFiles: profileFiles({
+                    exclude: [ '!source/**/*.slow.test.ts' ],
+                    include: [ 'source/**/*.test.ts' ]
+                })
+            });
+        }, { message: 'Profile files.exclude negated glob patterns are not supported.' });
+        await scope.assert.rejects(async function discoverAbsoluteInclude() {
+            await discovery.discoverRunFiles({
+                cwd,
+                paths: [],
+                profileFiles: profileFiles({
+                    exclude: [],
+                    include: [ '/project/source/**/*.test.ts' ]
+                })
+            });
+        }, { message: 'Profile files.include glob pattern must be relative to cwd.' });
+        await scope.assert.rejects(async function discoverParentExclude() {
+            await discovery.discoverRunFiles({
+                cwd,
+                paths: [],
+                profileFiles: profileFiles({
+                    exclude: [ '../outside/**/*.test.ts' ],
+                    include: [ 'source/**/*.test.ts' ]
+                })
+            });
+        }, { message: 'Profile files.exclude glob pattern must not contain parent segments.' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'discoverRunFiles() rejects invalid explicit inputs before import',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                await rejectMissingInputs(scope, 'example.test.ts');
-                await rejectInvalidFileShapes(scope, 'example.test.ts', '/outside/outside.test.ts');
-                await scope.assert.rejects(async function discoverSpecialFile() {
-                    await createDiscovery([ 'example.test.ts' ]).discoverRunFiles({
-                        cwd,
-                        paths: [ '/dev/null' ],
-                        profileFiles: null
-                    });
-                }, { message: 'Run path does not exist: /dev/null' });
+        return scope.assert.collect();
+    }),
+    test('discoverRunFiles() rejects invalid explicit inputs before import', async function (scope: OverkillScope) {
+        await rejectMissingInputs(scope, 'example.test.ts');
+        await rejectInvalidFileShapes(scope, 'example.test.ts', '/outside/outside.test.ts');
+        await scope.assert.rejects(async function discoverSpecialFile() {
+            await createDiscovery([ 'example.test.ts' ]).discoverRunFiles({
+                cwd,
+                paths: [ '/dev/null' ],
+                profileFiles: null
+            });
+        }, { message: 'Run path does not exist: /dev/null' });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

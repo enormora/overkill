@@ -1,5 +1,7 @@
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import type { BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
 import { benchmarkMetricGroups } from '../reporters/benchmark-html-metrics.ts';
@@ -64,8 +66,8 @@ function incompleteDisplay(missing: 'factor' | 'summary'): BenchmarkExecutionRes
         }
     };
 }
-export const testNode = suite('normalization summaries', [
-    test('reads historical normalized results without inventing a budget scale', function (scope: TestScope) {
+export const testNode = authoredSuite('normalization summaries', [
+    authoredTest('reads historical normalized results without inventing a budget scale', function (scope: TestScope) {
         const result = normalizedResult();
         const metric = result.normalization?.metrics.latency;
         scope.require.defined(metric);
@@ -75,19 +77,22 @@ export const testNode = suite('normalization summaries', [
         return scope.assert.collect();
     }),
     ...([ 'summary', 'factor' ] as const).map(function incompleteDisplayCase(missing) {
-        return test(`keeps only raw charts when the normalized ${missing} is unavailable`, function (scope: TestScope) {
-            const fixture = benchmarkHtmlFixture('incomplete normalization');
-            const measured = fixture.perTest[0];
-            scope.require.defined(measured);
-            const benchmark = incompleteDisplay(missing);
-            const groups = benchmarkMetricGroups({ ...fixture, perTest: [ { ...measured, benchmark } ] });
-            scope.assert.equal(groups.length, 1);
-            scope.assert.equal(groups[0]?.rows[0]?.summary, benchmark.metrics.latency);
-            scope.assert.deepEqual({ budgets: groups[0]?.rows[0]?.budgets }, { budgets: [] });
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `keeps only raw charts when the normalized ${missing} is unavailable`,
+            function (scope: TestScope) {
+                const fixture = benchmarkHtmlFixture('incomplete normalization');
+                const measured = fixture.perTest[0];
+                scope.require.defined(measured);
+                const benchmark = incompleteDisplay(missing);
+                const groups = benchmarkMetricGroups({ ...fixture, perTest: [ { ...measured, benchmark } ] });
+                scope.assert.equal(groups.length, 1);
+                scope.assert.equal(groups[0]?.rows[0]?.summary, benchmark.metrics.latency);
+                scope.assert.deepEqual({ budgets: groups[0]?.rows[0]?.budgets }, { budgets: [] });
+                return scope.assert.collect();
+            }
+        );
     }),
-    test('scales displayed observations and budgets while retaining raw evidence', function (scope: TestScope) {
+    authoredTest('scales displayed observations and budgets while retaining raw evidence', function (scope: TestScope) {
         const result = normalizedResult();
         const evidence = summarizeNormalization(result, 1);
         scope.assert.deepEqual({ summary: evidence?.metrics.latency?.summary }, {
@@ -111,7 +116,7 @@ export const testNode = suite('normalization summaries', [
         scope.assert.equal(result.metrics.latency?.median, 2.5);
         return scope.assert.collect();
     }),
-    test('retains absent metrics and observations instead of inventing summaries', function (scope: TestScope) {
+    authoredTest('retains absent metrics and observations instead of inventing summaries', function (scope: TestScope) {
         const result = normalizedResult();
         const absent = summarizeNormalization({ ...result, metrics: {}, budgets: [] }, 0);
         scope.assert.equal(absent?.metrics.latency?.summary, null);
@@ -119,20 +124,23 @@ export const testNode = suite('normalization summaries', [
         scope.assert.equal(summarizeNormalization({ ...result, normalization: null }, 1), null);
         return scope.assert.collect();
     }),
-    test('marks overflowing displays non-comparable while preserving raw observations', function (scope: TestScope) {
-        const result = normalizedResult();
-        const metric = result.metrics.latency;
-        scope.require.defined(metric);
-        const raw = { ...result, metrics: { latency: { ...metric, maximum: Number.MAX_VALUE } } };
-        const evidence = summarizeNormalization(raw, 1);
-        scope.assert.deepEqual({ comparability: evidence?.comparability }, {
-            comparability: {
-                kind: 'non-comparable',
-                reason: 'Normalized benchmark value is not finite.'
-            }
-        });
-        scope.assert.equal(evidence?.metrics, result.normalization?.metrics);
-        scope.assert.equal(raw.metrics.latency.maximum, Number.MAX_VALUE);
-        return scope.assert.collect();
-    })
+    authoredTest(
+        'marks overflowing displays non-comparable while preserving raw observations',
+        function (scope: TestScope) {
+            const result = normalizedResult();
+            const metric = result.metrics.latency;
+            scope.require.defined(metric);
+            const raw = { ...result, metrics: { latency: { ...metric, maximum: Number.MAX_VALUE } } };
+            const evidence = summarizeNormalization(raw, 1);
+            scope.assert.deepEqual({ comparability: evidence?.comparability }, {
+                comparability: {
+                    kind: 'non-comparable',
+                    reason: 'Normalized benchmark value is not finite.'
+                }
+            });
+            scope.assert.equal(evidence?.metrics, result.normalization?.metrics);
+            scope.assert.equal(raw.metrics.latency.maximum, Number.MAX_VALUE);
+            return scope.assert.collect();
+        }
+    )
 ]);

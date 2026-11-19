@@ -1,8 +1,8 @@
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../../packages/test/test.entry-point.ts';
+import { test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { adapterUrl, engineUrl, configUrl } from './stryker-lifecycle-fixture.test.ts';
 import { executeMutationScript } from './stryker-script.test.ts';
 import { strykerPersistenceScript } from './stryker-persistence-scripts.test.ts';
@@ -12,7 +12,7 @@ const modes = [
     { processModel: 'in-process', freshState: true },
     { processModel: 'supervised-process', freshState: false }
 ];
-export const testNode = suite(
+export const testNode = authoredSuite(
     'Stryker diagnostic persistence',
     modes.flatMap(function executionMode(mode) {
         const persistenceModes = [ 'off', 'failures', 'all', 'blocked', 'failed-dry', 'blocked-dry' ];
@@ -43,4 +43,3 @@ export const testNode = suite(
         });
     })
 );
-await runIfMain(import.meta, testNode);

@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { workIdentityKey, type CollectedRunPlan, type WorkId } from '../run/run.entry-point.ts';
 import { collectedMutationPlan } from '../../test-support/mutation-plan-fixture.ts';
 import { testNode as evidenceValidation } from './mutation-catalog-validation.test.ts';
@@ -24,7 +24,7 @@ const work: WorkId = {
     workload: null
 };
 
-export const testNode = suite('mutation catalog contract', [
+export const testNode = authoredSuite('mutation catalog contract', [
     evidenceValidation,
     observationTestNode,
     admissionTestNode,
@@ -222,5 +222,3 @@ export const testNode = suite('mutation catalog contract', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

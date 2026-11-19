@@ -1,10 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { suite, test, table, type TestScope } from '@overkill-dev/test';
+
 import { fromObject } from 'convert-source-map';
 import * as typescript from 'typescript';
 import { createCoverageTranspiler } from '../test-support/coverage-transpilation.ts';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+
 import {
     cacheCoverageSourceMap,
     collectCoverageScript,
@@ -58,44 +59,46 @@ async function assertOriginalCoverage(
     scope.assert.equal(report.summary.functions.covered, 1);
 }
 
-const validMapTests = mapStyles.flatMap(function mapStyle(style) {
-    return [ 'loaded', 'all' ].map(function sourceMode(mode) {
-        return createTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: `${mode} coverage resolves ${style} source maps before source selection`,
-            async body(scope) {
-                const data = style === 'indexed'
-                    ? { version: 3, sections: [ { offset: { line: 0, column: 0 }, map } ] }
-                    : map;
-
-                await withCoverageSources([
-                    { file: 'src/value.ts', loaded: false, source: original },
-                    { file: 'generated/compiled.mjs', loaded: false, source: mappedScript(style) },
-                    { file: 'maps/compiled.map', loaded: false, source: JSON.stringify(data) }
-                ], async function verifyMap(fixture) {
-                    await collectCoverageScript(fixture, 'generated/compiled.mjs');
-                    if (style === 'cached') {
-                        await cacheCoverageSourceMap(fixture, 'generated/compiled.mjs', map);
-                    }
-                    await assertOriginalCoverage(
-                        scope,
-                        fixture,
-                        mode === 'all'
-                            ? {
-                                exclude: [ 'generated/**' ],
-                                excludedFiles: new Set(),
-                                include: [ 'src/**/*.ts' ],
-                                mode
-                            }
-                            : { exclude: [ 'generated/**' ], excludedFiles: new Set(), mode: 'loaded' }
-                    );
-                });
-                return scope.assert.collect();
-            }
+const validMapTests = table({
+    title: 'source map resolution',
+    cases: mapStyles.flatMap(function mapStyle(style) {
+        return ([ 'loaded', 'all' ] as const).map(function sourceMode(mode) {
+            return { style, mode };
         });
-    });
+    }),
+    caseTitle(parameters) {
+        return `${parameters.mode} coverage resolves ${parameters.style} source maps before source selection`;
+    },
+    async test(scope) {
+        const { style, mode } = scope.parameters;
+        const data = style === 'indexed'
+            ? { version: 3, sections: [ { offset: { line: 0, column: 0 }, map } ] }
+            : map;
+
+        await withCoverageSources([
+            { file: 'src/value.ts', loaded: false, source: original },
+            { file: 'generated/compiled.mjs', loaded: false, source: mappedScript(style) },
+            { file: 'maps/compiled.map', loaded: false, source: JSON.stringify(data) }
+        ], async function verifyMap(fixture) {
+            await collectCoverageScript(fixture, 'generated/compiled.mjs');
+            if (style === 'cached') {
+                await cacheCoverageSourceMap(fixture, 'generated/compiled.mjs', map);
+            }
+            await assertOriginalCoverage(
+                scope,
+                fixture,
+                mode === 'all'
+                    ? {
+                        exclude: [ 'generated/**' ],
+                        excludedFiles: new Set(),
+                        include: [ 'src/**/*.ts' ],
+                        mode
+                    }
+                    : { exclude: [ 'generated/**' ], excludedFiles: new Set(), mode: 'loaded' }
+            );
+        });
+        return scope.assert.collect();
+    }
 });
 
 const invalidMaps = [
@@ -120,69 +123,54 @@ const invalidMaps = [
     }
 ];
 
-export const testNode = createSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/coverage-source-map.test.ts',
-    children: [
-        ...validMapTests,
-        ...invalidMaps.map(function brokenMap(scenario) {
-            return createTestCase({
-                annotations: {},
-                controls: {},
-                definitionLocations: [ { kind: 'unknown' } ],
-                title: `coverage rejects ${scenario.title} without falling back to JavaScript`,
-                async body(scope) {
-                    await withCoverageSources([
-                        { file: 'src/value.ts', loaded: false, source: original },
-                        { file: 'generated/compiled.mjs', loaded: true, source: scenario.script },
-                        ...scenario.data === null
-                            ? []
-                            : [ { file: 'maps/compiled.map', loaded: false, source: scenario.data } ]
-                    ], async function verifyFailure(fixture) {
-                        await scope.assert.rejects(async function reportBrokenMap() {
-                            await generateCoverageReports({
-                                ...fixture,
-                                outputs: [],
-                                sourceScope: {
-                                    exclude: [],
-                                    excludedFiles: new Set(),
-                                    include: [ 'src/**/*.ts' ],
-                                    mode: 'all'
-                                }
-                            });
-                        }, { message: /Coverage source map failed for .*compiled\.mjs/u });
-                    });
-                    return scope.assert.collect();
-                }
-            });
-        }),
-        createTestCase({
+export const testNode = suite('source/run/coverage-source-map.test.ts', [
+    validMapTests,
+    ...invalidMaps.map(function brokenMap(scenario) {
+        return test({
             annotations: {},
             controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'coverage ignores source-map declarations inside string literals',
+            title: `coverage rejects ${scenario.title} without falling back to JavaScript`,
             async body(scope) {
                 await withCoverageSources([
-                    {
-                        file: 'value.mjs',
-                        loaded: true,
-                        source: 'export const text = `\n//# sourceMappingURL=missing.map\n`;\n'
-                    }
-                ], async function verifyJavaScript(fixture) {
-                    const result = await generateCoverageReports({
-                        ...fixture,
-                        outputs: [],
-                        sourceScope: { exclude: [], excludedFiles: new Set(), mode: 'loaded' }
-                    });
-
-                    scope.assert.true(result.summary.lines.total > 0);
+                    { file: 'src/value.ts', loaded: false, source: original },
+                    { file: 'generated/compiled.mjs', loaded: true, source: scenario.script },
+                    ...scenario.data === null
+                        ? []
+                        : [ { file: 'maps/compiled.map', loaded: false, source: scenario.data } ]
+                ], async function verifyFailure(fixture) {
+                    await scope.assert.rejects(async function reportBrokenMap() {
+                        await generateCoverageReports({
+                            ...fixture,
+                            outputs: [],
+                            sourceScope: {
+                                exclude: [],
+                                excludedFiles: new Set(),
+                                include: [ 'src/**/*.ts' ],
+                                mode: 'all'
+                            }
+                        });
+                    }, { message: /Coverage source map failed for .*compiled\.mjs/u });
                 });
                 return scope.assert.collect();
             }
-        })
-    ]
-});
+        });
+    }),
+    test('coverage ignores source-map declarations inside string literals', async function (scope) {
+        await withCoverageSources([
+            {
+                file: 'value.mjs',
+                loaded: true,
+                source: 'export const text = `\n//# sourceMappingURL=missing.map\n`;\n'
+            }
+        ], async function verifyJavaScript(fixture) {
+            const result = await generateCoverageReports({
+                ...fixture,
+                outputs: [],
+                sourceScope: { exclude: [], excludedFiles: new Set(), mode: 'loaded' }
+            });
 
-await runIfMain(import.meta, testNode);
+            scope.assert.true(result.summary.lines.total > 0);
+        });
+        return scope.assert.collect();
+    })
+]);

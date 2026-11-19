@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
-import { suite, test, type TestScope } from './packages/test/test.entry-point.ts';
+
 import {
     createInvocationBudget,
     InvocationDeadlineExceededError,
@@ -19,7 +20,7 @@ function budgetFixture(scope: TestScope, signal: Readonly<AbortSignal> | null): 
     return { clock, budget };
 }
 
-export const testNode = suite('invocation budgets', [
+export const testNode = authoredSuite('invocation budgets', [
     test('uses elapsed monotonic time despite Unix clock changes', function (scope) {
         const { clock, budget } = budgetFixture(scope, null);
         clock.setCurrentUnixEpochMicroseconds(9_000_000_000n);
@@ -63,5 +64,3 @@ export const testNode = suite('invocation budgets', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

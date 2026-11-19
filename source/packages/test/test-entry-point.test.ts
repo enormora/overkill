@@ -1,11 +1,6 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite as authoredSuite } from '@overkill-dev/test';
+
 import {
-    createRoot,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    createTestPlan,
-    execute,
-    ownsTestNode,
     resolveSourceLocation,
     serializeValue,
     type SourceLocation,
@@ -17,8 +12,12 @@ import {
     type TestPlan,
     type TestOutcome,
     type TestScope,
-    type TestScope as OverkillScope
+    createRoot,
+    createTestPlan,
+    execute,
+    ownsTestNode
 } from '../engine/engine.entry-point.ts';
+
 import * as testRoot from './test.entry-point.ts';
 
 type RootAuthoringExecution = {
@@ -388,29 +387,17 @@ function rootDoublesBody(testScope: TestScope): ReturnType<TestBody> {
     return testScope.assert.collect();
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
+export const testNode = authoredSuite({
     title: 'source/packages/test/test-entry-point.test.ts',
-    annotations: {},
-    controls: {},
     children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test root exposes authoring boundary only',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                assertRootAuthoringBoundary(scope);
+        test('@overkill-dev/test root exposes authoring boundary only', function (scope: OverkillScope) {
+            assertRootAuthoringBoundary(scope);
 
-                return scope.assert.collect();
-            }
+            return scope.assert.collect();
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test test() and suite() create executable engine nodes',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
+        test(
+            '@overkill-dev/test test() and suite() create executable engine nodes',
+            async function (scope: OverkillScope) {
                 const execution = await executeRootAuthoredNode();
 
                 scope.assert.equal(ownsTestNode(execution.testCase), true);
@@ -420,13 +407,10 @@ export const testNode = createOverkillSuite({
 
                 return scope.assert.collect();
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test table() creates parameterized executable engine nodes',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
+        ),
+        test(
+            '@overkill-dev/test table() creates parameterized executable engine nodes',
+            async function (scope: OverkillScope) {
                 const execution = await executeTableAuthoredNode();
 
                 scope.assert.equal(ownsTestNode(execution.testNode), true);
@@ -438,26 +422,17 @@ export const testNode = createOverkillSuite({
 
                 return scope.assert.collect();
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test root doubles pass through engine assertions',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeAuthoredNode(test('uses root doubles', rootDoublesBody));
+        ),
+        test('@overkill-dev/test root doubles pass through engine assertions', async function (scope: OverkillScope) {
+            const result = await executeAuthoredNode(test('uses root doubles', rootDoublesBody));
 
-                assertPassingSummary(scope, result.summary);
+            assertPassingSummary(scope, result.summary);
 
-                return scope.assert.collect();
-            }
+            return scope.assert.collect();
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test defineMacro() forwards definition and assertion source locations',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
+        test(
+            '@overkill-dev/test defineMacro() forwards definition and assertion source locations',
+            async function (scope: OverkillScope) {
                 const checkMissingName = defineMacro(createMissingNameTest);
                 const testCase = checkMissingName('requires name');
                 const result = await executeAuthoredNode(testCase);
@@ -467,13 +442,10 @@ export const testNode = createOverkillSuite({
 
                 return scope.assert.collect();
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test defineParameterizedTestBody() forwards assertion source locations',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
+        ),
+        test(
+            '@overkill-dev/test defineParameterizedTestBody() forwards assertion source locations',
+            async function (scope: OverkillScope) {
                 const checkName = defineParameterizedTestBody(checkParameterizedName);
                 const testCase = test('checks name', checkName({ name: 'Grace' }));
                 const result = await executeAuthoredNode(testCase);
@@ -483,27 +455,21 @@ export const testNode = createOverkillSuite({
 
                 return scope.assert.collect();
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test captures definition locations from the authoring callsite',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
+        ),
+        test(
+            '@overkill-dev/test captures definition locations from the authoring callsite',
+            function (scope: OverkillScope) {
                 const testCase = test('located test', passingBody);
-                const locatedSuite = suite('located suite', [ testCase ]);
+                const locatedSuite = authoredSuite('located suite', [ testCase ]);
 
                 assertDefinitionLocationInThisFile(scope, testCase.definitionLocations);
                 assertDefinitionLocationInThisFile(scope, locatedSuite.definitionLocations);
 
                 return scope.assert.collect();
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        ),
+        test({
             title: '@overkill-dev/test delegates invalid authoring inputs to engine validation',
-            annotations: {},
-            controls: {},
             body(scope: OverkillScope) {
                 scope.assert.throws(function createNamelessTest() {
                     test('', passingBody);
@@ -533,5 +499,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

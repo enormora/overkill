@@ -1,5 +1,7 @@
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { inlineAttachmentFixture, attachmentWork } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
@@ -31,7 +33,7 @@ function sampleObservations(): MetricObservations {
     return observations;
 }
 
-export const testNode = suite('benchmark raw evidence', [
+export const testNode = authoredSuite('benchmark raw evidence', [
     test('requires generated checks and preserves undecided lower-bound diagnostics', function (scope) {
         const context = { locations: [ { kind: 'unknown' as const } ], workload: workload('one', {}) } as const;
         scope.assert.throws(function () {

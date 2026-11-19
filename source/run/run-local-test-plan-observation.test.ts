@@ -1,15 +1,14 @@
-import { runIfMain } from '#test-runner';
-import { createRoot, createTestCase, createTestPlan, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { test } from '@overkill-dev/test';
+
+import { type TestScope, createRoot, createTestCase, createTestPlan } from '../packages/engine/engine.entry-point.ts';
+
 import { createAsyncLeakMonitor } from '../engine/async-leak-diagnostics.ts';
 import { createDeterministicRunCoordinator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 
-export const testNode = createTestCase({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'nested direct collection does not leave a test-owned watchdog promise',
-    async body(scope: TestScope) {
+export const testNode = test(
+    'nested direct collection does not leave a test-owned watchdog promise',
+    async function (scope: TestScope) {
         const node = createTestCase({
             annotations: {},
             controls: {},
@@ -47,6 +46,4 @@ export const testNode = createTestCase({
         scope.assert.equal(monitor.casePromiseLeakError(testCase), null);
         return scope.assert.collect();
     }
-});
-
-await runIfMain(import.meta, testNode);
+);

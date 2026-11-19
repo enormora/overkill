@@ -1,14 +1,16 @@
-import { runIfMain } from '#test-runner';
+import {
+    type TestScope as OverkillScope,
+    suite,
+    test,
+    doubleUsage,
+    testDouble,
+    type TestDouble
+} from '@overkill-dev/test';
+
 import figures from 'figures';
 import colors from 'yoctocolors';
 
-import { doubleUsage, testDouble, type TestDouble } from '../packages/doubles/doubles.entry-point.ts';
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import { createLineReporter, type LineReporterDependencies } from './line-reporter.ts';
 
@@ -93,85 +95,59 @@ async function reportLongCase(reporter: RealTimeReporter): Promise<void> {
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/reporters/line-reporter-progress.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter wraps long progress lines under the message column',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = narrowLineReporterWithLog(log, true);
+export const testNode = suite('source/reporters/line-reporter-progress.test.ts', [
+    test('line reporter wraps long progress lines under the message column', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = narrowLineReporterWithLog(log, true);
 
-                await reportLongCase(reporter);
+        await reportLongCase(reporter);
 
-                scope.assert(doubleUsage.callCount, log, 3);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    successSymbol,
-                    '[top level suite > nested'
-                ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  area] renders very long title' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  (6 ms)' ]);
+        scope.assert(doubleUsage.callCount, log, 3);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+            successSymbol,
+            '[top level suite > nested'
+        ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  area] renders very long title' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  (6 ms)' ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter can leave long progress lines unwrapped',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = narrowLineReporterWithLog(log, false);
+        return scope.assert.collect();
+    }),
+    test('line reporter can leave long progress lines unwrapped', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = narrowLineReporterWithLog(log, false);
 
-                await reportLongCase(reporter);
+        await reportLongCase(reporter);
 
-                scope.assert(doubleUsage.callCount, log, 1);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    successSymbol,
-                    '[top level suite > nested area] renders very long title (6 ms)'
-                ]);
+        scope.assert(doubleUsage.callCount, log, 1);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+            successSymbol,
+            '[top level suite > nested area] renders very long title (6 ms)'
+        ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints runner errors',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
+        return scope.assert.collect();
+    }),
+    test('line reporter prints runner errors', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
 
-                await reporter.onEvent({
-                    error: {
-                        attributedToAttempt: null,
-                        attributedTo: null,
-                        cause: new Error('cannot render'),
-                        diagnostics: [],
-                        message: 'line: cannot render',
-                        subtype: 'reporter'
-                    },
-                    kind: 'runner-error'
-                });
+        await reporter.onEvent({
+            error: {
+                attributedToAttempt: null,
+                attributedTo: null,
+                cause: new Error('cannot render'),
+                diagnostics: [],
+                message: 'line: cannot render',
+                subtype: 'reporter'
+            },
+            kind: 'runner-error'
+        });
 
-                scope.assert(doubleUsage.callCount, log, 1);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    errorSymbol,
-                    'Runner error: line: cannot render'
-                ]);
+        scope.assert(doubleUsage.callCount, log, 1);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+            errorSymbol,
+            'Runner error: line: cannot render'
+        ]);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
 import { validateReporterRunFacts } from '../engine/reporter.ts';
 import { createBenchmarkHtmlReporter } from './benchmark-html-reporter.ts';
@@ -100,9 +100,9 @@ function lifecycleModel(): BenchmarkHtmlReport {
         context: { id: null, startedAt: null, facts: null }
     });
 }
-export const testNode = suite('benchmark HTML rendering', [
+export const testNode = authoredSuite('benchmark HTML rendering', [
     ...[ null, { mode: 'off' as const } ].map(function garbageCollectionEvidence(garbageCollection) {
-        return test(
+        return authoredTest(
             `renders garbage collection evidence ${garbageCollection?.mode ?? 'unavailable'}`,
             function (scope: TestScope) {
                 const report = lifecycleModel();
@@ -125,7 +125,7 @@ export const testNode = suite('benchmark HTML rendering', [
             }
         );
     }),
-    test('renders recorded cooldown outcomes and durations', function (scope: TestScope) {
+    authoredTest('renders recorded cooldown outcomes and durations', function (scope: TestScope) {
         const report = lifecycleModel();
         const first = report.cases[0];
         scope.require.defined(first);
@@ -150,7 +150,7 @@ export const testNode = suite('benchmark HTML rendering', [
         scope.assert.includes(html, '<td>settled</td><td>250</td>');
         return scope.assert.collect();
     }),
-    test('identifies recorded timelines that contain no events', function (scope: TestScope) {
+    authoredTest('identifies recorded timelines that contain no events', function (scope: TestScope) {
         const report = lifecycleModel();
         const timelines = [ {
             label: 'empty',
@@ -168,7 +168,7 @@ export const testNode = suite('benchmark HTML rendering', [
         scope.assert.includes(html, 'No timeline events are available.');
         return scope.assert.collect();
     }),
-    test('renders warmup and cleanup separately from measured distributions', function (scope: TestScope) {
+    authoredTest('renders warmup and cleanup separately from measured distributions', function (scope: TestScope) {
         const html = renderBenchmarkHtml(lifecycleModel(), '');
         scope.assert.includes(html, 'Warmup samples');
         scope.assert.includes(
@@ -179,7 +179,7 @@ export const testNode = suite('benchmark HTML rendering', [
         scope.assert.includes(html, 'Warmup raw evidence: recorded');
         return scope.assert.collect();
     }),
-    test('identifies historical lifecycle evidence as unavailable', function (scope: TestScope) {
+    authoredTest('identifies historical lifecycle evidence as unavailable', function (scope: TestScope) {
         const html = renderBenchmarkHtml(
             createBenchmarkHtmlReport({
                 result: benchmarkHtmlFixture('historical'),
@@ -190,7 +190,7 @@ export const testNode = suite('benchmark HTML rendering', [
         scope.assert.includes(html, 'Lifecycle evidence unavailable.');
         return scope.assert.collect();
     }),
-    test('rejects blank output paths and missing benchmark evidence', function (scope: TestScope) {
+    authoredTest('rejects blank output paths and missing benchmark evidence', function (scope: TestScope) {
         scope.assert.throws(function () {
             createBenchmarkHtmlReporter({ outputFile: ' '.repeat(3) });
         }, { message: 'Benchmark HTML report outputFile must not be blank.' });
@@ -203,7 +203,7 @@ export const testNode = suite('benchmark HTML rendering', [
         }, { message: 'Benchmark HTML reporter requires benchmark result evidence.' });
         return scope.assert.collect();
     }),
-    test('renders open budget intervals without inferred estimates', function (scope: TestScope) {
+    authoredTest('renders open budget intervals without inferred estimates', function (scope: TestScope) {
         const html = unboundedBenchmarkHtml(scope);
         scope.assert.includes(
             html,
@@ -212,7 +212,7 @@ export const testNode = suite('benchmark HTML rendering', [
         scope.assert.includes(html, '<td>false</td><td>undecided</td>');
         return scope.assert.collect();
     }),
-    test('retains authoritative intervals without embedding raw observations', function (scope: TestScope) {
+    authoredTest('retains authoritative intervals without embedding raw observations', function (scope: TestScope) {
         const report = createBenchmarkHtmlReport({
             result: benchmarkHtmlFixture('latency'),
             context: { id: null, startedAt: null, facts: null }
@@ -227,7 +227,7 @@ export const testNode = suite('benchmark HTML rendering', [
         scope.assert.equal(JSON.stringify(report).includes('"availability":"available"'), false);
         return scope.assert.collect();
     }),
-    test('escapes untrusted names in HTML and embedded chart scripts', function (scope: TestScope) {
+    authoredTest('escapes untrusted names in HTML and embedded chart scripts', function (scope: TestScope) {
         const report = createBenchmarkHtmlReport({
             result: benchmarkHtmlFixture('</script><script>attack()</script>'),
             context: { id: null, startedAt: null, facts: null }
@@ -239,7 +239,7 @@ export const testNode = suite('benchmark HTML rendering', [
         scope.assert.includes(html, 'noscript');
         return scope.assert.collect();
     }),
-    test('rejects non-benchmark facts before creating output', function (scope: TestScope) {
+    authoredTest('rejects non-benchmark facts before creating output', function (scope: TestScope) {
         const reporter = createBenchmarkHtmlReporter({ outputFile: 'target/unwanted-benchmark.html' });
         scope.assert.throws(function () {
             validateReporterRunFacts(reporter, { execution: { testFamily: 'microtest' } });
@@ -247,4 +247,3 @@ export const testNode = suite('benchmark HTML rendering', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

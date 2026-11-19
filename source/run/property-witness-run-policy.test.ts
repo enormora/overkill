@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { propertyWitnessRun } from '../test-support/property-witness-run.ts';
 import { executePropertyWitnessRun } from './property-witness-storage.ts';
 
-export const testNode = suite('property witness run storage ownership', [
+export const testNode = authoredSuite('property witness run storage ownership', [
     test(
         'creates storage only for confirmed witnesses and completes an owned record',
         async function (scope: TestScope) {
@@ -66,4 +66,3 @@ export const testNode = suite('property witness run storage ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

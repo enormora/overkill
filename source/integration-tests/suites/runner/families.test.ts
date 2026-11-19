@@ -1,4 +1,5 @@
-import { createSuite } from '../../../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as adapterExecutionTestNode } from '../../../run/adapter-execution.test.ts';
 import { testNode as runnerModelContractsTestNode } from '../../run/runner-model-contracts.test.ts';
 import { testNode as runnerDifferentialContractsTestNode } from '../../run/runner-differential-contracts.test.ts';
@@ -9,20 +10,14 @@ import { testNode as runnerPropertyMeasurementsTestNode } from '../../run/runner
 import { testNode as runnerFamilyTransportTestNode } from '../../run/runner-family-transport.test.ts';
 import { testNode as runnerFamilySelectionTestNode } from '../../run/runner-family-selection.test.ts';
 
-export const testNode = createSuite({
-    title: 'runner families integration',
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    children: [
-        adapterExecutionTestNode,
-        runnerModelContractsTestNode,
-        runnerDifferentialContractsTestNode,
-        runnerLinearizabilityContractsTestNode,
-        runnerLinearizabilityLifecycleTestNode,
-        runnerPropertyValidationTestNode,
-        runnerPropertyMeasurementsTestNode,
-        runnerFamilyTransportTestNode,
-        runnerFamilySelectionTestNode
-    ]
-});
+export const testNode = suite('runner families integration', [
+    adapterExecutionTestNode,
+    runnerModelContractsTestNode,
+    runnerDifferentialContractsTestNode,
+    runnerLinearizabilityContractsTestNode,
+    runnerLinearizabilityLifecycleTestNode,
+    runnerPropertyValidationTestNode,
+    runnerPropertyMeasurementsTestNode,
+    runnerFamilyTransportTestNode,
+    runnerFamilySelectionTestNode
+]);

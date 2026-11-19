@@ -1,22 +1,11 @@
 import { pathToFileURL } from 'node:url';
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
-import {
-    defaultMicrotestProfile,
-    defaultRunConfig,
-    defaultRunRequest
-} from '../test-support/run-command-factory.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import type { NormalizedConfig } from '../config/types.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
-import {
-    createRunEngineModuleLoader,
-    type RunEngineModuleLoader
-} from './run-engine-selection.ts';
+import { createRunEngineModuleLoader, type RunEngineModuleLoader } from './run-engine-selection.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
@@ -100,213 +89,162 @@ function invalidCustomEngineCommand(engine: RunCommand['engine']): RunCommand {
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-custom-engine.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() rejects instance engines for supervised execution',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const orchestrator = createUnitRunOrchestrator();
+export const testNode = suite('source/run/run-custom-engine.test.ts', [
+    test('orchestrator.run() rejects instance engines for supervised execution', async function (scope: OverkillScope) {
+        const orchestrator = createUnitRunOrchestrator();
 
-                await scope.assert.rejects(async function runWithCustomSupervisedEngine() {
-                    await orchestrator.run(createRunCommand({
-                        config: defaultRunConfig(),
-                        cwd: process.cwd(),
-                        engine: { engine: defaultRunEngine, kind: 'instance' },
-                        request: defaultRunRequest({ paths: [ passingFixturePath ] })
-                    }));
-                }, {
-                    message:
-                        'Instance engines are not supported with supervised-process execution. Use a module engine.'
-                });
+        await scope.assert.rejects(async function runWithCustomSupervisedEngine() {
+            await orchestrator.run(createRunCommand({
+                config: defaultRunConfig(),
+                cwd: process.cwd(),
+                engine: { engine: defaultRunEngine, kind: 'instance' },
+                request: defaultRunRequest({ paths: [ passingFixturePath ] })
+            }));
+        }, {
+            message: 'Instance engines are not supported with supervised-process execution. Use a module engine.'
+        });
 
-                return scope.assert.collect();
+        return scope.assert.collect();
+    }),
+    test('orchestrator.run() rejects invalid supervised module engine requests', async function (scope: OverkillScope) {
+        const orchestrator = createUnitRunOrchestrator();
+
+        await scope.assert.rejects(async function runWithEmptyModuleUrl() {
+            await orchestrator.run(invalidCustomEngineCommand({
+                exportKind: 'value',
+                exportName: 'engine',
+                kind: 'module',
+                moduleUrl: ''
+            }));
+        }, { message: 'Custom engine moduleUrl must not be empty.' });
+        await scope.assert.rejects(async function runWithEmptyExportName() {
+            await orchestrator.run(invalidCustomEngineCommand({
+                exportKind: 'value',
+                exportName: '',
+                kind: 'module',
+                moduleUrl: customEngineModuleUrl
+            }));
+        }, { message: 'Custom engine exportName must not be empty.' });
+        await scope.assert.rejects(async function runWithRemoteModuleUrl() {
+            await orchestrator.run(invalidCustomEngineCommand({
+                exportKind: 'value',
+                exportName: 'engine',
+                kind: 'module',
+                moduleUrl: 'https://example.invalid/custom-engine.js'
+            }));
+        }, { message: 'Supervised custom engine moduleUrl must be a file URL under cwd.' });
+        await scope.assert.rejects(async function runWithOutsideModuleUrl() {
+            await orchestrator.run(invalidCustomEngineCommand({
+                exportKind: 'value',
+                exportName: 'engine',
+                kind: 'module',
+                moduleUrl: pathToFileURL(`${process.cwd()}-outside/custom-engine.js`).href
+            }));
+        }, { message: 'Supervised custom engine moduleUrl must be under cwd.' });
+
+        return scope.assert.collect();
+    }),
+    test('loadRunEngineModule() loads value and getter engine exports', async function (scope: OverkillScope) {
+        const moduleUrl = 'file:///project/custom-engine.js';
+        const loadRunEngineModule = createModuleLoader({
+            [moduleUrl]: {
+                engine: defaultRunEngine,
+                getEngine() {
+                    return defaultRunEngine;
+                }
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() rejects invalid supervised module engine requests',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const orchestrator = createUnitRunOrchestrator();
+        });
 
-                await scope.assert.rejects(async function runWithEmptyModuleUrl() {
-                    await orchestrator.run(invalidCustomEngineCommand({
-                        exportKind: 'value',
-                        exportName: 'engine',
-                        kind: 'module',
-                        moduleUrl: ''
-                    }));
-                }, { message: 'Custom engine moduleUrl must not be empty.' });
-                await scope.assert.rejects(async function runWithEmptyExportName() {
-                    await orchestrator.run(invalidCustomEngineCommand({
-                        exportKind: 'value',
-                        exportName: '',
-                        kind: 'module',
-                        moduleUrl: customEngineModuleUrl
-                    }));
-                }, { message: 'Custom engine exportName must not be empty.' });
-                await scope.assert.rejects(async function runWithRemoteModuleUrl() {
-                    await orchestrator.run(invalidCustomEngineCommand({
-                        exportKind: 'value',
-                        exportName: 'engine',
-                        kind: 'module',
-                        moduleUrl: 'https://example.invalid/custom-engine.js'
-                    }));
-                }, { message: 'Supervised custom engine moduleUrl must be a file URL under cwd.' });
-                await scope.assert.rejects(async function runWithOutsideModuleUrl() {
-                    await orchestrator.run(invalidCustomEngineCommand({
-                        exportKind: 'value',
-                        exportName: 'engine',
-                        kind: 'module',
-                        moduleUrl: pathToFileURL(`${process.cwd()}-outside/custom-engine.js`).href
-                    }));
-                }, { message: 'Supervised custom engine moduleUrl must be under cwd.' });
+        const valueEngine = await loadRunEngineModule(moduleEngine(moduleUrl, 'engine', 'value'));
+        const getterEngine = await loadRunEngineModule(moduleEngine(moduleUrl, 'getEngine', 'getter'));
 
-                return scope.assert.collect();
+        scope.assert.equal(typeof valueEngine.execute, 'function');
+        scope.assert.equal(typeof getterEngine.execute, 'function');
+
+        return scope.assert.collect();
+    }),
+    test('loadRunEngineModule() reports invalid module exports', async function (scope: OverkillScope) {
+        const moduleUrl = 'file:///project/invalid-custom-engine.js';
+        const loadRunEngineModule = createModuleLoader({
+            [moduleUrl]: {
+                getEngine: {},
+                invalidEngine: {}
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunEngineModule() loads value and getter engine exports',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const moduleUrl = 'file:///project/custom-engine.js';
-                const loadRunEngineModule = createModuleLoader({
-                    [moduleUrl]: {
-                        engine: defaultRunEngine,
-                        getEngine() {
-                            return defaultRunEngine;
-                        }
-                    }
-                });
+        });
 
-                const valueEngine = await loadRunEngineModule(moduleEngine(moduleUrl, 'engine', 'value'));
-                const getterEngine = await loadRunEngineModule(moduleEngine(moduleUrl, 'getEngine', 'getter'));
+        await scope.assert.rejects(async function loadMissingEngineExport() {
+            await loadRunEngineModule(moduleEngine(moduleUrl, 'engine', 'value'));
+        }, { message: 'Custom engine module must export engine.' });
+        await scope.assert.rejects(async function loadInvalidEngineExport() {
+            await loadRunEngineModule(moduleEngine(moduleUrl, 'invalidEngine', 'value'));
+        }, { message: 'Custom engine module export must be an Engine.' });
+        await scope.assert.rejects(async function loadInvalidEngineGetter() {
+            await loadRunEngineModule(moduleEngine(moduleUrl, 'getEngine', 'getter'));
+        }, { message: 'Custom engine getter export must be a function.' });
+        await scope.assert.rejects(async function loadMissingEngineModule() {
+            await loadRunEngineModule(
+                moduleEngine(pathToFileURL(`${process.cwd()}-missing.js`).href, 'engine', 'value')
+            );
+        }, { message: 'Failed to load custom engine module.' });
 
-                scope.assert.equal(typeof valueEngine.execute, 'function');
-                scope.assert.equal(typeof getterEngine.execute, 'function');
+        return scope.assert.collect();
+    }),
+    test('orchestrator.run() executes a supervised module engine value export', async function (scope: OverkillScope) {
+        const orchestrator = createUnitRunOrchestrator();
+        const result = await orchestrator.run(customEngineCommand('engine', 'value'));
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunEngineModule() reports invalid module exports',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const moduleUrl = 'file:///project/invalid-custom-engine.js';
-                const loadRunEngineModule = createModuleLoader({
-                    [moduleUrl]: {
-                        getEngine: {},
-                        invalidEngine: {}
-                    }
-                });
+        scope.assert.equal(result.summary.passed, 1);
+        scope.assert.equal(result.runnerErrors.length, 0);
 
-                await scope.assert.rejects(async function loadMissingEngineExport() {
-                    await loadRunEngineModule(moduleEngine(moduleUrl, 'engine', 'value'));
-                }, { message: 'Custom engine module must export engine.' });
-                await scope.assert.rejects(async function loadInvalidEngineExport() {
-                    await loadRunEngineModule(moduleEngine(moduleUrl, 'invalidEngine', 'value'));
-                }, { message: 'Custom engine module export must be an Engine.' });
-                await scope.assert.rejects(async function loadInvalidEngineGetter() {
-                    await loadRunEngineModule(moduleEngine(moduleUrl, 'getEngine', 'getter'));
-                }, { message: 'Custom engine getter export must be a function.' });
-                await scope.assert.rejects(async function loadMissingEngineModule() {
-                    await loadRunEngineModule(
-                        moduleEngine(pathToFileURL(`${process.cwd()}-missing.js`).href, 'engine', 'value')
-                    );
-                }, { message: 'Failed to load custom engine module.' });
+        return scope.assert.collect();
+    }),
+    test(
+        'orchestrator.resolve() collects a supervised module engine getter export',
+        async function (scope: OverkillScope) {
+            const orchestrator = createUnitRunOrchestrator();
+            const resolvedRun = await orchestrator.resolve(customEngineCommand('getEngine', 'getter'));
+            const firstCase = resolvedRun.facts.cases[0];
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() executes a supervised module engine value export',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const orchestrator = createUnitRunOrchestrator();
-                const result = await orchestrator.run(customEngineCommand('engine', 'value'));
+            scope.require.defined(firstCase);
+            scope.assert.equal(resolvedRun.plan.kind, 'supervised');
+            scope.assert.deepEqual(firstCase.id, {
+                file: customEnginePassingFixturePath,
+                title: 'custom engine passes',
+                params: null,
+                suite: []
+            });
 
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(result.runnerErrors.length, 0);
+            return scope.assert.collect();
+        }
+    ),
+    test('orchestrator.run() reports invalid module engine exports', async function (scope: OverkillScope) {
+        const orchestrator = createUnitRunOrchestrator();
+        const invalidValueResult = await orchestrator.run(customEngineCommand('invalidEngine', 'value'));
+        const asyncGetterResult = await orchestrator.run(customEngineCommand('getAsyncEngine', 'getter'));
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() collects a supervised module engine getter export',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const orchestrator = createUnitRunOrchestrator();
-                const resolvedRun = await orchestrator.resolve(customEngineCommand('getEngine', 'getter'));
-                const firstCase = resolvedRun.facts.cases[0];
+        scope.assert.equal(
+            invalidValueResult.runnerErrors[0]?.message,
+            'Custom engine module export must be an Engine.'
+        );
+        scope.assert.equal(
+            asyncGetterResult.runnerErrors[0]?.message,
+            'Custom engine module export must be an Engine.'
+        );
 
-                scope.require.defined(firstCase);
-                scope.assert.equal(resolvedRun.plan.kind, 'supervised');
-                scope.assert.deepEqual(firstCase.id, {
-                    file: customEnginePassingFixturePath,
-                    title: 'custom engine passes',
-                    params: null,
-                    suite: []
-                });
+        return scope.assert.collect();
+    }),
+    test(
+        'orchestrator.run() rejects module engines when test nodes use another engine',
+        async function (scope: OverkillScope) {
+            const orchestrator = createUnitRunOrchestrator();
+            const result = await orchestrator.run(customEngineCommand('engine', 'value', [ passingFixturePath ]));
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() reports invalid module engine exports',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const orchestrator = createUnitRunOrchestrator();
-                const invalidValueResult = await orchestrator.run(customEngineCommand('invalidEngine', 'value'));
-                const asyncGetterResult = await orchestrator.run(customEngineCommand('getAsyncEngine', 'getter'));
+            scope.assert.equal(
+                result.runnerErrors[0]?.message,
+                `Test module testNode must be created by the selected engine: ${passingFixturePath}`
+            );
 
-                scope.assert.equal(
-                    invalidValueResult.runnerErrors[0]?.message,
-                    'Custom engine module export must be an Engine.'
-                );
-                scope.assert.equal(
-                    asyncGetterResult.runnerErrors[0]?.message,
-                    'Custom engine module export must be an Engine.'
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() rejects module engines when test nodes use another engine',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const orchestrator = createUnitRunOrchestrator();
-                const result = await orchestrator.run(customEngineCommand('engine', 'value', [ passingFixturePath ]));
-
-                scope.assert.equal(
-                    result.runnerErrors[0]?.message,
-                    `Test module testNode must be created by the selected engine: ${passingFixturePath}`
-                );
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

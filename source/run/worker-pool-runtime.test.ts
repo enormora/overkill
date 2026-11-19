@@ -1,11 +1,6 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import {
     defaultIntegrationProfile,
     defaultRunConfig,
@@ -15,9 +10,7 @@ import {
 import { fakeWorkerPoolRuntimeDependencies as fakeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import type { WorkerLifecycle } from '../config/types.ts';
 import { emptyWorkUnitResourceConstraints } from './run-types.ts';
-import type {
-    WorkerPoolCreationOptions
-} from './run-orchestrator-dependencies.ts';
+import type { WorkerPoolCreationOptions } from './run-orchestrator-dependencies.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import {
     createWorkerPoolRuntime,
@@ -418,121 +411,92 @@ async function workerPoolRuntimeCreation(): Promise<{
     };
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-runtime.test.ts',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool runtime creation sizes pools and installs process usage tracking',
-            async body(scope: OverkillScope) {
-                const result = await workerPoolRuntimeCreation();
+export const testNode = suite('source/run/worker-pool-runtime.test.ts', [
+    test(
+        'worker-pool runtime creation sizes pools and installs process usage tracking',
+        async function (scope: OverkillScope) {
+            const result = await workerPoolRuntimeCreation();
 
-                scope.assert.equal(result.unmeasuredThreads, 0);
-                scope.assert.equal(result.unmeasuredTracker, null);
-                scope.assert.equal(result.measuredThreads, 1);
-                scope.assert.equal(result.measuredSamplingInterval, 17);
-                scope.assert.notEqual(result.measuredTracker, null);
-                scope.assert.deepEqual(result.createdWorkerPools, [
-                    {
-                        cwd: process.cwd(),
-                        hostProcess: { kind: 'direct' },
-                        testFamily: 'integration',
-                        workerCount: 0,
-                        workerLifecycle: 'reuse'
-                    },
-                    {
-                        cwd: process.cwd(),
-                        hostProcess: { kind: 'direct' },
-                        testFamily: 'integration',
-                        workerCount: 1,
-                        workerLifecycle: 'reuse'
-                    },
-                    {
-                        cwd: process.cwd(),
-                        hostProcess: { kind: 'child', nodeArguments: [ '--conditions=overkill-test' ] },
-                        testFamily: 'integration',
-                        workerCount: 1,
-                        workerLifecycle: 'fresh-worker-per-unit'
-                    }
-                ]);
+            scope.assert.equal(result.unmeasuredThreads, 0);
+            scope.assert.equal(result.unmeasuredTracker, null);
+            scope.assert.equal(result.measuredThreads, 1);
+            scope.assert.equal(result.measuredSamplingInterval, 17);
+            scope.assert.notEqual(result.measuredTracker, null);
+            scope.assert.deepEqual(result.createdWorkerPools, [
+                {
+                    cwd: process.cwd(),
+                    hostProcess: { kind: 'direct' },
+                    testFamily: 'integration',
+                    workerCount: 0,
+                    workerLifecycle: 'reuse'
+                },
+                {
+                    cwd: process.cwd(),
+                    hostProcess: { kind: 'direct' },
+                    testFamily: 'integration',
+                    workerCount: 1,
+                    workerLifecycle: 'reuse'
+                },
+                {
+                    cwd: process.cwd(),
+                    hostProcess: { kind: 'child', nodeArguments: [ '--conditions=overkill-test' ] },
+                    testFamily: 'integration',
+                    workerCount: 1,
+                    workerLifecycle: 'fresh-worker-per-unit'
+                }
+            ]);
 
-                return scope.assert.collect();
+            return scope.assert.collect();
+        }
+    ),
+    test('one reusable lane owns per-run resources without another worker', async function (scope: OverkillScope) {
+        const fixture = createRecordedPoolDependencies();
+        const runtime = await createRuntime(
+            fixture.dependencies,
+            workerPoolResolvedRun(collectedPlanWithRunResource())
+        );
+
+        scope.assert.equal(runtime.pool.options.maxThreads, 1);
+        scope.assert.deepEqual(fixture.createdWorkerPools, [
+            {
+                cwd: process.cwd(),
+                hostProcess: { kind: 'direct' },
+                testFamily: 'integration',
+                workerCount: 1,
+                workerLifecycle: 'reuse'
             }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'one reusable lane owns per-run resources without another worker',
-            async body(scope: OverkillScope) {
-                const fixture = createRecordedPoolDependencies();
-                const runtime = await createRuntime(
-                    fixture.dependencies,
-                    workerPoolResolvedRun(collectedPlanWithRunResource())
-                );
+        ]);
+        await runtime.pool.destroy();
 
-                scope.assert.equal(runtime.pool.options.maxThreads, 1);
-                scope.assert.deepEqual(fixture.createdWorkerPools, [
-                    {
-                        cwd: process.cwd(),
-                        hostProcess: { kind: 'direct' },
-                        testFamily: 'integration',
-                        workerCount: 1,
-                        workerLifecycle: 'reuse'
-                    }
-                ]);
-                await runtime.pool.destroy();
+        return scope.assert.collect();
+    }),
+    test('worker-pool runtime creation rejects non-worker-pool facts', async function (scope: OverkillScope) {
+        await scope.assert.rejects(async function createMismatchedRuntime() {
+            await createWorkerPoolRuntime({
+                attachments: null,
+                collectionRunnerErrors: [],
+                createdPool: null,
+                dependencies: fakeDependencies(),
+                async finalizeResult(completion) {
+                    return completion.result;
+                },
+                resolvedRun: workerPoolPlanWithSupervisedFacts(),
+                runState: createSupervisedRunState('first-failure-and-final')
+            });
+        }, {
+            message: 'Worker-pool execution requires worker-pool execution facts.'
+        });
+        scope.assert.throws(function readMismatchedExecutionFacts() {
+            workerPoolExecutionFacts(workerPoolPlanWithSupervisedFacts());
+        }, { message: 'Worker-pool execution requires worker-pool execution facts.' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool runtime creation rejects non-worker-pool facts',
-            async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function createMismatchedRuntime() {
-                    await createWorkerPoolRuntime({
-                        attachments: null,
-                        collectionRunnerErrors: [],
-                        createdPool: null,
-                        dependencies: fakeDependencies(),
-                        async finalizeResult(completion) {
-                            return completion.result;
-                        },
-                        resolvedRun: workerPoolPlanWithSupervisedFacts(),
-                        runState: createSupervisedRunState('first-failure-and-final')
-                    });
-                }, {
-                    message: 'Worker-pool execution requires worker-pool execution facts.'
-                });
-                scope.assert.throws(function readMismatchedExecutionFacts() {
-                    workerPoolExecutionFacts(workerPoolPlanWithSupervisedFacts());
-                }, { message: 'Worker-pool execution requires worker-pool execution facts.' });
+        return scope.assert.collect();
+    }),
+    test('worker-pool runtime rejects missing placement plans', function (scope: OverkillScope) {
+        scope.assert.throws(function readMissingPlacementPlan() {
+            workerPoolPlacementPlan(workerPoolRunWithoutPlacementPlan());
+        }, { message: 'Worker-pool execution requires a placement plan.' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool runtime rejects missing placement plans',
-            body(scope: OverkillScope) {
-                scope.assert.throws(function readMissingPlacementPlan() {
-                    workerPoolPlacementPlan(workerPoolRunWithoutPlacementPlan());
-                }, { message: 'Worker-pool execution requires a placement plan.' });
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

@@ -1,8 +1,8 @@
 import { Worker } from 'node:worker_threads';
 import { once } from 'node:events';
 import { setImmediate as scheduleDeliveryTurn } from 'node:timers';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import { withResourceCheckCancellation } from '../resource-check-cancellation.ts';
@@ -62,7 +62,7 @@ async function assertCancellation(scope: TestScope, broker: ResourceCheckBroker,
     });
     scope.assert.true(stopped);
 }
-export const testNode = suite('persistent resource check channel', [
+export const testNode = authoredSuite('persistent resource check channel', [
     test('closes invalid owner channels and retains incomplete registration evidence', async function (scope) {
         await withObservedWorker(scope, async function inspect(broker) {
             const client = resourceCheckClient(broker.endpoint);
@@ -118,4 +118,3 @@ export const testNode = suite('persistent resource check channel', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,7 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, test as authoredTest, suite as authoredSuite } from '@overkill-dev/test';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import {
     type ReplayProject,
@@ -114,11 +113,11 @@ async function verifyReplay(scope: TestScope, project: ReplayProject, file: stri
     scope.assert.equal(cli.code, fixed ? 0 : 1);
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'runner differential contracts',
     ([ 'in-process', 'supervised-process' ] as const).flatMap(function executionMode(processModel) {
         return [ false, true ].map(function composition(nested) {
-            return test(
+            return authoredTest(
                 `${processModel} replays ${nested ? 'nested' : 'direct'} differential inputs`,
                 async function (scope: TestScope) {
                     const project = await replayProject(scope, {
@@ -140,4 +139,3 @@ export const testNode = suite(
         });
     })
 );
-await runIfMain(import.meta, testNode);

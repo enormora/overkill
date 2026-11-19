@@ -1,11 +1,7 @@
-import { setImmediate as finishParserInitialization } from 'node:timers/promises';
 import type { CoverageNativeBatch } from '../run/coverage-native-data.ts';
 import type { CoverageSourceAccess } from '../run/coverage-source-selection.ts';
 import { createCoverageSourceCache, type CoverageSourceCache } from '../run/coverage-runtime-source.ts';
 import type { SourceMapData } from '../source-map-data.ts';
-
-createCoverageSourceCache().inspect('', 'source.ts');
-await finishParserInitialization();
 
 type MemoryCoverageSources = {
     readonly cache: CoverageSourceCache;

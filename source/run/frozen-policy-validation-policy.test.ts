@@ -1,11 +1,12 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, testDouble, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
+import { testDouble } from '../packages/test/test.entry-point.ts';
 import { frozenPolicyValidation } from '../test-support/frozen-policy-validation.ts';
 import { ConfigError } from '../packages/run/config.entry-point.ts';
 import { testNode as origins } from './frozen-policy-origins.test.ts';
 import { revalidateFrozenPolicy } from './frozen-policy-validation.ts';
 
-export const testNode = suite('frozen policy source validation', [
+export const testNode = authoredSuite('frozen policy source validation', [
     origins,
     test('accepts identical configured discovery and execution facts', async function (scope: TestScope) {
         const fixture = await frozenPolicyValidation();
@@ -74,4 +75,3 @@ export const testNode = suite('frozen policy source validation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

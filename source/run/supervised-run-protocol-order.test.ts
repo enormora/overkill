@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type RunResult, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { RunResult, TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createFakeSupervisedChildProcess } from '../test-support/fake-supervised-child-process.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -135,30 +136,21 @@ async function assertProtocolOrder(scope: TestScope, phase: Phase): Promise<void
     }
 }
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'supervised child protocol order',
-    children: [
-        ...phases.map(function protocolPhase(phase) {
-            return createTestCase({
-                ...metadata,
-                title: `validates child messages during ${phase}`,
-                async body(scope: TestScope) {
-                    await assertProtocolOrder(scope, phase);
-                    return scope.assert.collect();
-                }
-            });
-        }),
-        createTestCase({
+export const testNode = suite('supervised child protocol order', [
+    ...phases.map(function protocolPhase(phase) {
+        return test({
             ...metadata,
-            title: 'collection timings remain valid when parent timing collection is absent',
-            async body(scope) {
-                const completed = await executeProtocolPhase('collection-timing');
-                scope.assert.equal(completed.status, 'passed');
-                scope.assert.deepEqual(completed.runnerErrors, []);
+            title: `validates child messages during ${phase}`,
+            async body(scope: TestScope) {
+                await assertProtocolOrder(scope, phase);
                 return scope.assert.collect();
             }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+        });
+    }),
+    test('collection timings remain valid when parent timing collection is absent', async function (scope) {
+        const completed = await executeProtocolPhase('collection-timing');
+        scope.assert.equal(completed.status, 'passed');
+        scope.assert.deepEqual(completed.runnerErrors, []);
+        return scope.assert.collect();
+    })
+]);

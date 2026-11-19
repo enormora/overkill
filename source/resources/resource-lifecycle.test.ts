@@ -1,5 +1,7 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestNode, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
+import { type TestNode, type TestScope, createTestCase } from '../packages/engine/engine.entry-point.ts';
+
 import { testNode as workloadResourceTestNode } from './workload-resource.test.ts';
 import {
     defineResource,
@@ -523,26 +525,18 @@ function lifecycleTestCase(
     });
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/resources/resource-lifecycle.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        workloadResourceTestNode,
-        lifecycleTestCase(
-            'startRuntime acquires dependencies and disposes them once in reverse order',
-            assertRuntimeLifecycle
-        ),
-        lifecycleTestCase('startRuntime shares dependency handles within one session', assertSharedDependencies),
-        lifecycleTestCase('startRuntime acquires independent resources concurrently', assertConcurrentAcquisition),
-        lifecycleTestCase('startRuntime cleans acquired resources after setup failure', assertAcquireFailureCleanup),
-        lifecycleTestCase(
-            'runtime session reports disposal failures and keeps disposeOnce idempotent',
-            assertDisposalFailure
-        ),
-        lifecycleTestCase('startRuntime rejects invalid dependency graphs before acquisition', assertGraphFailures)
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/resources/resource-lifecycle.test.ts', [
+    workloadResourceTestNode,
+    lifecycleTestCase(
+        'startRuntime acquires dependencies and disposes them once in reverse order',
+        assertRuntimeLifecycle
+    ),
+    lifecycleTestCase('startRuntime shares dependency handles within one session', assertSharedDependencies),
+    lifecycleTestCase('startRuntime acquires independent resources concurrently', assertConcurrentAcquisition),
+    lifecycleTestCase('startRuntime cleans acquired resources after setup failure', assertAcquireFailureCleanup),
+    lifecycleTestCase(
+        'runtime session reports disposal failures and keeps disposeOnce idempotent',
+        assertDisposalFailure
+    ),
+    lifecycleTestCase('startRuntime rejects invalid dependency graphs before acquisition', assertGraphFailures)
+]);

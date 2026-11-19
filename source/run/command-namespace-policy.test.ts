@@ -1,18 +1,18 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { commandNamespace } from '../test-support/command-namespace.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 
 const context = { cwd: '/project', configPath: null, arguments: [ 'selected' ] };
-export const testNode = suite('lazy command namespace routes', [
-    test('does not load command families while creating routes', function (scope: TestScope) {
+export const testNode = authoredSuite('lazy command namespace routes', [
+    authoredTest('does not load command families while creating routes', function (scope: TestScope) {
         const fixture = commandNamespace(null);
         scope.assert.deepEqual(fixture.loads, []);
         scope.assert.deepEqual(fixture.calls, []);
         return scope.assert.collect();
     }),
     ...([ 'list', 'prune', 'compact', 'clear' ] as const).map(function (verb) {
-        return test(`loads and forwards history ${verb}`, async function (scope: TestScope) {
+        return authoredTest(`loads and forwards history ${verb}`, async function (scope: TestScope) {
             const fixture = commandNamespace(null);
             const request = { cwd: '/project', configPath: null, dryRun: true, yes: false };
             const result = await fixture.commands.history[verb](request);
@@ -23,7 +23,7 @@ export const testNode = suite('lazy command namespace routes', [
         });
     }),
     ...([ 'inspect', 'promote', 'migrate' ] as const).map(function (verb) {
-        return test(`loads and forwards corpus ${verb}`, async function (scope: TestScope) {
+        return authoredTest(`loads and forwards corpus ${verb}`, async function (scope: TestScope) {
             const fixture = commandNamespace(null);
             const request = {
                 cwd: '/project',
@@ -41,7 +41,7 @@ export const testNode = suite('lazy command namespace routes', [
             return scope.assert.collect();
         });
     }),
-    test('delegates merge requests without loading unrelated families', async function (scope: TestScope) {
+    authoredTest('delegates merge requests without loading unrelated families', async function (scope: TestScope) {
         const fixture = commandNamespace(null);
         const request = { cwd: '/project', configPath: null, paths: [ 'first.json', 'second.json' ] };
         await fixture.commands.mergeResults(request);
@@ -50,7 +50,7 @@ export const testNode = suite('lazy command namespace routes', [
         return scope.assert.collect();
     }),
     ...([ 'replayRun', 'replayWitness' ] as const).map(function (verb) {
-        return test(`routes ${verb} through its own lazy dependency`, async function (scope: TestScope) {
+        return authoredTest(`routes ${verb} through its own lazy dependency`, async function (scope: TestScope) {
             const fixture = commandNamespace(null);
             const result = await fixture.commands[verb](context);
             scope.assert.deepEqual(fixture.loads, [ verb === 'replayRun' ? 'recorded' : 'replay' ]);
@@ -62,7 +62,7 @@ export const testNode = suite('lazy command namespace routes', [
             return scope.assert.collect();
         });
     }),
-    test('routes calibration through benchmark commands', async function (scope: TestScope) {
+    authoredTest('routes calibration through benchmark commands', async function (scope: TestScope) {
         const fixture = commandNamespace(null);
         const request = { cwd: '/project', configPath: null, runRequest: defaultRunRequest() };
         await fixture.commands.bench.calibrate(request);
@@ -70,7 +70,7 @@ export const testNode = suite('lazy command namespace routes', [
         scope.assert.deepEqual(fixture.calls, [ { verb: 'calibrate', request } ]);
         return scope.assert.collect();
     }),
-    test('preserves delegated route failures', async function (scope: TestScope) {
+    authoredTest('preserves delegated route failures', async function (scope: TestScope) {
         const failure = new Error('command failed');
         const fixture = commandNamespace(failure);
         await scope.assert.rejects(async function () {
@@ -80,4 +80,3 @@ export const testNode = suite('lazy command namespace routes', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -2,9 +2,8 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { spawn } from 'node-pty';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createHistory, normalizeConfig } from '../packages/run/run.entry-point.ts';
 
 const binary = fileURLToPath(new URL('../packages/test/overkill.entry-point.ts', import.meta.url));
@@ -39,7 +38,7 @@ async function inProject(operation: (project: TerminalProject) => Promise<void>)
         await rm(root, { recursive: true, force: true });
     }
 }
-export const testNode = suite('history terminal confirmation', [
+export const testNode = authoredSuite('history terminal confirmation', [
     test('accepting confirmation clears persisted history', async function (scope: TestScope) {
         await inProject(async function accepted({ root, indexPath }) {
             const result = await clearInTerminal(root, 'Y\r');
@@ -70,4 +69,3 @@ export const testNode = suite('history terminal confirmation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

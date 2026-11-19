@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { resourceImplementationBinding } from '../test-support/resource-implementation-binding.ts';
 import { testNode as observers } from './resource-observer-binding.test.ts';
 import { defineResourceReference } from './resource-reference.ts';
@@ -14,7 +14,7 @@ const resourceDeclaration = {
     scenarios: {},
     workload: null
 } as const;
-export const testNode = suite('resource implementation binding', [
+export const testNode = authoredSuite('resource implementation binding', [
     observers,
     test('binds owner acquisition, disposal, projection and scenario exposure', async function (scope: TestScope) {
         const fixture = resourceImplementationBinding();
@@ -236,4 +236,3 @@ export const testNode = suite('resource implementation binding', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

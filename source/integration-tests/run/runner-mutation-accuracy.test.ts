@@ -1,6 +1,6 @@
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { z } from 'zod/v4';
-import { suite, test } from '../../packages/test/test.entry-point.ts';
 import { mutationModes, sourceMutationModules } from './fixtures/mutation-evidence/mutation-project.test.ts';
 import { captureMutationCampaign, verifyMutationAccuracy } from './mutation-accuracy-driver.test.ts';
 import {
@@ -61,7 +61,7 @@ const campaignRequests = mutationModes.flatMap(function executionModes(mode) {
     });
 });
 const campaigns = campaignRequests.map(function campaignCase({ mode, seed, repetition }) {
-    return test(
+    return authoredTest(
         `${mode.processModel} freshState ${String(mode.freshState)} seed ${seed} repetition ${repetition}`,
         async function (scope) {
             const evidence = await verifyMutationAccuracy(sourceMutationModules, mode, seed, mutationCoverageModes);
@@ -81,9 +81,9 @@ const campaigns = campaignRequests.map(function campaignCase({ mode, seed, repet
     );
 });
 
-export const testNode = suite('mutation campaign accuracy', [
+export const testNode = authoredSuite('mutation campaign accuracy', [
     ...campaigns,
-    test('rejects incomplete and incorrectly attributed campaign evidence', async function (scope) {
+    authoredTest('rejects incomplete and incorrectly attributed campaign evidence', async function (scope) {
         const baseline = await captureMutationCampaign(
             sourceMutationModules,
             { processModel: 'in-process', freshState: false },
@@ -103,7 +103,7 @@ export const testNode = suite('mutation campaign accuracy', [
         return scope.assert.collect();
     }),
     ...mutationModes.map(function cacheModes(mode) {
-        return test(
+        return authoredTest(
             `${mode.processModel} freshState ${String(mode.freshState)} cache limitation`,
             async function (scope) {
                 const output = await executeMutationScript(mutationCacheScript, [
@@ -127,5 +127,3 @@ export const testNode = suite('mutation campaign accuracy', [
         );
     })
 ]);
-
-await runIfMain(import.meta, testNode);

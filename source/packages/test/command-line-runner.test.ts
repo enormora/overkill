@@ -1,16 +1,15 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../engine/engine.entry-point.ts';
 import { passingResult, runCommandLine, testExitCodes } from '../../test-support/command-line-test-driver.ts';
 
 const emptyTestData = { annotations: {}, controls: {} } as const;
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
+export const testNode = suite({
     title: 'source/packages/test/command-line-runner.test.ts',
     ...emptyTestData,
     children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper parses explicit run paths',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -58,8 +57,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper parses explicit list paths',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -100,8 +98,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper writes list stdout lines',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -119,8 +116,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper maps unsupported list flags to argument errors',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -138,8 +134,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper parses config and profile flags',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -157,8 +152,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper rejects malformed config arguments before runner loading',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -182,8 +176,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper rejects process usage flags before loading the runner',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -212,8 +205,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper preserves path operands after delimiter',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -226,8 +218,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper writes fallback diagnostics and applies run exit code',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -247,8 +238,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper parses run selectors',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -292,8 +282,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper parses list selectors',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -325,8 +314,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper rejects malformed run filters',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -345,5 +333,3 @@ export const testNode = createSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

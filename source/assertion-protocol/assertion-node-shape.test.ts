@@ -1,29 +1,11 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { assertionSources } from './assertion-node-shape.ts';
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/assertion-protocol/assertion-node-shape.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'assertionSources declares the built-in assertion origins',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                scope.assert.deepEqual(assertionSources, [ 'assert', 'require' ]);
+export const testNode = suite('source/assertion-protocol/assertion-node-shape.test.ts', [
+    test('assertionSources declares the built-in assertion origins', function (scope: OverkillScope) {
+        scope.assert.deepEqual(assertionSources, [ 'assert', 'require' ]);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

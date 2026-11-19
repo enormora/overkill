@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     defineResource,
     withFailureArtifacts,
@@ -10,7 +11,6 @@ import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { executeInlineEvidence } from '../test-support/failure-evidence-fixture.ts';
 import { currentAttachmentLimits } from '../packages/resources/attachment-context.entry-point.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const evidence = { name: 'diagnostic', mediaType: 'application/json' };
 function throwCaptureFailure(cause: unknown): never {
     throw cause;
@@ -166,42 +166,21 @@ async function assertExpiredWitness(scope: TestScope): Promise<void> {
     }, { message: 'Simulation witnesses require runner-managed integration execution.' });
     scope.assert.deepEqual(fixture.store.artifacts(), []);
 }
-export const testNode = createSuite({
-    ...metadata,
-    title: 'source/run/resource-failure-capture.test.ts',
-    children: [
-        createTestCase({
-            ...metadata,
-            title: 'witness sinks reject calls outside their integration run',
-            async body(scope: TestScope) {
-                await assertExpiredWitness(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'all lifetime collectors and disposal run after combined failures',
-            async body(scope: TestScope) {
-                await assertCombinedFailures(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'attachment operation failures preserve body verdicts and stop retries',
-            async body(scope: TestScope) {
-                await assertCollectorOperationFailure(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'direct resource collectors receive the selected default scenario',
-            async body(scope: TestScope) {
-                await assertDefaultScenario(scope);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/resource-failure-capture.test.ts', [
+    test('witness sinks reject calls outside their integration run', async function (scope: TestScope) {
+        await assertExpiredWitness(scope);
+        return scope.assert.collect();
+    }),
+    test('all lifetime collectors and disposal run after combined failures', async function (scope: TestScope) {
+        await assertCombinedFailures(scope);
+        return scope.assert.collect();
+    }),
+    test('attachment operation failures preserve body verdicts and stop retries', async function (scope: TestScope) {
+        await assertCollectorOperationFailure(scope);
+        return scope.assert.collect();
+    }),
+    test('direct resource collectors receive the selected default scenario', async function (scope: TestScope) {
+        await assertDefaultScenario(scope);
+        return scope.assert.collect();
+    })
+]);

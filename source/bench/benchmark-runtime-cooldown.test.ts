@@ -1,6 +1,6 @@
 import { mock, type Mock } from 'node:test';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { createDeterministicClock, type Clock, type DeterministicClock } from '@enormora/clock';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { defaultRuntimeCooldownPolicy } from '../packages/bench/bench.entry-point.ts';
 import type { BenchmarkCooldownResult } from '../engine/benchmark-result.ts';
 import { settleBenchmarkRuntime, type RuntimeCooldownOutcome } from './benchmark-runtime-cooldown.ts';
@@ -71,7 +71,7 @@ async function completeObservationWindow(
     await scope.settleAsyncWork();
 }
 
-export const testNode = suite('bounded runtime cooldown', [
+export const testNode = authoredSuite('bounded runtime cooldown', [
     test('requires consecutive quiet windows and accepts threshold equality', async function (scope) {
         const cooldown = startCooldown([ 0.1, 0.8, 0.1, 0.1 ], 0);
         scope.cleanup(function () {

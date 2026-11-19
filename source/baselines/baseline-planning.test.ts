@@ -1,7 +1,9 @@
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { testNode as recordedPolicy } from '../run/recorded-baseline-policy.test.ts';
 import { testNode as ordinaryExecution } from '../run/ordinary-baseline-suite.test.ts';
 import { testNode as ordinaryAdapters } from '../run/baseline-adapter.test.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import {
     baselineIdentityKey,
@@ -19,7 +21,7 @@ const identity: BaselineIdentity = {
     comparisonContext: {},
     work: createDefaultWorkId(createCaseId('output.test.ts', [], 'output', null))
 };
-export const testNode = suite('baseline contracts', [
+export const testNode = authoredSuite('baseline contracts', [
     ordinaryAdapters,
     recordedPolicy,
     ordinaryExecution,

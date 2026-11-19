@@ -1,6 +1,7 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import { Random } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     generatedCandidate,
@@ -122,7 +123,7 @@ function assertMappedInput(scope: TestScope, candidate: GeneratedInput<MappedInp
     scope.assert.deepEqual(candidate.reconstruct().repeated, [ 'same', 'same' ]);
 }
 
-export const testNode = suite('reconstructed generator validity', [
+export const testNode = authoredSuite('reconstructed generator validity', [
     test('reconstructs the exact dependent candidates selected by contextual shrinking', function (scope: TestScope) {
         const domain = prepareGenerator(indexedGenerator, generatorContext(3, 2, 100_000));
         const root = generatedCandidate(domain, 42);

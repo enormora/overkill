@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { defineTestFamily } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { normalizeConfig } from '../packages/run/run.entry-point.ts';
@@ -86,7 +86,7 @@ async function preparation(): Promise<RunnerFamilyPreparation> {
     return { engine, signal, sourcePlan, definition, binding, prepared, projectRoot: '/project' };
 }
 
-export const testNode = suite('prepared family record plans', [
+export const testNode = authoredSuite('prepared family record plans', [
     test(
         'retains configuration-only provenance and the full catalog alongside selected facts',
         async function (scope: TestScope) {
@@ -149,4 +149,3 @@ export const testNode = suite('prepared family record plans', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

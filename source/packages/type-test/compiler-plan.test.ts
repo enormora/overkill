@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createEngine, type TestPlan, type TestScope } from '../engine/engine.entry-point.ts';
 import { frozenTypeProject } from '../../test-support/frozen-type-project.ts';
 import type { CheckerPreparation } from './checker-plan.ts';
@@ -54,7 +54,7 @@ async function preparedProject(scope: TestScope): Promise<PreparedProject> {
     return { directory, original, settings, preparation };
 }
 
-export const testNode = suite('compiler planning', [
+export const testNode = authoredSuite('compiler planning', [
     test('rejects empty matrices and non-exact versions', function (scope) {
         scope.assert.false(
             typeTestSettingsSchema
@@ -118,5 +118,3 @@ export const testNode = suite('compiler planning', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

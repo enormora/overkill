@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { AttemptId, RunnerError, TestPlanCase, WorkId } from '../packages/engine/engine.entry-point.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution-context.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -48,7 +49,7 @@ function assertSnapshotError(
     scope.assert.deepEqual({ work: error.attributedToWork, attempt: error.attributedToAttempt }, { work, attempt });
 }
 
-export const testNode = suite('snapshot runtime error ownership', [
+export const testNode = authoredSuite('snapshot runtime error ownership', [
     test('attributes infrastructure errors to attempts and drains each once', async function (scope: TestScope) {
         const { testCase, policy } = createPolicyFixture(scope);
         const cause = new TypeError('invalid snapshot');

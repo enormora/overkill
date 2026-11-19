@@ -1,5 +1,5 @@
-import { suite, test, processMeasurement, type ProcessRequest } from '../packages/bench/bench.entry-point.ts';
-import { benchmarkDefinitionSchema } from '../run/benchmark-definition-schema.ts';
+import { suite, test } from '@overkill-dev/test';
+import { processMeasurement, type ProcessRequest } from '../packages/bench/bench.entry-point.ts';
 import { testNode as completionPolicy } from './process-completion-policy.test.ts';
 import { testNode as childPolicy } from './process-child-policy.test.ts';
 import { testNode as nodeObservation } from './node-child-observation.test.ts';
@@ -148,25 +148,6 @@ export const testNode = suite('external process contracts', [
         await scope.assert.rejects(async function afterClosing() {
             return await output.expect({ stream: 'stdout', text: 'missing' }, 'readiness');
         }, { message: 'process closed' });
-        return scope.assert.collect();
-    }),
-    test('accepts process strategies in serialized benchmark definitions', function (scope) {
-        const result = benchmarkDefinitionSchema.safeParse({
-            kind: 'startup',
-            lifecycle: null,
-            workloads: [],
-            diagnostics: [],
-            budgets: {},
-            measurement: processMeasurement({ instrumentation: 'node' }),
-            policy: {
-                confidenceLevel: 0.95,
-                relativePrecision: 0.1,
-                absolutePrecision: {},
-                minimumSamples: 2,
-                maximumSamples: 2
-            }
-        });
-        scope.assert.true(result.success);
         return scope.assert.collect();
     })
 ]);

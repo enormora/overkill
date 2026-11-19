@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { defaultFailureArtifactPolicy } from '../engine/failure-artifact-policy.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { ConfigError, defineConfig, normalizeConfig, type ProfileConfig } from '../packages/run/config.entry-point.ts';
 import { createSingleConfigModuleLoader, configFixtureCwd } from '../test-support/run-config-module-loader.ts';
 import { benchmarkHostPolicySchema } from './benchmark-host.ts';
@@ -87,7 +88,7 @@ const invalidExecutions: readonly { readonly execution: ProfileConfig['execution
     }
 ];
 
-export const testNode = suite('benchmark profile configuration', [
+export const testNode = authoredSuite('benchmark profile configuration', [
     test('rejects normalized execution policies that invalidate benchmark isolation', function (scope) {
         for (const { execution, message } of invalidExecutions) {
             scope.assert.throws(function validateIncompatibleBenchmark() {
@@ -292,5 +293,3 @@ export const testNode = suite('benchmark profile configuration', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

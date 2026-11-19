@@ -39,7 +39,7 @@ export function createEngine(): Engine {
     return createEngineWithOwner(createEngineDependencies(), createTestNodeOwner());
 }
 
-const defaultEngineKey = Symbol.for('@overkill-dev/engine/defaultEngine');
+const defaultEngineKey = Symbol.for('@overkill-dev/engine/defaultEngine/v2');
 const engineMethods: readonly (keyof Engine)[] = [
     'createPropertyTestCase',
     'createBenchmarkTestCase',

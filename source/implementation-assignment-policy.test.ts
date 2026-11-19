@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from './packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { implementationAdmission } from './test-support/implementation-admission.ts';
 import {
     assignmentFacts,
@@ -7,7 +8,7 @@ import {
 } from './implementation-assignment.ts';
 import { withImplementationActivations } from './implementation-participant.ts';
 
-export const testNode = suite('implementation assignment admission', [
+export const testNode = authoredSuite('implementation assignment admission', [
     test('collects stable assignment facts and rejects duplicate ownership', function (scope: TestScope) {
         const fixture = implementationAdmission();
         const facts = assignmentFacts(fixture.request);

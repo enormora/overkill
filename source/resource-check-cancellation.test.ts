@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from './packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { observationCase } from './test-support/observation-lifetime.ts';
 import { withExecutionOwner } from './execution-ownership.ts';
 import {
@@ -9,7 +9,7 @@ import {
     stopResourceCheckWork
 } from './resource-check-cancellation.ts';
 
-export const testNode = suite('resource check cancellation ownership', [
+export const testNode = authoredSuite('resource check cancellation ownership', [
     test('stops only matching work and preserves outer attempt registrations', async function (scope: TestScope) {
         const work = observationCase().workId;
         const peer = { ...work, case: { ...work.case, title: 'peer' } };
@@ -47,4 +47,3 @@ export const testNode = suite('resource check cancellation ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,6 @@
-import { createRoot, createTestPlan, type TestCase, type RunResult } from '../packages/engine/engine.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestCase, type RunResult, createRoot, createTestPlan } from '../packages/engine/engine.entry-point.ts';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { benchmark } from './benchmark-authoring.ts';
 import { wallClockMeasurement } from './measurement-strategy.ts';
@@ -10,7 +11,7 @@ async function executeWithLeakDetection(node: TestCase): Promise<RunResult> {
     return await createTestEngine().execute(plan);
 }
 
-export const testNode = suite('measurement async leak attribution', [
+export const testNode = authoredSuite('measurement async leak attribution', [
     test('excludes checkpoint delivery promises from workload leak evidence', async function (scope) {
         const result = await executeWithLeakDetection(benchmark('clean', {
             kind: 'runtime',

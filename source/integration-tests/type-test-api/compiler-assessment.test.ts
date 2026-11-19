@@ -1,7 +1,6 @@
 import { join } from 'node:path';
 import { readdir, readFile } from 'node:fs/promises';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { frozenTypeProject } from '../../test-support/frozen-type-project.ts';
 import { assessCompilerApi, type CapabilityEvidence } from '../../test-support/type-test-api-assessment.ts';
 import { relationSource } from '../../test-support/type-test-relation-project.ts';
@@ -53,7 +52,7 @@ function assertEvidence(scope: TestScope, evidence: readonly CapabilityEvidence[
     );
 }
 
-export const testNode = suite('TypeScript beta public API assessment', [
+export const testNode = authoredSuite('TypeScript beta public API assessment', [
     test('observes original types and assignability without emitting files', async function (scope) {
         const directory = await frozenTypeProject(scope, {
             'tsconfig.json': JSON.stringify({
@@ -113,4 +112,3 @@ export const testNode = suite('TypeScript beta public API assessment', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

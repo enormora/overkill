@@ -1,13 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import { z } from 'zod/v4';
 
-import {
-    defaultFailureArtifactPolicy,
-    createSuite,
-    createTestCase,
-    defineReporter,
-    type TestScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy, defineReporter, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { attachmentRunFixture, localAttachmentRunFixture } from '../test-support/attachment-run-fixture.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { attachmentsForProducer } from '../attachments/attachment-context.ts';
@@ -16,7 +11,6 @@ import { executeWithRuntimeAttachments } from './runtime-attachment-boundary.ts'
 import { runWithWorkerAttachments } from './attachment-worker-context.ts';
 import { reporterWithAttachments } from './attachment-reporter.ts';
 
-const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const completedRecord = z.object({
     status: z.literal('completed'),
     result: z.object({
@@ -87,26 +81,13 @@ async function assertNoSelectedWork(scope: TestScope): Promise<void> {
     scope.assert.equal(native, 42);
 }
 
-export const testNode = createSuite({
-    ...definition,
-    title: 'source/run/runtime-attachment-session.test.ts',
-    children: [
-        createTestCase({
-            ...definition,
-            title: 'completed records contain retained lifecycle attachments',
-            async body(scope: TestScope) {
-                await assertCompletedRecord(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'empty selections and unmanaged workers avoid attachment sessions',
-            async body(scope: TestScope) {
-                await assertNoSelectedWork(scope);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/runtime-attachment-session.test.ts', [
+    test('completed records contain retained lifecycle attachments', async function (scope: TestScope) {
+        await assertCompletedRecord(scope);
+        return scope.assert.collect();
+    }),
+    test('empty selections and unmanaged workers avoid attachment sessions', async function (scope: TestScope) {
+        await assertNoSelectedWork(scope);
+        return scope.assert.collect();
+    })
+]);

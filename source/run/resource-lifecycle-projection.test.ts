@@ -1,10 +1,7 @@
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { z } from 'zod/v4';
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+
 import { defineResource } from '../resources/resources.ts';
 import { testNode as sessions } from './projected-resource-lifecycle-policy.test.ts';
 import {
@@ -29,12 +26,12 @@ const databaseResource = defineResource({
     dispose: null
 });
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/resource-lifecycle-projection.test.ts',
     children: [
         sessions,
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'resource lifecycle projection preserves null payloads',
             body(scope: OverkillScope) {
@@ -61,7 +58,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'resource lifecycle projection preserves local resources',
             body(scope: OverkillScope) {
@@ -78,5 +75,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { OrdinaryBaselineAdapter, OrdinaryBaselineEvaluation } from '../baselines/ordinary-baseline-adapter.ts';
 import { baselineIdentityKey } from '../baselines/baseline-planning.ts';
 import { baselineCaseEvent, storedBaseline } from '../test-support/baseline-case-fixture.ts';
@@ -16,7 +17,7 @@ function adapter(evaluation: OrdinaryBaselineEvaluation): OrdinaryBaselineAdapte
     };
 }
 const existing = new Map([ [ baselineIdentityKey(ordinaryBaselineIdentity(storedBaseline)), storedBaseline ] ]);
-export const testNode = suite('ordinary baseline evaluation', [
+export const testNode = authoredSuite('ordinary baseline evaluation', [
     test('ignores explicitly inapplicable observations', async function (scope: TestScope) {
         const result = await evaluateBaselineAdapter({
             adapter: adapter({ kind: 'not-applicable' }),

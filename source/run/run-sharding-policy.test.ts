@@ -1,10 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { testNode as argumentsPolicy } from '../packages/test/run-shard-parser.test.ts';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import type { CollectedRunCaseEntry } from './collected-run-plan.ts';
 import {
@@ -80,155 +77,124 @@ function runCaseEntry(title: string): CollectedRunCaseEntry {
     };
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'run shard policy',
-    children: [
-        argumentsPolicy,
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'run shard hashing canonicalizes work-unit identity before hashing',
-            body(scope: OverkillScope) {
-                const recording = createRecordingHasher(1n);
-                const decomposedAccent = 'Cafe\u{301}';
-                const richUnit = {
-                    key: decomposedAccent,
-                    mode: 'case',
-                    runtime: {
-                        dimensions: {
-                            z: 'last',
-                            a: decomposedAccent
-                        },
-                        enabled: true,
-                        list: [ false, null, 7, decomposedAccent ],
-                        name: 'node',
-                        variantId: null
-                    },
-                    workload: {
-                        name: 'load',
-                        params: {
-                            beta: '2',
-                            alpha: decomposedAccent
-                        }
-                    }
-                } as unknown as WorkUnitId;
-
-                scope.assert.equal(
-                    workUnitBelongsToShard(richUnit, { index: 2, total: 4 }, recording.hasher),
-                    true
-                );
-                scope.assert.deepEqual(recording.values(), [
-                    '{"key":"Café","mode":"case","runtime":{"dimensions":{"a":"Café","z":"last"},"enabled":true,"list":[false,null,7,"Café"],"name":"node","variantId":null},"workload":{"name":"load","params":{"alpha":"Café","beta":"2"}}}'
-                ]);
-
-                return scope.assert.collect();
+export const testNode = suite('run shard policy', [
+    argumentsPolicy,
+    test('run shard hashing canonicalizes work-unit identity before hashing', function (scope: OverkillScope) {
+        const recording = createRecordingHasher(1n);
+        const decomposedAccent = 'Cafe\u{301}';
+        const richUnit = {
+            key: decomposedAccent,
+            mode: 'case',
+            runtime: {
+                dimensions: {
+                    z: 'last',
+                    a: decomposedAccent
+                },
+                enabled: true,
+                list: [ false, null, 7, decomposedAccent ],
+                name: 'node',
+                variantId: null
+            },
+            workload: {
+                name: 'load',
+                params: {
+                    beta: '2',
+                    alpha: decomposedAccent
+                }
             }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'run shard hashing rejects sharded checks without a hasher',
-            body(scope: OverkillScope) {
-                scope.assert.throws(function shardWithoutHasher() {
-                    workUnitBelongsToShard(unit, { index: 1, total: 2 }, null);
-                }, {
-                    message: 'Sharded planning requires a shard hasher.'
-                });
+        } as unknown as WorkUnitId;
 
-                return scope.assert.collect();
+        scope.assert.equal(
+            workUnitBelongsToShard(richUnit, { index: 2, total: 4 }, recording.hasher),
+            true
+        );
+        scope.assert.deepEqual(recording.values(), [
+            '{"key":"Café","mode":"case","runtime":{"dimensions":{"a":"Café","z":"last"},"enabled":true,"list":[false,null,7,"Café"],"name":"node","variantId":null},"workload":{"name":"load","params":{"alpha":"Café","beta":"2"}}}'
+        ]);
+
+        return scope.assert.collect();
+    }),
+    test('run shard hashing rejects sharded checks without a hasher', function (scope: OverkillScope) {
+        scope.assert.throws(function shardWithoutHasher() {
+            workUnitBelongsToShard(unit, { index: 1, total: 2 }, null);
+        }, {
+            message: 'Sharded planning requires a shard hasher.'
+        });
+
+        return scope.assert.collect();
+    }),
+    test('run shard hashing rejects noncanonical identity values', function (scope: OverkillScope) {
+        scope.assert.throws(function shardInvalidNumberIdentity() {
+            workUnitBelongsToShard(
+                {
+                    ...unit,
+                    invalid: Number.NaN
+                } as unknown as WorkUnitId,
+                { index: 1, total: 2 },
+                createRecordingHasher(0n).hasher
+            );
+        }, {
+            message: 'Cannot serialize number value for shard partitioning.'
+        });
+        scope.assert.throws(function shardInvalidUndefinedIdentity() {
+            workUnitBelongsToShard(
+                {
+                    ...unit,
+                    invalid: undefined
+                } as unknown as WorkUnitId,
+                { index: 1, total: 2 },
+                createRecordingHasher(0n).hasher
+            );
+        }, {
+            message: 'Cannot serialize undefined value for shard partitioning.'
+        });
+
+        return scope.assert.collect();
+    }),
+    test('run shard filtering keeps collected cases assigned to the shard', function (scope: OverkillScope) {
+        const first = runCaseEntry('first');
+        const second = runCaseEntry('second');
+        const hasher: RunShardHasher = {
+            hash(value) {
+                return value.includes('second') ? 1n : 0n;
             }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'run shard hashing rejects noncanonical identity values',
-            body(scope: OverkillScope) {
-                scope.assert.throws(function shardInvalidNumberIdentity() {
-                    workUnitBelongsToShard(
-                        {
-                            ...unit,
-                            invalid: Number.NaN
-                        } as unknown as WorkUnitId,
-                        { index: 1, total: 2 },
-                        createRecordingHasher(0n).hasher
-                    );
-                }, {
-                    message: 'Cannot serialize number value for shard partitioning.'
-                });
-                scope.assert.throws(function shardInvalidUndefinedIdentity() {
-                    workUnitBelongsToShard(
-                        {
-                            ...unit,
-                            invalid: undefined
-                        } as unknown as WorkUnitId,
-                        { index: 1, total: 2 },
-                        createRecordingHasher(0n).hasher
-                    );
-                }, {
-                    message: 'Cannot serialize undefined value for shard partitioning.'
-                });
+        };
+        const plan: CollectedRunPlan = {
+            implementations: null,
 
-                return scope.assert.collect();
+            family: null,
+            defined: 2,
+            discoveredFiles: [
+                {
+                    cases: [ first.testCase, second.testCase ],
+                    file: first.file
+                }
+            ],
+            files: [
+                {
+                    cases: [ first.testCase, second.testCase ],
+                    file: first.file
+                }
+            ],
+            orphans: [],
+            root: {
+                annotations,
+                controls,
+                title: 'root'
             }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'run shard filtering keeps collected cases assigned to the shard',
-            body(scope: OverkillScope) {
-                const first = runCaseEntry('first');
-                const second = runCaseEntry('second');
-                const hasher: RunShardHasher = {
-                    hash(value) {
-                        return value.includes('second') ? 1n : 0n;
-                    }
-                };
-                const plan: CollectedRunPlan = {
-                    implementations: null,
+        };
 
-                    family: null,
-                    defined: 2,
-                    discoveredFiles: [
-                        {
-                            cases: [ first.testCase, second.testCase ],
-                            file: first.file
-                        }
-                    ],
-                    files: [
-                        {
-                            cases: [ first.testCase, second.testCase ],
-                            file: first.file
-                        }
-                    ],
-                    orphans: [],
-                    root: {
-                        annotations,
-                        controls,
-                        title: 'root'
-                    }
-                };
+        scope.assert.deepEqual(
+            shardCollectedRunCaseEntries([ first, second ], { index: 1, total: 2 }, hasher),
+            [ first ]
+        );
+        scope.assert.deepEqual(
+            shardCollectedRunPlanCases(plan, { index: 2, total: 2 }, hasher).map(function toTitle(entry) {
+                return entry.testCase.title;
+            }),
+            [ 'second' ]
+        );
 
-                scope.assert.deepEqual(
-                    shardCollectedRunCaseEntries([ first, second ], { index: 1, total: 2 }, hasher),
-                    [ first ]
-                );
-                scope.assert.deepEqual(
-                    shardCollectedRunPlanCases(plan, { index: 2, total: 2 }, hasher).map(function toTitle(entry) {
-                        return entry.testCase.title;
-                    }),
-                    [ 'second' ]
-                );
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

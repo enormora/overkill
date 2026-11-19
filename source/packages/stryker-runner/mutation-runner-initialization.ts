@@ -7,7 +7,6 @@ import {
     type FrozenMicrotestPolicy
 } from '../run/run.entry-point.ts';
 import { createMutationDiagnosticContext, type MutationDiagnosticContext } from './mutation-diagnostic-storage.ts';
-import { defaultCampaignEndpoint } from './runner-options.ts';
 import { parseRunnerOptions, type OverkillRunnerOptions } from './runner-settings-schema.ts';
 import { assertExcludedAdapter, createMutationSandbox, type MutationSandbox } from './mutation-sandbox.ts';
 import { connectCampaign, type CampaignClient } from './campaign-client.ts';
@@ -87,7 +86,7 @@ async function connectRegisteredCampaign(
     input: RunnerInitialization,
     connect: MutationInitializationRuntime['connect']
 ): Promise<CampaignClient> {
-    const endpoint = campaignEndpointSchema.parse(input.options.overkillCampaign ?? defaultCampaignEndpoint);
+    const endpoint = campaignEndpointSchema.parse(input.options.overkillCampaign);
     const client = await connect(endpoint, input.signal);
     input.connected(client);
     return client;
@@ -123,7 +122,12 @@ export async function initializeCampaignRunner(
 }
 
 export async function initializeMutationRunner(input: RunnerInitialization): Promise<ReadyMutationRunner> {
-    return await initializeCampaignRunner(input, {
+    const { defaultCampaignEndpoint } = await import('./runner-options.ts');
+    const configured = {
+        ...input,
+        options: { ...input.options, overkillCampaign: input.options.overkillCampaign ?? defaultCampaignEndpoint }
+    };
+    return await initializeCampaignRunner(configured, {
         sandbox: createMutationSandbox,
         exclude: assertExcludedAdapter,
         connect: connectCampaign,

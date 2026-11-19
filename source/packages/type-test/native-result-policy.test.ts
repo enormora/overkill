@@ -1,6 +1,7 @@
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import * as ast from 'typescript-beta/ast';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+
 import { sourceCall } from '../../test-support/native-source-fixture.ts';
 import { observationPlan } from '../../test-support/observation-lifetime.ts';
 import { nativeCheckResult, type SiteEvidence, type NativeCheckEvidence } from './native-results.ts';
@@ -35,8 +36,8 @@ function selectedEvidence(message: string | null): NativeCheckEvidence & { reado
     const site = ownedSite(input, message);
     return { ...input, site, assertionPlan: { ...input.assertionPlan, sites: [ site ] } };
 }
-export const testNode = suite('native checker completion policy', [
-    test('rejects executable cases without native assertions', function (scope: TestScope) {
+export const testNode = authoredSuite('native checker completion policy', [
+    authoredTest('rejects executable cases without native assertions', function (scope: TestScope) {
         const result = nativeCheckResult(evidence());
         scope.assert.equal(result.status, 'failed');
         scope.assert.partialDeepEqual<unknown, unknown>(result.perTest[0]?.outcome, {
@@ -45,14 +46,14 @@ export const testNode = suite('native checker completion policy', [
         });
         return scope.assert.collect();
     }),
-    test('retains skipped case reasons without requiring compiler evidence', function (scope: TestScope) {
+    authoredTest('retains skipped case reasons without requiring compiler evidence', function (scope: TestScope) {
         const input = evidence();
         const selected = { ...input.plan.cases[0], execution: { kind: 'skip' as const, reason: 'deliberate' } };
         const result = nativeCheckResult({ ...input, plan: { ...input.plan, cases: [ selected ] } });
         scope.assert.deepEqual<unknown, unknown>(result.perTest[0]?.outcome, { kind: 'skip', reason: 'deliberate' });
         return scope.assert.collect();
     }),
-    test('passes established compiler evidence owned by the selected case', function (scope: TestScope) {
+    authoredTest('passes established compiler evidence owned by the selected case', function (scope: TestScope) {
         const input = selectedEvidence(null);
         const result = nativeCheckResult({
             ...input,
@@ -63,30 +64,33 @@ export const testNode = suite('native checker completion policy', [
         return scope.assert.collect();
     }),
     ...[ null, 'Expected matching types' ].map(function (message) {
-        return test(`retains failed type evidence with annotation ${String(message)}`, function (scope: TestScope) {
-            const input = selectedEvidence(message);
-            const result = nativeCheckResult({
-                ...input,
-                checked: [ checkedSite(input.site, { kind: 'established', holds: false }) ]
-            });
-            scope.assert.equal(result.status, 'failed');
-            scope.assert.partialDeepEqual<unknown, unknown>(result.perTest[0]?.outcome, {
-                kind: 'fail',
-                failures: [ {
-                    kind: 'assertion',
-                    checks: [ {
-                        kind: 'foreign',
-                        source: 'assert',
-                        summary: message ?? 'Type relation sameType does not hold (TypeScript 7.1.0-beta).',
-                        sourceLocations: [ { kind: 'known', file: '/project/case.ts', line: 1, column: 2 } ],
-                        error: { name: 'TypeAssertionError', thrown: 'sameType' }
+        return authoredTest(
+            `retains failed type evidence with annotation ${String(message)}`,
+            function (scope: TestScope) {
+                const input = selectedEvidence(message);
+                const result = nativeCheckResult({
+                    ...input,
+                    checked: [ checkedSite(input.site, { kind: 'established', holds: false }) ]
+                });
+                scope.assert.equal(result.status, 'failed');
+                scope.assert.partialDeepEqual<unknown, unknown>(result.perTest[0]?.outcome, {
+                    kind: 'fail',
+                    failures: [ {
+                        kind: 'assertion',
+                        checks: [ {
+                            kind: 'foreign',
+                            source: 'assert',
+                            summary: message ?? 'Type relation sameType does not hold (TypeScript 7.1.0-beta).',
+                            sourceLocations: [ { kind: 'known', file: '/project/case.ts', line: 1, column: 2 } ],
+                            error: { name: 'TypeAssertionError', thrown: 'sameType' }
+                        } ]
                     } ]
-                } ]
-            });
-            return scope.assert.collect();
-        });
+                });
+                return scope.assert.collect();
+            }
+        );
     }),
-    test('requires matching site identity in compiler evidence', function (scope: TestScope) {
+    authoredTest('requires matching site identity in compiler evidence', function (scope: TestScope) {
         const input = selectedEvidence(null);
         const result = nativeCheckResult({
             ...input,
@@ -99,7 +103,7 @@ export const testNode = suite('native checker completion policy', [
         scope.assert.includes(result.runnerErrors[0]?.message ?? '', 'Missing compiler assertion evidence.');
         return scope.assert.collect();
     }),
-    test('retains unsupported source evidence without inventing assertions', function (scope: TestScope) {
+    authoredTest('retains unsupported source evidence without inventing assertions', function (scope: TestScope) {
         const input = evidence();
         const result = nativeCheckResult({
             ...input,
@@ -121,7 +125,7 @@ export const testNode = suite('native checker completion policy', [
         });
         return scope.assert.collect();
     }),
-    test('retains source issues even when all known assertions pass', function (scope: TestScope) {
+    authoredTest('retains source issues even when all known assertions pass', function (scope: TestScope) {
         const input = selectedEvidence(null);
         const result = nativeCheckResult({
             ...input,
@@ -144,7 +148,7 @@ export const testNode = suite('native checker completion policy', [
         });
         return scope.assert.collect();
     }),
-    test('retains inconclusive type relations after complete source ownership', function (scope: TestScope) {
+    authoredTest('retains inconclusive type relations after complete source ownership', function (scope: TestScope) {
         const input = selectedEvidence(null);
         const result = nativeCheckResult({
             ...input,
@@ -156,7 +160,7 @@ export const testNode = suite('native checker completion policy', [
         });
         return scope.assert.collect();
     }),
-    test('retains assertion failures ahead of missing or unsupported evidence', function (scope: TestScope) {
+    authoredTest('retains assertion failures ahead of missing or unsupported evidence', function (scope: TestScope) {
         const input = selectedEvidence(null);
         const result = nativeCheckResult({
             ...input,
@@ -172,7 +176,7 @@ export const testNode = suite('native checker completion policy', [
         return scope.assert.collect();
     }),
     ...[ new Error('Compiler unavailable'), 'unknown failure' ].map(function (error) {
-        return test(`retains compiler failure ${String(error)}`, function (scope: TestScope) {
+        return authoredTest(`retains compiler failure ${String(error)}`, function (scope: TestScope) {
             const result = nativeCheckResult({ ...evidence(), error });
             scope.assert.equal(result.status, 'failed');
             scope.assert.equal(
@@ -184,4 +188,3 @@ export const testNode = suite('native checker completion policy', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

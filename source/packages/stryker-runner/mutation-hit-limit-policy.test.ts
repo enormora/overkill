@@ -1,7 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { ConfigError } from '../../config/config-error.ts';
 import { RunResolutionError } from '../../run/run-errors.ts';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+
 import { isHitLimitGuard, isWrappedHitLimitGuard } from './mutation-hit-limit.ts';
 
 const guard = new Error('Stryker: Hit count limit reached (42)');
@@ -26,7 +27,7 @@ const rejected: readonly unknown[] = [
     new Error('unrelated', { cause: guard }),
     { ...configuration, failure: { ...configuration.failure, cause: new Error('unrelated') } }
 ];
-export const testNode = suite('mutation hit limit guard recognition', [
+export const testNode = authoredSuite('mutation hit limit guard recognition', [
     ...accepted.map(function (error, index) {
         return test(`recognizes supported guard envelope ${index}`, function (scope: TestScope) {
             scope.assert.true(isWrappedHitLimitGuard(error));
@@ -42,4 +43,3 @@ export const testNode = suite('mutation hit limit guard recognition', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

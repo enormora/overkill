@@ -1,14 +1,8 @@
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { P } from 'ts-pattern';
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
-import type {
-    FailedCheck,
-    FailedCompositeCheck
-} from '../assertion-protocol/assertion-node-shape.ts';
+
+import type { FailedCheck, FailedCompositeCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult } from '../engine/run-result.ts';
@@ -111,426 +105,355 @@ function failureSummaries(result: RunResult): readonly string[] | null {
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/doubles/double-usage.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            annotations: {},
-            controls: {},
-            title: 'negated ordinary argument assertions reject matching calls and accept different calls',
-            async body(scope: OverkillScope) {
-                for (const value of [ 'matching', 'different' ]) {
-                    const result = await executeSingleBody(function (inner: TestScope) {
-                        const call = testDouble.returns('done');
-                        call(value);
-                        inner.assert(doubleUsage.notCalledWith, call, [ 'matching' ]);
-                        return inner.assert.collect();
-                    });
-                    scope.assert.equal(result.summary.failed, value === 'matching' ? 1 : 0);
-                    scope.assert.equal(result.summary.passed, value === 'matching' ? 0 : 1);
-                }
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            annotations: {},
-            controls: {},
-            title: 'once-with assertions report an absent call without inventing argument evidence',
-            async body(scope: OverkillScope) {
+export const testNode = suite('source/doubles/double-usage.test.ts', [
+    test(
+        'negated ordinary argument assertions reject matching calls and accept different calls',
+        async function (scope: OverkillScope) {
+            for (const value of [ 'matching', 'different' ]) {
                 const result = await executeSingleBody(function (inner: TestScope) {
                     const call = testDouble.returns('done');
-                    inner.assert(doubleUsage.calledOnceWith, call, [ 'missing' ]);
+                    call(value);
+                    inner.assert(doubleUsage.notCalledWith, call, [ 'matching' ]);
                     return inner.assert.collect();
                 });
-                scope.assert.equal(result.summary.failed, 1);
-                const composite = firstComposite(result);
-                scope.require.notNull(composite);
-                scope.assert.deepEqual(childSummaries(composite), [ 'call count' ]);
-                return scope.assert.collect();
+                scope.assert.equal(result.summary.failed, value === 'matching' ? 1 : 0);
+                scope.assert.equal(result.summary.passed, value === 'matching' ? 0 : 1);
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            annotations: {},
-            controls: {},
-            title: 'indexed argument assertions reject subjects without double history',
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(function (inner: TestScope) {
-                    inner.assert(doubleUsage.nthCallWith, {}, 0, []);
-                    return inner.assert.collect();
-                });
-                scope.assert.equal(result.summary.failed, 1);
-                scope.assert.includes(JSON.stringify(result.perTest[0]?.outcome), 'Expected an Overkill test double.');
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'pattern mismatches and predicate errors remain failures under negation',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const scenarios = [
-                    { value: 1, negative: false, throwing: false, failed: 1 },
-                    { value: 1, negative: true, throwing: false, failed: 0 },
-                    { value: 'id', negative: false, throwing: false, failed: 0 },
-                    { value: 'id', negative: true, throwing: false, failed: 1 },
-                    { value: 1, negative: false, throwing: true, failed: 1 },
-                    { value: 1, negative: true, throwing: true, failed: 1 }
-                ];
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'once-with assertions report an absent call without inventing argument evidence',
+        async function (scope: OverkillScope) {
+            const result = await executeSingleBody(function (inner: TestScope) {
+                const call = testDouble.returns('done');
+                inner.assert(doubleUsage.calledOnceWith, call, [ 'missing' ]);
+                return inner.assert.collect();
+            });
+            scope.assert.equal(result.summary.failed, 1);
+            const composite = firstComposite(result);
+            scope.require.notNull(composite);
+            scope.assert.deepEqual(childSummaries(composite), [ 'call count' ]);
+            return scope.assert.collect();
+        }
+    ),
+    test('indexed argument assertions reject subjects without double history', async function (scope: OverkillScope) {
+        const result = await executeSingleBody(function (inner: TestScope) {
+            inner.assert(doubleUsage.nthCallWith, {}, 0, []);
+            return inner.assert.collect();
+        });
+        scope.assert.equal(result.summary.failed, 1);
+        scope.assert.includes(JSON.stringify(result.perTest[0]?.outcome), 'Expected an Overkill test double.');
+        return scope.assert.collect();
+    }),
+    test(
+        'pattern mismatches and predicate errors remain failures under negation',
+        async function (scope: OverkillScope) {
+            const scenarios = [
+                { value: 1, negative: false, throwing: false, failed: 1 },
+                { value: 1, negative: true, throwing: false, failed: 0 },
+                { value: 'id', negative: false, throwing: false, failed: 0 },
+                { value: 'id', negative: true, throwing: false, failed: 1 },
+                { value: 1, negative: false, throwing: true, failed: 1 },
+                { value: 1, negative: true, throwing: true, failed: 1 }
+            ];
 
-                for (const scenario of scenarios) {
-                    const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                        testScope.plan(1);
-                        const save = testDouble.returns('saved');
-                        save(scenario.value, { id: 1 });
-                        const pattern = matches(P.when(function inspectValue(value: unknown) {
-                            if (scenario.throwing) {
-                                throw new Error('pattern predicate failed');
-                            }
-                            return typeof value === 'string';
-                        }));
-                        testScope.assert(
-                            scenario.negative ? doubleUsage.notCalledWith : doubleUsage.calledOnceWith,
-                            save,
-                            [ pattern, { id: 1 } ]
-                        );
-                        return testScope.assert.collect();
-                    });
-
-                    scope.assert.equal(result.summary.failed, scenario.failed);
-                    scope.assert.equal(result.summary.passed, 1 - scenario.failed);
-                    if (scenario.throwing) {
-                        const composite = firstComposite(result);
-                        scope.require.notNull(composite);
-                        scope.assert.includes(composite.children[0].summary, 'pattern predicate failed');
-                    }
-                }
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubleUsage call count and mode assertions pass through scope.assert()',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
+            for (const scenario of scenarios) {
                 const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    loadUser('42', { role: 'admin', trace: 'trace-id' });
-
-                    testScope.assert(doubleUsage.called, loadUser);
-                    testScope.assert(doubleUsage.calledOnce, loadUser);
-                    testScope.assert(doubleUsage.callCount, loadUser, 1);
-                    testScope.assert(doubleUsage.interacted, loadUser);
-                    testScope.assert(doubleUsage.interactedOnce, loadUser);
-                    testScope.assert(doubleUsage.interactionCount, loadUser, 1);
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(result.summary.failed, 0);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubleUsage construction count and mode assertions pass through scope.assert()',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const Client = testDouble.constructs<ClientConstructor>({ id: 'client' });
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    const client = new Client('https://api.example.test', { timeout: 500, token: 'primary' });
-
-                    testScope.assert.equal(client.id, 'client');
-                    testScope.assert(doubleUsage.constructed, Client);
-                    testScope.assert(doubleUsage.constructedOnce, Client);
-                    testScope.assert(doubleUsage.constructionCount, Client, 1);
-                    testScope.assert(doubleUsage.interacted, Client);
-                    testScope.assert(doubleUsage.interactedOnce, Client);
-                    testScope.assert(doubleUsage.interactionCount, Client, 1);
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(result.summary.failed, 0);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubleUsage negative mode assertions produce domain summaries',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    loadUser('42', { role: 'admin', trace: 'trace-id' });
-
-                    testScope.assert(doubleUsage.notInteracted, loadUser);
-                    return testScope.assert.collect();
-                });
-                const composite = firstComposite(result);
-                scope.require.notNull(composite);
-                const child = firstChild(composite);
-                scope.require.notNull(child);
-
-                scope.assert.deepEqual(
-                    {
-                        actual: child.actual,
-                        childSummaries: childSummaries(composite),
-                        expected: child.expected,
-                        summary: composite.summary
-                    },
-                    {
-                        actual: serializeValue(1),
-                        childSummaries: [ 'interaction count' ],
-                        expected: serializeValue(0),
-                        summary: 'Expected double not to have interactions.'
-                    }
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubleUsage argument assertions support partial, prefix, and exact matching',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const user = { id: '42', name: 'Ada' };
-                const loadUser = testDouble.returns<LoadUser>(user);
-                const ping = testDouble.returns<Ping>('pong');
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    loadUser('42', { role: 'admin', trace: 'trace-id' });
-                    ping();
-
-                    testScope.assert(doubleUsage.calledWith, loadUser, [ '42', { role: 'admin' } ]);
-                    testScope.assert(doubleUsage.calledWithPrefix, loadUser, [ '42' ]);
-                    testScope.assert(doubleUsage.calledWithExactly, loadUser, [
-                        '42',
-                        { role: 'admin', trace: 'trace-id' }
-                    ]);
-                    testScope.assert(doubleUsage.calledWith, ping, []);
-                    testScope.assert(doubleUsage.calledWithExactly, ping, []);
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(result.summary.failed, 0);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubleUsage iterator assertions pass through scope.assert()',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const loadEvents = testDouble.yields([ 'created', 'updated' ]);
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    const events = loadEvents();
-
-                    events.next();
-                    events.next();
-                    events.next();
-                    testScope.assert(doubleUsage.iterated, loadEvents);
-                    testScope.assert(doubleUsage.iteratorEventCount, loadEvents, 3);
-                    testScope.assert(doubleUsage.yieldCount, loadEvents, 2);
-                    testScope.assert(doubleUsage.yieldedExactly, loadEvents, [ 'created', 'updated' ]);
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(result.summary.failed, 0);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubleUsage iterator assertions report protocol history failures',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const loadEvents = testDouble.yields([ 'created' ]);
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    loadEvents().next();
-
-                    testScope.assert(doubleUsage.notIterated, loadEvents);
-                    testScope.assert(doubleUsage.iteratorEventCount, loadEvents, 2);
-                    testScope.assert(doubleUsage.yieldCount, loadEvents, 2);
-                    testScope.assert(doubleUsage.yieldedExactly, loadEvents, [ 'updated' ]);
-                    return testScope.assert.collect();
-                });
-
-                const summaries = failureSummaries(result);
-
-                scope.require.notNull(summaries);
-                scope.assert.deepEqual(summaries, [
-                    'Expected double iterator not to have been consumed.',
-                    'Expected double iterator event count to match.',
-                    'Expected double yield count to match.',
-                    'Expected double yielded values to match exactly.'
-                ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubleUsage prefix assertions reject empty prefixes',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const ping = testDouble.returns<Ping>('pong');
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    ping();
-
+                    testScope.plan(1);
+                    const save = testDouble.returns('saved');
+                    save(scenario.value, { id: 1 });
+                    const pattern = matches(P.when(function inspectValue(value: unknown) {
+                        if (scenario.throwing) {
+                            throw new Error('pattern predicate failed');
+                        }
+                        return typeof value === 'string';
+                    }));
                     testScope.assert(
-                        doubleUsage.calledWithPrefix as unknown as typeof doubleUsage.calledWith,
-                        ping,
-                        []
+                        scenario.negative ? doubleUsage.notCalledWith : doubleUsage.calledOnceWith,
+                        save,
+                        [ pattern, { id: 1 } ]
                     );
                     return testScope.assert.collect();
                 });
-                const composite = firstComposite(result);
-                scope.require.notNull(composite);
-                const child = firstChild(composite);
-                scope.require.notNull(child);
 
-                scope.assert.equal(composite.summary, 'Expected double call arguments to match.');
-                scope.assert.equal(child.kind, 'foreign');
-                scope.assert.equal(
-                    child.summary,
-                    'expected argument prefix: Expected argument prefix to contain at least one item.'
-                );
-
-                return scope.assert.collect();
+                scope.assert.equal(result.summary.failed, scenario.failed);
+                scope.assert.equal(result.summary.passed, 1 - scenario.failed);
+                if (scenario.throwing) {
+                    const composite = firstComposite(result);
+                    scope.require.notNull(composite);
+                    scope.assert.includes(composite.children[0].summary, 'pattern predicate failed');
+                }
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubleUsage argument assertions distinguish exact arity from prefix arity',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    loadUser('42', { role: 'admin', trace: 'trace-id' });
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'doubleUsage call count and mode assertions pass through scope.assert()',
+        async function body(scope: OverkillScope) {
+            const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
+            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                loadUser('42', { role: 'admin', trace: 'trace-id' });
 
-                    testScope.assert(doubleUsage.calledWith, loadUser, [ '42' ]);
-                    return testScope.assert.collect();
-                });
-                const composite = firstComposite(result);
-                scope.require.notNull(composite);
+                testScope.assert(doubleUsage.called, loadUser);
+                testScope.assert(doubleUsage.calledOnce, loadUser);
+                testScope.assert(doubleUsage.callCount, loadUser, 1);
+                testScope.assert(doubleUsage.interacted, loadUser);
+                testScope.assert(doubleUsage.interactedOnce, loadUser);
+                testScope.assert(doubleUsage.interactionCount, loadUser, 1);
+                return testScope.assert.collect();
+            });
 
-                scope.assert.equal(composite.summary, 'Expected double call arguments to match.');
-                scope.assert.deepEqual(childSummaries(composite), [ 'call arguments' ]);
+            scope.assert.equal(result.summary.passed, 1);
+            scope.assert.equal(result.summary.failed, 0);
 
-                return scope.assert.collect();
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'doubleUsage construction count and mode assertions pass through scope.assert()',
+        async function body(scope: OverkillScope) {
+            const Client = testDouble.constructs<ClientConstructor>({ id: 'client' });
+            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                const client = new Client('https://api.example.test', { timeout: 500, token: 'primary' });
+
+                testScope.assert.equal(client.id, 'client');
+                testScope.assert(doubleUsage.constructed, Client);
+                testScope.assert(doubleUsage.constructedOnce, Client);
+                testScope.assert(doubleUsage.constructionCount, Client, 1);
+                testScope.assert(doubleUsage.interacted, Client);
+                testScope.assert(doubleUsage.interactedOnce, Client);
+                testScope.assert(doubleUsage.interactionCount, Client, 1);
+                return testScope.assert.collect();
+            });
+
+            scope.assert.equal(result.summary.passed, 1);
+            scope.assert.equal(result.summary.failed, 0);
+
+            return scope.assert.collect();
+        }
+    ),
+    test('doubleUsage negative mode assertions produce domain summaries', async function body(scope: OverkillScope) {
+        const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            loadUser('42', { role: 'admin', trace: 'trace-id' });
+
+            testScope.assert(doubleUsage.notInteracted, loadUser);
+            return testScope.assert.collect();
+        });
+        const composite = firstComposite(result);
+        scope.require.notNull(composite);
+        const child = firstChild(composite);
+        scope.require.notNull(child);
+
+        scope.assert.deepEqual(
+            {
+                actual: child.actual,
+                childSummaries: childSummaries(composite),
+                expected: child.expected,
+                summary: composite.summary
+            },
+            {
+                actual: serializeValue(1),
+                childSummaries: [ 'interaction count' ],
+                expected: serializeValue(0),
+                summary: 'Expected double not to have interactions.'
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubleUsage once, last, and nth argument assertions use the relevant mode history',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    loadUser('first', { role: 'reader', trace: 'one' });
-                    loadUser('second', { role: 'admin', trace: 'two' });
+        );
 
-                    testScope.assert(doubleUsage.nthCallWith, loadUser, 0, [ 'first', { role: 'reader' } ]);
-                    testScope.assert(doubleUsage.lastCalledWith, loadUser, [ 'second', { role: 'admin' } ]);
-                    return testScope.assert.collect();
-                });
+        return scope.assert.collect();
+    }),
+    test(
+        'doubleUsage argument assertions support partial, prefix, and exact matching',
+        async function body(scope: OverkillScope) {
+            const user = { id: '42', name: 'Ada' };
+            const loadUser = testDouble.returns<LoadUser>(user);
+            const ping = testDouble.returns<Ping>('pong');
+            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                loadUser('42', { role: 'admin', trace: 'trace-id' });
+                ping();
 
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(result.summary.failed, 0);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubleUsage argument assertion failures explain the matched position',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-                const ping = testDouble.returns<Ping>('pong');
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    loadUser('42', { role: 'admin', trace: 'trace-id' });
-
-                    testScope.assert(doubleUsage.calledWithPrefix, loadUser, [ 'missing' ]);
-                    testScope.assert(doubleUsage.calledWithExactly, loadUser, [ '42', {
-                        role: 'reader',
-                        trace: 'trace-id'
-                    } ]);
-                    testScope.assert(doubleUsage.calledWithExactly, loadUser, [ '42' ]);
-                    testScope.assert(doubleUsage.lastCalledWith, ping, []);
-                    testScope.assert(doubleUsage.lastCalledWithExactly, loadUser, [
-                        '42',
-                        { role: 'reader', trace: 'trace-id' }
-                    ]);
-                    testScope.assert(doubleUsage.lastCalledWithPrefix, loadUser, [ 'missing' ]);
-                    return testScope.assert.collect();
-                });
-
-                const summaries = failureSummaries(result);
-
-                scope.require.notNull(summaries);
-                scope.assert.deepEqual(summaries, [
-                    'Expected double call arguments to match.',
-                    'Expected double call arguments to match.',
-                    'Expected double call arguments to match.',
-                    'Expected double call arguments to match.',
-                    'Expected double call arguments to match.',
-                    'Expected double call arguments to match.'
+                testScope.assert(doubleUsage.calledWith, loadUser, [ '42', { role: 'admin' } ]);
+                testScope.assert(doubleUsage.calledWithPrefix, loadUser, [ '42' ]);
+                testScope.assert(doubleUsage.calledWithExactly, loadUser, [
+                    '42',
+                    { role: 'admin', trace: 'trace-id' }
                 ]);
+                testScope.assert(doubleUsage.calledWith, ping, []);
+                testScope.assert(doubleUsage.calledWithExactly, ping, []);
+                return testScope.assert.collect();
+            });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubleUsage calledOnceWith requires one total call in that mode',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    loadUser('first', { role: 'reader', trace: 'one' });
-                    loadUser('second', { role: 'admin', trace: 'two' });
+            scope.assert.equal(result.summary.passed, 1);
+            scope.assert.equal(result.summary.failed, 0);
 
-                    testScope.assert(doubleUsage.calledOnceWith, loadUser, [ 'first', { role: 'reader' } ]);
-                    return testScope.assert.collect();
-                });
-                const composite = firstComposite(result);
-                scope.require.notNull(composite);
-                const child = firstChild(composite);
-                scope.require.notNull(child);
+            return scope.assert.collect();
+        }
+    ),
+    test('doubleUsage iterator assertions pass through scope.assert()', async function body(scope: OverkillScope) {
+        const loadEvents = testDouble.yields([ 'created', 'updated' ]);
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const events = loadEvents();
 
-                scope.assert.equal(composite.summary, 'Expected double call arguments to match.');
-                scope.assert.deepEqual(child.actual, serializeValue(2));
-                scope.assert.deepEqual(child.expected, serializeValue(1));
+            events.next();
+            events.next();
+            events.next();
+            testScope.assert(doubleUsage.iterated, loadEvents);
+            testScope.assert(doubleUsage.iteratorEventCount, loadEvents, 3);
+            testScope.assert(doubleUsage.yieldCount, loadEvents, 2);
+            testScope.assert(doubleUsage.yieldedExactly, loadEvents, [ 'created', 'updated' ]);
+            return testScope.assert.collect();
+        });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+        scope.assert.equal(result.summary.passed, 1);
+        scope.assert.equal(result.summary.failed, 0);
 
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    }),
+    test('doubleUsage iterator assertions report protocol history failures', async function body(scope: OverkillScope) {
+        const loadEvents = testDouble.yields([ 'created' ]);
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            loadEvents().next();
+
+            testScope.assert(doubleUsage.notIterated, loadEvents);
+            testScope.assert(doubleUsage.iteratorEventCount, loadEvents, 2);
+            testScope.assert(doubleUsage.yieldCount, loadEvents, 2);
+            testScope.assert(doubleUsage.yieldedExactly, loadEvents, [ 'updated' ]);
+            return testScope.assert.collect();
+        });
+
+        const summaries = failureSummaries(result);
+
+        scope.require.notNull(summaries);
+        scope.assert.deepEqual(summaries, [
+            'Expected double iterator not to have been consumed.',
+            'Expected double iterator event count to match.',
+            'Expected double yield count to match.',
+            'Expected double yielded values to match exactly.'
+        ]);
+
+        return scope.assert.collect();
+    }),
+    test('doubleUsage prefix assertions reject empty prefixes', async function body(scope: OverkillScope) {
+        const ping = testDouble.returns<Ping>('pong');
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            ping();
+
+            testScope.assert(
+                doubleUsage.calledWithPrefix as unknown as typeof doubleUsage.calledWith,
+                ping,
+                []
+            );
+            return testScope.assert.collect();
+        });
+        const composite = firstComposite(result);
+        scope.require.notNull(composite);
+        const child = firstChild(composite);
+        scope.require.notNull(child);
+
+        scope.assert.equal(composite.summary, 'Expected double call arguments to match.');
+        scope.assert.equal(child.kind, 'foreign');
+        scope.assert.equal(
+            child.summary,
+            'expected argument prefix: Expected argument prefix to contain at least one item.'
+        );
+
+        return scope.assert.collect();
+    }),
+    test(
+        'doubleUsage argument assertions distinguish exact arity from prefix arity',
+        async function body(scope: OverkillScope) {
+            const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
+            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                loadUser('42', { role: 'admin', trace: 'trace-id' });
+
+                testScope.assert(doubleUsage.calledWith, loadUser, [ '42' ]);
+                return testScope.assert.collect();
+            });
+            const composite = firstComposite(result);
+            scope.require.notNull(composite);
+
+            scope.assert.equal(composite.summary, 'Expected double call arguments to match.');
+            scope.assert.deepEqual(childSummaries(composite), [ 'call arguments' ]);
+
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'doubleUsage once, last, and nth argument assertions use the relevant mode history',
+        async function body(scope: OverkillScope) {
+            const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
+            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                loadUser('first', { role: 'reader', trace: 'one' });
+                loadUser('second', { role: 'admin', trace: 'two' });
+
+                testScope.assert(doubleUsage.nthCallWith, loadUser, 0, [ 'first', { role: 'reader' } ]);
+                testScope.assert(doubleUsage.lastCalledWith, loadUser, [ 'second', { role: 'admin' } ]);
+                return testScope.assert.collect();
+            });
+
+            scope.assert.equal(result.summary.passed, 1);
+            scope.assert.equal(result.summary.failed, 0);
+
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'doubleUsage argument assertion failures explain the matched position',
+        async function body(scope: OverkillScope) {
+            const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
+            const ping = testDouble.returns<Ping>('pong');
+            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                loadUser('42', { role: 'admin', trace: 'trace-id' });
+
+                testScope.assert(doubleUsage.calledWithPrefix, loadUser, [ 'missing' ]);
+                testScope.assert(doubleUsage.calledWithExactly, loadUser, [ '42', {
+                    role: 'reader',
+                    trace: 'trace-id'
+                } ]);
+                testScope.assert(doubleUsage.calledWithExactly, loadUser, [ '42' ]);
+                testScope.assert(doubleUsage.lastCalledWith, ping, []);
+                testScope.assert(doubleUsage.lastCalledWithExactly, loadUser, [
+                    '42',
+                    { role: 'reader', trace: 'trace-id' }
+                ]);
+                testScope.assert(doubleUsage.lastCalledWithPrefix, loadUser, [ 'missing' ]);
+                return testScope.assert.collect();
+            });
+
+            const summaries = failureSummaries(result);
+
+            scope.require.notNull(summaries);
+            scope.assert.deepEqual(summaries, [
+                'Expected double call arguments to match.',
+                'Expected double call arguments to match.',
+                'Expected double call arguments to match.',
+                'Expected double call arguments to match.',
+                'Expected double call arguments to match.',
+                'Expected double call arguments to match.'
+            ]);
+
+            return scope.assert.collect();
+        }
+    ),
+    test('doubleUsage calledOnceWith requires one total call in that mode', async function body(scope: OverkillScope) {
+        const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            loadUser('first', { role: 'reader', trace: 'one' });
+            loadUser('second', { role: 'admin', trace: 'two' });
+
+            testScope.assert(doubleUsage.calledOnceWith, loadUser, [ 'first', { role: 'reader' } ]);
+            return testScope.assert.collect();
+        });
+        const composite = firstComposite(result);
+        scope.require.notNull(composite);
+        const child = firstChild(composite);
+        scope.require.notNull(child);
+
+        scope.assert.equal(composite.summary, 'Expected double call arguments to match.');
+        scope.assert.deepEqual(child.actual, serializeValue(2));
+        scope.assert.deepEqual(child.expected, serializeValue(1));
+
+        return scope.assert.collect();
+    })
+]);

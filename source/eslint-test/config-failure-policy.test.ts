@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { ResourceLifecycleError } from '../resources/resource-lifecycle-error.ts';
 import { projectFailure } from './config-errors.ts';
 
@@ -11,7 +11,7 @@ class ConfigBackendError extends Error {
     }
 }
 
-export const testNode = suite('ESLint config failure propagation', [
+export const testNode = authoredSuite('ESLint config failure propagation', [
     test('normalizes project paths in error messages and preserved stacks', function (scope: TestScope) {
         const original = new ConfigBackendError();
         const failure = projectFailure(original, '/project', scope.signal);
@@ -61,4 +61,3 @@ export const testNode = suite('ESLint config failure propagation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

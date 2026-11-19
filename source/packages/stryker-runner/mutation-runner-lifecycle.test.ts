@@ -1,10 +1,10 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { mutationRunnerRuntime } from '../../test-support/mutation-runner-runtime.ts';
 
 const success = { status: 'complete' };
 const timeout = { status: 'timeout' };
-export const testNode = suite('Stryker runner lifecycle ownership', [
+export const testNode = authoredSuite('Stryker runner lifecycle ownership', [
     test('initializes lazily once and shares the ready runner', async function (scope: TestScope) {
         const fixture = mutationRunnerRuntime();
         scope.assert.deepEqual(Array.from(fixture.calls), []);
@@ -162,4 +162,3 @@ export const testNode = suite('Stryker runner lifecycle ownership', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

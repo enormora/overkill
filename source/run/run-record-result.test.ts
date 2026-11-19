@@ -1,10 +1,6 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite,
-    createTestCase,
-    type RunResult,
-    type TestOutcome
-} from '../packages/engine/engine.entry-point.ts';
+import { suite, test as authoredTest } from '@overkill-dev/test';
+
+import type { RunResult, TestOutcome } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { testNode as nestedFindings } from './recorded-findings.test.ts';
 import { recordedRunResult, serializeRunDiagnostics, parseSerializedRunDiagnostics } from './run-record-result.ts';
@@ -156,82 +152,60 @@ function resultWithOpaqueEvidence(): RunResult {
     };
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/run-record-result.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        nestedFindings,
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'round trips bounded diagnostic evidence without serializing it twice',
-            annotations: {},
-            controls: {},
-            body(scope) {
-                const live = resultWithOpaqueEvidence();
-                const diagnostics = serializeRunDiagnostics(live);
-                const encoded = JSON.stringify(diagnostics);
-                const restored = parseSerializedRunDiagnostics(JSON.parse(encoded));
-                scope.assert.equal(JSON.stringify(restored), encoded);
-                scope.assert.includes(encoded, '"file":"case.test.ts"');
-                scope.assert.equal(typeof live.perTest[0]?.definitionLocations[0], 'function');
-                scope.assert.throws(function rejectRawCause() {
-                    parseSerializedRunDiagnostics({
-                        ...diagnostics,
-                        runnerErrors: [ {
-                            attributedToAttempt: null,
-                            attributedTo: null,
-                            attributedToWork: null,
-                            cause: 42,
-                            diagnostics: [],
-                            message: 'raw cause',
-                            subtype: 'crash'
-                        } ]
-                    });
-                }, { name: 'ZodError' });
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'projects cyclic and bigint diagnostics without changing live outcomes or artifact identities',
-            annotations: {},
-            controls: {},
-            body(scope) {
-                const live = resultWithOpaqueEvidence();
-                const recorded = recordedRunResult(live);
-                const json = JSON.stringify(recorded);
-                scope.assert.includes(json, '"kind":"bigint","value":"42"');
-                scope.assert.includes(json, '"kind":"circular"');
-                scope.assert.equal(recorded.perTest[1]?.outcome, null);
-                scope.assert.deepEqual(
-                    recorded.artifacts.map(function identity(artifact) {
-                        return artifact.id;
-                    }),
-                    live.artifacts.map(function identity(artifact) {
-                        return artifact.id;
-                    })
-                );
-                scope.assert.equal(recorded.artifacts[1], live.artifacts[1]);
-                scope.assert.equal(live.perTest[0]?.outcome?.kind, 'fail');
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'serializes opaque attempt histories without mutating live evidence',
-            annotations: {},
-            controls: {},
-            body(scope) {
-                const live = resultWithOpaqueEvidence();
-                const recorded = recordedRunResult(live);
-                scope.assert.includes(JSON.stringify(recorded.perTest[0]?.attempts), '"kind":"bigint","value":"42"');
-                scope.assert.includes(JSON.stringify(recorded.artifacts[0]), '"kind":"circular"');
-                scope.assert.equal(live.perTest[0]?.attempts[0].outcome?.kind, 'fail');
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/run-record-result.test.ts', [
+    nestedFindings,
+    authoredTest('round trips bounded diagnostic evidence without serializing it twice', function (scope) {
+        const live = resultWithOpaqueEvidence();
+        const diagnostics = serializeRunDiagnostics(live);
+        const encoded = JSON.stringify(diagnostics);
+        const restored = parseSerializedRunDiagnostics(JSON.parse(encoded));
+        scope.assert.equal(JSON.stringify(restored), encoded);
+        scope.assert.includes(encoded, '"file":"case.test.ts"');
+        scope.assert.equal(typeof live.perTest[0]?.definitionLocations[0], 'function');
+        scope.assert.throws(function rejectRawCause() {
+            parseSerializedRunDiagnostics({
+                ...diagnostics,
+                runnerErrors: [ {
+                    attributedToAttempt: null,
+                    attributedTo: null,
+                    attributedToWork: null,
+                    cause: 42,
+                    diagnostics: [],
+                    message: 'raw cause',
+                    subtype: 'crash'
+                } ]
+            });
+        }, { name: 'ZodError' });
+        return scope.assert.collect();
+    }),
+    authoredTest(
+        'projects cyclic and bigint diagnostics without changing live outcomes or artifact identities',
+        function (scope) {
+            const live = resultWithOpaqueEvidence();
+            const recorded = recordedRunResult(live);
+            const json = JSON.stringify(recorded);
+            scope.assert.includes(json, '"kind":"bigint","value":"42"');
+            scope.assert.includes(json, '"kind":"circular"');
+            scope.assert.equal(recorded.perTest[1]?.outcome, null);
+            scope.assert.deepEqual(
+                recorded.artifacts.map(function identity(artifact) {
+                    return artifact.id;
+                }),
+                live.artifacts.map(function identity(artifact) {
+                    return artifact.id;
+                })
+            );
+            scope.assert.equal(recorded.artifacts[1], live.artifacts[1]);
+            scope.assert.equal(live.perTest[0]?.outcome?.kind, 'fail');
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('serializes opaque attempt histories without mutating live evidence', function (scope) {
+        const live = resultWithOpaqueEvidence();
+        const recorded = recordedRunResult(live);
+        scope.assert.includes(JSON.stringify(recorded.perTest[0]?.attempts), '"kind":"bigint","value":"42"');
+        scope.assert.includes(JSON.stringify(recorded.artifacts[0]), '"kind":"circular"');
+        scope.assert.equal(live.perTest[0]?.attempts[0].outcome?.kind, 'fail');
+        return scope.assert.collect();
+    })
+]);

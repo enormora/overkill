@@ -1,11 +1,10 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { testDouble } from '../packages/doubles/doubles.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test, testDouble } from '@overkill-dev/test';
+
 import { memoryHistoryAccess, idleHistoryScenario } from '../test-support/history-access.ts';
 import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
 import { openHistoryAccess, inspectDetailedRecordState } from './history-state-access.ts';
 
-export const testNode = suite('history ownership metadata boundaries', [
+export const testNode = authoredSuite('history ownership metadata boundaries', [
     test('rejects missing metadata for a listed run owner', async function (scope: TestScope) {
         const fixture = await memoryHistoryAccess({
             ...idleHistoryScenario,
@@ -71,4 +70,3 @@ export const testNode = suite('history ownership metadata boundaries', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

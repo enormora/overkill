@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
 import { singleAttemptResult, type TestVerdict } from '../engine/run-result.ts';
 import type { RetryArtifactPolicy } from '../config/execution.ts';
@@ -84,144 +85,111 @@ function assertTerminalHistory(scope: TestScope, state: SupervisedRunState): voi
     scope.assert.equal(result.retried?.finalVerdict, 'crashed');
 }
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'source/run/retry-attribution.test.ts',
-    children: [
-        createTestCase({
+export const testNode = suite('source/run/retry-attribution.test.ts', [
+    test('runtime violations between attempts stay unattributed to completed attempts', function (scope: TestScope) {
+        const state = createSupervisedRunState('all');
+        startAttempt(state, work, 0);
+        finishAttempt(state, 0, 'fail');
+        state.recordRuntimePolicyViolation('network', 'late violation');
+        const error = state.runnerErrors()[0];
+        scope.require.defined(error);
+        scope.assert.deepEqual(
+            [ error.attributedTo, error.attributedToAttempt, error.attributedToWork ],
+            [ null, null, null ]
+        );
+        scope.assert.equal(state.perTestResults()[0]?.attempts.length, 1);
+        return scope.assert.collect();
+    }),
+    test('pruning a completed work retains captures from an unfinished concurrent work', function (scope: TestScope) {
+        const state = createSupervisedRunState('first-failure-and-final');
+        const other = { ...work, case: { ...work.case, title: 'unfinished' } };
+        startAttempt(state, work, 0);
+        startAttempt(state, other, 0);
+        state.recordCapturedOutput('stdout', Buffer.from('concurrent'), 0);
+        finishAttempt(state, 0, 'pass');
+        scope.assert.equal(state.caseArtifacts(other, { index: 0 }).length, 1);
+        scope.assert.equal(state.caseArtifacts(work, { index: 0 }).length, 1);
+        return scope.assert.collect();
+    }),
+    test('captures without a completed result retain attempt attribution', function (scope: TestScope) {
+        const state = createSupervisedRunState('first-failure-and-final');
+        startAttempt(state, work, 0);
+        state.recordCapturedOutput('stdout', Buffer.from('unfinished'), 0);
+        scope.assert.equal(state.artifacts().length, 1);
+        const attempt = state.artifacts()[0]?.id.attempt;
+        scope.require.defined(attempt);
+        scope.assert.deepEqual(attempt, { index: 0 });
+        scope.assert.equal(state.perTestResults().length, 0);
+        return scope.assert.collect();
+    }),
+    ...policies.map(function retentionPolicy(policy) {
+        return test({
             ...metadata,
-            title: 'runtime violations between attempts stay unattributed to completed attempts',
+            title: `capture retains ${policy} without losing attempt history`,
             body(scope: TestScope) {
-                const state = createSupervisedRunState('all');
-                startAttempt(state, work, 0);
-                finishAttempt(state, 0, 'fail');
-                state.recordRuntimePolicyViolation('network', 'late violation');
-                const error = state.runnerErrors()[0];
-                scope.require.defined(error);
+                const state = createSupervisedRunState(policy);
+                captureAttempts(state);
+                state.recordCapturedOutput('stderr', Buffer.from('run output'), 40);
+                const indexes = state.artifacts().map(function attempt(artifact) {
+                    return artifact.id.attempt?.index ?? null;
+                });
                 scope.assert.deepEqual(
-                    [ error.attributedTo, error.attributedToAttempt, error.attributedToWork ],
-                    [ null, null, null ]
+                    indexes,
+                    expectedArtifactAttempts[policy]
                 );
-                scope.assert.equal(state.perTestResults()[0]?.attempts.length, 1);
+                scope.assert.equal(state.perTestResults()[0]?.attempts.length, 3);
+                scope.assert.equal(state.perTestResults()[0]?.durationMicroseconds, 30);
+                scope.assert.equal(state.perTestResults()[0]?.verdict, 'pass');
                 return scope.assert.collect();
             }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'pruning a completed work retains captures from an unfinished concurrent work',
-            body(scope: TestScope) {
-                const state = createSupervisedRunState('first-failure-and-final');
-                const other = { ...work, case: { ...work.case, title: 'unfinished' } };
-                startAttempt(state, work, 0);
-                startAttempt(state, other, 0);
-                state.recordCapturedOutput('stdout', Buffer.from('concurrent'), 0);
-                finishAttempt(state, 0, 'pass');
-                scope.assert.equal(state.caseArtifacts(other, { index: 0 }).length, 1);
-                scope.assert.equal(state.caseArtifacts(work, { index: 0 }).length, 1);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'captures without a completed result retain attempt attribution',
-            body(scope: TestScope) {
-                const state = createSupervisedRunState('first-failure-and-final');
-                startAttempt(state, work, 0);
-                state.recordCapturedOutput('stdout', Buffer.from('unfinished'), 0);
-                scope.assert.equal(state.artifacts().length, 1);
-                const attempt = state.artifacts()[0]?.id.attempt;
-                scope.require.defined(attempt);
-                scope.assert.deepEqual(attempt, { index: 0 });
-                scope.assert.equal(state.perTestResults().length, 0);
-                return scope.assert.collect();
-            }
-        }),
-        ...policies.map(function retentionPolicy(policy) {
-            return createTestCase({
-                ...metadata,
-                title: `capture retains ${policy} without losing attempt history`,
-                body(scope: TestScope) {
-                    const state = createSupervisedRunState(policy);
-                    captureAttempts(state);
-                    state.recordCapturedOutput('stderr', Buffer.from('run output'), 40);
-                    const indexes = state.artifacts().map(function attempt(artifact) {
-                        return artifact.id.attempt?.index ?? null;
-                    });
-                    scope.assert.deepEqual(
-                        indexes,
-                        expectedArtifactAttempts[policy]
-                    );
-                    scope.assert.equal(state.perTestResults()[0]?.attempts.length, 3);
-                    scope.assert.equal(state.perTestResults()[0]?.durationMicroseconds, 30);
-                    scope.assert.equal(state.perTestResults()[0]?.verdict, 'pass');
-                    return scope.assert.collect();
-                }
-            });
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'output cap is cumulative across retries and stops emitting after truncation',
-            body(scope: TestScope) {
-                const state = createSupervisedRunState('all');
-                for (const [ index, bytes ] of [ [ 0, capturedOutputLimitBytes - 3 ], [ 1, 6 ], [ 2, 2 ] ] as const) {
-                    startAttempt(state, work, index);
-                    state.recordCapturedOutput('stdout', Buffer.alloc(bytes), index * 10);
-                    state.recordCapturedOutput('stderr', Buffer.alloc(0), index * 10);
-                    finishAttempt(state, index, index === 2 ? 'pass' : 'fail');
-                }
-                assertCaptureSizes(scope, state);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'concurrent output lookup distinguishes runtime variants and attempts',
-            body(scope: TestScope) {
-                const state = createSupervisedRunState('all');
-                const first: WorkId = {
-                    ...work,
-                    runtimes: [ { name: 'service', variantId: 'one', dimensions: {}, scenarios: {} } ]
-                };
-                const second: WorkId = {
-                    ...work,
-                    runtimes: [ { name: 'service', variantId: 'two', dimensions: {}, scenarios: {} } ]
-                };
-                startAttempt(state, first, 0);
-                startAttempt(state, second, 1);
-                state.recordCapturedOutput('stdout', Buffer.from('shared'), 0);
-                scope.assert.equal(state.caseArtifacts(first, { index: 0 }).length, 1);
-                scope.assert.equal(state.caseArtifacts(second, { index: 1 }).length, 1);
-                scope.assert.equal(state.caseArtifacts(first, { index: 1 }).length, 0);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'crashed retries preserve completed attempts and active attempt attribution',
-            body(scope: TestScope) {
-                const state = createSupervisedRunState('all');
-                startAttempt(state, work, 0);
-                finishAttempt(state, 0, 'fail');
-                startAttempt(state, work, 1);
-                assertActiveAttempt(scope, state);
-                state.recordTerminalActiveCases('crashed', 25);
-                assertTerminalHistory(scope, state);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'interruption between attempts preserves the completed retry evidence',
-            body(scope: TestScope) {
-                const state = createSupervisedRunState('all');
-                startAttempt(state, work, 0);
-                finishAttempt(state, 0, 'fail');
-                state.recordTerminalActiveCases('crashed', 25);
-                scope.assert.equal(state.perTestResults()[0]?.attempts.length, 1);
-                scope.assert.equal(state.perTestResults()[0]?.verdict, 'fail');
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+        });
+    }),
+    test('output cap is cumulative across retries and stops emitting after truncation', function (scope: TestScope) {
+        const state = createSupervisedRunState('all');
+        for (const [ index, bytes ] of [ [ 0, capturedOutputLimitBytes - 3 ], [ 1, 6 ], [ 2, 2 ] ] as const) {
+            startAttempt(state, work, index);
+            state.recordCapturedOutput('stdout', Buffer.alloc(bytes), index * 10);
+            state.recordCapturedOutput('stderr', Buffer.alloc(0), index * 10);
+            finishAttempt(state, index, index === 2 ? 'pass' : 'fail');
+        }
+        assertCaptureSizes(scope, state);
+        return scope.assert.collect();
+    }),
+    test('concurrent output lookup distinguishes runtime variants and attempts', function (scope: TestScope) {
+        const state = createSupervisedRunState('all');
+        const first: WorkId = {
+            ...work,
+            runtimes: [ { name: 'service', variantId: 'one', dimensions: {}, scenarios: {} } ]
+        };
+        const second: WorkId = {
+            ...work,
+            runtimes: [ { name: 'service', variantId: 'two', dimensions: {}, scenarios: {} } ]
+        };
+        startAttempt(state, first, 0);
+        startAttempt(state, second, 1);
+        state.recordCapturedOutput('stdout', Buffer.from('shared'), 0);
+        scope.assert.equal(state.caseArtifacts(first, { index: 0 }).length, 1);
+        scope.assert.equal(state.caseArtifacts(second, { index: 1 }).length, 1);
+        scope.assert.equal(state.caseArtifacts(first, { index: 1 }).length, 0);
+        return scope.assert.collect();
+    }),
+    test('crashed retries preserve completed attempts and active attempt attribution', function (scope: TestScope) {
+        const state = createSupervisedRunState('all');
+        startAttempt(state, work, 0);
+        finishAttempt(state, 0, 'fail');
+        startAttempt(state, work, 1);
+        assertActiveAttempt(scope, state);
+        state.recordTerminalActiveCases('crashed', 25);
+        assertTerminalHistory(scope, state);
+        return scope.assert.collect();
+    }),
+    test('interruption between attempts preserves the completed retry evidence', function (scope: TestScope) {
+        const state = createSupervisedRunState('all');
+        startAttempt(state, work, 0);
+        finishAttempt(state, 0, 'fail');
+        state.recordTerminalActiveCases('crashed', 25);
+        scope.assert.equal(state.perTestResults()[0]?.attempts.length, 1);
+        scope.assert.equal(state.perTestResults()[0]?.verdict, 'fail');
+        return scope.assert.collect();
+    })
+]);

@@ -37,7 +37,10 @@ export async function mutationInitialization(
         requests,
         policyResponse: { kind: 'policy', policy },
         input: {
-            options: { overkill: { seed: '42' } },
+            options: {
+                overkill: { seed: '42' },
+                overkillCampaign: { port: 1234, token: '00000000-0000-4000-8000-000000000001' }
+            },
             files: {},
             logger: {
                 info() {

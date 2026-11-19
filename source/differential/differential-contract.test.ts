@@ -1,65 +1,69 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { gen, property } from '../packages/property/property.entry-point.ts';
 import { differential } from '../packages/differential/differential.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 
-export const testNode = suite('differential contract', [
-    test('preserves thrown identity and shallowly freezes observation containers', async function (scope: TestScope) {
-        const thrown: unknown = { expected: true };
-        const result = await executePropertyNode(
-            property({
-                title: 'outcomes',
-                generator: gen.record({ value: gen.constant(1) }),
-                test: differential({
-                    implementations: [
-                        {
-                            name: 'returned',
-                            run(input) {
-                                return input;
+export const testNode = authoredSuite('differential contract', [
+    authoredTest(
+        'preserves thrown identity and shallowly freezes observation containers',
+        async function (scope: TestScope) {
+            const thrown: unknown = { expected: true };
+            const result = await executePropertyNode(
+                property({
+                    title: 'outcomes',
+                    generator: gen.record({ value: gen.constant(1) }),
+                    test: differential({
+                        implementations: [
+                            {
+                                name: 'returned',
+                                run(input) {
+                                    return input;
+                                }
+                            },
+                            {
+                                name: 'thrown',
+                                run() {
+                                    throw thrown;
+                                }
+                            },
+                            {
+                                name: 'rejected',
+                                async run() {
+                                    throw thrown;
+                                }
                             }
-                        },
-                        {
-                            name: 'thrown',
-                            run() {
-                                throw thrown;
+                        ],
+                        check(observations, sample) {
+                            sample.assert.true(Object.isFrozen(observations));
+                            for (const observation of observations) {
+                                sample.assert.true(Object.isFrozen(observation));
+                                sample.assert.true(Object.isFrozen(observation.outcome));
+                                sample.assert.false(Object.isFrozen(observation.input));
+                                if (observation.outcome.kind === 'threw') {
+                                    sample.assert.true(observation.outcome.error === thrown);
+                                } else {
+                                    sample.assert.true(observation.outcome.value === observation.input);
+                                }
                             }
-                        },
-                        {
-                            name: 'rejected',
-                            async run() {
-                                throw thrown;
-                            }
+                            sample.assert.deepEqual(
+                                observations.map(function outcome(observation) {
+                                    return observation.outcome.kind;
+                                }),
+                                [ 'returned', 'threw', 'threw' ]
+                            );
+                            return sample.assert.collect();
                         }
-                    ],
-                    check(observations, sample) {
-                        sample.assert.true(Object.isFrozen(observations));
-                        for (const observation of observations) {
-                            sample.assert.true(Object.isFrozen(observation));
-                            sample.assert.true(Object.isFrozen(observation.outcome));
-                            sample.assert.false(Object.isFrozen(observation.input));
-                            if (observation.outcome.kind === 'threw') {
-                                sample.assert.true(observation.outcome.error === thrown);
-                            } else {
-                                sample.assert.true(observation.outcome.value === observation.input);
-                            }
-                        }
-                        sample.assert.deepEqual(
-                            observations.map(function outcome(observation) {
-                                return observation.outcome.kind;
-                            }),
-                            [ 'returned', 'threw', 'threw' ]
-                        );
-                        return sample.assert.collect();
-                    }
-                })
-            }),
-            propertyExecutionDefaults
-        );
-        scope.assert.equal(result.summary.passed, 1);
-        return scope.assert.collect();
-    }),
+                    })
+                }),
+                propertyExecutionDefaults
+            );
+            scope.assert.equal(result.summary.passed, 1);
+            return scope.assert.collect();
+        }
+    ),
     ...([ 'sync', 'async' ] as const).map(function settlement(mode) {
-        return test(`${mode} comparison errors remain body errors`, async function (scope: TestScope) {
+        return authoredTest(`${mode} comparison errors remain body errors`, async function (scope: TestScope) {
             function fail(): never {
                 throw new Error('comparison failed');
             }
@@ -93,7 +97,7 @@ export const testNode = suite('differential contract', [
         });
     }),
     ...([ 'before', 'reconstruction', 'settlement', 'comparison' ] as const).map(function cancellation(phase) {
-        return test(`${phase} cancellation stops callbacks`, async function (scope: TestScope) {
+        return authoredTest(`${phase} cancellation stops callbacks`, async function (scope: TestScope) {
             const events: string[] = [];
             const controller = new AbortController();
             function cancel(): void {
@@ -168,7 +172,7 @@ export const testNode = suite('differential contract', [
             return scope.assert.collect();
         });
     }),
-    test('identical errors without comparison assertions fail the contract', async function (scope: TestScope) {
+    authoredTest('identical errors without comparison assertions fail the contract', async function (scope: TestScope) {
         function fail(): never {
             throw new Error('expected error');
         }

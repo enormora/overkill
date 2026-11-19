@@ -1,11 +1,11 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { defineReporter, type PropertyCaseEvidence, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
-export const testNode = suite('property progress', [
+export const testNode = authoredSuite('property progress', [
     test('delivers immutable snapshots before trial evaluation', async function (scope: TestScope) {
         const snapshots: PropertyCaseEvidence[] = [];
         let calls = 0;
@@ -42,5 +42,3 @@ export const testNode = suite('property progress', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

@@ -1,8 +1,9 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { planningInput } from '../test-support/benchmark-plan-input.ts';
 import { defaultIntegrationProfile } from '../test-support/run-command-factory.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { passingIsolatedWorkerRun } from '../test-support/isolated-worker-run.ts';
 import { createCollectedPlan } from '../test-support/worker-pool-execution-state.ts';
 import { createResolvedRunFromCollection, type CollectionResolvedRunInput } from './run-collected-resolution.ts';
@@ -73,7 +74,7 @@ function normalizedCollection(purpose: CollectionResolvedRunInput['benchmarkPurp
         collection: { collectedPlan: planned.collectedPlan, runnerErrors: [] }
     };
 }
-export const testNode = suite(
+export const testNode = authoredSuite(
     'collected execution resolution policy',
     [
         ...([ 'empty', 'multiple', 'ordinary', 'skipped' ] as const).map(function (selection) {
@@ -112,4 +113,3 @@ export const testNode = suite(
         })
     ]
 );
-await runIfMain(import.meta, testNode);

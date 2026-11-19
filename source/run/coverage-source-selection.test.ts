@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import type { V8CoverageEntry } from 'monocart-coverage-reports';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { memoryCoverageAccess, coverageSourceMap } from '../test-support/coverage-source-memory.ts';
 import { prepareCoverageSources, type CoverageSourceScope } from './coverage-source-selection.ts';
 
@@ -23,8 +24,8 @@ const files = {
 };
 const batches = [ { entries: [ { url: scriptUrl } ], sourceMaps: {} } ];
 
-export const testNode = suite('coverage source policy', [
-    test('loaded mode retains only eligible loaded sources', async function (scope: TestScope) {
+export const testNode = authoredSuite('coverage source policy', [
+    authoredTest('loaded mode retains only eligible loaded sources', async function (scope: TestScope) {
         const selected = await prepareCoverageSources(
             { ...input, sourceScope: loadedScope },
             memoryCoverageAccess(files, batches)
@@ -37,27 +38,33 @@ export const testNode = suite('coverage source policy', [
         scope.assert.deepEqual(selected.batches, batches);
         return scope.assert.collect();
     }),
-    test('all mode includes unloaded runtime sources and filters generated input', async function (scope: TestScope) {
-        const sourceScope: CoverageSourceScope = {
-            ...loadedScope,
-            mode: 'all',
-            include: [ 'source/**/*.ts', 'source/**/*.js' ]
-        };
-        const selected = await prepareCoverageSources({ ...input, sourceScope }, memoryCoverageAccess(files, batches));
-        const { all } = selected;
-        scope.require.defined(all);
-        scope.assert.deepEqual(Object.keys(files).filter(selected.sourceIncluded), [
-            '/project/source/value.ts',
-            '/project/source/other.js'
-        ]);
-        scope.assert.deepEqual(Object.keys(files).filter(all.filter), [
-            '/project/source/value.ts',
-            '/project/source/other.js'
-        ]);
-        scope.assert.equal(all.dir, '/project');
-        return scope.assert.collect();
-    }),
-    test('honors exact test-file exclusions independently of patterns', async function (scope: TestScope) {
+    authoredTest(
+        'all mode includes unloaded runtime sources and filters generated input',
+        async function (scope: TestScope) {
+            const sourceScope: CoverageSourceScope = {
+                ...loadedScope,
+                mode: 'all',
+                include: [ 'source/**/*.ts', 'source/**/*.js' ]
+            };
+            const selected = await prepareCoverageSources(
+                { ...input, sourceScope },
+                memoryCoverageAccess(files, batches)
+            );
+            const { all } = selected;
+            scope.require.defined(all);
+            scope.assert.deepEqual(Object.keys(files).filter(selected.sourceIncluded), [
+                '/project/source/value.ts',
+                '/project/source/other.js'
+            ]);
+            scope.assert.deepEqual(Object.keys(files).filter(all.filter), [
+                '/project/source/value.ts',
+                '/project/source/other.js'
+            ]);
+            scope.assert.equal(all.dir, '/project');
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('honors exact test-file exclusions independently of patterns', async function (scope: TestScope) {
         const sourceScope: CoverageSourceScope = {
             mode: 'all',
             include: [ 'source/**/*.ts' ],
@@ -70,7 +77,7 @@ export const testNode = suite('coverage source policy', [
         scope.assert.true(selected.sourceIncluded('source/case.test.ts'));
         return scope.assert.collect();
     }),
-    test('normalizes native TypeScript entries without changing V8 offsets', async function (scope: TestScope) {
+    authoredTest('normalizes native TypeScript entries without changing V8 offsets', async function (scope: TestScope) {
         const selected = await prepareCoverageSources(
             { ...input, sourceScope: loadedScope },
             memoryCoverageAccess(files, batches)
@@ -91,7 +98,7 @@ export const testNode = suite('coverage source policy', [
         scope.assert.equal(Reflect.get(entry, 'fake'), false);
         return scope.assert.collect();
     }),
-    test('keeps JavaScript entry content intact', async function (scope: TestScope) {
+    authoredTest('keeps JavaScript entry content intact', async function (scope: TestScope) {
         const selected = await prepareCoverageSources(
             { ...input, sourceScope: loadedScope },
             memoryCoverageAccess(files, [ { entries: [ { url: 'file:///project/source/other.js' } ], sourceMaps: {} } ])
@@ -101,7 +108,7 @@ export const testNode = suite('coverage source policy', [
         scope.assert.equal(entry.source, 'already provided');
         return scope.assert.collect();
     }),
-    test('attaches resolved source maps to generated containers', async function (scope: TestScope) {
+    authoredTest('attaches resolved source maps to generated containers', async function (scope: TestScope) {
         const map = coverageSourceMap([ 'source/value.ts' ], [ source ]);
         const access = memoryCoverageAccess({ ...files, '/project/compiled.js': 'export const value = 42;' }, [ {
             entries: [ { url: 'file:///project/compiled.js' } ],
@@ -117,7 +124,7 @@ export const testNode = suite('coverage source policy', [
         scope.assert.true(selected.sourceIncluded('source/value.ts'));
         return scope.assert.collect();
     }),
-    test('uses original source URLs for portable report paths', async function (scope: TestScope) {
+    authoredTest('uses original source URLs for portable report paths', async function (scope: TestScope) {
         const selected = await prepareCoverageSources(
             { ...input, sourceScope: loadedScope },
             memoryCoverageAccess(files, batches)
@@ -127,7 +134,7 @@ export const testNode = suite('coverage source policy', [
         scope.assert.equal(selected.sourcePath('unchanged', {}), 'unchanged');
         return scope.assert.collect();
     }),
-    test('strips types from unloaded TypeScript sources before reporting', async function (scope: TestScope) {
+    authoredTest('strips types from unloaded TypeScript sources before reporting', async function (scope: TestScope) {
         const sourceScope: CoverageSourceScope = { ...loadedScope, mode: 'all', include: [ 'source/**/*.ts' ] };
         const selected = await prepareCoverageSources({ ...input, sourceScope }, memoryCoverageAccess(files, []));
         const { all } = selected;
@@ -138,7 +145,7 @@ export const testNode = suite('coverage source policy', [
         scope.assert.equal(entry.source.length, source.length);
         return scope.assert.collect();
     }),
-    test('does not transform unloaded JavaScript content', async function (scope: TestScope) {
+    authoredTest('does not transform unloaded JavaScript content', async function (scope: TestScope) {
         const sourceScope: CoverageSourceScope = { ...loadedScope, mode: 'all', include: [ 'source/**/*.js' ] };
         const selected = await prepareCoverageSources({ ...input, sourceScope }, memoryCoverageAccess(files, []));
         const { all } = selected;
@@ -149,4 +156,3 @@ export const testNode = suite('coverage source policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

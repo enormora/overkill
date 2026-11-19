@@ -11,11 +11,7 @@ import { emptyWorkUnitResourceConstraints, type CollectedRunPlan } from '../run/
 
 import type { WorkerPoolRunRuntime } from '../run/worker-pool-runtime.ts';
 
-import {
-    defaultRunConfig,
-    defaultRunRequest,
-    defaultIntegrationProfile
-} from './run-command-factory.ts';
+import { defaultRunConfig, defaultRunRequest, defaultIntegrationProfile } from './run-command-factory.ts';
 
 export const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 

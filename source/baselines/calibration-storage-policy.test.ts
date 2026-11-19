@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { calibrationStorage, calibrationStorageScenario } from '../test-support/calibration-storage.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
 import { CalibrationPublicationError, openCalibrationReferenceStore } from './calibration-store.ts';
@@ -20,7 +21,7 @@ async function failedPublication(operation: () => Promise<readonly string[]>): P
     }
     throw new Error('Expected publication failure.');
 }
-export const testNode = suite('calibration storage policy', [
+export const testNode = authoredSuite('calibration storage policy', [
     test('round trips and removes references by stable relative identity', async function (scope: TestScope) {
         const fixture = await calibrationStorage(calibrationStorageScenario);
         const written = await fixture.store.write('bench', [ first, second ], owners);

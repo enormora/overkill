@@ -1,12 +1,12 @@
 import path from 'node:path';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { profileFamilyId } from '../config/types.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { recordedRunPlan } from './recorded-run-plan.ts';
 import { updateCompactHistory } from './history-storage.ts';
 import { createRunRecordStorage } from './run-record-storage.ts';
 import type { SingleRunRecord, RunRecordCoverage } from './run-record-types.ts';
-import type { ResolvedRunInput } from './run-input-resolution.ts';
-import { initialRecord, type RunRecordDependencies } from './run-record-input.ts';
+import { initialRecord, type RunRecordDependencies, type RunRecordInput } from './run-record-input.ts';
 import type { RunFacts, RunnerResult, CollectedRunPlan, ResolvedRun } from './run-types.ts';
 
 export type RunRecordSession = {
@@ -25,7 +25,7 @@ export type RunRecordSession = {
 
 export function createRunRecordSession(
     cwd: string,
-    input: Pick<ResolvedRunInput, 'config' | 'engine' | 'profile' | 'projectRoot' | 'request'>,
+    input: RunRecordInput,
     dependencies: RunRecordDependencies
 ): RunRecordSession {
     const value = initialRecord(cwd, input, dependencies);
@@ -56,7 +56,9 @@ export function createRunRecordSession(
         } finally {
             const release = releaseOwner;
             releaseOwner = null;
-            await release?.();
+            await withRunnerInfrastructure(async function releaseRecordedOwner() {
+                await release?.();
+            });
         }
     }
     const session: RunRecordSession = {
@@ -80,7 +82,7 @@ export function createRunRecordSession(
                     maintenanceDiagnostics: []
                 };
             }
-            maintenance = maintenance ?? dependencies.maintainHistory();
+            maintenance = maintenance ?? withRunnerInfrastructure(dependencies.maintainHistory);
             return {
                 ...completed,
                 context: {
@@ -99,7 +101,9 @@ export function createRunRecordSession(
             } finally {
                 const release = releaseOwner;
                 releaseOwner = null;
-                await release?.();
+                await withRunnerInfrastructure(async function releaseInterruptedOwner() {
+                    await release?.();
+                });
             }
         },
         path: filePath,
@@ -120,13 +124,15 @@ export function createRunRecordSession(
             }, 'facts');
         },
         async start(coverage) {
-            releaseOwner = await dependencies.history.beginRun(value.id);
+            releaseOwner = await withRunnerInfrastructure(async function beginRecordedRun() {
+                return await dependencies.history.beginRun(value.id);
+            });
             try {
                 await storage.persist({ ...storage.current(), coverage }, 'start');
             } catch (error: unknown) {
                 const release = releaseOwner;
                 releaseOwner = null;
-                await release();
+                await withRunnerInfrastructure(release);
                 throw error;
             }
         }

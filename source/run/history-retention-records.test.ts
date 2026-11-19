@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { withReplay } from './replay-context.ts';
 import { testNode as reconstruction } from './retention-catalog-policy.test.ts';
@@ -30,9 +31,9 @@ const catalog = {
         return [ value.id, value ];
     }))
 };
-export const testNode = suite('record and artifact retention', [
+export const testNode = authoredSuite('record and artifact retention', [
     ...([ null, 'old-pass' ] as const).map(function (sourceRunId) {
-        return test(
+        return authoredTest(
             `protects retained replay source ${String(sourceRunId)} during pruning`,
             async function (scope: TestScope) {
                 await withReplay(
@@ -78,13 +79,13 @@ export const testNode = suite('record and artifact retention', [
     }),
 
     reconstruction,
-    test('unclassified artifact directories cannot be selected for deletion', function (scope: TestScope) {
+    authoredTest('unclassified artifact directories cannot be selected for deletion', function (scope: TestScope) {
         scope.assert.throws(function () {
             return selectHistoryRemovals({ ...catalog, metadata: new Map() }, '/state/runs', defaultHistoryPolicy, now);
         }, { message: /Missing metadata/u });
         return scope.assert.collect();
     }),
-    test('record count and artifact count and age policies apply independently', function (scope: TestScope) {
+    authoredTest('record count and artifact count and age policies apply independently', function (scope: TestScope) {
         const result = selectHistoryRemovals(catalog, '/state/runs', {
             ...defaultHistoryPolicy,
             detailedRunLimit: 1,
@@ -104,7 +105,7 @@ export const testNode = suite('record and artifact retention', [
         );
         return scope.assert.collect();
     }),
-    test(
+    authoredTest(
         'zero detail limits retain compact records and preserve recent failure artifacts',
         function (scope: TestScope) {
             const result = selectHistoryRemovals(catalog, '/state/runs', {
@@ -129,4 +130,3 @@ export const testNode = suite('record and artifact retention', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

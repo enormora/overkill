@@ -1,4 +1,4 @@
-import { runIfMain, suite } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite } from '@overkill-dev/test';
 import { testNode as profiles } from '../config/property-profile.test.ts';
 import { testNode as collection } from '../run/property-collection.test.ts';
 import { testNode as composition } from './property-composition.test.ts';
@@ -9,7 +9,7 @@ import { testNode as generators } from './generator-suite.test.ts';
 
 import { testNode as tools } from './property-authoring-tools.test.ts';
 
-export const testNode = suite('property', [
+export const testNode = authoredSuite('property', [
     tools,
     composition,
     profiles,
@@ -19,5 +19,3 @@ export const testNode = suite('property', [
     scopes,
     deterministic
 ]);
-
-await runIfMain(import.meta, testNode);

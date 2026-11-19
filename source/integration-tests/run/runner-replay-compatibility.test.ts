@@ -1,9 +1,8 @@
 import { watch } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { orchestrator, type ReplayRunCommand } from '../../packages/run/run.entry-point.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import type { ReplayRunRecord } from '../../run/replay-record-types.ts';
 import {
     replayProject,
@@ -98,18 +97,17 @@ export const testNode=test('retained case',async scope=>{
         started.close();
     }
 }
-export const testNode = suite('replay compatibility and cancellation', [
-    test('rejects incompatible records before importing source', async function (scope: TestScope) {
+export const testNode = authoredSuite('replay compatibility and cancellation', [
+    authoredTest('rejects incompatible records before importing source', async function (scope: TestScope) {
         await verifyIncompatibleRecords(scope);
         return scope.assert.collect();
     }),
-    test('reports interrupted and cross-major replay diagnostics', async function (scope: TestScope) {
+    authoredTest('reports interrupted and cross-major replay diagnostics', async function (scope: TestScope) {
         await verifyInterruptedDiagnostics(scope);
         return scope.assert.collect();
     }),
-    test('cancels an active worker replay', async function (scope: TestScope) {
+    authoredTest('cancels an active worker replay', async function (scope: TestScope) {
         await verifyActiveCancellation(scope);
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,6 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { testDouble } from '../packages/doubles/doubles.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test, testDouble } from '@overkill-dev/test';
+
 import { createAttachmentStream, type AttachmentOperations } from './attachment-writer.ts';
 import type { AttachmentResponse } from './attachment-protocol.ts';
 
@@ -15,7 +14,7 @@ function operations(send: AttachmentOperations['send']): AttachmentOperations {
         release: testDouble.returns(undefined)
     };
 }
-export const testNode = suite('attachment stream failure admission', [
+export const testNode = authoredSuite('attachment stream failure admission', [
     test('rejects text chunks supplied to binary streams', async function (scope: TestScope) {
         const send = testDouble.rejects(new Error('Invalid chunks must not be sent.'));
         const stream = createAttachmentStream(operations(send), 1, 'binary');
@@ -61,4 +60,3 @@ export const testNode = suite('attachment stream failure admission', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

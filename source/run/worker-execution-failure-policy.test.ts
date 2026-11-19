@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { suite, test, testDouble, type TestScope } from '../packages/test/test.entry-point.ts';
+import { testDouble } from '../packages/test/test.entry-point.ts';
 import {
     fakeWorkerRuntime,
     createCollectedPlan,
@@ -56,7 +57,7 @@ function failingPool(mode: FailureMode): FailedPool {
         }
     };
 }
-export const testNode = suite('worker execution failure policy', [
+export const testNode = authoredSuite('worker execution failure policy', [
     test('retains host failure evidence ahead of a coincident worker rejection', async function (scope: TestScope) {
         const fixture = failingPool('host');
         const completed = await executeWorkerPoolUnits(fixture.runtime, placementPlan(), 0);
@@ -106,4 +107,3 @@ export const testNode = suite('worker execution failure policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

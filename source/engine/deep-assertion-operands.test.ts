@@ -1,10 +1,6 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
-import { defineCompositeAssertion, defineNarrowingCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import { defineCompositeAssertion, defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { InvalidDeepAssertionOperand } from '../assertion-protocol/evaluation.ts';
@@ -59,146 +55,123 @@ function expectedInvalidDeepAssertionOperand(
     ];
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/engine/deep-assertion-operands.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() rejects primitive facade deep assertion operands at runtime',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    const actual: unknown = 1;
+export const testNode = suite('source/engine/deep-assertion-operands.test.ts', [
+    test(
+        'execute() rejects primitive facade deep assertion operands at runtime',
+        async function (scope: OverkillScope) {
+            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                const actual: unknown = 1;
 
-                    testScope.assert.deepEqual(actual, { id: 1 });
-                    return testScope.assert.collect();
-                });
+                testScope.assert.deepEqual(actual, { id: 1 });
+                return testScope.assert.collect();
+            });
 
-                const outcome = firstOutcome(result);
-                scope.require.defined(outcome);
-                scope.require(failOutcome, outcome);
-                scope.assert.deepEqual(
-                    outcome.failures,
-                    expectedInvalidDeepAssertionOperand({
-                        check: 'deep-equal',
-                        index: null,
-                        role: 'actual',
-                        type: 'number'
-                    })
-                );
+            const outcome = firstOutcome(result);
+            scope.require.defined(outcome);
+            scope.require(failOutcome, outcome);
+            scope.assert.deepEqual(
+                outcome.failures,
+                expectedInvalidDeepAssertionOperand({
+                    check: 'deep-equal',
+                    index: null,
+                    role: 'actual',
+                    type: 'number'
+                })
+            );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() rejects primitive raw deep assertion operands at runtime',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(function body() {
-                    return {
-                        actual: { id: 1 },
-                        check: 'partial-deep-equal',
-                        expected: 'id',
-                        message: null,
-                        source: 'assert',
-                        sourceLocations: [ unknownSourceLocation ]
-                    };
-                });
+            return scope.assert.collect();
+        }
+    ),
+    test('execute() rejects primitive raw deep assertion operands at runtime', async function (scope: OverkillScope) {
+        const result = await executeSingleBody(function body() {
+            return {
+                actual: { id: 1 },
+                check: 'partial-deep-equal',
+                expected: 'id',
+                message: null,
+                source: 'assert',
+                sourceLocations: [ unknownSourceLocation ]
+            };
+        });
 
-                const outcome = firstOutcome(result);
-                scope.require.defined(outcome);
-                scope.require(failOutcome, outcome);
-                scope.assert.deepEqual(
-                    outcome.failures,
-                    expectedInvalidDeepAssertionOperand({
-                        check: 'partial-deep-equal',
-                        index: null,
-                        role: 'expected',
-                        type: 'string'
-                    })
-                );
+        const outcome = firstOutcome(result);
+        scope.require.defined(outcome);
+        scope.require(failOutcome, outcome);
+        scope.assert.deepEqual(
+            outcome.failures,
+            expectedInvalidDeepAssertionOperand({
+                check: 'partial-deep-equal',
+                index: null,
+                role: 'expected',
+                type: 'string'
+            })
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() rejects primitive composite deep assertion members at runtime',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const primitiveMember = defineCompositeAssertion({
-                    assert(check) {
-                        const actual: readonly unknown[] = [ 1 ];
+        return scope.assert.collect();
+    }),
+    test(
+        'execute() rejects primitive composite deep assertion members at runtime',
+        async function (scope: OverkillScope) {
+            const primitiveMember = defineCompositeAssertion({
+                assert(check) {
+                    const actual: readonly unknown[] = [ 1 ];
 
-                        return check.arrayContainsPartial(actual, { id: 1 });
-                    },
-                    name: 'primitiveMember'
-                });
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.assert(primitiveMember);
-                    return testScope.assert.collect();
-                });
+                    return check.arrayContainsPartial(actual, { id: 1 });
+                },
+                name: 'primitiveMember'
+            });
+            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                testScope.assert(primitiveMember);
+                return testScope.assert.collect();
+            });
 
-                const outcome = firstOutcome(result);
-                scope.require.defined(outcome);
-                scope.require(failOutcome, outcome);
-                scope.assert.deepEqual(
-                    outcome.failures,
-                    expectedInvalidDeepAssertionOperand({
-                        check: 'array-contains-partial',
-                        index: 0,
-                        role: 'actual',
-                        type: 'number'
-                    })
-                );
+            const outcome = firstOutcome(result);
+            scope.require.defined(outcome);
+            scope.require(failOutcome, outcome);
+            scope.assert.deepEqual(
+                outcome.failures,
+                expectedInvalidDeepAssertionOperand({
+                    check: 'array-contains-partial',
+                    index: 0,
+                    role: 'actual',
+                    type: 'number'
+                })
+            );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() rejects primitive async composite deep assertion members at runtime',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const primitiveExpectedMember = defineCompositeAssertion({
-                    async assert(check) {
-                        const expected: readonly unknown[] = [ 1 ];
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'execute() rejects primitive async composite deep assertion members at runtime',
+        async function (scope: OverkillScope) {
+            const primitiveExpectedMember = defineCompositeAssertion({
+                async assert(check) {
+                    const expected: readonly unknown[] = [ 1 ];
 
-                        await Promise.resolve();
-                        return check.membersPartialDeepEqual([ { id: 1 } ], expected);
-                    },
-                    name: 'primitiveExpectedMember'
-                });
-                const result = await executeSingleBody(async function testBody(testScope: TestScope) {
-                    await testScope.assert(primitiveExpectedMember);
-                    return testScope.assert.collect();
-                });
+                    await Promise.resolve();
+                    return check.membersPartialDeepEqual([ { id: 1 } ], expected);
+                },
+                name: 'primitiveExpectedMember'
+            });
+            const result = await executeSingleBody(async function testBody(testScope: TestScope) {
+                await testScope.assert(primitiveExpectedMember);
+                return testScope.assert.collect();
+            });
 
-                const outcome = firstOutcome(result);
-                scope.require.defined(outcome);
-                scope.require(failOutcome, outcome);
-                scope.assert.deepEqual(
-                    outcome.failures,
-                    expectedInvalidDeepAssertionOperand({
-                        check: 'members-partial-deep-equal',
-                        index: 0,
-                        role: 'expected',
-                        type: 'number'
-                    })
-                );
+            const outcome = firstOutcome(result);
+            scope.require.defined(outcome);
+            scope.require(failOutcome, outcome);
+            scope.assert.deepEqual(
+                outcome.failures,
+                expectedInvalidDeepAssertionOperand({
+                    check: 'members-partial-deep-equal',
+                    index: 0,
+                    role: 'expected',
+                    type: 'number'
+                })
+            );
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

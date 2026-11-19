@@ -2,14 +2,13 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import {
     defineReporter,
     parseWitnessFile,
     type PropertyWitnessFile,
     type DefinedReporter
 } from '../packages/engine/engine.entry-point.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { normalizeConfig, orchestrator, type RunCommand } from '../packages/run/run.entry-point.ts';
 import { writeCorpusIndex } from '../test-support/corpus-index.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -161,11 +160,11 @@ function blockCorpusAfterCase(file: string): DefinedReporter {
         };
     });
 }
-export const testNode = suite(
+export const testNode = authoredSuite(
     'runner property corpus',
     [
         ...([ 'in-process', 'supervised-process' ] as const).map(function processExecution(processModel) {
-            return test(`${processModel} saves and replays confirmed failures`, async function (scope) {
+            return authoredTest(`${processModel} saves and replays confirmed failures`, async function (scope) {
                 const command = await corpusCommand(scope, processModel);
                 const first = await orchestrator.run(command);
                 const replay = await orchestrator.run(command);
@@ -179,31 +178,34 @@ export const testNode = suite(
             });
         }),
         ...([ 'in-process', 'supervised-process' ] as const).map(function directReplay(processModel) {
-            return test(`${processModel} directly replays a witness through normal execution`, async function (scope) {
-                const command = await corpusCommand(scope, processModel);
-                const file = await saveReplayWitness(command);
-                const replay = await orchestrator.replayWitness({
-                    ...command,
-                    request: {
-                        debug: { mode: 'off', selectors: [] },
-                        path: file,
-                        profile: 'laws',
-                        seed: { value: 42n },
-                        capture: 'buffered',
-                        record: true,
-                        timingCollection: 'profile-default'
-                    }
-                }, { signal: null, timing: null });
-                scope.assert.deepEqual(replay.runnerErrors, []);
-                scope.assert.equal(replay.summary.failed, 1);
-                scope.assert.equal(replay.perTest.length, 1);
-                scope.assert.equal(replay.perTest[0]?.property?.invocations[0]?.confirmedWitness, null);
-                scope.assert.equal(shrinkStatus(replay), null);
-                return scope.assert.collect();
-            });
+            return authoredTest(
+                `${processModel} directly replays a witness through normal execution`,
+                async function (scope) {
+                    const command = await corpusCommand(scope, processModel);
+                    const file = await saveReplayWitness(command);
+                    const replay = await orchestrator.replayWitness({
+                        ...command,
+                        request: {
+                            debug: { mode: 'off', selectors: [] },
+                            path: file,
+                            profile: 'laws',
+                            seed: { value: 42n },
+                            capture: 'buffered',
+                            record: true,
+                            timingCollection: 'profile-default'
+                        }
+                    }, { signal: null, timing: null });
+                    scope.assert.deepEqual(replay.runnerErrors, []);
+                    scope.assert.equal(replay.summary.failed, 1);
+                    scope.assert.equal(replay.perTest.length, 1);
+                    scope.assert.equal(replay.perTest[0]?.property?.invocations[0]?.confirmedWitness, null);
+                    scope.assert.equal(shrinkStatus(replay), null);
+                    return scope.assert.collect();
+                }
+            );
         }),
         ...([ 'in-process', 'supervised-process' ] as const).map(function missingReplay(processModel) {
-            return test(`${processModel} rejects a witness whose case is missing`, async function (scope) {
+            return authoredTest(`${processModel} rejects a witness whose case is missing`, async function (scope) {
                 const command = await corpusCommand(scope, processModel);
                 const file = await saveReplayWitness(command);
                 const saved = parseWitnessFile(JSON.parse(await readFile(file, 'utf8')));
@@ -228,15 +230,18 @@ export const testNode = suite(
             });
         }),
         ...([ 'in-process', 'supervised-process' ] as const).map(function incompatibleInput(processModel) {
-            return test(`${processModel} enforces corpus compatibility policies`, async function (scope: TestScope) {
-                const input = await incompatibleCorpus(scope, processModel);
-                await assertCheckedInCompatibility(scope, input);
-                await assertLocalCompatibility(scope, input);
-                await assertReplayCompatibility(scope, input);
-                return scope.assert.collect();
-            });
+            return authoredTest(
+                `${processModel} enforces corpus compatibility policies`,
+                async function (scope: TestScope) {
+                    const input = await incompatibleCorpus(scope, processModel);
+                    await assertCheckedInCompatibility(scope, input);
+                    await assertLocalCompatibility(scope, input);
+                    await assertReplayCompatibility(scope, input);
+                    return scope.assert.collect();
+                }
+            );
         }),
-        test('retains confirmed failures when local persistence fails', async function (scope) {
+        authoredTest('retains confirmed failures when local persistence fails', async function (scope) {
             const command = await corpusCommand(scope, 'in-process');
             const blocked = path.join(command.config.runtimeStateDir, 'corpus');
             const result = await orchestrator.run({
@@ -252,4 +257,3 @@ export const testNode = suite(
         })
     ]
 );
-await runIfMain(import.meta, testNode);

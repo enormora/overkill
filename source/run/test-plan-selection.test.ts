@@ -1,8 +1,9 @@
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { normalizeConfig } from '../config/config.ts';
 import { createDeterministicRunCoordinator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { createEngine, type TestPlan } from '../packages/engine/engine.entry-point.ts';
 import {
     planTestSelection,
@@ -36,7 +37,7 @@ const options: TestPlanSelectionOptions = {
     seed: { value: 42n },
     shard: { index: 1, total: 1 }
 };
-export const testNode = suite('exact test plan selection', [
+export const testNode = authoredSuite('exact test plan selection', [
     test('partitions selected work without overlap or lost discovery', async function (scope) {
         const plan = discoveredPlan();
         const observed: string[] = [];
@@ -115,4 +116,3 @@ export const testNode = suite('exact test plan selection', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

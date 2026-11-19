@@ -1,4 +1,5 @@
-import { createSuite } from '../../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as identityTestNode } from '../../engine/identity.test.ts';
 import { testNode as reporterDeliveryCleanupTestNode } from '../../engine/reporter-delivery-cleanup.test.ts';
 import { testNode as reporterDeliveryTestNode } from '../../engine/reporter-delivery-suite.test.ts';
@@ -9,20 +10,14 @@ import { testNode as runResultTestNode } from '../../engine/run-result.test.ts';
 import { testNode as testNodeTestNode } from '../../engine/test-node.test.ts';
 import { testNode as enginePlanningTestNode } from './engine-planning.ts';
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/test-support/unit-suite-groups/engine-support.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        identityTestNode,
-        reporterDeliveryCleanupTestNode,
-        reporterDeliveryTestNode,
-        reporterEventQueueTestNode,
-        reportingContextTestNode,
-        reporterSuiteTestNode,
-        runResultTestNode,
-        testNodeTestNode,
-        enginePlanningTestNode
-    ]
-});
+export const testNode = suite('source/test-support/unit-suite-groups/engine-support.ts', [
+    identityTestNode,
+    reporterDeliveryCleanupTestNode,
+    reporterDeliveryTestNode,
+    reporterEventQueueTestNode,
+    reportingContextTestNode,
+    reporterSuiteTestNode,
+    runResultTestNode,
+    testNodeTestNode,
+    enginePlanningTestNode
+]);

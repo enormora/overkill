@@ -1,6 +1,5 @@
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from './packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { memoryImplementationCatalog } from './test-support/memory-implementation-catalog.ts';
 import {
     mergeImplementationCatalogs,
@@ -9,7 +8,7 @@ import {
     assertImplementationAssignments
 } from './implementation-catalog.ts';
 
-export const testNode = suite('portable implementation catalog policy', [
+export const testNode = authoredSuite('portable implementation catalog policy', [
     test('combines repeated build evidence without duplicating assignments or modules', function (scope: TestScope) {
         const catalog = memoryImplementationCatalog();
         const combined = combineImplementationBuilds([ ...catalog.builds, ...catalog.builds ]);
@@ -156,4 +155,3 @@ export const testNode = suite('portable implementation catalog policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,16 +1,16 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { isolatedWorkerRun, passingIsolatedWorkerRun } from '../test-support/isolated-worker-run.ts';
 import { workerOrchestrationFaults } from '../test-support/worker-pool-orchestration.ts';
 import { testNode as finalization } from './isolated-run-finalization-policy.test.ts';
 import { testNode as families } from './selected-family-facts-policy.test.ts';
 import { createIsolatedResolvedRun, runIsolatedProcessCommand } from './run-isolated-process.ts';
 
-export const testNode = suite('isolated worker run planning and execution', [
+export const testNode = authoredSuite('isolated worker run planning and execution', [
     finalization,
     families,
     ...([ false, true ] as const).map(function (timed) {
-        return test(
+        return authoredTest(
             `resolves a worker execution plan from memory collection with timing ${timed}`,
             async function (scope: TestScope) {
                 const fixture = passingIsolatedWorkerRun(timed, false);
@@ -32,7 +32,7 @@ export const testNode = suite('isolated worker run planning and execution', [
     }),
     ...([ false, true ] as const).flatMap(function (timed) {
         return [ false, true ].map(function (history) {
-            return test(
+            return authoredTest(
                 `executes isolated worker results with timing ${timed} and duration history ${history}`,
                 async function (scope: TestScope) {
                     const fixture = passingIsolatedWorkerRun(timed, history);
@@ -63,7 +63,7 @@ export const testNode = suite('isolated worker run planning and execution', [
             );
         });
     }),
-    test('reports collection failures without executing worker units', async function (scope: TestScope) {
+    authoredTest('reports collection failures without executing worker units', async function (scope: TestScope) {
         const fixture = isolatedWorkerRun(
             { ...workerOrchestrationFaults, collection: new Error('collection failed') },
             false,
@@ -85,4 +85,3 @@ export const testNode = suite('isolated worker run planning and execution', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

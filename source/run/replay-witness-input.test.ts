@@ -1,7 +1,6 @@
 import { mkdir, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { replayProject, type ReplayProject } from '../test-support/replay-project-fixture.ts';
 import { normalizeConfig, type ReplayWitnessCommand } from '../packages/run/run.entry-point.ts';
@@ -47,9 +46,9 @@ function profileCommand(config: ReplayWitnessCommand['config'], profile: string 
         }
     };
 }
-export const testNode = suite('witness input preparation', [
+export const testNode = authoredSuite('witness input preparation', [
     ...[ null, '/absolute.ts', '../outside.ts' ].map(function invalidSource(file) {
-        return test(`rejects source ${String(file)}`, async function (scope: TestScope) {
+        return authoredTest(`rejects source ${String(file)}`, async function (scope: TestScope) {
             const project = await witnessProject(scope);
             await writeWitness(project, 'input.json', {
                 ...propertyCorpusEntry,
@@ -61,7 +60,7 @@ export const testNode = suite('witness input preparation', [
             return scope.assert.collect();
         });
     }),
-    test('rejects an unavailable source module', async function (scope: TestScope) {
+    authoredTest('rejects an unavailable source module', async function (scope: TestScope) {
         const project = await witnessProject(scope);
         await writeWitness(project, 'input.json', propertyCorpusEntry);
         await scope.assert.rejects(async function missingSource() {
@@ -70,7 +69,7 @@ export const testNode = suite('witness input preparation', [
         return scope.assert.collect();
     }),
     ...[ true, false ].map(function escapingLink(parentDirectory) {
-        return test(
+        return authoredTest(
             parentDirectory
                 ? 'rejects a source link to the parent directory'
                 : 'rejects a source link outside the project',
@@ -90,14 +89,14 @@ export const testNode = suite('witness input preparation', [
             }
         );
     }),
-    test('rejects a missing witness file', async function (scope: TestScope) {
+    authoredTest('rejects a missing witness file', async function (scope: TestScope) {
         const project = await witnessProject(scope);
         await scope.assert.rejects(async function missingWitness() {
             await prepareInput(project, 'missing.json');
         }, { message: /Cannot read replay input/u });
         return scope.assert.collect();
     }),
-    test('rejects malformed witness JSON', async function (scope: TestScope) {
+    authoredTest('rejects malformed witness JSON', async function (scope: TestScope) {
         const project = await witnessProject(scope);
         await writeFile(path.join(project.cwd, 'input.json'), '{');
         await scope.assert.rejects(async function malformedWitness() {
@@ -105,7 +104,7 @@ export const testNode = suite('witness input preparation', [
         }, { message: /Cannot read replay input/u });
         return scope.assert.collect();
     }),
-    test('rejects an unsupported witness version', async function (scope: TestScope) {
+    authoredTest('rejects an unsupported witness version', async function (scope: TestScope) {
         const project = await witnessProject(scope);
         await writeWitness(project, 'input.json', { ...propertyCorpusEntry, version: 99 });
         await scope.assert.rejects(async function unsupportedWitness() {
@@ -119,7 +118,7 @@ export const testNode = suite('witness input preparation', [
         { file: 'input.json', source: null }
     ]
         .map(function sourceRetention(entry) {
-            return test(`retains source identity for ${entry.file}`, async function (scope: TestScope) {
+            return authoredTest(`retains source identity for ${entry.file}`, async function (scope: TestScope) {
                 const project = await witnessProject(scope);
                 await writeFile(path.join(project.cwd, 'laws.ts'), 'throw new Error("must not import");');
                 await writeWitness(project, entry.file, propertyCorpusEntry);
@@ -147,7 +146,7 @@ export const testNode = suite('witness input preparation', [
         { title: 'rejects an unknown explicit replay profile', config: normalizeConfig({}), profile: 'missing' }
     ]
         .map(function profileSelection(entry) {
-            return test(entry.title, async function (scope: TestScope) {
+            return authoredTest(entry.title, async function (scope: TestScope) {
                 await scope.assert.rejects(async function rejectProfile() {
                     await preparePropertyReplay(profileCommand(entry.config, entry.profile));
                 }, { message: /configured replay profile/u });
@@ -155,4 +154,3 @@ export const testNode = suite('witness input preparation', [
             });
         })
 ]);
-await runIfMain(import.meta, testNode);

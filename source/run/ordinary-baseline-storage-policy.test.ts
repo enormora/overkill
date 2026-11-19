@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { storedBaseline } from '../test-support/baseline-case-fixture.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import {
     ordinaryBaselineStorage,
     ordinaryStorageScenario,
@@ -11,7 +12,7 @@ import type { StoredOrdinaryBaseline } from './baseline-record.ts';
 import { openOrdinaryBaselineStore } from './baseline-store.ts';
 import { createBaselineStorage } from './baseline-storage.ts';
 
-export const testNode = suite('ordinary baseline storage policy', [
+export const testNode = authoredSuite('ordinary baseline storage policy', [
     test('creates, updates and removes baselines under a publication lock', async function (scope: TestScope) {
         const fixture = await ordinaryBaselineStorage(ordinaryStorageScenario);
         const created = await fixture.store.publish([ { kind: 'create', baseline: storedBaseline } ]);
@@ -136,4 +137,3 @@ export const testNode = suite('ordinary baseline storage policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

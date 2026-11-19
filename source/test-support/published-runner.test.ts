@@ -1,72 +1,115 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { createTestCase } from '../packages/engine/engine.entry-point.ts';
+import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createTestFacade } from '@overkill-dev/test';
+import { createTemporaryDirectoryResource } from '@overkill-dev/test/resources';
+import { z } from 'zod/v4';
 
-const durationCase = `
-import assert from 'node:assert/strict';
-import { setTimeout as wait } from 'node:timers/promises';
-import { createTestCase, defineReporter } from '@overkill-dev/engine';
-import { runIfMain } from '#test-runner';
-export const testNode = createTestCase({
-    annotations: {}, controls: {}, definitionLocations: [{kind: 'unknown'}], title: 'elapsed time',
-    async body(scope) { await wait(10); scope.assert.true(true); return scope.assert.collect(); }
+const scratch = createTemporaryDirectoryResource('scratch');
+const { table } = createTestFacade({ resources: { scratch } });
+const binary = fileURLToPath(new URL('./overkill.entry-point.js', import.meta.resolve('@overkill-dev/test')));
+const authoring = JSON.stringify(import.meta.resolve('@overkill-dev/test'));
+const reporters = JSON.stringify(import.meta.resolve('@overkill-dev/test/reporters'));
+const recordedExecution = z.object({
+    result: z.object({
+        summary: z.object({ passed: z.number() }),
+        runnerErrors: z.array(z.unknown()),
+        perTest: z.tuple([ z.object({ durationMicroseconds: z.number() }) ])
+    })
 });
-const reporter = defineReporter(() => ({
-    dispose: null, kind: 'final-result', name: 'duration', sinks: [],
-    onResult(result) {
-        assert.equal(result.summary.passed, 1);
-        assert.ok(result.perTest[0].durationMicroseconds >= 5000);
+const scenarios = [
+    {
+        title: 'measures elapsed integration case duration',
+        family: 'integration',
+        minimumDuration: 5000,
+        source: `
+import { test } from ${authoring};
+import { setTimeout as wait } from 'node:timers/promises';
+export const testNode = test('elapsed time', async (scope) => {
+    await wait(10);
+    scope.assert.true(true);
+    return scope.assert.collect();
+});
+`
+    },
+    {
+        title: 'keeps microtest bookkeeping outside runtime policy',
+        family: 'microtest',
+        minimumDuration: 0,
+        source: `
+import { test } from ${authoring};
+export const testNode = test('passes', (scope) => {
+    scope.assert.equal(2 + 3, 5);
+    return scope.assert.collect();
+});
+`
     }
-}));
-await runIfMain(import.meta, testNode, { reporters: [reporter] });
-`;
+] as const;
+type Scenario = typeof scenarios[number];
 
-async function executeDurationCase(cwd: string): Promise<string> {
-    return await new Promise(function launchDurationCase(resolve, reject) {
-        execFile(process.execPath, [ 'duration.test.ts' ], { cwd, timeout: 10_000 }, function (error, stdout, stderr) {
+async function readRecordedExecution(directory: string): Promise<z.infer<typeof recordedExecution>> {
+    const runsDirectory = join(directory, 'state', 'runs');
+    const entries = await readdir(runsDirectory);
+    const records = z.tuple([ z.string() ]).parse(entries.filter(function isRunRecord(entry) {
+        return entry.endsWith('.json');
+    }));
+    return recordedExecution.parse(JSON.parse(await readFile(join(runsDirectory, records[0]), 'utf8')));
+}
+
+function projectConfiguration(scenario: Scenario): string {
+    const profile = {
+        testFamily: scenario.family,
+        files: { include: [ 'case.test.ts' ] },
+        execution: {
+            processModel: scenario.family === 'microtest' ? 'in-process' : 'supervised-process',
+            scheduling: 'serial'
+        },
+        timeouts: { collectionMilliseconds: 5000, softMilliseconds: 1000, hardMilliseconds: 5000 }
+    };
+    return `
+import { createBriefFinalResultReporter } from ${reporters};
+export const config = {
+    runtimeStateDir: 'state',
+    profiles: { check: { ...${JSON.stringify(profile)}, reporters: [createBriefFinalResultReporter()] } }
+};
+`;
+}
+
+async function executePublishedTests(cwd: string): Promise<string> {
+    return await new Promise(function launchPublishedTests(resolve, reject) {
+        execFile(process.execPath, [ '--permission-audit', binary, 'run', '--profile', 'check', '--seed', '42' ], {
+            cwd,
+            timeout: 10_000
+        }, function (error, stdout, stderr) {
             if (error === null) {
                 resolve(stdout);
             } else {
-                reject(new Error(`Published runner duration check failed: ${stderr}`, { cause: error }));
+                reject(new Error(`Published CLI check failed: ${stderr}`, { cause: error }));
             }
         });
     });
 }
 
-export const testNode = createTestCase({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'published direct runner measures elapsed case duration',
-    async body(scope) {
-        const directory = await mkdtemp(path.join(process.cwd(), 'target', 'published-runner-'));
-        scope.cleanup(async function removeDurationCase() {
-            await rm(directory, { recursive: true, force: true });
-        });
-        await writeFile(
-            path.join(directory, 'package.json'),
-            JSON.stringify({
-                private: true,
-                type: 'module',
-                imports: { '#test-runner': '@overkill-dev/run' }
-            })
+export const testNode = table({
+    title: 'published CLI',
+    cases: scenarios,
+    caseTitle(scenario) {
+        return scenario.title;
+    },
+    async test(scope) {
+        const directory = scope.resources.scratch.path;
+        await writeFile(join(directory, 'package.json'), JSON.stringify({ private: true, type: 'module' }));
+        await writeFile(join(directory, 'case.test.ts'), scope.parameters.source);
+        await writeFile(join(directory, 'overkill.config.js'), projectConfiguration(scope.parameters));
+        scope.assert.includes(
+            await executePublishedTests(directory),
+            'done status=passed discovered=1 planned=1 executed=1 passed=1 failed=0'
         );
-        await writeFile(path.join(directory, 'duration.test.ts'), durationCase);
-        await writeFile(
-            path.join(directory, 'overkill.config.js'),
-            `export const config = {
-            runtimeStateDir: 'state', profiles: { duration: {
-                testFamily: 'integration', files: { include: ['duration.test.ts'] },
-                execution: { processModel: 'supervised-process', scheduling: 'serial' },
-                timeouts: { collectionMilliseconds: 5000, softMilliseconds: 1000, hardMilliseconds: 5000 }
-            } }
-        };`
-        );
-        scope.assert.equal(await executeDurationCase(directory), '');
+        const record = await readRecordedExecution(directory);
+        scope.assert.equal(record.result.summary.passed, 1);
+        scope.assert.deepEqual(record.result.runnerErrors, []);
+        scope.assert.true(record.result.perTest[0].durationMicroseconds >= scope.parameters.minimumDuration);
         return scope.assert.collect();
     }
 });
-
-await runIfMain(import.meta, testNode);

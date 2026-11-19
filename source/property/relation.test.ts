@@ -1,6 +1,7 @@
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import type { PropertyWitnessFile } from '../engine/witness-file.ts';
 import { serializeValue, type TestScope, type RunResult } from '../packages/engine/engine.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property, withProperties } from './property-authoring.ts';
 import { gen } from './generators.ts';
@@ -15,37 +16,40 @@ function confirmedRelationWitness(scope: TestScope, result: RunResult): Property
     return witness;
 }
 
-export const testNode = suite('metamorphic relations', [
-    test('shrinks original inputs and replays the relation without generation', async function (scope: TestScope) {
-        let transformations = 0;
-        const node = property({
-            title: 'failing relation',
-            generator: gen.integer({ min: 0, max: 100 }),
-            examples: [ function () {
-                return 100;
-            } ],
-            test: relation({
-                transform(value: number) {
-                    transformations += 1;
-                    return value + 1;
-                },
-                run: Number,
-                check({ original, transformed }, sample) {
-                    sample.failureKey('unequal');
-                    sample.assert.equal(original.output, transformed.output);
-                    return sample.assert.collect();
-                }
-            })
-        });
-        const result = await executePropertyNode(node, propertyExecutionDefaults);
-        const witness = confirmedRelationWitness(scope, result);
-        transformations = 0;
-        const replayed = await executePropertyNode(node, { ...propertyExecutionDefaults, replay: witness });
-        scope.assert.equal(replayed.summary.failed, 1);
-        scope.assert.equal(transformations, 1);
-        return scope.assert.collect();
-    }),
-    test('awaits callbacks in order and exposes mutated independent inputs', async function (scope: TestScope) {
+export const testNode = authoredSuite('metamorphic relations', [
+    authoredTest(
+        'shrinks original inputs and replays the relation without generation',
+        async function (scope: TestScope) {
+            let transformations = 0;
+            const node = property({
+                title: 'failing relation',
+                generator: gen.integer({ min: 0, max: 100 }),
+                examples: [ function () {
+                    return 100;
+                } ],
+                test: relation({
+                    transform(value: number) {
+                        transformations += 1;
+                        return value + 1;
+                    },
+                    run: Number,
+                    check({ original, transformed }, sample) {
+                        sample.failureKey('unequal');
+                        sample.assert.equal(original.output, transformed.output);
+                        return sample.assert.collect();
+                    }
+                })
+            });
+            const result = await executePropertyNode(node, propertyExecutionDefaults);
+            const witness = confirmedRelationWitness(scope, result);
+            transformations = 0;
+            const replayed = await executePropertyNode(node, { ...propertyExecutionDefaults, replay: witness });
+            scope.assert.equal(replayed.summary.failed, 1);
+            scope.assert.equal(transformations, 1);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('awaits callbacks in order and exposes mutated independent inputs', async function (scope: TestScope) {
         const steps: string[] = [];
         const node = property({
             title: 'sorting relation',
@@ -86,7 +90,7 @@ export const testNode = suite('metamorphic relations', [
         scope.assert.deepEqual(steps, [ 'transform', 'run', 'run', 'check', 'cleanup', 'cleanup' ]);
         return scope.assert.collect();
     }),
-    test('nested relations preserve one boundary assertion', async function (scope: TestScope) {
+    authoredTest('nested relations preserve one boundary assertion', async function (scope: TestScope) {
         const result = await executePropertyNode(
             test(
                 'nested relation',
@@ -113,7 +117,7 @@ export const testNode = suite('metamorphic relations', [
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    test('operation errors stop the remaining callbacks', async function (scope: TestScope) {
+    authoredTest('operation errors stop the remaining callbacks', async function (scope: TestScope) {
         let checks = 0;
         const result = await executePropertyNode(
             property({

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { TestRuntimePolicy } from '../engine/case-execution-context.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { readBenchmarkRunMetadata } from '../bench/benchmark-run-report.ts';
@@ -37,7 +37,7 @@ const transparentPolicy: TestRuntimePolicy = {
         return [];
     }
 };
-export const testNode = suite('run support policy boundaries', [
+export const testNode = authoredSuite('run support policy boundaries', [
     test('preserves a lone runtime policy on either side of composition', function (scope: TestScope) {
         scope.assert.equal(composeRunRuntimePolicies(transparentPolicy, null), transparentPolicy);
         scope.assert.equal(composeRunRuntimePolicies(null, transparentPolicy), transparentPolicy);
@@ -66,4 +66,3 @@ export const testNode = suite('run support policy boundaries', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

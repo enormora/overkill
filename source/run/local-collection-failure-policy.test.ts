@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { passingIsolatedWorkerRun } from '../test-support/isolated-worker-run.ts';
 import { attachmentRecording } from '../test-support/attachment-recording.ts';
 import { defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
@@ -8,7 +8,7 @@ import { runLocalCommand } from './run-local-command.ts';
 import { RunCollectionError } from './run-errors.ts';
 import type { RunCommand } from './run-types.ts';
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'local collection failure finalization',
     [ false, true ].flatMap(function (record) {
         return [ false, true ].map(function (restricted) {
@@ -65,4 +65,3 @@ export const testNode = suite(
         });
     })
 );
-await runIfMain(import.meta, testNode);

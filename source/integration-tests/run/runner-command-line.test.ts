@@ -1,9 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     defaultFailureArtifactPolicy,
-    createSuite,
-    createTestCase,
     defineOutputRenderer,
     defineReporter,
     type TestScope
@@ -253,133 +251,95 @@ function selectedEngineRunnerDiagnostic(path: string): string {
     return `Overkill runner error: Test module testNode must be created by the selected engine: ${path}`;
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/integration-tests/run/runner-command-line.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'command-line runner lists explicit files without executing them',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const localResult = await listCommandLine([ passingFixturePath ], 'in-process', false);
-                const supervisedResult = await listCommandLine([ passingFixturePath ], 'supervised-process', true);
+export const testNode = suite('source/integration-tests/run/runner-command-line.test.ts', [
+    test('command-line runner lists explicit files without executing them', async function (scope: TestScope) {
+        const localResult = await listCommandLine([ passingFixturePath ], 'in-process', false);
+        const supervisedResult = await listCommandLine([ passingFixturePath ], 'supervised-process', true);
 
-                scope.assert.equal(localResult.exitCode, 0);
-                scope.assert.deepEqual(localResult.stdoutLines, [
-                    'order=seeded seed=42',
-                    passingFixturePath,
-                    '  fixture',
-                    '    passes'
-                ]);
-                scope.assert.equal(supervisedResult.exitCode, 0);
-                scope.assert.deepEqual(supervisedResult.stdoutLines, [
-                    'order=seeded seed=42',
-                    passingFixturePath,
-                    '  fixture',
-                    '    passes',
-                    'Orphans',
-                    '  (none)'
-                ]);
+        scope.assert.equal(localResult.exitCode, 0);
+        scope.assert.deepEqual(localResult.stdoutLines, [
+            'order=seeded seed=42',
+            passingFixturePath,
+            '  fixture',
+            '    passes'
+        ]);
+        scope.assert.equal(supervisedResult.exitCode, 0);
+        scope.assert.deepEqual(supervisedResult.stdoutLines, [
+            'order=seeded seed=42',
+            passingFixturePath,
+            '  fixture',
+            '    passes',
+            'Orphans',
+            '  (none)'
+        ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'command-line runner runs and lists profile-discovered files',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const runResult = await runDiscoveryCommandLine('supervised-process');
-                const listResult = await listDiscoveryCommandLine('in-process');
+        return scope.assert.collect();
+    }),
+    test('command-line runner runs and lists profile-discovered files', async function (scope: TestScope) {
+        const runResult = await runDiscoveryCommandLine('supervised-process');
+        const listResult = await listDiscoveryCommandLine('in-process');
 
-                scope.assert.equal(runResult.exitCode, 0);
-                scope.require.notNull(runResult.runResult);
-                scope.assert.deepEqual(runResult.runResult.summary, {
-                    crashed: 0,
-                    defined: 2,
-                    discovered: 1,
-                    failed: 0,
-                    inconclusive: 0,
-                    passed: 1,
-                    planned: 1,
-                    processExhausted: 0,
-                    runtimePolicy: 0,
-                    skipped: 0
-                });
-                scope.assert.deepEqual(listResult.stdoutLines, [
-                    'order=seeded seed=42',
-                    discoveryFixturePath,
-                    '  discovery',
-                    '    unit passes'
-                ]);
+        scope.assert.equal(runResult.exitCode, 0);
+        scope.require.notNull(runResult.runResult);
+        scope.assert.deepEqual(runResult.runResult.summary, {
+            crashed: 0,
+            defined: 2,
+            discovered: 1,
+            failed: 0,
+            inconclusive: 0,
+            passed: 1,
+            planned: 1,
+            processExhausted: 0,
+            runtimePolicy: 0,
+            skipped: 0
+        });
+        scope.assert.deepEqual(listResult.stdoutLines, [
+            'order=seeded seed=42',
+            discoveryFixturePath,
+            '  discovery',
+            '    unit passes'
+        ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'command-line runner maps invalid module exports to runner errors',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const missingExportResult = await runCommandLine([ missingTestNodeFixturePath ]);
-                const plainExportResult = await runCommandLine([ plainTestNodeFixturePath ]);
+        return scope.assert.collect();
+    }),
+    test('command-line runner maps invalid module exports to runner errors', async function (scope: TestScope) {
+        const missingExportResult = await runCommandLine([ missingTestNodeFixturePath ]);
+        const plainExportResult = await runCommandLine([ plainTestNodeFixturePath ]);
 
-                scope.assert.equal(missingExportResult.exitCode, 2);
-                scope.assert.equal(plainExportResult.exitCode, 2);
-                scope.assert.deepEqual(missingExportResult.fallbackDiagnostics, [
-                    `Overkill runner error: Test module must export testNode: ${missingTestNodeFixturePath}`
-                ]);
-                scope.assert.deepEqual(plainExportResult.fallbackDiagnostics, [
-                    selectedEngineRunnerDiagnostic(plainTestNodeFixturePath)
-                ]);
+        scope.assert.equal(missingExportResult.exitCode, 2);
+        scope.assert.equal(plainExportResult.exitCode, 2);
+        scope.assert.deepEqual(missingExportResult.fallbackDiagnostics, [
+            `Overkill runner error: Test module must export testNode: ${missingTestNodeFixturePath}`
+        ]);
+        scope.assert.deepEqual(plainExportResult.fallbackDiagnostics, [
+            selectedEngineRunnerDiagnostic(plainTestNodeFixturePath)
+        ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'command-line runner maps collection failures to runner errors',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const importFailureResult = await runCommandLine([ throwsOnImportFixturePath ]);
-                const emptySuiteResult = await runCommandLine([ emptySuiteFixturePath ]);
+        return scope.assert.collect();
+    }),
+    test('command-line runner maps collection failures to runner errors', async function (scope: TestScope) {
+        const importFailureResult = await runCommandLine([ throwsOnImportFixturePath ]);
+        const emptySuiteResult = await runCommandLine([ emptySuiteFixturePath ]);
 
-                scope.assert.equal(importFailureResult.exitCode, 2);
-                scope.assert.equal(emptySuiteResult.exitCode, 2);
-                scope.assert.deepEqual(importFailureResult.fallbackDiagnostics, [
-                    `Overkill runner error: Failed to load test module: ${throwsOnImportFixturePath}`
-                ]);
-                scope.assert.deepEqual(emptySuiteResult.fallbackDiagnostics, [
-                    'Overkill runner error: Failed to collect tests from run inputs.'
-                ]);
+        scope.assert.equal(importFailureResult.exitCode, 2);
+        scope.assert.equal(emptySuiteResult.exitCode, 2);
+        scope.assert.deepEqual(importFailureResult.fallbackDiagnostics, [
+            `Overkill runner error: Failed to load test module: ${throwsOnImportFixturePath}`
+        ]);
+        scope.assert.deepEqual(emptySuiteResult.fallbackDiagnostics, [
+            'Overkill runner error: Failed to collect tests from run inputs.'
+        ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'command-line runner maps empty explicit input to no tests collected',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const result = await runCommandLine([]);
+        return scope.assert.collect();
+    }),
+    test('command-line runner maps empty explicit input to no tests collected', async function (scope: TestScope) {
+        const result = await runCommandLine([]);
 
-                scope.assert.equal(result.exitCode, 4);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill no tests collected: No run paths were provided and the selected profile has no file discovery policy.'
-                ]);
+        scope.assert.equal(result.exitCode, 4);
+        scope.assert.deepEqual(result.fallbackDiagnostics, [
+            'Overkill no tests collected: No run paths were provided and the selected profile has no file discovery policy.'
+        ]);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

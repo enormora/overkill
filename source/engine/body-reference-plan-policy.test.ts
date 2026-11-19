@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { bodyReferencePlan } from '../test-support/body-reference-plan.ts';
 import { memoryImplementationCatalog } from '../test-support/memory-implementation-catalog.ts';
 import { testNode as declarations } from './body-reference-declaration-policy.test.ts';
@@ -19,7 +19,7 @@ import {
 
 const context = { projectRoot: '/project' };
 const state = { admission: 'all', catalog: null } as const;
-export const testNode = suite('frozen body reference planning policy', [
+export const testNode = authoredSuite('frozen body reference planning policy', [
     declarations,
     admission,
     test('retains plan state without changing object identity', function (scope: TestScope) {
@@ -112,4 +112,3 @@ export const testNode = suite('frozen body reference planning policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

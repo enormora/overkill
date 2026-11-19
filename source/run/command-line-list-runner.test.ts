@@ -1,4 +1,5 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type {
     LoadedConfig,
     ConfiguredRunCommand,
@@ -8,13 +9,10 @@ import type {
 } from '../packages/run/run.entry-point.ts';
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
     defineOutputRenderer,
     defineReporter,
     type TestCase,
     type TestCaseOptions,
-    type TestScope as OverkillScope,
     type TestPlan,
     type DefinedReporter,
     type SinkDeclaration
@@ -67,11 +65,8 @@ function listRunnerCase(
     title: string,
     body: TestCaseOptions['body']
 ): TestCase {
-    return createOverkillTestCase({
-        annotations: {},
+    return test({
         body,
-        controls: {},
-        definitionLocations: [ { kind: 'unknown' as const } ],
         title
     });
 }
@@ -308,161 +303,153 @@ export async function listTests(
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/command-line-list-runner.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        listRunnerCase(
-            'commandLineRunner.listTests() renders the resolved plan tree without loading reporters',
-            async function body(scope: OverkillScope) {
-                let defaultReporterLoadCount = 0;
-                const receivedCommands: RunCommand[] = [];
-                const dependencies = createDependencies(
-                    createListOnlyOrchestrator(async function resolveCommand(command) {
-                        receivedCommands.push(snapshotRunCommand(command).command);
+export const testNode = suite('source/run/command-line-list-runner.test.ts', [
+    listRunnerCase(
+        'commandLineRunner.listTests() renders the resolved plan tree without loading reporters',
+        async function body(scope: OverkillScope) {
+            let defaultReporterLoadCount = 0;
+            const receivedCommands: RunCommand[] = [];
+            const dependencies = createDependencies(
+                createListOnlyOrchestrator(async function resolveCommand(command) {
+                    receivedCommands.push(snapshotRunCommand(command).command);
 
-                        return createResolvedRun(command, []);
-                    }),
-                    async function createCountingReporter() {
-                        defaultReporterLoadCount += 1;
+                    return createResolvedRun(command, []);
+                }),
+                async function createCountingReporter() {
+                    defaultReporterLoadCount += 1;
 
-                        return terminalReporter;
-                    }
-                );
-                const result = await listTests(dependencies, false, false);
+                    return terminalReporter;
+                }
+            );
+            const result = await listTests(dependencies, false, false);
 
-                scope.assert.deepEqual({ exitCode: result.exitCode, reporterLoadCount: defaultReporterLoadCount }, {
-                    exitCode: 0,
-                    reporterLoadCount: 0
-                });
-                scope.assert.deepEqual(result.stdoutLines, [
-                    'order=seeded seed=42',
-                    'source/a.test.ts',
-                    '  suite',
-                    '    passes'
-                ]);
-                scope.require.defined(receivedCommands[0]);
-                scope.require.notNull(receivedCommands[0].config.reporters);
-                scope.assert.deepEqual(receivedCommands[0].config.reporters, []);
+            scope.assert.deepEqual({ exitCode: result.exitCode, reporterLoadCount: defaultReporterLoadCount }, {
+                exitCode: 0,
+                reporterLoadCount: 0
+            });
+            scope.assert.deepEqual(result.stdoutLines, [
+                'order=seeded seed=42',
+                'source/a.test.ts',
+                '  suite',
+                '    passes'
+            ]);
+            scope.require.defined(receivedCommands[0]);
+            scope.require.notNull(receivedCommands[0].config.reporters);
+            scope.assert.deepEqual(receivedCommands[0].config.reporters, []);
 
-                return scope.assert.collect();
-            }
-        ),
-        listRunnerCase(
-            'commandLineRunner.listTests() preserves list selection',
-            async function body(scope: OverkillScope) {
-                const receivedCommands: RunCommand[] = [];
-                const integrationProfile = defaultIntegrationProfile({});
-                const selection: RunSelection = {
-                    filter: { field: 'tag', kind: 'equals', value: 'fast' },
-                    kind: 'filter'
-                };
-                const dependencies = createListDependencies(
-                    async function resolveCommand(command) {
-                        receivedCommands.push(snapshotRunCommand(command).command);
+            return scope.assert.collect();
+        }
+    ),
+    listRunnerCase(
+        'commandLineRunner.listTests() preserves list selection',
+        async function body(scope: OverkillScope) {
+            const receivedCommands: RunCommand[] = [];
+            const integrationProfile = defaultIntegrationProfile({});
+            const selection: RunSelection = {
+                filter: { field: 'tag', kind: 'equals', value: 'fast' },
+                kind: 'filter'
+            };
+            const dependencies = createListDependencies(
+                async function resolveCommand(command) {
+                    receivedCommands.push(snapshotRunCommand(command).command);
 
-                        return createResolvedRun(command, []);
-                    },
-                    createTerminalReporter
-                );
-                const runner = createCommandLineRunner({
-                    ...dependencies,
-                    async loadConfig() {
-                        const config = await loadDefaultConfig();
+                    return createResolvedRun(command, []);
+                },
+                createTerminalReporter
+            );
+            const runner = createCommandLineRunner({
+                ...dependencies,
+                async loadConfig() {
+                    const config = await loadDefaultConfig();
 
-                        return {
-                            ...config,
-                            profiles: {
-                                ...config.profiles,
-                                integration: integrationProfile
-                            }
-                        };
-                    }
-                });
+                    return {
+                        ...config,
+                        profiles: {
+                            ...config.profiles,
+                            integration: integrationProfile
+                        }
+                    };
+                }
+            });
 
-                await runner.listTests({
-                    configPath: null,
-                    cwd: process.cwd(),
-                    listRequest: {
-                        lastFailed: false,
-                        order: 'seeded',
-                        paths: [ 'source/integration.test.ts' ],
-                        profile: 'integration',
-                        seed: { value: 42n },
-                        selection,
-                        shard: { index: 1, total: 1 },
-                        withLocations: false,
-                        withOrphans: false
-                    }
-                });
+            await runner.listTests({
+                configPath: null,
+                cwd: process.cwd(),
+                listRequest: {
+                    lastFailed: false,
+                    order: 'seeded',
+                    paths: [ 'source/integration.test.ts' ],
+                    profile: 'integration',
+                    seed: { value: 42n },
+                    selection,
+                    shard: { index: 1, total: 1 },
+                    withLocations: false,
+                    withOrphans: false
+                }
+            });
 
-                scope.require.defined(receivedCommands[0]);
-                scope.assert.deepEqual(receivedCommands[0].request.selection, selection);
+            scope.require.defined(receivedCommands[0]);
+            scope.assert.deepEqual(receivedCommands[0].request.selection, selection);
 
-                return scope.assert.collect();
-            }
-        ),
-        listRunnerCase(
-            'commandLineRunner.listTests() renders definition locations when requested',
-            async function body(scope: OverkillScope) {
-                const result = await listTests(
-                    createListDependencies(resolvePassingCommand, createMemoryReporter),
-                    true,
-                    false
-                );
+            return scope.assert.collect();
+        }
+    ),
+    listRunnerCase(
+        'commandLineRunner.listTests() renders definition locations when requested',
+        async function body(scope: OverkillScope) {
+            const result = await listTests(
+                createListDependencies(resolvePassingCommand, createMemoryReporter),
+                true,
+                false
+            );
 
-                scope.assert.deepEqual(result.stdoutLines, [
-                    'order=seeded seed=42',
-                    'source/a.test.ts',
-                    '  suite (source/a.test.ts:3:5)',
-                    '    passes (source/a.test.ts:5:9)'
-                ]);
+            scope.assert.deepEqual(result.stdoutLines, [
+                'order=seeded seed=42',
+                'source/a.test.ts',
+                '  suite (source/a.test.ts:3:5)',
+                '    passes (source/a.test.ts:5:9)'
+            ]);
 
-                return scope.assert.collect();
-            }
-        ),
-        listRunnerCase(
-            'commandLineRunner.listTests() renders explicit orphan diagnostics',
-            async function body(scope: OverkillScope) {
-                const result = await listTests(
-                    createListDependencies(resolvePassingCommand, createMemoryReporter),
-                    false,
-                    true
-                );
+            return scope.assert.collect();
+        }
+    ),
+    listRunnerCase(
+        'commandLineRunner.listTests() renders explicit orphan diagnostics',
+        async function body(scope: OverkillScope) {
+            const result = await listTests(
+                createListDependencies(resolvePassingCommand, createMemoryReporter),
+                false,
+                true
+            );
 
-                scope.assert.deepEqual(result.stdoutLines, [
-                    'order=seeded seed=42',
-                    'source/a.test.ts',
-                    '  suite',
-                    '    passes',
-                    'Orphans',
-                    '  (none)'
-                ]);
+            scope.assert.deepEqual(result.stdoutLines, [
+                'order=seeded seed=42',
+                'source/a.test.ts',
+                '  suite',
+                '    passes',
+                'Orphans',
+                '  (none)'
+            ]);
 
-                return scope.assert.collect();
-            }
-        ),
-        listRunnerCase(
-            'commandLineRunner.listTests() renders orphan definition locations when requested',
-            async function body(scope: OverkillScope) {
-                const result = await listTests(
-                    createListDependencies(createResolvedRunWithOrphanLocation, createMemoryReporter),
-                    true,
-                    true
-                );
+            return scope.assert.collect();
+        }
+    ),
+    listRunnerCase(
+        'commandLineRunner.listTests() renders orphan definition locations when requested',
+        async function body(scope: OverkillScope) {
+            const result = await listTests(
+                createListDependencies(createResolvedRunWithOrphanLocation, createMemoryReporter),
+                true,
+                true
+            );
 
-                scope.assert.deepEqual(result.stdoutLines, [
-                    'order=seeded seed=42',
-                    'Orphans',
-                    '  suite: unused (<unknown>) (source/orphan.test.ts:7:11)'
-                ]);
+            scope.assert.deepEqual(result.stdoutLines, [
+                'order=seeded seed=42',
+                'Orphans',
+                '  suite: unused (<unknown>) (source/orphan.test.ts:7:11)'
+            ]);
 
-                return scope.assert.collect();
-            }
-        )
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

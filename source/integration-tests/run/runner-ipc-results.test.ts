@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase } from '../../packages/engine/engine.entry-point.ts';
+import { test as authoredTest, suite } from '@overkill-dev/test';
+
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import {
     defaultMicrotestProfile,
@@ -10,16 +10,12 @@ import {
 const fixturePath = 'source/integration-tests/run/fixtures/large-ipc-results.test.ts';
 const caseCount = 32;
 
-export const testNode = createSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/integration-tests/run/runner-ipc-results.test.ts',
-    children: [ false, true ].map(function coverageScenario(coverage) {
-        return createTestCase({
+export const testNode = suite(
+    'source/integration-tests/run/runner-ipc-results.test.ts',
+    [ false, true ].map(function coverageScenario(coverage) {
+        return authoredTest({
             annotations: {},
             controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
             title: `supervised runs preserve large IPC plans and results with coverage ${coverage}`,
             async body(scope) {
                 const result = await orchestrator.run({
@@ -75,6 +71,4 @@ export const testNode = createSuite({
             }
         });
     })
-});
-
-await runIfMain(import.meta, testNode);
+);

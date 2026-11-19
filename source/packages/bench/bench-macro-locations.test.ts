@@ -1,16 +1,17 @@
+import * as ordinary from '@overkill-dev/test';
 import {
     captureSourceLocation,
-    createRoot,
-    createTestPlan,
-    execute,
     resolveSourceLocation,
     type RunResult,
     type SourceLocation,
     type TestBody,
     type TestPlan,
-    type TestScope
+    type TestScope,
+    createRoot,
+    createTestPlan,
+    execute
 } from '../engine/engine.entry-point.ts';
-import * as ordinary from '../test/test.entry-point.ts';
+
 import * as bench from './bench.entry-point.ts';
 
 function failingBody(scope: TestScope): ReturnType<TestBody> {

@@ -1,15 +1,8 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type RunnerError,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import type { RunnerError } from '../packages/engine/engine.entry-point.ts';
 import type { ResourceScope } from '../resources/resources.ts';
-import {
-    createCollectedPlan,
-    fakeWorkerRuntime
-} from '../test-support/worker-pool-execution-state.ts';
+import { createCollectedPlan, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
 import { createResourceOwnershipPlan } from './execution-plan-resolution.ts';
 import {
     acquireWorkerPoolResourceLifecycle,
@@ -184,11 +177,11 @@ async function assertTerminalFailureSuppressesDisposalFailures(scope: OverkillSc
     scope.assert.deepEqual(runtime.runState.runnerErrors(), []);
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-resource-lifecycle-disposal.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool resource lifecycle skips worker tasks without resources',
             async body(scope: OverkillScope) {
@@ -197,7 +190,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool resource lifecycle records invalid lane disposal output',
             async body(scope: OverkillScope) {
@@ -206,7 +199,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool resource lifecycle records run resource runner errors',
             async body(scope: OverkillScope) {
@@ -215,7 +208,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool resource lifecycle suppresses disposal failures after terminal failure',
             async body(scope: OverkillScope) {
@@ -226,5 +219,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

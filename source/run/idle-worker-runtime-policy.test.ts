@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { idleWorkerRuntime, resourceOwnerRuntime } from '../test-support/idle-worker-runtime.ts';
 import { testNode as acknowledgements } from './worker-resource-owner-policy.test.ts';
 
-export const testNode = suite('idle worker runtime ownership', [
+export const testNode = authoredSuite('idle worker runtime ownership', [
     acknowledgements,
     ...[ false, true ].map(function (timed) {
         return test(`isolates per-run resource ownership with timing ${timed}`, async function (scope: TestScope) {
@@ -27,4 +27,3 @@ export const testNode = suite('idle worker runtime ownership', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { CaseId } from '../engine/identity.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import type { ProcessUsageSnapshot } from '../engine/process-usage.ts';
@@ -225,147 +221,103 @@ function assertTimedOutChild(
     scope.assert.deepEqual(child.signals(), [ 'SIGKILL' ]);
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/supervised-run-runtime.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'supervisedCollectedPlan() accepts only supervised plans',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const supervisedPlan = { collectedPlan, kind: 'supervised' as const };
-                const localPlan = { kind: 'local' as const, testPlan: {} };
+export const testNode = suite('source/run/supervised-run-runtime.test.ts', [
+    test('supervisedCollectedPlan() accepts only supervised plans', function (scope: OverkillScope) {
+        const supervisedPlan = { collectedPlan, kind: 'supervised' as const };
+        const localPlan = { kind: 'local' as const, testPlan: {} };
 
-                scope.assert.equal(
-                    Object.is(
-                        supervisedCollectedPlan(resolvedRunWithPlan(supervisedPlan)),
-                        collectedPlan
-                    ),
-                    true
-                );
-                scope.assert.throws(function readLocalPlan() {
-                    supervisedCollectedPlan(resolvedRunWithPlan(localPlan as ResolvedRun['plan']));
-                }, { message: 'Supervised execution requires a supervised collected plan.' });
+        scope.assert.equal(
+            Object.is(
+                supervisedCollectedPlan(resolvedRunWithPlan(supervisedPlan)),
+                collectedPlan
+            ),
+            true
+        );
+        scope.assert.throws(function readLocalPlan() {
+            supervisedCollectedPlan(resolvedRunWithPlan(localPlan as ResolvedRun['plan']));
+        }, { message: 'Supervised execution requires a supervised collected plan.' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'kill() only signals a live spawned child',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const live = childProcess({ exitCode: null, pid: 1, signalCode: null });
-                const exited = childProcess({ exitCode: 0, pid: 2, signalCode: null });
-                const notStarted = childProcess({ exitCode: null, pid: undefined, signalCode: null });
-                const signaled = childProcess({ exitCode: null, pid: 3, signalCode: 'SIGTERM' });
+        return scope.assert.collect();
+    }),
+    test('kill() only signals a live spawned child', function (scope: OverkillScope) {
+        const live = childProcess({ exitCode: null, pid: 1, signalCode: null });
+        const exited = childProcess({ exitCode: 0, pid: 2, signalCode: null });
+        const notStarted = childProcess({ exitCode: null, pid: undefined, signalCode: null });
+        const signaled = childProcess({ exitCode: null, pid: 3, signalCode: 'SIGTERM' });
 
-                kill(live.child);
-                kill(exited.child);
-                kill(notStarted.child);
-                kill(signaled.child);
+        kill(live.child);
+        kill(exited.child);
+        kill(notStarted.child);
+        kill(signaled.child);
 
-                scope.assert.deepEqual([
-                    ...live.signals(),
-                    ...exited.signals(),
-                    ...notStarted.signals(),
-                    ...signaled.signals()
-                ], [ 'SIGKILL' ]);
+        scope.assert.deepEqual([
+            ...live.signals(),
+            ...exited.signals(),
+            ...notStarted.signals(),
+            ...signaled.signals()
+        ], [ 'SIGKILL' ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'createHardTimeout() reschedules for the oldest active case',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const live = childProcess({ exitCode: null, pid: 1, signalCode: null });
-                const record = timeoutRuntime(live.child);
-                const timeout = createHardTimeout(record.runtime);
+        return scope.assert.collect();
+    }),
+    test('createHardTimeout() reschedules for the oldest active case', function (scope: OverkillScope) {
+        const live = childProcess({ exitCode: null, pid: 1, signalCode: null });
+        const record = timeoutRuntime(live.child);
+        const timeout = createHardTimeout(record.runtime);
 
-                scheduleOverlappingCases(record, timeout);
-                scope.assert.deepEqual(record.delays(), [ 1000, 500, 1000 ]);
-                timeoutCallback(scope, record.callbacks())();
-                timeout.clear();
+        scheduleOverlappingCases(record, timeout);
+        scope.assert.deepEqual(record.delays(), [ 1000, 500, 1000 ]);
+        timeoutCallback(scope, record.callbacks())();
+        timeout.clear();
 
-                assertTimedOutChild(scope, record, live);
+        assertTimedOutChild(scope, record, live);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'handleCollectionSample() skips terminal runs and records clean samples',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const terminal = collectionRuntime(
-                    childProcess({ exitCode: null, pid: 1, signalCode: null }).child,
-                    true,
-                    null
-                );
-                const running = collectionRuntime(
-                    childProcess({ exitCode: null, pid: 2, signalCode: null }).child,
-                    false,
-                    null
-                );
+        return scope.assert.collect();
+    }),
+    test('handleCollectionSample() skips terminal runs and records clean samples', function (scope: OverkillScope) {
+        const terminal = collectionRuntime(
+            childProcess({ exitCode: null, pid: 1, signalCode: null }).child,
+            true,
+            null
+        );
+        const running = collectionRuntime(
+            childProcess({ exitCode: null, pid: 2, signalCode: null }).child,
+            false,
+            null
+        );
 
-                handleCollectionSample(processUsageSample, terminal);
-                handleCollectionSample(processUsageSample, running);
-                const recordedSample = running.previousSample.read();
-                scope.require.notNull(recordedSample);
+        handleCollectionSample(processUsageSample, terminal);
+        handleCollectionSample(processUsageSample, running);
+        const recordedSample = running.previousSample.read();
+        scope.require.notNull(recordedSample);
 
-                scope.assert.equal(terminal.previousSample.read(), null);
-                scope.assert.deepEqual(recordedSample, processUsageSample);
+        scope.assert.equal(terminal.previousSample.read(), null);
+        scope.assert.deepEqual(recordedSample, processUsageSample);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'handleCollectionSample() reports collection process budget breaches',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const live = childProcess({ exitCode: null, pid: 1, signalCode: null });
-                const runtime = collectionRuntime(live.child, false, -1);
+        return scope.assert.collect();
+    }),
+    test('handleCollectionSample() reports collection process budget breaches', function (scope: OverkillScope) {
+        const live = childProcess({ exitCode: null, pid: 1, signalCode: null });
+        const runtime = collectionRuntime(live.child, false, -1);
 
-                handleCollectionSample(processUsageSample, runtime);
+        handleCollectionSample(processUsageSample, runtime);
 
-                scope.assert.equal(runtime.terminalFailure.read(), true);
-                scope.assert.deepEqual(live.signals(), [ 'SIGKILL' ]);
-                scope.assert.equal(runtime.state.runnerErrors()[0]?.subtype, 'process-exhaustion');
+        scope.assert.equal(runtime.terminalFailure.read(), true);
+        scope.assert.deepEqual(live.signals(), [ 'SIGKILL' ]);
+        scope.assert.equal(runtime.state.runnerErrors()[0]?.subtype, 'process-exhaustion');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'handleChildMessage() records supervised process usage samples',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const runtime = runRuntime(
-                    timeoutRuntime(childProcess({ exitCode: null, pid: 1, signalCode: null }).child).runtime
-                );
+        return scope.assert.collect();
+    }),
+    test('handleChildMessage() records supervised process usage samples', function (scope: OverkillScope) {
+        const runtime = runRuntime(
+            timeoutRuntime(childProcess({ exitCode: null, pid: 1, signalCode: null }).child).runtime
+        );
 
-                handleChildMessage({ kind: 'sample', sample: processUsageSample }, runtime);
-                const recordedSample = runtime.previousSample.read();
-                scope.require.notNull(recordedSample);
+        handleChildMessage({ kind: 'sample', sample: processUsageSample }, runtime);
+        const recordedSample = runtime.previousSample.read();
+        scope.require.notNull(recordedSample);
 
-                scope.assert.deepEqual(recordedSample, processUsageSample);
+        scope.assert.deepEqual(recordedSample, processUsageSample);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

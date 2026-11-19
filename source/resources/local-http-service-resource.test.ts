@@ -1,12 +1,14 @@
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { z } from 'zod/v4';
-import { runIfMain } from '#test-runner';
+
 import { serializeProjectedHandle, deserializeProjectedHandle } from '../run/resource-lifecycle-projection.ts';
 import {
     type LocalHttpServerFixture,
     localHttpServer,
     type HttpServerFaults
 } from '../test-support/local-http-server.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { resourceAttachments } from '../attachments/attachment-context.ts';
 import { emptyTranscriptView } from '../transcript/http-transcript.ts';
 import {
@@ -74,8 +76,8 @@ const transcriptPolicies: readonly (LocalHttpTranscriptPolicy | null)[] = [
         transcript: emptyTranscriptView
     }
 ];
-export const testNode = suite('local HTTP resource ownership', [
-    test('projects per-run HTTP handles with an empty consumer transcript', function (scope: TestScope) {
+export const testNode = authoredSuite('local HTTP resource ownership', [
+    authoredTest('projects per-run HTTP handles with an empty consumer transcript', function (scope: TestScope) {
         const fixture = httpService(null, noFaults);
         const resource = createLocalHttpServiceResource({
             ...fixture.input,
@@ -102,29 +104,32 @@ export const testNode = suite('local HTTP resource ownership', [
         return scope.assert.collect();
     }),
     ...([ 'serializeHandle', 'deserializeHandle' ] as const).map(function (missing) {
-        return test(`requires the ${missing} callback for projected HTTP services`, function (scope: TestScope) {
-            const fixture = httpService(null, noFaults);
-            const input = {
-                ...fixture.input,
-                scope: 'per-run',
-                serializeHandle() {
-                    return 'owner';
-                },
-                deserializeHandle() {
-                    return { baseUrl: 'http://consumer' };
-                },
-                [missing]: undefined
-            };
-            scope.assert.throws(function () {
-                Reflect.apply(createLocalHttpServiceResource, undefined, [ input ]);
-            }, { message: 'Projected local HTTP services require handle projection callbacks.' });
-            scope.assert.deepEqual(fixture.lifecycle, []);
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `requires the ${missing} callback for projected HTTP services`,
+            function (scope: TestScope) {
+                const fixture = httpService(null, noFaults);
+                const input = {
+                    ...fixture.input,
+                    scope: 'per-run',
+                    serializeHandle() {
+                        return 'owner';
+                    },
+                    deserializeHandle() {
+                        return { baseUrl: 'http://consumer' };
+                    },
+                    [missing]: undefined
+                };
+                scope.assert.throws(function () {
+                    Reflect.apply(createLocalHttpServiceResource, undefined, [ input ]);
+                }, { message: 'Projected local HTTP services require handle projection callbacks.' });
+                scope.assert.deepEqual(fixture.lifecycle, []);
+                return scope.assert.collect();
+            }
+        );
     }),
 
     ...transcriptPolicies.map(function (policy) {
-        return test(
+        return authoredTest(
             `starts and disposes a ${policy?.kind ?? 'default'} transcript service`,
             async function (scope: TestScope) {
                 const fixture = httpService(policy, noFaults);
@@ -142,7 +147,7 @@ export const testNode = suite('local HTTP resource ownership', [
             }
         );
     }),
-    test('preserves custom transcript evidence', async function (scope: TestScope) {
+    authoredTest('preserves custom transcript evidence', async function (scope: TestScope) {
         const transcript = emptyTranscriptView();
         const fixture = httpService({
             kind: 'custom',
@@ -156,7 +161,7 @@ export const testNode = suite('local HTTP resource ownership', [
         await fixture.service.dispose(handle, fixture.context);
         return scope.assert.collect();
     }),
-    test('retains custom transcript capture failures as evidence', async function (scope: TestScope) {
+    authoredTest('retains custom transcript capture failures as evidence', async function (scope: TestScope) {
         const fixture = httpService({
             kind: 'custom',
             transcript() {
@@ -173,7 +178,7 @@ export const testNode = suite('local HTTP resource ownership', [
         return scope.assert.collect();
     }),
     ...[ 'string', 'none' ].map(function (address) {
-        return test(`cleans up a server with ${address} address`, async function (scope: TestScope) {
+        return authoredTest(`cleans up a server with ${address} address`, async function (scope: TestScope) {
             const fixture = httpService(null, { ...noFaults, address: address === 'string' ? 'string' : 'none' });
             await scope.assert.rejects(async function () {
                 await fixture.service.acquire(resourceContext());
@@ -183,7 +188,7 @@ export const testNode = suite('local HTTP resource ownership', [
             return scope.assert.collect();
         });
     }),
-    test('cleans up after listen failure without closing an unbound server', async function (scope: TestScope) {
+    authoredTest('cleans up after listen failure without closing an unbound server', async function (scope: TestScope) {
         const error = new Error('Listen failed.');
         const fixture = httpService(null, { ...noFaults, listen: error });
         let failure: unknown = null;
@@ -200,7 +205,7 @@ export const testNode = suite('local HTTP resource ownership', [
         scope.assert.equal(fixture.events.listenerCount('listening'), 0);
         return scope.assert.collect();
     }),
-    test('reports close failures while disposing the owner', async function (scope: TestScope) {
+    authoredTest('reports close failures while disposing the owner', async function (scope: TestScope) {
         const fixture = httpService(null, { ...noFaults, close: new Error('Close failed.') });
         const handle = await fixture.service.acquire(fixture.context);
         scope.require.defined(fixture.service.dispose);
@@ -215,4 +220,3 @@ export const testNode = suite('local HTTP resource ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

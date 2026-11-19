@@ -1,10 +1,11 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import { z } from 'zod/v4';
-import { suite, test } from '../test/test.entry-point.ts';
+
 import { ConfigError } from '../run/config.entry-point.ts';
 import { strykerValidationSchema } from './runner-options.ts';
 import { parseRunnerOptions } from './runner-settings-schema.ts';
 
-export const testNode = suite('Stryker adapter settings', [
+export const testNode = authoredSuite('Stryker adapter settings', [
     test('publishes defaults that preserve one campaign seed across normalized options', function (scope) {
         const schema = z.fromJSONSchema(strykerValidationSchema);
         const first = schema.parse({ testRunner: 'overkill' });

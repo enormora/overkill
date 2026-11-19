@@ -1,5 +1,6 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import { defaultFailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
-import { suite, test } from '../test/test.entry-point.ts';
+
 import { normalizeConfig } from '../run/run.entry-point.ts';
 import { createUnitRunOrchestrator } from '../../test-support/create-deterministic-run-orchestrator.ts';
 import type { TestScope } from '../engine/engine.entry-point.ts';
@@ -8,7 +9,7 @@ import { selectMicrotestProfile } from './microtest-profile.ts';
 
 const fixture = 'source/integration-tests/run/fixtures/passing.test.ts';
 
-export const testNode = suite('mutation execution policy', [
+export const testNode = authoredSuite('mutation execution policy', [
     test('preserves configured policy while resolving explicit serial intent', async function (scope) {
         for (const processModel of [ 'in-process', 'supervised-process' ] as const) {
             for (const scheduling of [ 'concurrent', 'serial' ] as const) {

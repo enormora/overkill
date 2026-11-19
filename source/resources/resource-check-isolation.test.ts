@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createRoot, createTestPlan, createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import { createRoot, createTestPlan, createTestCase } from '../packages/engine/engine.entry-point.ts';
 import { withResource } from '../packages/test/resources.entry-point.ts';
 import {
     createManagedResourceAcquirer,
@@ -96,190 +97,147 @@ async function copiedCancellationMember(): Promise<unknown> {
     }
     return Reflect.get(copy, 'stopResourceCheckAttempt');
 }
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'resource check isolation',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'loaded module copies share active cancellation ownership',
-            annotations: {},
-            controls: {},
-            async body(scope) {
-                const stop = await copiedCancellationMember();
-                if (typeof stop !== 'function') {
-                    throw new TypeError('Expected attempt cancellation.');
-                }
-                const causes: unknown[] = [];
-                const run = resourceCheckRunIdentity();
-                await withResourceCheckCancellation(work, { index: 0 }, function cancelled(cause) {
-                    causes.push(cause);
-                }, async function stopCopiedAttempt() {
-                    Reflect.apply(stop, undefined, [ work, { index: 0 }, 'shared stop', run ]);
-                });
-                scope.assert.deepEqual(causes, [ 'shared stop' ]);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'concurrent consumers await shared observer admission',
-            annotations: {},
-            controls: {},
-            async body(scope) {
-                const fixture = pendingManagedObservation();
-                const first = fixture.acquirer.acquire(fixture.resource, fixture.testCase, scope.signal);
-                await fixture.installing;
-                const second = fixture.acquirer.acquire(fixture.resource, fixture.testCase, scope.signal);
-                const admission = admittedObservation(second);
-                fixture.admit(undefined);
-                const records = await Promise.all([ first, admission ]);
-                scope.assert.equal(records[0], records[1]);
-                await records[0].checks?.close(function () {
-                    records[0].releaseOwner();
-                });
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'owner closure drains an empty prepared attempt exactly once',
-            annotations: {},
-            controls: {},
-            async body(scope) {
-                const events: string[] = [];
-                const resource = withResourceChecks(
-                    defineResource({
-                        name: 'owner',
-                        scope: 'per-case',
-                        requirements: [],
-                        acquire() {
-                            return true;
-                        },
-                        dispose: null
-                    }),
-                    function () {
-                        return {
-                            prepare() {
-                                return undefined;
-                            },
-                            finalize(context) {
-                                events.push(context.interval.kind);
-                                return { kind: 'complete' };
-                            }
-                        };
-                    }
-                );
-                const session = createResourceCheckSession(resource, true, { kind: 'managed', consumers: [ work ] });
-                const interval: ResourceCheckInterval = { kind: 'attempt', work, attempt: { index: 0 } };
-                await session.install(scope.signal);
-                await session.prepare(interval);
-                await session.close(function () {
-                    events.push('owner-close');
-                });
-                await session.finalize(interval);
-                scope.assert.deepEqual(events, [ 'owner-close', 'attempt', 'lifetime' ]);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'late findings retain their interval without entering a retry',
-            annotations: {},
-            controls: {},
-            body(scope) {
-                const ledger = createResourceCheckLedger(
-                    'owner',
-                    function () {
+export const testNode = suite('resource check isolation', [
+    test('loaded module copies share active cancellation ownership', async function (scope) {
+        const stop = await copiedCancellationMember();
+        if (typeof stop !== 'function') {
+            throw new TypeError('Expected attempt cancellation.');
+        }
+        const causes: unknown[] = [];
+        const run = resourceCheckRunIdentity();
+        await withResourceCheckCancellation(work, { index: 0 }, function cancelled(cause) {
+            causes.push(cause);
+        }, async function stopCopiedAttempt() {
+            Reflect.apply(stop, undefined, [ work, { index: 0 }, 'shared stop', run ]);
+        });
+        scope.assert.deepEqual(causes, [ 'shared stop' ]);
+        return scope.assert.collect();
+    }),
+    test('concurrent consumers await shared observer admission', async function (scope) {
+        const fixture = pendingManagedObservation();
+        const first = fixture.acquirer.acquire(fixture.resource, fixture.testCase, scope.signal);
+        await fixture.installing;
+        const second = fixture.acquirer.acquire(fixture.resource, fixture.testCase, scope.signal);
+        const admission = admittedObservation(second);
+        fixture.admit(undefined);
+        const records = await Promise.all([ first, admission ]);
+        scope.assert.equal(records[0], records[1]);
+        await records[0].checks?.close(function () {
+            records[0].releaseOwner();
+        });
+        return scope.assert.collect();
+    }),
+    test('owner closure drains an empty prepared attempt exactly once', async function (scope) {
+        const events: string[] = [];
+        const resource = withResourceChecks(
+            defineResource({
+                name: 'owner',
+                scope: 'per-case',
+                requirements: [],
+                acquire() {
+                    return true;
+                },
+                dispose: null
+            }),
+            function () {
+                return {
+                    prepare() {
                         return undefined;
                     },
-                    { run: 'test-run', id: 'test-owner', scope: 'per-case' },
-                    function publish() {
-                        return undefined;
+                    finalize(context) {
+                        events.push(context.interval.kind);
+                        return { kind: 'complete' };
                     }
-                );
-                const first: ResourceCheckInterval = { kind: 'attempt', work, attempt: { index: 0 } };
-                const retry: ResourceCheckInterval = { kind: 'attempt', work, attempt: { index: 1 } };
-                ledger.writer.record(first, 'page', { kind: 'pass' });
-                scope.assert.deepEqual(
-                    ledger.finalize(first, { kind: 'complete' }),
-                    ledger.finalize(first, { kind: 'incomplete', reasons: [ 'must not replace a finalized outcome' ] })
-                );
-                ledger.writer.record(retry, 'page', { kind: 'pass' });
-                ledger.writer.record(first, 'late-page', { kind: 'pass' });
-                scope.assert.deepEqual(
-                    ledger.snapshots().map(function retainedEvidence(snapshot) {
-                        return {
-                            passing: snapshot.passing,
-                            errors: snapshot.errors.map(function attribution(error) {
-                                return { interval: error.interval, target: error.target };
-                            })
-                        };
-                    }),
-                    [
-                        { passing: 1, errors: [] },
-                        { passing: 1, errors: [] },
-                        { passing: 0, errors: [ { interval: first, target: 'late-page' } ] }
-                    ]
-                );
-                scope.assert.equal(ledger.finalize({ kind: 'lifetime' }, { kind: 'complete' }).kind, 'incomplete');
-                return scope.assert.collect();
+                };
             }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'stop evidence survives independently of the cancellation callback',
-            annotations: {},
-            controls: {},
-            body(scope) {
-                const causes: unknown[] = [];
-                const ledger = createResourceCheckLedger(
-                    'owner',
-                    function (cause) {
-                        causes.push(cause);
-                    },
-                    { run: 'test-run', id: 'test-owner', scope: 'per-case' },
-                    function publish() {
-                        return undefined;
-                    }
-                );
-                const failure = new Error('observer transport failed');
-                ledger.writer.requestStop(
-                    { kind: 'lifetime' },
-                    'page',
-                    { kind: 'observation-error', error: failure }
-                );
-                scope.assert.deepEqual(causes, [ failure ]);
-                scope.assert.equal(ledger.snapshots()[0]?.errors[0]?.cause, failure);
-                scope.assert.equal(ledger.finalize({ kind: 'lifetime' }, { kind: 'complete' }).kind, 'incomplete');
-                return scope.assert.collect();
+        );
+        const session = createResourceCheckSession(resource, true, { kind: 'managed', consumers: [ work ] });
+        const interval: ResourceCheckInterval = { kind: 'attempt', work, attempt: { index: 0 } };
+        await session.install(scope.signal);
+        await session.prepare(interval);
+        await session.close(function () {
+            events.push('owner-close');
+        });
+        await session.finalize(interval);
+        scope.assert.deepEqual(events, [ 'owner-close', 'attempt', 'lifetime' ]);
+        return scope.assert.collect();
+    }),
+    test('late findings retain their interval without entering a retry', function (scope) {
+        const ledger = createResourceCheckLedger(
+            'owner',
+            function () {
+                return undefined;
+            },
+            { run: 'test-run', id: 'test-owner', scope: 'per-case' },
+            function publish() {
+                return undefined;
             }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'cancellation targets only its active attempt and releases registrations',
-            annotations: {},
-            controls: {},
-            async body(scope) {
-                const stopped: string[] = [];
-                const run = resourceCheckRunIdentity();
-                await withResourceCheckCancellation(work, { index: 0 }, function () {
-                    stopped.push('first');
-                }, async function () {
-                    await withResourceCheckCancellation(work, { index: 1 }, function () {
-                        stopped.push('retry');
-                    }, async function () {
-                        stopResourceCheckAttempt(work, { index: 0 }, 'stop', run);
-                    });
-                    stopResourceCheckAttempt(work, { index: 1 }, 'late stop', run);
-                });
-                stopResourceCheckAttempt(work, { index: 0 }, 'late stop', run);
-                scope.assert.deepEqual(stopped, [ 'first' ]);
-                return scope.assert.collect();
+        );
+        const first: ResourceCheckInterval = { kind: 'attempt', work, attempt: { index: 0 } };
+        const retry: ResourceCheckInterval = { kind: 'attempt', work, attempt: { index: 1 } };
+        ledger.writer.record(first, 'page', { kind: 'pass' });
+        scope.assert.deepEqual(
+            ledger.finalize(first, { kind: 'complete' }),
+            ledger.finalize(first, { kind: 'incomplete', reasons: [ 'must not replace a finalized outcome' ] })
+        );
+        ledger.writer.record(retry, 'page', { kind: 'pass' });
+        ledger.writer.record(first, 'late-page', { kind: 'pass' });
+        scope.assert.deepEqual(
+            ledger.snapshots().map(function retainedEvidence(snapshot) {
+                return {
+                    passing: snapshot.passing,
+                    errors: snapshot.errors.map(function attribution(error) {
+                        return { interval: error.interval, target: error.target };
+                    })
+                };
+            }),
+            [
+                { passing: 1, errors: [] },
+                { passing: 1, errors: [] },
+                { passing: 0, errors: [ { interval: first, target: 'late-page' } ] }
+            ]
+        );
+        scope.assert.equal(ledger.finalize({ kind: 'lifetime' }, { kind: 'complete' }).kind, 'incomplete');
+        return scope.assert.collect();
+    }),
+    test('stop evidence survives independently of the cancellation callback', function (scope) {
+        const causes: unknown[] = [];
+        const ledger = createResourceCheckLedger(
+            'owner',
+            function (cause) {
+                causes.push(cause);
+            },
+            { run: 'test-run', id: 'test-owner', scope: 'per-case' },
+            function publish() {
+                return undefined;
             }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+        );
+        const failure = new Error('observer transport failed');
+        ledger.writer.requestStop(
+            { kind: 'lifetime' },
+            'page',
+            { kind: 'observation-error', error: failure }
+        );
+        scope.assert.deepEqual(causes, [ failure ]);
+        scope.assert.equal(ledger.snapshots()[0]?.errors[0]?.cause, failure);
+        scope.assert.equal(ledger.finalize({ kind: 'lifetime' }, { kind: 'complete' }).kind, 'incomplete');
+        return scope.assert.collect();
+    }),
+    test('cancellation targets only its active attempt and releases registrations', async function (scope) {
+        const stopped: string[] = [];
+        const run = resourceCheckRunIdentity();
+        await withResourceCheckCancellation(work, { index: 0 }, function () {
+            stopped.push('first');
+        }, async function () {
+            await withResourceCheckCancellation(work, { index: 1 }, function () {
+                stopped.push('retry');
+            }, async function () {
+                stopResourceCheckAttempt(work, { index: 0 }, 'stop', run);
+            });
+            stopResourceCheckAttempt(work, { index: 1 }, 'late stop', run);
+        });
+        stopResourceCheckAttempt(work, { index: 0 }, 'late stop', run);
+        scope.assert.deepEqual(stopped, [ 'first' ]);
+        return scope.assert.collect();
+    })
+]);

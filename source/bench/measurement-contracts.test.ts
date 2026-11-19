@@ -1,4 +1,5 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { observationVariance } from './statistical-primitives.ts';
 import { resolveBenchmarkDefinition } from './benchmark-definition-resolution.ts';
 import { normalizeMetricBudget } from './benchmark-budget-definition.ts';
@@ -19,7 +20,7 @@ const definition = {
     budgets: { one: { value: { maximum: 2 } } }
 };
 
-export const testNode = suite('measurement contracts', [
+export const testNode = authoredSuite('measurement contracts', [
     test('rejects variance overflow instead of returning a non-finite interval', function (scope) {
         scope.assert.throws(function () {
             return observationVariance([ Number.MAX_VALUE, -Number.MAX_VALUE ]);

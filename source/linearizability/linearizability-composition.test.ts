@@ -1,13 +1,14 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
+import { test } from '../packages/test/test.entry-point.ts';
 import { property, gen, withProperties } from '../packages/property/property.entry-point.ts';
 import { linearizability } from '../packages/linearizability/linearizability.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 
 type MutableOperation = { readonly values: ReadonlyMap<string, number>; };
 
-export const testNode = suite('linearizability property composition', [
-    test('stops admission immediately on a synchronous fatal control error', async function (scope) {
+export const testNode = authoredSuite('linearizability property composition', [
+    authoredTest('stops admission immediately on a synchronous fatal control error', async function (scope) {
         const admitted: number[] = [];
         const result = await executePropertyNode(
             property({
@@ -38,7 +39,7 @@ export const testNode = suite('linearizability property composition', [
         scope.assert.deepEqual(admitted, [ 0 ]);
         return scope.assert.collect();
     }),
-    test('records promise responses before admitting a later call', async function (scope) {
+    authoredTest('records promise responses before admitting a later call', async function (scope) {
         const result = await executePropertyNode(
             property({
                 title: 'promise response precedence',
@@ -75,7 +76,7 @@ export const testNode = suite('linearizability property composition', [
         scope.assert.equal(result.summary.inconclusive, 0);
         return scope.assert.collect();
     }),
-    test('isolates mutable execution inputs from the model', async function (scope) {
+    authoredTest('isolates mutable execution inputs from the model', async function (scope) {
         const result = await executePropertyNode(
             property({
                 title: 'mutable operation',
@@ -116,7 +117,7 @@ export const testNode = suite('linearizability property composition', [
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    test('supports empty programs in nested invocations', async function (scope) {
+    authoredTest('supports empty programs in nested invocations', async function (scope) {
         const result = await executePropertyNode(
             test(
                 'nested empty history',
@@ -148,7 +149,7 @@ export const testNode = suite('linearizability property composition', [
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    test('replays confirmed lane inputs through current system code', async function (scope) {
+    authoredTest('replays confirmed lane inputs through current system code', async function (scope) {
         const node = property({
             title: 'replay invalid read',
             generator: gen.tuple(gen.tuple(gen.constant(1))),
@@ -181,5 +182,3 @@ export const testNode = suite('linearizability property composition', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

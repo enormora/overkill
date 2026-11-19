@@ -1,8 +1,9 @@
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import type { Rule } from 'eslint';
 import { z } from 'zod';
 import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { sampleGenerator } from '../packages/property/property.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { optionInputs } from './option-schemas.ts';
 import { schemaGenerator } from './schema-generator.ts';
 
@@ -160,8 +161,8 @@ const tree: z.ZodType<Tree> = z.lazy(function recursiveTree() {
     return z.union([ z.null(), z.array(tree).max(1) ]);
 });
 
-export const testNode = suite('ESLint option schema contracts', [
-    test('array minima extend the default maximum when necessary', function (scope) {
+export const testNode = authoredSuite('ESLint option schema contracts', [
+    authoredTest('array minima extend the default maximum when necessary', function (scope) {
         const generator = optionInputs({
             meta: {
                 schema: {
@@ -182,7 +183,7 @@ export const testNode = suite('ESLint option schema contracts', [
         }));
         return scope.assert.collect();
     }),
-    test('rejects empty schema choices and unsupported references before sampling', function (scope) {
+    authoredTest('rejects empty schema choices and unsupported references before sampling', function (scope) {
         const cases = [
             { schema: { enum: [] }, message: 'Schema enum must not be empty.' },
             { schema: { anyOf: [] }, message: 'Schema alternatives must not be empty.' },
@@ -200,7 +201,7 @@ export const testNode = suite('ESLint option schema contracts', [
         return scope.assert.collect();
     }),
     ...contracts.map(function contract({ title, schema, expected }) {
-        return test(title, function (scope) {
+        return authoredTest(title, function (scope) {
             const values = sampleOptions({ type: 'array', items: schema, minItems: 1, maxItems: 1 });
             scope.assert.equal(values.length, request.count);
             scope.assert.true(values.every(function matches(options) {
@@ -209,7 +210,7 @@ export const testNode = suite('ESLint option schema contracts', [
             return scope.assert.collect();
         });
     }),
-    test('rules without option schemas generate empty option lists', function (scope) {
+    authoredTest('rules without option schemas generate empty option lists', function (scope) {
         const values = sampleGenerator(
             optionInputs({
                 create() {
@@ -226,7 +227,7 @@ export const testNode = suite('ESLint option schema contracts', [
         );
         return scope.assert.collect();
     }),
-    test('schema false permits arbitrary JSON option lists', function (scope) {
+    authoredTest('schema false permits arbitrary JSON option lists', function (scope) {
         const values = sampleOptions(false);
         scope.assert.equal(values.length, request.count);
         scope.assert.true(values.every(function valid(options) {
@@ -237,7 +238,7 @@ export const testNode = suite('ESLint option schema contracts', [
         }));
         return scope.assert.collect();
     }),
-    test('structured enum values are independent fresh inputs', function (scope: TestScope) {
+    authoredTest('structured enum values are independent fresh inputs', function (scope: TestScope) {
         const original = { values: [ 1 ] };
         const values = sampleOptions({ type: 'array', items: { enum: [ original ] }, minItems: 1, maxItems: 1 });
         const first = values[0]?.[0];
@@ -250,7 +251,7 @@ export const testNode = suite('ESLint option schema contracts', [
         scope.assert.deepEqual(values[1]?.[0], { values: [ 1 ] });
         return scope.assert.collect();
     }),
-    test('local references decode escaped pointer segments', function (scope) {
+    authoredTest('local references decode escaped pointer segments', function (scope) {
         const values = sampleOptions({
             type: 'array',
             items: { $ref: '#/definitions/a~1b~0c' },
@@ -266,7 +267,7 @@ export const testNode = suite('ESLint option schema contracts', [
         );
         return scope.assert.collect();
     }),
-    test('recursive local references remain inside the recursive domain', function (scope) {
+    authoredTest('recursive local references remain inside the recursive domain', function (scope) {
         const values = sampleOptions({
             type: 'array',
             items: { $ref: '#/definitions/tree' },

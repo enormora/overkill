@@ -1,19 +1,8 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { emptyWorkUnitResourceConstraints, type PlacementPlan } from './run-types.ts';
-import {
-    fakeWorkerRuntime,
-    placementPlan,
-    testCaseMetadata
-} from './worker-pool-placement-validation.test.ts';
-import type {
-    WorkerPoolUnitLease,
-    WorkerPoolWorkDispatcher
-} from './worker-pool-dispatch-state.ts';
+import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
+import type { WorkerPoolUnitLease, WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
 import { createWorkDispatcher } from './worker-pool-work-dispatcher.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 
@@ -278,11 +267,11 @@ function assertHedgedStraggler(scope: OverkillScope): void {
     });
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-dynamic-hedging.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher hedges explicit idempotent stragglers',
             body(scope: OverkillScope) {
@@ -291,7 +280,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher does not hedge unsafe stragglers',
             body(scope: OverkillScope) {
@@ -305,7 +294,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher falls back when duration history is empty',
             body(scope: OverkillScope) {
@@ -320,5 +309,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

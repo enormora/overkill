@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import type { evaluateSnapshot } from '../baselines/snapshot-context.ts';
 import { recordSnapshotAttempt, snapshotWire } from '../test-support/snapshot-fixture.ts';
 import { markSnapshotExecutionError, isSnapshotExecutionError } from './snapshot-error.ts';
@@ -25,7 +25,7 @@ async function copyModule(sourcePath: string): Promise<unknown> {
     return await import(url.href);
 }
 
-export const testNode = suite('snapshot package context sharing', [
+export const testNode = authoredSuite('snapshot package context sharing', [
     test('shares active attempts with an independently loaded assertion module', async function (scope: TestScope) {
         const copy = await copyModule('../baselines/snapshot-context');
         if (!isContextCopy(copy)) {

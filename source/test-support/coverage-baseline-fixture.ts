@@ -1,4 +1,4 @@
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 import type { ReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { RunResultSession } from '../run/run-support.ts';

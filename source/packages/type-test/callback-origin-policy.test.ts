@@ -1,6 +1,7 @@
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import * as ast from 'typescript-beta/ast';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+
 import {
     ownedCallback,
     callbackOrigin,
@@ -23,8 +24,8 @@ function positional(body: ast.Expression): readonly ast.Expression[] {
 function tableOptions(cases: ast.Expression): readonly ast.Expression[] {
     return [ ast.factory.createObjectLiteralExpression([ sourceProperty('cases', cases) ]) ];
 }
-export const testNode = suite('callback origin boundaries', [
-    test('follows immutable callback aliases to their original body', async function (scope: TestScope) {
+export const testNode = authoredSuite('callback origin boundaries', [
+    authoredTest('follows immutable callback aliases to their original body', async function (scope: TestScope) {
         const fixture = ownedCallback('test', function () {
             return positional(ast.factory.createIdentifier('callback'));
         });
@@ -34,7 +35,7 @@ export const testNode = suite('callback origin boundaries', [
         scope.assert.equal(await resolveBodyOrigin(fixture.analysis, callbackOrigin(fixture)), fixture.body);
         return scope.assert.collect();
     }),
-    test('rejects cyclic callback aliases', async function (scope: TestScope) {
+    authoredTest('rejects cyclic callback aliases', async function (scope: TestScope) {
         const fixture = ownedCallback('test', function () {
             return positional(ast.factory.createIdentifier('callback'));
         });
@@ -46,7 +47,7 @@ export const testNode = suite('callback origin boundaries', [
         }, { message: /Cyclic callback source ownership/u });
         return scope.assert.collect();
     }),
-    test('rejects callbacks without declaration evidence', async function (scope: TestScope) {
+    authoredTest('rejects callbacks without declaration evidence', async function (scope: TestScope) {
         const fixture = ownedCallback('test', function () {
             return positional(ast.factory.createIdentifier('unknown'));
         });
@@ -55,7 +56,7 @@ export const testNode = suite('callback origin boundaries', [
         }, { message: /ambiguous callback source ownership/u });
         return scope.assert.collect();
     }),
-    test('resolves explicit callback methods', async function (scope: TestScope) {
+    authoredTest('resolves explicit callback methods', async function (scope: TestScope) {
         const body = sourceBody([]);
         const method = ast.factory.createMethodDeclaration(
             undefined,
@@ -73,7 +74,7 @@ export const testNode = suite('callback origin boundaries', [
         scope.assert.equal(await resolveBodyOrigin(fixture.analysis, callbackOrigin(fixture)), method);
         return scope.assert.collect();
     }),
-    test('rejects callback getters without evaluating them', async function (scope: TestScope) {
+    authoredTest('rejects callback getters without evaluating them', async function (scope: TestScope) {
         const getter = ast.factory.createGetAccessorDeclaration(
             undefined,
             ast.factory.createIdentifier('body'),
@@ -90,7 +91,7 @@ export const testNode = suite('callback origin boundaries', [
         }, { message: /Unsupported callback property source/u });
         return scope.assert.collect();
     }),
-    test('resolves string-named callback properties', async function (scope: TestScope) {
+    authoredTest('resolves string-named callback properties', async function (scope: TestScope) {
         const fixture = ownedCallback('createTestCase', function (body) {
             return [ ast.factory.createObjectLiteralExpression([
                 ast.factory.createPropertyAssignment(
@@ -105,7 +106,7 @@ export const testNode = suite('callback origin boundaries', [
         scope.assert.equal(await resolveBodyOrigin(fixture.analysis, callbackOrigin(fixture)), fixture.body);
         return scope.assert.collect();
     }),
-    test('rejects computed properties that may replace a callback', async function (scope: TestScope) {
+    authoredTest('rejects computed properties that may replace a callback', async function (scope: TestScope) {
         const fixture = ownedCallback('createTestCase', function (body) {
             return [ ast.factory.createObjectLiteralExpression([
                 sourceProperty('body', body),
@@ -123,7 +124,7 @@ export const testNode = suite('callback origin boundaries', [
         }, { message: /potentially overriding property/u });
         return scope.assert.collect();
     }),
-    test('resolves the selected low-level table callback', async function (scope: TestScope) {
+    authoredTest('resolves the selected low-level table callback', async function (scope: TestScope) {
         const fixture = ownedCallback('createTable', function (body) {
             return tableOptions(
                 ast.factory.createArrayLiteralExpression([ ast
@@ -137,7 +138,7 @@ export const testNode = suite('callback origin boundaries', [
         );
         return scope.assert.collect();
     }),
-    test('rejects low-level table callback indexes without source rows', async function (scope: TestScope) {
+    authoredTest('rejects low-level table callback indexes without source rows', async function (scope: TestScope) {
         const fixture = ownedCallback('createTable', function () {
             return tableOptions(ast.factory.createArrayLiteralExpression([]));
         });
@@ -146,7 +147,7 @@ export const testNode = suite('callback origin boundaries', [
         }, { message: /Table case source index is missing/u });
         return scope.assert.collect();
     }),
-    test('rejects spread table rows with ambiguous ownership', async function (scope: TestScope) {
+    authoredTest('rejects spread table rows with ambiguous ownership', async function (scope: TestScope) {
         const fixture = ownedCallback('createTable', function () {
             return tableOptions(
                 ast.factory.createArrayLiteralExpression([ ast
@@ -159,7 +160,7 @@ export const testNode = suite('callback origin boundaries', [
         }, { message: /table case spreads have ambiguous/u });
         return scope.assert.collect();
     }),
-    test('rejects table cases without a static array source', async function (scope: TestScope) {
+    authoredTest('rejects table cases without a static array source', async function (scope: TestScope) {
         const fixture = ownedCallback('createTable', function () {
             return tableOptions(ast.factory.createStringLiteral('rows', ast.TokenFlags.None));
         });
@@ -168,7 +169,7 @@ export const testNode = suite('callback origin boundaries', [
         }, { message: /table cases require static source ownership/u });
         return scope.assert.collect();
     }),
-    test('prefers known forwarded callback origins', async function (scope: TestScope) {
+    authoredTest('prefers known forwarded callback origins', async function (scope: TestScope) {
         const fixture = ownedCallback('test', positional);
         scope.assert.equal(
             await resolveBodyOrigin(fixture.analysis, {
@@ -181,7 +182,7 @@ export const testNode = suite('callback origin boundaries', [
         );
         return scope.assert.collect();
     }),
-    test('retains table origins when forwarded locations are unknown', async function (scope: TestScope) {
+    authoredTest('retains table origins when forwarded locations are unknown', async function (scope: TestScope) {
         const fixture = ownedCallback('createTable', function (body) {
             return tableOptions(
                 ast.factory.createArrayLiteralExpression([ ast
@@ -207,7 +208,7 @@ export const testNode = suite('callback origin boundaries', [
         column: null
     } ] as const)
         .map(function (location, index) {
-            return test(`rejects incomplete callback locations ${index}`, async function (scope: TestScope) {
+            return authoredTest(`rejects incomplete callback locations ${index}`, async function (scope: TestScope) {
                 const fixture = ownedCallback('test', positional);
                 await scope.assert.rejects(async function () {
                     return resolveBodyOrigin(fixture.analysis, { ...callbackOrigin(fixture), location });
@@ -215,7 +216,7 @@ export const testNode = suite('callback origin boundaries', [
                 return scope.assert.collect();
             });
         }),
-    test('rejects callback sources outside the frozen project', async function (scope: TestScope) {
+    authoredTest('rejects callback sources outside the frozen project', async function (scope: TestScope) {
         const fixture = ownedCallback('test', positional);
         await scope.assert.rejects(async function () {
             return resolveBodyOrigin(fixture.analysis, {
@@ -225,7 +226,7 @@ export const testNode = suite('callback origin boundaries', [
         }, { message: /outside the checker project/u });
         return scope.assert.collect();
     }),
-    test('rejects anchors outside authoring expressions', async function (scope: TestScope) {
+    authoredTest('rejects anchors outside authoring expressions', async function (scope: TestScope) {
         const fixture = ownedCallback('test', positional);
         await scope.assert.rejects(async function () {
             return resolveBodyOrigin(fixture.analysis, {
@@ -235,7 +236,7 @@ export const testNode = suite('callback origin boundaries', [
         }, { message: /does not identify an authoring call/u });
         return scope.assert.collect();
     }),
-    test('rejects foreign authoring declarations', async function (scope: TestScope) {
+    authoredTest('rejects foreign authoring declarations', async function (scope: TestScope) {
         const fixture = ownedCallback('test', positional);
         bindAuthoringCall(fixture, fixture.call, 'test', '/project/application.ts');
         await scope.assert.rejects(async function () {
@@ -243,7 +244,7 @@ export const testNode = suite('callback origin boundaries', [
         }, { message: /does not identify a supported authoring API/u });
         return scope.assert.collect();
     }),
-    test('recognizes namespace-qualified authoring APIs', async function (scope: TestScope) {
+    authoredTest('recognizes namespace-qualified authoring APIs', async function (scope: TestScope) {
         const fixture = ownedCallback('test', positional);
         const call = sourceCall(
             sourceMember(ast.factory.createIdentifier('authoring'), 'test'),
@@ -256,4 +257,3 @@ export const testNode = suite('callback origin boundaries', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

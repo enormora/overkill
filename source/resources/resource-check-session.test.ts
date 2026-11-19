@@ -1,13 +1,13 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { resourceCheckSession, completeObservation } from '../test-support/resource-check-session.ts';
 import { testNode as stops } from './resource-observation-stop-policy.test.ts';
 
 const lifetime = { kind: 'lifetime' } as const;
 const signal = AbortSignal.any([]);
-export const testNode = suite('resource observer session ownership', [
+export const testNode = authoredSuite('resource observer session ownership', [
     stops,
-    test('installs observers once and admits the owner', async function (scope: TestScope) {
+    authoredTest('installs observers once and admits the owner', async function (scope: TestScope) {
         const fixture = resourceCheckSession(completeObservation);
         scope.assert.throws(fixture.session.assertAdmitted, { message: 'Resource observation is installing.' });
         await Promise.all([ fixture.session.install(signal), fixture.session.install(signal) ]);
@@ -19,7 +19,7 @@ export const testNode = suite('resource observer session ownership', [
         scope.assert.deepEqual(fixture.calls, [ 'install', 'prepare:lifetime', 'finalize:lifetime', 'cleanup' ]);
         return scope.assert.collect();
     }),
-    test('finalizes each interval once and returns complete evidence', async function (scope: TestScope) {
+    authoredTest('finalizes each interval once and returns complete evidence', async function (scope: TestScope) {
         const fixture = resourceCheckSession(completeObservation);
         await fixture.session.install(signal);
         await fixture.session.prepare(lifetime);
@@ -31,7 +31,7 @@ export const testNode = suite('resource observer session ownership', [
         });
         return scope.assert.collect();
     }),
-    test('closes the owner and observer infrastructure once', async function (scope: TestScope) {
+    authoredTest('closes the owner and observer infrastructure once', async function (scope: TestScope) {
         const fixture = resourceCheckSession(completeObservation);
         const disposals: string[] = [];
         await fixture.session.install(signal);
@@ -48,7 +48,7 @@ export const testNode = suite('resource observer session ownership', [
         scope.assert.deepEqual(fixture.calls, [ 'install', 'prepare:lifetime', 'finalize:lifetime', 'cleanup' ]);
         return scope.assert.collect();
     }),
-    test('retains installation failures and releases registered cleanup', async function (scope: TestScope) {
+    authoredTest('retains installation failures and releases registered cleanup', async function (scope: TestScope) {
         const fixture = resourceCheckSession({ ...completeObservation, install: new Error('Install failed.') });
         await scope.assert.rejects(async function () {
             await fixture.session.install(signal);
@@ -62,7 +62,7 @@ export const testNode = suite('resource observer session ownership', [
         scope.assert.deepEqual(fixture.calls, [ 'install', 'cleanup' ]);
         return scope.assert.collect();
     }),
-    test('rejects an aborted installation before invoking an observer', async function (scope: TestScope) {
+    authoredTest('rejects an aborted installation before invoking an observer', async function (scope: TestScope) {
         const fixture = resourceCheckSession(completeObservation);
         await scope.assert.rejects(async function () {
             await fixture.session.install(AbortSignal.abort(new Error('Cancelled.')));
@@ -70,7 +70,7 @@ export const testNode = suite('resource observer session ownership', [
         scope.assert.deepEqual(fixture.calls, []);
         return scope.assert.collect();
     }),
-    test('continues disposal and cleanup when preparation fails', async function (scope: TestScope) {
+    authoredTest('continues disposal and cleanup when preparation fails', async function (scope: TestScope) {
         const fixture = resourceCheckSession({ ...completeObservation, prepare: new Error('Preparation failed.') });
         const disposals: string[] = [];
         await fixture.session.install(signal);
@@ -85,7 +85,7 @@ export const testNode = suite('resource observer session ownership', [
     }),
     ...[ { kind: 'incomplete', reasons: [] }, { kind: 'incomplete', reasons: [ 'Missing reply.' ] } ].map(
         function (completeness) {
-            return test(
+            return authoredTest(
                 `rejects incomplete evidence with ${completeness.reasons.length} reasons`,
                 async function (scope: TestScope) {
                     const fixture = resourceCheckSession({
@@ -109,7 +109,7 @@ export const testNode = suite('resource observer session ownership', [
             );
         }
     ),
-    test('retains finalization failures as incomplete evidence', async function (scope: TestScope) {
+    authoredTest('retains finalization failures as incomplete evidence', async function (scope: TestScope) {
         const failure = new Error('Finalization failed.');
         const fixture = resourceCheckSession({ ...completeObservation, finalize: failure });
         await fixture.session.install(signal);
@@ -123,7 +123,7 @@ export const testNode = suite('resource observer session ownership', [
         });
         return scope.assert.collect();
     }),
-    test('retains cleanup failures after disposing the owner', async function (scope: TestScope) {
+    authoredTest('retains cleanup failures after disposing the owner', async function (scope: TestScope) {
         const failure = new Error('Cleanup failed.');
         const fixture = resourceCheckSession({ ...completeObservation, cleanup: failure });
         await fixture.session.install(signal);
@@ -135,7 +135,7 @@ export const testNode = suite('resource observer session ownership', [
         scope.assert.equal(fixture.session.snapshots()[0]?.errors[0]?.cause, failure);
         return scope.assert.collect();
     }),
-    test('runs cleanup registered after closure', async function (scope: TestScope) {
+    authoredTest('runs cleanup registered after closure', async function (scope: TestScope) {
         const fixture = resourceCheckSession(completeObservation);
         const releases: string[] = [];
         await fixture.session.install(signal);
@@ -149,4 +149,3 @@ export const testNode = suite('resource observer session ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

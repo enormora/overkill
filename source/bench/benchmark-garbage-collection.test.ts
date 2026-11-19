@@ -1,5 +1,5 @@
 import { setTimeout as delay } from 'node:timers/promises';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest, table } from '@overkill-dev/test';
 import { createRoot, createTestPlan, execute } from '../packages/engine/engine.entry-point.ts';
 import {
     measureConstantValue,
@@ -42,28 +42,32 @@ function assertCombinedFailures(scope: TestScope, result: RunResult): void {
     });
 }
 
-export const testNode = suite('explicit benchmark garbage collection', [
-    test(
+export const testNode = authoredSuite('explicit benchmark garbage collection', [
+    authoredTest(
         'collects after every warmup and measured cleanup outside the measured region',
         async function (scope: TestScope) {
             const events: string[] = [];
-            const node = garbageCollectionBenchmark(function ({ sample }) {
-                events.push('prepare');
-                sample.cleanup(function () {
-                    events.push('first cleanup');
-                });
-                sample.cleanup(function () {
-                    events.push('second cleanup');
-                });
-                return {
-                    value: sample
-                        .measure(function () {
-                            events.push('measure');
-                            return 1;
-                        })
-                        .value
-                };
-            }, shortLifecycle);
+            const node = garbageCollectionBenchmark(
+                function ({ sample }) {
+                    events.push('prepare');
+                    sample.cleanup(function () {
+                        events.push('first cleanup');
+                    });
+                    sample.cleanup(function () {
+                        events.push('second cleanup');
+                    });
+                    return {
+                        value: sample
+                            .measure(function () {
+                                events.push('measure');
+                                return 1;
+                            })
+                            .value
+                    };
+                },
+                shortLifecycle,
+                10_000
+            );
             const result = await executeGarbageCollectionBenchmark(node, {
                 normalization: null,
                 profileGarbageCollection: 'off',
@@ -96,47 +100,59 @@ export const testNode = suite('explicit benchmark garbage collection', [
             return scope.assert.collect();
         }
     ),
-    ...([ 'off', 'after-sample' ] as const).flatMap(function profileCases(profile) {
-        return ([ 'off', 'after-sample', 'profile-default' ] as const).map(function requestedPolicy(request) {
-            return test(`${profile} profile with ${request} benchmark policy`, async function (scope: TestScope) {
-                let collections = 0;
-                const effective = request === 'profile-default' ? profile : request;
-                const result = await executeGarbageCollectionBenchmark(
-                    garbageCollectionBenchmark(measureConstantValue, {
-                        ...shortLifecycle,
-                        warmupSamples: 0,
-                        garbageCollection: request
-                    }),
-                    {
-                        normalization: null,
-                        profileGarbageCollection: profile,
-                        garbageCollection: {
-                            kind: 'available',
-                            collect() {
-                                collections += 1;
-                            }
+    table({
+        title: 'garbage collection policy precedence',
+        cases: ([ 'off', 'after-sample' ] as const).flatMap(function profileCases(profile) {
+            return ([ 'off', 'after-sample', 'profile-default' ] as const).map(function requestedPolicy(request) {
+                return { profile, request };
+            });
+        }),
+        caseTitle(parameters) {
+            return `${parameters.profile} profile with ${parameters.request} benchmark policy`;
+        },
+        async test(scope) {
+            const { profile, request } = scope.parameters;
+            let collections = 0;
+            const effective = request === 'profile-default' ? profile : request;
+            const result = await executeGarbageCollectionBenchmark(
+                garbageCollectionBenchmark(measureConstantValue, {
+                    ...shortLifecycle,
+                    warmupSamples: 0,
+                    garbageCollection: request
+                }, 10_000),
+                {
+                    normalization: null,
+                    profileGarbageCollection: profile,
+                    garbageCollection: {
+                        kind: 'available',
+                        collect() {
+                            collections += 1;
                         }
                     }
-                );
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(collections, effective === 'off' ? 0 : 2);
-                scope.assert.equal(measuredBenchmark(result).lifecycle?.policy.garbageCollection, effective);
-                return scope.assert.collect();
-            });
-        });
+                }
+            );
+            scope.assert.equal(result.summary.passed, 1);
+            scope.assert.equal(collections, effective === 'off' ? 0 : 2);
+            scope.assert.equal(measuredBenchmark(result).lifecycle?.policy.garbageCollection, effective);
+            return scope.assert.collect();
+        }
     }),
-    test('rejects requested GC before invoking a direct engine benchmark', async function (scope: TestScope) {
+    authoredTest('rejects requested GC before invoking a direct engine benchmark', async function (scope: TestScope) {
         let calls = 0;
-        const node = garbageCollectionBenchmark(function ({ sample }) {
-            calls += 1;
-            return {
-                value: sample
-                    .measure(function () {
-                        return 1;
-                    })
-                    .value
-            };
-        }, shortLifecycle);
+        const node = garbageCollectionBenchmark(
+            function ({ sample }) {
+                calls += 1;
+                return {
+                    value: sample
+                        .measure(function () {
+                            return 1;
+                        })
+                        .value
+                };
+            },
+            shortLifecycle,
+            10_000
+        );
         const result = await execute(createTestPlan(createRoot({
             title: 'root',
             children: [ node ],
@@ -148,24 +164,28 @@ export const testNode = suite('explicit benchmark garbage collection', [
         scope.assert.equal(result.perTest[0]?.benchmark?.status, 'incomplete');
         return scope.assert.collect();
     }),
-    test(
+    authoredTest(
         'preserves body, cleanup and GC failures while stopping further invocations',
         async function (scope: TestScope) {
             const events: string[] = [];
             const result = await executeGarbageCollectionBenchmark(
-                garbageCollectionBenchmark(function ({ sample }) {
-                    sample.cleanup(function () {
-                        events.push('cleanup');
-                        throw new Error('cleanup failed');
-                    });
-                    sample.cleanup(function () {
-                        events.push('remaining cleanup');
-                    });
-                    sample.measure(function () {
-                        return 1;
-                    });
-                    throw new Error('body failed');
-                }, shortLifecycle),
+                garbageCollectionBenchmark(
+                    function ({ sample }) {
+                        sample.cleanup(function () {
+                            events.push('cleanup');
+                            throw new Error('cleanup failed');
+                        });
+                        sample.cleanup(function () {
+                            events.push('remaining cleanup');
+                        });
+                        sample.measure(function () {
+                            return 1;
+                        });
+                        throw new Error('body failed');
+                    },
+                    shortLifecycle,
+                    10_000
+                ),
                 {
                     normalization: null,
                     profileGarbageCollection: 'off',
@@ -183,17 +203,21 @@ export const testNode = suite('explicit benchmark garbage collection', [
             return scope.assert.collect();
         }
     ),
-    test('retains validated readings when collection fails', async function (scope: TestScope) {
+    authoredTest('retains validated readings when collection fails', async function (scope: TestScope) {
         const result = await executeGarbageCollectionBenchmark(
-            garbageCollectionBenchmark(function ({ sample }) {
-                return {
-                    value: sample
-                        .measure(function () {
-                            return 1;
-                        })
-                        .value
-                };
-            }, { ...shortLifecycle, warmupSamples: 0 }),
+            garbageCollectionBenchmark(
+                function ({ sample }) {
+                    return {
+                        value: sample
+                            .measure(function () {
+                                return 1;
+                            })
+                            .value
+                    };
+                },
+                { ...shortLifecycle, warmupSamples: 0 },
+                10_000
+            ),
             {
                 normalization: null,
                 profileGarbageCollection: 'off',
@@ -213,21 +237,25 @@ export const testNode = suite('explicit benchmark garbage collection', [
         scope.assert.equal(result.runnerErrors[0]?.subtype, 'measurement');
         return scope.assert.collect();
     }),
-    test('skips GC after cancellation during cleanup', async function (scope: TestScope) {
+    authoredTest('skips GC after cancellation during cleanup', async function (scope: TestScope) {
         let collections = 0;
         const result = await executeGarbageCollectionBenchmark(
-            garbageCollectionBenchmark(function ({ sample, signal }) {
-                sample.cleanup(async function () {
-                    await delay(1000, undefined, { signal });
-                });
-                return {
-                    value: sample
-                        .measure(function () {
-                            return 1;
-                        })
-                        .value
-                };
-            }, { ...shortLifecycle, warmupSamples: 0 }),
+            garbageCollectionBenchmark(
+                function ({ sample, signal }) {
+                    sample.cleanup(async function () {
+                        await delay(1000, undefined, { signal });
+                    });
+                    return {
+                        value: sample
+                            .measure(function () {
+                                return 1;
+                            })
+                            .value
+                    };
+                },
+                { ...shortLifecycle, warmupSamples: 0 },
+                100
+            ),
             {
                 normalization: null,
                 profileGarbageCollection: 'off',
@@ -243,17 +271,21 @@ export const testNode = suite('explicit benchmark garbage collection', [
         scope.assert.equal(result.summary.failed, 1);
         return scope.assert.collect();
     }),
-    test('rejects lifecycle evidence without explicit GC observations', async function (scope: TestScope) {
+    authoredTest('rejects lifecycle evidence without explicit GC observations', async function (scope: TestScope) {
         const result = await executeGarbageCollectionBenchmark(
-            garbageCollectionBenchmark(function ({ sample }) {
-                return {
-                    value: sample
-                        .measure(function () {
-                            return 1;
-                        })
-                        .value
-                };
-            }, { ...shortLifecycle, garbageCollection: 'off' }),
+            garbageCollectionBenchmark(
+                function ({ sample }) {
+                    return {
+                        value: sample
+                            .measure(function () {
+                                return 1;
+                            })
+                            .value
+                    };
+                },
+                { ...shortLifecycle, garbageCollection: 'off' },
+                10_000
+            ),
             null
         );
         const measured = result.perTest[0]?.benchmark;

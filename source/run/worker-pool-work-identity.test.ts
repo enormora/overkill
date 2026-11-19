@@ -1,10 +1,6 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type CaseId,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import type { CaseId } from '../packages/engine/engine.entry-point.ts';
 import type { WorkDistribution } from '../config/types.ts';
 import { testNode as familyTransportTestNode } from './family-profile-transport.test.ts';
 import { testNode as familyResolutionTestNode } from './family-resolution.test.ts';
@@ -111,73 +107,59 @@ function planningInput(
     };
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-work-identity.test.ts',
-    children: [
-        familyIdentityTestNode,
-        familyResolutionTestNode,
-        familyTransportTestNode,
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool planning skips empty files and preserves workload ids',
-            body(scope: OverkillScope) {
-                const workload = {
-                    name: 'browser',
-                    params: { channel: 'stable' }
-                };
-                const work = { familyVariant: null, case: firstCaseId(), runtimes: [], workload };
+export const testNode = suite('source/run/worker-pool-work-identity.test.ts', [
+    familyIdentityTestNode,
+    familyResolutionTestNode,
+    familyTransportTestNode,
+    test('worker-pool planning skips empty files and preserves workload ids', function (scope: OverkillScope) {
+        const workload = {
+            name: 'browser',
+            params: { channel: 'stable' }
+        };
+        const work = { familyVariant: null, case: firstCaseId(), runtimes: [], workload };
 
-                scope.assert.deepEqual(
-                    workUnitsFromCollectedPlan(planningInput(
-                        collectedPlan([
-                            { cases: [], file: 'source/integration-tests/run/fixtures/empty.test.ts' },
-                            { cases: [ collectedCase(firstCaseId()) ], file: firstPath },
-                            { cases: [ collectedCase(secondCaseId()) ], file: secondPath }
-                        ]),
-                        { mode: 'file' }
-                    )),
-                    [
-                        {
-                            group: null,
-                            id: { familyVariant: null, key: firstPath, mode: 'file', runtimes: [], workload: null },
-                            ...defaultUnitPolicy,
-                            resourceConstraints: emptyWorkUnitResourceConstraints,
-                            work: [ { familyVariant: null, case: firstCaseId(), runtimes: [], workload: null } ]
-                        },
-                        {
-                            group: null,
-                            id: { familyVariant: null, key: secondPath, mode: 'file', runtimes: [], workload: null },
-                            ...defaultUnitPolicy,
-                            resourceConstraints: emptyWorkUnitResourceConstraints,
-                            work: [ { familyVariant: null, case: secondCaseId(), runtimes: [], workload: null } ]
-                        }
-                    ]
-                );
-                scope.assert.deepEqual(
-                    workUnitsFromCollectedPlan(planningInput(
-                        collectedPlan([
-                            { cases: [ collectedCaseWithWorkload() ], file: firstPath }
-                        ]),
-                        { mode: 'file' }
-                    )),
-                    [ {
-                        group: null,
-                        id: { familyVariant: null, key: firstPath, mode: 'file', runtimes: [], workload },
-                        ...defaultUnitPolicy,
-                        resourceConstraints: emptyWorkUnitResourceConstraints,
-                        work: [ work ]
-                    } ]
-                );
+        scope.assert.deepEqual(
+            workUnitsFromCollectedPlan(planningInput(
+                collectedPlan([
+                    { cases: [], file: 'source/integration-tests/run/fixtures/empty.test.ts' },
+                    { cases: [ collectedCase(firstCaseId()) ], file: firstPath },
+                    { cases: [ collectedCase(secondCaseId()) ], file: secondPath }
+                ]),
+                { mode: 'file' }
+            )),
+            [
+                {
+                    group: null,
+                    id: { familyVariant: null, key: firstPath, mode: 'file', runtimes: [], workload: null },
+                    ...defaultUnitPolicy,
+                    resourceConstraints: emptyWorkUnitResourceConstraints,
+                    work: [ { familyVariant: null, case: firstCaseId(), runtimes: [], workload: null } ]
+                },
+                {
+                    group: null,
+                    id: { familyVariant: null, key: secondPath, mode: 'file', runtimes: [], workload: null },
+                    ...defaultUnitPolicy,
+                    resourceConstraints: emptyWorkUnitResourceConstraints,
+                    work: [ { familyVariant: null, case: secondCaseId(), runtimes: [], workload: null } ]
+                }
+            ]
+        );
+        scope.assert.deepEqual(
+            workUnitsFromCollectedPlan(planningInput(
+                collectedPlan([
+                    { cases: [ collectedCaseWithWorkload() ], file: firstPath }
+                ]),
+                { mode: 'file' }
+            )),
+            [ {
+                group: null,
+                id: { familyVariant: null, key: firstPath, mode: 'file', runtimes: [], workload },
+                ...defaultUnitPolicy,
+                resourceConstraints: emptyWorkUnitResourceConstraints,
+                work: [ work ]
+            } ]
+        );
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

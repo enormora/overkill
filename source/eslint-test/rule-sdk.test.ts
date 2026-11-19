@@ -1,6 +1,7 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import { ESLintUtils } from '@typescript-eslint/utils';
 import * as parser from '@typescript-eslint/parser';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { createRoot, createTestPlan, execute } from '../packages/engine/engine.entry-point.ts';
 import { defineRuleTests } from '../packages/eslint-test/eslint-test.entry-point.ts';
 
@@ -16,7 +17,7 @@ const rule = ESLintUtils.RuleCreator.withoutDocs({
     }
 });
 
-export const testNode = suite('typed ESLint SDK interoperability', [
+export const testNode = authoredSuite('typed ESLint SDK interoperability', [
     test('accepts TypeScript rule definitions and invokes their typed visitors', async function (scope) {
         const definition = defineRuleTests({
             name: 'typed-rule',

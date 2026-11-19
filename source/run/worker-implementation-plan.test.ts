@@ -1,17 +1,16 @@
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { z } from 'zod/v4';
 import {
+    defineBodyReference,
+    type TestPlan,
     createRoot,
     createTestCase,
-    createTestPlan,
-    defineBodyReference,
-    type TestPlan
+    createTestPlan
 } from '../packages/engine/engine.entry-point.ts';
 import { createTemporaryDirectoryResource, startResources } from '../packages/resources/resources.entry-point.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { prepareBodyReferences } from '../engine/body-reference-plan.ts';
 import { withWorkerImplementations, closeWorkerImplementations } from './worker-implementation-plan.ts';
 
@@ -66,7 +65,7 @@ async function project(scope: TestScope, use: (root: string) => Promise<void>): 
         await closeWorkerImplementations(temporary.context.directory.path);
     }
 }
-export const testNode = suite('worker implementation lifetimes', [
+export const testNode = authoredSuite('worker implementation lifetimes', [
     test('keeps older scopes usable when a later assignment fails', async function (scope) {
         await project(scope, async function verify(root) {
             const older = await referencePlan(root, 'retained', scope.signal);
@@ -163,4 +162,3 @@ export const testNode = suite('worker implementation lifetimes', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

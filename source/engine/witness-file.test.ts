@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { parseWitnessFile, type SimulationWitnessFile } from '../packages/engine/engine.entry-point.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 
@@ -71,7 +71,7 @@ const invalid = [
     { ...simulation, runtimeSnapshot: Number.POSITIVE_INFINITY }
 ];
 
-export const testNode = suite('witness file compatibility', [
+export const testNode = authoredSuite('witness file compatibility', [
     ...witnesses.map(function compatible(witness, index) {
         return test(`preserves version one witness ${index}`, function (scope) {
             scope.assert.deepEqual(parseWitnessFile(structuredClone(witness)), witness);
@@ -100,4 +100,3 @@ export const testNode = suite('witness file compatibility', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

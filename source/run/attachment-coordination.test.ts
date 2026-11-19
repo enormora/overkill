@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     attachmentCoordination,
     attachmentCoordinationResult,
@@ -7,7 +7,7 @@ import {
 } from '../test-support/attachment-coordination.ts';
 import { attachmentWork, attachmentPeerWork } from '../test-support/attachment-fixture.ts';
 
-export const testNode = suite('run attachment coordination', [
+export const testNode = authoredSuite('run attachment coordination', [
     test('retains case evidence and filters it by attempt and work identity', async function (scope: TestScope) {
         const { coordinator } = attachmentCoordination(null);
         const artifact = await captureCoordinatedAttachment(coordinator, attachmentWork, { index: 0 }, null);
@@ -77,4 +77,3 @@ export const testNode = suite('run attachment coordination', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

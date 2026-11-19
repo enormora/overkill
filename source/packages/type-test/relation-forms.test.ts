@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { runNativeProject } from '../../test-support/native-type-project.ts';
 
 type RelationExample = {
@@ -68,7 +68,7 @@ function relationCases(example: RelationExample): readonly string[] {
         })`;
     });
 }
-export const testNode = suite('public relation forms', [
+export const testNode = authoredSuite('public relation forms', [
     test('checks every form and negation without executing operands', async function (scope) {
         const definitions = `function literal():'literal'{bodyCalls++;throw new Error('executed operand');}
         function general():string{bodyCalls++;throw new Error('executed operand');}
@@ -82,4 +82,3 @@ export const testNode = suite('public relation forms', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

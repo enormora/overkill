@@ -1,5 +1,6 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import type { TestScope } from '../packages/engine/engine.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import {
     generatedCandidate,
     generatedValues,
@@ -50,7 +51,7 @@ function assertIndexedDomain(scope: TestScope, input: IndexedInput): void {
     );
 }
 
-export const testNode = suite('generator composition', [
+export const testNode = authoredSuite('generator composition', [
     test('preserves tuple positions, required record fields, and choices', function (scope) {
         const generator = gen.record({
             pair: gen.tuple(gen.constant('name'), gen.integer({ min: 1, max: 9 })),

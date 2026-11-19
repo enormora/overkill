@@ -1,8 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { type TestScope, test as authoredTest, suite as authoredSuite } from '@overkill-dev/test';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import {
     replayProject,
     writeReplayCase,
@@ -66,10 +65,10 @@ async function verifySimulationReplay(scope: TestScope, shared: boolean): Promis
     scope.assert.equal(result.summary.passed, 1);
     scope.assert.equal(await readFile(path.join(project.cwd, 'disposed.txt'), 'utf8'), '45');
 }
-export const testNode = suite(
+export const testNode = authoredSuite(
     'simulation witness restoration',
     [ false, true ].map(function resourceScope(shared) {
-        return test(
+        return authoredTest(
             shared ? 'restores projected worker resource owners' : 'restores and disposes a fresh resource',
             async function (scope) {
                 await verifySimulationReplay(scope, shared);
@@ -78,4 +77,3 @@ export const testNode = suite(
         );
     })
 );
-await runIfMain(import.meta, testNode);

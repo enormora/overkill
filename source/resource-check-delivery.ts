@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
-import { currentExecutionOwner, type RunOwner } from './execution-ownership.ts';
+import { currentExecutionOwner, withRunnerInfrastructure, type RunOwner } from './execution-ownership.ts';
 import type { ResourceCheckInterval, ResourceCheckOwner, ResourceCheckSnapshot } from './resource-check-protocol.ts';
 import type { WorkId } from './engine/identity.ts';
 
@@ -65,13 +65,13 @@ const executionRuns = context.identities;
 export function resourceCheckExecutionRunId(): string {
     const run = currentExecutionOwner()?.run;
     if (run === null || run === undefined) {
-        return randomUUID();
+        return withRunnerInfrastructure(randomUUID);
     }
     const existing = executionRuns.get(run);
     if (existing !== undefined) {
         return existing;
     }
-    const id = randomUUID();
+    const id = withRunnerInfrastructure(randomUUID);
     executionRuns.set(run, id);
     return id;
 }
@@ -81,11 +81,11 @@ function resourceCheckRunId(): string {
 }
 
 export function createResourceCheckOwner(scope: ResourceCheckOwner['scope']): ResourceCheckOwner {
-    return Object.freeze({ run: resourceCheckRunId(), id: randomUUID(), scope });
+    return Object.freeze({ run: resourceCheckRunId(), id: withRunnerInfrastructure(randomUUID), scope });
 }
 
 export function withStandaloneResourceChecks<Value>(operation: () => Value): Value {
-    return runs.run(randomUUID(), function standaloneRun() {
+    return runs.run(withRunnerInfrastructure(randomUUID), function standaloneRun() {
         return deliveries.run(null, operation);
     });
 }

@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
+import { test } from '../packages/test/test.entry-point.ts';
 import { ConfigError, normalizeConfig, type NormalizedConfig } from '../packages/run/config.entry-point.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { unexpectedBenchmarkOrchestrator, defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -16,38 +17,41 @@ async function rejectUnexpectedInvocation(): Promise<never> {
     throw new Error('Benchmark profiles must be rejected before collection or reporter loading.');
 }
 
-export const testNode = suite('benchmark profile command boundaries', [
-    test('snapshots mixed profiles without losing retry, work-group or coverage policies', function (scope: TestScope) {
-        const config = normalizeConfig({
-            profiles: {
-                startup: benchmark,
-                service: {
-                    testFamily: 'integration',
-                    files: { sets: { smoke: { include: [ 'source/smoke.test.ts' ] } } },
-                    retries: { maxAttempts: 2, artifacts: 'first-failure-and-final' },
-                    execution: {
-                        processModel: 'worker-pool',
-                        workDistribution: {
-                            mode: 'group',
-                            groups: [ { name: 'service', fileSets: [ 'smoke' ] } ]
+export const testNode = authoredSuite('benchmark profile command boundaries', [
+    authoredTest(
+        'snapshots mixed profiles without losing retry, work-group or coverage policies',
+        function (scope: TestScope) {
+            const config = normalizeConfig({
+                profiles: {
+                    startup: benchmark,
+                    service: {
+                        testFamily: 'integration',
+                        files: { sets: { smoke: { include: [ 'source/smoke.test.ts' ] } } },
+                        retries: { maxAttempts: 2, artifacts: 'first-failure-and-final' },
+                        execution: {
+                            processModel: 'worker-pool',
+                            workDistribution: {
+                                mode: 'group',
+                                groups: [ { name: 'service', fileSets: [ 'smoke' ] } ]
+                            }
                         }
+                    },
+                    unit: {
+                        testFamily: 'microtest',
+                        coverage: { sources: { mode: 'all', include: [ 'source/**/*.ts' ], exclude: [] } }
                     }
-                },
-                unit: {
-                    testFamily: 'microtest',
-                    coverage: { sources: { mode: 'all', include: [ 'source/**/*.ts' ], exclude: [] } }
                 }
-            }
-        });
-        const snapshot = copyConfig(config);
-        scope.assert.deepEqual(snapshot, config);
-        scope.assert.notEqual(snapshot.profiles, config.profiles);
-        scope.assert.notEqual(snapshot.profiles.service, config.profiles.service);
-        scope.assert.notEqual(snapshot.profiles.unit, config.profiles.unit);
-        return scope.assert.collect();
-    }),
+            });
+            const snapshot = copyConfig(config);
+            scope.assert.deepEqual(snapshot, config);
+            scope.assert.notEqual(snapshot.profiles, config.profiles);
+            scope.assert.notEqual(snapshot.profiles.service, config.profiles.service);
+            scope.assert.notEqual(snapshot.profiles.unit, config.profiles.unit);
+            return scope.assert.collect();
+        }
+    ),
     ...([ 'run', 'list' ] as const).map(function (command) {
-        return test(
+        return authoredTest(
             `ordinary ${command} rejects benchmark profiles before collection and reporter loading`,
             async function (scope: TestScope) {
                 const config = normalizeConfig({ profiles: { startup: benchmark } });
@@ -84,7 +88,7 @@ export const testNode = suite('benchmark profile command boundaries', [
             }
         );
     }),
-    test(
+    authoredTest(
         'resolves a microtest named benchmark while preserving unrelated benchmark profiles',
         async function (scope: TestScope) {
             const config = normalizeConfig({
@@ -115,7 +119,7 @@ export const testNode = suite('benchmark profile command boundaries', [
             return scope.assert.collect();
         }
     ),
-    test(
+    authoredTest(
         'rejects ordinary benchmark execution before discovering its missing files',
         async function (scope: TestScope) {
             const config = normalizeConfig({ profiles: { startup: benchmark } });
@@ -134,7 +138,7 @@ export const testNode = suite('benchmark profile command boundaries', [
             return scope.assert.collect();
         }
     ),
-    test(
+    authoredTest(
         'rejects malformed unselected benchmark policy before ordinary file discovery',
         async function (scope: TestScope) {
             const normalized = normalizeConfig({ profiles: { startup: benchmark } });
@@ -160,14 +164,14 @@ export const testNode = suite('benchmark profile command boundaries', [
             return scope.assert.collect();
         }
     ),
-    test('maps benchmark family guidance to argument exit code three', function (scope: TestScope) {
+    authoredTest('maps benchmark family guidance to argument exit code three', function (scope: TestScope) {
         const error = new RunResolutionError('Use "overkill bench run".', undefined, 'unsupported-request');
         const result = createCommandLineErrorResultFromUnknown(error);
         scope.assert.equal(result.exitCode, 3);
         scope.assert.deepEqual(result.fallbackDiagnostics, [ 'Overkill argument error: Use "overkill bench run".' ]);
         return scope.assert.collect();
     }),
-    test(
+    authoredTest(
         'rejects a sole direct benchmark match instead of falling back to microtest',
         async function (scope: TestScope) {
             const fixture = createDirectRunFixture({
@@ -185,7 +189,7 @@ export const testNode = suite('benchmark profile command boundaries', [
             return scope.assert.collect();
         }
     ),
-    test(
+    authoredTest(
         'preserves ambiguity errors when ordinary and benchmark profiles match a direct file',
         async function (scope: TestScope) {
             const fixture = createDirectRunFixture({
@@ -209,5 +213,3 @@ export const testNode = suite('benchmark profile command boundaries', [
         }
     )
 ]);
-
-await runIfMain(import.meta, testNode);

@@ -1,20 +1,13 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    defineReporter,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import { defineReporter } from '../packages/engine/engine.entry-point.ts';
 import {
     unexpectedBenchmarkOrchestrator,
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import { runnerResultFactory } from '../test-support/runner-result-factory.ts';
-import {
-    createCommandLineRunner,
-    type CommandLineRunner
-} from './command-line-runner.ts';
+import { createCommandLineRunner, type CommandLineRunner } from './command-line-runner.ts';
 import type { ConfiguredRunOrchestrator } from './run-types.ts';
 
 const fixtureCwd = '/project';
@@ -105,61 +98,44 @@ function createTestRunner(): CommandLineRunner {
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/command-line-defaults.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner rejects benchmark selection without configured benchmark profiles',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await createTestRunner().bench.listBenchmarks({
-                    configPath: null,
-                    cwd: fixtureCwd,
-                    listRequest: {
-                        lastFailed: false,
-                        order: 'seeded',
-                        paths: [],
-                        profile: null,
-                        seed: { value: null },
-                        selection: { kind: 'all' },
-                        shard: { index: 1, total: 1 },
-                        withLocations: false,
-                        withOrphans: false
-                    }
-                });
+export const testNode = suite('source/run/command-line-defaults.test.ts', [
+    test(
+        'commandLineRunner rejects benchmark selection without configured benchmark profiles',
+        async function (scope: OverkillScope) {
+            const result = await createTestRunner().bench.listBenchmarks({
+                configPath: null,
+                cwd: fixtureCwd,
+                listRequest: {
+                    lastFailed: false,
+                    order: 'seeded',
+                    paths: [],
+                    profile: null,
+                    seed: { value: null },
+                    selection: { kind: 'all' },
+                    shard: { index: 1, total: 1 },
+                    withLocations: false,
+                    withOrphans: false
+                }
+            });
 
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill argument error: No benchmark profiles are configured. Configure a benchmark profile and use --profile.'
-                ]);
+            scope.assert.deepEqual(result.fallbackDiagnostics, [
+                'Overkill argument error: No benchmark profiles are configured. Configure a benchmark profile and use --profile.'
+            ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner singleton runs tests with the default reporter',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await createTestRunner().runTests({
-                    configPath: null,
-                    cwd: fixtureCwd,
-                    runRequest: singletonRunRequest
-                });
+            return scope.assert.collect();
+        }
+    ),
+    test('commandLineRunner singleton runs tests with the default reporter', async function (scope: OverkillScope) {
+        const result = await createTestRunner().runTests({
+            configPath: null,
+            cwd: fixtureCwd,
+            runRequest: singletonRunRequest
+        });
 
-                scope.assert.equal(result.exitCode, 0);
-                scope.assert.deepEqual(result.fallbackDiagnostics, []);
-                scope.assert.deepEqual(result.stdoutLines, []);
+        scope.assert.equal(result.exitCode, 0);
+        scope.assert.deepEqual(result.fallbackDiagnostics, []);
+        scope.assert.deepEqual(result.stdoutLines, []);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

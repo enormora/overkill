@@ -1,6 +1,7 @@
 import { setTimeout as wait } from 'node:timers/promises';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { test, suite } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createLocalProcessServiceResource, withResources } from '../packages/test/resources.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { executeEvidence } from '../test-support/failure-evidence-fixture.ts';
@@ -61,11 +62,10 @@ async function assertProcessBoundary(scope: TestScope, readinessFails: boolean):
     scope.assert.equal(fixture.result.status, 'failed');
     scope.assert.equal(fixture.result.runnerErrors.length, readinessFails ? 1 : 0);
 }
-export const testNode = createSuite({
-    ...metadata,
-    title: 'source/run/process-failure-evidence.test.ts',
-    children: [ false, true ].map(function processBoundary(readinessFails) {
-        return createTestCase({
+export const testNode = suite(
+    'source/run/process-failure-evidence.test.ts',
+    [ false, true ].map(function processBoundary(readinessFails) {
+        return test({
             ...metadata,
             title: `process evidence survives forced shutdown and readiness failure: ${readinessFails}`,
             async body(scope: TestScope) {
@@ -74,5 +74,4 @@ export const testNode = createSuite({
             }
         });
     })
-});
-await runIfMain(import.meta, testNode);
+);

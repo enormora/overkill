@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
-import { runIfMain } from '#test-runner';
-import { test } from '../test/test.entry-point.ts';
+import { test } from '@overkill-dev/test';
+
 import { createCompilerLifetime } from './compiler-lifetime.ts';
 
 export const testNode = test('compiler cleanup waits for the owned process to close', async function (scope) {
@@ -29,5 +29,3 @@ export const testNode = test('compiler cleanup waits for the owned process to cl
     scope.assert.true(closed);
     return scope.assert.collect();
 });
-
-await runIfMain(import.meta, testNode);

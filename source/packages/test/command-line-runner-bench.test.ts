@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../engine/engine.entry-point.ts';
 import { passingResult, runCommandLine } from '../../test-support/command-line-test-driver.ts';
 
 type CapturedCommandLineRun = Awaited<ReturnType<typeof runCommandLine>>;
@@ -53,13 +54,11 @@ function assertBaselineRequest(
     scope.assert.deepEqual(result.baselineListRequests, []);
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
+export const testNode = suite({
     title: 'source/packages/test/command-line-runner-bench.test.ts',
     ...emptyTestData,
     children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'benchmark baseline execution verbs carry typed selection requests',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -81,8 +80,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'benchmark baseline commands reject process usage flags before loading the runner',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -113,8 +111,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'benchmark baseline listing accepts disk selection flags only',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -137,8 +134,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'bench run carries shared selection and execution flags',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -193,8 +189,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'bench list carries shared selection and display flags',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -230,8 +225,7 @@ export const testNode = createSuite({
         }),
         ...benchmarkVerbs.flatMap(function createBenchmarkCommandTests(verb) {
             return [
-                createTestCase({
-                    definitionLocations: [ { kind: 'unknown' } ],
+                test({
                     title: `bench ${verb} dispatches explicit profile selection`,
                     ...emptyTestData,
                     async body(scope: TestScope) {
@@ -263,8 +257,7 @@ export const testNode = createSuite({
                         return scope.assert.collect();
                     }
                 }),
-                createTestCase({
-                    definitionLocations: [ { kind: 'unknown' } ],
+                test({
                     title: `bench ${verb} dispatches path operands and config`,
                     ...emptyTestData,
                     async body(scope: TestScope) {
@@ -331,8 +324,7 @@ export const testNode = createSuite({
                         return scope.assert.collect();
                     }
                 }),
-                createTestCase({
-                    definitionLocations: [ { kind: 'unknown' } ],
+                test({
                     title: `bench ${verb} delivers the nested command result`,
                     ...emptyTestData,
                     async body(scope: TestScope) {
@@ -352,8 +344,7 @@ export const testNode = createSuite({
                         return scope.assert.collect();
                     }
                 }),
-                createTestCase({
-                    definitionLocations: [ { kind: 'unknown' } ],
+                test({
                     title: `bench ${verb} reports handler crashes`,
                     ...emptyTestData,
                     async body(scope: TestScope) {
@@ -368,8 +359,7 @@ export const testNode = createSuite({
                         return scope.assert.collect();
                     }
                 }),
-                createTestCase({
-                    definitionLocations: [ { kind: 'unknown' } ],
+                test({
                     title: `bench ${verb} rejects unsupported flags before loading the runner`,
                     ...emptyTestData,
                     async body(scope: TestScope) {
@@ -403,8 +393,7 @@ export const testNode = createSuite({
                         return scope.assert.collect();
                     }
                 }),
-                createTestCase({
-                    definitionLocations: [ { kind: 'unknown' } ],
+                test({
                     title: `bench ${verb} rejects malformed config arguments before loading the runner`,
                     ...emptyTestData,
                     async body(scope: TestScope) {
@@ -430,8 +419,7 @@ export const testNode = createSuite({
                 })
             ];
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'benchmark help does not load the runner',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -460,8 +448,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'benchmark namespace rejects unknown verbs before loading the runner',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -480,5 +467,3 @@ export const testNode = createSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,6 @@
 import { AsyncResource } from 'node:async_hooks';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { evaluateSnapshot, type SnapshotInput } from '../baselines/snapshot-context.ts';
 import { executeSnapshot, storedSnapshot, snapshotWire as wire } from '../test-support/snapshot-fixture.ts';
 import { attachmentWork } from '../test-support/attachment-fixture.ts';
@@ -16,9 +17,9 @@ const matchingInputs: readonly SnapshotInput[] = [
     })
 ];
 
-export const testNode = suite('snapshot comparison and proposals', [
+export const testNode = authoredSuite('snapshot comparison and proposals', [
     ...matchingInputs.map(function matchingInput(input, index) {
-        return test(`compares ${input.kind} input ${index} as one assertion`, async function (scope) {
+        return authoredTest(`compares ${input.kind} input ${index} as one assertion`, async function (scope) {
             const result = await executeSnapshot({ ...wire, entries: [ storedSnapshot(input) ] }, input);
             scope.assert.equal(result.status, 'passed');
             scope.assert.equal(result.summary.passed, 1);
@@ -32,7 +33,7 @@ export const testNode = suite('snapshot comparison and proposals', [
         { actual: { active: true }, expected: true }
     ] as const)
         .map(function changedJson(input, index) {
-            return test(`rejects changed JSON content ${index}`, async function (scope) {
+            return authoredTest(`rejects changed JSON content ${index}`, async function (scope) {
                 const actual: SnapshotInput = { kind: 'value', name: 'value', actual: input.actual };
                 const expected = storedSnapshot({ ...actual, actual: input.expected });
                 const result = await executeSnapshot({ ...wire, entries: [ expected ] }, actual);
@@ -40,7 +41,7 @@ export const testNode = suite('snapshot comparison and proposals', [
                 return scope.assert.collect();
             });
         }),
-    test('rejects changed byte content', async function (scope) {
+    authoredTest('rejects changed byte content', async function (scope) {
         const actual: SnapshotInput = { kind: 'bytes', name: 'bytes', actual: new Uint8Array([ 0, 255 ]) };
         const expected = storedSnapshot({ ...actual, actual: new Uint8Array([ 255, 0 ]) });
         const result = await executeSnapshot({ ...wire, entries: [ expected ] }, actual);
@@ -48,7 +49,7 @@ export const testNode = suite('snapshot comparison and proposals', [
         return scope.assert.collect();
     }),
     ...([ 'none', 'bootstrap', 'update', 'apply', 'diff' ] as const).map(function updateMode(mode) {
-        return test(`handles missing and changed expectations in ${mode}`, async function (scope) {
+        return authoredTest(`handles missing and changed expectations in ${mode}`, async function (scope) {
             const missing = await executeSnapshot({ ...wire, mode }, textInput);
             scope.assert.equal(missing.status, mode === 'none' ? 'failed' : 'passed');
             const existing = storedSnapshot({ ...textInput, actual: 'previous' });
@@ -57,13 +58,13 @@ export const testNode = suite('snapshot comparison and proposals', [
             return scope.assert.collect();
         });
     }),
-    test('keeps a foreign profile expectation missing', async function (scope) {
+    authoredTest('keeps a foreign profile expectation missing', async function (scope) {
         const existing = { ...storedSnapshot(textInput), profile: 'foreign' };
         const result = await executeSnapshot({ ...wire, entries: [ existing ] }, textInput);
         scope.assert.equal(result.status, 'failed');
         return scope.assert.collect();
     }),
-    test('rejects blank names and callbacks retained past their attempt', async function (scope) {
+    authoredTest('rejects blank names and callbacks retained past their attempt', async function (scope) {
         await scope.assert.rejects(async function blankName() {
             await executeSnapshot(wire, { ...textInput, name: '  ' });
         }, { message: 'Snapshot names must be nonblank and unique within each attempt.' });

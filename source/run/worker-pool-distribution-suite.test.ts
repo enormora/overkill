@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as workerPoolCommandSuiteTestNode } from './worker-pool-command-suite.test.ts';
 import { testNode as workerPoolLanePlacementSuiteTestNode } from './worker-pool-lane-placement-suite.test.ts';
 import { testNode as workerPoolLifecycleProcessUsageTestNode } from './worker-pool-lifecycle-process-usage.test.ts';
@@ -9,21 +9,13 @@ import { testNode as workerPoolWorkDistributionTestNode } from './worker-pool-wo
 import { testNode as workerPoolWorkIdentityTestNode } from './worker-pool-work-identity.test.ts';
 import { testNode as workUnitResourceConstraintsTestNode } from './work-unit-resource-constraints.test.ts';
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-distribution-suite.test.ts',
-    children: [
-        workerPoolCommandSuiteTestNode,
-        workerPoolLanePlacementSuiteTestNode,
-        workerPoolLifecycleProcessUsageTestNode,
-        workerPoolLifecycleRoutingTestNode,
-        workerPoolPlacementPlanningTestNode,
-        workerPoolWorkDistributionTestNode,
-        workerPoolWorkIdentityTestNode,
-        workUnitResourceConstraintsTestNode
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/worker-pool-distribution-suite.test.ts', [
+    workerPoolCommandSuiteTestNode,
+    workerPoolLanePlacementSuiteTestNode,
+    workerPoolLifecycleProcessUsageTestNode,
+    workerPoolLifecycleRoutingTestNode,
+    workerPoolPlacementPlanningTestNode,
+    workerPoolWorkDistributionTestNode,
+    workerPoolWorkIdentityTestNode,
+    workUnitResourceConstraintsTestNode
+]);

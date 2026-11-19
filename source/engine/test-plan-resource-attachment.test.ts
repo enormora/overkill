@@ -1,7 +1,6 @@
+import { suite, test } from '@overkill-dev/test';
 import {
     attachTestBodyResourceAttachments,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
     type TestBody,
     type TestBodyResourceAttachments
 } from '../packages/engine/engine.entry-point.ts';
@@ -40,67 +39,55 @@ function attachedBody(attachments: TestBodyResourceAttachments): TestBody {
     }, attachments);
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/engine/test-plan-resource-attachment.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'createTestPlan() reads resource attachments from cases and table rows',
-            annotations: {},
-            controls: {},
-            body(scope) {
-                const engine = createEngine();
-                const attachments = resourceAttachments();
-                const root = engine.createRoot({
-                    children: [
-                        engine.createTestCase({
-                            definitionLocations: [ { kind: 'unknown' } ],
+export const testNode = suite('source/engine/test-plan-resource-attachment.test.ts', [
+    test('createTestPlan() reads resource attachments from cases and table rows', function (scope) {
+        const engine = createEngine();
+        const attachments = resourceAttachments();
+        const root = engine.createRoot({
+            children: [
+                engine.createTestCase({
+                    definitionLocations: [ { kind: 'unknown' } ],
+                    body: attachedBody(attachments),
+                    annotations: {},
+                    controls: {},
+                    title: 'uses scratch'
+                }),
+                engine.createTable({
+                    definitionLocations: [ { kind: 'unknown' } ],
+                    cases: [
+                        {
+                            annotations: {},
                             body: attachedBody(attachments),
-                            annotations: {},
                             controls: {},
-                            title: 'uses scratch'
-                        }),
-                        engine.createTable({
-                            definitionLocations: [ { kind: 'unknown' } ],
-                            cases: [
-                                {
-                                    annotations: {},
-                                    body: attachedBody(attachments),
-                                    controls: {},
-                                    parameters: { value: 1 },
-                                    title: 'row 1'
-                                },
-                                {
-                                    annotations: {},
-                                    body: attachedBody(attachments),
-                                    controls: {},
-                                    parameters: { value: 2 },
-                                    title: 'row 2'
-                                }
-                            ],
+                            parameters: { value: 1 },
+                            title: 'row 1'
+                        },
+                        {
                             annotations: {},
+                            body: attachedBody(attachments),
                             controls: {},
-                            title: 'rows'
-                        })
+                            parameters: { value: 2 },
+                            title: 'row 2'
+                        }
                     ],
                     annotations: {},
                     controls: {},
-                    title: 'root'
-                });
-                const testPlan = engine.createTestPlan(root);
+                    title: 'rows'
+                })
+            ],
+            annotations: {},
+            controls: {},
+            title: 'root'
+        });
+        const testPlan = engine.createTestPlan(root);
 
-                scope.assert.deepEqual(
-                    plainDataShape(testPlan.cases.map(function toAttachments(testCase) {
-                        return testCase.resourceAttachments;
-                    })),
-                    [ resourceAttachments(), resourceAttachments(), resourceAttachments() ]
-                );
+        scope.assert.deepEqual(
+            plainDataShape(testPlan.cases.map(function toAttachments(testCase) {
+                return testCase.resourceAttachments;
+            })),
+            [ resourceAttachments(), resourceAttachments(), resourceAttachments() ]
+        );
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+        return scope.assert.collect();
+    })
+]);

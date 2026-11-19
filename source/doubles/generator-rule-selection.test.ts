@@ -1,11 +1,11 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
 
 type LoadValues = (prefix: string) => Generator<string, string, unknown>;
 type LoadAsyncValues = (prefix: string) => AsyncGenerator<string, string, unknown>;
-export const testNode = suite('yielding double argument rules', [
+export const testNode = authoredSuite('yielding double argument rules', [
     test('selects synchronous yielded values by invocation arguments', function (scope: TestScope) {
         const load = testDouble<LoadValues>({
             rules: [ rule.when('selected').yields<LoadValues>([ 'chosen' ], 'complete') ],
@@ -80,4 +80,3 @@ export const testNode = suite('yielding double argument rules', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

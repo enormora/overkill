@@ -1,4 +1,5 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     generatedCandidate,
     generatedValues,
@@ -29,7 +30,7 @@ function treeDefinition(maxDepth: number): RecursiveGeneratorDefinition<Tree> {
     };
 }
 
-export const testNode = suite('recursive generators', [
+export const testNode = authoredSuite('recursive generators', [
     test('uses only the leaf at zero depth without invoking the branch callback', function (scope) {
         const tree = gen.recursive<Tree>({
             leaf: gen.constant(null),

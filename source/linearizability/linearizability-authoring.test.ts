@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { property, gen } from '../packages/property/property.entry-point.ts';
 import { linearizability } from '../packages/linearizability/linearizability.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
@@ -9,9 +9,9 @@ type DrainingSystem = {
     readonly drain: () => void;
 };
 
-export const testNode = suite('concurrent linearizability authoring', [
+export const testNode = authoredSuite('concurrent linearizability authoring', [
     ...[ false, true ].map(function (overlap) {
-        return test(`checks increment histories with overlap ${overlap}`, async function (scope) {
+        return authoredTest(`checks increment histories with overlap ${overlap}`, async function (scope) {
             const result = await executePropertyNode(
                 property({
                     title: 'increments',
@@ -52,7 +52,7 @@ export const testNode = suite('concurrent linearizability authoring', [
             return scope.assert.collect();
         });
     }),
-    test('records ordinary throws and continues the lane', async function (scope) {
+    authoredTest('records ordinary throws and continues the lane', async function (scope) {
         const result = await executePropertyNode(
             property({
                 title: 'expected errors',
@@ -83,7 +83,7 @@ export const testNode = suite('concurrent linearizability authoring', [
         scope.assert.equal(result.summary.inconclusive, 0);
         return scope.assert.collect();
     }),
-    test('drains admitted calls before cleanup after a fatal control error', async function (scope) {
+    authoredTest('drains admitted calls before cleanup after a fatal control error', async function (scope) {
         let clean = false;
         const result = await executePropertyNode(
             property({
@@ -138,7 +138,7 @@ export const testNode = suite('concurrent linearizability authoring', [
         scope.assert.true(clean);
         return scope.assert.collect();
     }),
-    test('runs lanes concurrently while preserving lane order and fresh systems', async function (scope) {
+    authoredTest('runs lanes concurrently while preserving lane order and fresh systems', async function (scope) {
         let created = 0;
         let cleaned = 0;
         const node = property({
@@ -184,7 +184,7 @@ export const testNode = suite('concurrent linearizability authoring', [
         return scope.assert.collect();
     }),
     ...[ 'linearizable', 'not-linearizable', 'inconclusive' ].map(function (kind) {
-        return test(`maps ${kind} verdicts`, async function (scope) {
+        return authoredTest(`maps ${kind} verdicts`, async function (scope) {
             const result = await executePropertyNode(
                 property({
                     title: 'read consistency',
@@ -216,7 +216,7 @@ export const testNode = suite('concurrent linearizability authoring', [
             return scope.assert.collect();
         });
     }),
-    test('inconclusive confirmation preserves the initial failure', async function (scope) {
+    authoredTest('inconclusive confirmation preserves the initial failure', async function (scope) {
         let calls = 0;
         const result = await executePropertyNode(
             property({
@@ -239,5 +239,3 @@ export const testNode = suite('concurrent linearizability authoring', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

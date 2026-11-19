@@ -1,8 +1,7 @@
 import { mkdtemp, readFile, writeFile, rm, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { capturePropertyInput } from '../property/property-graph.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/witness-file.ts';
@@ -27,7 +26,7 @@ async function fixture(scope: TestScope): Promise<CorpusFixture> {
         request: { cwd, source: { kind: 'path' as const, path: 'witness.json' }, codec: { kind: 'built-in' as const } }
     };
 }
-export const testNode = suite('corpus operations', [
+export const testNode = authoredSuite('corpus operations', [
     test('inspection decodes without modifying the witness', async function (scope) {
         const { cwd, witness, request } = await fixture(scope);
         const result = await inspectCorpus(request);
@@ -119,4 +118,3 @@ export const testNode = suite('corpus operations', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

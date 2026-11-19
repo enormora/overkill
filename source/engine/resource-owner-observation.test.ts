@@ -1,6 +1,6 @@
 import { createServer } from 'node:net';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { testNode as nativeWriteOwnershipTestNode } from './native-write-ownership.test.ts';
 import { createAsyncLeakMonitor } from './async-leak-diagnostics.ts';
 import { testNode as nativeResourceOwnershipTestNode } from './native-resource-ownership.test.ts';
@@ -10,7 +10,7 @@ import {
     releaseResourceOwner
 } from './resource-owner-observation.ts';
 
-export const testNode = suite('resource owner observation', [
+export const testNode = authoredSuite('resource owner observation', [
     nativeResourceOwnershipTestNode,
     nativeWriteOwnershipTestNode,
     test('does not assign another concurrent acquisition native handles', async function (scope) {
@@ -53,5 +53,3 @@ export const testNode = suite('resource owner observation', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

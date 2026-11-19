@@ -1,5 +1,7 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestNode, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
+import { type TestNode, type TestScope, createTestCase } from '../packages/engine/engine.entry-point.ts';
+
 import { testNode as checkSessions } from './resource-check-session.test.ts';
 import { testNode as checkLedger } from './resource-check-ledger.test.ts';
 import { testNode as checkDeadlines } from './resource-check-supervision.test.ts';
@@ -9,11 +11,7 @@ import {
     type ResourceScope,
     type ResourceDefinition
 } from './resources.ts';
-import {
-    runtimeAsyncDisposeSymbol,
-    startResources,
-    type ResourceSessionDisposalContext
-} from './resource-session.ts';
+import { runtimeAsyncDisposeSymbol, startResources, type ResourceSessionDisposalContext } from './resource-session.ts';
 import { assertPerCaseResourceGraph } from './resource-graph.ts';
 import { ResourceLifecycleError } from './resource-lifecycle-error.ts';
 
@@ -371,25 +369,17 @@ function lifecycleTestCase(title: string, assertion: (scope: TestScope) => Promi
     });
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/resources/direct-resource-lifecycle.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        checkSessions,
-        checkLedger,
-        checkDeadlines,
-        lifecycleTestCase(
-            'startResources exposes direct handles and disposes them once in reverse order',
-            assertDirectResourceLifecycle
-        ),
-        lifecycleTestCase('startResources shares dependency handles within one session', assertSharedDependencyHandles),
-        lifecycleTestCase('startResources cleans acquired resources after setup failure', assertStartupFailureCleanup),
-        lifecycleTestCase('resource session supports async disposal', assertAsyncDisposal),
-        lifecycleTestCase('startResources skips null dispose callbacks', assertNullDispose),
-        lifecycleTestCase('direct resource scope validation accepts only per-case resources', assertScopeValidation)
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/resources/direct-resource-lifecycle.test.ts', [
+    checkSessions,
+    checkLedger,
+    checkDeadlines,
+    lifecycleTestCase(
+        'startResources exposes direct handles and disposes them once in reverse order',
+        assertDirectResourceLifecycle
+    ),
+    lifecycleTestCase('startResources shares dependency handles within one session', assertSharedDependencyHandles),
+    lifecycleTestCase('startResources cleans acquired resources after setup failure', assertStartupFailureCleanup),
+    lifecycleTestCase('resource session supports async disposal', assertAsyncDisposal),
+    lifecycleTestCase('startResources skips null dispose callbacks', assertNullDispose),
+    lifecycleTestCase('direct resource scope validation accepts only per-case resources', assertScopeValidation)
+]);

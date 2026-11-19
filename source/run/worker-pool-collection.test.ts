@@ -1,12 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock } from '@enormora/clock';
 
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { RunCollectionError } from './run-errors.ts';
 import type {
     CreatedWorkerPool,
@@ -15,14 +11,8 @@ import type {
     WorkerPoolHostOutputSink
 } from './run-orchestrator-dependencies.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
-import {
-    createRunTimingMeasurement,
-    type RunTimingMeasurement
-} from './run-timing-collection.ts';
-import type {
-    WorkerPoolCollection,
-    WorkerPoolCommand
-} from './worker-pool-protocol.ts';
+import { createRunTimingMeasurement, type RunTimingMeasurement } from './run-timing-collection.ts';
+import type { WorkerPoolCollection, WorkerPoolCommand } from './worker-pool-protocol.ts';
 import { collectInWorkerPool } from './worker-pool-collection.ts';
 
 type WorkerPoolFactory = RunOrchestratorDependencies['createWorkerPool'];
@@ -197,154 +187,131 @@ async function collectInvalidOwnedPool(timing: RunTimingMeasurement): Promise<In
     return { destroyed, options, thrownError };
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-collection.test.ts',
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'collectInWorkerPool() uses a provided pool without destroying it',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                let destroyed = false;
-                const runState = createSupervisedRunState('first-failure-and-final');
-                const pool = createTestPool({
-                    async destroy() {
-                        destroyed = true;
-                    },
-                    async run(_task, _options, readHostOutputSink) {
-                        readHostOutputSink()?.('stdout', new Uint8Array([ 65 ]));
+export const testNode = suite('source/run/worker-pool-collection.test.ts', [
+    test('collectInWorkerPool() uses a provided pool without destroying it', async function (scope: OverkillScope) {
+        let destroyed = false;
+        const runState = createSupervisedRunState('first-failure-and-final');
+        const pool = createTestPool({
+            async destroy() {
+                destroyed = true;
+            },
+            async run(_task, _options, readHostOutputSink) {
+                readHostOutputSink()?.('stdout', new Uint8Array([ 65 ]));
 
-                        return await collection();
-                    }
-                });
-                const result = await collectInWorkerPool({
+                return await collection();
+            }
+        });
+        const result = await collectInWorkerPool({
+            command: workerPoolCommand(),
+            createdPool: pool,
+            dependencies: createDependencies(function failCreateWorkerPool(): CreatedWorkerPool {
+                throw new Error('Expected provided pool.');
+            }),
+            runState,
+            timing: null
+        });
+
+        scope.assert.equal(result.collectedPlan.files.length, 0);
+        scope.assert.equal(destroyed, false);
+        scope.assert.equal(runState.artifacts().length, 1);
+
+        return scope.assert.collect();
+    }),
+    test(
+        'collectInWorkerPool() destroys owned pools after invalid collection results',
+        async function (scope: OverkillScope) {
+            const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+            const timing = createRunTimingMeasurement(clock);
+            const result = await collectInvalidOwnedPool(timing);
+
+            scope.assert.equal(result.thrownError instanceof RunCollectionError, true);
+            scope.assert.equal(result.options?.timing, timing);
+            scope.assert.equal(result.destroyed, true);
+            scope.assert.deepEqual(
+                timing.report().spans.map(function toKind(span) {
+                    return span.kind;
+                }),
+                [ 'worker-pool.start', 'worker-pool.ready', 'worker-pool.shutdown' ]
+            );
+
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'collectInWorkerPool() destroys owned pools after successful collection',
+        async function (scope: OverkillScope) {
+            let destroyed = false;
+            let optionHasTiming = true;
+            const result = await collectInWorkerPool({
+                command: workerPoolCommand(),
+                createdPool: null,
+                dependencies: createDependencies(function createPool(poolOptions) {
+                    optionHasTiming = Object.hasOwn(poolOptions, 'timing');
+
+                    return createTestPool({
+                        async destroy() {
+                            destroyed = true;
+                        },
+                        async run() {
+                            return await collection();
+                        }
+                    });
+                }),
+                runState: createSupervisedRunState('first-failure-and-final'),
+                timing: null
+            });
+
+            scope.assert.equal(result.collectedPlan.files.length, 0);
+            scope.assert.equal(optionHasTiming, false);
+            scope.assert.equal(destroyed, true);
+
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'collectInWorkerPool() reports collection timeouts as terminal failures',
+        async function (scope: OverkillScope) {
+            let timeoutCallback: TimeoutCallback = function missingTimeoutCallback() {
+                throw new Error('Expected collection timeout.');
+            };
+            const runState = createSupervisedRunState('first-failure-and-final');
+            let thrownError: unknown = null;
+
+            try {
+                await collectInWorkerPool({
                     command: workerPoolCommand(),
-                    createdPool: pool,
-                    dependencies: createDependencies(function failCreateWorkerPool(): CreatedWorkerPool {
-                        throw new Error('Expected provided pool.');
+                    createdPool: createTestPool({
+                        async destroy() {
+                            return undefined;
+                        },
+                        async run() {
+                            timeoutCallback();
+
+                            return collection();
+                        }
                     }),
+                    dependencies: createTimeoutDependencies(
+                        function failCreateWorkerPool(): CreatedWorkerPool {
+                            throw new Error('Expected provided pool.');
+                        },
+                        function writeTimeoutCallback(callback) {
+                            timeoutCallback = callback;
+                        }
+                    ),
                     runState,
                     timing: null
                 });
-
-                scope.assert.equal(result.collectedPlan.files.length, 0);
-                scope.assert.equal(destroyed, false);
-                scope.assert.equal(runState.artifacts().length, 1);
-
-                return scope.assert.collect();
+            } catch (error: unknown) {
+                thrownError = error;
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'collectInWorkerPool() destroys owned pools after invalid collection results',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
-                const timing = createRunTimingMeasurement(clock);
-                const result = await collectInvalidOwnedPool(timing);
 
-                scope.assert.equal(result.thrownError instanceof RunCollectionError, true);
-                scope.assert.equal(result.options?.timing, timing);
-                scope.assert.equal(result.destroyed, true);
-                scope.assert.deepEqual(
-                    timing.report().spans.map(function toKind(span) {
-                        return span.kind;
-                    }),
-                    [ 'worker-pool.start', 'worker-pool.ready', 'worker-pool.shutdown' ]
-                );
+            scope.assert.equal(thrownError instanceof RunCollectionError, true);
+            scope.assert.equal(
+                runState.runnerErrors()[0]?.message,
+                'Worker-pool collection exceeded collection timeout.'
+            );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'collectInWorkerPool() destroys owned pools after successful collection',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                let destroyed = false;
-                let optionHasTiming = true;
-                const result = await collectInWorkerPool({
-                    command: workerPoolCommand(),
-                    createdPool: null,
-                    dependencies: createDependencies(function createPool(poolOptions) {
-                        optionHasTiming = Object.hasOwn(poolOptions, 'timing');
-
-                        return createTestPool({
-                            async destroy() {
-                                destroyed = true;
-                            },
-                            async run() {
-                                return await collection();
-                            }
-                        });
-                    }),
-                    runState: createSupervisedRunState('first-failure-and-final'),
-                    timing: null
-                });
-
-                scope.assert.equal(result.collectedPlan.files.length, 0);
-                scope.assert.equal(optionHasTiming, false);
-                scope.assert.equal(destroyed, true);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'collectInWorkerPool() reports collection timeouts as terminal failures',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                let timeoutCallback: TimeoutCallback = function missingTimeoutCallback() {
-                    throw new Error('Expected collection timeout.');
-                };
-                const runState = createSupervisedRunState('first-failure-and-final');
-                let thrownError: unknown = null;
-
-                try {
-                    await collectInWorkerPool({
-                        command: workerPoolCommand(),
-                        createdPool: createTestPool({
-                            async destroy() {
-                                return undefined;
-                            },
-                            async run() {
-                                timeoutCallback();
-
-                                return collection();
-                            }
-                        }),
-                        dependencies: createTimeoutDependencies(
-                            function failCreateWorkerPool(): CreatedWorkerPool {
-                                throw new Error('Expected provided pool.');
-                            },
-                            function writeTimeoutCallback(callback) {
-                                timeoutCallback = callback;
-                            }
-                        ),
-                        runState,
-                        timing: null
-                    });
-                } catch (error: unknown) {
-                    thrownError = error;
-                }
-
-                scope.assert.equal(thrownError instanceof RunCollectionError, true);
-                scope.assert.equal(
-                    runState.runnerErrors()[0]?.message,
-                    'Worker-pool collection exceeded collection timeout.'
-                );
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

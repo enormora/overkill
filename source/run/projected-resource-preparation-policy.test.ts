@@ -1,18 +1,21 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { projectedPreparation } from '../test-support/projected-resource-preparation.ts';
 
-export const testNode = suite('remote resource failure preparation', [
-    test('skips remote preparation when no external resources are projected', async function (scope: TestScope) {
-        const fixture = projectedPreparation('empty');
-        scope.cleanup(fixture.dispose);
-        await fixture.policy.prepareAttempt(fixture.testCase, { index: 0 });
-        scope.assert.deepEqual(fixture.sent, []);
-        scope.assert.deepEqual(fixture.policy.takeAttemptErrors(fixture.testCase, { index: 0 }), []);
-        return scope.assert.collect();
-    }),
+export const testNode = authoredSuite('remote resource failure preparation', [
+    authoredTest(
+        'skips remote preparation when no external resources are projected',
+        async function (scope: TestScope) {
+            const fixture = projectedPreparation('empty');
+            scope.cleanup(fixture.dispose);
+            await fixture.policy.prepareAttempt(fixture.testCase, { index: 0 });
+            scope.assert.deepEqual(fixture.sent, []);
+            scope.assert.deepEqual(fixture.policy.takeAttemptErrors(fixture.testCase, { index: 0 }), []);
+            return scope.assert.collect();
+        }
+    ),
     ...([ 'success', 'error' ] as const).map(function (scenario) {
-        return test(
+        return authoredTest(
             `matches replies and drains ${scenario} preparation evidence once`,
             async function (scope: TestScope) {
                 const fixture = projectedPreparation(scenario);
@@ -38,7 +41,7 @@ export const testNode = suite('remote resource failure preparation', [
         );
     }),
     ...([ 'closed', 'throw' ] as const).map(function (scenario) {
-        return test(
+        return authoredTest(
             `attributes ${scenario} transport failures and releases both listeners`,
             async function (scope: TestScope) {
                 const fixture = projectedPreparation(scenario);
@@ -58,4 +61,3 @@ export const testNode = suite('remote resource failure preparation', [
         );
     })
 ]);
-await runIfMain(import.meta, testNode);

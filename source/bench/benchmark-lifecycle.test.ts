@@ -1,6 +1,8 @@
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { benchmarkLifecyclePolicySchema } from '../run/benchmark-policy-schema.ts';
-import { createRoot, createTestPlan, execute, type TestCase } from '../packages/engine/engine.entry-point.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestCase, createRoot, createTestPlan, execute } from '../packages/engine/engine.entry-point.ts';
+
 import {
     benchmark,
     defaultSamplingPolicy,
@@ -87,7 +89,7 @@ function assertRuntimeSettling(scope: TestScope, result: RunResult): void {
     scope.assert.equal(benchmarkResultSchema.parse(measurementResult(result)).lifecycle?.cooldown.mode, 'runtime');
 }
 
-export const testNode = suite('benchmark invocation lifetimes', [
+export const testNode = authoredSuite('benchmark invocation lifetimes', [
     test('rejects invalid cleanup callbacks while releasing already registered resources', async function (scope) {
         let cleanups = 0;
         const result = await runBenchmark(benchmark(

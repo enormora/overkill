@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { benchmarkHtmlFixture, benchmarkSampleFixture } from '../test-support/benchmark-html-fixture.ts';
 import { runResultSchema } from '../run/run-result-schema.ts';
 import { readBenchmarkSamples } from '../bench/benchmark-sample-report.ts';
@@ -41,7 +42,7 @@ function replaceSamples(
     return { ...artifact, payload: { ...artifact.payload, content } };
 }
 
-export const testNode = suite('benchmark HTML retained evidence', [
+export const testNode = authoredSuite('benchmark HTML retained evidence', [
     test('keeps indexed process evidence scoped to its owning work', function (scope: TestScope) {
         const { result, measured, artifact } = retainedFixture(scope);
         const owned = { ...artifact, payload: { ...artifact.payload, mediaType: processEvidenceMediaType } };

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { defineTestFamily } from '../packages/engine/engine.entry-point.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { bindFamilySettings } from '../engine/test-family.ts';
@@ -44,8 +44,8 @@ function registeredProfile(config: NormalizedConfig): DefinedFamilyProfile {
 }
 const unsupportedPolicies = Object.entries({ coverage: {}, retries: { maxAttempts: 2 }, attachments: {} });
 
-export const testNode = suite('imported analysis profile configuration', [
-    test('rejects missing, forged, and mismatched normalized settings bindings', function (scope) {
+export const testNode = authoredSuite('imported analysis profile configuration', [
+    authoredTest('rejects missing, forged, and mismatched normalized settings bindings', function (scope) {
         const config = normalizeConfig({ profiles: { types: definition } });
         const profile = registeredProfile(config);
         const missing = { ...profile };
@@ -64,7 +64,7 @@ export const testNode = suite('imported analysis profile configuration', [
         }
         return scope.assert.collect();
     }),
-    test('rejects unsupported normalized placement and analysis process measurement', function (scope) {
+    authoredTest('rejects unsupported normalized placement and analysis process measurement', function (scope) {
         const config = normalizeConfig({ profiles: { types: definition } });
         const profile = registeredProfile(config);
         scope.assert.throws(function validateHostPlacement() {
@@ -91,7 +91,7 @@ export const testNode = suite('imported analysis profile configuration', [
         }, { message: 'Analysis profiles do not support runtime process usage policy.' });
         return scope.assert.collect();
     }),
-    test('validates normalized placement against the bound family capabilities', function (scope) {
+    authoredTest('validates normalized placement against the bound family capabilities', function (scope) {
         const config = normalizeConfig({ profiles: { types: definition } });
         const hosted = defineTestFamily({
             ...family,
@@ -114,7 +114,7 @@ export const testNode = suite('imported analysis profile configuration', [
         }, { message: 'The selected family does not support the configured process model.' });
         return scope.assert.collect();
     }),
-    test('retains runtime placement defaults and validates family capabilities', function (scope) {
+    authoredTest('retains runtime placement defaults and validates family capabilities', function (scope) {
         const runtime = defineTestFamily({
             ...family,
             id: '@example/runtime-placement',
@@ -138,7 +138,7 @@ export const testNode = suite('imported analysis profile configuration', [
     }),
     ...scenarios.flatMap(function (scenario) {
         return [
-            test(`normalizes ${scenario.name} without loading`, function (scope) {
+            authoredTest(`normalizes ${scenario.name} without loading`, function (scope) {
                 const config = normalizeConfig({ profiles: { types: scenario.profile } });
                 validateNormalizedConfig(config);
                 const profile = registeredProfile(config);
@@ -157,7 +157,7 @@ export const testNode = suite('imported analysis profile configuration', [
                 });
                 return scope.assert.collect();
             }),
-            test(`snapshots ${scenario.name} without replacing definitions`, function (scope) {
+            authoredTest(`snapshots ${scenario.name} without replacing definitions`, function (scope) {
                 const config = normalizeConfig({ profiles: { types: scenario.profile } });
                 const copied = copyConfig(config);
                 scope.assert.deepEqual(copied, config);
@@ -168,7 +168,7 @@ export const testNode = suite('imported analysis profile configuration', [
             })
         ];
     }),
-    test('rejects unbranded definitions and bare optional family strings', function (scope) {
+    authoredTest('rejects unbranded definitions and bare optional family strings', function (scope) {
         for (const testFamily of [ undefined, null, 'type-test', {}, { ...family }, { ...family, load: null } ]) {
             scope.assert.throws(
                 function () {
@@ -179,7 +179,7 @@ export const testNode = suite('imported analysis profile configuration', [
         }
         return scope.assert.collect();
     }),
-    test('delegates settings validation before loading', function (scope) {
+    authoredTest('delegates settings validation before loading', function (scope) {
         scope.assert.throws(function () {
             return normalizeConfig({ profiles: { types: { ...definition, settings: 'rejected' } } });
         }, {
@@ -187,7 +187,7 @@ export const testNode = suite('imported analysis profile configuration', [
         });
         return scope.assert.collect();
     }),
-    test('rejects undeclared runtime policies', function (scope) {
+    authoredTest('rejects undeclared runtime policies', function (scope) {
         for (const [ field, value ] of unsupportedPolicies) {
             scope.assert.throws(
                 function () {
@@ -198,7 +198,7 @@ export const testNode = suite('imported analysis profile configuration', [
         }
         return scope.assert.collect();
     }),
-    test('retains explicit common timeout and evidence policy', function (scope) {
+    authoredTest('retains explicit common timeout and evidence policy', function (scope) {
         const config = normalizeConfig({
             profiles: {
                 types: {
@@ -223,4 +223,3 @@ export const testNode = suite('imported analysis profile configuration', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

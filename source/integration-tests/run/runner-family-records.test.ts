@@ -1,10 +1,9 @@
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
 import { defineTestFamily } from '../../packages/engine/engine.entry-point.ts';
 import type { ReplayRunRecord } from '../../run/replay-record-types.ts';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import {
     replayProject,
     writeReplayCase,
@@ -65,7 +64,7 @@ async function assertFamilyReplay(scope: TestScope, project: ReplayProject): Pro
     scope.assert.deepEqual(replay.runnerErrors, []);
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'imported family records',
     ([ 'in-process', 'supervised-process', 'worker-pool' ] as const).map(function placement(processModel) {
         return test(
@@ -88,5 +87,3 @@ export const testNode = suite(
         );
     })
 );
-
-await runIfMain(import.meta, testNode);

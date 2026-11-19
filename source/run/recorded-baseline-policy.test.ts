@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     defineBaselineAdapter,
     normalizeConfig,
@@ -46,7 +47,7 @@ function configuredProfile(baselineAdapter: OrdinaryBaselineAdapter): MicrotestP
     }
     return profile;
 }
-export const testNode = suite('recorded ordinary baseline policy', [
+export const testNode = authoredSuite('recorded ordinary baseline policy', [
     test('restores adapter references after JSON transport', function (scope: TestScope) {
         const profile = configuredProfile(adapter({ browser: 'reference', platform: 'test' }));
         const json = JSON.stringify(recordedReplayProfile(profile));

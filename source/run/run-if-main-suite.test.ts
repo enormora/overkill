@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as runIfMainOptionsTestNode } from './run-if-main-options.test.ts';
 import { testNode as runIfMainProfileFileSetsTestNode } from './run-if-main-profile-file-sets.test.ts';
 import { testNode as runIfMainSelectionTestNode } from './run-if-main-selection.test.ts';
@@ -7,19 +7,11 @@ import { testNode as runIfMainTestNode } from './run-if-main.test.ts';
 import { testNode as directEntrypointSerializationTestNode } from './direct-entrypoint-serialization.test.ts';
 import { testNode as runLocalTestPlanObservationTestNode } from './run-local-test-plan-observation.test.ts';
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-if-main-suite.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        directEntrypointSerializationTestNode,
-        runLocalTestPlanObservationTestNode,
-        runIfMainOptionsTestNode,
-        runIfMainProfileFileSetsTestNode,
-        runIfMainSelectionTestNode,
-        runIfMainTestNode
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/run-if-main-suite.test.ts', [
+    directEntrypointSerializationTestNode,
+    runLocalTestPlanObservationTestNode,
+    runIfMainOptionsTestNode,
+    runIfMainProfileFileSetsTestNode,
+    runIfMainSelectionTestNode,
+    runIfMainTestNode
+]);

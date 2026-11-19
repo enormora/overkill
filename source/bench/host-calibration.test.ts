@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     calibrateBenchmarkHost,
     normalizeBenchmarkDuration,
@@ -23,7 +24,7 @@ function referenceCalibration(machineClass: string, medianMicroseconds: number):
     };
 }
 
-export const testNode = suite('benchmark calibration', [
+export const testNode = authoredSuite('benchmark calibration', [
     test('records real reference samples and stable machine attribution', function (scope: TestScope) {
         const first = calibrateBenchmarkHost();
         const second = calibrateBenchmarkHost();

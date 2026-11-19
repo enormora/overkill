@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
     defineReporter,
@@ -244,11 +244,11 @@ function runtimeFamily(): TestFamily<null> {
     });
 }
 
-export const testNode = suite('engine family runs', [
+export const testNode = authoredSuite('engine family runs', [
     lifetimeTests,
     preparationValidation,
     evidenceValidation,
-    test('exposes frozen preparation facts before selection', async function (scope) {
+    authoredTest('exposes frozen preparation facts before selection', async function (scope) {
         const engine = createTestEngine();
         const observed: string[] = [];
         await using prepared = await prepareAnalysis(engine, observed.push.bind(observed), false);
@@ -259,7 +259,7 @@ export const testNode = suite('engine family runs', [
         scope.assert.deepEqual(Array.from(observed), [ 'parsed', 'loaded' ]);
         return scope.assert.collect();
     }),
-    test('collects exact variant work and reports analysis in execution order', async function (scope) {
+    authoredTest('collects exact variant work and reports analysis in execution order', async function (scope) {
         const engine = createTestEngine();
         const observed: string[] = [];
         const events: ReporterEvent[] = [];
@@ -281,7 +281,7 @@ export const testNode = suite('engine family runs', [
         return scope.assert.collect();
     }),
     ...[ 'duplicate', 'unknown' ].map(function invalidSelection(kind) {
-        return test(`rejects ${kind} work IDs before backend collection`, async function (scope) {
+        return authoredTest(`rejects ${kind} work IDs before backend collection`, async function (scope) {
             const engine = createTestEngine();
             const observed: string[] = [];
             await using prepared = await prepareAnalysis(engine, observed.push.bind(observed), false);
@@ -296,7 +296,7 @@ export const testNode = suite('engine family runs', [
             return scope.assert.collect();
         });
     }),
-    test('invalid selection disposes preparation and prevents reuse', async function (scope) {
+    authoredTest('invalid selection disposes preparation and prevents reuse', async function (scope) {
         const engine = createTestEngine();
         const observed: string[] = [];
         await using prepared = await prepareAnalysis(engine, observed.push.bind(observed), false);
@@ -309,7 +309,7 @@ export const testNode = suite('engine family runs', [
         scope.assert.deepEqual(observed, [ 'parsed', 'loaded', 'disposed' ]);
         return scope.assert.collect();
     }),
-    test('bypasses backend collection for authored skips', async function (scope) {
+    authoredTest('bypasses backend collection for authored skips', async function (scope) {
         const engine = createTestEngine();
         const observed: string[] = [];
         await using prepared = await prepareAnalysis(engine, observed.push.bind(observed), false);
@@ -317,7 +317,7 @@ export const testNode = suite('engine family runs', [
         scope.assert.deepEqual(observed, [ 'parsed', 'loaded', 'disposed' ]);
         return scope.assert.collect();
     }),
-    test('retains valid completion after evidence and reporter errors', async function (scope) {
+    authoredTest('retains valid completion after evidence and reporter errors', async function (scope) {
         const engine = createTestEngine();
         await using prepared = await prepareAnalysis(engine, function () {
             return undefined;
@@ -339,7 +339,7 @@ export const testNode = suite('engine family runs', [
         );
         return scope.assert.collect();
     }),
-    test('retains only observed runtime results when execution policy stops admission', async function (scope) {
+    authoredTest('retains only observed runtime results when execution policy stops admission', async function (scope) {
         const engine = createTestEngine();
         const executed: string[] = [];
         const testPlan = engine.createTestPlan(engine.createRoot({
@@ -401,7 +401,7 @@ export const testNode = suite('engine family runs', [
         });
         return scope.assert.collect();
     }),
-    test('cancels active runtime scopes without claiming a pass', async function (scope) {
+    authoredTest('cancels active runtime scopes without claiming a pass', async function (scope) {
         const engine = createTestEngine();
         const abort = new AbortController();
         const testPlan = createPlan(engine, function body(caseScope) {
@@ -425,7 +425,7 @@ export const testNode = suite('engine family runs', [
         ]);
         return scope.assert.collect();
     }),
-    test('keeps cooperative abort throws out of assertion failures', async function (scope) {
+    authoredTest('keeps cooperative abort throws out of assertion failures', async function (scope) {
         const engine = createTestEngine();
         const abort = new AbortController();
         const testPlan = createPlan(engine, function body(caseScope) {
@@ -448,7 +448,7 @@ export const testNode = suite('engine family runs', [
         ]);
         return scope.assert.collect();
     }),
-    test('executes collected runtime bodies through the ordinary engine', async function (scope) {
+    authoredTest('executes collected runtime bodies through the ordinary engine', async function (scope) {
         const engine = createTestEngine();
         const testPlan = createPlan(engine, function (caseScope) {
             caseScope.assert.fail({ message: 'ordinary assertion' });
@@ -469,5 +469,3 @@ export const testNode = suite('engine family runs', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

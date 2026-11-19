@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { workIdentityKey } from '../engine/identity.ts';
 import { baselineCaseEvent, baselineCaseResult, storedBaseline } from '../test-support/baseline-case-fixture.ts';
 import {
@@ -14,7 +15,7 @@ const failed = withBaselineChecks(baselineCaseEvent, [ baselineFailedCheck(basel
     summary: 'Output changed.'
 }) ]);
 const failedEvents = new Map([ [ workIdentityKey(storedBaseline.work), failed ] ]);
-export const testNode = suite('ordinary baseline outcomes', [
+export const testNode = authoredSuite('ordinary baseline outcomes', [
     test('attributes errors to explicit work and preserves non-Error causes', function (scope: TestScope) {
         const unattributed = baselineRunnerError('unavailable', null);
         const fallback = baselineRunnerError('unavailable', baselineCaseEvent);

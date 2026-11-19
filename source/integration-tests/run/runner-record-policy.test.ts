@@ -3,11 +3,10 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { type TestScope, test as authoredTest, suite as authoredSuite } from '@overkill-dev/test';
 import { z } from 'zod';
-import { runIfMain } from '#test-runner';
 import { currentRunRecordVersion } from '../../run/run-record-format.ts';
 import { createHistory, normalizeConfig, type SingleRunRecord } from '../../packages/run/run.entry-point.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 
 const binary = fileURLToPath(new URL('../../packages/test/overkill.entry-point.ts', import.meta.url));
 const engineUrl = new URL('../../packages/engine/engine.entry-point.ts', import.meta.url);
@@ -294,20 +293,22 @@ async function assertShardExecution(scope: TestScope, mode: ExecutionMode): Prom
     await assertRetainedHistory(scope, directory);
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'run recording across execution boundaries',
     ([ 'in-process', 'supervised-process', 'worker-pool' ] as const).flatMap(function executionMode(mode) {
         return [
-            test(mode, async function (scope: TestScope) {
+            authoredTest(mode, async function (scope: TestScope) {
                 await assertRecordedExecution(scope, mode);
                 await assertLastFailedExecution(scope, mode);
                 return scope.assert.collect();
             }),
-            test(`${mode} persists merge inputs without publishing shard history`, async function (scope: TestScope) {
-                await assertShardExecution(scope, mode);
-                return scope.assert.collect();
-            })
+            authoredTest(
+                `${mode} persists merge inputs without publishing shard history`,
+                async function (scope: TestScope) {
+                    await assertShardExecution(scope, mode);
+                    return scope.assert.collect();
+                }
+            )
         ];
     })
 );
-await runIfMain(import.meta, testNode);

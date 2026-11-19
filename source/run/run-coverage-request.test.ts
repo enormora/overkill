@@ -1,75 +1,47 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
-import {
-    defaultIntegrationProfile,
-    defaultRunConfig,
-    defaultRunRequest
-} from '../test-support/run-command-factory.ts';
+import { defaultIntegrationProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-coverage-request.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() rejects integration coverage before discovery',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createUnitRunOrchestrator();
+export const testNode = suite('source/run/run-coverage-request.test.ts', [
+    test('orchestrator.resolve() rejects integration coverage before discovery', async function (scope: OverkillScope) {
+        const runOrchestrator = createUnitRunOrchestrator();
 
-                await scope.assert.rejects(async function resolveIntegrationCoverage() {
-                    await runOrchestrator.resolve({
-                        config: defaultRunConfig({
-                            profiles: {
-                                integration: defaultIntegrationProfile({})
-                            }
-                        }),
-                        cwd: process.cwd(),
-                        engine: { kind: 'default' },
-                        request: defaultRunRequest({
-                            coverage: true,
-                            paths: [ 'source/does-not-exist.test.ts' ],
-                            profile: 'integration'
-                        })
-                    });
-                }, { message: 'Coverage can only be requested for microtest profiles.' });
+        await scope.assert.rejects(async function resolveIntegrationCoverage() {
+            await runOrchestrator.resolve({
+                config: defaultRunConfig({
+                    profiles: {
+                        integration: defaultIntegrationProfile({})
+                    }
+                }),
+                cwd: process.cwd(),
+                engine: { kind: 'default' },
+                request: defaultRunRequest({
+                    coverage: true,
+                    paths: [ 'source/does-not-exist.test.ts' ],
+                    profile: 'integration'
+                })
+            });
+        }, { message: 'Coverage can only be requested for microtest profiles.' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() records requested microtest coverage',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createUnitRunOrchestrator();
-                const resolvedRun = await runOrchestrator.resolve({
-                    config: defaultRunConfig(),
-                    cwd: process.cwd(),
-                    engine: { kind: 'default' },
-                    request: defaultRunRequest({
-                        coverage: true,
-                        paths: [ passingFixturePath ]
-                    })
-                });
+        return scope.assert.collect();
+    }),
+    test('orchestrator.resolve() records requested microtest coverage', async function (scope: OverkillScope) {
+        const runOrchestrator = createUnitRunOrchestrator();
+        const resolvedRun = await runOrchestrator.resolve({
+            config: defaultRunConfig(),
+            cwd: process.cwd(),
+            engine: { kind: 'default' },
+            request: defaultRunRequest({
+                coverage: true,
+                paths: [ passingFixturePath ]
+            })
+        });
 
-                scope.assert.equal(resolvedRun.facts.execution.coverage, true);
+        scope.assert.equal(resolvedRun.facts.execution.coverage, true);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

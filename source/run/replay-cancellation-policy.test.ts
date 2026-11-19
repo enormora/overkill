@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { workerReplayRecord } from '../test-support/replay-record-fixture.ts';
 import { createCollectedPlan, fakeWorkerRuntime, placementPlan } from '../test-support/worker-pool-execution-state.ts';
 import { withReplay } from './replay-context.ts';
@@ -18,37 +18,40 @@ function cancellationFixture(): CancellationFixture {
     const dispatcher = createStaticDispatcher(plan, runtime.placementTrace);
     return { runtime, dispatcher, lane };
 }
-export const testNode = suite('replay cancellation lifecycle', [
+export const testNode = authoredSuite('replay cancellation lifecycle', [
     ...[ false, true ].map(function alreadyAborted(early) {
-        return test(`stops pending placement with prior cancellation ${early}`, async function (scope: TestScope) {
-            const fixture = cancellationFixture();
-            const controller = new AbortController();
-            if (early) {
-                controller.abort();
-            }
-            await withReplay(
-                { kind: 'record', record: workerReplayRecord(fixture.runtime, null) },
-                controller.signal,
-                async function () {
-                    await withReplayCancellation(fixture, async function () {
-                        if (!early) {
-                            controller.abort();
-                        }
-                    });
+        return authoredTest(
+            `stops pending placement with prior cancellation ${early}`,
+            async function (scope: TestScope) {
+                const fixture = cancellationFixture();
+                const controller = new AbortController();
+                if (early) {
+                    controller.abort();
                 }
-            );
-            scope.assert.true(fixture.runtime.terminalFailure.read());
-            scope.assert.deepEqual(
-                fixture.runtime.runState.runnerErrors().map(function message(error) {
-                    return error.message;
-                }),
-                [ 'Replay was cancelled.' ]
-            );
-            scope.assert.equal(fixture.dispatcher.pull(fixture.lane), null);
-            return scope.assert.collect();
-        });
+                await withReplay(
+                    { kind: 'record', record: workerReplayRecord(fixture.runtime, null) },
+                    controller.signal,
+                    async function () {
+                        await withReplayCancellation(fixture, async function () {
+                            if (!early) {
+                                controller.abort();
+                            }
+                        });
+                    }
+                );
+                scope.assert.true(fixture.runtime.terminalFailure.read());
+                scope.assert.deepEqual(
+                    fixture.runtime.runState.runnerErrors().map(function message(error) {
+                        return error.message;
+                    }),
+                    [ 'Replay was cancelled.' ]
+                );
+                scope.assert.equal(fixture.dispatcher.pull(fixture.lane), null);
+                return scope.assert.collect();
+            }
+        );
     }),
-    test('removes cancellation listeners when execution throws', async function (scope: TestScope) {
+    authoredTest('removes cancellation listeners when execution throws', async function (scope: TestScope) {
         const fixture = cancellationFixture();
         const controller = new AbortController();
         const failure = new Error('Execution failed.');
@@ -69,4 +72,3 @@ export const testNode = suite('replay cancellation lifecycle', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

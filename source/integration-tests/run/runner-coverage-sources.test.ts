@@ -1,13 +1,8 @@
 import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import {
-    createSuite,
-    createTestCase,
-    type RunResult,
-    type CoverageRunnerError,
-    type TestScope
-} from '../../packages/engine/engine.entry-point.ts';
+import { test, suite } from '@overkill-dev/test';
+
+import type { RunResult, CoverageRunnerError, TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { orchestrator, type CoveragePolicy, type SingleRunRecord } from '../../packages/run/run.entry-point.ts';
 import {
     defaultMicrotestProfile,
@@ -141,17 +136,13 @@ function assertCoverageOutcome(scope: TestScope, scenario: CoverageScenario, res
     }
 }
 
-export const testNode = createSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/integration-tests/run/runner-coverage-sources.test.ts',
-    children: ([ 'in-process', 'supervised-process' ] as const).flatMap(function processModelCases(model) {
+export const testNode = suite(
+    'source/integration-tests/run/runner-coverage-sources.test.ts',
+    ([ 'in-process', 'supervised-process' ] as const).flatMap(function processModelCases(model) {
         return scenarios.map(function sourceScenario(scenario) {
-            return createTestCase({
+            return test({
                 annotations: {},
                 controls: {},
-                definitionLocations: [ { kind: 'unknown' } ],
                 title: `${model} coverage records ${scenario} source selection`,
                 async body(scope: TestScope) {
                     await mkdir('target', { recursive: true });
@@ -170,6 +161,4 @@ export const testNode = createSuite({
             });
         });
     })
-});
-
-await runIfMain(import.meta, testNode);
+);

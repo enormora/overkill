@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { memoryProcessHelper, helperCommand, failedProcessExecution } from '../test-support/memory-process-helper.ts';
 import { reliableProcessHelper } from '../test-support/process-helper-channel.ts';
 
-export const testNode = suite('process helper invocation ownership', [
+export const testNode = authoredSuite('process helper invocation ownership', [
     test('forwards commands and correlates completed invocation replies', async function (scope: TestScope) {
         const fixture = memoryProcessHelper(scope, true, reliableProcessHelper);
         const running = fixture.helper.run(helperCommand, scope.signal);
@@ -145,4 +145,3 @@ export const testNode = suite('process helper invocation ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

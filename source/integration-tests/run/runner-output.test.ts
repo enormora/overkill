@@ -2,9 +2,8 @@ import { execFile } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
 import type { Config } from '../../config/config.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 
 const captureModes = [ 'buffered', 'live', 'authored' ] as const;
 const executions = [
@@ -73,10 +72,10 @@ async function runOutputProbe(
     scope.assert.equal(result.stderr, capture === 'buffered' ? '' : 'case stderr\n');
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'runner output capture',
     executions.map(function executionTests(execution) {
-        return suite(
+        return authoredSuite(
             JSON.stringify(execution),
             captureModes.map(function captureTest(capture) {
                 return test(`forwards ${capture} output`, async function (scope: TestScope) {
@@ -87,5 +86,3 @@ export const testNode = suite(
         );
     })
 );
-
-await runIfMain(import.meta, testNode);

@@ -1,6 +1,7 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import { Random } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { generatorContext } from '../test-support/generator-execution.ts';
 import { gen } from './generators.ts';
@@ -38,7 +39,7 @@ function reconstructionWork(): ReconstructionWork {
     };
 }
 
-export const testNode = suite('generator reconstruction work', [
+export const testNode = authoredSuite('generator reconstruction work', [
     test('bounds reconstruction without corrupting the retained candidate', function (scope: TestScope) {
         const work = reconstructionWork();
         const root = generateInput(

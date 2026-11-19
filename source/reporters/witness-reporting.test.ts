@@ -1,10 +1,10 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createReportingContext } from '../engine/reporting-context.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createBriefReporter } from './brief-reporter.ts';
 
-export const testNode = suite('witness reporting', [
+export const testNode = authoredSuite('witness reporting', [
     test('brief reporter prints replay commands for complete witness artifacts', async function (scope: TestScope) {
         const reporter = createBriefReporter()(createReportingContext({ projectRoot: null }));
         scope.require.notNull(reporter.onFinish);
@@ -41,5 +41,3 @@ export const testNode = suite('witness reporting', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

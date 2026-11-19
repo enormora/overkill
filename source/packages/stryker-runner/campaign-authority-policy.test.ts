@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { memoryCampaignWorker } from '../../test-support/memory-campaign-worker.ts';
 import type { FrozenMicrotestPolicy } from '../run/run.entry-point.ts';
 import type { CampaignWorker } from './campaign-worker.ts';
@@ -39,7 +39,7 @@ function changedInvocation(fixture: CampaignFixture, mode: InvalidAuthority): In
     };
     return invocation(policies[mode], mode === 'seed' ? '43' : '42');
 }
-export const testNode = suite(
+export const testNode = authoredSuite(
     'campaign invocation admission',
     ([ 'authority', 'budget', 'root', 'seed' ] as const).map(function invalidSession(mode) {
         return test(`rejects changed campaign ${mode}`, async function (scope: TestScope) {
@@ -60,4 +60,3 @@ export const testNode = suite(
         });
     })
 );
-await runIfMain(import.meta, testNode);

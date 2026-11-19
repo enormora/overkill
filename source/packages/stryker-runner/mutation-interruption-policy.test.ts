@@ -1,13 +1,14 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { MutantRunStatus } from '@stryker-mutator/api/test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { createMutationEvidenceFixture } from '../../test-support/mutation-evidence-fixture.ts';
 import { testNode as protocol } from './mutation-baseline-protocol.test.ts';
 import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
 import { interruptedMutantResult, hitLimitCollectionReply } from './mutation-interrupted-result.ts';
 
-export const testNode = suite('interrupted mutation adapter replies', [
+export const testNode = authoredSuite('interrupted mutation adapter replies', [
     protocol,
     ...[ false, true ].map(function (confirmedKill) {
         return test(
@@ -61,4 +62,3 @@ export const testNode = suite('interrupted mutation adapter replies', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

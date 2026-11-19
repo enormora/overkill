@@ -1,9 +1,9 @@
 import { once } from 'node:events';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { campaignReceiverChannel, receiverWorker } from '../../test-support/campaign-receiver.ts';
 import { campaignProtocolVersion } from './campaign-protocol.ts';
 
-export const testNode = suite('campaign receiver admission', [
+export const testNode = authoredSuite('campaign receiver admission', [
     test('serializes and correlates admitted worker responses', async function (scope: TestScope) {
         const worker = receiverWorker({ kind: 'baseline', baseline: null });
         const fixture = campaignReceiverChannel(scope, worker.worker);

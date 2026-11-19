@@ -1,7 +1,8 @@
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createLocalHttpServiceResource, startResources } from '../packages/resources/resources.entry-point.ts';
 import { observeTranscriptEntries } from '../packages/simulation/transcript.entry-point.ts';
 import { runWithTranscriptScope, type TranscriptScope } from '../transcript/transcript-store.ts';
@@ -91,36 +92,23 @@ function assertSameScopeRequests(scope: TestScope): void {
     assertRequestIdentity(scope, requests, owner, second);
     scope.assert.equal(requests.take('GET /'), null);
 }
-export const testNode = createSuite({
-    ...metadata,
-    title: 'source/resources/local-http-failure-attribution.test.ts',
-    children: [
-        createTestCase({
+export const testNode = suite('source/resources/local-http-failure-attribution.test.ts', [
+    test('identical overlapping requests in one attempt preserve their client identities', function (scope: TestScope) {
+        assertSameScopeRequests(scope);
+        return scope.assert.collect();
+    }),
+    test('overlapping request signatures never borrow another case scope', function (scope: TestScope) {
+        assertAmbiguousRequests(scope);
+        return scope.assert.collect();
+    }),
+    ...[ 'per-case', 'shared-per-worker' ].map(function scopedRequest(lifetime) {
+        return test({
             ...metadata,
-            title: 'identical overlapping requests in one attempt preserve their client identities',
-            body(scope: TestScope) {
-                assertSameScopeRequests(scope);
+            title: `unmatched ${lifetime} requests keep their resource lifetime attribution`,
+            async body(scope: TestScope) {
+                await assertUncorrelatedScope(scope, lifetime === 'per-case' ? 'per-case' : 'shared-per-worker');
                 return scope.assert.collect();
             }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'overlapping request signatures never borrow another case scope',
-            body(scope: TestScope) {
-                assertAmbiguousRequests(scope);
-                return scope.assert.collect();
-            }
-        }),
-        ...[ 'per-case', 'shared-per-worker' ].map(function scopedRequest(lifetime) {
-            return createTestCase({
-                ...metadata,
-                title: `unmatched ${lifetime} requests keep their resource lifetime attribution`,
-                async body(scope: TestScope) {
-                    await assertUncorrelatedScope(scope, lifetime === 'per-case' ? 'per-case' : 'shared-per-worker');
-                    return scope.assert.collect();
-                }
-            });
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+        });
+    })
+]);

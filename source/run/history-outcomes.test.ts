@@ -1,12 +1,12 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { historyFacts, completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
 import { emptyCompactHistory, ingestCompactRecord } from './compact-history.ts';
 import { historyRunSummary, recordDurationContributions, caseOutcomes } from './history-outcomes.ts';
 
 const context = { policy: defaultHistoryPolicy, now: historyTimestamp, testFamily: 'microtest' };
-export const testNode = suite('history outcomes', [
+export const testNode = authoredSuite('history outcomes', [
     test(
         'a failed variant wins over a passing variant without adding two case observations',
         function (scope: TestScope) {
@@ -122,4 +122,3 @@ export const testNode = suite('history outcomes', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

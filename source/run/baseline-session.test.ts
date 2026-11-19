@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { RunResult } from '../engine/run-result.ts';
 import { sessionFixture } from '../test-support/baseline-publication-fixture.ts';
 import type { OrdinaryBaselineEntry } from './baseline-record.ts';
@@ -25,7 +26,7 @@ function assertBlockedPublication(
     scope.assert.equal(result.runnerErrors[0]?.subtype, 'artifact');
     scope.assert.deepEqual(entries, original);
 }
-export const testNode = suite('ordinary baseline publication', [
+export const testNode = authoredSuite('ordinary baseline publication', [
     test('retains completed writes after a later I/O failure', async function (scope: TestScope) {
         const fixture = await sessionFixture(scope);
         const session = createOrdinaryBaselineSession({

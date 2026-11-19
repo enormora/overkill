@@ -1,15 +1,8 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
-import { defineCompositeAssertion as definePublishedCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import { defineCompositeAssertion as definePublishedCompositeAssertion } from '@overkill-dev/test/assert';
 import type { AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
-import type {
-    FailedCheck,
-    SourceLocation
-} from '../assertion-protocol/assertion-node-shape.ts';
+import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
@@ -78,242 +71,207 @@ function firstFailedCheck(outcome: FailOutcome): FailedCheck | null {
     return firstAssertionFailure(outcome)?.checks.at(0) ?? null;
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/engine/assertion-execution.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() counts successful requirements once a returned assertion result exists',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.plan(2);
-                    testScope.require.string('value');
-                    testScope.assert.true(true);
-                    return testScope.assert.collect();
-                });
+export const testNode = suite('source/engine/assertion-execution.test.ts', [
+    test(
+        'execute() counts successful requirements once a returned assertion result exists',
+        async function (scope: OverkillScope) {
+            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                testScope.plan(2);
+                testScope.require.string('value');
+                testScope.assert.true(true);
+                return testScope.assert.collect();
+            });
 
-                scope.assert.equal(result.summary.passed, 1);
+            scope.assert.equal(result.summary.passed, 1);
 
-                return scope.assert.collect();
+            return scope.assert.collect();
+        }
+    ),
+    test('execute() rejects successful require-only builder collection', async function (scope: OverkillScope) {
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            testScope.require.string('value');
+            return testScope.assert.collect();
+        });
+        const outcome = firstFailOutcome(result);
+
+        scope.require.notNull(outcome);
+        scope.assert.deepEqual(outcome.failures, [
+            {
+                actual: 0,
+                code: 'no-assertions',
+                expected: 'at least one assertion',
+                kind: 'test-contract',
+                summary: 'Expected at least one assertion.'
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() rejects successful require-only builder collection',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.require.string('value');
-                    return testScope.assert.collect();
-                });
-                const outcome = firstFailOutcome(result);
+        ]);
 
-                scope.require.notNull(outcome);
-                scope.assert.deepEqual(outcome.failures, [
+        return scope.assert.collect();
+    }),
+    test('execute() skips plan mismatch when a requirement fails', async function (scope: OverkillScope) {
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            testScope.plan(2);
+            testScope.require.string(1, { message: 'required string' });
+            return testScope.assert.collect();
+        });
+        const outcome = firstFailOutcome(result);
+
+        scope.require.notNull(outcome);
+        const check = firstFailedCheck(outcome);
+        scope.require.notNull(check);
+        scope.assert(capturedTestLocation, check.sourceLocations[0]);
+
+        scope.assert.deepEqual(outcome.failures, [
+            {
+                checks: [
                     {
-                        actual: 0,
-                        code: 'no-assertions',
-                        expected: 'at least one assertion',
-                        kind: 'test-contract',
-                        summary: 'Expected at least one assertion.'
+                        actual: serializeValue(1),
+                        diff: null,
+                        expected: serializeValue('string'),
+                        id: '1',
+                        kind: 'leaf',
+                        sourceLocations: [ check.sourceLocations[0] ],
+                        path: [],
+                        source: 'require',
+                        summary: 'required string'
                     }
-                ]);
-
-                return scope.assert.collect();
+                ],
+                kind: 'assertion'
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() skips plan mismatch when a requirement fails',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.plan(2);
+        ]);
+
+        return scope.assert.collect();
+    }),
+    test(
+        'execute() treats caught failed requirements as fatal and ignores later assertions',
+        async function (scope: OverkillScope) {
+            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                try {
                     testScope.require.string(1, { message: 'required string' });
-                    return testScope.assert.collect();
-                });
-                const outcome = firstFailOutcome(result);
+                } catch {
+                    testScope.assert.fail({ message: 'ignored failure' });
+                }
 
-                scope.require.notNull(outcome);
-                const check = firstFailedCheck(outcome);
-                scope.require.notNull(check);
-                scope.assert(capturedTestLocation, check.sourceLocations[0]);
+                return testScope.assert.collect();
+            });
+            const outcome = firstFailOutcome(result);
 
-                scope.assert.deepEqual(outcome.failures, [
-                    {
-                        checks: [
-                            {
-                                actual: serializeValue(1),
-                                diff: null,
-                                expected: serializeValue('string'),
-                                id: '1',
-                                kind: 'leaf',
-                                sourceLocations: [ check.sourceLocations[0] ],
-                                path: [],
-                                source: 'require',
-                                summary: 'required string'
-                            }
-                        ],
-                        kind: 'assertion'
-                    }
-                ]);
+            scope.require.notNull(outcome);
+            const check = firstFailedCheck(outcome);
+            scope.require.notNull(check);
+            scope.assert(capturedTestLocation, check.sourceLocations[0]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() treats caught failed requirements as fatal and ignores later assertions',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    try {
-                        testScope.require.string(1, { message: 'required string' });
-                    } catch {
-                        testScope.assert.fail({ message: 'ignored failure' });
-                    }
+            scope.assert.deepEqual(outcome.failures, [
+                {
+                    checks: [
+                        {
+                            actual: serializeValue(1),
+                            diff: null,
+                            expected: serializeValue('string'),
+                            id: '1',
+                            kind: 'leaf',
+                            sourceLocations: [ check.sourceLocations[0] ],
+                            path: [],
+                            source: 'require',
+                            summary: 'required string'
+                        }
+                    ],
+                    kind: 'assertion'
+                }
+            ]);
 
-                    return testScope.assert.collect();
-                });
-                const outcome = firstFailOutcome(result);
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'execute() rejects returned results that drop recorded builder assertions',
+        async function (scope: OverkillScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
+                const replacement: AssertAssertionNode = {
+                    actual: true,
+                    check: 'true',
+                    sourceLocations: [ unknownSourceLocation ],
+                    message: null,
+                    source: 'assert'
+                };
 
-                scope.require.notNull(outcome);
-                const check = firstFailedCheck(outcome);
-                scope.require.notNull(check);
-                scope.assert(capturedTestLocation, check.sourceLocations[0]);
+                testScope.assert.true(true);
 
-                scope.assert.deepEqual(outcome.failures, [
-                    {
-                        checks: [
-                            {
-                                actual: serializeValue(1),
-                                diff: null,
-                                expected: serializeValue('string'),
-                                id: '1',
-                                kind: 'leaf',
-                                sourceLocations: [ check.sourceLocations[0] ],
-                                path: [],
-                                source: 'require',
-                                summary: 'required string'
-                            }
-                        ],
-                        kind: 'assertion'
-                    }
-                ]);
+                return [ replacement ];
+            });
+            const outcome = firstFailOutcome(result);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() rejects returned results that drop recorded builder assertions',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope) {
-                    const replacement: AssertAssertionNode = {
-                        actual: true,
-                        check: 'true',
-                        sourceLocations: [ unknownSourceLocation ],
-                        message: null,
-                        source: 'assert'
-                    };
+            scope.require.notNull(outcome);
+            scope.assert.deepEqual(outcome.failures, [
+                {
+                    actual: 'missing recorded builder assertion',
+                    code: 'dead-builder-assertion',
+                    expected: 'returned assertions include every recorded builder assertion',
+                    kind: 'test-contract',
+                    summary: 'Returned assertions must include every recorded builder assertion.'
+                }
+            ]);
 
-                    testScope.assert.true(true);
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'execute() accepts appended direct assertions around builder assertions',
+        async function (scope: OverkillScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
+                const leading: AssertAssertionNode = {
+                    actual: true,
+                    check: 'true',
+                    sourceLocations: [ unknownSourceLocation ],
+                    message: null,
+                    source: 'assert'
+                };
+                const trailing: AssertAssertionNode = {
+                    actual: false,
+                    check: 'false',
+                    sourceLocations: [ unknownSourceLocation ],
+                    message: null,
+                    source: 'assert'
+                };
 
-                    return [ replacement ];
-                });
-                const outcome = firstFailOutcome(result);
+                testScope.plan(3);
+                testScope.assert.true(true);
 
-                scope.require.notNull(outcome);
-                scope.assert.deepEqual(outcome.failures, [
-                    {
-                        actual: 'missing recorded builder assertion',
-                        code: 'dead-builder-assertion',
-                        expected: 'returned assertions include every recorded builder assertion',
-                        kind: 'test-contract',
-                        summary: 'Returned assertions must include every recorded builder assertion.'
-                    }
-                ]);
+                return [ leading, ...testScope.assert.collect(), trailing ];
+            });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() accepts appended direct assertions around builder assertions',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope) {
-                    const leading: AssertAssertionNode = {
-                        actual: true,
-                        check: 'true',
-                        sourceLocations: [ unknownSourceLocation ],
-                        message: null,
-                        source: 'assert'
-                    };
-                    const trailing: AssertAssertionNode = {
-                        actual: false,
-                        check: 'false',
-                        sourceLocations: [ unknownSourceLocation ],
-                        message: null,
-                        source: 'assert'
-                    };
+            scope.assert.equal(result.summary.passed, 1);
 
-                    testScope.plan(3);
-                    testScope.assert.true(true);
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'execute() merges successful requirements by timeline for counts and check ids',
+        async function (scope: OverkillScope) {
+            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                testScope.plan(3);
+                testScope.assert.equal(1, 2, { message: 'first assert' });
+                testScope.require.string('value');
+                testScope.assert.equal(3, 4, { message: 'second assert' });
+                return testScope.assert.collect();
+            });
+            const outcome = firstFailOutcome(result);
 
-                    return [ leading, ...testScope.assert.collect(), trailing ];
-                });
+            scope.require.notNull(outcome);
+            scope.assert.deepEqual(
+                outcome.failures.flatMap(function failedChecks(failure) {
+                    return failure.kind === 'assertion'
+                        ? failure.checks.map(function toCheck(check) {
+                            return { id: check.id, summary: check.summary };
+                        })
+                        : [];
+                }),
+                [
+                    { id: '1', summary: 'first assert' },
+                    { id: '3', summary: 'second assert' }
+                ]
+            );
 
-                scope.assert.equal(result.summary.passed, 1);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() merges successful requirements by timeline for counts and check ids',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.plan(3);
-                    testScope.assert.equal(1, 2, { message: 'first assert' });
-                    testScope.require.string('value');
-                    testScope.assert.equal(3, 4, { message: 'second assert' });
-                    return testScope.assert.collect();
-                });
-                const outcome = firstFailOutcome(result);
-
-                scope.require.notNull(outcome);
-                scope.assert.deepEqual(
-                    outcome.failures.flatMap(function failedChecks(failure) {
-                        return failure.kind === 'assertion'
-                            ? failure.checks.map(function toCheck(check) {
-                                return { id: check.id, summary: check.summary };
-                            })
-                            : [];
-                    }),
-                    [
-                        { id: '1', summary: 'first assert' },
-                        { id: '3', summary: 'second assert' }
-                    ]
-                );
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

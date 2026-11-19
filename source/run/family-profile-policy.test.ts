@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { defineReporter, defineTestFamily, type TestFamily } from '../packages/engine/engine.entry-point.ts';
 import { normalizeConfig, type RunCommand, type RunRequest } from '../packages/run/run.entry-point.ts';
 import { createUnitRunCoordinator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -99,9 +99,9 @@ const unsupportedAnalysisRequests: readonly {
     }
 ];
 
-export const testNode = suite('family runner failure policy', [
+export const testNode = authoredSuite('family runner failure policy', [
     ...unsupportedAnalysisRequests.map(function rejectedAnalysisRequest(scenario) {
-        return test(`rejects ${scenario.name} for analysis before backend loading`, function (scope) {
+        return authoredTest(`rejects ${scenario.name} for analysis before backend loading`, function (scope) {
             const events: string[] = [];
             const input = command(function record(event) {
                 events.push(event);
@@ -118,7 +118,7 @@ export const testNode = suite('family runner failure policy', [
             return scope.assert.collect();
         });
     }),
-    test('rejects baseline and merge-recording namespaces for imported analysis', function (scope) {
+    authoredTest('rejects baseline and merge-recording namespaces for imported analysis', function (scope) {
         const input = command(function unusedBackend() {
             return undefined;
         }, 'complete');
@@ -136,7 +136,7 @@ export const testNode = suite('family runner failure policy', [
         }, { message: '--record-for-merge is only supported by ordinary runs outside execution sessions.' });
         return scope.assert.collect();
     }),
-    test('validates malformed JavaScript request flags before backend loading', function (scope) {
+    authoredTest('validates malformed JavaScript request flags before backend loading', function (scope) {
         const input = command(function unusedBackend() {
             return undefined;
         }, 'complete');
@@ -159,7 +159,7 @@ export const testNode = suite('family runner failure policy', [
         }
         return scope.assert.collect();
     }),
-    test('retains selection and disposal failures together', async function (scope) {
+    authoredTest('retains selection and disposal failures together', async function (scope) {
         const events: string[] = [];
         const cleanup = new Error('Family cleanup failed.');
         const input = command(function record(event) {
@@ -200,7 +200,7 @@ export const testNode = suite('family runner failure policy', [
         }
         throw new Error('Expected family selection to reject.');
     }),
-    test('preserves failures for resolved plans without family preparations', async function (scope) {
+    authoredTest('preserves failures for resolved plans without family preparations', async function (scope) {
         const input = command(function unusedBackend() {
             return undefined;
         }, 'complete');
@@ -219,7 +219,7 @@ export const testNode = suite('family runner failure policy', [
         }
         throw new Error('Expected family observation to reject.');
     }),
-    test('rejects variant drift between collection and repeated preparation', async function (scope) {
+    authoredTest('rejects variant drift between collection and repeated preparation', async function (scope) {
         const events: string[] = [];
         const input = command(function unusedBackend() {
             return undefined;
@@ -246,7 +246,7 @@ export const testNode = suite('family runner failure policy', [
         scope.assert.deepEqual(events, [ 'load', 'prepare', 'collect', 'dispose', 'load', 'prepare', 'dispose' ]);
         return scope.assert.collect();
     }),
-    test('reports imported family identity when rejecting benchmark selection', function (scope) {
+    authoredTest('reports imported family identity when rejecting benchmark selection', function (scope) {
         const events: string[] = [];
         const input = command(function record(event) {
             events.push(event);
@@ -260,7 +260,7 @@ export const testNode = suite('family runner failure policy', [
         scope.assert.deepEqual(events, []);
         return scope.assert.collect();
     }),
-    test('maps backend setup failures through runner diagnostics', async function (scope) {
+    authoredTest('maps backend setup failures through runner diagnostics', async function (scope) {
         const events: string[] = [];
         const coordinator = createUnitRunCoordinator();
         const result = await coordinator.orchestrator.run(command(function record(event) {
@@ -280,7 +280,7 @@ export const testNode = suite('family runner failure policy', [
         scope.assert.deepEqual(events, [ 'load', 'prepare' ]);
         return scope.assert.collect();
     }),
-    test('disposes empty selections without calling backend collection', async function (scope) {
+    authoredTest('disposes empty selections without calling backend collection', async function (scope) {
         const events: string[] = [];
         const coordinator = createUnitRunCoordinator();
         const input = command(function record(event) {
@@ -294,7 +294,7 @@ export const testNode = suite('family runner failure policy', [
         scope.assert.deepEqual(events, [ 'load', 'prepare', 'dispose' ]);
         return scope.assert.collect();
     }),
-    test('retains reporter failure and disposes backend before final delivery', async function (scope) {
+    authoredTest('retains reporter failure and disposes backend before final delivery', async function (scope) {
         const events: string[] = [];
         const coordinator = createUnitRunCoordinator();
         const input = command(function record(event) {
@@ -338,4 +338,3 @@ export const testNode = suite('family runner failure policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

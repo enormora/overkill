@@ -1,18 +1,10 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
 import { selectTestProfile } from '../run/test-profile.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
-import {
-    configFixtureCwd,
-    createSingleConfigModuleLoader
-} from '../test-support/run-config-module-loader.ts';
+import { configFixtureCwd, createSingleConfigModuleLoader } from '../test-support/run-config-module-loader.ts';
 import type { LoadedConfig } from './config-loader.ts';
 
 async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
@@ -21,408 +13,367 @@ async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
     return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/config/config-integration-profile.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'rejects snapshot enablement in strict profiles',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                for (const testFamily of [ 'microtest', 'property' ] as const) {
-                    await scope.assert.rejects(async function strictSnapshotProfile() {
-                        await loadConfigValue({
-                            profiles: {
-                                strict: {
-                                    testFamily,
-                                    files: { include: [ 'strict.test.ts' ] },
-                                    baselines: { snapshots: true }
-                                }
-                            }
-                        });
-                    }, { message: 'Snapshots require an integration profile.' });
-                }
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadConfig() normalizes integration profile defaults',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const config = await loadConfigValue({
+export const testNode = suite('source/config/config-integration-profile.test.ts', [
+    test('rejects snapshot enablement in strict profiles', async function (scope: OverkillScope) {
+        for (const testFamily of [ 'microtest', 'property' ] as const) {
+            await scope.assert.rejects(async function strictSnapshotProfile() {
+                await loadConfigValue({
                     profiles: {
-                        service: {
-                            testFamily: 'integration',
-                            files: { include: [ 'source/**/*.integration.test.ts' ] }
+                        strict: {
+                            testFamily,
+                            files: { include: [ 'strict.test.ts' ] },
+                            baselines: { snapshots: true }
                         }
                     }
                 });
-                const profile = selectTestProfile('service', config);
-                const microtestProfile = selectTestProfile('microtest', config);
-
-                scope.require.defined(profile);
-                scope.require.defined(microtestProfile);
-                scope.assert.deepEqual(profile, {
-                    property: null,
-                    failureArtifacts: defaultFailureArtifactPolicy,
-                    baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
-                    attachments: defaultAttachmentLimits,
-                    retries: null,
-                    execution: {
-                        assignmentPolicy: 'case-count-balanced',
-                        dispatchPolicy: 'dynamic-lease',
-                        hedging: { mode: 'off' },
-                        hostProcess: { kind: 'direct' },
-                        maxConcurrency: 5,
-                        maxWorkers: null,
-                        processModel: 'worker-pool',
-                        scheduling: 'concurrent',
-                        workDistribution: { mode: 'file' },
-                        workerLifecycle: 'reuse'
-                    },
-                    files: {
-                        exclude: [],
-                        include: [ 'source/**/*.integration.test.ts' ]
-                    },
-                    reporters: null,
-                    processUsage: defaultMicrotestProfile().processUsage,
+            }, { message: 'Snapshots require an integration profile.' });
+        }
+        return scope.assert.collect();
+    }),
+    test('loadConfig() normalizes integration profile defaults', async function (scope: OverkillScope) {
+        const config = await loadConfigValue({
+            profiles: {
+                service: {
                     testFamily: 'integration',
-                    runRecords: { persist: 'on-demand' },
-                    timings: { collection: 'summary' },
-                    timeouts: {
-                        collectionMilliseconds: 5000,
-                        hardMilliseconds: 7000,
-                        softMilliseconds: 5000
-                    }
-                });
-                scope.assert.deepEqual(microtestProfile, defaultMicrotestProfile());
-
-                return scope.assert.collect();
+                    files: { include: [ 'source/**/*.integration.test.ts' ] }
+                }
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadConfig() normalizes worker-pool lifecycle and distribution overrides',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const config = await loadConfigValue({
-                    profiles: {
-                        defaultedService: {
-                            testFamily: 'integration',
-                            files: { include: [ 'source/**/*.integration.test.ts' ] },
-                            execution: {
-                                processModel: 'worker-pool',
-                                scheduling: 'serial'
+        });
+        const profile = selectTestProfile('service', config);
+        const microtestProfile = selectTestProfile('microtest', config);
+
+        scope.require.defined(profile);
+        scope.require.defined(microtestProfile);
+        scope.assert.deepEqual(profile, {
+            property: null,
+            failureArtifacts: defaultFailureArtifactPolicy,
+            baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
+            attachments: defaultAttachmentLimits,
+            retries: null,
+            execution: {
+                assignmentPolicy: 'case-count-balanced',
+                dispatchPolicy: 'dynamic-lease',
+                hedging: { mode: 'off' },
+                hostProcess: { kind: 'direct' },
+                maxConcurrency: 5,
+                maxWorkers: null,
+                processModel: 'worker-pool',
+                scheduling: 'concurrent',
+                workDistribution: { mode: 'file' },
+                workerLifecycle: 'reuse'
+            },
+            files: {
+                exclude: [],
+                include: [ 'source/**/*.integration.test.ts' ]
+            },
+            reporters: null,
+            processUsage: defaultMicrotestProfile().processUsage,
+            testFamily: 'integration',
+            runRecords: { persist: 'on-demand' },
+            timings: { collection: 'summary' },
+            timeouts: {
+                collectionMilliseconds: 5000,
+                hardMilliseconds: 7000,
+                softMilliseconds: 5000
+            }
+        });
+        scope.assert.deepEqual(microtestProfile, defaultMicrotestProfile());
+
+        return scope.assert.collect();
+    }),
+    test(
+        'loadConfig() normalizes worker-pool lifecycle and distribution overrides',
+        async function (scope: OverkillScope) {
+            const config = await loadConfigValue({
+                profiles: {
+                    defaultedService: {
+                        testFamily: 'integration',
+                        files: { include: [ 'source/**/*.integration.test.ts' ] },
+                        execution: {
+                            processModel: 'worker-pool',
+                            scheduling: 'serial'
+                        }
+                    },
+                    service: {
+                        testFamily: 'integration',
+                        files: {
+                            sets: {
+                                integration: { include: [ 'source/**/*.integration.test.ts' ] }
                             }
                         },
-                        service: {
-                            testFamily: 'integration',
-                            files: {
-                                sets: {
-                                    integration: { include: [ 'source/**/*.integration.test.ts' ] }
-                                }
+                        execution: {
+                            assignmentPolicy: 'stable',
+                            dispatchPolicy: 'static-assignment',
+                            maxWorkers: 4,
+                            processModel: 'worker-pool',
+                            scheduling: 'serial',
+                            workDistribution: {
+                                groups: [
+                                    { fileSets: [ 'integration' ], name: 'integration' }
+                                ],
+                                mode: 'group'
                             },
-                            execution: {
-                                assignmentPolicy: 'stable',
-                                dispatchPolicy: 'static-assignment',
-                                maxWorkers: 4,
-                                processModel: 'worker-pool',
-                                scheduling: 'serial',
-                                workDistribution: {
-                                    groups: [
-                                        { fileSets: [ 'integration' ], name: 'integration' }
-                                    ],
-                                    mode: 'group'
-                                },
-                                workerLifecycle: 'fresh-worker-per-unit'
-                            }
+                            workerLifecycle: 'fresh-worker-per-unit'
                         }
                     }
-                });
-                const defaultedProfile = selectTestProfile('defaultedService', config);
-                const profile = selectTestProfile('service', config);
+                }
+            });
+            const defaultedProfile = selectTestProfile('defaultedService', config);
+            const profile = selectTestProfile('service', config);
 
-                scope.require.defined(defaultedProfile);
-                scope.require.defined(profile);
-                scope.assert.deepEqual(defaultedProfile.execution, {
-                    assignmentPolicy: 'case-count-balanced',
-                    dispatchPolicy: 'dynamic-lease',
-                    hedging: { mode: 'off' },
-                    hostProcess: { kind: 'direct' },
-                    maxConcurrency: 5,
-                    maxWorkers: null,
-                    processModel: 'worker-pool',
-                    scheduling: 'serial',
-                    workDistribution: { mode: 'file' },
-                    workerLifecycle: 'reuse'
-                });
-                scope.assert.deepEqual(profile.execution, {
-                    assignmentPolicy: 'stable',
-                    dispatchPolicy: 'static-assignment',
-                    hedging: { mode: 'off' },
-                    hostProcess: { kind: 'direct' },
-                    maxConcurrency: 5,
-                    maxWorkers: 4,
-                    processModel: 'worker-pool',
-                    scheduling: 'serial',
-                    workDistribution: {
-                        groups: [
-                            {
-                                fileSets: [ 'integration' ],
-                                granularity: 'group',
-                                name: 'integration',
-                                order: 'profile-default',
-                                scheduling: 'profile-default',
-                                workerLifecycle: 'profile-default'
-                            }
-                        ],
-                        mode: 'group',
-                        unmatched: 'reject'
-                    },
-                    workerLifecycle: 'fresh-worker-per-unit'
-                });
+            scope.require.defined(defaultedProfile);
+            scope.require.defined(profile);
+            scope.assert.deepEqual(defaultedProfile.execution, {
+                assignmentPolicy: 'case-count-balanced',
+                dispatchPolicy: 'dynamic-lease',
+                hedging: { mode: 'off' },
+                hostProcess: { kind: 'direct' },
+                maxConcurrency: 5,
+                maxWorkers: null,
+                processModel: 'worker-pool',
+                scheduling: 'serial',
+                workDistribution: { mode: 'file' },
+                workerLifecycle: 'reuse'
+            });
+            scope.assert.deepEqual(profile.execution, {
+                assignmentPolicy: 'stable',
+                dispatchPolicy: 'static-assignment',
+                hedging: { mode: 'off' },
+                hostProcess: { kind: 'direct' },
+                maxConcurrency: 5,
+                maxWorkers: 4,
+                processModel: 'worker-pool',
+                scheduling: 'serial',
+                workDistribution: {
+                    groups: [
+                        {
+                            fileSets: [ 'integration' ],
+                            granularity: 'group',
+                            name: 'integration',
+                            order: 'profile-default',
+                            scheduling: 'profile-default',
+                            workerLifecycle: 'profile-default'
+                        }
+                    ],
+                    mode: 'group',
+                    unmatched: 'reject'
+                },
+                workerLifecycle: 'fresh-worker-per-unit'
+            });
 
-                return scope.assert.collect();
+            return scope.assert.collect();
+        }
+    ),
+    test('loadConfig() normalizes and validates worker-pool hedging', async function (scope: OverkillScope) {
+        const config = await loadConfigValue({
+            profiles: {
+                service: {
+                    testFamily: 'integration',
+                    files: { include: [ 'source/**/*.integration.test.ts' ] },
+                    execution: {
+                        hedging: {
+                            durationMultiplier: 2,
+                            minimumDelayMilliseconds: 100,
+                            mode: 'on'
+                        },
+                        processModel: 'worker-pool'
+                    }
+                }
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadConfig() normalizes and validates worker-pool hedging',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const config = await loadConfigValue({
-                    profiles: {
-                        service: {
-                            testFamily: 'integration',
-                            files: { include: [ 'source/**/*.integration.test.ts' ] },
-                            execution: {
-                                hedging: {
-                                    durationMultiplier: 2,
-                                    minimumDelayMilliseconds: 100,
-                                    mode: 'on'
-                                },
-                                processModel: 'worker-pool'
+        });
+        const profile = selectTestProfile('service', config);
+
+        scope.require.defined(profile);
+        scope.assert.deepEqual(profile.execution, {
+            assignmentPolicy: 'case-count-balanced',
+            dispatchPolicy: 'dynamic-lease',
+            hedging: {
+                durationMultiplier: 2,
+                minimumDelayMilliseconds: 100,
+                mode: 'on'
+            },
+            hostProcess: { kind: 'direct' },
+            maxConcurrency: 5,
+            maxWorkers: null,
+            processModel: 'worker-pool',
+            scheduling: 'concurrent',
+            workDistribution: { mode: 'file' },
+            workerLifecycle: 'reuse'
+        });
+        await scope.assert.rejects(async function loadStaticHedging() {
+            await loadConfigValue({
+                profiles: {
+                    service: {
+                        testFamily: 'integration',
+                        files: { include: [ 'source/**/*.integration.test.ts' ] },
+                        execution: {
+                            dispatchPolicy: 'static-assignment',
+                            hedging: {
+                                durationMultiplier: 2,
+                                minimumDelayMilliseconds: 100,
+                                mode: 'on'
+                            },
+                            processModel: 'worker-pool'
+                        }
+                    }
+                }
+            });
+        }, { message: 'Invalid worker-pool hedging: hedging requires dynamic-lease dispatch.' });
+
+        return scope.assert.collect();
+    }),
+    test('loadConfig() rejects invalid grouped work distribution', async function (scope: OverkillScope) {
+        await scope.assert.rejects(async function loadGroupedWithoutFileSets() {
+            await loadConfigValue({
+                profiles: {
+                    service: {
+                        testFamily: 'integration',
+                        files: { include: [ 'source/**/*.integration.test.ts' ] },
+                        execution: {
+                            processModel: 'worker-pool',
+                            workDistribution: {
+                                groups: [ { fileSets: [ 'integration' ], name: 'integration' } ],
+                                mode: 'group'
                             }
                         }
                     }
-                });
-                const profile = selectTestProfile('service', config);
-
-                scope.require.defined(profile);
-                scope.assert.deepEqual(profile.execution, {
-                    assignmentPolicy: 'case-count-balanced',
-                    dispatchPolicy: 'dynamic-lease',
-                    hedging: {
-                        durationMultiplier: 2,
-                        minimumDelayMilliseconds: 100,
-                        mode: 'on'
-                    },
-                    hostProcess: { kind: 'direct' },
-                    maxConcurrency: 5,
-                    maxWorkers: null,
-                    processModel: 'worker-pool',
-                    scheduling: 'concurrent',
-                    workDistribution: { mode: 'file' },
-                    workerLifecycle: 'reuse'
-                });
-                await scope.assert.rejects(async function loadStaticHedging() {
-                    await loadConfigValue({
-                        profiles: {
-                            service: {
-                                testFamily: 'integration',
-                                files: { include: [ 'source/**/*.integration.test.ts' ] },
-                                execution: {
-                                    dispatchPolicy: 'static-assignment',
-                                    hedging: {
-                                        durationMultiplier: 2,
-                                        minimumDelayMilliseconds: 100,
-                                        mode: 'on'
+                }
+            });
+        }, { message: 'Grouped work distribution requires profile files.sets.' });
+        await scope.assert.rejects(async function loadUnknownFileSetGroup() {
+            await loadConfigValue({
+                profiles: {
+                    service: {
+                        testFamily: 'integration',
+                        files: {
+                            sets: {
+                                integration: { include: [ 'source/**/*.integration.test.ts' ] }
+                            }
+                        },
+                        execution: {
+                            processModel: 'worker-pool',
+                            workDistribution: {
+                                groups: [ { fileSets: [ 'slow' ], name: 'slow' } ],
+                                mode: 'group'
+                            }
+                        }
+                    }
+                }
+            });
+        }, { message: 'Invalid work group "slow": unknown file set "slow".' });
+        await scope.assert.rejects(async function loadDuplicateFileSetGroup() {
+            await loadConfigValue({
+                profiles: {
+                    service: {
+                        testFamily: 'integration',
+                        files: {
+                            sets: {
+                                integration: { include: [ 'source/**/*.integration.test.ts' ] }
+                            }
+                        },
+                        execution: {
+                            processModel: 'worker-pool',
+                            workDistribution: {
+                                groups: [
+                                    {
+                                        fileSets: [ 'integration' ],
+                                        granularity: 'group',
+                                        name: 'first',
+                                        order: 'profile-default',
+                                        scheduling: 'profile-default',
+                                        workerLifecycle: 'profile-default'
                                     },
-                                    processModel: 'worker-pool'
-                                }
-                            }
-                        }
-                    });
-                }, { message: 'Invalid worker-pool hedging: hedging requires dynamic-lease dispatch.' });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadConfig() rejects invalid grouped work distribution',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function loadGroupedWithoutFileSets() {
-                    await loadConfigValue({
-                        profiles: {
-                            service: {
-                                testFamily: 'integration',
-                                files: { include: [ 'source/**/*.integration.test.ts' ] },
-                                execution: {
-                                    processModel: 'worker-pool',
-                                    workDistribution: {
-                                        groups: [ { fileSets: [ 'integration' ], name: 'integration' } ],
-                                        mode: 'group'
+                                    {
+                                        fileSets: [ 'integration' ],
+                                        granularity: 'group',
+                                        name: 'second',
+                                        order: 'profile-default',
+                                        scheduling: 'profile-default',
+                                        workerLifecycle: 'profile-default'
                                     }
-                                }
-                            }
-                        }
-                    });
-                }, { message: 'Grouped work distribution requires profile files.sets.' });
-                await scope.assert.rejects(async function loadUnknownFileSetGroup() {
-                    await loadConfigValue({
-                        profiles: {
-                            service: {
-                                testFamily: 'integration',
-                                files: {
-                                    sets: {
-                                        integration: { include: [ 'source/**/*.integration.test.ts' ] }
-                                    }
-                                },
-                                execution: {
-                                    processModel: 'worker-pool',
-                                    workDistribution: {
-                                        groups: [ { fileSets: [ 'slow' ], name: 'slow' } ],
-                                        mode: 'group'
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }, { message: 'Invalid work group "slow": unknown file set "slow".' });
-                await scope.assert.rejects(async function loadDuplicateFileSetGroup() {
-                    await loadConfigValue({
-                        profiles: {
-                            service: {
-                                testFamily: 'integration',
-                                files: {
-                                    sets: {
-                                        integration: { include: [ 'source/**/*.integration.test.ts' ] }
-                                    }
-                                },
-                                execution: {
-                                    processModel: 'worker-pool',
-                                    workDistribution: {
-                                        groups: [
-                                            {
-                                                fileSets: [ 'integration' ],
-                                                granularity: 'group',
-                                                name: 'first',
-                                                order: 'profile-default',
-                                                scheduling: 'profile-default',
-                                                workerLifecycle: 'profile-default'
-                                            },
-                                            {
-                                                fileSets: [ 'integration' ],
-                                                granularity: 'group',
-                                                name: 'second',
-                                                order: 'profile-default',
-                                                scheduling: 'profile-default',
-                                                workerLifecycle: 'profile-default'
-                                            }
-                                        ],
-                                        mode: 'group'
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }, {
-                    message: 'Invalid work group "second": file set "integration" is already assigned to "first".'
-                });
-                await scope.assert.rejects(async function loadDuplicateGroupName() {
-                    await loadConfigValue({
-                        profiles: {
-                            service: {
-                                testFamily: 'integration',
-                                files: {
-                                    sets: {
-                                        fast: { include: [ 'source/**/*.fast.test.ts' ] },
-                                        slow: { include: [ 'source/**/*.slow.test.ts' ] }
-                                    }
-                                },
-                                execution: {
-                                    processModel: 'worker-pool',
-                                    workDistribution: {
-                                        groups: [
-                                            { fileSets: [ 'fast' ], name: 'same' },
-                                            { fileSets: [ 'slow' ], name: 'same' }
-                                        ],
-                                        mode: 'group'
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }, { message: 'Invalid work group "same": group name is already used.' });
-                await scope.assert.rejects(async function loadRepeatedFileSetInGroup() {
-                    await loadConfigValue({
-                        profiles: {
-                            service: {
-                                testFamily: 'integration',
-                                files: {
-                                    sets: {
-                                        integration: { include: [ 'source/**/*.integration.test.ts' ] }
-                                    }
-                                },
-                                execution: {
-                                    processModel: 'worker-pool',
-                                    workDistribution: {
-                                        groups: [ { fileSets: [ 'integration', 'integration' ], name: 'grouped' } ],
-                                        mode: 'group'
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }, {
-                    message: 'Invalid work group "grouped": file set "integration" is already assigned to "grouped".'
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadConfig() normalizes integration execution overrides',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const config = await loadConfigValue({
-                    profiles: {
-                        service: {
-                            testFamily: 'integration',
-                            files: { include: [ 'source/**/*.integration.test.ts' ] },
-                            execution: {
-                                processModel: 'supervised-process',
-                                scheduling: 'serial'
+                                ],
+                                mode: 'group'
                             }
                         }
                     }
-                });
-                const profile = selectTestProfile('service', config);
+                }
+            });
+        }, {
+            message: 'Invalid work group "second": file set "integration" is already assigned to "first".'
+        });
+        await scope.assert.rejects(async function loadDuplicateGroupName() {
+            await loadConfigValue({
+                profiles: {
+                    service: {
+                        testFamily: 'integration',
+                        files: {
+                            sets: {
+                                fast: { include: [ 'source/**/*.fast.test.ts' ] },
+                                slow: { include: [ 'source/**/*.slow.test.ts' ] }
+                            }
+                        },
+                        execution: {
+                            processModel: 'worker-pool',
+                            workDistribution: {
+                                groups: [
+                                    { fileSets: [ 'fast' ], name: 'same' },
+                                    { fileSets: [ 'slow' ], name: 'same' }
+                                ],
+                                mode: 'group'
+                            }
+                        }
+                    }
+                }
+            });
+        }, { message: 'Invalid work group "same": group name is already used.' });
+        await scope.assert.rejects(async function loadRepeatedFileSetInGroup() {
+            await loadConfigValue({
+                profiles: {
+                    service: {
+                        testFamily: 'integration',
+                        files: {
+                            sets: {
+                                integration: { include: [ 'source/**/*.integration.test.ts' ] }
+                            }
+                        },
+                        execution: {
+                            processModel: 'worker-pool',
+                            workDistribution: {
+                                groups: [ { fileSets: [ 'integration', 'integration' ], name: 'grouped' } ],
+                                mode: 'group'
+                            }
+                        }
+                    }
+                }
+            });
+        }, {
+            message: 'Invalid work group "grouped": file set "integration" is already assigned to "grouped".'
+        });
 
-                scope.require.defined(profile);
-                scope.assert.deepEqual(profile.execution, {
-                    maxConcurrency: 5,
-                    processModel: 'supervised-process',
-                    scheduling: 'serial'
-                });
-
-                return scope.assert.collect();
+        return scope.assert.collect();
+    }),
+    test('loadConfig() normalizes integration execution overrides', async function (scope: OverkillScope) {
+        const config = await loadConfigValue({
+            profiles: {
+                service: {
+                    testFamily: 'integration',
+                    files: { include: [ 'source/**/*.integration.test.ts' ] },
+                    execution: {
+                        processModel: 'supervised-process',
+                        scheduling: 'serial'
+                    }
+                }
             }
-        })
-    ]
-});
+        });
+        const profile = selectTestProfile('service', config);
 
-await runIfMain(import.meta, testNode);
+        scope.require.defined(profile);
+        scope.assert.deepEqual(profile.execution, {
+            maxConcurrency: 5,
+            processModel: 'supervised-process',
+            scheduling: 'serial'
+        });
+
+        return scope.assert.collect();
+    })
+]);

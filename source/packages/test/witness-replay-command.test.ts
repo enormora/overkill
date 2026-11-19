@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import { commandLineRunner, type CommandLineWitnessReplayRequest } from '../run/command-line.entry-point.ts';
-import { suite, test } from './test.entry-point.ts';
+
 import { dispatchOverkillCommand } from './command-line-commands.ts';
 
 export const testNode = suite('witness replay command', [
@@ -62,4 +63,3 @@ export const testNode = suite('witness replay command', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

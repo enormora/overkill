@@ -1,12 +1,12 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { replayCommandRouting } from '../test-support/replay-command-routing.ts';
 import { testNode as witnessPreparation } from './witness-replay-preparation-policy.test.ts';
 import { commandLineExitCodes } from './command-line-command.ts';
 
-export const testNode = suite('replay command operands and delivery', [
+export const testNode = authoredSuite('replay command operands and delivery', [
     witnessPreparation,
-    test('routes retained run ids and includes maintenance diagnostics', async function (scope: TestScope) {
+    authoredTest('routes retained run ids and includes maintenance diagnostics', async function (scope: TestScope) {
         const fixture = replayCommandRouting('none');
         const result = await fixture.commands.replayRun(fixture.context);
         scope.assert.equal(result.exitCode, commandLineExitCodes.pass);
@@ -17,7 +17,7 @@ export const testNode = suite('replay command operands and delivery', [
         } ]);
         return scope.assert.collect();
     }),
-    test('routes witness paths with their explicit profile', async function (scope: TestScope) {
+    authoredTest('routes witness paths with their explicit profile', async function (scope: TestScope) {
         const fixture = replayCommandRouting('none');
         const result = await fixture.commands.replayWitness({
             ...fixture.context,
@@ -31,16 +31,19 @@ export const testNode = suite('replay command operands and delivery', [
         return scope.assert.collect();
     }),
     ...([ 'replayRun', 'replayWitness' ] as const).map(function (verb) {
-        return test(`rejects invalid ${verb} operand counts before execution`, async function (scope: TestScope) {
-            const fixture = replayCommandRouting('none');
-            const result = await fixture.commands[verb]({ ...fixture.context, arguments: [] });
-            scope.assert.equal(result.exitCode, commandLineExitCodes.argumentOrConfig);
-            scope.assert.deepEqual(fixture.calls, []);
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `rejects invalid ${verb} operand counts before execution`,
+            async function (scope: TestScope) {
+                const fixture = replayCommandRouting('none');
+                const result = await fixture.commands[verb]({ ...fixture.context, arguments: [] });
+                scope.assert.equal(result.exitCode, commandLineExitCodes.argumentOrConfig);
+                scope.assert.deepEqual(fixture.calls, []);
+                return scope.assert.collect();
+            }
+        );
     }),
     ...([ 'load', 'execute' ] as const).map(function (failure) {
-        return test(`reports replay ${failure} failures`, async function (scope: TestScope) {
+        return authoredTest(`reports replay ${failure} failures`, async function (scope: TestScope) {
             const fixture = replayCommandRouting(failure);
             const result = await fixture.commands.replayRun(fixture.context);
             scope.assert.equal(result.exitCode, commandLineExitCodes.internalCrash);
@@ -49,7 +52,7 @@ export const testNode = suite('replay command operands and delivery', [
             return scope.assert.collect();
         });
     }),
-    test('forwards parsed debug selection without changing replay operands', async function (scope: TestScope) {
+    authoredTest('forwards parsed debug selection without changing replay operands', async function (scope: TestScope) {
         const fixture = replayCommandRouting('none');
         const result = await fixture.commands.replayRun({ ...fixture.context, arguments: [ '--debug', 'run' ] });
         scope.assert.equal(result.exitCode, commandLineExitCodes.pass);
@@ -59,4 +62,3 @@ export const testNode = suite('replay command operands and delivery', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

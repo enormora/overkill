@@ -1,24 +1,14 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { DurationHistoryIndex, DurationHistoryPlacement, DurationHistoryStore } from './duration-history-types.ts';
-import {
-    readDurationHistoryIndex,
-    selectDurationHistoryPlacement
-} from './duration-history.ts';
+import { readDurationHistoryIndex, selectDurationHistoryPlacement } from './duration-history.ts';
 import {
     emptyWorkUnitResourceConstraints,
     type DurationHistoryObservation,
     type WorkId,
     type WorkUnit
 } from './run-types.ts';
-import {
-    workerPoolLanes,
-    workerPoolPlacementAssignments
-} from './worker-pool-lanes.ts';
+import { workerPoolLanes, workerPoolPlacementAssignments } from './worker-pool-lanes.ts';
 
 function historyIndex(entries: DurationHistoryIndex['entries'], updatedAt: string): DurationHistoryIndex {
     return { entries, updatedAt };
@@ -201,162 +191,133 @@ function fallbackPlacements(): FallbackPlacements {
     };
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/duration-history.test.ts',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'duration history reads missing files as cold start and rejects invalid JSON',
-            async body(scope: OverkillScope) {
-                const missingHistory = await readDurationHistoryIndex(
-                    {
-                        async read() {
-                            return null;
-                        },
-                        async write() {
-                            return undefined;
-                        }
-                    },
-                    process.cwd(),
-                    '.overkill'
-                );
-
-                scope.assert.equal(
-                    missingHistory,
-                    null
-                );
-
-                scope.assert.equal(await invalidJsonHistoryRejected(), true);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'duration history rejects unsupported shapes and wraps read errors',
-            async body(scope: OverkillScope) {
-                let requestedPath = '';
-                const absoluteRuntimeStateDir = `${process.cwd()}/target/duration-history-test`;
-                const invalidShapeMessage = await readHistoryFailure({
-                    async read(filePath) {
-                        requestedPath = filePath;
-
-                        return JSON.stringify({ entries: [], updatedAt: observedAt(now), version: 1 });
-                    },
-                    async write() {
-                        return undefined;
-                    }
-                }, absoluteRuntimeStateDir);
-                const readErrorMessage = await readHistoryFailure({
+export const testNode = suite('source/run/duration-history.test.ts', [
+    test(
+        'duration history reads missing files as cold start and rejects invalid JSON',
+        async function (scope: OverkillScope) {
+            const missingHistory = await readDurationHistoryIndex(
+                {
                     async read() {
-                        throw new Error('Read failed.');
+                        return null;
                     },
                     async write() {
                         return undefined;
                     }
-                }, '.overkill');
+                },
+                process.cwd(),
+                '.overkill'
+            );
 
-                scope.assert.equal(requestedPath, `${absoluteRuntimeStateDir}/history/index.json`);
-                scope.assert.equal(
-                    invalidShapeMessage,
-                    'History state is unavailable. Run overkill history compact to repair it.'
-                );
-                scope.assert.equal(
-                    readErrorMessage,
-                    'History state is unavailable. Run overkill history compact to repair it.'
-                );
+            scope.assert.equal(
+                missingHistory,
+                null
+            );
 
-                return scope.assert.collect();
+            scope.assert.equal(await invalidJsonHistoryRejected(), true);
+
+            return scope.assert.collect();
+        }
+    ),
+    test('duration history rejects unsupported shapes and wraps read errors', async function (scope: OverkillScope) {
+        let requestedPath = '';
+        const absoluteRuntimeStateDir = `${process.cwd()}/target/duration-history-test`;
+        const invalidShapeMessage = await readHistoryFailure({
+            async read(filePath) {
+                requestedPath = filePath;
+
+                return JSON.stringify({ entries: [], updatedAt: observedAt(now), version: 1 });
+            },
+            async write() {
+                return undefined;
             }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'duration history uses median fresh observations and ignores stale samples',
-            body(scope: OverkillScope) {
-                const selectedWork = work('selected');
-                const selectedUnit = unit('selected', [ selectedWork ]);
-                const index = historyIndex([
+        }, absoluteRuntimeStateDir);
+        const readErrorMessage = await readHistoryFailure({
+            async read() {
+                throw new Error('Read failed.');
+            },
+            async write() {
+                return undefined;
+            }
+        }, '.overkill');
+
+        scope.assert.equal(requestedPath, `${absoluteRuntimeStateDir}/history/index.json`);
+        scope.assert.equal(
+            invalidShapeMessage,
+            'History state is unavailable. Run overkill history compact to repair it.'
+        );
+        scope.assert.equal(
+            readErrorMessage,
+            'History state is unavailable. Run overkill history compact to repair it.'
+        );
+
+        return scope.assert.collect();
+    }),
+    test('duration history uses median fresh observations and ignores stale samples', function (scope: OverkillScope) {
+        const selectedWork = work('selected');
+        const selectedUnit = unit('selected', [ selectedWork ]);
+        const index = historyIndex([
+            {
+                observations: [
+                    observation(10, now),
+                    observation(70, now),
+                    observation(50, now - 1),
+                    observation(500, now - 31 * 24 * 60 * 60 * 1000)
+                ],
+                work: selectedWork
+            }
+        ], observedAt(now));
+        const placement = selectDurationHistoryPlacement([ selectedUnit ], index, now);
+
+        scope.assert.equal(placement.facts?.samples[0]?.durationMicroseconds, 50);
+        scope.assert.equal(placement.unitDuration?.(selectedUnit), 50);
+
+        return scope.assert.collect();
+    }),
+    test(
+        'duration-history-balanced falls back for cold, stale, and partially sampled work',
+        function (scope: OverkillScope) {
+            const scenarios = fallbackPlacements();
+
+            scope.assert.equal(scenarios.partial.unitDuration?.(scenarios.mixedUnit), 200);
+            scope.assert.equal(scenarios.cold.facts, null);
+            scope.assert.equal(scenarios.cold.unitDuration, null);
+            scope.assert.equal(scenarios.empty.facts, null);
+            scope.assert.equal(scenarios.future.facts, null);
+            scope.assert.equal(scenarios.invalidDuration.facts, null);
+            scope.assert.equal(scenarios.stale.facts, null);
+
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'duration-history-balanced balances lanes by duration and falls back when sparse',
+        function (scope: OverkillScope) {
+            const slow = unit('slow', [ work('slow') ]);
+            const fastA = unit('fast-a', [ work('fast-a') ]);
+            const fastB = unit('fast-b', [ work('fast-b') ]);
+            const units = [ slow, fastA, fastB ];
+            const placement = selectDurationHistoryPlacement(units, balancedDurationIndex(slow, fastA, fastB), now);
+
+            scope.assert.deepEqual(
+                durationLaneAssignments(units, placement.unitDuration),
+                [ 'worker-1', 'worker-2', 'worker-2' ]
+            );
+
+            const sparsePlacement = selectDurationHistoryPlacement(
+                units,
+                historyIndex([
                     {
-                        observations: [
-                            observation(10, now),
-                            observation(70, now),
-                            observation(50, now - 1),
-                            observation(500, now - 31 * 24 * 60 * 60 * 1000)
-                        ],
-                        work: selectedWork
+                        observations: [ observation(100, now) ],
+                        work: slow.work[0]
                     }
-                ], observedAt(now));
-                const placement = selectDurationHistoryPlacement([ selectedUnit ], index, now);
+                ], observedAt(now)),
+                now
+            );
 
-                scope.assert.equal(placement.facts?.samples[0]?.durationMicroseconds, 50);
-                scope.assert.equal(placement.unitDuration?.(selectedUnit), 50);
+            scope.assert.equal(sparsePlacement.facts, null);
+            scope.assert.equal(sparsePlacement.unitDuration, null);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'duration-history-balanced falls back for cold, stale, and partially sampled work',
-            body(scope: OverkillScope) {
-                const scenarios = fallbackPlacements();
-
-                scope.assert.equal(scenarios.partial.unitDuration?.(scenarios.mixedUnit), 200);
-                scope.assert.equal(scenarios.cold.facts, null);
-                scope.assert.equal(scenarios.cold.unitDuration, null);
-                scope.assert.equal(scenarios.empty.facts, null);
-                scope.assert.equal(scenarios.future.facts, null);
-                scope.assert.equal(scenarios.invalidDuration.facts, null);
-                scope.assert.equal(scenarios.stale.facts, null);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'duration-history-balanced balances lanes by duration and falls back when sparse',
-            body(scope: OverkillScope) {
-                const slow = unit('slow', [ work('slow') ]);
-                const fastA = unit('fast-a', [ work('fast-a') ]);
-                const fastB = unit('fast-b', [ work('fast-b') ]);
-                const units = [ slow, fastA, fastB ];
-                const placement = selectDurationHistoryPlacement(units, balancedDurationIndex(slow, fastA, fastB), now);
-
-                scope.assert.deepEqual(
-                    durationLaneAssignments(units, placement.unitDuration),
-                    [ 'worker-1', 'worker-2', 'worker-2' ]
-                );
-
-                const sparsePlacement = selectDurationHistoryPlacement(
-                    units,
-                    historyIndex([
-                        {
-                            observations: [ observation(100, now) ],
-                            work: slow.work[0]
-                        }
-                    ], observedAt(now)),
-                    now
-                );
-
-                scope.assert.equal(sparsePlacement.facts, null);
-                scope.assert.equal(sparsePlacement.unitDuration, null);
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

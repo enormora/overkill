@@ -1,4 +1,6 @@
-import { suite, test, testDouble, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
+import { testDouble } from '../packages/test/test.entry-point.ts';
 import { bodyReferencePlan } from '../test-support/body-reference-plan.ts';
 import { memoryImplementationGraph, memoryImplementationModule } from '../test-support/memory-implementation-graph.ts';
 import {
@@ -14,7 +16,7 @@ import {
 
 const context = { projectRoot: '/project' };
 const bodyModule = memoryImplementationModule('file:///project/body.mjs', {});
-export const testNode = suite('body implementation declarations', [
+export const testNode = authoredSuite('body implementation declarations', [
     test('declares referenced bodies from a cached graph preparation session', async function (scope: TestScope) {
         const plan = bodyReferencePlan(true);
         const sources = memoryImplementationGraph([ bodyModule ]);

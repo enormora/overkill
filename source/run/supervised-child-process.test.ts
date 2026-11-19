@@ -1,13 +1,6 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
-import {
-    childRoleArgument,
-    supervisedChildRole
-} from './child-process-roles.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import { childRoleArgument, supervisedChildRole } from './child-process-roles.ts';
 import {
     createStoredRunValue,
     createSupervisedRunState,
@@ -171,224 +164,192 @@ function emitRestrictedOutput(stdout: OutputRecord, stderr: OutputRecord): void 
     );
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/supervised-child-process.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'startSupervisedChild() sanitizes the microtest child environment',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const fixture = createStarterFixture();
-                const child = await fixture.startSupervisedChild({
-                    capabilityRestrictions: { mode: 'disabled' },
-                    coverage: null,
-                    cwd: '/project/sub',
-                    environmentVariables: {
-                        KEEP: 'yes',
-                        NODE_CHANNEL_FD: '1',
-                        NODE_CONFIG: 'config',
-                        NODE_OPTIONS: '--inspect',
-                        NODE_UNIQUE_ID: '2',
-                        NODE_V8_COVERAGE: '/coverage',
-                        OMIT: undefined
+export const testNode = suite('source/run/supervised-child-process.test.ts', [
+    test('startSupervisedChild() sanitizes the microtest child environment', async function (scope: OverkillScope) {
+        const fixture = createStarterFixture();
+        const child = await fixture.startSupervisedChild({
+            capabilityRestrictions: { mode: 'disabled' },
+            coverage: null,
+            cwd: '/project/sub',
+            environmentVariables: {
+                KEEP: 'yes',
+                NODE_CHANNEL_FD: '1',
+                NODE_CONFIG: 'config',
+                NODE_OPTIONS: '--inspect',
+                NODE_UNIQUE_ID: '2',
+                NODE_V8_COVERAGE: '/coverage',
+                OMIT: undefined
+            },
+            testFamily: 'microtest'
+        });
+        const [ forkCall ] = fixture.forkCalls();
+
+        scope.assert.equal(Object.is(child, fixture.child), true);
+        scope.require.defined(forkCall);
+        scope.assert.equal(
+            forkCall.modulePath,
+            '/package/root/source/run/child-process.entry-point.ts'
+        );
+        scope.assert.deepEqual(forkCall.childArguments, [ childRoleArgument(supervisedChildRole) ]);
+        scope.assert.deepEqual(forkCall.options, {
+            cwd: '/project/sub',
+            env: {
+                KEEP: 'yes',
+                NODE_V8_COVERAGE: '/coverage'
+            },
+            execArgv: [],
+            stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
+        });
+
+        return scope.assert.collect();
+    }),
+    test('startSupervisedChild() preserves the integration child environment', async function (scope: OverkillScope) {
+        const fixture = createStarterFixture();
+
+        await fixture.startSupervisedChild({
+            capabilityRestrictions: { mode: 'disabled' },
+            coverage: null,
+            cwd: '/project/sub',
+            environmentVariables: {
+                KEEP: 'yes',
+                NODE_CHANNEL_FD: '1',
+                NODE_CONFIG: 'config',
+                NODE_OPTIONS: '--inspect',
+                NODE_UNIQUE_ID: '2',
+                NODE_V8_COVERAGE: '/coverage',
+                OMIT: undefined
+            },
+            testFamily: 'integration'
+        });
+
+        const [ forkCall ] = fixture.forkCalls();
+        scope.require.defined(forkCall);
+        scope.assert.deepEqual(forkCall.options.env, {
+            KEEP: 'yes',
+            NODE_CHANNEL_FD: '1',
+            NODE_CONFIG: 'config',
+            NODE_OPTIONS: '--inspect',
+            NODE_UNIQUE_ID: '2',
+            NODE_V8_COVERAGE: '/coverage'
+        });
+
+        return scope.assert.collect();
+    }),
+    test(
+        'startSupervisedChild() allows canonical read roots when restrictions are enabled',
+        async function (scope: OverkillScope) {
+            const fixture = createStarterFixture();
+
+            await fixture.startSupervisedChild({
+                capabilityRestrictions: { mode: 'enabled' },
+                coverage: null,
+                cwd: '/project/sub',
+                environmentVariables: {},
+                testFamily: 'microtest'
+            });
+
+            const [ forkCall ] = fixture.forkCalls();
+            scope.require.defined(forkCall);
+            scope.assert.deepEqual(forkCall.options.execArgv, [
+                '--permission',
+                '--trace-env',
+                '--trace-env-js-stack',
+                '--allow-fs-read=/project/sub',
+                '--allow-fs-read=/package/root',
+                '--allow-fs-read=/node_modules',
+                '--allow-fs-read=/real/project/sub',
+                '--allow-fs-read=/real/package/root',
+                '--allow-fs-read=/project/node_modules',
+                '--allow-fs-read=/real/shared/node_modules',
+                '--allow-fs-read=/real/project/node_modules',
+                '--allow-fs-read=/package/root/node_modules',
+                '--allow-fs-read=/real/package/root/node_modules'
+            ]);
+
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'startSupervisedChild() grants native coverage access when restrictions are enabled',
+        async function (scope: OverkillScope) {
+            const fixture = createStarterFixture();
+
+            await fixture.startSupervisedChild({
+                capabilityRestrictions: { mode: 'enabled' },
+                coverage: {
+                    environment: {
+                        NODE_DISABLE_COMPILE_CACHE: '1',
+                        NODE_V8_COVERAGE: '/coverage/raw'
                     },
-                    testFamily: 'microtest'
-                });
-                const [ forkCall ] = fixture.forkCalls();
+                    writablePath: '/coverage/raw/*'
+                },
+                cwd: '/project/sub',
+                environmentVariables: { NODE_V8_COVERAGE: '/ambient' },
+                testFamily: 'microtest'
+            });
 
-                scope.assert.equal(Object.is(child, fixture.child), true);
-                scope.require.defined(forkCall);
-                scope.assert.equal(
-                    forkCall.modulePath,
-                    '/package/root/source/run/child-process.entry-point.ts'
-                );
-                scope.assert.deepEqual(forkCall.childArguments, [ childRoleArgument(supervisedChildRole) ]);
-                scope.assert.deepEqual(forkCall.options, {
-                    cwd: '/project/sub',
-                    env: {
-                        KEEP: 'yes',
-                        NODE_V8_COVERAGE: '/coverage'
-                    },
-                    execArgv: [],
-                    stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
-                });
+            const [ forkCall ] = fixture.forkCalls();
+            scope.require.defined(forkCall);
+            scope.assert.deepEqual(forkCall.options.env, {
+                NODE_DISABLE_COMPILE_CACHE: '1',
+                NODE_V8_COVERAGE: '/coverage/raw'
+            });
+            scope.assert.deepEqual(forkCall.options.execArgv.slice(0, 6), [
+                '--permission',
+                '--trace-env',
+                '--trace-env-js-stack',
+                '--allow-inspector',
+                '--disable-warning=PERM0004',
+                '--allow-fs-write=/coverage/raw/*'
+            ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'startSupervisedChild() preserves the integration child environment',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const fixture = createStarterFixture();
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'runSupervisedChildProcessEntryPoint() loads only supervised child invocations',
+        async function (scope: OverkillScope) {
+            let loadCount = 0;
+            const loadSupervisedChild = async function loadSupervisedChild(): Promise<void> {
+                loadCount += 1;
+            };
 
-                await fixture.startSupervisedChild({
-                    capabilityRestrictions: { mode: 'disabled' },
-                    coverage: null,
-                    cwd: '/project/sub',
-                    environmentVariables: {
-                        KEEP: 'yes',
-                        NODE_CHANNEL_FD: '1',
-                        NODE_CONFIG: 'config',
-                        NODE_OPTIONS: '--inspect',
-                        NODE_UNIQUE_ID: '2',
-                        NODE_V8_COVERAGE: '/coverage',
-                        OMIT: undefined
-                    },
-                    testFamily: 'integration'
-                });
+            await runSupervisedChildProcessEntryPoint([ 'plain' ], loadSupervisedChild);
+            await runSupervisedChildProcessEntryPoint([
+                'plain',
+                childRoleArgument(supervisedChildRole)
+            ], loadSupervisedChild);
 
-                const [ forkCall ] = fixture.forkCalls();
-                scope.require.defined(forkCall);
-                scope.assert.deepEqual(forkCall.options.env, {
-                    KEEP: 'yes',
-                    NODE_CHANNEL_FD: '1',
-                    NODE_CONFIG: 'config',
-                    NODE_OPTIONS: '--inspect',
-                    NODE_UNIQUE_ID: '2',
-                    NODE_V8_COVERAGE: '/coverage'
-                });
+            scope.assert.equal(loadCount, 1);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'startSupervisedChild() allows canonical read roots when restrictions are enabled',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const fixture = createStarterFixture();
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'observeSupervisedChildOutput() reports restricted raw and environment output',
+        function (scope: OverkillScope) {
+            const stdout = createOutputRecord();
+            const stderr = createOutputRecord();
+            const state = createSupervisedRunState('first-failure-and-final');
+            const terminalFailure = createStoredRunValue(false);
 
-                await fixture.startSupervisedChild({
-                    capabilityRestrictions: { mode: 'enabled' },
-                    coverage: null,
-                    cwd: '/project/sub',
-                    environmentVariables: {},
-                    testFamily: 'microtest'
-                });
+            observeRestrictedOutput(stdout, stderr, state, terminalFailure);
+            emitRestrictedOutput(stdout, stderr);
 
-                const [ forkCall ] = fixture.forkCalls();
-                scope.require.defined(forkCall);
-                scope.assert.deepEqual(forkCall.options.execArgv, [
-                    '--permission',
-                    '--trace-env',
-                    '--trace-env-js-stack',
-                    '--allow-fs-read=/project/sub',
-                    '--allow-fs-read=/package/root',
-                    '--allow-fs-read=/node_modules',
-                    '--allow-fs-read=/real/project/sub',
-                    '--allow-fs-read=/real/package/root',
-                    '--allow-fs-read=/project/node_modules',
-                    '--allow-fs-read=/real/shared/node_modules',
-                    '--allow-fs-read=/real/project/node_modules',
-                    '--allow-fs-read=/package/root/node_modules',
-                    '--allow-fs-read=/real/package/root/node_modules'
-                ]);
+            scope.assert.equal(terminalFailure.read(), true);
+            scope.assert.deepEqual(
+                state.runnerErrors().map(function toMessage(error) {
+                    return error.message;
+                }),
+                [
+                    'Runtime policy violation: supervised child wrote to stdout.',
+                    'Runtime policy violation: process.env value was set: API_KEY.',
+                    'Runtime policy violation: process.env value was deleted: TOKEN.',
+                    'Runtime policy violation: supervised child wrote to stderr.'
+                ]
+            );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'startSupervisedChild() grants native coverage access when restrictions are enabled',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const fixture = createStarterFixture();
-
-                await fixture.startSupervisedChild({
-                    capabilityRestrictions: { mode: 'enabled' },
-                    coverage: {
-                        environment: {
-                            NODE_DISABLE_COMPILE_CACHE: '1',
-                            NODE_V8_COVERAGE: '/coverage/raw'
-                        },
-                        writablePath: '/coverage/raw/*'
-                    },
-                    cwd: '/project/sub',
-                    environmentVariables: { NODE_V8_COVERAGE: '/ambient' },
-                    testFamily: 'microtest'
-                });
-
-                const [ forkCall ] = fixture.forkCalls();
-                scope.require.defined(forkCall);
-                scope.assert.deepEqual(forkCall.options.env, {
-                    NODE_DISABLE_COMPILE_CACHE: '1',
-                    NODE_V8_COVERAGE: '/coverage/raw'
-                });
-                scope.assert.deepEqual(forkCall.options.execArgv.slice(0, 6), [
-                    '--permission',
-                    '--trace-env',
-                    '--trace-env-js-stack',
-                    '--allow-inspector',
-                    '--disable-warning=PERM0004',
-                    '--allow-fs-write=/coverage/raw/*'
-                ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runSupervisedChildProcessEntryPoint() loads only supervised child invocations',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                let loadCount = 0;
-                const loadSupervisedChild = async function loadSupervisedChild(): Promise<void> {
-                    loadCount += 1;
-                };
-
-                await runSupervisedChildProcessEntryPoint([ 'plain' ], loadSupervisedChild);
-                await runSupervisedChildProcessEntryPoint([
-                    'plain',
-                    childRoleArgument(supervisedChildRole)
-                ], loadSupervisedChild);
-
-                scope.assert.equal(loadCount, 1);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'observeSupervisedChildOutput() reports restricted raw and environment output',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const stdout = createOutputRecord();
-                const stderr = createOutputRecord();
-                const state = createSupervisedRunState('first-failure-and-final');
-                const terminalFailure = createStoredRunValue(false);
-
-                observeRestrictedOutput(stdout, stderr, state, terminalFailure);
-                emitRestrictedOutput(stdout, stderr);
-
-                scope.assert.equal(terminalFailure.read(), true);
-                scope.assert.deepEqual(
-                    state.runnerErrors().map(function toMessage(error) {
-                        return error.message;
-                    }),
-                    [
-                        'Runtime policy violation: supervised child wrote to stdout.',
-                        'Runtime policy violation: process.env value was set: API_KEY.',
-                        'Runtime policy violation: process.env value was deleted: TOKEN.',
-                        'Runtime policy violation: supervised child wrote to stderr.'
-                    ]
-                );
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

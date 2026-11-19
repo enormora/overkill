@@ -1,8 +1,8 @@
 import { mkdtemp, writeFile, readFile, access, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { propertyWitnessSchema } from '../engine/witness-file.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { commandLineRunner } from '../packages/run/command-line.entry-point.ts';
 import { dispatchOverkillCommand } from '../packages/test/command-line-commands.ts';
 import { capturePropertyInput } from '../property/property-graph.ts';
@@ -24,7 +24,7 @@ async function directory(scope: TestScope): Promise<string> {
     );
     return cwd;
 }
-export const testNode = suite('corpus CLI', [
+export const testNode = authoredSuite('corpus CLI', [
     test('promotion delivers its preview before publishing the named destination', async function (scope) {
         const cwd = await directory(scope);
         const result = await dispatchOverkillCommand(

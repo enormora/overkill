@@ -1,7 +1,8 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import type {
     RunCommand,
     RunRequest,
@@ -9,13 +10,7 @@ import type {
     MicrotestExecution,
     Scheduling
 } from '../../packages/run/run.entry-point.ts';
-import {
-    createSuite,
-    createTestCase,
-    defineOutputRenderer,
-    defineReporter,
-    type TestScope
-} from '../../packages/engine/engine.entry-point.ts';
+import { defineOutputRenderer, defineReporter, type TestScope } from '../../packages/engine/engine.entry-point.ts';
 import type { DefinedReporter, Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import {
@@ -189,13 +184,11 @@ function assertConcurrentSchedulingEvents(scope: TestScope, events: readonly Sch
     ]);
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
+export const testNode = suite({
     title: 'source/integration-tests/run/runner-explicit-files.test.ts',
     ...emptyTestData,
     children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'runner resolves and executes one explicit testNode file',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -226,8 +219,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'runner executes a supervised microtest in a child process',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -252,8 +244,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'runner executes all-skipped explicit files successfully',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -278,8 +269,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'runner resolves and executes profile-discovered files',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -322,8 +312,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'runner runs in-process microtests concurrently from profile scheduling',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -334,8 +323,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'runner runs in-process microtests serially from profile scheduling',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -351,8 +339,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'runner runs supervised microtests concurrently from profile scheduling',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -363,8 +350,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'runner runs supervised microtests serially from profile scheduling',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -380,8 +366,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'runner uses file identity to distinguish duplicate case names across files',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -413,8 +398,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'runner rejects invalid explicit paths before module import',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -449,5 +433,3 @@ export const testNode = createSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

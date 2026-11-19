@@ -1,14 +1,16 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createCollectedPlan } from '../test-support/worker-pool-execution-state.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import {
+    type TestNode,
+    type TestPlan,
     createRoot,
     createTestPlan,
     createTestCase,
-    createSkippedTestCase,
-    type TestNode,
-    type TestPlan
+    createSkippedTestCase
 } from '../packages/engine/engine.entry-point.ts';
+
 import { property } from '../packages/test/property.entry-point.ts';
 import { unexecutedGenerator } from '../test-support/property-generator.ts';
 import { assertCollectedRunPlanHasCases, resolveTestPlanCollectionPolicy } from './run-selection.ts';
@@ -26,7 +28,7 @@ function unexpectedBody(): never {
 function planFor(node: TestNode): TestPlan {
     return createTestPlan(createRoot({ title: 'root', annotations: {}, controls: {}, children: [ node ] }));
 }
-export const testNode = suite('collection policy admission', [
+export const testNode = authoredSuite('collection policy admission', [
     test('rejects collected plans without selected cases', function (scope: TestScope) {
         const plan = { ...createCollectedPlan(), files: [] };
         scope.assert.throws(function () {
@@ -74,4 +76,3 @@ export const testNode = suite('collection policy admission', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,14 +1,16 @@
-import { runIfMain } from '#test-runner';
+import {
+    type TestScope as OverkillScope,
+    suite,
+    test,
+    doubleUsage,
+    testDouble,
+    type TestDouble
+} from '@overkill-dev/test';
+
 import figures from 'figures';
 import colors from 'yoctocolors';
 
-import { doubleUsage, testDouble, type TestDouble } from '../packages/doubles/doubles.entry-point.ts';
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { preciseTimingReport, runTimingSummary } from '../engine/run-timings.ts';
@@ -46,214 +48,179 @@ function requireFinish(reporter: RealTimeReporter): NonNullable<RealTimeReporter
     return onFinish;
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/reporters/line-reporter-summary.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'line reporter retains lifetime findings from current runners',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
-                const result: RunResult = {
-                    ...runResultFactory.build({ status: 'failed', summary: { discovered: 1, planned: 1, passed: 1 } }),
-                    resourceChecks: [ {
-                        owner: { run: 'run', id: 'owner', scope: 'per-run' },
-                        resource: 'service',
-                        revision: 1,
-                        interval: { kind: 'lifetime' },
-                        passing: 0,
-                        errors: [],
-                        status: { kind: 'complete' },
-                        failures: [ {
-                            target: 'connection',
-                            check: {
-                                kind: 'leaf',
-                                id: 'service-invariant',
-                                source: 'assert',
-                                sourceLocations: [ { kind: 'unknown' } ],
-                                path: [],
-                                diff: null,
-                                actual: { kind: 'boolean', value: false },
-                                expected: { kind: 'boolean', value: true },
-                                summary: 'Connection closed unexpectedly'
-                            }
-                        } ]
+export const testNode = suite('source/reporters/line-reporter-summary.test.ts', [
+    test('line reporter retains lifetime findings from current runners', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
+        const result: RunResult = {
+            ...runResultFactory.build({ status: 'failed', summary: { discovered: 1, planned: 1, passed: 1 } }),
+            resourceChecks: [ {
+                owner: { run: 'run', id: 'owner', scope: 'per-run' },
+                resource: 'service',
+                revision: 1,
+                interval: { kind: 'lifetime' },
+                passing: 0,
+                errors: [],
+                status: { kind: 'complete' },
+                failures: [ {
+                    target: 'connection',
+                    check: {
+                        kind: 'leaf',
+                        id: 'service-invariant',
+                        source: 'assert',
+                        sourceLocations: [ { kind: 'unknown' } ],
+                        path: [],
+                        diff: null,
+                        actual: { kind: 'boolean', value: false },
+                        expected: { kind: 'boolean', value: true },
+                        summary: 'Connection closed unexpectedly'
+                    }
+                } ]
+            } ]
+        };
+        await requireFinish(reporter)({ result, context: { id: null, startedAt: null, facts: null } });
+        scope.assert(doubleUsage.calledWith, log, [ '  service (connection)' ]);
+        scope.assert(doubleUsage.calledWith, log, [ '  Connection closed unexpectedly' ]);
+        return scope.assert.collect();
+    }),
+    test('line reporter accepts results from runners without resource checks', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
+        const { resourceChecks: _resourceChecks, ...legacy } = runResultFactory.build({
+            summary: { discovered: 1, planned: 1, passed: 1 }
+        });
+        await Reflect.apply(requireFinish(reporter), reporter, [ {
+            result: legacy,
+            context: { id: null, startedAt: null, facts: null }
+        } ]);
+        scope.assert(doubleUsage.callCount, log, 1);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+            colors.green(figures.tick),
+            '1 discovered, 1 planned, 1 executed (1 pass, 0 fail, 0 skip) in 0 ms (total 0 ms, execution 0 ms, overhead 0 ms)'
+        ]);
+        return scope.assert.collect();
+    }),
+    test('line reporter prints slow runner overhead after the summary', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
+        const summary = runTimingSummary({
+            testExecutionWallTimeMicroseconds: 1_000_000,
+            totalWallTimeMicroseconds: 2_000_000
+        });
+        const runResult = runResultFactory.build({
+            timings: {
+                precise: preciseTimingReport({
+                    aggregationMicroseconds: 0,
+                    observationWindow: { durationMicroseconds: 600_000, startTimeUnixMicroseconds: 0 },
+                    recordingMicroseconds: 0,
+                    slowestSpanLimit: 50,
+                    spanLimit: 5000,
+                    spans: [ {
+                        durationMicroseconds: 750_000,
+                        kind: 'config.load',
+                        label: null,
+                        processId: null,
+                        resource: null,
+                        startOffsetMicroseconds: 0,
+                        startTimeUnixMicroseconds: 0,
+                        status: 'success',
+                        workerId: null
                     } ]
-                };
-                await requireFinish(reporter)({ result, context: { id: null, startedAt: null, facts: null } });
-                scope.assert(doubleUsage.calledWith, log, [ '  service (connection)' ]);
-                scope.assert(doubleUsage.calledWith, log, [ '  Connection closed unexpectedly' ]);
-                return scope.assert.collect();
+                }),
+                summary
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'line reporter accepts results from runners without resource checks',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
-                const { resourceChecks: _resourceChecks, ...legacy } = runResultFactory.build({
-                    summary: { discovered: 1, planned: 1, passed: 1 }
-                });
-                await Reflect.apply(requireFinish(reporter), reporter, [ {
-                    result: legacy,
-                    context: { id: null, startedAt: null, facts: null }
-                } ]);
-                scope.assert(doubleUsage.callCount, log, 1);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    colors.green(figures.tick),
-                    '1 discovered, 1 planned, 1 executed (1 pass, 0 fail, 0 skip) in 0 ms (total 0 ms, execution 0 ms, overhead 0 ms)'
-                ]);
-                return scope.assert.collect();
+        });
+
+        await requireFinish(reporter)({
+            result: runResult,
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints slow runner overhead after the summary',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
-                const summary = runTimingSummary({
-                    testExecutionWallTimeMicroseconds: 1_000_000,
-                    totalWallTimeMicroseconds: 2_000_000
-                });
-                const runResult = runResultFactory.build({
-                    timings: {
-                        precise: preciseTimingReport({
-                            aggregationMicroseconds: 0,
-                            observationWindow: { durationMicroseconds: 600_000, startTimeUnixMicroseconds: 0 },
-                            recordingMicroseconds: 0,
-                            slowestSpanLimit: 50,
-                            spanLimit: 5000,
-                            spans: [ {
-                                durationMicroseconds: 750_000,
-                                kind: 'config.load',
-                                label: null,
-                                processId: null,
-                                resource: null,
-                                startOffsetMicroseconds: 0,
-                                startTimeUnixMicroseconds: 0,
-                                status: 'success',
-                                workerId: null
-                            } ]
-                        }),
-                        summary
-                    }
-                });
+        });
 
-                await requireFinish(reporter)({
-                    result: runResult,
-                    context: {
-                        id: null,
-                        startedAt: null,
-                        facts: null
-                    }
-                });
+        scope.assert(doubleUsage.callCount, log, 3);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ 'Slow runner overhead:' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  config load: 750 ms' ]);
 
-                scope.assert(doubleUsage.callCount, log, 3);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ 'Slow runner overhead:' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  config load: 750 ms' ]);
+        return scope.assert.collect();
+    }),
+    test('line reporter prints the run count summary once the run finishes', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
+        const runResult: RunResult = runResultFactory.build({
+            summary: {
+                defined: 3,
+                discovered: 3,
+                failed: 1,
+                inconclusive: 0,
+                passed: 2,
+                planned: 3,
+                skipped: 0
+            },
+            totalWallTimeMicroseconds: 10_000
+        });
 
-                return scope.assert.collect();
+        await requireFinish(reporter)({
+            result: runResult,
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints the run count summary once the run finishes',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
-                const runResult: RunResult = runResultFactory.build({
-                    summary: {
-                        defined: 3,
-                        discovered: 3,
-                        failed: 1,
-                        inconclusive: 0,
-                        passed: 2,
-                        planned: 3,
-                        skipped: 0
-                    },
-                    totalWallTimeMicroseconds: 10_000
-                });
+        });
 
-                await requireFinish(reporter)({
-                    result: runResult,
-                    context: {
-                        id: null,
-                        startedAt: null,
-                        facts: null
-                    }
-                });
+        scope.assert(doubleUsage.callCount, log, 1);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+            errorSymbol,
+            '3 discovered, 3 planned, 3 executed (2 pass, 1 fail, 0 skip) in 10 ms ' +
+            '(total 10 ms, execution 0 ms, overhead 10 ms)'
+        ]);
 
-                scope.assert(doubleUsage.callCount, log, 1);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    errorSymbol,
-                    '3 discovered, 3 planned, 3 executed (2 pass, 1 fail, 0 skip) in 10 ms ' +
-                    '(total 10 ms, execution 0 ms, overhead 10 ms)'
-                ]);
+        return scope.assert.collect();
+    }),
+    test(
+        'line reporter prints nonzero neutral and terminal counts in the run summary',
+        async function (scope: OverkillScope) {
+            const log = testDouble<LogFunction>();
+            const reporter = lineReporterWithLog(log);
+            const runResult: RunResult = runResultFactory.build({
+                summary: {
+                    crashed: 1,
+                    discovered: 4,
+                    failed: 1,
+                    inconclusive: 1,
+                    passed: 1,
+                    planned: 4,
+                    processExhausted: 1,
+                    runtimePolicy: 1,
+                    skipped: 1
+                },
+                totalWallTimeMicroseconds: 15_000
+            });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints nonzero neutral and terminal counts in the run summary',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
-                const runResult: RunResult = runResultFactory.build({
-                    summary: {
-                        crashed: 1,
-                        discovered: 4,
-                        failed: 1,
-                        inconclusive: 1,
-                        passed: 1,
-                        planned: 4,
-                        processExhausted: 1,
-                        runtimePolicy: 1,
-                        skipped: 1
-                    },
-                    totalWallTimeMicroseconds: 15_000
-                });
+            await requireFinish(reporter)({
+                result: runResult,
+                context: {
+                    id: null,
+                    startedAt: null,
+                    facts: null
+                }
+            });
 
-                await requireFinish(reporter)({
-                    result: runResult,
-                    context: {
-                        id: null,
-                        startedAt: null,
-                        facts: null
-                    }
-                });
+            scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+                errorSymbol,
+                [
+                    '4 discovered, 4 planned, 7 executed',
+                    '(1 pass, 1 fail, 1 skip, 1 inconclusive, 1 process-exhausted, 1 runtime-policy, 1 crash) ' +
+                    'in 15 ms',
+                    '(total 15 ms, execution 0 ms, overhead 15 ms)'
+                ]
+                    .join(' ')
+            ]);
 
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    errorSymbol,
-                    [
-                        '4 discovered, 4 planned, 7 executed',
-                        '(1 pass, 1 fail, 1 skip, 1 inconclusive, 1 process-exhausted, 1 runtime-policy, 1 crash) ' +
-                        'in 15 ms',
-                        '(total 15 ms, execution 0 ms, overhead 15 ms)'
-                    ]
-                        .join(' ')
-                ]);
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

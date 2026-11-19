@@ -1,11 +1,11 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { supervisedRunOrchestration } from '../test-support/supervised-run-orchestration.ts';
 import { testNode as finalization } from './supervised-finalization-policy.test.ts';
 import { testNode as messages } from './supervised-message-policy.test.ts';
 
-export const testNode = suite('memory supervised run orchestration', [
-    test('retains process samples arriving before collection completes', async function (scope: TestScope) {
+export const testNode = authoredSuite('memory supervised run orchestration', [
+    authoredTest('retains process samples arriving before collection completes', async function (scope: TestScope) {
         const fixture = supervisedRunOrchestration('collection-sample', false, 'buffered');
         const result = await fixture.execute();
         scope.assert.equal(result.status, 'passed');
@@ -14,7 +14,7 @@ export const testNode = suite('memory supervised run orchestration', [
         return scope.assert.collect();
     }),
     ...([ 'empty-result', 'duplicate-result', 'forbidden-event' ] as const).map(function (scenario) {
-        return test(`rejects malformed child protocol ${scenario}`, async function (scope: TestScope) {
+        return authoredTest(`rejects malformed child protocol ${scenario}`, async function (scope: TestScope) {
             const fixture = supervisedRunOrchestration(scenario, false, 'buffered');
             const result = await fixture.execute();
             scope.assert.equal(result.status, 'failed');
@@ -31,7 +31,7 @@ export const testNode = suite('memory supervised run orchestration', [
     finalization,
     ...([ false, true ] as const).flatMap(function (timed) {
         return ([ 'buffered', 'live' ] as const).map(function (capture) {
-            return test(
+            return authoredTest(
                 `executes a supervised child with timing ${timed} and ${capture} output`,
                 async function (scope: TestScope) {
                     const fixture = supervisedRunOrchestration('pass', timed, capture);
@@ -51,7 +51,7 @@ export const testNode = suite('memory supervised run orchestration', [
         });
     }),
     ...([ 'collection-failure', 'run-failure' ] as const).map(function (scenario) {
-        return test(`retains ${scenario} as a failed run`, async function (scope: TestScope) {
+        return authoredTest(`retains ${scenario} as a failed run`, async function (scope: TestScope) {
             const fixture = supervisedRunOrchestration(scenario, false, 'buffered');
             const result = await fixture.execute();
             scope.assert.equal(result.status, 'failed');
@@ -62,13 +62,13 @@ export const testNode = suite('memory supervised run orchestration', [
             return scope.assert.collect();
         });
     }),
-    test('propagates child startup failures', async function (scope: TestScope) {
+    authoredTest('propagates child startup failures', async function (scope: TestScope) {
         const fixture = supervisedRunOrchestration('start-failure', false, 'buffered');
         await scope.assert.rejects(fixture.execute, { message: 'child start failed' });
         scope.assert.deepEqual(fixture.events, [ 'start' ]);
         return scope.assert.collect();
     }),
-    test('stops a child after a process budget breach', async function (scope: TestScope) {
+    authoredTest('stops a child after a process budget breach', async function (scope: TestScope) {
         const fixture = supervisedRunOrchestration('budget', false, 'buffered');
         const result = await fixture.execute();
         scope.assert.equal(result.status, 'failed');
@@ -78,4 +78,3 @@ export const testNode = suite('memory supervised run orchestration', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

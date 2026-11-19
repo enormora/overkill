@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { isDefinedFamilyProfile, type DefinedFamilyProfile } from '../config/types.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import type { TestFamily } from '../packages/engine/engine.entry-point.ts';
 import { normalizeConfig } from '../packages/run/run.entry-point.ts';
 import { family } from '../integration-tests/run/fixtures/imported-runtime-family.ts';
@@ -25,7 +26,7 @@ function familyProfile(definition: TestFamily<null>): DefinedFamilyProfile {
     return profile;
 }
 
-export const testNode = suite('family module restoration integration', [
+export const testNode = authoredSuite('family module restoration integration', [
     test('restores a named family module when no current configuration supplies it', async function (scope) {
         const saved = recordedReplayProfile(familyProfile(family));
         const restored = await restoreFamilyReplayProfile(saved, undefined);
@@ -34,4 +35,3 @@ export const testNode = suite('family module restoration integration', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

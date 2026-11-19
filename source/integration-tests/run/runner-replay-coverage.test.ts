@@ -1,8 +1,7 @@
 import { readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { type TestScope, test as authoredTest, suite as authoredSuite } from '@overkill-dev/test';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import type { ReplayRunRecord } from '../../run/replay-record-types.ts';
 import {
     replayProject,
@@ -84,10 +83,10 @@ async function verifyCoverageReplay(scope: TestScope, empty: boolean): Promise<v
     await assertCoverageRecords(scope, project, source, retained);
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'recorded coverage replay',
     [ false, true ].map(function selection(empty) {
-        return test(
+        return authoredTest(
             empty ? 'records coverage for empty replay without source imports' : 'records fresh coverage artifacts',
             async function (scope: TestScope) {
                 await verifyCoverageReplay(scope, empty);
@@ -96,4 +95,3 @@ export const testNode = suite(
         );
     })
 );
-await runIfMain(import.meta, testNode);

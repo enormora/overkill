@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { workerPlacementExecution } from '../test-support/worker-placement-execution.ts';
 import { testNode as output } from './worker-task-output-policy.test.ts';
 
-export const testNode = suite('worker placement execution policy', [
+export const testNode = authoredSuite('worker placement execution policy', [
     output,
     test('completes a placement after receiving the worker message boundary', async function (scope: TestScope) {
         const fixture = workerPlacementExecution('none');
@@ -83,4 +83,3 @@ export const testNode = suite('worker placement execution policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

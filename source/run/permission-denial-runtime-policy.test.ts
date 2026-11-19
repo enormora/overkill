@@ -1,21 +1,17 @@
 import diagnosticsChannel from 'node:diagnostics_channel';
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createExecutionObservation, withExecutionObservation } from '../engine/execution-observation.ts';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type RunnerError,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import type { RunnerError } from '../packages/engine/engine.entry-point.ts';
 import { testNode as moduleBoundary } from './file-module-boundary-policy.test.ts';
 import { testNode as capabilityPolicy } from './run-capability-policy.test.ts';
-import { createPermissionDenialRuntimePolicy } from './capability-policy.ts';
-import { RunCollectionError } from './run-errors.ts';
 import {
+    createPermissionDenialRuntimePolicy,
     createPermissionDiagnosticsSubscriptions,
     permissionAuditEnabled,
     type PermissionDiagnosticsOptions
 } from './permission-denial-runtime-policy.ts';
+import { RunCollectionError } from './run-errors.ts';
 
 type PermissionDiagnosticChannel = { readonly publish: (message: unknown) => void; };
 
@@ -66,7 +62,7 @@ async function runScopePermissionDiagnostics(): Promise<{
     readonly runError: RunnerError;
 }> {
     return await withExecutionObservation(async function observePermissionRun() {
-        const policy = createPermissionDenialRuntimePolicy();
+        const policy = createPermissionDenialRuntimePolicy({ auditDiagnostics: 'ignore', auditEnabled: false });
         const channel = await readPermissionDiagnosticChannel();
 
         publishPermissionDiagnostic(channel, 'FileSystemRead', '/project/load.txt');
@@ -130,97 +126,68 @@ const diagnosticPolicies = [
     { auditEnabled: false, auditDiagnostics: 'report', expected: enforcedDiagnostics }
 ] as const;
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/permission-denial-runtime-policy.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        moduleBoundary,
-        capabilityPolicy,
-        ...diagnosticPolicies.map(function diagnosticPolicy(policy) {
-            return createOverkillTestCase({
-                definitionLocations: [ { kind: 'unknown' } ],
-                title: `audit enabled ${policy.auditEnabled}, audit diagnostics ${policy.auditDiagnostics}`,
-                annotations: {},
-                controls: {},
-                async body(scope: OverkillScope) {
-                    const diagnostics = await recordedPermissionDiagnostics(policy);
-                    scope.assert.deepEqual(diagnostics, policy.expected);
-                    return scope.assert.collect();
-                }
-            });
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'permission audit mode follows Node option quoting and command-line precedence',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                scope.assert.false(permissionAuditEnabled([], ''));
-                scope.assert.true(permissionAuditEnabled([ '--permission-audit' ], ''));
-                scope.assert.true(permissionAuditEnabled([], '"--permission-audit" --trace-warnings'));
-                scope.assert.true(permissionAuditEnabled([ '--permission_audit=false' ], ''));
-                scope.assert.false(permissionAuditEnabled([ '--no-permission-audit' ], '--permission-audit'));
-                scope.assert.true(permissionAuditEnabled([ '--permission-audit' ], '--no-permission-audit'));
-                scope.assert.false(permissionAuditEnabled([ '--permission-audit', '--no-permission-audit' ], ''));
-                scope.assert.false(permissionAuditEnabled([], '--title="example --permission-audit"'));
-                scope.assert.false(permissionAuditEnabled([], '--title="example \\" --permission-audit"'));
-
+export const testNode = suite('source/run/permission-denial-runtime-policy.test.ts', [
+    moduleBoundary,
+    capabilityPolicy,
+    ...diagnosticPolicies.map(function diagnosticPolicy(policy) {
+        return test(
+            `audit enabled ${policy.auditEnabled}, audit diagnostics ${policy.auditDiagnostics}`,
+            async function (scope: OverkillScope) {
+                const diagnostics = await recordedPermissionDiagnostics(policy);
+                scope.assert.deepEqual(diagnostics, policy.expected);
                 return scope.assert.collect();
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'permission denial runtime policy records run-scope Node permission diagnostics',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const diagnostics = await runScopePermissionDiagnostics();
+        );
+    }),
+    test(
+        'permission audit mode follows Node option quoting and command-line precedence',
+        function (scope: OverkillScope) {
+            scope.assert.false(permissionAuditEnabled([], ''));
+            scope.assert.true(permissionAuditEnabled([ '--permission-audit' ], ''));
+            scope.assert.true(permissionAuditEnabled([], '"--permission-audit" --trace-warnings'));
+            scope.assert.true(permissionAuditEnabled([ '--permission_audit=false' ], ''));
+            scope.assert.false(permissionAuditEnabled([ '--no-permission-audit' ], '--permission-audit'));
+            scope.assert.true(permissionAuditEnabled([ '--permission-audit' ], '--no-permission-audit'));
+            scope.assert.false(permissionAuditEnabled([ '--permission-audit', '--no-permission-audit' ], ''));
+            scope.assert.false(permissionAuditEnabled([], '--title="example --permission-audit"'));
+            scope.assert.false(permissionAuditEnabled([], '--title="example \\" --permission-audit"'));
 
-                scope.assert.equal(diagnostics.loadError.attributedTo, null);
-                scope.assert.equal(runnerErrorCauseField(diagnostics.loadError, 'phase'), 'load');
-                scope.assert.equal(diagnostics.runError.attributedTo, null);
-                scope.assert.equal(runnerErrorCauseField(diagnostics.runError, 'phase'), 'out-of-test');
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'permission denial runtime policy records run-scope Node permission diagnostics',
+        async function (scope: OverkillScope) {
+            const diagnostics = await runScopePermissionDiagnostics();
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'permission denial runtime policy ignores permission drop diagnostics',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const policy = createPermissionDenialRuntimePolicy();
-                const channel = await readPermissionDiagnosticChannel();
+            scope.assert.equal(diagnostics.loadError.attributedTo, null);
+            scope.assert.equal(runnerErrorCauseField(diagnostics.loadError, 'phase'), 'load');
+            scope.assert.equal(diagnostics.runError.attributedTo, null);
+            scope.assert.equal(runnerErrorCauseField(diagnostics.runError, 'phase'), 'out-of-test');
 
-                publishPermissionDropDiagnostic(channel);
-                const pendingErrors = policy.takePendingRunErrors();
-                const runErrors = policy.takeRunErrors();
+            return scope.assert.collect();
+        }
+    ),
+    test('permission denial runtime policy ignores permission drop diagnostics', async function (scope: OverkillScope) {
+        const policy = createPermissionDenialRuntimePolicy({ auditDiagnostics: 'ignore', auditEnabled: false });
+        const channel = await readPermissionDiagnosticChannel();
 
-                scope.assert.deepEqual(pendingErrors, []);
-                scope.assert.deepEqual(runErrors, []);
+        publishPermissionDropDiagnostic(channel);
+        const pendingErrors = policy.takePendingRunErrors();
+        const runErrors = policy.takeRunErrors();
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'RunCollectionError reports access denials as permission runner errors',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const error = new RunCollectionError('Collection failed.', { cause: accessDeniedError() }, 'loader');
-                const runnerError = error.runnerError();
+        scope.assert.deepEqual(pendingErrors, []);
+        scope.assert.deepEqual(runErrors, []);
 
-                scope.assert.equal(runnerError.subtype, 'permission');
-                scope.assert.equal(runnerError.message, 'Permission denied: FileSystemRead for /project/input.txt.');
+        return scope.assert.collect();
+    }),
+    test('RunCollectionError reports access denials as permission runner errors', function (scope: OverkillScope) {
+        const error = new RunCollectionError('Collection failed.', { cause: accessDeniedError() }, 'loader');
+        const runnerError = error.runnerError();
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+        scope.assert.equal(runnerError.subtype, 'permission');
+        scope.assert.equal(runnerError.message, 'Permission denied: FileSystemRead for /project/input.txt.');
 
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

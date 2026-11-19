@@ -1,8 +1,9 @@
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import * as parser from '@typescript-eslint/parser';
 import { createTemporaryDirectoryResource, startResources } from '../packages/resources/resources.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { gen } from '../packages/property/property.entry-point.ts';
 import {
     defineConfigTests,
@@ -30,8 +31,8 @@ const propertyRequest = {
     policy: { ...integrationPropertyExecutionDefaults.policy, newTrials: 1 }
 };
 
-export const testNode = suite('config project capabilities', [
-    test('inline fixtures cannot write through linked dependency directories', async function (scope) {
+export const testNode = authoredSuite('config project capabilities', [
+    authoredTest('inline fixtures cannot write through linked dependency directories', async function (scope) {
         await using resources = await startResources({
             resources: { directory: createTemporaryDirectoryResource('dependency-fixture') },
             signal: scope.signal
@@ -72,7 +73,7 @@ export const testNode = suite('config project capabilities', [
         return scope.assert.collect();
     }),
     ...[ false, true ].map(function failure(shouldFail) {
-        return test(
+        return authoredTest(
             `links installed dependencies and cleans up after factory failure ${shouldFail}`,
             async function (scope) {
                 const roots: string[] = [];
@@ -116,7 +117,7 @@ export const testNode = suite('config project capabilities', [
             }
         );
     }),
-    test('compares supplied parser identity without cloning plugin objects', async function (scope) {
+    authoredTest('compares supplied parser identity without cloning plugin objects', async function (scope) {
         const definitions = defineConfigTests({
             ...configDefinition([ { files: [ '**/*.ts' ], languageOptions: { parser } } ]),
             files: [
@@ -139,7 +140,7 @@ export const testNode = suite('config project capabilities', [
         return scope.assert.collect();
     }),
     ...[ false, true ].map(function ignore(ignored) {
-        return test(
+        return authoredTest(
             `exhausted candidate batches are inconclusive for ignored filenames ${ignored}`,
             async function (scope) {
                 const definitions = defineConfigTests({
@@ -156,7 +157,7 @@ export const testNode = suite('config project capabilities', [
             }
         );
     }),
-    test('parser project setup failures fail instead of discarding candidates', async function (scope) {
+    authoredTest('parser project setup failures fail instead of discarding candidates', async function (scope) {
         const definitions = defineConfigTests({
             ...configDefinition([ {
                 files: [ '**/*.js' ],
@@ -168,7 +169,7 @@ export const testNode = suite('config project capabilities', [
         scope.assert.deepEqual([ result.summary.failed, result.summary.inconclusive ], [ 1, 0 ]);
         return scope.assert.collect();
     }),
-    test('loads authored file seeds lazily and excludes deliberate parser failures', async function (scope) {
+    authoredTest('loads authored file seeds lazily and excludes deliberate parser failures', async function (scope) {
         const definitions = defineConfigTests({
             ...configDefinition([]),
             project: { ...emptyConfigProject, files: { 'file.js': 'var value = 1;' } },
@@ -192,7 +193,7 @@ export const testNode = suite('config project capabilities', [
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    test('rejects relative dependency roots and unknown inventory exclusions', function (scope) {
+    authoredTest('rejects relative dependency roots and unknown inventory exclusions', function (scope) {
         scope.assert.throws(function dependencyRoot() {
             defineConfigTests({
                 ...configDefinition([]),

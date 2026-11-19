@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { z } from 'zod/v4';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { defineTestFamily, type TestFamily } from '../packages/engine/engine.entry-point.ts';
 import { createDeterministicRunCoordinator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -96,9 +97,9 @@ async function repeatFamilyProfile(family: TestFamily<{ readonly count: number; 
     return [ first.status, second.status ];
 }
 
-export const testNode = suite('imported family profiles', [
+export const testNode = authoredSuite('imported family profiles', [
     ...[ {}, { count: 'three' }, { project: './tsconfig.json' } ].map(function invalidSettings(settings) {
-        return test(`rejects untyped settings ${JSON.stringify(settings)} without loading`, function (scope) {
+        return authoredTest(`rejects untyped settings ${JSON.stringify(settings)} without loading`, function (scope) {
             const events: string[] = [];
             const family = runtimeFamily(function (event) {
                 events.push(event);
@@ -119,7 +120,7 @@ export const testNode = suite('imported family profiles', [
             return scope.assert.collect();
         });
     }),
-    test('normalizes and snapshots definitions without loading a backend', function (scope) {
+    authoredTest('normalizes and snapshots definitions without loading a backend', function (scope) {
         const events: string[] = [];
         const family = runtimeFamily(function (event) {
             events.push(event);
@@ -141,7 +142,7 @@ export const testNode = suite('imported family profiles', [
         scope.assert.equal(config.profiles.microtest?.testFamily, 'microtest');
         return scope.assert.collect();
     }),
-    test('parses settings once for direct calls and repeated profile invocations', async function (scope) {
+    authoredTest('parses settings once for direct calls and repeated profile invocations', async function (scope) {
         const events: string[] = [];
         const family = runtimeFamily(function record(event) {
             events.push(event);
@@ -156,7 +157,7 @@ export const testNode = suite('imported family profiles', [
         );
         return scope.assert.collect();
     }),
-    test('rejects conflicting implementations before loading', function (scope) {
+    authoredTest('rejects conflicting implementations before loading', function (scope) {
         const events: string[] = [];
         const files = { include: [ 'source/**/*.test.ts' ] } as const;
         scope.assert.throws(function () {
@@ -184,7 +185,7 @@ export const testNode = suite('imported family profiles', [
         scope.assert.deepEqual(events, []);
         return scope.assert.collect();
     }),
-    test('runs imported runtime profiles through engine preparation', async function (scope) {
+    authoredTest('runs imported runtime profiles through engine preparation', async function (scope) {
         const events: string[] = [];
         const coordinator = createDeterministicRunCoordinator();
         const config = normalizeConfig({
@@ -210,4 +211,3 @@ export const testNode = suite('imported family profiles', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

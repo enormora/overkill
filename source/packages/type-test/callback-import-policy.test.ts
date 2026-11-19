@@ -1,6 +1,7 @@
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import * as ast from 'typescript-beta/ast';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+
 import {
     sourceFixture,
     sourceConstant,
@@ -37,7 +38,7 @@ function importStatement(form: ImportForm): ast.Statement {
     );
     return ast.factory.createImportDeclaration(undefined, clause, module);
 }
-export const testNode = suite(
+export const testNode = authoredSuite(
     'callback options alongside module imports',
     ([ 'default', 'equals', 'named', 'namespace', 'side-effect' ] as const).map(function importOwnership(form) {
         return test(`retains constant ownership beside ${form} imports`, async function (scope: TestScope) {
@@ -62,4 +63,3 @@ export const testNode = suite(
         });
     })
 );
-await runIfMain(import.meta, testNode);

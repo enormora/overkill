@@ -1,6 +1,5 @@
 import { execFile } from 'node:child_process';
-import { createSuite, createTestCase } from '@overkill-dev/engine';
-import { runIfMain } from '#test-runner';
+import { suite, test } from '#tests';
 
 async function execute(script: string): Promise<string> {
     return new Promise(function executeConsumer(resolve, reject) {
@@ -18,7 +17,7 @@ async function execute(script: string): Promise<string> {
         );
     });
 }
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
 const script = `
 import { checkLinearizability, linearizability } from '@overkill-dev/linearizability';
 if (typeof linearizability !== 'function') throw new Error('Missing concurrent helper export.');
@@ -76,18 +75,10 @@ if (repeated.summary.failed !== 1 || JSON.stringify(repeated).includes('unexpect
 console.log('linearizability package loaded');
 `;
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'packaged linearizability authoring',
-    children: [ createTestCase({
-        ...metadata,
-        title: 'checks histories through the installed package',
-        async body(scope) {
-            const result = await execute(script);
-            scope.assert.equal(result.trim(), 'linearizability package loaded');
-            return scope.assert.collect();
-        }
-    }) ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('packaged linearizability authoring', [
+    test('checks histories through the installed package', async function (scope) {
+        const result = await execute(script);
+        scope.assert.equal(result.trim(), 'linearizability package loaded');
+        return scope.assert.collect();
+    })
+]);

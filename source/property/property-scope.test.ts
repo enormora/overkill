@@ -1,6 +1,7 @@
 import { once } from 'node:events';
-import { runIfMain } from '#test-runner';
-import { defineCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import type { AssertionResult, TestScope } from '../packages/engine/engine.entry-point.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
@@ -9,9 +10,9 @@ import type { PropertyForall, PropertySampleScope } from './property-definition.
 import { property, withProperties } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
-export const testNode = suite('property trial scopes', [
+export const testNode = authoredSuite('property trial scopes', [
     shrinking,
-    test('stops at a sample assertion-plan mismatch', async function (scope) {
+    authoredTest('stops at a sample assertion-plan mismatch', async function (scope) {
         const values: number[] = [];
         const node = property({
             title: 'sample plan',
@@ -29,7 +30,7 @@ export const testNode = suite('property trial scopes', [
         scope.assert.deepEqual(values, [ 1 ]);
         return scope.assert.collect();
     }),
-    test('rejects malformed nested invocation definitions', async function (scope) {
+    authoredTest('rejects malformed nested invocation definitions', async function (scope) {
         for (const definition of [ gen.constant(1), { generator: gen.constant(1), test: null } ]) {
             const node = test(
                 'invalid nested invocation',
@@ -44,7 +45,7 @@ export const testNode = suite('property trial scopes', [
         }
         return scope.assert.collect();
     }),
-    test('rejects invalid targeting and coverage before the next input', async function (scope) {
+    authoredTest('rejects invalid targeting and coverage before the next input', async function (scope) {
         for (const observation of [ 'target', 'cover' ] as const) {
             const values: number[] = [];
             const node = property({
@@ -66,7 +67,7 @@ export const testNode = suite('property trial scopes', [
         }
         return scope.assert.collect();
     }),
-    test('retains the first failed composite child as the property boundary', async function (scope) {
+    authoredTest('retains the first failed composite child as the property boundary', async function (scope) {
         const comparison = defineCompositeAssertion({
             name: 'sample comparison',
             assert(check, value: number) {
@@ -103,7 +104,7 @@ export const testNode = suite('property trial scopes', [
         );
         return scope.assert.collect();
     }),
-    test('confirms failed requirements without admitting new generated samples', async function (scope) {
+    authoredTest('confirms failed requirements without admitting new generated samples', async function (scope) {
         const values: number[] = [];
         const node = property({
             title: 'required sample',
@@ -124,7 +125,7 @@ export const testNode = suite('property trial scopes', [
         scope.assert.equal(JSON.stringify(result.perTest).includes('plan-mismatch'), false);
         return scope.assert.collect();
     }),
-    test('preserves deep-assertion operand contracts inside trials', async function (scope) {
+    authoredTest('preserves deep-assertion operand contracts inside trials', async function (scope) {
         const node = property({
             title: 'invalid deep operand',
             generator: gen.constant(1),
@@ -139,7 +140,7 @@ export const testNode = suite('property trial scopes', [
         scope.assert.includes(JSON.stringify(result.perTest), 'invalid-deep-assertion-operand');
         return scope.assert.collect();
     }),
-    test('rejects invocations retained after their case scope closes', async function (scope: TestScope) {
+    authoredTest('rejects invocations retained after their case scope closes', async function (scope: TestScope) {
         const retained: PropertyForall[] = [];
         const node = test(
             'closed scope',
@@ -161,7 +162,7 @@ export const testNode = suite('property trial scopes', [
         }, { message: 'Property invocation cannot start after its scope has closed.' });
         return scope.assert.collect();
     }),
-    test('counts one boundary per nested invocation and preserves wrapper settings', async function (scope) {
+    authoredTest('counts one boundary per nested invocation and preserves wrapper settings', async function (scope) {
         const values: number[] = [];
         const body = withProperties(async function (parent) {
             parent.plan(2);
@@ -191,7 +192,7 @@ export const testNode = suite('property trial scopes', [
         scope.assert.deepEqual(values, [ 1, 1, 3, 2, 2 ]);
         return scope.assert.collect();
     }),
-    test('rejects overlapping nested calls and finishes active cleanup', async function (scope) {
+    authoredTest('rejects overlapping nested calls and finishes active cleanup', async function (scope) {
         const events: string[] = [];
         const started = Promise.withResolvers<undefined>();
         const node = test(
@@ -218,7 +219,7 @@ export const testNode = suite('property trial scopes', [
         scope.assert.deepEqual(events, [ 'cleanup' ]);
         return scope.assert.collect();
     }),
-    test('rejects an unfinished invocation before closing its case', async function (scope) {
+    authoredTest('rejects an unfinished invocation before closing its case', async function (scope) {
         const events: string[] = [];
         const started = Promise.withResolvers<undefined>();
         const pending: Promise<AssertionResult>[] = [];
@@ -246,7 +247,7 @@ export const testNode = suite('property trial scopes', [
         scope.assert.equal(pending.length, 1);
         return scope.assert.collect();
     }),
-    test('preserves body and cleanup errors instead of assertion failures', async function (scope) {
+    authoredTest('preserves body and cleanup errors instead of assertion failures', async function (scope) {
         const bodyFailure = property({
             title: 'body',
             generator: gen.constant(1),
@@ -274,7 +275,7 @@ export const testNode = suite('property trial scopes', [
         scope.assert.includes(JSON.stringify(result.perTest[1]?.outcome), 'cleanup-error');
         return scope.assert.collect();
     }),
-    test('allows property cases to overlap while each case keeps sequential trials', async function (scope) {
+    authoredTest('allows property cases to overlap while each case keeps sequential trials', async function (scope) {
         const events: string[] = [];
         const entrants = new Set<string>();
         const ready = Promise.withResolvers<undefined>();
@@ -326,5 +327,3 @@ export const testNode = suite('property trial scopes', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,7 @@
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { z } from 'zod/v4';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+
 import { workIdentityKey, type PerTestResult } from '../run/run.entry-point.ts';
 import { runResultFactory } from '../../test-support/run-result-factory.ts';
 import { collectedMutationPlan } from '../../test-support/mutation-plan-fixture.ts';
@@ -46,8 +48,8 @@ function failedMutationCase(): PerTestResult {
         attempts: [ { ...original.attempts[0], verdict: 'fail', outcome } ]
     };
 }
-export const testNode = suite('mutation case admission', [
-    test('rejects admission and completion before selection', async function (scope: TestScope) {
+export const testNode = authoredSuite('mutation case admission', [
+    authoredTest('rejects admission and completion before selection', async function (scope: TestScope) {
         const [ result ] = mutationCaseResults();
         const lifecycle = await createMutationLifecycle(input);
         scope.cleanup(lifecycle.dispose);
@@ -67,7 +69,7 @@ export const testNode = suite('mutation case admission', [
     }),
     ...[ 'dry', 'runtime', 'static' ].flatMap(function (mode) {
         return [ false, true ].map(function (disableBail) {
-            return test(
+            return authoredTest(
                 `classifies failed adapter results in ${mode} mode with bail disabled ${disableBail}`,
                 async function (scope: TestScope) {
                     const result = failedMutationCase();
@@ -93,7 +95,7 @@ export const testNode = suite('mutation case admission', [
             );
         });
     }),
-    test('rejects unknown identities and empty runtime selections', async function (scope: TestScope) {
+    authoredTest('rejects unknown identities and empty runtime selections', async function (scope: TestScope) {
         const [ result ] = mutationCaseResults();
         const unknown = await createMutationLifecycle({ ...input, selected: [ 'missing' ] });
         scope.cleanup(unknown.dispose);
@@ -107,7 +109,7 @@ export const testNode = suite('mutation case admission', [
         }, { message: 'Stryker requested a mutant selection with no runnable tests.' });
         return scope.assert.collect();
     }),
-    test('rejects admissions outside selection and repeated admissions', async function (scope: TestScope) {
+    authoredTest('rejects admissions outside selection and repeated admissions', async function (scope: TestScope) {
         const [ first, second ] = mutationCaseResults();
         const lifecycle = await createMutationLifecycle({ ...input, selected: [ workIdentityKey(first.workId) ] });
         scope.cleanup(lifecycle.dispose);
@@ -125,7 +127,7 @@ export const testNode = suite('mutation case admission', [
         }, { message: /unselected or repeated/u });
         return scope.assert.collect();
     }),
-    test('rejects repeated completions', async function (scope: TestScope) {
+    authoredTest('rejects repeated completions', async function (scope: TestScope) {
         const [ result ] = mutationCaseResults();
         const lifecycle = await createMutationLifecycle(input);
         scope.cleanup(lifecycle.dispose);
@@ -137,62 +139,68 @@ export const testNode = suite('mutation case admission', [
         }, { message: /active admission/u });
         return scope.assert.collect();
     }),
-    test('rejects completion without admission and changed intentional skips', async function (scope: TestScope) {
-        const [ original ] = mutationCaseResults();
-        const result: PerTestResult = {
-            ...original,
-            verdict: 'skip',
-            outcome: { kind: 'skip', reason: 'original' }
-        };
-        const lifecycle = await createMutationLifecycle(input);
-        scope.cleanup(lifecycle.dispose);
-        const plan = collectedMutationPlan([ result.workId ]);
-        await lifecycle.select({
-            ...plan,
-            files: plan.files.map(function skippedFile(file) {
-                return {
-                    ...file,
-                    cases: file.cases.map(function skippedCase(entry) {
-                        return { ...entry, skipReason: 'original' };
-                    })
-                };
-            })
-        });
-        await scope.assert.rejects(async function missingAdmission() {
-            await lifecycle.completeCase(result, []);
-        }, { message: /active admission/u });
-        await lifecycle.enterCase(result.workId);
-        await scope.assert.rejects(async function changedSkip() {
-            await lifecycle.completeCase({ ...result, outcome: { kind: 'skip', reason: 'changed' } }, []);
-        }, { message: /intentional skip state/u });
-        return scope.assert.collect();
-    }),
-    test('detects added cases in originally empty eligible files before selection', async function (scope: TestScope) {
-        const result = runResultFactory
-            .build({ perTest: [ { id: { file: 'case.ts', suite: [], title: 'original', params: null } } ] })
-            .perTest[0];
-        if (result === undefined) {
-            throw new Error('Missing mutation case fixture.');
+    authoredTest(
+        'rejects completion without admission and changed intentional skips',
+        async function (scope: TestScope) {
+            const [ original ] = mutationCaseResults();
+            const result: PerTestResult = {
+                ...original,
+                verdict: 'skip',
+                outcome: { kind: 'skip', reason: 'original' }
+            };
+            const lifecycle = await createMutationLifecycle(input);
+            scope.cleanup(lifecycle.dispose);
+            const plan = collectedMutationPlan([ result.workId ]);
+            await lifecycle.select({
+                ...plan,
+                files: plan.files.map(function skippedFile(file) {
+                    return {
+                        ...file,
+                        cases: file.cases.map(function skippedCase(entry) {
+                            return { ...entry, skipReason: 'original' };
+                        })
+                    };
+                })
+            });
+            await scope.assert.rejects(async function missingAdmission() {
+                await lifecycle.completeCase(result, []);
+            }, { message: /active admission/u });
+            await lifecycle.enterCase(result.workId);
+            await scope.assert.rejects(async function changedSkip() {
+                await lifecycle.completeCase({ ...result, outcome: { kind: 'skip', reason: 'changed' } }, []);
+            }, { message: /intentional skip state/u });
+            return scope.assert.collect();
         }
-        const original = collectedMutationPlan([
-            result.workId
-        ]);
-        const lifecycle = await createMutationLifecycle(
-            z.json().parse({
-                ...input,
-                mode: 'runtime',
-                baseline: mutationCatalog(root, original),
-                files: [ 'case.ts', 'empty.ts' ],
-                selected: [ workIdentityKey(result.workId) ]
-            })
-        );
-        scope.cleanup(lifecycle.dispose);
-        await scope.assert.rejects(async function addedCase() {
-            await lifecycle.select(collectedMutationPlan([
-                result.workId,
-                { ...result.workId, case: { ...result.workId.case, file: 'empty.ts' } }
-            ]));
-        }, { message: 'Eligible test catalog changed under mutation.' });
-        return scope.assert.collect();
-    })
+    ),
+    authoredTest(
+        'detects added cases in originally empty eligible files before selection',
+        async function (scope: TestScope) {
+            const result = runResultFactory
+                .build({ perTest: [ { id: { file: 'case.ts', suite: [], title: 'original', params: null } } ] })
+                .perTest[0];
+            if (result === undefined) {
+                throw new Error('Missing mutation case fixture.');
+            }
+            const original = collectedMutationPlan([
+                result.workId
+            ]);
+            const lifecycle = await createMutationLifecycle(
+                z.json().parse({
+                    ...input,
+                    mode: 'runtime',
+                    baseline: mutationCatalog(root, original),
+                    files: [ 'case.ts', 'empty.ts' ],
+                    selected: [ workIdentityKey(result.workId) ]
+                })
+            );
+            scope.cleanup(lifecycle.dispose);
+            await scope.assert.rejects(async function addedCase() {
+                await lifecycle.select(collectedMutationPlan([
+                    result.workId,
+                    { ...result.workId, case: { ...result.workId.case, file: 'empty.ts' } }
+                ]));
+            }, { message: 'Eligible test catalog changed under mutation.' });
+            return scope.assert.collect();
+        }
+    )
 ]);

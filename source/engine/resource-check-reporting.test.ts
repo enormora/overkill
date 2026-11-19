@@ -1,13 +1,14 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
-    createRoot,
-    createTestCase,
-    createTestPlan,
     type TestPlan,
     type ReporterEvent,
-    type RunResult
+    type RunResult,
+    createRoot,
+    createTestCase,
+    createTestPlan
 } from '../packages/engine/engine.entry-point.ts';
+
 import {
     currentResourceCheckDelivery,
     withResourceCheckDelivery,
@@ -145,7 +146,7 @@ async function stoppedObservation(scenario: ReportingScenario): Promise<RunResul
         return runResultFactory.build({ status: 'passed' });
     });
 }
-export const testNode = suite('resource check reporting ownership', [
+export const testNode = authoredSuite('resource check reporting ownership', [
     test('forwards owner evidence and cancellation through the active transport', async function (scope) {
         const scenario = reportingScenario();
         const events: string[] = [];
@@ -195,4 +196,3 @@ export const testNode = suite('resource check reporting ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

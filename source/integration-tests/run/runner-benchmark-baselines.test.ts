@@ -1,12 +1,11 @@
 import { posix as path } from 'node:path';
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import {
     createBenchmarkBaselineFixture,
     readBaselineContents,
     performanceBaselineFixtureFile as fixture,
     type BaselineFixture
 } from '../../test-support/benchmark-baseline-fixture.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import {
     normalizeConfig,
     orchestrator,
@@ -148,7 +147,7 @@ async function assertStaleScope(scope: TestScope): Promise<void> {
     await assertCompleteInventory(scope, fixtureData, store);
 }
 
-export const testNode = suite('benchmark baseline commands', [
+export const testNode = authoredSuite('benchmark baseline commands', [
     test(
         'baseline verbs preserve comparisons and read-only previews in supervised execution',
         async function (scope: TestScope) {
@@ -182,5 +181,3 @@ export const testNode = suite('benchmark baseline commands', [
         }
     )
 ]);
-
-await runIfMain(import.meta, testNode);

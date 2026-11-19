@@ -2,6 +2,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { runWithAttachmentContext } from '../attachments/attachment-context.ts';
 import {
     benchmark,
     wallClockMeasurement,
@@ -9,14 +11,8 @@ import {
     timelineMeasurement,
     workload
 } from '../packages/bench/bench.entry-point.ts';
-import {
-    options,
-    measuredMachine,
-    firstBenchmark,
-    executeMachine
-} from '../test-support/normalized-machine.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { createRoot, createTestPlan, execute, type TestCase } from '../packages/engine/engine.entry-point.ts';
+import { options, measuredMachine, firstBenchmark, executeMachine } from '../test-support/normalized-machine.ts';
+import { type TestCase, createRoot, createTestPlan, execute } from '../packages/engine/engine.entry-point.ts';
 import { testNode as collectionPolicy } from './garbage-collection-policy.test.ts';
 
 function durationBenchmark(garbageCollection: 'after-sample' | 'off'): TestCase {
@@ -63,18 +59,20 @@ async function moduleImportBenchmark(scope: TestScope): Promise<TestCase> {
     });
 }
 
-export const testNode = suite('automatic benchmark normalization', [
+export const testNode = authoredSuite('automatic benchmark normalization', [
     collectionPolicy,
     test(
         'normalizes cold imports while retaining their own process provenance and trace',
         async function (scope: TestScope) {
             const node = await moduleImportBenchmark(scope);
-            const result = await execute(createTestPlan(createRoot({
-                title: 'cold imports',
-                annotations: {},
-                controls: {},
-                children: [ node ]
-            })));
+            const result = await runWithAttachmentContext(null, async function () {
+                return await execute(createTestPlan(createRoot({
+                    title: 'cold imports',
+                    annotations: {},
+                    controls: {},
+                    children: [ node ]
+                })));
+            });
             const measured = firstBenchmark(result);
             scope.assert.deepEqual(result.runnerErrors, []);
             scope.assert.equal(result.status, 'passed');
@@ -89,9 +87,13 @@ export const testNode = suite('automatic benchmark normalization', [
         'executes automatic CPU normalization directly without runner configuration',
         async function (scope: TestScope) {
             const node = durationBenchmark('off');
-            const result = await execute(
-                createTestPlan(createRoot({ title: 'automatic', annotations: {}, controls: {}, children: [ node ] }))
-            );
+            const result = await runWithAttachmentContext(null, async function () {
+                return await execute(
+                    createTestPlan(
+                        createRoot({ title: 'automatic', annotations: {}, controls: {}, children: [ node ] })
+                    )
+                );
+            });
             const measured = firstBenchmark(result);
             scope.assert.deepEqual(result.runnerErrors, []);
             scope.assert.equal(result.status, 'passed');

@@ -1,16 +1,18 @@
+import { extname } from 'node:path';
 import { execFile } from 'node:child_process';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     nativeWriteOwnershipTestNode,
     nativeWriteOwnershipProbeUrl
 } from '../test-support/native-write-ownership-probe.ts';
 
-export const testNode = suite(nativeWriteOwnershipTestNode.title, [
+export const testNode = authoredSuite(nativeWriteOwnershipTestNode.title, [
     test('isolates native write probes from runner writes', async function (scope) {
+        const engineUrl = new URL(`../packages/engine/engine.entry-point${extname(import.meta.url)}`, import.meta.url);
         const script = `
             import assert from 'node:assert/strict';
-            const { createRoot, createTestPlan, execute } = await import('@overkill-dev/engine');
+            const { createRoot, createTestPlan, execute } = await import(${JSON.stringify(engineUrl.href)});
             const { nativeWriteOwnershipTestNode } = await import(${JSON.stringify(nativeWriteOwnershipProbeUrl)});
             const plan = createTestPlan(createRoot({
                 title: 'native write probe', annotations: {}, controls: {}, children: [nativeWriteOwnershipTestNode]
@@ -38,5 +40,3 @@ export const testNode = suite(nativeWriteOwnershipTestNode.title, [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

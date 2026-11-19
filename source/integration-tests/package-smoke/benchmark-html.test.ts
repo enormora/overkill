@@ -1,10 +1,11 @@
 import { readFile, mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
-import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
-import type { createBenchmarkHtmlReporter } from '@overkill-dev/reporter-benchmark-html';
-import { runIfMain } from '#test-runner';
+import { suite, test, type TestScope } from '#tests';
+import type { createBenchmarkHtmlReporter } from '@overkill-dev/test/reporters';
+import type * as BenchmarkHtmlPackage from '../../packages/reporter-benchmark-html/reporter-benchmark-html.entry-point.ts';
 import { defaultFailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
 import { benchmarkHtmlTimelineFixture } from '../../test-support/benchmark-html-fixture.ts';
+import { resolvePackagedExport } from './packaged-module.test.ts';
 
 async function outputPath(scope: TestScope): Promise<string> {
     const directory = await mkdtemp('target/installed-benchmark-html-');
@@ -42,34 +43,17 @@ async function assertRenderedReport(
     scope.assert.includes(html, '<td>authored</td><td>packaged marker</td>');
     scope.assert.equal(html.includes('<script src='), false);
 }
-export const testNode = createSuite({
-    title: 'installed benchmark HTML reporter',
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    children: [
-        createTestCase({
-            title: 'leaf import renders with packaged browser assets',
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            async body(scope) {
-                const leaf = await import('@overkill-dev/reporter-benchmark-html');
-                await assertRenderedReport(scope, leaf.createBenchmarkHtmlReporter, 'installed leaf');
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            title: 'standard subpath renders with bundled browser assets',
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            async body(scope) {
-                const standard = await import('@overkill-dev/test/reporters');
-                await assertRenderedReport(scope, standard.createBenchmarkHtmlReporter, 'standard distribution');
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('installed benchmark HTML reporter', [
+    test('leaf import renders with packaged browser assets', async function (scope) {
+        const leaf = await import(
+            await resolvePackagedExport('@overkill-dev/reporter-benchmark-html')
+        ) as typeof BenchmarkHtmlPackage;
+        await assertRenderedReport(scope, leaf.createBenchmarkHtmlReporter, 'installed leaf');
+        return scope.assert.collect();
+    }),
+    test('standard subpath renders with bundled browser assets', async function (scope) {
+        const standard = await import('@overkill-dev/test/reporters');
+        await assertRenderedReport(scope, standard.createBenchmarkHtmlReporter, 'standard distribution');
+        return scope.assert.collect();
+    })
+]);

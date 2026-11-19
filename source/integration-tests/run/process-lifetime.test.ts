@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { processMeasurement, type ProcessRequest } from '../../packages/bench/bench.entry-point.ts';
 import { createProcessSamplingSession } from '../../bench/process-sampling.ts';
 
@@ -11,7 +11,7 @@ const request: ProcessRequest = {
     completion: { kind: 'ready', marker: { stream: 'stdout', text: 'Ready' } }
 };
 
-export const testNode = suite('process sample lifetime', [
+export const testNode = authoredSuite('process sample lifetime', [
     test('rejects missing regions and calls after disposal', async function (scope) {
         const session = createProcessSamplingSession(processMeasurement({ instrumentation: 'off' }), scope.signal);
         const invocation = session.sample('measured');
@@ -53,5 +53,3 @@ export const testNode = suite('process sample lifetime', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

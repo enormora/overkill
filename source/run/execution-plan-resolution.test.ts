@@ -1,21 +1,11 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
-import {
-    defaultIntegrationProfile,
-    defaultRunRequest
-} from '../test-support/run-command-factory.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import { defaultIntegrationProfile, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import { createCollectedExecutionPlan } from './run-collected-planning.ts';
 import { RunExecutionPlanError } from './run-errors.ts';
 import { emptyWorkUnitResourceConstraints, type CollectedRunPlan } from './run-types.ts';
-import {
-    createWorkerPoolPlacementPlan,
-    type WorkerPoolPlacementPlanInput
-} from './worker-pool-placement-planning.ts';
+import { createWorkerPoolPlacementPlan, type WorkerPoolPlacementPlanInput } from './worker-pool-placement-planning.ts';
 
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const secondIntegrationPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
@@ -183,130 +173,101 @@ async function captureAsyncPlanError(run: () => Promise<unknown>): Promise<RunEx
     }
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/execution-plan-resolution.test.ts',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'placement resolution aggregates incompatible resource plans',
-            body(scope: OverkillScope) {
-                const error = capturePlanError(function resolveIncompatiblePlan() {
-                    createWorkerPoolPlacementPlan(workerPoolPlacementInput(
-                        createResourcePlan('local', true, 'per-run')
-                    ));
-                });
+export const testNode = suite('source/run/execution-plan-resolution.test.ts', [
+    test('placement resolution aggregates incompatible resource plans', function (scope: OverkillScope) {
+        const error = capturePlanError(function resolveIncompatiblePlan() {
+            createWorkerPoolPlacementPlan(workerPoolPlacementInput(
+                createResourcePlan('local', true, 'per-run')
+            ));
+        });
 
-                if (error === null) {
-                    throw new Error('Expected incompatible worker-pool plan.');
-                }
+        if (error === null) {
+            throw new Error('Expected incompatible worker-pool plan.');
+        }
 
-                scope.assert.equal(error.name, 'RunExecutionPlanError');
-                scope.assert.equal(error.code(), 'invalid-request');
-                scope.assert.deepEqual(
-                    error.conflicts().map(function conflictKind(conflict) {
-                        return conflict.kind;
+        scope.assert.equal(error.name, 'RunExecutionPlanError');
+        scope.assert.equal(error.code(), 'invalid-request');
+        scope.assert.deepEqual(
+            error.conflicts().map(function conflictKind(conflict) {
+                return conflict.kind;
+            }),
+            [ 'resource-dependency-scope', 'resource-projection-required' ]
+        );
+        scope.assert.true(Object.isFrozen(error.conflicts()));
+
+        return scope.assert.collect();
+    }),
+    test('projected run resources receive frozen infrastructure ownership', function (scope: OverkillScope) {
+        const placement = createWorkerPoolPlacementPlan(workerPoolPlacementInput(
+            createResourcePlan('projected', false, 'per-run')
+        ));
+        const owner = placement.resourceOwnership.owners[0];
+
+        scope.assert.equal(owner?.placement.kind, 'infrastructure-worker');
+        scope.assert.equal(owner?.resourceName, 'shared');
+        scope.assert.equal(owner?.scope, 'per-run');
+        scope.assert.equal(owner?.work.length, 2);
+
+        return scope.assert.collect();
+    }),
+    test(
+        'supervised planning rejects invalid resource dependencies before execution',
+        async function (scope: OverkillScope) {
+            const error = await captureAsyncPlanError(async function resolveIncompatiblePlan() {
+                await createCollectedExecutionPlan({
+                    projectRoot: '/project',
+                    benchmarkHost: null,
+                    collectedPlan: createResourcePlan('projected', true, 'per-run'),
+                    dependencies: fakeWorkerPoolRuntimeDependencies(),
+                    durationHistoryIndex: null,
+                    files: [ {
+                        file: integrationPath,
+                        fileSet: null,
+                        href: testFileHref(integrationPath),
+                        path: integrationPath
+                    } ],
+                    planKind: 'supervised',
+                    profile: defaultIntegrationProfile({
+                        execution: { processModel: 'supervised-process' }
                     }),
-                    [ 'resource-dependency-scope', 'resource-projection-required' ]
-                );
-                scope.assert.true(Object.isFrozen(error.conflicts()));
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'projected run resources receive frozen infrastructure ownership',
-            body(scope: OverkillScope) {
-                const placement = createWorkerPoolPlacementPlan(workerPoolPlacementInput(
-                    createResourcePlan('projected', false, 'per-run')
-                ));
-                const owner = placement.resourceOwnership.owners[0];
-
-                scope.assert.equal(owner?.placement.kind, 'infrastructure-worker');
-                scope.assert.equal(owner?.resourceName, 'shared');
-                scope.assert.equal(owner?.scope, 'per-run');
-                scope.assert.equal(owner?.work.length, 2);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'supervised planning rejects invalid resource dependencies before execution',
-            async body(scope: OverkillScope) {
-                const error = await captureAsyncPlanError(async function resolveIncompatiblePlan() {
-                    await createCollectedExecutionPlan({
-                        projectRoot: '/project',
-                        benchmarkHost: null,
-                        collectedPlan: createResourcePlan('projected', true, 'per-run'),
-                        dependencies: fakeWorkerPoolRuntimeDependencies(),
-                        durationHistoryIndex: null,
-                        files: [ {
-                            file: integrationPath,
-                            fileSet: null,
-                            href: testFileHref(integrationPath),
-                            path: integrationPath
-                        } ],
-                        planKind: 'supervised',
-                        profile: defaultIntegrationProfile({
-                            execution: { processModel: 'supervised-process' }
-                        }),
-                        request: defaultRunRequest({ paths: [ integrationPath ], profile: 'integration' })
-                    });
+                    request: defaultRunRequest({ paths: [ integrationPath ], profile: 'integration' })
                 });
+            });
 
-                if (error === null) {
-                    throw new Error('Expected incompatible supervised plan.');
-                }
-
-                scope.assert.deepEqual(
-                    error.conflicts().map(function conflictKind(conflict) {
-                        return conflict.kind;
-                    }),
-                    [ 'resource-dependency-scope' ]
-                );
-
-                return scope.assert.collect();
+            if (error === null) {
+                throw new Error('Expected incompatible supervised plan.');
             }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'fresh case workers require projected file resource handles',
-            body(scope: OverkillScope) {
-                const localError = capturePlanError(function resolveLocalFileResource() {
-                    createWorkerPoolPlacementPlan({
-                        ...workerPoolPlacementInput(createSameFileResourcePlan('local')),
-                        workerLifecycle: 'fresh-worker-per-unit',
-                        workDistribution: { mode: 'case' }
-                    });
-                });
-                const projectedPlan = createWorkerPoolPlacementPlan({
-                    ...workerPoolPlacementInput(createSameFileResourcePlan('projected')),
-                    workerLifecycle: 'fresh-worker-per-unit',
-                    workDistribution: { mode: 'case' }
-                });
 
-                scope.assert.equal(localError?.conflicts()[0]?.kind, 'resource-projection-required');
-                scope.assert.equal(
-                    projectedPlan.resourceOwnership.owners[0]?.placement.kind,
-                    'infrastructure-worker'
-                );
+            scope.assert.deepEqual(
+                error.conflicts().map(function conflictKind(conflict) {
+                    return conflict.kind;
+                }),
+                [ 'resource-dependency-scope' ]
+            );
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+            return scope.assert.collect();
+        }
+    ),
+    test('fresh case workers require projected file resource handles', function (scope: OverkillScope) {
+        const localError = capturePlanError(function resolveLocalFileResource() {
+            createWorkerPoolPlacementPlan({
+                ...workerPoolPlacementInput(createSameFileResourcePlan('local')),
+                workerLifecycle: 'fresh-worker-per-unit',
+                workDistribution: { mode: 'case' }
+            });
+        });
+        const projectedPlan = createWorkerPoolPlacementPlan({
+            ...workerPoolPlacementInput(createSameFileResourcePlan('projected')),
+            workerLifecycle: 'fresh-worker-per-unit',
+            workDistribution: { mode: 'case' }
+        });
 
-await runIfMain(import.meta, testNode);
+        scope.assert.equal(localError?.conflicts()[0]?.kind, 'resource-projection-required');
+        scope.assert.equal(
+            projectedPlan.resourceOwnership.owners[0]?.placement.kind,
+            'infrastructure-worker'
+        );
+
+        return scope.assert.collect();
+    })
+]);

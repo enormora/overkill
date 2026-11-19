@@ -1,7 +1,9 @@
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { memoryPerformanceBaselines } from '../test-support/memory-performance-baselines.ts';
 import type { RunResult } from '../packages/engine/engine.entry-point.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { recordedMachine } from '../test-support/normalized-machine.ts';
 import { normalizationBaselineAdapter } from '../test-support/normalization-baseline-adapter.ts';
 import type { PerformanceBaselineStore } from './performance-store.ts';
@@ -57,7 +59,7 @@ async function savedFastMachine(scope: TestScope): Promise<PerformanceBaselineSt
     await saveNormalizedExpectation(scope, saving, fast);
     return store;
 }
-export const testNode = suite('portable normalized performance expectations', [
+export const testNode = authoredSuite('portable normalized performance expectations', [
     test('reuses a fast-machine snapshot on slower hardware without rewriting it', async function (scope: TestScope) {
         const store = await savedFastMachine(scope);
         const slow = await recordedMachine(scope, 400, 'slow-arm-runner', 4000);

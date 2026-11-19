@@ -1,11 +1,12 @@
 import { AsyncResource } from 'node:async_hooks';
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import {
     createFailureArtifactStream,
     closeAttemptFailureStreams,
     type FailureArtifactStream
 } from '../attachments/failure-artifact-stream.ts';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import {
     inlineAttachmentFixture,
@@ -204,76 +205,55 @@ async function assertUnknownPreparedAttempt(scope: TestScope): Promise<void> {
     scope.assert.equal(errors[0]?.subtype, 'attribution-drift');
     scope.assert.deepEqual(store.artifacts(), []);
 }
-export const testNode = createSuite({
-    ...definition,
-    title: 'inline attachment ownership',
-    children: [
-        createTestCase({
+export const testNode = suite('inline attachment ownership', [
+    test(
+        'prepared evidence cannot borrow an active attempt when its own attempt is unknown',
+        async function (scope: TestScope) {
+            await assertUnknownPreparedAttempt(scope);
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'simultaneous runs keep service streams with identical work identities separate',
+        async function (scope: TestScope) {
+            await assertSeparateRunStreams(scope);
+            return scope.assert.collect();
+        }
+    ),
+    test('late service output preserves its expired attempt attribution', async function (scope: TestScope) {
+        await assertLateServiceOutput(scope);
+        return scope.assert.collect();
+    }),
+    test(
+        'captured resource attachment APIs reject writes after the integration run ends',
+        async function (scope: TestScope) {
+            await assertExpiredRun(scope);
+            return scope.assert.collect();
+        }
+    ),
+    ...[ 255, 195 ].map(function invalidTextByte(byte) {
+        return test({
             ...definition,
-            title: 'prepared evidence cannot borrow an active attempt when its own attempt is unknown',
+            title: `rejects malformed UTF-8 byte ${byte} without exceeding the text limit`,
             async body(scope: TestScope) {
-                await assertUnknownPreparedAttempt(scope);
+                await assertRejectedTextBytes(scope, byte);
                 return scope.assert.collect();
             }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'simultaneous runs keep service streams with identical work identities separate',
-            async body(scope: TestScope) {
-                await assertSeparateRunStreams(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'late service output preserves its expired attempt attribution',
-            async body(scope: TestScope) {
-                await assertLateServiceOutput(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'captured resource attachment APIs reject writes after the integration run ends',
-            async body(scope: TestScope) {
-                await assertExpiredRun(scope);
-                return scope.assert.collect();
-            }
-        }),
-        ...[ 255, 195 ].map(function invalidTextByte(byte) {
-            return createTestCase({
-                ...definition,
-                title: `rejects malformed UTF-8 byte ${byte} without exceeding the text limit`,
-                async body(scope: TestScope) {
-                    await assertRejectedTextBytes(scope, byte);
-                    return scope.assert.collect();
-                }
-            });
-        }),
-        createTestCase({
-            ...definition,
-            title: 'expired attempts fail without attributing evidence to another attempt',
-            async body(scope: TestScope) {
-                await assertExpiredAttempt(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'attachment budgets span every attempt in a retry chain',
-            async body(scope: TestScope) {
-                await assertRetryBudget(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'oversized JSON is omitted and caught validation errors still fail the attempt',
-            async body(scope: TestScope) {
-                await assertCaughtJsonErrors(scope);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+        });
+    }),
+    test('expired attempts fail without attributing evidence to another attempt', async function (scope: TestScope) {
+        await assertExpiredAttempt(scope);
+        return scope.assert.collect();
+    }),
+    test('attachment budgets span every attempt in a retry chain', async function (scope: TestScope) {
+        await assertRetryBudget(scope);
+        return scope.assert.collect();
+    }),
+    test(
+        'oversized JSON is omitted and caught validation errors still fail the attempt',
+        async function (scope: TestScope) {
+            await assertCaughtJsonErrors(scope);
+            return scope.assert.collect();
+        }
+    )
+]);

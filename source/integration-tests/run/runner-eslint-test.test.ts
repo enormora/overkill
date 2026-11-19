@@ -1,7 +1,6 @@
 import { extname } from 'node:path';
 import { execFile } from 'node:child_process';
-import { runIfMain } from '#test-runner';
-import { createTestCase } from '../../packages/engine/engine.entry-point.ts';
+import { test } from '@overkill-dev/test';
 
 const extension = extname(import.meta.url);
 const adapterModule = new URL(
@@ -44,12 +43,9 @@ if (deniedResult.summary.runtimePolicy !== 1 || deniedResult.summary.failed !== 
 console.log('restricted ESLint examples passed');
 `;
 
-export const testNode = createTestCase({
-    title: 'ESLint passing and failing examples need no filesystem capability',
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    async body(scope) {
+export const testNode = test(
+    'ESLint passing and failing examples need no filesystem capability',
+    async function (scope) {
         const output = await new Promise<string>(function restrictedChild(resolve, reject) {
             execFile(process.execPath, [
                 '--permission',
@@ -71,6 +67,4 @@ export const testNode = createTestCase({
         scope.assert.equal(output.trim(), 'restricted ESLint examples passed');
         return scope.assert.collect();
     }
-});
-
-await runIfMain(import.meta, testNode);
+);

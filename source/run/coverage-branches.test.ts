@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { test, suite } from '@overkill-dev/test';
+
 import { z } from 'zod/v4';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { collectCoverageScript, withCoverageSources } from '../test-support/coverage-source-fixture.ts';
 import { generateCoverageReports } from './coverage-reporting.ts';
 
@@ -101,12 +102,9 @@ async function assertBranchReports(
     );
 }
 
-export const testNode = createSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/coverage-branches.test.ts',
-    children: [ '.ts', '.mts', '.cts' ].flatMap(function nativeExtension(extension) {
+export const testNode = suite(
+    'source/run/coverage-branches.test.ts',
+    [ '.ts', '.mts', '.cts' ].flatMap(function nativeExtension(extension) {
         const cases = declarations.flatMap(function declarationScenarios(declaration) {
             return scenarios.map(function branchScenario(scenario) {
                 return { declaration, scenario };
@@ -114,10 +112,9 @@ export const testNode = createSuite({
         });
 
         return cases.map(function branchScenarioTest({ declaration, scenario }) {
-            return createTestCase({
+            return test({
                 annotations: {},
                 controls: {},
-                definitionLocations: [ { kind: 'unknown' } ],
                 title: `native ${extension} coverage maps ${declaration.title} branches for ${scenario.title}`,
                 async body(scope) {
                     const file = `branch${extension}`;
@@ -148,6 +145,4 @@ export const testNode = createSuite({
             });
         });
     })
-});
-
-await runIfMain(import.meta, testNode);
+);

@@ -1,16 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { readWorkerPoolTaskWithoutPort } from './worker-pool-host-task.ts';
-import type {
-    WorkerPoolCommand,
-    WorkerPoolTask
-} from './worker-pool-protocol.ts';
+import type { WorkerPoolCommand, WorkerPoolTask } from './worker-pool-protocol.ts';
 
 type WorkerPoolTaskBase = Pick<
     Extract<WorkerPoolTask, { readonly kind: 'acquire-run-resources'; }>,
@@ -153,11 +145,11 @@ function collectTask(): WorkerPoolTask {
     };
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-host-task.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'readWorkerPoolTaskWithoutPort() serializes every task kind',
             body(scope: OverkillScope) {
@@ -226,7 +218,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'readWorkerPoolTaskWithoutPort() rejects invalid tasks',
             body(scope: OverkillScope) {
@@ -241,5 +233,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

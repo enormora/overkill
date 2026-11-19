@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../engine/engine.entry-point.ts';
 import type {
     CommandLineExitCode,
     CommandLineListTestsRequest,
@@ -154,85 +155,53 @@ async function runCommandLine(args: readonly string[]): Promise<{
     };
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/packages/test/command-line-runner-ordering.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'overkill wrapper parses run order and seed flags',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const result = await runCommandLine([
-                    'run',
-                    '--order',
-                    'lexical',
-                    '--seed',
-                    '123',
-                    'source/a.test.ts'
-                ]);
-                const [ commandLineRequest ] = result.runRequests;
+export const testNode = suite('source/packages/test/command-line-runner-ordering.test.ts', [
+    test('overkill wrapper parses run order and seed flags', async function (scope: TestScope) {
+        const result = await runCommandLine([
+            'run',
+            '--order',
+            'lexical',
+            '--seed',
+            '123',
+            'source/a.test.ts'
+        ]);
+        const [ commandLineRequest ] = result.runRequests;
 
-                scope.assert.deepEqual(result.exitCodes, [ 0 ]);
-                scope.require.defined(commandLineRequest);
-                scope.assert.equal(commandLineRequest.runRequest.order, 'lexical');
-                scope.assert.deepEqual(commandLineRequest.runRequest.seed, { value: 123n });
+        scope.assert.deepEqual(result.exitCodes, [ 0 ]);
+        scope.require.defined(commandLineRequest);
+        scope.assert.equal(commandLineRequest.runRequest.order, 'lexical');
+        scope.assert.deepEqual(commandLineRequest.runRequest.seed, { value: 123n });
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'overkill wrapper parses list order and seed flags',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const result = await runCommandLine([ 'list', '--order=seeded', '--seed=456', 'source/a.test.ts' ]);
-                const [ commandLineRequest ] = result.listRequests;
+        return scope.assert.collect();
+    }),
+    test('overkill wrapper parses list order and seed flags', async function (scope: TestScope) {
+        const result = await runCommandLine([ 'list', '--order=seeded', '--seed=456', 'source/a.test.ts' ]);
+        const [ commandLineRequest ] = result.listRequests;
 
-                scope.assert.deepEqual(result.exitCodes, [ 0 ]);
-                scope.require.defined(commandLineRequest);
-                scope.assert.equal(commandLineRequest.listRequest.order, 'seeded');
-                scope.assert.deepEqual(commandLineRequest.listRequest.seed, { value: 456n });
+        scope.assert.deepEqual(result.exitCodes, [ 0 ]);
+        scope.require.defined(commandLineRequest);
+        scope.assert.equal(commandLineRequest.listRequest.order, 'seeded');
+        scope.assert.deepEqual(commandLineRequest.listRequest.seed, { value: 456n });
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'overkill wrapper rejects plan order from the CLI',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const result = await runCommandLine([ 'run', '--order', 'plan', 'source/a.test.ts' ]);
+        return scope.assert.collect();
+    }),
+    test('overkill wrapper rejects plan order from the CLI', async function (scope: TestScope) {
+        const result = await runCommandLine([ 'run', '--order', 'plan', 'source/a.test.ts' ]);
 
-                scope.assert.deepEqual(result.exitCodes, [ 3 ]);
-                scope.assert.equal(result.runRequests.length, 0);
-                scope.assert.true(result.stderr.includes('Expected one of'));
-                scope.assert.true(result.stderr.includes('plan'));
+        scope.assert.deepEqual(result.exitCodes, [ 3 ]);
+        scope.assert.equal(result.runRequests.length, 0);
+        scope.assert.true(result.stderr.includes('Expected one of'));
+        scope.assert.true(result.stderr.includes('plan'));
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'overkill wrapper rejects invalid seed flags',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const result = await runCommandLine([ 'run', '--seed', '-1', 'source/a.test.ts' ]);
+        return scope.assert.collect();
+    }),
+    test('overkill wrapper rejects invalid seed flags', async function (scope: TestScope) {
+        const result = await runCommandLine([ 'run', '--seed', '-1', 'source/a.test.ts' ]);
 
-                scope.assert.deepEqual(result.exitCodes, [ 3 ]);
-                scope.assert.equal(result.runRequests.length, 0);
-                scope.assert.true(result.stderr.includes('Run seed must be a nonnegative base-10 integer: -1'));
+        scope.assert.deepEqual(result.exitCodes, [ 3 ]);
+        scope.assert.equal(result.runRequests.length, 0);
+        scope.assert.true(result.stderr.includes('Run seed must be a nonnegative base-10 integer: -1'));
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

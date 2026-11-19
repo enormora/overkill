@@ -1,19 +1,8 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { PlacementPlan } from './run-types.ts';
-import {
-    fakeWorkerRuntime,
-    placementPlan,
-    testCaseMetadata
-} from './worker-pool-placement-validation.test.ts';
-import type {
-    WorkerPoolUnitLease,
-    WorkerPoolWorkDispatcher
-} from './worker-pool-dispatch-state.ts';
+import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
+import type { WorkerPoolUnitLease, WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
 import { createStaticDispatcher } from './worker-pool-static-dispatcher.ts';
 import { createWorkDispatcher } from './worker-pool-work-dispatcher.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
@@ -143,11 +132,11 @@ function assertStaticDispatcherRejectsUnknownUnits(scope: OverkillScope): void {
     }, { message: 'Static worker-pool dispatch cannot requeue an unassigned work unit.' });
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-static-dispatcher.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool static dispatcher requeues assigned units',
             async body(scope: OverkillScope) {
@@ -156,7 +145,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool static dispatcher rejects unknown units',
             body(scope: OverkillScope) {
@@ -167,5 +156,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

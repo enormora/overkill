@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     withMemoryCoverageRecordFixture,
     type CoverageRecordFixture
@@ -118,7 +118,7 @@ function assertReplayPlanSnapshot(scope: TestScope, fixture: CoverageRecordFixtu
     scope.assert.deepEqual<unknown, unknown>(fixture.records.at(-1)?.replayPlan, frozen.replayPlan);
 }
 
-export const testNode = suite('ordinary and reusable recording invocations', [
+export const testNode = authoredSuite('ordinary and reusable recording invocations', [
     test('profile-required recording persists without an explicit request', async function (scope: TestScope) {
         const profile = config.profiles.microtest;
         scope.require.defined(profile);
@@ -237,5 +237,3 @@ export const testNode = suite('ordinary and reusable recording invocations', [
         }
     )
 ]);
-
-await runIfMain(import.meta, testNode);

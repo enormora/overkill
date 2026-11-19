@@ -1,5 +1,7 @@
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { benchmarkSampleFixture } from '../test-support/benchmark-html-fixture.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { availableMetric, unavailableMetric } from '../bench/metric-reading.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
 import type { BenchmarkNormalizationEvidence } from '../engine/benchmark-result.ts';
@@ -80,7 +82,7 @@ function normalization(cost: number): BenchmarkNormalizationEvidence {
         }
     };
 }
-export const testNode = suite('performance observation normalization', [
+export const testNode = authoredSuite('performance observation normalization', [
     test('rejects legacy sample normalization without an explicit budget scale', function (scope: TestScope) {
         const evidence = normalization(10);
         const metric = evidence.metrics.value;

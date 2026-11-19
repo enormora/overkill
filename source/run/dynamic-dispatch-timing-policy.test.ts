@@ -1,6 +1,7 @@
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { placementPlan, fakeWorkerRuntime } from './worker-pool-placement-validation.test.ts';
 import { createDynamicDispatcher } from './worker-pool-dynamic-dispatcher.ts';
 import type { PlacementPlan, PlacementLane } from './run-types.ts';
@@ -135,7 +136,7 @@ function observeDispatchWake(dispatcher: WorkerPoolWorkDispatcher): DispatchWake
         }
     };
 }
-export const testNode = suite('dynamic dispatch hedge timing', [
+export const testNode = authoredSuite('dynamic dispatch hedge timing', [
     test('wakes an idle lane when its hedge delay expires', async function (scope: TestScope) {
         const { clock, dispatcher, lane } = dispatchFixture([]);
         const wake = observeDispatchWake(dispatcher);
@@ -167,4 +168,3 @@ export const testNode = suite('dynamic dispatch hedge timing', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

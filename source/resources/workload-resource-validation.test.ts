@@ -1,4 +1,5 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { workload } from '../packages/bench/bench.entry-point.ts';
 import { snapshotWorkloadInput } from '../engine/workload-input.ts';
 import type { TestScope } from '../packages/engine/engine.entry-point.ts';
@@ -13,7 +14,7 @@ async function rejectedResourceAcquisition(acquire: () => Promise<unknown>): Pro
     }
 }
 
-export const testNode = suite('workload resource validation', [
+export const testNode = authoredSuite('workload resource validation', [
     test('retains readiness and cleanup failures with the same workload context', async function (scope: TestScope) {
         const failures = { ready: new Error('readiness failed'), cleanup: new Error('cleanup failed') };
         const inputs: unknown[] = [];

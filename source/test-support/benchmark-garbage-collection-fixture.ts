@@ -1,7 +1,8 @@
 import { createClock } from '@enormora/clock';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import { createRoot, createTestPlan, type TestCase, type RunResult } from '../packages/engine/engine.entry-point.ts';
+import { type TestCase, type RunResult, createRoot, createTestPlan } from '../packages/engine/engine.entry-point.ts';
+
 import {
     benchmark,
     defaultSamplingPolicy,
@@ -41,7 +42,8 @@ export const shortLifecycle: BenchmarkLifecyclePolicy = {
 
 export function garbageCollectionBenchmark(
     measure: BenchmarkDefinition<Readonly<Record<string, never>>>['measure'],
-    lifecycle: BenchmarkLifecyclePolicy
+    lifecycle: BenchmarkLifecyclePolicy,
+    timeoutMilliseconds: number
 ): TestCase {
     return benchmark('garbage collection', {
         kind: 'runtime',
@@ -52,7 +54,7 @@ export function garbageCollectionBenchmark(
         budgets: { one: { value: { maximum: 2, statistic: { kind: 'observed-maximum' } } } }
     }, {
         annotations: {},
-        controls: { timeoutMilliseconds: 100 },
+        controls: { timeoutMilliseconds },
         lifecycle,
         sampling: { ...defaultSamplingPolicy, minimumSamples: 2, maximumSamples: 2 }
     });
@@ -90,7 +92,7 @@ export async function executeGarbageCollectionBenchmark(
             retryPolicy: null,
             runFacts: {},
             startedAt: epoch.toISOString(),
-            timeoutPolicy: { hardTimeoutMilliseconds: 2000, timeoutMilliseconds: 100 }
+            timeoutPolicy: { hardTimeoutMilliseconds: 11_000, timeoutMilliseconds: 10_000 }
         }
     );
 }

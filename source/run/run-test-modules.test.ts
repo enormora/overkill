@@ -1,10 +1,6 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestNode,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import type { TestNode } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import type { DiscoveredRunFile } from './run-types.ts';
@@ -56,101 +52,81 @@ function createVirtualRunTestModuleLoader(modules: Readonly<Record<string, unkno
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-test-modules.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunTestModules() imports named testNode exports for the selected engine',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const loadRunTestModules = createVirtualRunTestModuleLoader({
-                    [`virtual:${passingFixturePath}`]: { testNode: createPassingTestNode('passes') },
-                    [`virtual:${duplicateFixturePath}`]: { testNode: createPassingTestNode('duplicate') }
-                });
-                const testFiles = await loadRunTestModules([
-                    discoveredFile(passingFixturePath),
-                    discoveredFile(duplicateFixturePath)
-                ], defaultRunEngine);
+export const testNode = suite('source/run/run-test-modules.test.ts', [
+    test(
+        'loadRunTestModules() imports named testNode exports for the selected engine',
+        async function (scope: OverkillScope) {
+            const loadRunTestModules = createVirtualRunTestModuleLoader({
+                [`virtual:${passingFixturePath}`]: { testNode: createPassingTestNode('passes') },
+                [`virtual:${duplicateFixturePath}`]: { testNode: createPassingTestNode('duplicate') }
+            });
+            const testFiles = await loadRunTestModules([
+                discoveredFile(passingFixturePath),
+                discoveredFile(duplicateFixturePath)
+            ], defaultRunEngine);
 
-                scope.assert.deepEqual(
-                    testFiles.map(function toFile(testFile) {
-                        return testFile.file;
-                    }),
-                    [ passingFixturePath, duplicateFixturePath ]
-                );
-                scope.assert.equal(
-                    testFiles.every(function isOwned(testFile) {
-                        return defaultRunEngine.ownsTestNode(testFile.testNode);
-                    }),
-                    true
-                );
+            scope.assert.deepEqual(
+                testFiles.map(function toFile(testFile) {
+                    return testFile.file;
+                }),
+                [ passingFixturePath, duplicateFixturePath ]
+            );
+            scope.assert.equal(
+                testFiles.every(function isOwned(testFile) {
+                    return defaultRunEngine.ownsTestNode(testFile.testNode);
+                }),
+                true
+            );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunTestModules() rejects missing and foreign testNode exports',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const loadRunTestModules = createVirtualRunTestModuleLoader({
-                    [`virtual:${missingTestNodeFixturePath}`]: {},
-                    [`virtual:${plainTestNodeFixturePath}`]: { testNode: {} },
-                    [`virtual:${passingFixturePath}`]: { testNode: createPassingTestNode('passes') }
-                });
+            return scope.assert.collect();
+        }
+    ),
+    test('loadRunTestModules() rejects missing and foreign testNode exports', async function (scope: OverkillScope) {
+        const loadRunTestModules = createVirtualRunTestModuleLoader({
+            [`virtual:${missingTestNodeFixturePath}`]: {},
+            [`virtual:${plainTestNodeFixturePath}`]: { testNode: {} },
+            [`virtual:${passingFixturePath}`]: { testNode: createPassingTestNode('passes') }
+        });
 
-                await scope.assert.rejects(async function loadMissingExport() {
-                    await loadRunTestModules([ discoveredFile(missingTestNodeFixturePath) ], defaultRunEngine);
-                }, { message: `Test module must export testNode: ${missingTestNodeFixturePath}` });
-                await scope.assert.rejects(async function loadPlainExport() {
-                    await loadRunTestModules([ discoveredFile(plainTestNodeFixturePath) ], defaultRunEngine);
-                }, {
-                    message: `Test module testNode must be created by the selected engine: ${plainTestNodeFixturePath}`
-                });
-                await scope.assert.rejects(async function loadForeignEngineExport() {
-                    await loadRunTestModules([ discoveredFile(passingFixturePath) ], createTestEngine());
-                }, { message: `Test module testNode must be created by the selected engine: ${passingFixturePath}` });
+        await scope.assert.rejects(async function loadMissingExport() {
+            await loadRunTestModules([ discoveredFile(missingTestNodeFixturePath) ], defaultRunEngine);
+        }, { message: `Test module must export testNode: ${missingTestNodeFixturePath}` });
+        await scope.assert.rejects(async function loadPlainExport() {
+            await loadRunTestModules([ discoveredFile(plainTestNodeFixturePath) ], defaultRunEngine);
+        }, {
+            message: `Test module testNode must be created by the selected engine: ${plainTestNodeFixturePath}`
+        });
+        await scope.assert.rejects(async function loadForeignEngineExport() {
+            await loadRunTestModules([ discoveredFile(passingFixturePath) ], createTestEngine());
+        }, { message: `Test module testNode must be created by the selected engine: ${passingFixturePath}` });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunTestModules() reports module import failures as collection errors',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const loadRunTestModules = createVirtualRunTestModuleLoader({});
+        return scope.assert.collect();
+    }),
+    test(
+        'loadRunTestModules() reports module import failures as collection errors',
+        async function (scope: OverkillScope) {
+            const loadRunTestModules = createVirtualRunTestModuleLoader({});
 
-                try {
-                    await loadRunTestModules([ discoveredFile(throwsOnImportFixturePath) ], defaultRunEngine);
-                    scope.assert.fail({ message: 'Expected module import to fail.' });
-                } catch (error: unknown) {
-                    if (!(error instanceof RunCollectionError)) {
-                        throw error;
-                    }
-
-                    scope.assert.deepEqual(error.runnerError(), {
-                        attributedToAttempt: null,
-                        attributedTo: null,
-                        attributedToWork: null,
-                        cause: error.cause,
-                        diagnostics: [],
-                        message: `Failed to load test module: ${throwsOnImportFixturePath}`,
-                        subtype: 'loader'
-                    });
+            try {
+                await loadRunTestModules([ discoveredFile(throwsOnImportFixturePath) ], defaultRunEngine);
+                scope.assert.fail({ message: 'Expected module import to fail.' });
+            } catch (error: unknown) {
+                if (!(error instanceof RunCollectionError)) {
+                    throw error;
                 }
 
-                return scope.assert.collect();
+                scope.assert.deepEqual(error.runnerError(), {
+                    attributedToAttempt: null,
+                    attributedTo: null,
+                    attributedToWork: null,
+                    cause: error.cause,
+                    diagnostics: [],
+                    message: `Failed to load test module: ${throwsOnImportFixturePath}`,
+                    subtype: 'loader'
+                });
             }
-        })
-    ]
-});
 
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

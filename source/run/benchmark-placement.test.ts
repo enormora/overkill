@@ -1,4 +1,5 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     benchmarkPlacementFactsSchema,
     type BenchmarkHostAssessment,
@@ -22,7 +23,7 @@ function withSignals(signals: Partial<BenchmarkHostSnapshot['signals']>): Benchm
     return { ...host, snapshot: { ...host.snapshot, signals: { ...host.snapshot.signals, ...signals } } };
 }
 
-export const testNode = suite('adaptive benchmark placement policy', [
+export const testNode = authoredSuite('adaptive benchmark placement policy', [
     test('trusts artifact-size returns and does not treat async mode as capacity evidence', function (scope) {
         for (const mode of [ 'sync', 'async' ] as const) {
             const facts = resolveBenchmarkPlacement({

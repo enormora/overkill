@@ -1,9 +1,8 @@
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { test, suite } from '@overkill-dev/test';
+
 import {
-    createSuite,
-    createTestCase,
     defineReporter,
     type TestScope,
     type RunResult,
@@ -171,60 +170,54 @@ async function assertCrashEvidence(scope: TestScope, execution: IntegrationExecu
     scope.assert.deepEqual(artifact.payload.content.completion, { kind: 'incomplete', reason: 'interrupted' });
 }
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'source/integration-tests/run/runner-attachments.test.ts',
-    children: [
-        ...executions.map(function executionTest(execution, index) {
-            return createTestCase({
-                ...metadata,
-                title: `retains attachments through execution boundary ${index}`,
-                async body(scope: TestScope) {
-                    const runtimeStateDir = `target/attachment-integration-${index}`;
-                    const { events, result } = await runAttachmentFixture(execution, runtimeStateDir, fixture);
-                    scope.assert.equal(result.status, 'passed', { message: JSON.stringify(result.runnerErrors) });
-                    const artifacts = result.artifacts.filter(function runtimeArtifact(artifact) {
-                        return artifact.payload.kind === 'runtime-attachment';
-                    });
-                    assertReportedAttachments(scope, artifacts, events);
-                    await assertAttemptArtifacts(scope, artifacts);
-                    await assertRecordExists(scope, runtimeStateDir);
-                    return scope.assert.collect();
-                }
-            });
-        }),
-        ...executions.map(function failureExecutionTest(execution, index) {
-            return createTestCase({
-                ...metadata,
-                title: `captures failed integration resource evidence through boundary ${index}`,
-                async body(scope: TestScope) {
-                    const { result } = await runAttachmentFixture(
-                        execution,
-                        `target/failure-artifact-integration-${index}`,
-                        failureFixture
-                    );
-                    scope.assert.equal(result.status, 'failed');
-                    scope.assert.deepEqual(result.runnerErrors, []);
-                    const artifacts = result.artifacts.filter(function evidenceArtifact(artifact) {
-                        return artifact.payload.kind === 'runtime-attachment';
-                    });
-                    scope.assert.equal(artifacts.length, 6, { message: JSON.stringify(result) });
-                    await assertFailureEvidence(scope, artifacts);
-                    return scope.assert.collect();
-                }
-            });
-        }),
-        ...executions.map(function crashExecutionTest(execution, index) {
-            return createTestCase({
-                ...metadata,
-                title: `retains checkpointed HTTP prefixes after owner crash through boundary ${index}`,
-                async body(scope: TestScope) {
-                    await assertCrashEvidence(scope, execution, index);
-                    return scope.assert.collect();
-                }
-            });
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/integration-tests/run/runner-attachments.test.ts', [
+    ...executions.map(function executionTest(execution, index) {
+        return test({
+            ...metadata,
+            title: `retains attachments through execution boundary ${index}`,
+            async body(scope: TestScope) {
+                const runtimeStateDir = `target/attachment-integration-${index}`;
+                const { events, result } = await runAttachmentFixture(execution, runtimeStateDir, fixture);
+                scope.assert.equal(result.status, 'passed', { message: JSON.stringify(result.runnerErrors) });
+                const artifacts = result.artifacts.filter(function runtimeArtifact(artifact) {
+                    return artifact.payload.kind === 'runtime-attachment';
+                });
+                assertReportedAttachments(scope, artifacts, events);
+                await assertAttemptArtifacts(scope, artifacts);
+                await assertRecordExists(scope, runtimeStateDir);
+                return scope.assert.collect();
+            }
+        });
+    }),
+    ...executions.map(function failureExecutionTest(execution, index) {
+        return test({
+            ...metadata,
+            title: `captures failed integration resource evidence through boundary ${index}`,
+            async body(scope: TestScope) {
+                const { result } = await runAttachmentFixture(
+                    execution,
+                    `target/failure-artifact-integration-${index}`,
+                    failureFixture
+                );
+                scope.assert.equal(result.status, 'failed');
+                scope.assert.deepEqual(result.runnerErrors, []);
+                const artifacts = result.artifacts.filter(function evidenceArtifact(artifact) {
+                    return artifact.payload.kind === 'runtime-attachment';
+                });
+                scope.assert.equal(artifacts.length, 6, { message: JSON.stringify(result) });
+                await assertFailureEvidence(scope, artifacts);
+                return scope.assert.collect();
+            }
+        });
+    }),
+    ...executions.map(function crashExecutionTest(execution, index) {
+        return test({
+            ...metadata,
+            title: `retains checkpointed HTTP prefixes after owner crash through boundary ${index}`,
+            async body(scope: TestScope) {
+                await assertCrashEvidence(scope, execution, index);
+                return scope.assert.collect();
+            }
+        });
+    })
+]);

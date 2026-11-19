@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { normalizeConfig } from '../config/config.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -53,7 +54,7 @@ function metadataFacts(command: RunCommand): ResolvedRun['facts'] {
         workerCount: { hostMaximum: 4, profileMaximum: null, requested: null, resolved: 2 }
     });
 }
-export const testNode = suite('benchmark reporting context', [
+export const testNode = authoredSuite('benchmark reporting context', [
     test('reads canonical process facts without creating metadata attachments', function (scope: TestScope) {
         for (const model of [ 'supervised-process', 'worker-pool' ] as const) {
             const facts = metadataFacts(metadataCommand(model));

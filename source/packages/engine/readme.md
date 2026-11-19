@@ -43,8 +43,9 @@ Top-level API:
 - `TestAnnotations`, `TestAnnotationsInput`, `TestControls`, `TestControlsInput`
 - `TestFamilyId`, `CaptureMode`
 
-The top-level constructors share one default engine instance, including
-installed package copies in the same process. Use
+The top-level constructors share one default engine instance across compatible
+execution protocols, including installed package copies in the same process.
+Different protocol versions retain shared node ownership. Use
 `createEngine()` when a collection needs isolated construction state for
 `defined` counts and orphan detection.
 

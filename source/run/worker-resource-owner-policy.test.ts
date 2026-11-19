@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { workerResourceOwner } from '../test-support/worker-resource-owner.ts';
 import {
     completeWorkerPoolResourceMembers,
@@ -7,25 +7,28 @@ import {
     workerPoolProjectedResourcesForWork
 } from './worker-pool-resource-lifecycle-execution.ts';
 
-export const testNode = suite('worker resource owner acknowledgements', [
+export const testNode = authoredSuite('worker resource owner acknowledgements', [
     ...[ { runnerErrors: [] }, null, new Error('owner disconnected') ].map(function (output, index) {
-        return test(`settles owner completion response ${index} exactly once`, async function (scope: TestScope) {
-            const fixture = await workerResourceOwner(output);
-            scope.cleanup(fixture.runtime.pool.destroy);
-            await completeWorkerPoolResourceMembers(fixture.runtime, fixture.lifecycle, fixture.members);
-            await completeWorkerPoolResourceMembers(fixture.runtime, fixture.lifecycle, fixture.members);
-            scope.assert.deepEqual(fixture.calls, [ 'acquire-run-resources', 'complete-resource-owner-work' ]);
-            scope.assert.equal(fixture.runtime.terminalFailure.read(), index !== 0);
-            scope.assert.deepEqual(
-                fixture.runtime.runState.runnerErrors().map(function (error) {
-                    return error.message;
-                }),
-                index === 0 ? [] : [ 'Worker-pool resource owner completion failed.' ]
-            );
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `settles owner completion response ${index} exactly once`,
+            async function (scope: TestScope) {
+                const fixture = await workerResourceOwner(output);
+                scope.cleanup(fixture.runtime.pool.destroy);
+                await completeWorkerPoolResourceMembers(fixture.runtime, fixture.lifecycle, fixture.members);
+                await completeWorkerPoolResourceMembers(fixture.runtime, fixture.lifecycle, fixture.members);
+                scope.assert.deepEqual(fixture.calls, [ 'acquire-run-resources', 'complete-resource-owner-work' ]);
+                scope.assert.equal(fixture.runtime.terminalFailure.read(), index !== 0);
+                scope.assert.deepEqual(
+                    fixture.runtime.runState.runnerErrors().map(function (error) {
+                        return error.message;
+                    }),
+                    index === 0 ? [] : [ 'Worker-pool resource owner completion failed.' ]
+                );
+                return scope.assert.collect();
+            }
+        );
     }),
-    test('disposes an infrastructure owner after successful completion', async function (scope: TestScope) {
+    authoredTest('disposes an infrastructure owner after successful completion', async function (scope: TestScope) {
         const fixture = await workerResourceOwner({ runnerErrors: [] });
         scope.cleanup(fixture.runtime.pool.destroy);
         await completeWorkerPoolResourceMembers(fixture.runtime, fixture.lifecycle, fixture.members);
@@ -38,7 +41,7 @@ export const testNode = suite('worker resource owner acknowledgements', [
         scope.assert.deepEqual(fixture.runtime.runState.runnerErrors(), []);
         return scope.assert.collect();
     }),
-    test('projects only the boundaries required by assigned work', async function (scope: TestScope) {
+    authoredTest('projects only the boundaries required by assigned work', async function (scope: TestScope) {
         const fixture = await workerResourceOwner({ runnerErrors: [] });
         scope.cleanup(fixture.runtime.pool.destroy);
         const work = fixture.members.flatMap(function (member) {
@@ -51,4 +54,3 @@ export const testNode = suite('worker resource owner acknowledgements', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

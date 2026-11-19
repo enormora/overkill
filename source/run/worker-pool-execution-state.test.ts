@@ -1,4 +1,5 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
     crashLimitMessage,
     testCaseMetadata,
@@ -12,11 +13,6 @@ import {
     createTaskRun
 } from '../test-support/worker-pool-execution-state.ts';
 
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
 import { testNode as failurePolicy } from './worker-execution-failure-policy.test.ts';
 
 import { createSupervisedRunState } from './supervised-run-state.ts';
@@ -119,12 +115,12 @@ function assertSharedExhaustion(scope: OverkillScope, runtime: WorkerPoolRunRunt
     );
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-execution-state.test.ts',
     children: [
         failurePolicy,
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool execution stops after repeated invalid worker outputs',
             async body(scope: OverkillScope) {
@@ -142,7 +138,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool process usage tracking stops active tasks on pool budget breach',
             async body(scope: OverkillScope) {
@@ -161,5 +157,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

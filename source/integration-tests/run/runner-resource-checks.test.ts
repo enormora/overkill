@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../../packages/test/test.entry-point.ts';
+import { test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import type { IntegrationExecution } from '../../config/types.ts';
 import {
@@ -27,7 +27,7 @@ const executions: readonly IntegrationExecution[] = [
     { ...worker, hostProcess: { kind: 'child', nodeArguments: [] } },
     { ...worker, workerLifecycle: 'fresh-worker-per-unit' }
 ];
-export const testNode = suite(
+export const testNode = authoredSuite(
     'runner resource check outcomes',
     executions.map(function executionMode(execution, index) {
         return test(
@@ -94,4 +94,3 @@ export const testNode = suite(
         );
     })
 );
-await runIfMain(import.meta, testNode);

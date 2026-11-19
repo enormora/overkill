@@ -1,6 +1,6 @@
 import { mkdtemp, readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { suite, test as authoredTest } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../../config/history-policy.ts';
 import {
@@ -16,8 +16,6 @@ import {
 import {
     defaultFailureArtifactPolicy,
     createPlainOutputRenderer,
-    createSuite,
-    createTestCase,
     type CoverageArtifact,
     type CoverageRunnerError,
     type RunResult,
@@ -346,114 +344,75 @@ async function assertCoverageThresholdFailure(scope: TestScope): Promise<void> {
     );
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/integration-tests/run/runner-coverage.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'resolution writes no record and ordinary runs retain compact outcomes',
+export const testNode = suite('source/integration-tests/run/runner-coverage.test.ts', [
+    authoredTest('resolution writes no record and ordinary runs retain compact outcomes', async function (scope) {
+        await assertCompactRunWithoutCoverage(scope);
+        return scope.assert.collect();
+    }),
+    ...[ 'in-process', 'supervised-process' ].map(function serialCoverageTest(processModel) {
+        return authoredTest({
+            title: `${processModel} serial coverage preserves scheduling in its record`,
             annotations: {},
             controls: {},
             async body(scope) {
-                await assertCompactRunWithoutCoverage(scope);
+                await assertCoverageRun(
+                    scope,
+                    processModel === 'in-process' ? 'in-process' : 'supervised-process',
+                    'serial'
+                );
                 return scope.assert.collect();
             }
-        }),
-        ...[ 'in-process', 'supervised-process' ].map(function serialCoverageTest(processModel) {
-            return createTestCase({
-                definitionLocations: [ { kind: 'unknown' } ],
-                title: `${processModel} serial coverage preserves scheduling in its record`,
-                annotations: {},
-                controls: {},
-                async body(scope) {
-                    await assertCoverageRun(
-                        scope,
-                        processModel === 'in-process' ? 'in-process' : 'supervised-process',
-                        'serial'
-                    );
-                    return scope.assert.collect();
+        });
+    }),
+    authoredTest('coverage threshold misses fail the run and retain the artifact', async function (scope) {
+        await assertCoverageThresholdFailure(scope);
+
+        return scope.assert.collect();
+    }),
+    authoredTest('in-process microtests emit native coverage artifacts', async function (scope) {
+        await assertCoverageRun(scope, 'in-process', 'concurrent');
+
+        return scope.assert.collect();
+    }),
+    authoredTest(
+        'crashed supervised runs retain raw storage without publishing a coverage artifact',
+        async function (scope) {
+            await assertCrashedCoverageRun(scope);
+
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('supervised microtests emit native coverage artifacts', async function (scope) {
+        await assertCoverageRun(scope, 'supervised-process', 'concurrent');
+
+        return scope.assert.collect();
+    }),
+    authoredTest(
+        'all-files reporting includes unloaded runtime source and omits type-only modules',
+        async function (scope) {
+            const artifact = await assertCoverageRun(scope, 'in-process', 'concurrent');
+            const coverageDirectory = path.join(path.resolve(artifact.payload.directory), 'all-files');
+
+            await generateCoverageReports({
+                coverageDirectory,
+                outputs: [ 'lcov' ],
+                projectRoot: process.cwd(),
+                rawDataDirectory: path.resolve(artifact.payload.rawDataDirectory),
+                sourceScope: {
+                    exclude: [ '**/*.test.ts' ],
+                    excludedFiles: new Set([ path.resolve(coverageFixturePath) ]),
+                    include: [ 'source/integration-tests/run/fixtures/coverage-*.ts' ],
+                    mode: 'all'
                 }
             });
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'coverage threshold misses fail the run and retain the artifact',
-            annotations: {},
-            controls: {},
-            async body(scope) {
-                await assertCoverageThresholdFailure(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'in-process microtests emit native coverage artifacts',
-            annotations: {},
-            controls: {},
-            async body(scope) {
-                await assertCoverageRun(scope, 'in-process', 'concurrent');
+            const lcov = await readFile(path.join(coverageDirectory, 'lcov.info'), 'utf8');
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'crashed supervised runs retain raw storage without publishing a coverage artifact',
-            annotations: {},
-            controls: {},
-            async body(scope) {
-                await assertCrashedCoverageRun(scope);
+            scope.assert.true(lcov.includes('coverage-unloaded.ts'));
+            scope.assert.false(lcov.includes('coverage-types.ts'));
+            await loadCoverageFixtures();
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'supervised microtests emit native coverage artifacts',
-            annotations: {},
-            controls: {},
-            async body(scope) {
-                await assertCoverageRun(scope, 'supervised-process', 'concurrent');
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'all-files reporting includes unloaded runtime source and omits type-only modules',
-            annotations: {},
-            controls: {},
-            async body(scope) {
-                const artifact = await assertCoverageRun(scope, 'in-process', 'concurrent');
-                const coverageDirectory = path.join(path.resolve(artifact.payload.directory), 'all-files');
-
-                await generateCoverageReports({
-                    coverageDirectory,
-                    outputs: [ 'lcov' ],
-                    projectRoot: process.cwd(),
-                    rawDataDirectory: path.resolve(artifact.payload.rawDataDirectory),
-                    sourceScope: {
-                        exclude: [ '**/*.test.ts' ],
-                        excludedFiles: new Set([ path.resolve(coverageFixturePath) ]),
-                        include: [ 'source/integration-tests/run/fixtures/coverage-*.ts' ],
-                        mode: 'all'
-                    }
-                });
-
-                const lcov = await readFile(path.join(coverageDirectory, 'lcov.info'), 'utf8');
-
-                scope.assert.true(lcov.includes('coverage-unloaded.ts'));
-                scope.assert.false(lcov.includes('coverage-types.ts'));
-                await loadCoverageFixtures();
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

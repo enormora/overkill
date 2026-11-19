@@ -1,4 +1,5 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { defineConfigTests, type ConfigFileExpectation } from '../packages/eslint-test/eslint-test.entry-point.ts';
 import { configDefinition, executeConfigNode } from '../test-support/eslint-config.ts';
 
@@ -9,7 +10,7 @@ const included: ConfigFileExpectation = {
     languageOptions: {},
     settings: {}
 };
-export const testNode = suite('effective config checks', [
+export const testNode = authoredSuite('effective config checks', [
     test('resolves matching, ignores, severity aliases and ordered overrides', async function (scope) {
         const definitions = defineConfigTests({
             ...configDefinition([

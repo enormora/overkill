@@ -1,22 +1,19 @@
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import {
     attachTestBodyResourceAttachments,
-    createRoot,
-    createSuite,
-    createTestCase,
-    createTestPlan,
     type TestBodyResourceAttachments,
     type TestPlan,
-    type TestScope
+    type TestScope,
+    createRoot,
+    createTestCase,
+    createTestPlan
 } from '../packages/engine/engine.entry-point.ts';
+
 import { expandRuntimeMatrices } from '../engine/runtime-matrix-expansion.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import type { RunFilter } from './run-request-types.ts';
-import {
-    runtime,
-    runtimeDimension,
-    runtimeVariant
-} from './run-selection-filters.ts';
+import { runtime, runtimeDimension, runtimeVariant } from './run-selection-filters.ts';
 import { selectedCollectedRunPlan, selectedTestPlan } from './run-selection.ts';
 
 function runtimeMatrixAttachments(): TestBodyResourceAttachments {
@@ -108,31 +105,17 @@ function assertSelectedVariants(
     scope.assert.deepEqual(selectedCollectedRuntimeVariants(plan, filter), expectedVariants);
 }
 
-export const testNode = createSuite({
-    annotations: {},
-    children: [
-        createTestCase({
-            annotations: {},
-            body(scope: TestScope) {
-                const plan = expandedRuntimePlan();
+export const testNode = suite('source/run/run-runtime-selection.test.ts', [
+    test('runtime filters select expanded plans by public identity', function (scope: TestScope) {
+        const plan = expandedRuntimePlan();
 
-                assertSelectedVariants(scope, plan, runtime('browser'), [ 'chromium', 'firefox' ]);
-                assertSelectedVariants(scope, plan, runtimeVariant('browser', 'chromium'), [ 'chromium' ]);
-                assertSelectedVariants(scope, plan, runtimeDimension('browser', 'engine', 'firefox'), [ 'firefox' ]);
-                scope.assert.throws(function selectInnerRuntimeName() {
-                    selectedTestPlan(plan, { filter: runtime('chromium-inner'), kind: 'filter' });
-                }, { message: 'Run selection matched no test cases.' });
+        assertSelectedVariants(scope, plan, runtime('browser'), [ 'chromium', 'firefox' ]);
+        assertSelectedVariants(scope, plan, runtimeVariant('browser', 'chromium'), [ 'chromium' ]);
+        assertSelectedVariants(scope, plan, runtimeDimension('browser', 'engine', 'firefox'), [ 'firefox' ]);
+        scope.assert.throws(function selectInnerRuntimeName() {
+            selectedTestPlan(plan, { filter: runtime('chromium-inner'), kind: 'filter' });
+        }, { message: 'Run selection matched no test cases.' });
 
-                return scope.assert.collect();
-            },
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'runtime filters select expanded plans by public identity'
-        })
-    ],
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/run-runtime-selection.test.ts'
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

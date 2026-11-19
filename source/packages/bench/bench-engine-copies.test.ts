@@ -1,13 +1,15 @@
 import { extname } from 'node:path';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import {
     createEngine,
-    createRoot,
-    createTestPlan,
     type Engine,
     type TestBody,
-    type TestScope
+    type TestScope,
+    createRoot,
+    createTestPlan
 } from '../engine/engine.entry-point.ts';
-import { suite, test } from '../test/test.entry-point.ts';
+
+import { test } from '../test/test.entry-point.ts';
 import { benchmark, wallClockMeasurement, workload } from './bench.entry-point.ts';
 
 type NodeAuthoringEngine = Pick<Engine, 'createRoot' | 'createTestCase' | 'createTestPlan'>;
@@ -37,8 +39,8 @@ function passingBody(scope: TestScope): ReturnType<TestBody> {
     return scope.assert.collect();
 }
 
-export const testNode = suite('source/packages/bench/bench-engine-copies.test.ts', [
-    test('default engine copies share benchmark ownership and workload planning', async function (scope) {
+export const testNode = authoredSuite('source/packages/bench/bench-engine-copies.test.ts', [
+    authoredTest('default engine copies share benchmark ownership and workload planning', async function (scope) {
         const alternate = await anotherDefaultEngineCopy();
         const node = benchmark('owned benchmark', {
             kind: 'runtime',
@@ -61,7 +63,7 @@ export const testNode = suite('source/packages/bench/bench-engine-copies.test.ts
         scope.assert.equal(plan.cases[1]?.workId.workload?.name, 'two');
         return scope.assert.collect();
     }),
-    test('default engine copies share definition counts and orphan detection', async function (scope) {
+    authoredTest('default engine copies share definition counts and orphan detection', async function (scope) {
         const alternate = await anotherDefaultEngineCopy();
         const baseline = test('baseline', passingBody);
         const root = createRoot({ annotations: {}, children: [ baseline ], controls: {}, title: 'root' });

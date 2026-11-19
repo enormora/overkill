@@ -1,16 +1,8 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope,
-    type WorkId
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import type { WorkId } from '../packages/engine/engine.entry-point.ts';
 import type { ResourceScope } from '../resources/resources.ts';
-import {
-    createCollectedPlan,
-    fakeWorkerRuntime,
-    createTaskRun
-} from '../test-support/worker-pool-execution-state.ts';
+import { createCollectedPlan, fakeWorkerRuntime, createTaskRun } from '../test-support/worker-pool-execution-state.ts';
 import { createResourceOwnershipPlan } from './execution-plan-resolution.ts';
 import {
     acquireWorkerPoolResourceLifecycle,
@@ -285,13 +277,13 @@ async function assertPreparationReply(scope: OverkillScope, output: unknown, own
     scope.assert.deepEqual(calls, ownsResources ? [ 'prepare-resource-artifacts' ] : []);
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-resource-lifecycle-execution.test.ts',
     children: [
         ...[ { runnerErrors: [] }, null, new Error('owner disconnected') ].map(
             function ownerPreparation(output, index) {
-                return createOverkillTestCase({
+                return test({
                     ...testCaseMetadata,
                     title: `resource preparation replies preserve request identity: ${index}`,
                     async body(scope: OverkillScope) {
@@ -301,7 +293,7 @@ export const testNode = createOverkillSuite({
                 });
             }
         ),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'preparation without an external owner replies without scheduling a task',
             async body(scope: OverkillScope) {
@@ -309,7 +301,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool per-run resources acquire through the owner lane',
             async body(scope: OverkillScope) {
@@ -318,7 +310,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool per-run resource acquisition rejects invalid worker output',
             async body(scope: OverkillScope) {
@@ -327,7 +319,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool lane resources dispose each lane lifecycle',
             async body(scope: OverkillScope) {
@@ -336,7 +328,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool run resource disposal records runner errors',
             async body(scope: OverkillScope) {
@@ -347,5 +339,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

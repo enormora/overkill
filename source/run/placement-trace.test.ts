@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createPlacementTraceRecorder } from './placement-trace.ts';
 
 const work = {
@@ -19,11 +15,11 @@ const testCaseMetadata = {
     definitionLocations: [ { kind: 'unknown' as const } ]
 } as const;
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/placement-trace.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'placement trace records a complete immutable attempt lifecycle',
             body(scope: OverkillScope) {
@@ -54,7 +50,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'placement trace validates attempt transitions and explicit recovery',
             body(scope: OverkillScope) {
@@ -76,7 +72,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'placement trace rejects unfinished attempts',
             body(scope: OverkillScope) {
@@ -92,5 +88,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

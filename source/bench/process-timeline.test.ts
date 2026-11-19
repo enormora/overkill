@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { attachmentFixture, attachmentWork, type AttachmentFixture } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
@@ -59,7 +60,7 @@ function helperEvents(fixture: AttachmentFixture): readonly string[] {
         });
 }
 
-export const testNode = suite('process timeline checkpoints', [
+export const testNode = authoredSuite('process timeline checkpoints', [
     test('retains Node telemetry at a ready checkpoint before child shutdown', async function (scope: TestScope) {
         const fixture = await captureProcessTimeline(scope, async function readyCheckpoint(processes) {
             const sample = processes.sample('measured');

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { propertyCorpusPolicySchema } from '../config/property-corpus.ts';
 import { testNode as execution } from './corpus-execution-policy.test.ts';
@@ -12,7 +12,7 @@ const now = '2026-11-02T00:00:00.000Z';
 const previous = '2026-11-01T00:00:00.000Z';
 const recent = { id: 'recent', entry: propertyCorpusEntry, savedAt: now };
 
-export const testNode = suite('property corpus cache policy', [
+export const testNode = authoredSuite('property corpus cache policy', [
     execution,
     operations,
     storage,
@@ -60,4 +60,3 @@ export const testNode = suite('property corpus cache policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

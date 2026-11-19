@@ -1,4 +1,5 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
     passingFixturePath,
     expectedRunEnvironment,
@@ -6,19 +7,10 @@ import {
     expectedPassingFixtureLiveCaseFact
 } from '../test-support/run-facts-expectations.ts';
 
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
-import {
-    defaultMicrotestProfile,
-    defaultRunConfig,
-    defaultRunRequest
-} from '../test-support/run-command-factory.ts';
+import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import type { NormalizedConfig } from '../config/types.ts';
 import { testNode as runCollectionErrorReportingTestNode } from './run-collection-error-reporting.test.ts';
 import { RunResolutionError } from './run-errors.ts';
@@ -54,13 +46,11 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
     };
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
+export const testNode = suite({
     title: 'source/run/run.test.ts',
     ...emptyTestData,
     children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'orchestrator.resolve() rejects live capture for microtest profiles',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -81,8 +71,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'orchestrator.resolve() rejects worker counts for non-worker-pool profiles',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -103,8 +92,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'orchestrator.resolve() rejects capture controls for microtest profiles',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -124,8 +112,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'orchestrator.resolve() returns frozen run facts for explicit paths',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -207,8 +194,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'orchestrator.resolve() generates a seed when the request does not provide one',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -228,8 +214,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'orchestrator.resolve() rejects empty input without profile file discovery',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -252,8 +237,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'orchestrator.resolve() rejects invalid negative seeds',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -276,8 +260,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'orchestrator.resolve() rejects unknown profiles',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -300,8 +283,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'orchestrator.resolve() rejects process budget overrides without measurement',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -330,8 +312,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'orchestrator.run() executes the resolved plan and reports run facts',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -438,8 +419,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'orchestrator.run() executes the supervised process profile in a child process',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -474,8 +454,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'RunResolutionError exposes stable error codes',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -490,5 +469,3 @@ export const testNode = createOverkillSuite({
         runCollectionErrorReportingTestNode
     ]
 });
-
-await runIfMain(import.meta, testNode);

@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { inlineAttachmentFixture, attachmentWork, type AttachmentFixture } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits, type AttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
@@ -70,7 +71,7 @@ function authoredEvents(fixture: AttachmentFixture): readonly BenchmarkTimelineE
     });
 }
 
-export const testNode = suite('benchmark timelines', [
+export const testNode = authoredSuite('benchmark timelines', [
     test('keeps authored operations synchronous and inert without capture', function (scope) {
         sampleTimeline.mark('disabled');
         scope.assert.equal(

@@ -1,23 +1,8 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
-import {
-    createCollectedPlan,
-    fakeWorkerRuntime
-} from '../test-support/worker-pool-execution-state.ts';
-import type {
-    PlacementPlan,
-    WorkUnit
-} from './run-types.ts';
-import {
-    createBatchRunCommand,
-    createRunCommand,
-    firstPlanUnit,
-    placementRunWork
-} from './worker-pool-command.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import { createCollectedPlan, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
+import type { PlacementPlan, WorkUnit } from './run-types.ts';
+import { createBatchRunCommand, createRunCommand, firstPlanUnit, placementRunWork } from './worker-pool-command.ts';
 import type { WorkerPoolLeaseMember } from './worker-pool-dispatch-state.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 
@@ -99,11 +84,11 @@ function leaseMember(unit: WorkUnit): WorkerPoolLeaseMember {
     };
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-command.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'batch commands collect files needed by the complete resource lifecycle',
             body(scope: OverkillScope) {
@@ -124,7 +109,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool command helpers read placement work',
             body(scope: OverkillScope) {
@@ -142,7 +127,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool command helpers build child host batch commands',
             body(scope: OverkillScope) {
@@ -159,7 +144,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool command helpers reject invalid placement inputs',
             body(scope: OverkillScope) {
@@ -181,5 +166,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

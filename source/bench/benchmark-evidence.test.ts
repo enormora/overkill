@@ -1,11 +1,12 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import {
+    type RunResult,
+    type TestCase,
     createRoot,
     createTestPlan,
-    execute,
-    type RunResult,
-    type TestCase
+    execute
 } from '../packages/engine/engine.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { runResultSchema } from '../run/run-result-schema.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { benchmark } from './benchmark-authoring.ts';
@@ -20,7 +21,7 @@ async function runBenchmark(node: TestCase): Promise<RunResult> {
     );
 }
 
-export const testNode = suite('benchmark evidence contracts', [
+export const testNode = authoredSuite('benchmark evidence contracts', [
     test('workload identities retain values beyond diagnostic serialization limits', function (scope) {
         const values = Array.from({ length: 101 }, function () {
             return 1;

@@ -1,13 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { suite, test as authoredTest } from '@overkill-dev/test';
+
 import figures from 'figures';
 import colors from 'yoctocolors';
-import {
-    createSuite,
-    createTestCase,
-    type RunResult,
-    type ReporterEvent,
-    type TestScope
-} from '../packages/engine/engine.entry-point.ts';
+import type { RunResult, ReporterEvent, TestScope } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
 import { resultWithAttemptHistory } from '../engine/test-attempt-history.ts';
@@ -69,95 +64,11 @@ function retryEvent(result: RunResult): TestEndEvent {
     };
 }
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'source/reporters/retry-reporting.test.ts',
-    children: [
-        ...([ 'process-exhausted', 'crashed', 'runtime-policy' ] as const).map(function terminalRetry(verdict) {
-            return createTestCase({
-                ...metadata,
-                title: `dot reporter renders terminal retry ${verdict}`,
-                async body(scope: TestScope) {
-                    let text = '';
-                    const reporter = createDotReporter({
-                        interactive: false,
-                        stdout: {
-                            columns: 80,
-                            on() {
-                                return undefined;
-                            },
-                            off() {
-                                return undefined;
-                            },
-                            write(value) {
-                                text += value;
-                            }
-                        }
-                    })(context);
-                    const event = retryEvent(recoveredResult());
-                    await reporter.onEvent({ ...event, completion: 'final', attempt: 1, outcome: null, verdict });
-                    scope.assert.equal(
-                        text,
-                        verdict === 'runtime-policy' ? colors.cyan('?') : colors.red(figures.warning)
-                    );
-                    return scope.assert.collect();
-                }
-            });
-        }),
-        createTestCase({
+export const testNode = suite('source/reporters/retry-reporting.test.ts', [
+    ...([ 'process-exhausted', 'crashed', 'runtime-policy' ] as const).map(function terminalRetry(verdict) {
+        return authoredTest({
             ...metadata,
-            title: 'brief progress counts a final failure once after an intermediate retry',
-            async body(scope: TestScope) {
-                const reporter = createBriefReporter()(context);
-                const event = retryEvent(recoveredResult());
-                for (let index = 0; index < 99; index += 1) {
-                    await reporter.onEvent({
-                        ...event,
-                        completion: 'final',
-                        outcome: { kind: 'pass' },
-                        verdict: 'pass'
-                    });
-                }
-                await reporter.onEvent(event);
-                const output = await reporter.onEvent({ ...event, completion: 'final', attempt: 1 });
-                scope.require.defined(output);
-                scope.assert.includes(
-                    output
-                        .map(function text(intent) {
-                            return intent.text;
-                        })
-                        .join('\n'),
-                    'progress 100/? failed=1'
-                );
-                scope.assert.equal(output[0]?.annotation?.severity, 'error');
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'brief summary reports recovered retries without failure annotations',
-            async body(scope: TestScope) {
-                const reporter = createBriefReporter()(context);
-                const { onFinish } = reporter;
-                scope.require.defined(onFinish);
-                const output = await onFinish({
-                    context: {
-                        id: null,
-                        startedAt: null,
-                        facts: null
-                    },
-                    result: recoveredResult()
-                });
-                scope.require.defined(output);
-                scope.assert.includes(output[0]?.text ?? '', 'retried=1');
-                scope.assert.includes(output[0]?.text ?? '', 'failed=0');
-                scope.assert.equal(output[0]?.annotation, null);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'dot reporter omits retry marks and reports recovered logical counts',
+            title: `dot reporter renders terminal retry ${verdict}`,
             async body(scope: TestScope) {
                 let text = '';
                 const reporter = createDotReporter({
@@ -175,16 +86,92 @@ export const testNode = createSuite({
                         }
                     }
                 })(context);
-                const result = recoveredResult();
-                await reporter.onEvent(retryEvent(result));
-                scope.assert.equal(text, '');
-                const { onFinish } = reporter;
-                scope.require.defined(onFinish);
-                await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
-                scope.assert.includes(text, '1 executed (1 pass, 0 fail, 0 skip), 1 retried');
+                const event = retryEvent(recoveredResult());
+                await reporter.onEvent({ ...event, completion: 'final', attempt: 1, outcome: null, verdict });
+                scope.assert.equal(
+                    text,
+                    verdict === 'runtime-policy' ? colors.cyan('?') : colors.red(figures.warning)
+                );
                 return scope.assert.collect();
             }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+        });
+    }),
+    authoredTest(
+        'brief progress counts a final failure once after an intermediate retry',
+        async function (scope: TestScope) {
+            const reporter = createBriefReporter()(context);
+            const event = retryEvent(recoveredResult());
+            for (let index = 0; index < 99; index += 1) {
+                await reporter.onEvent({
+                    ...event,
+                    completion: 'final',
+                    outcome: { kind: 'pass' },
+                    verdict: 'pass'
+                });
+            }
+            await reporter.onEvent(event);
+            const output = await reporter.onEvent({ ...event, completion: 'final', attempt: 1 });
+            scope.require.defined(output);
+            scope.assert.includes(
+                output
+                    .map(function text(intent) {
+                        return intent.text;
+                    })
+                    .join('\n'),
+                'progress 100/? failed=1'
+            );
+            scope.assert.equal(output[0]?.annotation?.severity, 'error');
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest(
+        'brief summary reports recovered retries without failure annotations',
+        async function (scope: TestScope) {
+            const reporter = createBriefReporter()(context);
+            const { onFinish } = reporter;
+            scope.require.defined(onFinish);
+            const output = await onFinish({
+                context: {
+                    id: null,
+                    startedAt: null,
+                    facts: null
+                },
+                result: recoveredResult()
+            });
+            scope.require.defined(output);
+            scope.assert.includes(output[0]?.text ?? '', 'retried=1');
+            scope.assert.includes(output[0]?.text ?? '', 'failed=0');
+            scope.assert.equal(output[0]?.annotation, null);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest(
+        'dot reporter omits retry marks and reports recovered logical counts',
+        async function (scope: TestScope) {
+            let text = '';
+            const reporter = createDotReporter({
+                interactive: false,
+                stdout: {
+                    columns: 80,
+                    on() {
+                        return undefined;
+                    },
+                    off() {
+                        return undefined;
+                    },
+                    write(value) {
+                        text += value;
+                    }
+                }
+            })(context);
+            const result = recoveredResult();
+            await reporter.onEvent(retryEvent(result));
+            scope.assert.equal(text, '');
+            const { onFinish } = reporter;
+            scope.require.defined(onFinish);
+            await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
+            scope.assert.includes(text, '1 executed (1 pass, 0 fail, 0 skip), 1 retried');
+            return scope.assert.collect();
+        }
+    )
+]);

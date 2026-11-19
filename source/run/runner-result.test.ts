@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { parseRunnerResult, runnerResult } from './runner-result.ts';
 
-export const testNode = suite('runner maintenance diagnostics', [
+export const testNode = authoredSuite('runner maintenance diagnostics', [
     test('preserves engine verdicts and diagnostic messages', function (scope: TestScope) {
         const result = {
             context: { id: null, startedAt: null, facts: null },
@@ -36,4 +36,3 @@ export const testNode = suite('runner maintenance diagnostics', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { withMemoryCoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
 import { defaultMicrotestProfile, defaultRunConfig } from '../test-support/run-command-factory.ts';
 import { createDeterministicRunTestModuleLoader } from '../test-support/deterministic-run-fixtures.ts';
@@ -45,7 +45,7 @@ function assertReplayedWork(
         record.identities
     );
 }
-export const testNode = suite('public replay execution', [
+export const testNode = authoredSuite('public replay execution', [
     test('restores a recorded selection without invoking current discovery', async function (scope: TestScope) {
         await withMemoryCoverageRecordFixture(config, [], async function recordedProject(fixture) {
             const files = new Map<string, string>();
@@ -111,4 +111,3 @@ export const testNode = suite('public replay execution', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { storedBaseline } from '../test-support/baseline-case-fixture.ts';
 import { memoryOrdinaryBaselines } from '../test-support/memory-ordinary-baselines.ts';
 import { createBaselinePublication } from './baseline-publication.ts';
@@ -7,7 +8,7 @@ import type { OrdinaryBaselineChange } from './baseline-record.ts';
 const first: OrdinaryBaselineChange = { kind: 'create', baseline: storedBaseline };
 const second: OrdinaryBaselineChange = { kind: 'create', baseline: { ...storedBaseline, adapter: 'second' } };
 
-export const testNode = suite('ordinary baseline batch publication', [
+export const testNode = authoredSuite('ordinary baseline batch publication', [
     test(
         'retains completed writes and the original error after a later write fails',
         async function (scope: TestScope) {

@@ -1,38 +1,21 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { safeParse } from '@schema-hub/zod-error-formatter';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+
 import { integrationExecutionSchema } from './schema.ts';
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/config/config-worker-capacity-schema.test.ts',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'integration execution schema rejects invalid worker maximums',
-            body(scope: OverkillScope) {
-                for (const maxWorkers of [ 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1 ]) {
-                    const result = safeParse(integrationExecutionSchema, {
-                        maxWorkers,
-                        processModel: 'worker-pool',
-                        scheduling: 'serial'
-                    });
+export const testNode = suite('source/config/config-worker-capacity-schema.test.ts', [
+    test('integration execution schema rejects invalid worker maximums', function (scope: OverkillScope) {
+        for (const maxWorkers of [ 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1 ]) {
+            const result = safeParse(integrationExecutionSchema, {
+                maxWorkers,
+                processModel: 'worker-pool',
+                scheduling: 'serial'
+            });
 
-                    scope.assert.equal(result.success, false);
-                }
+            scope.assert.equal(result.success, false);
+        }
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

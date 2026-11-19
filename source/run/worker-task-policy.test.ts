@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { workerTaskRuntime } from '../test-support/worker-task-runtime.ts';
 import { testNode as idlePool } from './idle-worker-pool-policy.test.ts';
 import { testNode as supervised } from './supervised-orchestration-policy.test.ts';
@@ -12,7 +12,7 @@ import { runWorkerPoolTask } from './worker-pool-worker.ts';
 function isCollectionOutput(value: unknown): value is WorkerPoolCollection {
     return typeof value === 'object' && value !== null && Object.hasOwn(value, 'collectedPlan');
 }
-export const testNode = suite('worker task dispatch and ownership', [
+export const testNode = authoredSuite('worker task dispatch and ownership', [
     idlePool,
     hostProtocol,
     supervised,
@@ -137,4 +137,3 @@ export const testNode = suite('worker task dispatch and ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

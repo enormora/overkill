@@ -8,8 +8,7 @@
     "references": [],
     "include": [
         "./**/*.ts",
-        "./**/*.json",
-        "../.c8rc.json"
+        "./**/*.json"
     ],
     "exclude": [
         "./reporters/benchmark-html-browser.entry-point.ts"

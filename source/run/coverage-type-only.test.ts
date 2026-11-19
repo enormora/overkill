@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
+import { test, suite } from '@overkill-dev/test';
+
 import { withCoverageSources } from '../test-support/coverage-source-fixture.ts';
 import { generateCoverageReports } from './coverage-reporting.ts';
 
@@ -14,16 +14,12 @@ const typeOnlySources = [
     'export declare const value: number;\n'
 ];
 
-export const testNode = createSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/coverage-type-only.test.ts',
-    children: [ 'all', 'loaded' ].map(function sourceMode(mode) {
-        return createTestCase({
+export const testNode = suite(
+    'source/run/coverage-type-only.test.ts',
+    [ 'all', 'loaded' ].map(function sourceMode(mode) {
+        return test({
             annotations: {},
             controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
             title: `${mode} coverage ignores commented type-only sources and preserves executable imports`,
             async body(scope) {
                 await withCoverageSources([
@@ -53,6 +49,4 @@ export const testNode = createSuite({
             }
         });
     })
-});
-
-await runIfMain(import.meta, testNode);
+);

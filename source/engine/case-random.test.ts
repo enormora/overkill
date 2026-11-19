@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { Hash } from 'node:crypto';
 import { mock } from 'node:test';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { ExecuteExecution, TestRandom } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createTestRandom } from './case-random.ts';
@@ -76,7 +76,7 @@ function randomFromZeroDigest(): TestRandom {
     }
 }
 
-export const testNode = suite('case random streams', [
+export const testNode = authoredSuite('case random streams', [
     scopeTestNode,
     test('recovers from an all-zero hashed generator state', function (scope) {
         const random = randomFromZeroDigest();
@@ -213,5 +213,3 @@ export const testNode = suite('case random streams', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

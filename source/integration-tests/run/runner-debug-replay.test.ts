@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     replayProject,
     replayProfile,
@@ -39,7 +39,7 @@ async function assertReplayRequests(scope: TestScope, source: DebugSourceRun): P
         true
     );
 }
-export const testNode = suite('debug replay activation', [
+export const testNode = authoredSuite('debug replay activation', [
     test('replay clears inherited debug and accepts fresh scoped capture', async function (scope: TestScope) {
         const source = await debugSourceRun(scope);
         const ordinaryReplay = await executeReplayCli(source.project, [ 'replay', source.runId ]);
@@ -59,4 +59,3 @@ export const testNode = suite('debug replay activation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

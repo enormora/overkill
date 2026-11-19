@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { implementationFacts } from '../implementation-reference.ts';
 import { testNode as trialErrors } from './trial-policy-errors.test.ts';
 import { defineBodyReference, type BodyReference } from './body-reference.ts';
@@ -25,7 +25,7 @@ function referencedBody(): BodyReference<number, number> {
         }
     });
 }
-export const testNode = suite('body forwarding and source ownership', [
+export const testNode = authoredSuite('body forwarding and source ownership', [
     trialErrors,
     test('requires admission before executing a referenced body', function (scope: TestScope) {
         const reference = referencedBody();
@@ -83,4 +83,3 @@ export const testNode = suite('body forwarding and source ownership', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

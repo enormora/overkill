@@ -1,10 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { PlacementPlan } from './run-types.ts';
 import { executeWorkerPoolUnits } from './worker-pool-execution.ts';
 import {
@@ -267,11 +263,11 @@ async function completeSplitExecution(execution: ControlledExecution): Promise<r
     return await execution.completed;
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-pending-splitting.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatch runs split children as separate worker tasks',
             async body(scope: OverkillScope) {
@@ -287,7 +283,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatch executes compatible batches as one task',
             async body(scope: OverkillScope) {
@@ -321,5 +317,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { runMatrixTypeProject } from '../../test-support/native-type-project.ts';
 
 const sharedBody = `const nodes=[table({title:'rows',cases:[1,2],test:scope=>{
@@ -24,7 +24,7 @@ Program.prototype.getSemanticDiagnostics=async function readDiagnostics(
     return diagnostics;
 };`;
 
-export const testNode = suite('compiler matrix evidence', [
+export const testNode = authoredSuite('compiler matrix evidence', [
     test('preserves shared table ownership for each compiler', async function (scope) {
         const result = await runMatrixTypeProject(scope, sharedBody);
         scope.assert.equal(result.status, 'passed', { message: result.errors.join('\n') });
@@ -46,5 +46,3 @@ export const testNode = suite('compiler matrix evidence', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

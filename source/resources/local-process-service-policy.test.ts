@@ -1,11 +1,12 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { serializeProjectedHandle, deserializeProjectedHandle } from '../run/resource-lifecycle-projection.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { localProcessService, type ProcessConsumer } from '../test-support/local-process-service.ts';
 import { createLocalProcessServiceResource } from './local-process-service-resource.ts';
 
-export const testNode = suite('local process service ownership', [
-    test('projects per-run process consumer handles without starting an owner', function (scope: TestScope) {
+export const testNode = authoredSuite('local process service ownership', [
+    authoredTest('projects per-run process consumer handles without starting an owner', function (scope: TestScope) {
         const fixture = localProcessService(scope, 'graceful', 'ready');
         const resource = createLocalProcessServiceResource({
             ...fixture.input,
@@ -28,7 +29,7 @@ export const testNode = suite('local process service ownership', [
         return scope.assert.collect();
     }),
     ...([ 'serializeHandle', 'deserializeHandle' ] as const).map(function (missing) {
-        return test(`requires the ${missing} callback for projected processes`, function (scope: TestScope) {
+        return authoredTest(`requires the ${missing} callback for projected processes`, function (scope: TestScope) {
             const fixture = localProcessService(scope, 'graceful', 'ready');
             const input = {
                 ...fixture.input,
@@ -49,33 +50,39 @@ export const testNode = suite('local process service ownership', [
         });
     }),
 
-    test('forwards command settings and exposes captured output to readiness', async function (scope: TestScope) {
-        const fixture = localProcessService(scope, 'graceful', 'ready');
-        const owner = await fixture.definition.start(fixture.context);
-        scope.assert.deepEqual(await fixture.definition.ready(owner, fixture.context), { endpoint: 'ready' });
-        scope.assert.deepEqual(fixture.commands, [ {
-            command: 'service',
-            arguments: [ 'start' ],
-            environment: { MODE: 'test' },
-            workingDirectory: '/project'
-        } ]);
-        scope.assert.equal(owner.output.stdout.text(), 'started');
-        scope.assert.equal(owner.output.stderr.text(), 'diagnostic');
-        await fixture.definition.dispose(owner, fixture.context);
-        scope.assert.deepEqual(fixture.signals, [ 'SIGTERM' ]);
-        return scope.assert.collect();
-    }),
-    test('forces shutdown after the grace budget and waits for process exit', async function (scope: TestScope) {
-        const fixture = localProcessService(scope, 'forced', 'ready');
-        const owner = await fixture.definition.start(fixture.context);
-        await fixture.definition.dispose(owner, fixture.context);
-        await fixture.definition.dispose(owner, fixture.context);
-        scope.assert.deepEqual(fixture.signals, [ 'SIGTERM', 'SIGKILL' ]);
-        scope.assert.equal(fixture.waits[0]?.milliseconds, 50);
-        scope.assert.true(fixture.waits[0]?.signal.aborted);
-        return scope.assert.collect();
-    }),
-    test('does not signal an already exited process', async function (scope: TestScope) {
+    authoredTest(
+        'forwards command settings and exposes captured output to readiness',
+        async function (scope: TestScope) {
+            const fixture = localProcessService(scope, 'graceful', 'ready');
+            const owner = await fixture.definition.start(fixture.context);
+            scope.assert.deepEqual(await fixture.definition.ready(owner, fixture.context), { endpoint: 'ready' });
+            scope.assert.deepEqual(fixture.commands, [ {
+                command: 'service',
+                arguments: [ 'start' ],
+                environment: { MODE: 'test' },
+                workingDirectory: '/project'
+            } ]);
+            scope.assert.equal(owner.output.stdout.text(), 'started');
+            scope.assert.equal(owner.output.stderr.text(), 'diagnostic');
+            await fixture.definition.dispose(owner, fixture.context);
+            scope.assert.deepEqual(fixture.signals, [ 'SIGTERM' ]);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest(
+        'forces shutdown after the grace budget and waits for process exit',
+        async function (scope: TestScope) {
+            const fixture = localProcessService(scope, 'forced', 'ready');
+            const owner = await fixture.definition.start(fixture.context);
+            await fixture.definition.dispose(owner, fixture.context);
+            await fixture.definition.dispose(owner, fixture.context);
+            scope.assert.deepEqual(fixture.signals, [ 'SIGTERM', 'SIGKILL' ]);
+            scope.assert.equal(fixture.waits[0]?.milliseconds, 50);
+            scope.assert.true(fixture.waits[0]?.signal.aborted);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('does not signal an already exited process', async function (scope: TestScope) {
         const fixture = localProcessService(scope, 'graceful', 'ready');
         const owner = await fixture.definition.start(fixture.context);
         fixture.exit(0, null);
@@ -84,17 +91,20 @@ export const testNode = suite('local process service ownership', [
         scope.assert.deepEqual(fixture.waits, []);
         return scope.assert.collect();
     }),
-    test('rejects readiness when the child already exited before observation began', async function (scope: TestScope) {
-        const fixture = localProcessService(scope, 'graceful', 'ready');
-        const owner = await fixture.definition.start(fixture.context);
-        fixture.exit(1, null);
-        await scope.assert.rejects(async function () {
-            await fixture.definition.ready(owner, fixture.context);
-        }, { message: 'Local process service exited before readiness: code 1, signal null.\ndiagnostic' });
-        await fixture.definition.dispose(owner, fixture.context);
-        return scope.assert.collect();
-    }),
-    test('preserves process signalling failures', async function (scope: TestScope) {
+    authoredTest(
+        'rejects readiness when the child already exited before observation began',
+        async function (scope: TestScope) {
+            const fixture = localProcessService(scope, 'graceful', 'ready');
+            const owner = await fixture.definition.start(fixture.context);
+            fixture.exit(1, null);
+            await scope.assert.rejects(async function () {
+                await fixture.definition.ready(owner, fixture.context);
+            }, { message: 'Local process service exited before readiness: code 1, signal null.\ndiagnostic' });
+            await fixture.definition.dispose(owner, fixture.context);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('preserves process signalling failures', async function (scope: TestScope) {
         const fixture = localProcessService(scope, 'throws', 'ready');
         const owner = await fixture.definition.start(fixture.context);
         await scope.assert.rejects(async function () {
@@ -103,7 +113,7 @@ export const testNode = suite('local process service ownership', [
         scope.assert.deepEqual(fixture.signals, [ 'SIGTERM' ]);
         return scope.assert.collect();
     }),
-    test('retains readiness callback failures', async function (scope: TestScope) {
+    authoredTest('retains readiness callback failures', async function (scope: TestScope) {
         const fixture = localProcessService(scope, 'graceful', 'failed');
         const owner = await fixture.definition.start(fixture.context);
         await scope.assert.rejects(async function () {
@@ -112,16 +122,19 @@ export const testNode = suite('local process service ownership', [
         await fixture.definition.dispose(owner, fixture.context);
         return scope.assert.collect();
     }),
-    test('rejects readiness when the process exits and includes stderr evidence', async function (scope: TestScope) {
-        const fixture = localProcessService(scope, 'graceful', 'exit');
-        const owner = await fixture.definition.start(fixture.context);
-        await scope.assert.rejects(async function () {
-            await fixture.definition.ready(owner, fixture.context);
-        }, { message: 'Local process service exited before readiness: code 1, signal null.\ndiagnostic' });
-        await fixture.definition.dispose(owner, fixture.context);
-        return scope.assert.collect();
-    }),
-    test('rejects readiness when the child reports a process error', async function (scope: TestScope) {
+    authoredTest(
+        'rejects readiness when the process exits and includes stderr evidence',
+        async function (scope: TestScope) {
+            const fixture = localProcessService(scope, 'graceful', 'exit');
+            const owner = await fixture.definition.start(fixture.context);
+            await scope.assert.rejects(async function () {
+                await fixture.definition.ready(owner, fixture.context);
+            }, { message: 'Local process service exited before readiness: code 1, signal null.\ndiagnostic' });
+            await fixture.definition.dispose(owner, fixture.context);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('rejects readiness when the child reports a process error', async function (scope: TestScope) {
         const fixture = localProcessService(scope, 'graceful', 'error');
         const owner = await fixture.definition.start(fixture.context);
         await scope.assert.rejects(async function () {
@@ -131,7 +144,7 @@ export const testNode = suite('local process service ownership', [
         return scope.assert.collect();
     }),
     ...[ -1, 1.5, Number.NaN ].map(function (value) {
-        return test(`rejects invalid output and shutdown bounds ${String(value)}`, function (scope: TestScope) {
+        return authoredTest(`rejects invalid output and shutdown bounds ${String(value)}`, function (scope: TestScope) {
             const fixture = localProcessService(scope, 'graceful', 'ready');
             scope.assert.throws(function () {
                 createLocalProcessServiceResource({ ...fixture.input, outputBufferBytes: value });
@@ -146,4 +159,3 @@ export const testNode = suite('local process service ownership', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

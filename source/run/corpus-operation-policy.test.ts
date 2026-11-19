@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import {
     corpusOperations,
     corpusOperationFaults,
@@ -13,8 +13,8 @@ import { loadCorpusEntries } from './corpus-source.ts';
 const first = 'a'.repeat(64);
 const second = 'b'.repeat(64);
 
-export const testNode = suite('fixed corpus operation policy', [
-    test('inspects a witness without creating output', async function (scope: TestScope) {
+export const testNode = authoredSuite('fixed corpus operation policy', [
+    authoredTest('inspects a witness without creating output', async function (scope: TestScope) {
         const fixture = corpusOperations(JSON.stringify(corpusWitness), corpusOperationFaults);
         const result = await fixture.operations.inspect(fixture.request);
         scope.assert.deepEqual(result, {
@@ -30,7 +30,7 @@ export const testNode = suite('fixed corpus operation policy', [
         return scope.assert.collect();
     }),
     ...([ 'promote', 'migrate' ] as const).map(function (verb) {
-        return test(`previews before ${verb} publication`, async function (scope: TestScope) {
+        return authoredTest(`previews before ${verb} publication`, async function (scope: TestScope) {
             const fixture = corpusOperations(JSON.stringify(corpusWitness), corpusOperationFaults);
             const result = await fixture.operations[verb](fixture.request);
             scope.assert.equal(result.destination, '/project/output.json');
@@ -48,20 +48,23 @@ export const testNode = suite('fixed corpus operation policy', [
             return scope.assert.collect();
         });
     }),
-    test('copies previews so a recipient cannot change verified publication', async function (scope: TestScope) {
-        const fixture = corpusOperations(JSON.stringify(corpusWitness), corpusOperationFaults);
-        const result = await fixture.operations.promote({
-            ...fixture.request,
-            async beforeWrite(preview) {
-                Reflect.set(preview.output.witness, 'seed', '999');
-            }
-        });
-        scope.assert.equal(result.entry.witness.seed, corpusWitness.seed);
-        scope.assert.equal(fixture.files.get(result.destination), `${JSON.stringify(corpusWitness, null, 2)}\n`);
-        return scope.assert.collect();
-    }),
+    authoredTest(
+        'copies previews so a recipient cannot change verified publication',
+        async function (scope: TestScope) {
+            const fixture = corpusOperations(JSON.stringify(corpusWitness), corpusOperationFaults);
+            const result = await fixture.operations.promote({
+                ...fixture.request,
+                async beforeWrite(preview) {
+                    Reflect.set(preview.output.witness, 'seed', '999');
+                }
+            });
+            scope.assert.equal(result.entry.witness.seed, corpusWitness.seed);
+            scope.assert.equal(fixture.files.get(result.destination), `${JSON.stringify(corpusWitness, null, 2)}\n`);
+            return scope.assert.collect();
+        }
+    ),
     ...([ 'read', 'inspect', 'preview', 'create' ] as const).map(function (phase) {
-        return test(`preserves ${phase} failures and prevents later work`, async function (scope: TestScope) {
+        return authoredTest(`preserves ${phase} failures and prevents later work`, async function (scope: TestScope) {
             const failure = new Error(phase);
             const fixture = corpusOperations(JSON.stringify(corpusWitness), {
                 ...corpusOperationFaults,
@@ -82,7 +85,7 @@ export const testNode = suite('fixed corpus operation policy', [
             return scope.assert.collect();
         });
     }),
-    test('classifies existing destinations as conflicts', async function (scope: TestScope) {
+    authoredTest('classifies existing destinations as conflicts', async function (scope: TestScope) {
         const fixture = corpusOperations(JSON.stringify(corpusWitness), {
             ...corpusOperationFaults,
             create: Object.assign(new Error('exists'), { code: 'EEXIST' })
@@ -93,7 +96,7 @@ export const testNode = suite('fixed corpus operation policy', [
         scope.assert.equal(fixture.previews.length, 1);
         return scope.assert.collect();
     }),
-    test('rejects publication onto the input path', async function (scope: TestScope) {
+    authoredTest('rejects publication onto the input path', async function (scope: TestScope) {
         const fixture = corpusOperations(JSON.stringify(corpusWitness), corpusOperationFaults);
         await scope.assert.rejects(async function () {
             await fixture.operations.promote({ ...fixture.request, destination: './input.json' });
@@ -102,7 +105,7 @@ export const testNode = suite('fixed corpus operation policy', [
         return scope.assert.collect();
     }),
     ...([ [], [ first ], [ first, second ] ] as const).map(function (ids) {
-        return test(
+        return authoredTest(
             `requires explicit selection when publishing a cache of ${ids.length} entries`,
             async function (scope: TestScope) {
                 const fixture = corpusOperations(corpusIndex(ids), corpusOperationFaults);
@@ -114,7 +117,7 @@ export const testNode = suite('fixed corpus operation policy', [
             }
         );
     }),
-    test('publishes an explicitly selected cache entry', async function (scope: TestScope) {
+    authoredTest('publishes an explicitly selected cache entry', async function (scope: TestScope) {
         const fixture = corpusOperations(corpusIndex([ second, first ]), corpusOperationFaults);
         const result = await fixture.operations.promote({
             ...fixture.request,
@@ -124,7 +127,7 @@ export const testNode = suite('fixed corpus operation policy', [
         scope.assert.equal(fixture.files.size, 1);
         return scope.assert.collect();
     }),
-    test('orders cache entries and retains malformed entry diagnostics', async function (scope: TestScope) {
+    authoredTest('orders cache entries and retains malformed entry diagnostics', async function (scope: TestScope) {
         const content = corpusIndex([ second, first ]);
         const source = corpusSource(content);
         const result = await loadCorpusEntries(corpusRequest, {
@@ -146,7 +149,7 @@ export const testNode = suite('fixed corpus operation policy', [
         return scope.assert.collect();
     }),
     ...([ 'missing', 'duplicate' ] as const).map(function (kind) {
-        return test(`rejects ${kind} cache selection`, async function (scope: TestScope) {
+        return authoredTest(`rejects ${kind} cache selection`, async function (scope: TestScope) {
             await scope.assert.rejects(async function () {
                 await loadCorpusEntries({
                     ...corpusRequest,
@@ -157,7 +160,7 @@ export const testNode = suite('fixed corpus operation policy', [
         });
     }),
     ...([ '{', '{}', 'null', '[]' ] as const).map(function (content) {
-        return test(`rejects invalid corpus envelope ${content}`, async function (scope: TestScope) {
+        return authoredTest(`rejects invalid corpus envelope ${content}`, async function (scope: TestScope) {
             await scope.assert.rejects(async function () {
                 await loadCorpusEntries(corpusRequest, corpusSource(content));
             }, {
@@ -168,7 +171,7 @@ export const testNode = suite('fixed corpus operation policy', [
             return scope.assert.collect();
         });
     }),
-    test('retains failed entry diagnostics when inspecting an entire cache', async function (scope: TestScope) {
+    authoredTest('retains failed entry diagnostics when inspecting an entire cache', async function (scope: TestScope) {
         const fixture = corpusOperations(corpusIndex([ first, second ]), {
             ...corpusOperationFaults,
             inspect: new Error('decode')
@@ -178,16 +181,18 @@ export const testNode = suite('fixed corpus operation policy', [
         scope.assert.deepEqual(result.diagnostics, [ `${first}: Error: decode`, `${second}: Error: decode` ]);
         return scope.assert.collect();
     }),
-    test('propagates decoding failures for an explicitly selected cache entry', async function (scope: TestScope) {
-        const failure = new Error('decode');
-        const fixture = corpusOperations(corpusIndex([ first ]), { ...corpusOperationFaults, inspect: failure });
-        await scope.assert.rejects(async function () {
-            await fixture.operations.inspect({
-                ...fixture.request,
-                source: { kind: 'cache-entry', path: 'input.json', entryId: first }
-            });
-        }, { exact: failure });
-        return scope.assert.collect();
-    })
+    authoredTest(
+        'propagates decoding failures for an explicitly selected cache entry',
+        async function (scope: TestScope) {
+            const failure = new Error('decode');
+            const fixture = corpusOperations(corpusIndex([ first ]), { ...corpusOperationFaults, inspect: failure });
+            await scope.assert.rejects(async function () {
+                await fixture.operations.inspect({
+                    ...fixture.request,
+                    source: { kind: 'cache-entry', path: 'input.json', entryId: first }
+                });
+            }, { exact: failure });
+            return scope.assert.collect();
+        }
+    )
 ]);
-await runIfMain(import.meta, testNode);

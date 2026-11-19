@@ -1,13 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { test, suite } from '@overkill-dev/test';
 import { z } from 'zod/v4';
-import { runIfMain } from '#test-runner';
-import {
-    createSuite,
-    createTestCase,
-    type RunResult,
-    type TestScope
-} from '../../packages/engine/engine.entry-point.ts';
+
+import type { RunResult, TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import {
     defaultMicrotestProfile,
@@ -78,16 +74,12 @@ async function assertGenericCoverageReports(scope: TestScope, reportDirectory: s
     scope.assert.includes(lcov, 'BRF:2\nBRH:2\n');
 }
 
-export const testNode = createSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/integration-tests/run/runner-coverage-branches.test.ts',
-    children: ([ 'in-process', 'supervised-process' ] as const).map(function processModelScenario(processModel) {
-        return createTestCase({
+export const testNode = suite(
+    'source/integration-tests/run/runner-coverage-branches.test.ts',
+    ([ 'in-process', 'supervised-process' ] as const).map(function processModelScenario(processModel) {
+        return test({
             annotations: {},
             controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
             title: `${processModel} coverage preserves generic method branch counts`,
             async body(scope: TestScope) {
                 const result = await executeGenericCoverage(processModel);
@@ -109,6 +101,4 @@ export const testNode = createSuite({
             }
         });
     })
-});
-
-await runIfMain(import.meta, testNode);
+);

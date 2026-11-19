@@ -1,11 +1,6 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite,
-    createTestCase,
-    type TestScope,
-    type Engine,
-    type TestNode
-} from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope, Engine, TestNode } from '../packages/engine/engine.entry-point.ts';
 import { defineResource, withResources } from '../packages/test/resources.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
@@ -82,18 +77,12 @@ async function assertLifecycleEvidence(scope: TestScope): Promise<void> {
     );
 }
 
-export const testNode = createSuite({
-    ...definition,
-    title: 'source/run/runtime-attachment-lifecycle.test.ts',
-    children: [
-        createTestCase({
-            ...definition,
-            title: 'fixture lifecycle evidence remains case owned and caught errors fail the attempt',
-            async body(scope: TestScope) {
-                await assertLifecycleEvidence(scope);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/runtime-attachment-lifecycle.test.ts', [
+    test(
+        'fixture lifecycle evidence remains case owned and caught errors fail the attempt',
+        async function (scope: TestScope) {
+            await assertLifecycleEvidence(scope);
+            return scope.assert.collect();
+        }
+    )
+]);

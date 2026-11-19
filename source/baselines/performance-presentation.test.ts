@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { testDouble } from '../doubles/test-double.ts';
 import type { ChartedPerformanceBaselineAdapter, PerformanceBaselineAdapter } from './performance-adapter.ts';
@@ -25,7 +25,7 @@ const adapter: PerformanceBaselineAdapter = {
         return input.actual.value;
     }
 };
-export const testNode = suite('performance chart presentation', [
+export const testNode = authoredSuite('performance chart presentation', [
     test('validates one-sided ranges and rejects empty or duplicate metric identities', function (scope: TestScope) {
         const metric = { name: 'median', unit: 'ms', scale: { kind: 'raw' }, actual: 2 } as const;
         for (
@@ -133,4 +133,3 @@ export const testNode = suite('performance chart presentation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import {
     orchestrator,
     type RunExecutionSessionOptions,
@@ -176,9 +175,9 @@ function assertCombinedLifecycleFailure(scope: TestScope, reply: RunExecutionRep
     scope.assert.equal(diagnosticMessage(Reflect.get(details, 'cause')), executionMessage);
 }
 
-export const testNode = suite('public execution session boundaries', [
+export const testNode = authoredSuite('public execution session boundaries', [
     ...([ 'in-process', 'supervised-process' ] as const).map(function selectedCounts(processModel) {
-        return test(`${processModel} reports the plan selected by its lifecycle`, async function (scope) {
+        return authoredTest(`${processModel} reports the plan selected by its lifecycle`, async function (scope) {
             const session = orchestrator.createExecutionSession(
                 await sessionOptions(processModel, [
                     ...passingFiles,
@@ -196,7 +195,7 @@ export const testNode = suite('public execution session boundaries', [
         });
     }),
     ...[ 'pass', 'before' ].map(function childLifecycle(data) {
-        return test(`child sessions finalize ${data} execution before reporting`, async function (scope) {
+        return authoredTest(`child sessions finalize ${data} execution before reporting`, async function (scope) {
             const child = await createNativeSessionChild(data);
             await runSupervisedChild(child.host, nativeChildDependencies());
             const messages = child.messages();
@@ -228,21 +227,24 @@ export const testNode = suite('public execution session boundaries', [
         { data: 'malformed-data', message: 'Invalid child-process IPC payload.' }
     ]
         .map(function invalidSessionFrames({ data, message }) {
-            return test(`rejects supervised ${data} frames and permits the next invocation`, async function (scope) {
-                const session = orchestrator.createExecutionSession(
-                    await sessionOptions('supervised-process', passingFiles)
-                );
-                scope.cleanup(session.dispose);
-                const failed = await session.run({ data, timeoutMilliseconds: 30_000, signal: null });
-                assert.ok(failed.kind === 'failure', JSON.stringify(failed));
-                scope.assert.equal(failed.failure.message, message);
-                const completed = await session.run({ data: 'pass', timeoutMilliseconds: 30_000, signal: null });
-                assert.ok(completed.kind === 'result', JSON.stringify(completed));
-                scope.assert.equal(completed.result.status, 'passed', { message: JSON.stringify(completed) });
-                return scope.assert.collect();
-            });
+            return authoredTest(
+                `rejects supervised ${data} frames and permits the next invocation`,
+                async function (scope) {
+                    const session = orchestrator.createExecutionSession(
+                        await sessionOptions('supervised-process', passingFiles)
+                    );
+                    scope.cleanup(session.dispose);
+                    const failed = await session.run({ data, timeoutMilliseconds: 30_000, signal: null });
+                    assert.ok(failed.kind === 'failure', JSON.stringify(failed));
+                    scope.assert.equal(failed.failure.message, message);
+                    const completed = await session.run({ data: 'pass', timeoutMilliseconds: 30_000, signal: null });
+                    assert.ok(completed.kind === 'result', JSON.stringify(completed));
+                    scope.assert.equal(completed.result.status, 'passed', { message: JSON.stringify(completed) });
+                    return scope.assert.collect();
+                }
+            );
         }),
-    test('rejects malformed fresh-host results and permits the next invocation', async function (scope) {
+    authoredTest('rejects malformed fresh-host results and permits the next invocation', async function (scope) {
         const options = await sessionOptions('in-process', passingFiles);
         const session = orchestrator.createExecutionSession({ ...options, environment: 'fresh-invocation' });
         scope.cleanup(session.dispose);
@@ -254,7 +256,7 @@ export const testNode = suite('public execution session boundaries', [
         scope.assert.equal(completed.result.status, 'passed', { message: JSON.stringify(completed) });
         return scope.assert.collect();
     }),
-    test('reports supervised exits before lifecycle data arrives', async function (scope) {
+    authoredTest('reports supervised exits before lifecycle data arrives', async function (scope) {
         const session = orchestrator.createExecutionSession(await sessionOptions('supervised-process', passingFiles));
         scope.cleanup(session.dispose);
         const failed = await session.run({ data: 'exit-before-data', timeoutMilliseconds: 30_000, signal: null });
@@ -266,23 +268,26 @@ export const testNode = suite('public execution session boundaries', [
         return scope.assert.collect();
     }),
     ...[ 'serial', 'concurrent' ].map(function schedulingMode(scheduling) {
-        return test(`stops admission after lifecycle completion in ${scheduling} execution`, async function (scope) {
-            const session = createScheduledSession(
-                await sessionOptions('in-process', lifecycleCases),
-                scheduling === 'serial' ? 'serial' : 'concurrent',
-                1
-            );
-            scope.cleanup(session.dispose);
-            for (const data of [ 'pass', 'stop' ]) {
-                const reply = await session.run({ data, timeoutMilliseconds: 30_000, signal: null });
-                assert.ok(reply.kind === 'result', JSON.stringify(reply));
-                scope.assert.equal(reply.result.status, 'passed');
-                scope.assert.equal(reply.result.summary.passed, data === 'stop' ? 1 : 2);
+        return authoredTest(
+            `stops admission after lifecycle completion in ${scheduling} execution`,
+            async function (scope) {
+                const session = createScheduledSession(
+                    await sessionOptions('in-process', lifecycleCases),
+                    scheduling === 'serial' ? 'serial' : 'concurrent',
+                    1
+                );
+                scope.cleanup(session.dispose);
+                for (const data of [ 'pass', 'stop' ]) {
+                    const reply = await session.run({ data, timeoutMilliseconds: 30_000, signal: null });
+                    assert.ok(reply.kind === 'result', JSON.stringify(reply));
+                    scope.assert.equal(reply.result.status, 'passed');
+                    scope.assert.equal(reply.result.summary.passed, data === 'stop' ? 1 : 2);
+                }
+                return scope.assert.collect();
             }
-            return scope.assert.collect();
-        });
+        );
     }),
-    test('rejects persisted coverage and baseline updates', async function (scope) {
+    authoredTest('rejects persisted coverage and baseline updates', async function (scope) {
         const options = await sessionOptions('in-process', passingFiles);
         const requests = [
             { ...options.command.policy.request, coverage: true },
@@ -298,7 +303,7 @@ export const testNode = suite('public execution session boundaries', [
         }
         return scope.assert.collect();
     }),
-    test('rejects persisted debug recording in memory sessions', async function (scope) {
+    authoredTest('rejects persisted debug recording in memory sessions', async function (scope) {
         const options = await sessionOptions('in-process', passingFiles);
         const request = { ...options.command.policy.request, debug: { mode: 'all', selectors: [] } } as const;
         scope.assert.throws(function rejectDebug() {
@@ -309,7 +314,7 @@ export const testNode = suite('public execution session boundaries', [
         }, { message: 'Memory execution sessions do not support persisted debug recording.' });
         return scope.assert.collect();
     }),
-    test('resolves omitted seed values before execution', async function (scope) {
+    authoredTest('resolves omitted seed values before execution', async function (scope) {
         const options = await sessionOptions('in-process', passingFiles);
         const session = orchestrator.createExecutionSession({
             ...options,
@@ -321,7 +326,7 @@ export const testNode = suite('public execution session boundaries', [
         scope.assert.equal(reply.result.status, 'passed');
         return scope.assert.collect();
     }),
-    test('preserves lifecycle order across repeated invocations', async function (scope) {
+    authoredTest('preserves lifecycle order across repeated invocations', async function (scope) {
         const session = orchestrator.createExecutionSession(await sessionOptions('in-process', passingFiles));
         scope.cleanup(session.dispose);
         for (const data of [ 'pass', 'pass' ]) {
@@ -334,7 +339,7 @@ export const testNode = suite('public execution session boundaries', [
         scope.assert.equal(session.environmentLifetime, 'reused');
         return scope.assert.collect();
     }),
-    test('rejects concurrent and disposed invocations', async function (scope) {
+    authoredTest('rejects concurrent and disposed invocations', async function (scope) {
         const session = orchestrator.createExecutionSession(await sessionOptions('in-process', passingFiles));
         scope.cleanup(session.dispose);
         const invocation = { data: 'pass', timeoutMilliseconds: 30_000, signal: null };
@@ -350,7 +355,7 @@ export const testNode = suite('public execution session boundaries', [
         }, { message: 'Execution session has been disposed.' });
         return scope.assert.collect();
     }),
-    test('returns expired budgets before loading the lifecycle', async function (scope) {
+    authoredTest('returns expired budgets before loading the lifecycle', async function (scope) {
         const options = await sessionOptions('in-process', passingFiles);
         const session = orchestrator.createExecutionSession({
             ...options,
@@ -366,7 +371,7 @@ export const testNode = suite('public execution session boundaries', [
         }
         return scope.assert.collect();
     }),
-    test('preserves cancellation reasons before execution', async function (scope) {
+    authoredTest('preserves cancellation reasons before execution', async function (scope) {
         const session = orchestrator.createExecutionSession(await sessionOptions('in-process', passingFiles));
         scope.cleanup(session.dispose);
         const reason = new Error('Canceled by the caller.');
@@ -381,7 +386,7 @@ export const testNode = suite('public execution session boundaries', [
     }),
     ...[ 'missingFactory', 'notALifecycleFactory', 'emptyLifecycleFactory', 'incompleteLifecycleFactory' ].map(
         function invalidFactory(exportName) {
-            return test(`rejects invalid lifecycle export ${exportName}`, async function (scope) {
+            return authoredTest(`rejects invalid lifecycle export ${exportName}`, async function (scope) {
                 const options = await sessionOptions('in-process', passingFiles);
                 const session = orchestrator.createExecutionSession({
                     ...options,
@@ -397,23 +402,30 @@ export const testNode = suite('public execution session boundaries', [
     ),
     ...([ 'serial', 'concurrent' ] as const).flatMap(function schedulingMode(scheduling) {
         return [ 'enter', 'complete' ].map(function failedCaseHook(data) {
-            return test(`preserves case ${data} hook errors during ${scheduling} execution`, async function (scope) {
-                const session = createScheduledSession(await sessionOptions('in-process', passingFiles), scheduling, 1);
-                scope.cleanup(session.dispose);
-                const failed = await session.run({ data, timeoutMilliseconds: 30_000, signal: null });
-                scope.assert.equal(JSON.stringify(failed).includes(`Lifecycle ${data} failed.`), true);
-                if (failed.kind === 'result') {
-                    scope.assert.equal(failed.result.status, 'failed');
-                } else {
-                    scope.assert.equal(failed.kind, 'failure');
+            return authoredTest(
+                `preserves case ${data} hook errors during ${scheduling} execution`,
+                async function (scope) {
+                    const session = createScheduledSession(
+                        await sessionOptions('in-process', passingFiles),
+                        scheduling,
+                        1
+                    );
+                    scope.cleanup(session.dispose);
+                    const failed = await session.run({ data, timeoutMilliseconds: 30_000, signal: null });
+                    scope.assert.equal(JSON.stringify(failed).includes(`Lifecycle ${data} failed.`), true);
+                    if (failed.kind === 'result') {
+                        scope.assert.equal(failed.result.status, 'failed');
+                    } else {
+                        scope.assert.equal(failed.kind, 'failure');
+                    }
+                    const completed = await session.run({ data: 'pass', timeoutMilliseconds: 30_000, signal: null });
+                    requirePassedExecution(completed);
+                    return scope.assert.collect();
                 }
-                const completed = await session.run({ data: 'pass', timeoutMilliseconds: 30_000, signal: null });
-                requirePassedExecution(completed);
-                return scope.assert.collect();
-            });
+            );
         });
     }),
-    test('applies lifecycle callbacks during concurrent execution', async function (scope) {
+    authoredTest('applies lifecycle callbacks during concurrent execution', async function (scope) {
         const session = createScheduledSession(await sessionOptions('in-process', passingFiles), 'concurrent', 2);
         scope.cleanup(session.dispose);
         const reply = await session.run({ data: 'pass', timeoutMilliseconds: 30_000, signal: null });
@@ -423,7 +435,7 @@ export const testNode = suite('public execution session boundaries', [
         return scope.assert.collect();
     }),
     ...[ 'select', 'before', 'snapshot', 'dispose' ].map(function failedPhase(data) {
-        return test(`preserves ${data} failures and releases invocation admission`, async function (scope) {
+        return authoredTest(`preserves ${data} failures and releases invocation admission`, async function (scope) {
             const session = orchestrator.createExecutionSession(await sessionOptions('in-process', passingFiles));
             scope.cleanup(session.dispose);
             const failed = await session.run({ data, timeoutMilliseconds: 30_000, signal: null });
@@ -435,7 +447,7 @@ export const testNode = suite('public execution session boundaries', [
         });
     }),
     ...([ 'profile-default', 'fresh-invocation', 'supervised-process' ] as const).map(function executionBoundary(mode) {
-        return test(`retains execution and disposal errors through ${mode}`, async function (scope) {
+        return authoredTest(`retains execution and disposal errors through ${mode}`, async function (scope) {
             const session = await sessionAtBoundary(mode);
             scope.cleanup(session.dispose);
             const failed = await session.run({ data: 'before-and-dispose', timeoutMilliseconds: 30_000, signal: null });
@@ -445,7 +457,7 @@ export const testNode = suite('public execution session boundaries', [
             return scope.assert.collect();
         });
     }),
-    test('retains disposal failures when execution is cancelled by its deadline', async function (scope) {
+    authoredTest('retains disposal failures when execution is cancelled by its deadline', async function (scope) {
         const session = orchestrator.createExecutionSession(await sessionOptions('in-process', passingFiles));
         scope.cleanup(session.dispose);
         requirePassedExecution(await session.run({ data: 'pass', timeoutMilliseconds: 30_000, signal: null }));
@@ -453,17 +465,20 @@ export const testNode = suite('public execution session boundaries', [
         assertCombinedLifecycleFailure(scope, failed, 'Invocation deadline exceeded.');
         return scope.assert.collect();
     }),
-    test('reports completed work past its deadline and preserves late infrastructure failures', async function (scope) {
-        const session = orchestrator.createExecutionSession(await sessionOptions('in-process', passingFiles));
-        scope.cleanup(session.dispose);
-        const completed = await session.run({ data: 'late-result', timeoutMilliseconds: 1, signal: null });
-        scope.assert.equal(completed.kind, 'timeout', { message: JSON.stringify(completed) });
-        const failed = await session.run({ data: 'late-failure', timeoutMilliseconds: 1, signal: null });
-        assert.ok(failed.kind === 'failure', JSON.stringify(failed));
-        scope.assert.equal(failed.failure.message, 'Lifecycle failed after the deadline.');
-        return scope.assert.collect();
-    }),
-    test('terminates supervised execution when its invocation deadline expires', async function (scope) {
+    authoredTest(
+        'reports completed work past its deadline and preserves late infrastructure failures',
+        async function (scope) {
+            const session = orchestrator.createExecutionSession(await sessionOptions('in-process', passingFiles));
+            scope.cleanup(session.dispose);
+            const completed = await session.run({ data: 'late-result', timeoutMilliseconds: 1, signal: null });
+            scope.assert.equal(completed.kind, 'timeout', { message: JSON.stringify(completed) });
+            const failed = await session.run({ data: 'late-failure', timeoutMilliseconds: 1, signal: null });
+            assert.ok(failed.kind === 'failure', JSON.stringify(failed));
+            scope.assert.equal(failed.failure.message, 'Lifecycle failed after the deadline.');
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('terminates supervised execution when its invocation deadline expires', async function (scope) {
         const session = orchestrator.createExecutionSession(await sessionOptions('supervised-process', passingFiles));
         scope.cleanup(session.dispose);
         scope.assert.equal(session.environmentLifetime, 'fresh');
@@ -475,5 +490,3 @@ export const testNode = suite('public execution session boundaries', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { collectedMutationPlan } from '../../test-support/mutation-plan-fixture.ts';
 import {
@@ -9,7 +9,7 @@ import {
     eligibleMutationCatalog
 } from './mutation-catalog.ts';
 
-export const testNode = suite('mutation adapter evidence validation', [
+export const testNode = authoredSuite('mutation adapter evidence validation', [
     test('rejects duplicate baseline file filters', function (scope: TestScope) {
         const { baseline } = mutationCoverageFixture('off');
         scope.assert.equal(
@@ -52,4 +52,3 @@ export const testNode = suite('mutation adapter evidence validation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

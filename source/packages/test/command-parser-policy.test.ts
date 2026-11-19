@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { suite, test as authoredTest } from '@overkill-dev/test';
+
 import { commandParser } from '../../test-support/command-parser.ts';
-import { suite, test, type TestScope } from './test.entry-point.ts';
+import type { TestScope } from './test.entry-point.ts';
 
 export const testNode = suite('command parser dispatch policy', [
     ...([
@@ -10,29 +11,32 @@ export const testNode = suite('command parser dispatch policy', [
         { verb: 'clear', flags: [ '--yes' ], dryRun: false, yes: true }
     ] as const)
         .map(function (entry) {
-            return test(`routes history ${entry.verb} with its maintenance flags`, async function (scope: TestScope) {
-                const fixture = commandParser(null);
-                const result = await fixture.dispatch([
-                    'history',
-                    entry.verb,
-                    '--config',
-                    'project.ts',
-                    ...entry.flags
-                ]);
-                scope.assert.partialDeepEqual(result, {
-                    kind: 'command-result',
-                    result: { exitCode: 0, stdoutLines: [ `history.${entry.verb}` ] }
-                });
-                scope.assert.deepEqual(fixture.calls, [ {
-                    verb: `history.${entry.verb}`,
-                    request: { cwd: '/project', configPath: 'project.ts', dryRun: entry.dryRun, yes: entry.yes }
-                } ]);
-                scope.assert.equal(fixture.loads(), 1);
-                return scope.assert.collect();
-            });
+            return authoredTest(
+                `routes history ${entry.verb} with its maintenance flags`,
+                async function (scope: TestScope) {
+                    const fixture = commandParser(null);
+                    const result = await fixture.dispatch([
+                        'history',
+                        entry.verb,
+                        '--config',
+                        'project.ts',
+                        ...entry.flags
+                    ]);
+                    scope.assert.partialDeepEqual(result, {
+                        kind: 'command-result',
+                        result: { exitCode: 0, stdoutLines: [ `history.${entry.verb}` ] }
+                    });
+                    scope.assert.deepEqual(fixture.calls, [ {
+                        verb: `history.${entry.verb}`,
+                        request: { cwd: '/project', configPath: 'project.ts', dryRun: entry.dryRun, yes: entry.yes }
+                    } ]);
+                    scope.assert.equal(fixture.loads(), 1);
+                    return scope.assert.collect();
+                }
+            );
         }),
     ...([ 'inspect', 'promote', 'migrate' ] as const).map(function (verb) {
-        return test(`routes corpus ${verb} with built-in codec defaults`, async function (scope: TestScope) {
+        return authoredTest(`routes corpus ${verb} with built-in codec defaults`, async function (scope: TestScope) {
             const fixture = commandParser(null);
             const result = await fixture.dispatch([ 'corpus', verb, 'input.json' ]);
             scope.assert.equal(result.kind, 'command-result');
@@ -49,7 +53,7 @@ export const testNode = suite('command parser dispatch policy', [
             return scope.assert.collect();
         });
     }),
-    test('maps cache selection and explicit codec export and destination', async function (scope: TestScope) {
+    authoredTest('maps cache selection and explicit codec export and destination', async function (scope: TestScope) {
         const fixture = commandParser(null);
         await fixture.dispatch([
             'corpus',
@@ -74,7 +78,7 @@ export const testNode = suite('command parser dispatch policy', [
         } ]);
         return scope.assert.collect();
     }),
-    test('uses the default export when a codec module is supplied alone', async function (scope: TestScope) {
+    authoredTest('uses the default export when a codec module is supplied alone', async function (scope: TestScope) {
         const fixture = commandParser(null);
         await fixture.dispatch([ 'corpus', 'inspect', 'input.json', '--codec', 'codec.ts' ]);
         scope.assert.partialDeepEqual<unknown, unknown>(fixture.calls, [ {
@@ -82,7 +86,7 @@ export const testNode = suite('command parser dispatch policy', [
         } ]);
         return scope.assert.collect();
     }),
-    test('rejects codec export without a module before loading the runner', async function (scope: TestScope) {
+    authoredTest('rejects codec export without a module before loading the runner', async function (scope: TestScope) {
         const fixture = commandParser(null);
         const result = await fixture.dispatch([ 'corpus', 'inspect', 'input.json', '--codec-export', 'input' ]);
         scope.assert.partialDeepEqual(result, {
@@ -93,7 +97,7 @@ export const testNode = suite('command parser dispatch policy', [
         scope.assert.deepEqual(fixture.calls, []);
         return scope.assert.collect();
     }),
-    test('routes replay selectors and debug settings', async function (scope: TestScope) {
+    authoredTest('routes replay selectors and debug settings', async function (scope: TestScope) {
         const fixture = commandParser(null);
         const result = await fixture.dispatch([ 'replay', 'selected', '--debug' ]);
         scope.assert.equal(result.kind, 'command-result');
@@ -103,7 +107,7 @@ export const testNode = suite('command parser dispatch policy', [
         } ]);
         return scope.assert.collect();
     }),
-    test('routes merge sources without invoking a native runner', async function (scope: TestScope) {
+    authoredTest('routes merge sources without invoking a native runner', async function (scope: TestScope) {
         const fixture = commandParser(null);
         const result = await fixture.dispatch([ 'merge-results', 'first.json', 'second.json' ]);
         scope.assert.equal(result.kind, 'command-result');
@@ -113,7 +117,7 @@ export const testNode = suite('command parser dispatch policy', [
         } ]);
         return scope.assert.collect();
     }),
-    test('routes calibration through benchmark request defaults', async function (scope: TestScope) {
+    authoredTest('routes calibration through benchmark request defaults', async function (scope: TestScope) {
         const fixture = commandParser(null);
         const result = await fixture.dispatch([ 'bench', 'calibrate' ]);
         scope.assert.equal(result.kind, 'command-result');
@@ -123,7 +127,7 @@ export const testNode = suite('command parser dispatch policy', [
         } ]);
         return scope.assert.collect();
     }),
-    test('preserves lazy runner failures', async function (scope: TestScope) {
+    authoredTest('preserves lazy runner failures', async function (scope: TestScope) {
         const failure = new Error('runner failed');
         const fixture = commandParser(failure);
         await scope.assert.rejects(async function () {
@@ -133,4 +137,3 @@ export const testNode = suite('command parser dispatch policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

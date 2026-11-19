@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { mergedRecordSession } from '../test-support/merged-record-session.ts';
 import { runMergedRecordSession } from './merged-record-session.ts';
 
-export const testNode = suite('merged record persistence and delivery', [
+export const testNode = authoredSuite('merged record persistence and delivery', [
     test(
         'persists completion, disposes reporters and releases the run before maintenance',
         async function (scope: TestScope) {
@@ -83,4 +83,3 @@ export const testNode = suite('merged record persistence and delivery', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

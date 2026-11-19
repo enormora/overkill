@@ -1,4 +1,4 @@
-import { testDouble } from '../packages/test/test.entry-point.ts';
+import { testDouble } from '@overkill-dev/test';
 import type { CoverageSession, CoverageSessionRequest } from '../run/coverage-collection.ts';
 
 type CoverageStartupFixture = {

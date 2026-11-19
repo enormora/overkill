@@ -1,7 +1,8 @@
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import * as ast from 'typescript-beta/ast';
 import { SymbolFlags } from 'typescript-beta/async';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+
 import {
     sourceFixture,
     type SourceFixture,
@@ -37,15 +38,15 @@ function aliasedFixture(): SourceFixture & { readonly node: ast.Identifier; } {
     return { ...fixture, node };
 }
 
-export const testNode = suite('isolated native syntax analysis', [
-    test('retains declaration identity and filters unresolved handles', async function (scope: TestScope) {
+export const testNode = authoredSuite('isolated native syntax analysis', [
+    authoredTest('retains declaration identity and filters unresolved handles', async function (scope: TestScope) {
         const declaration = ast.factory.createVariableDeclaration(ast.factory.createIdentifier('value'));
         const symbol = makeSymbol('value', [ declaration ]);
         scope.assert.deepEqual(await sourceDeclarations(symbol), [ declaration ]);
         scope.assert.deepEqual(sourceChildren(declaration), [ declaration.name ]);
         return scope.assert.collect();
     }),
-    test('caches symbol evidence and resolves aliases once', async function (scope: TestScope) {
+    authoredTest('caches symbol evidence and resolves aliases once', async function (scope: TestScope) {
         const { node, ...fixture } = aliasedFixture();
         await loadSourceSymbols(fixture.analysis, [ node ]);
         fixture.forgetSymbol(node);
@@ -54,7 +55,7 @@ export const testNode = suite('isolated native syntax analysis', [
         await loadSourceSymbols(fixture.analysis, [ node ]);
         return scope.assert.collect();
     }),
-    test('resolves shorthand values through their value symbol', async function (scope: TestScope) {
+    authoredTest('resolves shorthand values through their value symbol', async function (scope: TestScope) {
         const fixture = sourceFixture();
         const name = ast.factory.createIdentifier('value');
         sourceTree(
@@ -76,7 +77,7 @@ export const testNode = suite('isolated native syntax analysis', [
         scope.assert.equal(resolved?.name, 'value');
         return scope.assert.collect();
     }),
-    test('does not invent symbols for unresolved references', async function (scope: TestScope) {
+    authoredTest('does not invent symbols for unresolved references', async function (scope: TestScope) {
         const fixture = sourceFixture();
         const body = sourceBody([]);
         scope.assert.equal(await sourceSymbol(fixture.analysis, body), undefined);
@@ -85,7 +86,7 @@ export const testNode = suite('isolated native syntax analysis', [
         }, { message: /Cannot establish/u });
         return scope.assert.collect();
     }),
-    test('unwraps transparent callback syntax and retains its body', async function (scope: TestScope) {
+    authoredTest('unwraps transparent callback syntax and retains its body', async function (scope: TestScope) {
         const fixture = sourceFixture();
         const body = sourceBody([]);
         const wrapped = ast.factory.createParenthesizedExpression(body);
@@ -95,7 +96,7 @@ export const testNode = suite('isolated native syntax analysis', [
         scope.assert.equal(namedBodyParameter(fixture.analysis, body), body.parameters.at(0)?.name);
         return scope.assert.collect();
     }),
-    test('rejects non-function sources and unnamed scopes', async function (scope: TestScope) {
+    authoredTest('rejects non-function sources and unnamed scopes', async function (scope: TestScope) {
         const { analysis } = sourceFixture();
         await scope.assert.rejects(async function () {
             await declaredBody(analysis, ast.factory.createStringLiteral('body', ast.TokenFlags.None));
@@ -114,7 +115,7 @@ export const testNode = suite('isolated native syntax analysis', [
         scope.assert.equal(immutableInitializer(analysis, body), undefined);
         return scope.assert.collect();
     }),
-    test('rejects identifiers with ambiguous or cyclic callback ownership', async function (scope: TestScope) {
+    authoredTest('rejects identifiers with ambiguous or cyclic callback ownership', async function (scope: TestScope) {
         const fixture = sourceFixture();
         const name = ast.factory.createIdentifier('body');
         sourceTree(ast.factory.createExpressionStatement(name));
@@ -124,7 +125,7 @@ export const testNode = suite('isolated native syntax analysis', [
         }, { message: /ambiguous callback/u });
         return scope.assert.collect();
     }),
-    test('collects direct assertions and leaves collection calls alone', async function (scope: TestScope) {
+    authoredTest('collects direct assertions and leaves collection calls alone', async function (scope: TestScope) {
         const fixture = sourceFixture();
         const assertion = sourceCall(sourceMember(ast.factory.createIdentifier('scope'), 'assert'), []);
         const collect = sourceCall(
@@ -141,7 +142,7 @@ export const testNode = suite('isolated native syntax analysis', [
         return scope.assert.collect();
     }),
     ...[ 'cleanup', 'require' ].map(function (operation) {
-        return test(`rejects runtime scope operation ${operation}`, async function (scope: TestScope) {
+        return authoredTest(`rejects runtime scope operation ${operation}`, async function (scope: TestScope) {
             const fixture = sourceFixture();
             const call = sourceCall(sourceMember(ast.factory.createIdentifier('scope'), operation), []);
             const body = sourceBody([ ast.factory.createExpressionStatement(call) ]);
@@ -151,7 +152,7 @@ export const testNode = suite('isolated native syntax analysis', [
             return scope.assert.collect();
         });
     }),
-    test('rejects detached assertions and forwarded scope arguments', async function (scope: TestScope) {
+    authoredTest('rejects detached assertions and forwarded scope arguments', async function (scope: TestScope) {
         const fixture = sourceFixture();
         const detached = sourceMember(ast.factory.createIdentifier('scope'), 'assert');
         const body = sourceBody([ ast.factory.createExpressionStatement(detached) ]);
@@ -171,7 +172,7 @@ export const testNode = suite('isolated native syntax analysis', [
         }, { message: /Scope forwarding/u });
         return scope.assert.collect();
     }),
-    test('rejects nested assertions within operands and callbacks', async function (scope: TestScope) {
+    authoredTest('rejects nested assertions within operands and callbacks', async function (scope: TestScope) {
         const fixture = sourceFixture();
         const nested = sourceCall(sourceMember(ast.factory.createIdentifier('scope'), 'assert'), []);
         const outer = sourceCall(sourceMember(ast.factory.createIdentifier('scope'), 'assert'), [
@@ -184,7 +185,7 @@ export const testNode = suite('isolated native syntax analysis', [
         }, { message: /Nested native assertion/u });
         return scope.assert.collect();
     }),
-    test('rejects references that are not adapter exports', async function (scope: TestScope) {
+    authoredTest('rejects references that are not adapter exports', async function (scope: TestScope) {
         const fixture = sourceFixture();
         const reference = sourceTree(sourceMember(ast.factory.createIdentifier('foreign'), 'expressions'));
         await scope.assert.rejects(async function () {
@@ -193,4 +194,3 @@ export const testNode = suite('isolated native syntax analysis', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

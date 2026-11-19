@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { placementPlan } from './worker-pool-placement-validation.test.ts';
 import type { PlacementPlan } from './run-types.ts';
 import type { PlacementTraceEntry } from './placement-trace.ts';
@@ -317,7 +317,7 @@ function invalidPlacements(): readonly InvalidPlacement[] {
         }
     ];
 }
-export const testNode = suite('invalid retained replay decisions', [
+export const testNode = authoredSuite('invalid retained replay decisions', [
     ...invalidTraces().map(function invalidTrace(entry) {
         return test(entry.title, function (scope: TestScope) {
             const fixture = traceFixture();
@@ -340,4 +340,3 @@ export const testNode = suite('invalid retained replay decisions', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

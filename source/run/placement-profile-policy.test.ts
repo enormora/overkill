@@ -1,13 +1,13 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { planningInput } from '../test-support/benchmark-plan-input.ts';
 import { defaultIntegrationProfile, defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
 import { createPlacementResolution, resolveCollectedHost, benchmarkPlacementForCases } from './collected-placement.ts';
 import { collectedRunCaseEntries } from './collected-run-plan.ts';
 
-export const testNode = suite('delegated collection placement defaults', [
+export const testNode = authoredSuite('delegated collection placement defaults', [
     ...([ 'in-process', 'supervised-process' ] as const).map(function (processModel) {
-        return test(
+        return authoredTest(
             `uses default pool assignment policies for a ${processModel} profile`,
             async function (scope: TestScope) {
                 const original = planningInput();
@@ -31,13 +31,13 @@ export const testNode = suite('delegated collection placement defaults', [
             }
         );
     }),
-    test('does not allocate worker placement for supervised collection', async function (scope: TestScope) {
+    authoredTest('does not allocate worker placement for supervised collection', async function (scope: TestScope) {
         const input = { ...planningInput(), planKind: 'supervised' as const };
         scope.assert.equal(await createPlacementResolution(input, null), null);
         return scope.assert.collect();
     }),
     ...[ 'small', 'missing' ].map(function (workload) {
-        return test(
+        return authoredTest(
             `uses only the selected ${workload} workload budget when estimating placement`,
             async function (scope: TestScope) {
                 const input = planningInput();
@@ -52,4 +52,3 @@ export const testNode = suite('delegated collection placement defaults', [
         );
     })
 ]);
-await runIfMain(import.meta, testNode);

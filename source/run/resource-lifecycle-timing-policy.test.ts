@@ -1,14 +1,7 @@
-import { runIfMain } from '#test-runner';
-import {
-    createDeterministicClock,
-    type DeterministicClock,
-    type Clock
-} from '@enormora/clock';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import { createDeterministicClock, type DeterministicClock, type Clock } from '@enormora/clock';
+
 import type { RunTimingSpan } from '../engine/run-timings.ts';
 import { createSupervisedResourceLifecycleTiming } from './supervised-child-execution.ts';
 import {
@@ -108,50 +101,44 @@ async function failureObservations(
     return { cancellation, caughtCancellation, caughtFailure, failure };
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'resource lifecycle timing policy',
     children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'supervised resource timing emits duration-only child spans',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
-                const messages: unknown[] = [];
-                const timing = createSupervisedResourceLifecycleTiming(clock, function recordMessage(message) {
-                    messages.push(message);
-                });
-                const controller = new AbortController();
+        test('supervised resource timing emits duration-only child spans', async function (scope: OverkillScope) {
+            const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+            const messages: unknown[] = [];
+            const timing = createSupervisedResourceLifecycleTiming(clock, function recordMessage(message) {
+                messages.push(message);
+            });
+            const controller = new AbortController();
 
-                await timing.measure({
-                    phase: 'acquire',
+            await timing.measure({
+                phase: 'acquire',
+                resource: { name: 'database', scope: 'per-run' },
+                signal: controller.signal
+            }, async function acquireResource() {
+                clock.advanceByMicroseconds(21n);
+            });
+
+            scope.assert.deepEqual(messages, [ {
+                kind: 'timing',
+                span: {
+                    durationMicroseconds: 21,
+                    kind: 'resource.acquire',
+                    label: null,
+                    processId: String(process.pid),
                     resource: { name: 'database', scope: 'per-run' },
-                    signal: controller.signal
-                }, async function acquireResource() {
-                    clock.advanceByMicroseconds(21n);
-                });
+                    startOffsetMicroseconds: null,
+                    startTimeUnixMicroseconds: 0,
+                    status: 'success',
+                    workerId: null
+                }
+            } ]);
 
-                scope.assert.deepEqual(messages, [ {
-                    kind: 'timing',
-                    span: {
-                        durationMicroseconds: 21,
-                        kind: 'resource.acquire',
-                        label: null,
-                        processId: String(process.pid),
-                        resource: { name: 'database', scope: 'per-run' },
-                        startOffsetMicroseconds: null,
-                        startTimeUnixMicroseconds: 0,
-                        status: 'success',
-                        workerId: null
-                    }
-                } ]);
-
-                return scope.assert.collect();
-            }
+            return scope.assert.collect();
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'resource lifecycle timing records parent-relative resource spans',
             async body(scope: OverkillScope) {
@@ -192,7 +179,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'resource lifecycle timing records local failures and cancellations',
             async body(scope: OverkillScope) {
@@ -233,7 +220,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'resource lifecycle timing cannot change resource behavior',
             async body(scope: OverkillScope) {
@@ -266,7 +253,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'resource lifecycle timing tolerates unavailable clocks',
             async body(scope: OverkillScope) {
@@ -298,5 +285,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

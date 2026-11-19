@@ -3,9 +3,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
-import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
-import { createLineProgressReporter, createLineTreeReporter } from '@overkill-dev/reporter-line';
-import { runIfMain } from '#test-runner';
+import { suite, test, type TestScope } from '#tests';
+import type * as LineReporterPackage from '../../packages/reporter-line/reporter-line.entry-point.ts';
+import { resolvePackagedExport } from './packaged-module.test.ts';
 import {
     recordedRunId,
     assertCompletedRunRecord,
@@ -36,6 +36,10 @@ import {
     standardSubpathImportScript,
     throwsOnImportSmokeScript
 } from './test-binary-scripts.test.ts';
+
+const { createLineProgressReporter, createLineTreeReporter } = await import(
+    await resolvePackagedExport('@overkill-dev/reporter-line')
+) as typeof LineReporterPackage;
 
 type PackageJson = {
     readonly bin: unknown;
@@ -211,345 +215,262 @@ async function assertHistoryCommand(scope: TestScope, args: readonly string[], e
     scope.assert.equal(result.code, 0);
     scope.assert.includes(result.stdout, expected);
 }
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/integration-tests/package-smoke/test-binary.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'packaged history commands support maintenance and clear confirmation',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await writeHistorySmokeConfig();
-                await assertHistoryCommand(scope, [ 'compact' ], 'Compacted');
-                await assertHistoryCommand(scope, [ 'list' ], 'REPLAY');
-                await assertHistoryCommand(scope, [ 'prune', '--dry-run' ], 'Would remove');
-                const unconfirmed = await spawnNode([
-                    overkillBinEntryPointPath,
-                    'history',
-                    'clear',
-                    '--config',
-                    historySmokeConfig
-                ]);
-                scope.assert.equal(unconfirmed.code, 3);
-                scope.assert.includes(unconfirmed.stderr, 'requires --yes');
-                await assertHistoryCommand(scope, [ 'clear', '--yes' ], 'History cleared.');
-                return scope.assert.collect();
-            }
-        }),
+export const testNode = suite('source/integration-tests/package-smoke/test-binary.test.ts', [
+    test('packaged history commands support maintenance and clear confirmation', async function (scope: TestScope) {
+        await writeHistorySmokeConfig();
+        await assertHistoryCommand(scope, [ 'compact' ], 'Compacted');
+        await assertHistoryCommand(scope, [ 'list' ], 'REPLAY');
+        await assertHistoryCommand(scope, [ 'prune', '--dry-run' ], 'Would remove');
+        const unconfirmed = await spawnNode([
+            overkillBinEntryPointPath,
+            'history',
+            'clear',
+            '--config',
+            historySmokeConfig
+        ]);
+        scope.assert.equal(unconfirmed.code, 3);
+        scope.assert.includes(unconfirmed.stderr, 'requires --yes');
+        await assertHistoryCommand(scope, [ 'clear', '--yes' ], 'History cleared.');
+        return scope.assert.collect();
+    }),
 
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test package owns the overkill binary',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const testPackageJson = await readPackageJson(testPackageFolder);
-                const runPackageJson = await readPackageJson(runPackageFolder);
-                const testBin = testPackageJson.bin;
+    test('@overkill-dev/test package owns the overkill binary', async function (scope: TestScope) {
+        const testPackageJson = await readPackageJson(testPackageFolder);
+        const runPackageJson = await readPackageJson(runPackageFolder);
+        const testBin = testPackageJson.bin;
 
-                if (!isBinMap(testBin)) {
-                    throw new Error('Expected @overkill-dev/test bin map.');
-                }
+        if (!isBinMap(testBin)) {
+            throw new Error('Expected @overkill-dev/test bin map.');
+        }
 
-                scope.assert.deepEqual(testBin, {
-                    overkill: './packages/test/overkill.entry-point.js'
-                });
-                scope.assert.equal(runPackageJson.bin, undefined);
-                scope.assert.deepEqual(testPackageJson.engines, { node: '^26.9.0' });
-                scope.assert.deepEqual(runPackageJson.engines, { node: '^26.9.0' });
+        scope.assert.deepEqual(testBin, {
+            overkill: './packages/test/overkill.entry-point.js'
+        });
+        scope.assert.equal(runPackageJson.bin, undefined);
+        scope.assert.deepEqual(testPackageJson.engines, { node: '^26.9.0' });
+        scope.assert.deepEqual(runPackageJson.engines, { node: '^26.9.0' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/reporter-line exposes every presentation variant',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                assertLineReporterVariants(scope);
+        return scope.assert.collect();
+    }),
+    test('@overkill-dev/reporter-line exposes every presentation variant', function (scope: TestScope) {
+        assertLineReporterVariants(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'consumer imports packaged @overkill-dev/test root facade',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const testPackageJson = await readPackageJson(testPackageFolder);
-                const packageExports = testPackageJson.exports;
-                const result = await spawnNode([
-                    '--input-type=module',
-                    '--eval',
-                    rootImportScript
-                ]);
+        return scope.assert.collect();
+    }),
+    test('consumer imports packaged @overkill-dev/test root facade', async function (scope: TestScope) {
+        const testPackageJson = await readPackageJson(testPackageFolder);
+        const packageExports = testPackageJson.exports;
+        const result = await spawnNode([
+            '--input-type=module',
+            '--eval',
+            rootImportScript
+        ]);
 
-                if (!isPackageExportsMap(packageExports)) {
-                    throw new Error('Expected @overkill-dev/test exports map.');
-                }
+        if (!isPackageExportsMap(packageExports)) {
+            throw new Error('Expected @overkill-dev/test exports map.');
+        }
 
-                scope.assert.deepEqual(packageExports['.'], {
-                    import: './packages/test/test.entry-point.js',
-                    types: './packages/test/test.entry-point.d.ts'
-                });
-                scope.assert.equal(result.code, 0);
-                scope.assert.equal(result.stderr, '');
-                scope.assert.equal(result.stdout, expectedRootImportOutput);
+        scope.assert.deepEqual(packageExports['.'], {
+            import: './packages/test/test.entry-point.js',
+            types: './packages/test/test.entry-point.d.ts'
+        });
+        scope.assert.equal(result.code, 0);
+        scope.assert.equal(result.stderr, '');
+        scope.assert.equal(result.stdout, expectedRootImportOutput);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'consumer imports packaged @overkill-dev/test standard subpaths',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const testPackageJson = await readPackageJson(testPackageFolder);
-                const packageExports = testPackageJson.exports;
+        return scope.assert.collect();
+    }),
+    test('consumer imports packaged @overkill-dev/test standard subpaths', async function (scope: TestScope) {
+        const testPackageJson = await readPackageJson(testPackageFolder);
+        const packageExports = testPackageJson.exports;
 
-                if (!isPackageExportsMap(packageExports)) {
-                    throw new Error('Expected @overkill-dev/test exports map.');
-                }
+        if (!isPackageExportsMap(packageExports)) {
+            throw new Error('Expected @overkill-dev/test exports map.');
+        }
 
-                await assertPackagedStandardSubpathImports(scope, packageExports);
+        await assertPackagedStandardSubpathImports(scope, packageExports);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'packaged overkill binary prints command help',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const result = await spawnNode([
-                    overkillBinEntryPointPath,
-                    '--help'
-                ]);
+        return scope.assert.collect();
+    }),
+    test('packaged overkill binary prints command help', async function (scope: TestScope) {
+        const result = await spawnNode([
+            overkillBinEntryPointPath,
+            '--help'
+        ]);
 
-                scope.assert.equal(result.code, 0);
-                scope.assert.includes(result.stdout, 'overkill <subcommand>');
-                scope.assert.equal(result.stderr, '');
+        scope.assert.equal(result.code, 0);
+        scope.assert.includes(result.stdout, 'overkill <subcommand>');
+        scope.assert.equal(result.stderr, '');
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'packaged overkill bin entry point prints command help',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const result = await spawnNode([ overkillBinEntryPointPath, '--help' ]);
+        return scope.assert.collect();
+    }),
+    test('packaged overkill bin entry point prints command help', async function (scope: TestScope) {
+        const result = await spawnNode([ overkillBinEntryPointPath, '--help' ]);
 
-                scope.assert.equal(result.code, 0);
-                scope.assert.includes(result.stdout, 'overkill <subcommand>');
-                scope.assert.equal(result.stderr, '');
+        scope.assert.equal(result.code, 0);
+        scope.assert.includes(result.stdout, 'overkill <subcommand>');
+        scope.assert.equal(result.stderr, '');
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'packaged overkill bin entry point default line reporter passes with capability restrictions',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await writeReporterPolicySmokeProject();
+        return scope.assert.collect();
+    }),
+    test(
+        'packaged overkill bin entry point default line reporter passes with capability restrictions',
+        async function (scope: TestScope) {
+            await writeReporterPolicySmokeProject();
 
-                const result = await spawnNode([
-                    overkillBinEntryPointPath,
-                    'run',
-                    '--config',
-                    lineReporterConfigFile,
-                    reporterConsoleSmokeFile
-                ]);
+            const result = await spawnNode([
+                overkillBinEntryPointPath,
+                'run',
+                '--config',
+                lineReporterConfigFile,
+                reporterConsoleSmokeFile
+            ]);
 
-                scope.assert.equal(result.code, 0);
-                scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
-                scope.assert.equal(result.stderr, '');
+            scope.assert.equal(result.code, 0);
+            scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
+            scope.assert.equal(result.stderr, '');
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'packaged overkill bin entry point line reporter shows test console policy violations',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await writeReporterPolicySmokeProject();
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'packaged overkill bin entry point line reporter shows test console policy violations',
+        async function (scope: TestScope) {
+            await writeReporterPolicySmokeProject();
 
-                const result = await spawnNode([
-                    overkillBinEntryPointPath,
-                    'run',
-                    '--config',
-                    lineReporterConfigFile,
-                    consolePolicySmokeFile
-                ]);
+            const result = await spawnNode([
+                overkillBinEntryPointPath,
+                'run',
+                '--config',
+                lineReporterConfigFile,
+                consolePolicySmokeFile
+            ]);
 
-                scope.assert.equal(result.code, 2);
-                scope.assert.includes(result.stdout, 'Runner error: Runtime policy violation: console.');
-                scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
-                scope.assert.equal(result.stderr, '');
+            scope.assert.equal(result.code, 2);
+            scope.assert.includes(result.stdout, 'Runner error: Runtime policy violation: console.');
+            scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
+            scope.assert.equal(result.stderr, '');
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'packaged overkill bin entry point falls back for final-only runner errors',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await writeReporterPolicySmokeProject();
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'packaged overkill bin entry point falls back for final-only runner errors',
+        async function (scope: TestScope) {
+            await writeReporterPolicySmokeProject();
 
-                const result = await spawnNode([
-                    overkillBinEntryPointPath,
-                    'run',
-                    '--config',
-                    finalOnlyReporterConfigFile,
-                    throwsOnImportSmokeFile
-                ]);
+            const result = await spawnNode([
+                overkillBinEntryPointPath,
+                'run',
+                '--config',
+                finalOnlyReporterConfigFile,
+                throwsOnImportSmokeFile
+            ]);
 
-                scope.assert.equal(result.code, 2);
-                scope.assert.includes(result.stdout, 'final-result-reporter');
-                scope.assert.includes(
-                    result.stderr,
-                    `Overkill runner error: Failed to load test module: ${throwsOnImportSmokeFile}`
-                );
+            scope.assert.equal(result.code, 2);
+            scope.assert.includes(result.stdout, 'final-result-reporter');
+            scope.assert.includes(
+                result.stderr,
+                `Overkill runner error: Failed to load test module: ${throwsOnImportSmokeFile}`
+            );
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'packaged overkill bin entry point reports undeclared reporter console usage',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await writeReporterPolicySmokeProject();
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'packaged overkill bin entry point reports undeclared reporter console usage',
+        async function (scope: TestScope) {
+            await writeReporterPolicySmokeProject();
 
-                const result = await spawnNode([
-                    overkillBinEntryPointPath,
-                    'run',
-                    '--config',
-                    reporterConsoleConfigFile,
-                    reporterConsoleSmokeFile
-                ]);
+            const result = await spawnNode([
+                overkillBinEntryPointPath,
+                'run',
+                '--config',
+                reporterConsoleConfigFile,
+                reporterConsoleSmokeFile
+            ]);
 
-                scope.assert.equal(result.code, 2);
-                scope.assert.includes(result.stdout, 'undeclared reporter console');
-                scope.assert.includes(
-                    result.stderr,
-                    'Overkill runner error: reporter-console-violation: Reporter used undeclared console.log output.'
-                );
+            scope.assert.equal(result.code, 2);
+            scope.assert.includes(result.stdout, 'undeclared reporter console');
+            scope.assert.includes(
+                result.stderr,
+                'Overkill runner error: reporter-console-violation: Reporter used undeclared console.log output.'
+            );
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'packaged @overkill-dev/test root authoring creates runnable testNode exports',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await writePackageSmokeProject();
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'packaged @overkill-dev/test root authoring creates runnable testNode exports',
+        async function (scope: TestScope) {
+            await writePackageSmokeProject();
 
-                const result = await spawnNode([
-                    overkillBinEntryPointPath,
-                    'run',
-                    '--record',
-                    authoringSmokeFile
-                ]);
+            const result = await spawnNode([
+                overkillBinEntryPointPath,
+                'run',
+                '--record',
+                authoringSmokeFile
+            ]);
 
-                scope.assert.equal(result.code, 0);
-                scope.assert.equal(result.stderr, '');
-                scope.assert.equal(result.stdout, '');
+            scope.assert.equal(result.code, 0);
+            scope.assert.equal(result.stderr, '');
+            scope.assert.equal(result.stdout, '');
 
-                await assertCompletedRunRecord(scope, packageSmokeFolder, authoringSmokeFile);
-                await assertPackagedReplay(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'packaged overkill list renders root authoring definition locations',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await writePackageSmokeProject();
+            await assertCompletedRunRecord(scope, packageSmokeFolder, authoringSmokeFile);
+            await assertPackagedReplay(scope);
+            return scope.assert.collect();
+        }
+    ),
+    test('packaged overkill list renders root authoring definition locations', async function (scope: TestScope) {
+        await writePackageSmokeProject();
 
-                const result = await spawnNode([
-                    overkillBinEntryPointPath,
-                    'list',
-                    '--with-locations',
-                    authoringSmokeFile
-                ]);
+        const result = await spawnNode([
+            overkillBinEntryPointPath,
+            'list',
+            '--with-locations',
+            authoringSmokeFile
+        ]);
 
-                scope.assert.equal(result.code, 0);
-                scope.assert.equal(result.stderr, '');
-                scope.assert.includes(result.stdout, `nested (${authoringSmokeFile}:`);
-                scope.assert.includes(result.stdout, `passes (${authoringSmokeFile}:`);
+        scope.assert.equal(result.code, 0);
+        scope.assert.equal(result.stderr, '');
+        scope.assert.includes(result.stdout, `nested (${authoringSmokeFile}:`);
+        scope.assert.includes(result.stdout, `passes (${authoringSmokeFile}:`);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'consumer custom facade alias creates filtered runnable testNode exports',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await writePackageSmokeProject();
+        return scope.assert.collect();
+    }),
+    test('consumer custom facade alias creates filtered runnable testNode exports', async function (scope: TestScope) {
+        await writePackageSmokeProject();
 
-                const result = await spawnNode([
-                    overkillBinEntryPointPath,
-                    'run',
-                    '--filter',
-                    'tag=custom-authoring',
-                    customAuthoringSmokeFile
-                ]);
+        const result = await spawnNode([
+            overkillBinEntryPointPath,
+            'run',
+            '--filter',
+            'tag=custom-authoring',
+            customAuthoringSmokeFile
+        ]);
 
-                scope.assert.equal(result.code, 0);
-                scope.assert.equal(result.stderr, '');
-                scope.assert.equal(result.stdout, '');
+        scope.assert.equal(result.code, 0);
+        scope.assert.equal(result.stderr, '');
+        scope.assert.equal(result.stdout, '');
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'consumer imports packaged @overkill-dev/run subpath helpers',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const packageExports = await readPackageExports(runPackageFolder, '@overkill-dev/run');
-                const result = await spawnNode([
-                    '--input-type=module',
-                    '--eval',
-                    runSubpathImportScript
-                ]);
-                const filters = await importPackagedFilters(runPackageFolder);
+        return scope.assert.collect();
+    }),
+    test('consumer imports packaged @overkill-dev/run subpath helpers', async function (scope: TestScope) {
+        const packageExports = await readPackageExports(runPackageFolder, '@overkill-dev/run');
+        const result = await spawnNode([
+            '--input-type=module',
+            '--eval',
+            runSubpathImportScript
+        ]);
+        const filters = await importPackagedFilters(runPackageFolder);
 
-                assertRunConfigSubpathExport(scope, packageExports);
-                assertRunResourceLifecycleSubpathExport(scope, packageExports);
-                scope.assert.equal(result.code, 0);
-                scope.assert.equal(result.stderr, '');
-                scope.assert.equal(result.stdout, expectedRunSubpathImportOutput);
-                assertPackagedFilters(scope, filters);
+        assertRunConfigSubpathExport(scope, packageExports);
+        assertRunResourceLifecycleSubpathExport(scope, packageExports);
+        scope.assert.equal(result.code, 0);
+        scope.assert.equal(result.stderr, '');
+        scope.assert.equal(result.stdout, expectedRunSubpathImportOutput);
+        assertPackagedFilters(scope, filters);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

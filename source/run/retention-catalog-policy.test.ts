@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { retentionCatalog, retentionCatalogScenario } from '../test-support/retention-catalog.ts';
 
-export const testNode = suite('history retention catalog reconstruction', [
-    test(
+export const testNode = authoredSuite('history retention catalog reconstruction', [
+    authoredTest(
         'reconstructs committed record metadata and retains indexed artifact ownership',
         async function (scope: TestScope) {
             const fixture = await retentionCatalog(retentionCatalogScenario);
@@ -21,7 +21,7 @@ export const testNode = suite('history retention catalog reconstruction', [
         }
     ),
     ...([ 'interrupted', 'merge', 'stale' ] as const).map(function (record) {
-        return test(
+        return authoredTest(
             `retains ${record} records without requiring a current completion receipt`,
             async function (scope: TestScope) {
                 const fixture = await retentionCatalog({ ...retentionCatalogScenario, record, indexed: false });
@@ -36,7 +36,7 @@ export const testNode = suite('history retention catalog reconstruction', [
         );
     }),
     ...([ 'file', 'none' ] as const).map(function (artifact) {
-        return test(`omits ${artifact} artifact entries`, async function (scope: TestScope) {
+        return authoredTest(`omits ${artifact} artifact entries`, async function (scope: TestScope) {
             const fixture = await retentionCatalog({ ...retentionCatalogScenario, artifact });
             const catalog = await fixture.read();
             scope.assert.deepEqual(catalog.artifactDirectories, []);
@@ -44,14 +44,14 @@ export const testNode = suite('history retention catalog reconstruction', [
             return scope.assert.collect();
         });
     }),
-    test('recovers orphan artifact ownership from its retained manifest', async function (scope: TestScope) {
+    authoredTest('recovers orphan artifact ownership from its retained manifest', async function (scope: TestScope) {
         const fixture = await retentionCatalog({ ...retentionCatalogScenario, artifact: 'manifest', indexed: false });
         const catalog = await fixture.read();
         scope.assert.equal(catalog.metadata.get('orphan')?.status, 'passed');
         scope.assert.deepEqual(catalog.artifactDirectories, [ '/project/state/runs/orphan' ]);
         return scope.assert.collect();
     }),
-    test('accepts an empty history catalog', async function (scope: TestScope) {
+    authoredTest('accepts an empty history catalog', async function (scope: TestScope) {
         const fixture = await retentionCatalog({
             ...retentionCatalogScenario,
             record: 'missing',
@@ -77,7 +77,7 @@ export const testNode = suite('history retention catalog reconstruction', [
         }
     } ] as const)
         .map(function ({ record, matcher }) {
-            return test(`rejects ${record} history records`, async function (scope: TestScope) {
+            return authoredTest(`rejects ${record} history records`, async function (scope: TestScope) {
                 const fixture = await retentionCatalog({ ...retentionCatalogScenario, record });
                 await scope.assert.rejects(fixture.read, matcher);
                 return scope.assert.collect();
@@ -88,11 +88,10 @@ export const testNode = suite('history retention catalog reconstruction', [
         message: 'Missing artifact retention metadata: /project/state/runs/orphan'
     } ] as const)
         .map(function ({ artifact, message }) {
-            return test(`rejects ${artifact} artifact ownership`, async function (scope: TestScope) {
+            return authoredTest(`rejects ${artifact} artifact ownership`, async function (scope: TestScope) {
                 const fixture = await retentionCatalog({ ...retentionCatalogScenario, artifact });
                 await scope.assert.rejects(fixture.read, { message });
                 return scope.assert.collect();
             });
         })
 ]);
-await runIfMain(import.meta, testNode);

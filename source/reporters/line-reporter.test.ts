@@ -1,19 +1,19 @@
-import { runIfMain } from '#test-runner';
+import {
+    type TestScope as OverkillScope,
+    suite,
+    test,
+    doubleUsage,
+    testDouble,
+    type TestDouble
+} from '@overkill-dev/test';
+
 import figures from 'figures';
 import colors from 'yoctocolors';
 
-import { doubleUsage, testDouble, type TestDouble } from '../packages/doubles/doubles.entry-point.ts';
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import { createLineReporter, type LineReporterDependencies } from './line-reporter.ts';
-
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
 type LogFunction = (...values: readonly unknown[]) => void;
 type Log = TestDouble<LogFunction>;
@@ -94,451 +94,386 @@ async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
     });
 }
 
-export const testNode = createOverkillSuite({
-    ...metadata,
+export const testNode = suite('source/reporters/line-reporter.test.ts', [
+    test('line reporter reports the start event', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
 
-    title: 'source/reporters/line-reporter.test.ts',
+        await reporter.onEvent({
+            facts: {},
+            kind: 'run-start',
+            root: {
+                annotations: rootAnnotations,
+                title: 'file:///source/reporters/line-reporter.test.ts'
+            },
+            startedAt: '2026-07-15T00:00:00.000Z'
+        });
 
-    children: [
-        createOverkillTestCase({
-            ...metadata,
+        scope.assert(doubleUsage.callCount, log, 1);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+            infoSymbol,
+            'Test run started: file:///source/reporters/line-reporter.test.ts'
+        ]);
 
-            title: 'line reporter reports the start event',
+        return scope.assert.collect();
+    }),
+    test('line reporter includes order and seed in the start event', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
 
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
+        await reporter.onEvent({
+            facts: {
+                execution: { order: 'seeded' },
+                reproducibility: { seed: '123' }
+            },
+            kind: 'run-start',
+            root: {
+                annotations: rootAnnotations,
+                title: 'root'
+            },
+            startedAt: '2026-07-15T00:00:00.000Z'
+        });
 
-                await reporter.onEvent({
-                    facts: {},
-                    kind: 'run-start',
-                    root: {
-                        annotations: rootAnnotations,
-                        title: 'file:///source/reporters/line-reporter.test.ts'
-                    },
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+            infoSymbol,
+            'Test run started: root (order=seeded seed=123)'
+        ]);
 
-                scope.assert(doubleUsage.callCount, log, 1);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    infoSymbol,
-                    'Test run started: file:///source/reporters/line-reporter.test.ts'
-                ]);
+        return scope.assert.collect();
+    }),
+    test(
+        'line reporter prints concise assertion failure progress for a failed test-end event',
+        async function (scope: OverkillScope) {
+            const log = testDouble<LogFunction>();
+            const reporter = lineReporterWithLog(log);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'line reporter includes order and seed in the start event',
-
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
-
-                await reporter.onEvent({
-                    facts: {
-                        execution: { order: 'seeded' },
-                        reproducibility: { seed: '123' }
-                    },
-                    kind: 'run-start',
-                    root: {
-                        annotations: rootAnnotations,
-                        title: 'root'
-                    },
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
-
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    infoSymbol,
-                    'Test run started: root (order=seeded seed=123)'
-                ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'line reporter prints concise assertion failure progress for a failed test-end event',
-
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
-
-                await reporter.onEvent({
-                    property: null,
-                    benchmark: null,
-                    completion: 'final',
-                    attempt: 0,
-                    case: failingCaseId,
-                    definitionLocations: [ knownDefinitionLocation ],
-                    artifacts: [],
-                    kind: 'test-end',
-                    outcome: {
-                        failures: [
-                            {
-                                checks: [
-                                    {
+            await reporter.onEvent({
+                property: null,
+                benchmark: null,
+                completion: 'final',
+                attempt: 0,
+                case: failingCaseId,
+                definitionLocations: [ knownDefinitionLocation ],
+                artifacts: [],
+                kind: 'test-end',
+                outcome: {
+                    failures: [
+                        {
+                            checks: [
+                                {
+                                    actual: { kind: 'number', value: 1 },
+                                    diff: {
                                         actual: { kind: 'number', value: 1 },
-                                        diff: {
-                                            actual: { kind: 'number', value: 1 },
-                                            expected: { kind: 'number', value: 2 },
-                                            kind: 'value'
-                                        },
                                         expected: { kind: 'number', value: 2 },
-                                        id: '1',
-                                        kind: 'leaf',
-                                        path: [],
-                                        source: 'assert',
-                                        sourceLocations: [ definitionLocation ],
-                                        summary: 'numbers differ'
-                                    }
-                                ],
-                                kind: 'assertion'
-                            }
-                        ],
-                        kind: 'fail'
-                    },
-                    suitePath: suitePathFromTitles(failingCaseId.suite),
-                    verdict: 'fail',
-                    durationMicroseconds: 12_000
-                });
+                                        kind: 'value'
+                                    },
+                                    expected: { kind: 'number', value: 2 },
+                                    id: '1',
+                                    kind: 'leaf',
+                                    path: [],
+                                    source: 'assert',
+                                    sourceLocations: [ definitionLocation ],
+                                    summary: 'numbers differ'
+                                }
+                            ],
+                            kind: 'assertion'
+                        }
+                    ],
+                    kind: 'fail'
+                },
+                suitePath: suitePathFromTitles(failingCaseId.suite),
+                verdict: 'fail',
+                durationMicroseconds: 12_000
+            });
 
-                scope.assert(doubleUsage.callCount, log, 1);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    errorSymbol,
-                    'fails: numbers differ (12 ms) (source/fails.test.ts:8:4)'
-                ]);
+            scope.assert(doubleUsage.callCount, log, 1);
+            scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+                errorSymbol,
+                'fails: numbers differ (12 ms) (source/fails.test.ts:8:4)'
+            ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
+            return scope.assert.collect();
+        }
+    ),
+    test('line reporter prints unicode string mismatch summaries', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
+        const [ composedName, decomposedName ] = [ 'Ad\u{00E4}le', 'Ada\u{0308}le' ];
 
-            title: 'line reporter prints unicode string mismatch summaries',
-
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
-                const [ composedName, decomposedName ] = [ 'Ad\u{00E4}le', 'Ada\u{0308}le' ];
-
-                await reporter.onEvent({
-                    property: null,
-                    benchmark: null,
-                    completion: 'final',
-                    attempt: 0,
-                    case: failingCaseId,
-                    definitionLocations: [ definitionLocation ],
-                    artifacts: [],
-                    kind: 'test-end',
-                    outcome: {
-                        failures: [
+        await reporter.onEvent({
+            property: null,
+            benchmark: null,
+            completion: 'final',
+            attempt: 0,
+            case: failingCaseId,
+            definitionLocations: [ definitionLocation ],
+            artifacts: [],
+            kind: 'test-end',
+            outcome: {
+                failures: [
+                    {
+                        checks: [
                             {
-                                checks: [
-                                    {
-                                        actual: { kind: 'string', truncation: null, value: decomposedName },
-                                        diff: {
-                                            actual: decomposedName,
-                                            expected: composedName,
-                                            hunks: [
-                                                {
-                                                    actualStart: 1,
-                                                    added: [ decomposedName ],
-                                                    expectedStart: 1,
-                                                    removed: [ composedName ]
-                                                }
-                                            ],
-                                            kind: 'string'
-                                        },
-                                        expected: { kind: 'string', truncation: null, value: composedName },
-                                        id: '1',
-                                        kind: 'leaf',
-                                        path: [ { key: { kind: 'string', value: 'name' }, kind: 'property' } ],
-                                        source: 'assert',
-                                        sourceLocations: [ {
-                                            column: 5,
-                                            file: 'source/users.test.ts',
-                                            kind: 'known' as const,
-                                            line: 10
-                                        } ],
-                                        summary: 'names differ'
-                                    }
-                                ],
-                                kind: 'assertion'
-                            }
-                        ],
-                        kind: 'fail'
-                    },
-                    suitePath: suitePathFromTitles(failingCaseId.suite),
-                    verdict: 'fail',
-                    durationMicroseconds: 12_000
-                });
-
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails: names differ (12 ms)' ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'line reporter prints body error summaries',
-
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
-
-                await reporter.onEvent({
-                    property: null,
-                    benchmark: null,
-                    completion: 'final',
-                    attempt: 0,
-                    case: failingCaseId,
-                    definitionLocations: [ definitionLocation ],
-                    artifacts: [],
-                    kind: 'test-end',
-                    outcome: {
-                        failures: [
-                            {
-                                error: {
-                                    message: 'boom',
-                                    name: 'Error',
-                                    stack: 'Error: boom\n    at source/users.test.ts:10:5',
-                                    thrown: new Error('boom')
+                                actual: { kind: 'string', truncation: null, value: decomposedName },
+                                diff: {
+                                    actual: decomposedName,
+                                    expected: composedName,
+                                    hunks: [
+                                        {
+                                            actualStart: 1,
+                                            added: [ decomposedName ],
+                                            expectedStart: 1,
+                                            removed: [ composedName ]
+                                        }
+                                    ],
+                                    kind: 'string'
                                 },
-                                kind: 'body-error'
+                                expected: { kind: 'string', truncation: null, value: composedName },
+                                id: '1',
+                                kind: 'leaf',
+                                path: [ { key: { kind: 'string', value: 'name' }, kind: 'property' } ],
+                                source: 'assert',
+                                sourceLocations: [ {
+                                    column: 5,
+                                    file: 'source/users.test.ts',
+                                    kind: 'known' as const,
+                                    line: 10
+                                } ],
+                                summary: 'names differ'
                             }
                         ],
-                        kind: 'fail'
-                    },
-                    suitePath: suitePathFromTitles(failingCaseId.suite),
-                    verdict: 'fail',
-                    durationMicroseconds: 12_000
-                });
+                        kind: 'assertion'
+                    }
+                ],
+                kind: 'fail'
+            },
+            suitePath: suitePathFromTitles(failingCaseId.suite),
+            verdict: 'fail',
+            durationMicroseconds: 12_000
+        });
 
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails: boom (12 ms)' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails: names differ (12 ms)' ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
+        return scope.assert.collect();
+    }),
+    test('line reporter prints body error summaries', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
 
-            title: 'line reporter prints test-contract summaries',
+        await reporter.onEvent({
+            property: null,
+            benchmark: null,
+            completion: 'final',
+            attempt: 0,
+            case: failingCaseId,
+            definitionLocations: [ definitionLocation ],
+            artifacts: [],
+            kind: 'test-end',
+            outcome: {
+                failures: [
+                    {
+                        error: {
+                            message: 'boom',
+                            name: 'Error',
+                            stack: 'Error: boom\n    at source/users.test.ts:10:5',
+                            thrown: new Error('boom')
+                        },
+                        kind: 'body-error'
+                    }
+                ],
+                kind: 'fail'
+            },
+            suitePath: suitePathFromTitles(failingCaseId.suite),
+            verdict: 'fail',
+            durationMicroseconds: 12_000
+        });
 
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails: boom (12 ms)' ]);
 
-                await reporter.onEvent({
-                    property: null,
-                    benchmark: null,
-                    completion: 'final',
-                    attempt: 0,
-                    case: failingCaseId,
-                    definitionLocations: [ definitionLocation ],
-                    artifacts: [],
-                    kind: 'test-end',
-                    outcome: {
-                        failures: [
+        return scope.assert.collect();
+    }),
+    test('line reporter prints test-contract summaries', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
+
+        await reporter.onEvent({
+            property: null,
+            benchmark: null,
+            completion: 'final',
+            attempt: 0,
+            case: failingCaseId,
+            definitionLocations: [ definitionLocation ],
+            artifacts: [],
+            kind: 'test-end',
+            outcome: {
+                failures: [
+                    {
+                        actual: 0,
+                        code: 'no-assertions',
+                        expected: 'at least one assertion',
+                        kind: 'test-contract',
+                        summary: 'Expected at least one assertion.'
+                    }
+                ],
+                kind: 'fail'
+            },
+            suitePath: suitePathFromTitles(failingCaseId.suite),
+            verdict: 'fail',
+            durationMicroseconds: 12_000
+        });
+
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+            errorSymbol,
+            'fails: Expected at least one assertion. (12 ms)'
+        ]);
+
+        return scope.assert.collect();
+    }),
+    test('line reporter prints object identity summaries', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
+
+        await reporter.onEvent({
+            property: null,
+            benchmark: null,
+            completion: 'final',
+            attempt: 0,
+            case: failingCaseId,
+            definitionLocations: [ definitionLocation ],
+            artifacts: [],
+            kind: 'test-end',
+            outcome: {
+                failures: [
+                    {
+                        checks: [
                             {
-                                actual: 0,
-                                code: 'no-assertions',
-                                expected: 'at least one assertion',
-                                kind: 'test-contract',
-                                summary: 'Expected at least one assertion.'
+                                actual: {
+                                    constructorName: 'Object',
+                                    entries: [],
+                                    kind: 'object',
+                                    truncation: null
+                                },
+                                diff: {
+                                    kind: 'object',
+                                    operations: [
+                                        {
+                                            from: { kind: 'string', truncation: null, value: 'Ada' },
+                                            operation: 'replace',
+                                            path: [ {
+                                                key: { kind: 'string', value: 'name' },
+                                                kind: 'property'
+                                            } ],
+                                            to: { kind: 'string', truncation: null, value: 'Grace' }
+                                        }
+                                    ]
+                                },
+                                expected: {
+                                    constructorName: 'Object',
+                                    entries: [],
+                                    kind: 'object',
+                                    truncation: null
+                                },
+                                id: '1',
+                                kind: 'leaf',
+                                path: [],
+                                source: 'assert',
+                                sourceLocations: [ definitionLocation ],
+                                summary: 'objects differ'
                             }
                         ],
-                        kind: 'fail'
-                    },
-                    suitePath: suitePathFromTitles(failingCaseId.suite),
-                    verdict: 'fail',
-                    durationMicroseconds: 12_000
-                });
+                        kind: 'assertion'
+                    }
+                ],
+                kind: 'fail'
+            },
+            suitePath: suitePathFromTitles(failingCaseId.suite),
+            verdict: 'fail',
+            durationMicroseconds: 12_000
+        });
 
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    errorSymbol,
-                    'fails: Expected at least one assertion. (12 ms)'
-                ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails: objects differ (12 ms)' ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
+        return scope.assert.collect();
+    }),
+    test('line reporter prints a passed test-end event', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
 
-            title: 'line reporter prints object identity summaries',
+        await reporter.onEvent({
+            property: null,
+            benchmark: null,
+            completion: 'final',
+            attempt: 0,
+            case: passingCaseId,
+            definitionLocations: [ definitionLocation ],
+            artifacts: [],
+            kind: 'test-end',
+            outcome: { kind: 'pass' },
+            suitePath: suitePathFromTitles(passingCaseId.suite),
+            verdict: 'pass',
+            durationMicroseconds: 3000
+        });
 
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
+        scope.assert(doubleUsage.callCount, log, 1);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ successSymbol, 'passes (3 ms)' ]);
 
-                await reporter.onEvent({
-                    property: null,
-                    benchmark: null,
-                    completion: 'final',
-                    attempt: 0,
-                    case: failingCaseId,
-                    definitionLocations: [ definitionLocation ],
-                    artifacts: [],
-                    kind: 'test-end',
-                    outcome: {
-                        failures: [
-                            {
-                                checks: [
-                                    {
-                                        actual: {
-                                            constructorName: 'Object',
-                                            entries: [],
-                                            kind: 'object',
-                                            truncation: null
-                                        },
-                                        diff: {
-                                            kind: 'object',
-                                            operations: [
-                                                {
-                                                    from: { kind: 'string', truncation: null, value: 'Ada' },
-                                                    operation: 'replace',
-                                                    path: [ {
-                                                        key: { kind: 'string', value: 'name' },
-                                                        kind: 'property'
-                                                    } ],
-                                                    to: { kind: 'string', truncation: null, value: 'Grace' }
-                                                }
-                                            ]
-                                        },
-                                        expected: {
-                                            constructorName: 'Object',
-                                            entries: [],
-                                            kind: 'object',
-                                            truncation: null
-                                        },
-                                        id: '1',
-                                        kind: 'leaf',
-                                        path: [],
-                                        source: 'assert',
-                                        sourceLocations: [ definitionLocation ],
-                                        summary: 'objects differ'
-                                    }
-                                ],
-                                kind: 'assertion'
-                            }
-                        ],
-                        kind: 'fail'
-                    },
-                    suitePath: suitePathFromTitles(failingCaseId.suite),
-                    verdict: 'fail',
-                    durationMicroseconds: 12_000
-                });
+        return scope.assert.collect();
+    }),
+    test('line reporter prints neutral test-end events with outcome reasons', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
 
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails: objects differ (12 ms)' ]);
+        await reporter.onEvent({
+            property: null,
+            benchmark: null,
+            completion: 'final',
+            attempt: 0,
+            case: skippedCaseId,
+            definitionLocations: [ definitionLocation ],
+            artifacts: [],
+            kind: 'test-end',
+            outcome: { kind: 'skip', reason: 'not supported' },
+            suitePath: suitePathFromTitles(skippedCaseId.suite),
+            verdict: 'skip',
+            durationMicroseconds: 4000
+        });
+        await reporter.onEvent({
+            property: null,
+            benchmark: null,
+            completion: 'final',
+            attempt: 1,
+            case: inconclusiveCaseId,
+            definitionLocations: [ definitionLocation ],
+            artifacts: [],
+            kind: 'test-end',
+            outcome: { kind: 'inconclusive', reason: 'missing signal' },
+            suitePath: suitePathFromTitles(inconclusiveCaseId.suite),
+            verdict: 'inconclusive',
+            durationMicroseconds: 5000
+        });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
+        scope.assert(doubleUsage.callCount, log, 2);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ infoSymbol, 'skips: not supported (4 ms)' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 1, [
+            infoSymbol,
+            'inconclusive: missing signal (5 ms) [2 attempts]'
+        ]);
 
-            title: 'line reporter prints a passed test-end event',
+        return scope.assert.collect();
+    }),
+    test('line reporter prints nested suite prefixes', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
 
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
+        await reportNestedSuiteRun(reporter);
 
-                await reporter.onEvent({
-                    property: null,
-                    benchmark: null,
-                    completion: 'final',
-                    attempt: 0,
-                    case: passingCaseId,
-                    definitionLocations: [ definitionLocation ],
-                    artifacts: [],
-                    kind: 'test-end',
-                    outcome: { kind: 'pass' },
-                    suitePath: suitePathFromTitles(passingCaseId.suite),
-                    verdict: 'pass',
-                    durationMicroseconds: 3000
-                });
+        scope.assert(doubleUsage.callCount, log, 2);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+            successSymbol,
+            '[rows] row 1 [value=1] (7 ms)'
+        ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ successSymbol, 'passes (2 ms)' ]);
 
-                scope.assert(doubleUsage.callCount, log, 1);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ successSymbol, 'passes (3 ms)' ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'line reporter prints neutral test-end events with outcome reasons',
-
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
-
-                await reporter.onEvent({
-                    property: null,
-                    benchmark: null,
-                    completion: 'final',
-                    attempt: 0,
-                    case: skippedCaseId,
-                    definitionLocations: [ definitionLocation ],
-                    artifacts: [],
-                    kind: 'test-end',
-                    outcome: { kind: 'skip', reason: 'not supported' },
-                    suitePath: suitePathFromTitles(skippedCaseId.suite),
-                    verdict: 'skip',
-                    durationMicroseconds: 4000
-                });
-                await reporter.onEvent({
-                    property: null,
-                    benchmark: null,
-                    completion: 'final',
-                    attempt: 1,
-                    case: inconclusiveCaseId,
-                    definitionLocations: [ definitionLocation ],
-                    artifacts: [],
-                    kind: 'test-end',
-                    outcome: { kind: 'inconclusive', reason: 'missing signal' },
-                    suitePath: suitePathFromTitles(inconclusiveCaseId.suite),
-                    verdict: 'inconclusive',
-                    durationMicroseconds: 5000
-                });
-
-                scope.assert(doubleUsage.callCount, log, 2);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ infoSymbol, 'skips: not supported (4 ms)' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [
-                    infoSymbol,
-                    'inconclusive: missing signal (5 ms) [2 attempts]'
-                ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'line reporter prints nested suite prefixes',
-
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
-
-                await reportNestedSuiteRun(reporter);
-
-                scope.assert(doubleUsage.callCount, log, 2);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    successSymbol,
-                    '[rows] row 1 [value=1] (7 ms)'
-                ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ successSymbol, 'passes (2 ms)' ]);
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

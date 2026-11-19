@@ -1,19 +1,21 @@
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock } from '@enormora/clock';
 import {
-    createSuite,
-    createTestCase,
-    createTestPlanFromTestFiles,
     defineReporter,
-    execute,
     type DefinedReporter,
     type ReporterEvent,
     type RunResult,
     type TestBody,
     type TestNode,
     type TestPlan,
-    type TestScope
+    type TestScope,
+    createSuite,
+    createTestCase,
+    createTestPlanFromTestFiles,
+    execute
 } from '../engine/engine.entry-point.ts';
+
 import { createResourceLifecycleRuntimePolicy } from '../../run/resource-lifecycle.ts';
 import type { RunTimingSpan } from '../../engine/run-timings.ts';
 import { createResourceLifecycleTiming } from '../../run/resource-lifecycle-timing.ts';
@@ -421,46 +423,20 @@ async function assertRunnerManagedInvalidProjection(scope: TestScope): Promise<v
     );
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/packages/test/resource-lifecycle-scopes.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'resource wrappers honor runner-managed lifecycle scopes',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertRunnerManagedResourceScopes(scope);
+export const testNode = suite('source/packages/test/resource-lifecycle-scopes.test.ts', [
+    test('resource wrappers honor runner-managed lifecycle scopes', async function (scope: TestScope) {
+        await assertRunnerManagedResourceScopes(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'resource wrappers support runner-managed array projections',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertRunnerManagedArrayProjection(scope);
+        return scope.assert.collect();
+    }),
+    test('resource wrappers support runner-managed array projections', async function (scope: TestScope) {
+        await assertRunnerManagedArrayProjection(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'resource wrappers reject invalid runner-managed projections',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertRunnerManagedInvalidProjection(scope);
+        return scope.assert.collect();
+    }),
+    test('resource wrappers reject invalid runner-managed projections', async function (scope: TestScope) {
+        await assertRunnerManagedInvalidProjection(scope);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

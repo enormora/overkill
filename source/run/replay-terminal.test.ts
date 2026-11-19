@@ -1,8 +1,7 @@
 import * as timers from 'node:timers';
 import { fileURLToPath } from 'node:url';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { spawn } from 'node-pty';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { readProcessEnvironment } from './node-host-readers.ts';
 
 const picker = fileURLToPath(new URL('./replay-terminal.ts', import.meta.url));
@@ -43,7 +42,7 @@ async function pickInTerminal(term: string, answer: string): Promise<TerminalRes
         });
     });
 }
-export const testNode = suite('replay terminal', [
+export const testNode = authoredSuite('replay terminal', [
     test('arrow navigation selects a different record', async function (scope: TestScope) {
         const result = await pickInTerminal('xterm-256color', '\u{1B}[B\r');
         scope.assert.equal(result.code, 0);
@@ -75,4 +74,3 @@ export const testNode = suite('replay terminal', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

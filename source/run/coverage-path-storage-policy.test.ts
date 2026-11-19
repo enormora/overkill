@@ -1,8 +1,8 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { coveragePathStorage, coveragePaths } from '../test-support/coverage-path-storage.ts';
 
-export const testNode = suite('coverage directory ownership', [
+export const testNode = authoredSuite('coverage directory ownership', [
     ...([ 'ancestor', 'pass' ] as const).map(function (scenario) {
         return test(`creates coverage inside the project using ${scenario} paths`, async function (scope: TestScope) {
             const fixture = coveragePathStorage(scenario);
@@ -36,4 +36,3 @@ export const testNode = suite('coverage directory ownership', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

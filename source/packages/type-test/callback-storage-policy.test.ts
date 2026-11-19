@@ -1,6 +1,7 @@
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import * as ast from 'typescript-beta/ast';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+
 import {
     sourceFixture,
     sourceConstant,
@@ -62,7 +63,7 @@ function aliasedStorage(): SourceFixture & { readonly reference: ast.Identifier;
 
     return { ...fixture, reference, call };
 }
-export const testNode = suite('callback storage ownership', [
+export const testNode = authoredSuite('callback storage ownership', [
     importedOptions,
     test('leaves unbound option literals unchanged', async function (scope: TestScope) {
         const fixture = sourceFixture();
@@ -133,4 +134,3 @@ export const testNode = suite('callback storage ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -8,7 +8,7 @@ import type {
 import { collectRun } from './initialized-run-collection.ts';
 import { snapshotRunCommand } from './frozen-run-command.ts';
 import { RunResolutionError } from './run-errors.ts';
-import { readResolvedRunInput } from './run-input-resolution.ts';
+import { readResolvedRunInput, resolveRunRequestSeed } from './run-input-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { freezeValue } from './run-support.ts';
 
@@ -26,7 +26,7 @@ export async function initializeRun(
             'unsupported-request'
         );
     }
-    const request = { ...input.request, seed: { value: input.request.seed.value ?? dependencies.createSeed() } };
+    const request = resolveRunRequestSeed(input.request, dependencies.createSeed);
     const context = {
         command: freezeValue({ ...command, config: input.config, engine: input.engine, request }),
         dependencies,

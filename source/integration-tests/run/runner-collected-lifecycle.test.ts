@@ -2,12 +2,12 @@ import { execFile } from 'node:child_process';
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { createPlainOutputRenderer, createSuite, createTestCase } from '../../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import { createPlainOutputRenderer } from '../../packages/engine/engine.entry-point.ts';
 import { normalizeConfig, orchestrator, type FrozenRunCommand } from '../../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const bootstrapKey = 'overkillLifecycleBootstrap';
 const importCountKey = 'overkillLifecycleImports';
 
@@ -73,46 +73,32 @@ async function staleErrorProbe(): Promise<string> {
     });
 }
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'public collected runner lifecycle',
-    children: [
-        createTestCase({
-            ...metadata,
-            title: 'caller bootstrap precedes configuration and test imports',
-            async body(scope) {
-                const cwd = await realpath(await mkdtemp(join(tmpdir(), 'overkill-collected-bootstrap-')));
-                scope.cleanup(async function removeBootstrapProject() {
-                    Reflect.deleteProperty(globalThis, bootstrapKey);
-                    Reflect.deleteProperty(globalThis, importCountKey);
-                    await rm(cwd, { recursive: true, force: true });
-                });
-                const initialized = await orchestrator.initialize(await bootstrapCommand(cwd));
-                scope.assert.undefined(Reflect.get(globalThis, importCountKey));
-                Reflect.set(globalThis, bootstrapKey, 'ready');
-                const collected = await initialized.collect();
-                const results = [
-                    await collected.run({ selection: { kind: 'all' } }),
-                    await collected.run({ selection: { kind: 'all' } })
-                ];
-                scope.assert.deepEqual({
-                    imports: Number(Reflect.get(globalThis, importCountKey)),
-                    statuses: results.map(function resultStatus(result) {
-                        return result.status;
-                    })
-                }, { imports: 1, statuses: [ 'passed', 'passed' ] });
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'late failures retain safe attribution and a surviving process remains reusable',
-            async body(scope) {
-                scope.assert.equal(await staleErrorProbe(), 'collected late error attribution passed\n');
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('public collected runner lifecycle', [
+    test('caller bootstrap precedes configuration and test imports', async function (scope) {
+        const cwd = await realpath(await mkdtemp(join(tmpdir(), 'overkill-collected-bootstrap-')));
+        scope.cleanup(async function removeBootstrapProject() {
+            Reflect.deleteProperty(globalThis, bootstrapKey);
+            Reflect.deleteProperty(globalThis, importCountKey);
+            await rm(cwd, { recursive: true, force: true });
+        });
+        const initialized = await orchestrator.initialize(await bootstrapCommand(cwd));
+        scope.assert.undefined(Reflect.get(globalThis, importCountKey));
+        Reflect.set(globalThis, bootstrapKey, 'ready');
+        const collected = await initialized.collect();
+        const results = [
+            await collected.run({ selection: { kind: 'all' } }),
+            await collected.run({ selection: { kind: 'all' } })
+        ];
+        scope.assert.deepEqual({
+            imports: Number(Reflect.get(globalThis, importCountKey)),
+            statuses: results.map(function resultStatus(result) {
+                return result.status;
+            })
+        }, { imports: 1, statuses: [ 'passed', 'passed' ] });
+        return scope.assert.collect();
+    }),
+    test('late failures retain safe attribution and a surviving process remains reusable', async function (scope) {
+        scope.assert.equal(await staleErrorProbe(), 'collected late error attribution passed\n');
+        return scope.assert.collect();
+    })
+]);

@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import { replayProject, writeReplayCase, replayPropertyUrl } from '../../test-support/replay-project-fixture.ts';
 
@@ -25,7 +26,7 @@ function assertCooperativeOutcome(scope: TestScope, result: RunResult, reason: s
     }
 }
 
-export const testNode = suite('linearizability supervision', [
+export const testNode = authoredSuite('linearizability supervision', [
     ...[ 'cancellation', 'permission', 'control' ].map(function cooperative(reason) {
         return test(`drains cooperative lanes on ${reason}`, async function (scope: TestScope) {
             const project = await replayProject(scope, {
@@ -108,4 +109,3 @@ export const testNode = suite('linearizability supervision', [
         );
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,9 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { parseWitnessFile, type RunResult } from '../../packages/engine/engine.entry-point.ts';
 import { orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import {
     replayProject,
     writeReplayCase,
@@ -115,15 +114,18 @@ async function replayConfigFailure(scope: TestScope, processModel: ProcessModel)
     await replayConfigWitness(scope, project, saved.file);
 }
 
-export const testNode = suite('project-backed ESLint properties', [
+export const testNode = authoredSuite('project-backed ESLint properties', [
     ...([ 'supervised-process', 'worker-pool' ] as const).map(function witnessReplay(processModel) {
-        return test(`${processModel} retains and replays generated config failures`, async function (scope: TestScope) {
-            await replayConfigFailure(scope, processModel);
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `${processModel} retains and replays generated config failures`,
+            async function (scope: TestScope) {
+                await replayConfigFailure(scope, processModel);
+                return scope.assert.collect();
+            }
+        );
     }),
     ...([ 'supervised-process', 'worker-pool' ] as const).map(function executionMode(processModel) {
-        return test(`${processModel} runs generated projects with profile budgets`, async function (scope) {
+        return authoredTest(`${processModel} runs generated projects with profile budgets`, async function (scope) {
             const command = await projectPropertyCommand(scope, processModel);
             const resolved = await orchestrator.resolve(command);
             const result = await orchestrator.run(command);
@@ -135,7 +137,7 @@ export const testNode = suite('project-backed ESLint properties', [
             return scope.assert.collect();
         });
     }),
-    test('requires explicit integration property budgets before execution', async function (scope) {
+    authoredTest('requires explicit integration property budgets before execution', async function (scope) {
         const command = await projectPropertyCommand(scope, 'supervised-process');
         const profile = command.config.profiles.cases;
         if (profile?.testFamily !== 'integration') {
@@ -150,5 +152,3 @@ export const testNode = suite('project-backed ESLint properties', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

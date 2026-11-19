@@ -8,11 +8,7 @@ import type {
 import type { CollectedRunPlan, ResolvedRun } from '../run/run-types.ts';
 import type { WorkerPoolRunCompletion } from '../run/worker-pool-runtime.ts';
 import { createRunTimingMeasurement } from '../run/run-timing-collection.ts';
-import {
-    fakeDependencies,
-    createCollectedPlan,
-    workerPoolResolvedRun
-} from './worker-pool-execution-state.ts';
+import { fakeDependencies, createCollectedPlan, workerPoolResolvedRun } from './worker-pool-execution-state.ts';
 import { workerTaskRuntime } from './worker-task-runtime.ts';
 import { runResultFactory } from './run-result-factory.ts';
 

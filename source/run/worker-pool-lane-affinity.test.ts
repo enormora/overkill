@@ -1,15 +1,8 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { WorkerLifecycle } from '../config/types.ts';
 import { emptyWorkUnitResourceConstraints, type WorkUnit, type WorkUnitResourceConstraints } from './run-types.ts';
-import {
-    workerPoolLanes,
-    workerPoolPlacementAssignments
-} from './worker-pool-lanes.ts';
+import { workerPoolLanes, workerPoolPlacementAssignments } from './worker-pool-lanes.ts';
 
 function workUnitWithConstraints(
     key: string,
@@ -49,69 +42,49 @@ function assignedLanes(units: readonly WorkUnit[], availableParallelism: number)
     });
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-lane-affinity.test.ts',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool lane affinity breaks ties after load',
-            body(scope: OverkillScope) {
-                scope.assert.deepEqual(
-                    assignedLanes([
-                        workUnitWithConstraints('affinity-tie-1', 'reuse', {
-                            ...emptyWorkUnitResourceConstraints,
-                            affinityKeys: [ 'tenant:a' ]
-                        }),
-                        workUnitWithConstraints('affinity-tie-filler', 'reuse', emptyWorkUnitResourceConstraints),
-                        workUnitWithConstraints('affinity-tie-2', 'reuse', {
-                            ...emptyWorkUnitResourceConstraints,
-                            affinityKeys: [ 'tenant:a' ]
-                        })
-                    ], 3),
-                    [
-                        'worker-1',
-                        'worker-2',
-                        'worker-1'
-                    ]
-                );
+export const testNode = suite('source/run/worker-pool-lane-affinity.test.ts', [
+    test('worker-pool lane affinity breaks ties after load', function (scope: OverkillScope) {
+        scope.assert.deepEqual(
+            assignedLanes([
+                workUnitWithConstraints('affinity-tie-1', 'reuse', {
+                    ...emptyWorkUnitResourceConstraints,
+                    affinityKeys: [ 'tenant:a' ]
+                }),
+                workUnitWithConstraints('affinity-tie-filler', 'reuse', emptyWorkUnitResourceConstraints),
+                workUnitWithConstraints('affinity-tie-2', 'reuse', {
+                    ...emptyWorkUnitResourceConstraints,
+                    affinityKeys: [ 'tenant:a' ]
+                })
+            ], 3),
+            [
+                'worker-1',
+                'worker-2',
+                'worker-1'
+            ]
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool lane affinity loses to fault-domain spreading',
-            body(scope: OverkillScope) {
-                scope.assert.deepEqual(
-                    assignedLanes([
-                        workUnitWithConstraints('affinity-fault-1', 'reuse', {
-                            ...emptyWorkUnitResourceConstraints,
-                            affinityKeys: [ 'tenant:a' ],
-                            faultDomains: [ 'postgres:primary' ]
-                        }),
-                        workUnitWithConstraints('affinity-fault-2', 'reuse', {
-                            ...emptyWorkUnitResourceConstraints,
-                            affinityKeys: [ 'tenant:a' ],
-                            faultDomains: [ 'postgres:primary' ]
-                        })
-                    ], 3),
-                    [
-                        'worker-1',
-                        'worker-2'
-                    ]
-                );
+        return scope.assert.collect();
+    }),
+    test('worker-pool lane affinity loses to fault-domain spreading', function (scope: OverkillScope) {
+        scope.assert.deepEqual(
+            assignedLanes([
+                workUnitWithConstraints('affinity-fault-1', 'reuse', {
+                    ...emptyWorkUnitResourceConstraints,
+                    affinityKeys: [ 'tenant:a' ],
+                    faultDomains: [ 'postgres:primary' ]
+                }),
+                workUnitWithConstraints('affinity-fault-2', 'reuse', {
+                    ...emptyWorkUnitResourceConstraints,
+                    affinityKeys: [ 'tenant:a' ],
+                    faultDomains: [ 'postgres:primary' ]
+                })
+            ], 3),
+            [
+                'worker-1',
+                'worker-2'
+            ]
+        );
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

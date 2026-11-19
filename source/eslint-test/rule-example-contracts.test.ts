@@ -1,12 +1,14 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import type { Linter, Rule, RuleTester } from 'eslint';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import {
+    type RunResult,
+    type Suite,
     createRoot,
     createTestPlan,
-    execute,
-    type RunResult,
-    type Suite
+    execute
 } from '../packages/engine/engine.entry-point.ts';
+
 import { defineRuleTests } from '../packages/eslint-test/eslint-test.entry-point.ts';
 
 const rule: Rule.RuleModule = {
@@ -57,7 +59,7 @@ const failing: readonly RuleTester.InvalidTestCase['errors'][] = [
 ];
 const definition = { name: 'contracts', rule, configs: {}, valid: [], invalid: [] };
 
-export const testNode = suite('ESLint example contracts', [
+export const testNode = authoredSuite('ESLint example contracts', [
     test('applies per-case configuration selection to invalid examples', async function (scope) {
         const rules = defineRuleTests({
             ...definition,

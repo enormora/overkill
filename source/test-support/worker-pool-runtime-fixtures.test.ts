@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import type { RunOrchestratorDependencies } from '../run/run-orchestrator-dependencies.ts';
 import { runResultFactory } from './run-result-factory.ts';
@@ -95,31 +91,20 @@ async function assertUnsupportedFakes(scope: OverkillScope, dependencies: Fixtur
     }, { message: 'Test fixture dependency is not configured.' });
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/test-support/worker-pool-runtime-fixtures.test.ts',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'fakeWorkerPoolRuntimeDependencies() creates observable worker-pool fakes',
-            async body(scope: OverkillScope) {
-                const dependencies = fakeWorkerPoolRuntimeDependencies();
+export const testNode = suite('source/test-support/worker-pool-runtime-fixtures.test.ts', [
+    test(
+        'fakeWorkerPoolRuntimeDependencies() creates observable worker-pool fakes',
+        async function (scope: OverkillScope) {
+            const dependencies = fakeWorkerPoolRuntimeDependencies();
 
-                scope.assert.equal(dependencies.createSeed(), 42n);
-                await assertPoolFake(scope, dependencies);
-                await assertReporterFakes(scope, dependencies);
-                await assertStorageAndOutputFakes(scope, dependencies);
-                assertRuntimePolicyFakes(scope, dependencies);
-                await assertUnsupportedFakes(scope, dependencies);
+            scope.assert.equal(dependencies.createSeed(), 42n);
+            await assertPoolFake(scope, dependencies);
+            await assertReporterFakes(scope, dependencies);
+            await assertStorageAndOutputFakes(scope, dependencies);
+            assertRuntimePolicyFakes(scope, dependencies);
+            await assertUnsupportedFakes(scope, dependencies);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

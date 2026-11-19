@@ -1,8 +1,7 @@
 import { createServer, type Server, type Socket } from 'node:net';
 import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import { withResourceCheckDelivery } from '../resource-check-delivery.ts';
 import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
@@ -103,7 +102,7 @@ async function assertCopiedDelivery(scope: TestScope, expected: unknown): Promis
     }
     scope.assert.equal(Reflect.apply(read, undefined, []), expected);
 }
-export const testNode = suite('resource check transport client', [
+export const testNode = authoredSuite('resource check transport client', [
     test('shares active ownership across loaded module copies', async function (scope) {
         const peer = await ownerChannel(scope);
         await withResourceCheckDelivery(peer.client.delivery, async function readCopiedDelivery() {
@@ -227,4 +226,3 @@ export const testNode = suite('resource check transport client', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

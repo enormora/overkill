@@ -1,8 +1,8 @@
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../../packages/test/test.entry-point.ts';
+import { test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { adapterUrl, engineUrl, configUrl } from './stryker-lifecycle-fixture.test.ts';
 import { executeMutationScript } from './stryker-script.test.ts';
 import { strykerClassificationScript } from './stryker-classification-scripts.test.ts';
@@ -34,7 +34,7 @@ const modes = [
     { processModel: 'supervised-process', freshState: false }
 ];
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'Stryker mutant classification',
     modes.flatMap(function executionMode(mode) {
         const cases = mode.freshState || mode.processModel === 'supervised-process'
@@ -68,5 +68,3 @@ export const testNode = suite(
         });
     })
 );
-
-await runIfMain(import.meta, testNode);

@@ -1,14 +1,9 @@
-import { createSuite } from '../../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as doubleProtocolTestNode } from './double-protocol.ts';
 import { testNode as testDoubleRuntimeTestNode } from './test-double-runtime.ts';
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/test-support/unit-suite-groups/doubles.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        doubleProtocolTestNode,
-        testDoubleRuntimeTestNode
-    ]
-});
+export const testNode = suite('source/test-support/unit-suite-groups/doubles.ts', [
+    doubleProtocolTestNode,
+    testDoubleRuntimeTestNode
+]);

@@ -1,10 +1,11 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import { z } from 'zod/v4';
-import { runIfMain } from '#test-runner';
+
 import { createTemporaryDirectoryResource, startResources } from './packages/resources/resources.entry-point.ts';
-import { suite, test } from './packages/test/test.entry-point.ts';
+
 import {
     defineImplementationReference,
     prepareImplementation,
@@ -46,7 +47,7 @@ function request(directory: string, dynamicModules: readonly string[]): Implemen
     };
 }
 
-export const testNode = suite('portable implementation graphs', [
+export const testNode = authoredSuite('portable implementation graphs', [
     test(
         'resolves standalone observer factories while retaining native callback state locally',
         async function (scope) {
@@ -256,4 +257,3 @@ export const testNode = suite('portable implementation graphs', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,7 +1,6 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import {
     orchestrator,
     normalizeConfig,
@@ -100,7 +99,7 @@ async function assertRenderedDelivery(scope: TestScope, execution: BenchmarkExec
     scope.assert.includes(html, execution.processModel);
     scope.assert.includes(html, 'machineClass');
 }
-export const testNode = suite('benchmark HTML runner integration', [
+export const testNode = authoredSuite('benchmark HTML runner integration', [
     test('preserves baseline writes when chart metadata fails', async function (scope: TestScope) {
         const fixture = await createBenchmarkBaselineFixture(scope, {
             processModel: 'supervised-process',
@@ -161,4 +160,3 @@ export const testNode = suite('benchmark HTML runner integration', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

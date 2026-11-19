@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
 import { selectCalibrationReference } from './calibration-references.ts';
@@ -32,10 +33,10 @@ const scenarios = [
         source: 'canonical'
     }
 ] as const;
-export const testNode = suite(
+export const testNode = authoredSuite(
     'calibration reference selection',
     [
-        test('reads historical saved calibration references', function (scope: TestScope) {
+        authoredTest('reads historical saved calibration references', function (scope: TestScope) {
             const restored = benchmarkNormalizationContextSchema.parse({
                 mode: 'compare',
                 profile: 'bench',
@@ -50,7 +51,7 @@ export const testNode = suite(
             return scope.assert.collect();
         }),
         ...scenarios.map(function scenario(input) {
-            return test(input.title, function (scope: TestScope) {
+            return authoredTest(input.title, function (scope: TestScope) {
                 const selected = selectCalibrationReference({
                     actual,
                     metric: 'value',

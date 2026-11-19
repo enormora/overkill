@@ -1,4 +1,5 @@
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import {
     defineResource,
     defineRuntime,
@@ -6,7 +7,7 @@ import {
     type AnyResourceDefinition
 } from '../resources/resources.entry-point.ts';
 import { testNode as inputPolicy } from './resource-input-policy.test.ts';
-import { suite, test, type TestScope } from './test.entry-point.ts';
+import type { TestScope } from './test.entry-point.ts';
 import { buildStepAttachments } from './resource-wrapper-metadata.ts';
 
 function fixedValueResource(name: string): AnyResourceDefinition {
@@ -69,4 +70,3 @@ export const testNode = suite('resource wrapper attachment metadata', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

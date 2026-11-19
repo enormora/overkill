@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { attachmentFixture, attachmentPeerWork, attachmentWork } from '../test-support/attachment-fixture.ts';
 import type { AttachmentExchange } from './attachment-protocol.ts';
@@ -9,7 +10,6 @@ import { createAttachmentServer } from './attachment-server.ts';
 import { createAttachmentConnection } from './attachment-connection.ts';
 
 const metadata = { name: 'screenshot', mediaType: 'image/png' };
-const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
 async function openBinaryEvidence(
     exchange: AttachmentExchange,
@@ -112,34 +112,17 @@ async function assertConcurrentOwners(scope: TestScope): Promise<void> {
     scope.assert.equal(store.artifacts().length, 2);
 }
 
-export const testNode = createSuite({
-    ...definition,
-    title: 'source/run/runtime-attachment-retention.test.ts',
-    children: [
-        createTestCase({
-            ...definition,
-            title: 'channel EOF preserves binary prefixes and interrupted ownership',
-            async body(scope: TestScope) {
-                await assertInterruptedChannel(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'cancelled branch files are removed without failing retained work',
-            async body(scope: TestScope) {
-                await assertDiscardedBranch(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'overlapping cases retain their original attachment owners',
-            async body(scope: TestScope) {
-                await assertConcurrentOwners(scope);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/runtime-attachment-retention.test.ts', [
+    test('channel EOF preserves binary prefixes and interrupted ownership', async function (scope: TestScope) {
+        await assertInterruptedChannel(scope);
+        return scope.assert.collect();
+    }),
+    test('cancelled branch files are removed without failing retained work', async function (scope: TestScope) {
+        await assertDiscardedBranch(scope);
+        return scope.assert.collect();
+    }),
+    test('overlapping cases retain their original attachment owners', async function (scope: TestScope) {
+        await assertConcurrentOwners(scope);
+        return scope.assert.collect();
+    })
+]);

@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { attachmentChannel, type AttachmentChannel } from '../test-support/attachment-channel.ts';
 import { testNode as streamFailures } from './attachment-stream-failure-policy.test.ts';
 import { attachmentMaxPendingRequests, type AttachmentResponse } from './attachment-protocol.ts';
@@ -19,7 +20,7 @@ async function assertAttachmentQueueRecovery(
     fixture.reply({ request: attachmentMaxPendingRequests, result: { kind: 'written' } });
     scope.assert.deepEqual(await next, { kind: 'written' });
 }
-export const testNode = suite('attachment connection policy', [
+export const testNode = authoredSuite('attachment connection policy', [
     streamFailures,
     test('waits for connection and correlates replies with numbered requests', async function (scope: TestScope) {
         const fixture = attachmentChannel(scope);

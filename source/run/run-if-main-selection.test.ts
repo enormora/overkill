@@ -1,18 +1,14 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
-    createTestCase as createDirectTestCase,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
     type TestBody as DirectTestBody,
     type TestNode as DirectTestNode,
     type TestScope as DirectScope,
-    type TestScope as OverkillScope
+    createTestCase as createDirectTestCase
 } from '../packages/engine/engine.entry-point.ts';
+
 import type { DefinedReporter } from '../engine/reporter.ts';
-import {
-    createDirectRunFixture,
-    type DirectRunFixture
-} from '../test-support/direct-run-fixture.ts';
+import { createDirectRunFixture, type DirectRunFixture } from '../test-support/direct-run-fixture.ts';
 import { defineFixedReporter } from '../test-support/reporter-definition.ts';
 
 type CapturedExecution = {
@@ -93,103 +89,80 @@ async function runDirect(fixture: DirectRunFixture, testNode: DirectTestNode): P
     return capturedRun;
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-if-main-selection.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runIfMain() falls back when a matching profile excludes the direct file',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const fixture = createDirectRunFixture({
-                    config: {
-                        profiles: {
-                            microtest: {
-                                testFamily: 'microtest',
-                                execution: { processModel: 'in-process', scheduling: 'serial' }
-                            },
-                            focused: {
-                                testFamily: 'microtest',
-                                files: {
-                                    include: [ 'direct.test.ts' ],
-                                    exclude: [ 'direct.test.ts' ]
-                                },
-                                execution: { processModel: 'in-process', scheduling: 'concurrent' }
-                            }
-                        }
-                    },
-                    fileName: 'direct.test.ts',
-                    files: []
-                });
-                const capturedRun = await runDirect(fixture, passingCase());
-
-                scope.assert.equal(capturedRun.execution.profile, 'microtest');
-                scope.assert.equal(capturedRun.execution.scheduling, 'serial');
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runIfMain() rejects non-file import metadata',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const fixture = createDirectRunFixture({
-                    config: null,
-                    fileName: 'direct.test.ts',
-                    files: []
-                });
-
-                await scope.assert.rejects(async function runWithoutFileUrl() {
-                    await fixture.runIfMain(
-                        {
-                            ...fixture.project.meta,
-                            url: 'data:text/javascript,export{}'
+export const testNode = suite('source/run/run-if-main-selection.test.ts', [
+    test(
+        'runIfMain() falls back when a matching profile excludes the direct file',
+        async function (scope: OverkillScope) {
+            const fixture = createDirectRunFixture({
+                config: {
+                    profiles: {
+                        microtest: {
+                            testFamily: 'microtest',
+                            execution: { processModel: 'in-process', scheduling: 'serial' }
                         },
-                        passingCase(),
-                        { reporters: [] }
-                    );
-                }, {
-                    message: 'runIfMain() requires a file: import.meta.url.'
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runIfMain() sets process exitCode for failed direct runs',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const fixture = createDirectRunFixture({
-                    config: {
-                        profiles: {
-                            microtest: {
-                                testFamily: 'microtest',
-                                execution: { processModel: 'in-process', scheduling: 'concurrent' },
-                                processUsage: { measure: true }
-                            }
+                        focused: {
+                            testFamily: 'microtest',
+                            files: {
+                                include: [ 'direct.test.ts' ],
+                                exclude: [ 'direct.test.ts' ]
+                            },
+                            execution: { processModel: 'in-process', scheduling: 'concurrent' }
                         }
-                    },
-                    fileName: 'direct.test.ts',
-                    files: []
-                });
+                    }
+                },
+                fileName: 'direct.test.ts',
+                files: []
+            });
+            const capturedRun = await runDirect(fixture, passingCase());
 
-                fixture.setExitCode(undefined);
-                await fixture.runIfMain(fixture.project.meta, failingCase(), { reporters: [] });
+            scope.assert.equal(capturedRun.execution.profile, 'microtest');
+            scope.assert.equal(capturedRun.execution.scheduling, 'serial');
 
-                scope.assert.equal(fixture.exitCode(), 1);
+            return scope.assert.collect();
+        }
+    ),
+    test('runIfMain() rejects non-file import metadata', async function (scope: OverkillScope) {
+        const fixture = createDirectRunFixture({
+            config: null,
+            fileName: 'direct.test.ts',
+            files: []
+        });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+        await scope.assert.rejects(async function runWithoutFileUrl() {
+            await fixture.runIfMain(
+                {
+                    ...fixture.project.meta,
+                    url: 'data:text/javascript,export{}'
+                },
+                passingCase(),
+                { reporters: [] }
+            );
+        }, {
+            message: 'runIfMain() requires a file: import.meta.url.'
+        });
 
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    }),
+    test('runIfMain() sets process exitCode for failed direct runs', async function (scope: OverkillScope) {
+        const fixture = createDirectRunFixture({
+            config: {
+                profiles: {
+                    microtest: {
+                        testFamily: 'microtest',
+                        execution: { processModel: 'in-process', scheduling: 'concurrent' },
+                        processUsage: { measure: true }
+                    }
+                }
+            },
+            fileName: 'direct.test.ts',
+            files: []
+        });
+
+        fixture.setExitCode(undefined);
+        await fixture.runIfMain(fixture.project.meta, failingCase(), { reporters: [] });
+
+        scope.assert.equal(fixture.exitCode(), 1);
+
+        return scope.assert.collect();
+    })
+]);

@@ -1,12 +1,13 @@
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import {
-    createSuite,
-    createTestCase,
     type Engine,
     type TestNode,
     type TestPlan,
-    type TestScope
+    type TestScope,
+    createTestCase
 } from '../packages/engine/engine.entry-point.ts';
+
 import {
     createDeterministicRunCoordinator,
     createDeterministicWorkerPoolCollectionCoordinator
@@ -17,18 +18,12 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import {
-    collectedRunPlanFromTestPlan,
-    runCollectionRootFromResolvedPlan
-} from './collected-run-plan.ts';
+import { collectedRunPlanFromTestPlan, runCollectionRootFromResolvedPlan } from './collected-run-plan.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import { assertDirectEntrypointCollectionMatches } from './direct-entrypoint-collection.ts';
 import type { DirectEntrypointCollectionSource } from './run-collection-source.ts';
 import type { RunCommand } from './run-types.ts';
-import {
-    createRunTestPlan,
-    createRunTestPlanFromDirectEntrypoint
-} from './run-test-plan.ts';
+import { createRunTestPlan, createRunTestPlanFromDirectEntrypoint } from './run-test-plan.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 
@@ -108,192 +103,136 @@ function directCommand(profile: RunCommand['config']['profiles'][string], profil
     };
 }
 
-export const testNode = createSuite({
-    annotations: {},
-    children: [
-        createTestCase({
-            annotations: {},
-            body(scope: TestScope) {
-                const expected = testPlan('passes');
+export const testNode = suite('source/run/direct-entrypoint-collection.test.ts', [
+    test('direct entrypoint collection accepts equivalent normalized plans', function (scope: TestScope) {
+        const expected = testPlan('passes');
 
-                assertDirectEntrypointCollectionMatches(expected, collectedRunPlanFromTestPlan(expected));
-                scope.assert.true(true);
+        assertDirectEntrypointCollectionMatches(expected, collectedRunPlanFromTestPlan(expected));
+        scope.assert.true(true);
 
-                return scope.assert.collect();
-            },
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'direct entrypoint collection accepts equivalent normalized plans'
-        }),
-        createTestCase({
-            annotations: {},
-            body(scope: TestScope) {
-                scope.assert.throws(function compareDifferentDirectPlans() {
-                    assertDirectEntrypointCollectionMatches(
-                        testPlan('expected'),
-                        collectedRunPlanFromTestPlan(testPlan('exported'))
-                    );
-                }, {
-                    message: /runIfMain\(\) argument does not match/u,
-                    name: 'RunCollectionError'
-                });
+        return scope.assert.collect();
+    }),
+    test('direct entrypoint collection rejects different normalized plans', function (scope: TestScope) {
+        scope.assert.throws(function compareDifferentDirectPlans() {
+            assertDirectEntrypointCollectionMatches(
+                testPlan('expected'),
+                collectedRunPlanFromTestPlan(testPlan('exported'))
+            );
+        }, {
+            message: /runIfMain\(\) argument does not match/u,
+            name: 'RunCollectionError'
+        });
 
-                return scope.assert.collect();
-            },
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'direct entrypoint collection rejects different normalized plans'
-        }),
-        createTestCase({
-            annotations: {},
-            body(scope: TestScope) {
-                const planned = defaultRunEngine.createTestPlanFromTestFiles({
-                    files: [ { file: '/project/direct.test.ts', testNode: passingTest('passes') } ],
-                    root: explicitRoot
-                });
+        return scope.assert.collect();
+    }),
+    test('resolved local plans preserve explicit collection roots', function (scope: TestScope) {
+        const planned = defaultRunEngine.createTestPlanFromTestFiles({
+            files: [ { file: '/project/direct.test.ts', testNode: passingTest('passes') } ],
+            root: explicitRoot
+        });
 
-                scope.assert.deepEqual(
-                    runCollectionRootFromResolvedPlan({ kind: 'local', testPlan: planned }),
-                    explicitRoot
-                );
+        scope.assert.deepEqual(
+            runCollectionRootFromResolvedPlan({ kind: 'local', testPlan: planned }),
+            explicitRoot
+        );
 
-                return scope.assert.collect();
-            },
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'resolved local plans preserve explicit collection roots'
-        }),
-        createTestCase({
-            annotations: {},
-            async body(scope: TestScope) {
-                const file = {
-                    file: '/project/direct.test.ts',
-                    fileSet: null,
-                    href: 'virtual:direct.test.ts',
-                    path: '/project/direct.test.ts'
-                };
+        return scope.assert.collect();
+    }),
+    test('test plan collection normalizes engine failures', async function (scope: TestScope) {
+        const file = {
+            file: '/project/direct.test.ts',
+            fileSet: null,
+            href: 'virtual:direct.test.ts',
+            path: '/project/direct.test.ts'
+        };
 
-                scope.assert.throws(function collectInvalidDirectPlan() {
-                    createRunTestPlanFromDirectEntrypoint(
-                        throwingEngine(),
-                        file,
-                        directSource(passingTest('passes'))
-                    );
-                }, {
-                    message: 'Failed to collect tests from runIfMain().',
-                    name: 'RunCollectionError'
-                });
-                await scope.assert.rejects(async function collectInvalidConfiguredPlan() {
-                    await createRunTestPlan({
-                        replay: null,
-                        cwd: '/project',
-                        definitionLocationCapture: 'disabled',
-                        discoverRunFiles: async function discoverFile() {
-                            return [ file ];
-                        },
-                        engine: throwingEngine(),
-                        loadRunTestModules: async function loadTestModule() {
-                            return [ { file: file.file, testNode: passingTest('passes') } ];
-                        },
-                        paths: [ file.file ],
-                        root: explicitRoot,
-                        testFamily: 'microtest'
-                    });
-                }, {
-                    message: 'Failed to collect tests from run inputs.',
-                    name: 'RunCollectionError'
-                });
+        scope.assert.throws(function collectInvalidDirectPlan() {
+            createRunTestPlanFromDirectEntrypoint(
+                throwingEngine(),
+                file,
+                directSource(passingTest('passes'))
+            );
+        }, {
+            message: 'Failed to collect tests from runIfMain().',
+            name: 'RunCollectionError'
+        });
+        await scope.assert.rejects(async function collectInvalidConfiguredPlan() {
+            await createRunTestPlan({
+                replay: null,
+                cwd: '/project',
+                definitionLocationCapture: 'disabled',
+                discoverRunFiles: async function discoverFile() {
+                    return [ file ];
+                },
+                engine: throwingEngine(),
+                loadRunTestModules: async function loadTestModule() {
+                    return [ { file: file.file, testNode: passingTest('passes') } ];
+                },
+                paths: [ file.file ],
+                root: explicitRoot,
+                testFamily: 'microtest'
+            });
+        }, {
+            message: 'Failed to collect tests from run inputs.',
+            name: 'RunCollectionError'
+        });
 
-                return scope.assert.collect();
-            },
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'test plan collection normalizes engine failures'
-        }),
-        createTestCase({
-            annotations: {},
-            async body(scope: TestScope) {
-                const coordinator = createDeterministicRunCoordinator();
-                const delivery = await coordinator.runDirectEntrypoint(
-                    directCommand(defaultMicrotestProfile(), 'microtest'),
-                    directSource(passingFixtureTestNode())
-                );
+        return scope.assert.collect();
+    }),
+    test('direct entrypoint runner preserves supervised execution', async function (scope: TestScope) {
+        const coordinator = createDeterministicRunCoordinator();
+        const delivery = await coordinator.runDirectEntrypoint(
+            directCommand(defaultMicrotestProfile(), 'microtest'),
+            directSource(passingFixtureTestNode())
+        );
 
-                scope.assert.equal(delivery.result.status, 'passed');
-                scope.assert.equal(delivery.result.summary.passed, 1);
-                scope.assert.deepEqual(delivery.result.runnerErrors, []);
+        scope.assert.equal(delivery.result.status, 'passed');
+        scope.assert.equal(delivery.result.summary.passed, 1);
+        scope.assert.deepEqual(delivery.result.runnerErrors, []);
 
-                return scope.assert.collect();
-            },
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'direct entrypoint runner preserves supervised execution'
-        }),
-        createTestCase({
-            annotations: {},
-            async body(scope: TestScope) {
-                const coordinator = createDeterministicRunCoordinator();
-                const delivery = await coordinator.runDirectEntrypoint(
-                    directCommand(
-                        defaultMicrotestProfile({
-                            execution: { processModel: 'in-process' }
-                        }),
-                        'microtest'
-                    ),
-                    directSource(passingFixtureTestNode())
-                );
+        return scope.assert.collect();
+    }),
+    test('direct entrypoint runner preserves in-process execution', async function (scope: TestScope) {
+        const coordinator = createDeterministicRunCoordinator();
+        const delivery = await coordinator.runDirectEntrypoint(
+            directCommand(
+                defaultMicrotestProfile({
+                    execution: { processModel: 'in-process' }
+                }),
+                'microtest'
+            ),
+            directSource(passingFixtureTestNode())
+        );
 
-                scope.assert.equal(delivery.result.status, 'passed');
-                scope.assert.equal(delivery.result.summary.passed, 1);
+        scope.assert.equal(delivery.result.status, 'passed');
+        scope.assert.equal(delivery.result.summary.passed, 1);
 
-                return scope.assert.collect();
-            },
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'direct entrypoint runner preserves in-process execution'
-        }),
-        createTestCase({
-            annotations: {},
-            async body(scope: TestScope) {
-                const coordinator = createDeterministicRunCoordinator();
-                const delivery = await coordinator.runDirectEntrypoint(
-                    directCommand(defaultMicrotestProfile(), 'microtest'),
-                    directSource(passingTest('different'))
-                );
-                const [ error ] = delivery.result.runnerErrors;
+        return scope.assert.collect();
+    }),
+    test('direct entrypoint runner rejects mismatched isolated collection', async function (scope: TestScope) {
+        const coordinator = createDeterministicRunCoordinator();
+        const delivery = await coordinator.runDirectEntrypoint(
+            directCommand(defaultMicrotestProfile(), 'microtest'),
+            directSource(passingTest('different'))
+        );
+        const [ error ] = delivery.result.runnerErrors;
 
-                scope.require.defined(error);
-                scope.assert.match(error.message, /runIfMain\(\) argument does not match/u);
+        scope.require.defined(error);
+        scope.assert.match(error.message, /runIfMain\(\) argument does not match/u);
 
-                return scope.assert.collect();
-            },
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'direct entrypoint runner rejects mismatched isolated collection'
-        }),
-        createTestCase({
-            annotations: {},
-            async body(scope: TestScope) {
-                const coordinator = createDeterministicWorkerPoolCollectionCoordinator();
-                const delivery = await coordinator.runDirectEntrypoint(
-                    directCommand(defaultIntegrationProfile({}), 'integration'),
-                    directSource(passingTest('different'))
-                );
-                const [ error ] = delivery.result.runnerErrors;
+        return scope.assert.collect();
+    }),
+    test('direct entrypoint runner validates worker-pool collection', async function (scope: TestScope) {
+        const coordinator = createDeterministicWorkerPoolCollectionCoordinator();
+        const delivery = await coordinator.runDirectEntrypoint(
+            directCommand(defaultIntegrationProfile({}), 'integration'),
+            directSource(passingTest('different'))
+        );
+        const [ error ] = delivery.result.runnerErrors;
 
-                scope.require.defined(error);
-                scope.assert.match(error.message, /runIfMain\(\) argument does not match/u);
+        scope.require.defined(error);
+        scope.assert.match(error.message, /runIfMain\(\) argument does not match/u);
 
-                return scope.assert.collect();
-            },
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'direct entrypoint runner validates worker-pool collection'
-        })
-    ],
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/direct-entrypoint-collection.test.ts'
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

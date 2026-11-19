@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { bodyParticipant } from '../test-support/body-participant.ts';
 import { testNode as forwarding } from './body-forwarding-policy.test.ts';
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'referenced body participant admission',
     [
         forwarding,
@@ -25,4 +25,3 @@ export const testNode = suite(
         })
     ]
 );
-await runIfMain(import.meta, testNode);

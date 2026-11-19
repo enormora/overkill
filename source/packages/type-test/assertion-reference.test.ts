@@ -1,12 +1,12 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     getCompositeAssertionReferenceRecord,
     unknownSourceLocation
 } from '../engine/assertion-protocol.entry-point.ts';
 import { sameType } from './type-test.entry-point.ts';
 
-export const testNode = suite('native type assertion references', [
+export const testNode = authoredSuite('native type assertion references', [
     test('fails ordinary execution instead of reporting a successful erased check', function (scope) {
         const reference = sameType<string, number>();
         scope.assert.throws(function () {
@@ -39,5 +39,3 @@ export const testNode = suite('native type assertion references', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

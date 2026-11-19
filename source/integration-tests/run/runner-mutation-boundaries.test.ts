@@ -1,9 +1,10 @@
 import { mkdir, mkdtemp, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { createPlainOutputRenderer, type RunResult, type TestScope } from '../../packages/engine/engine.entry-point.ts';
-import { suite, test } from '../../packages/test/test.entry-point.ts';
+
 import {
     ConfigError,
     orchestrator,
@@ -186,8 +187,8 @@ export const testNode = createTestCase({
     }, { cause: { message: /Module import escapes/u } });
 }
 
-export const testNode = suite('mutation boundaries through the public runner', [
-    test('fresh hosts enforce frozen configuration and sandbox import boundaries', async function (scope) {
+export const testNode = authoredSuite('mutation boundaries through the public runner', [
+    authoredTest('fresh hosts enforce frozen configuration and sandbox import boundaries', async function (scope) {
         await withProject(async function assertFreshBoundaries(paths) {
             await writePolicy(paths.cwd, 'in-process');
             const policy = await policyFor(paths, [ 'subject.mjs' ]);
@@ -206,50 +207,56 @@ export const testNode = suite('mutation boundaries through the public runner', [
         });
         return scope.assert.collect();
     }),
-    test('rejects protected targets before importing tests and accepts production targets', async function (scope) {
-        await withProject(async function assertProtectedTargets(paths) {
-            await writePolicy(paths.cwd, 'in-process');
-            for (const file of [ 'policy.mjs', 'case.test.mjs' ]) {
-                await scope.assert.rejects(async function initializeProtectedTarget() {
-                    await policyFor(paths, [ file ]);
-                }, { type: ConfigError, message: /Exclude .* from Stryker mutate/ });
-            }
-            const policy = await policyFor(paths, [ 'subject.mjs' ]);
-            scope.assert.equal(policy.projectRoot, paths.cwd);
-            scope.assert.deepEqual(
-                policy.files.map(function origin(file) {
-                    return file.file;
-                }),
-                [ 'case.test.mjs' ]
-            );
-            scope.assert.equal(
-                policy.source.kind === 'config-file' ? policy.source.resolvedPath : null,
-                join(paths.cwd, 'policy.mjs')
-            );
-        });
-        return scope.assert.collect();
-    }),
-    test('preserves relative file identities across sandbox names and replacement policies', async function (scope) {
-        await withProject(async function assertReplacementIdentity(paths) {
-            await writePolicy(paths.cwd, 'in-process');
-            const policy = await policyFor(paths, [ 'subject.mjs' ]);
-            const other = join(paths.originalRoot, '.stryker-tmp', 'replacement');
-            await mkdir(other);
-            await writePolicy(other, 'in-process');
-            const replacement = await policyFor({ ...paths, cwd: other }, [ 'subject.mjs' ]);
-            scope.assert.deepEqual(
-                replacement.files.map(function origin(file) {
-                    return file.file;
-                }),
-                policy.files.map(function origin(file) {
-                    return file.file;
-                })
-            );
-            scope.assert.notEqual(replacement.files[0].href, policy.files[0].href);
-        });
-        return scope.assert.collect();
-    }),
-    test('rejects original config dependencies, symlinks, and missing sandbox copies', async function (scope) {
+    authoredTest(
+        'rejects protected targets before importing tests and accepts production targets',
+        async function (scope) {
+            await withProject(async function assertProtectedTargets(paths) {
+                await writePolicy(paths.cwd, 'in-process');
+                for (const file of [ 'policy.mjs', 'case.test.mjs' ]) {
+                    await scope.assert.rejects(async function initializeProtectedTarget() {
+                        await policyFor(paths, [ file ]);
+                    }, { type: ConfigError, message: /Exclude .* from Stryker mutate/ });
+                }
+                const policy = await policyFor(paths, [ 'subject.mjs' ]);
+                scope.assert.equal(policy.projectRoot, paths.cwd);
+                scope.assert.deepEqual(
+                    policy.files.map(function origin(file) {
+                        return file.file;
+                    }),
+                    [ 'case.test.mjs' ]
+                );
+                scope.assert.equal(
+                    policy.source.kind === 'config-file' ? policy.source.resolvedPath : null,
+                    join(paths.cwd, 'policy.mjs')
+                );
+            });
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest(
+        'preserves relative file identities across sandbox names and replacement policies',
+        async function (scope) {
+            await withProject(async function assertReplacementIdentity(paths) {
+                await writePolicy(paths.cwd, 'in-process');
+                const policy = await policyFor(paths, [ 'subject.mjs' ]);
+                const other = join(paths.originalRoot, '.stryker-tmp', 'replacement');
+                await mkdir(other);
+                await writePolicy(other, 'in-process');
+                const replacement = await policyFor({ ...paths, cwd: other }, [ 'subject.mjs' ]);
+                scope.assert.deepEqual(
+                    replacement.files.map(function origin(file) {
+                        return file.file;
+                    }),
+                    policy.files.map(function origin(file) {
+                        return file.file;
+                    })
+                );
+                scope.assert.notEqual(replacement.files[0].href, policy.files[0].href);
+            });
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('rejects original config dependencies, symlinks, and missing sandbox copies', async function (scope) {
         await withProject(async function assertConfigurationEscapes(paths) {
             await writePolicy(paths.cwd, 'in-process');
             const original = join(paths.originalRoot, 'subject.mjs');
@@ -278,28 +285,31 @@ export const testNode = suite('mutation boundaries through the public runner', [
     }),
     ...([ 'in-process', 'supervised-process' ] as const).flatMap(function processModelTests(processModel) {
         return [
-            test(`${processModel} executes sandbox copies through the frozen public runner`, async function (scope) {
-                await withProject(async function assertSandboxExecution(paths) {
-                    await writePolicy(paths.cwd, processModel);
-                    const policy = await policyFor(paths, [ 'subject.mjs' ]);
-                    await writeFile(
-                        join(paths.cwd, 'case.test.mjs'),
-                        `
+            authoredTest(
+                `${processModel} executes sandbox copies through the frozen public runner`,
+                async function (scope) {
+                    await withProject(async function assertSandboxExecution(paths) {
+                        await writePolicy(paths.cwd, processModel);
+                        const policy = await policyFor(paths, [ 'subject.mjs' ]);
+                        await writeFile(
+                            join(paths.cwd, 'case.test.mjs'),
+                            `
 import { createTestCase } from ${JSON.stringify(engineUrl)};
 import { value } from './subject.mjs';
 export const testNode = createTestCase({title:'sandbox case',annotations:{},controls:{},
 definitionLocations:[{kind:'unknown'}],body(scope){scope.assert.equal(value,2);return scope.assert.collect();}});
 `
-                    );
-                    const result = await orchestrator.run(invocation(policy));
-                    scope.assert.equal(result.summary.passed, 1);
-                    scope.assert.deepEqual(result.runnerErrors, []);
-                    scope.assert.equal(result.perTest[0]?.id.file, 'case.test.mjs');
-                });
-                return scope.assert.collect();
-            }),
+                        );
+                        const result = await orchestrator.run(invocation(policy));
+                        scope.assert.equal(result.summary.passed, 1);
+                        scope.assert.deepEqual(result.runnerErrors, []);
+                        scope.assert.equal(result.perTest[0]?.id.file, 'case.test.mjs');
+                    });
+                    return scope.assert.collect();
+                }
+            ),
             ...[ 'policy.mjs', 'case.test.mjs' ].map(function escapingModule(file) {
-                return test(`${processModel} rejects original dependencies in ${file}`, async function (scope) {
+                return authoredTest(`${processModel} rejects original dependencies in ${file}`, async function (scope) {
                     await withProject(async function assertEscapingDependency(paths) {
                         await writePolicy(paths.cwd, processModel);
                         const policy = await policyFor(paths, []);
@@ -322,5 +332,3 @@ definitionLocations:[{kind:'unknown'}],body(scope){scope.assert.equal(value,2);r
         ];
     })
 ]);
-
-await runIfMain(import.meta, testNode, {});

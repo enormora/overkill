@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { isTestControlError } from '../packages/engine/engine.entry-point.ts';
 import { property } from './property-authoring.ts';
@@ -12,7 +12,7 @@ class PropertyInconclusiveSignalError extends Error {
     }
 }
 
-export const testNode = suite('property inconclusive control', [
+export const testNode = authoredSuite('property inconclusive control', [
     test('recognizes inconclusive control across engine copies', async function (scope) {
         const signal = Object.assign(new Error('Foreign search incomplete.'), {
             [Symbol.for('@overkill-dev/engine/PropertyInconclusiveSignal/v1')]: true
@@ -144,5 +144,3 @@ export const testNode = suite('property inconclusive control', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

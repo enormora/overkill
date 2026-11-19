@@ -1,42 +1,53 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { bodyPlanAdmission } from '../test-support/body-plan-admission.ts';
 import { withImplementationActivations } from '../implementation-participant.ts';
 import { admitBodyPlan, withImplementationPlan, implementationPlan } from './body-reference-plan.ts';
 import { isBodyReference } from './test-body.ts';
 
-export const testNode = suite('body plan implementation admission', [
-    test('binds admitted implementations before handing the plan to execution', async function (scope: TestScope) {
-        const fixture = await bodyPlanAdmission();
-        const value = await admitBodyPlan(fixture.plan, scope.signal, async function (resolved, activations) {
-            const { execution } = resolved.cases[0];
-            if (execution.kind !== 'body' || execution.bodyMode !== 'builder' || isBodyReference(execution.body)) {
-                throw new Error('Expected admitted ordinary body.');
-            }
-            const { body } = execution;
-            return await withImplementationActivations(activations, async function () {
-                return body(scope);
-            });
-        }, fixture.runtime);
-        scope.assert.partialDeepEqual<unknown, unknown>(value, [ { check: 'equal', actual: null, expected: null } ]);
-        scope.assert.deepEqual(fixture.events, [ 'restore', 'verify' ]);
-        return scope.assert.collect();
-    }),
-    ...([ 'all', 'consumer' ] as const).map(function (admission) {
-        return test(`admits body implementations during ${admission} execution`, async function (scope: TestScope) {
+export const testNode = authoredSuite('body plan implementation admission', [
+    authoredTest(
+        'binds admitted implementations before handing the plan to execution',
+        async function (scope: TestScope) {
             const fixture = await bodyPlanAdmission();
-            const state = implementationPlan(fixture.plan);
-            scope.require.defined(state);
-            const plan = withImplementationPlan(fixture.plan, { ...state, admission });
-            scope.assert.equal(
-                await admitBodyPlan(plan, null, async function (_resolved, activations) {
-                    return activations.length;
-                }, fixture.runtime),
-                1
-            );
+            const value = await admitBodyPlan(fixture.plan, scope.signal, async function (resolved, activations) {
+                const { execution } = resolved.cases[0];
+                if (execution.kind !== 'body' || execution.bodyMode !== 'builder' || isBodyReference(execution.body)) {
+                    throw new Error('Expected admitted ordinary body.');
+                }
+                const { body } = execution;
+                return await withImplementationActivations(activations, async function () {
+                    return body(scope);
+                });
+            }, fixture.runtime);
+            scope.assert.partialDeepEqual<unknown, unknown>(value, [ {
+                check: 'equal',
+                actual: null,
+                expected: null
+            } ]);
+            scope.assert.deepEqual(fixture.events, [ 'restore', 'verify' ]);
             return scope.assert.collect();
-        });
+        }
+    ),
+    ...([ 'all', 'consumer' ] as const).map(function (admission) {
+        return authoredTest(
+            `admits body implementations during ${admission} execution`,
+            async function (scope: TestScope) {
+                const fixture = await bodyPlanAdmission();
+                const state = implementationPlan(fixture.plan);
+                scope.require.defined(state);
+                const plan = withImplementationPlan(fixture.plan, { ...state, admission });
+                scope.assert.equal(
+                    await admitBodyPlan(plan, null, async function (_resolved, activations) {
+                        return activations.length;
+                    }, fixture.runtime),
+                    1
+                );
+                return scope.assert.collect();
+            }
+        );
     }),
-    test(
+    authoredTest(
         'preserves bodies outside admission when an explicit owner-only phase excludes them',
         async function (scope: TestScope) {
             const fixture = await bodyPlanAdmission();
@@ -51,25 +62,28 @@ export const testNode = suite('body plan implementation admission', [
             return scope.assert.collect();
         }
     ),
-    test('includes body implementations when explicit admission enables them', async function (scope: TestScope) {
-        const fixture = await bodyPlanAdmission();
-        const state = implementationPlan(fixture.plan);
-        scope.require.defined(state);
-        const plan = withImplementationPlan(fixture.plan, { ...state, admission: { body: true, ownerKeys: [] } });
-        scope.assert.equal(
-            await admitBodyPlan(
-                plan,
-                scope.signal,
-                async function (_resolved, activations) {
-                    return activations.length;
-                },
-                fixture.runtime
-            ),
-            1
-        );
-        return scope.assert.collect();
-    }),
-    test('rejects changed implementation builds before binding bodies', async function (scope: TestScope) {
+    authoredTest(
+        'includes body implementations when explicit admission enables them',
+        async function (scope: TestScope) {
+            const fixture = await bodyPlanAdmission();
+            const state = implementationPlan(fixture.plan);
+            scope.require.defined(state);
+            const plan = withImplementationPlan(fixture.plan, { ...state, admission: { body: true, ownerKeys: [] } });
+            scope.assert.equal(
+                await admitBodyPlan(
+                    plan,
+                    scope.signal,
+                    async function (_resolved, activations) {
+                        return activations.length;
+                    },
+                    fixture.runtime
+                ),
+                1
+            );
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('rejects changed implementation builds before binding bodies', async function (scope: TestScope) {
         const fixture = await bodyPlanAdmission();
         const catalog = implementationPlan(fixture.plan)?.catalog;
         scope.require.defined(catalog);
@@ -88,7 +102,7 @@ export const testNode = suite('body plan implementation admission', [
         });
         return scope.assert.collect();
     }),
-    test(
+    authoredTest(
         'rejects catalogs that combine multiple original builds before restoring modules',
         async function (scope: TestScope) {
             const fixture = await bodyPlanAdmission();

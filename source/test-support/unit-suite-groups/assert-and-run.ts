@@ -1,4 +1,5 @@
-import { createSuite } from '../../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as assertionExtensionTestNode } from '../../assert/assertion-extension.test.ts';
 import { testNode as assertionNodeShapeTestNode } from '../../assertion-protocol/assertion-node-shape.test.ts';
 import { testNode as evaluationTestNode } from '../../assertion-protocol/evaluation.test.ts';
@@ -9,20 +10,14 @@ import { testNode as runResultFactoryTestNode } from '../run-result-factory.test
 import { testNode as runTestNode } from './run.ts';
 import { testNode as authoringTestNode } from './authoring.ts';
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'assertion protocol, assert, run, and test support',
-    annotations: {},
-    controls: {},
-    children: [
-        assertionExtensionTestNode,
-        assertionNodeShapeTestNode,
-        evaluationTestNode,
-        partialMatchingTestNode,
-        sourceLocationTestNode,
-        authoringTestNode,
-        commandLineListRunnerSuiteTestNode,
-        runTestNode,
-        runResultFactoryTestNode
-    ]
-});
+export const testNode = suite('assertion protocol, assert, run, and test support', [
+    assertionExtensionTestNode,
+    assertionNodeShapeTestNode,
+    evaluationTestNode,
+    partialMatchingTestNode,
+    sourceLocationTestNode,
+    authoringTestNode,
+    commandLineListRunnerSuiteTestNode,
+    runTestNode,
+    runResultFactoryTestNode
+]);

@@ -1,26 +1,12 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { workIdentityKey } from '../engine/identity.ts';
 import type { DynamicWorkUnitId, PlacementTraceEntry } from './placement-trace.ts';
 import type { PlacementPlan } from './run-types.ts';
-import {
-    fakeWorkerRuntime,
-    placementPlan,
-    testCaseMetadata
-} from './worker-pool-placement-validation.test.ts';
+import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
 import { createWorkDispatcher } from './worker-pool-work-dispatcher.ts';
-import type {
-    WorkerPoolUnitLease,
-    WorkerPoolWorkDispatcher
-} from './worker-pool-dispatch-state.ts';
-import {
-    originalQueueItem,
-    splitQueuedWorkUnit
-} from './worker-pool-pending-splitting.ts';
+import type { WorkerPoolUnitLease, WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
+import { originalQueueItem, splitQueuedWorkUnit } from './worker-pool-pending-splitting.ts';
 
 type WorkUnit = PlacementPlan['units'][number];
 type PlacementLane = PlacementPlan['lanes'][number];
@@ -381,11 +367,11 @@ function assertSplitLeases(
     scope.assert.deepEqual(expectation.traceEntry.parent, expectation.unit.id);
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-work-dispatcher.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher releases constraints before retrying work',
             body(scope: OverkillScope) {
@@ -405,7 +391,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher shares hard-key reservations within a batch',
             body(scope: OverkillScope) {
@@ -421,7 +407,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher retains partial leases on their lane',
             body(scope: OverkillScope) {
@@ -442,7 +428,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher splits eligible pending units',
             body(scope: OverkillScope) {
@@ -459,7 +445,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher batches compatible reusable units',
             body(scope: OverkillScope) {
@@ -488,7 +474,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher keeps fresh-worker units unbatched',
             body(scope: OverkillScope) {
@@ -505,7 +491,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher keeps ineligible units whole',
             body(scope: OverkillScope) {
@@ -516,7 +502,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher keeps crash requeues whole',
             body(scope: OverkillScope) {
@@ -534,7 +520,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool pending split rejects malformed empty child sets',
             body(scope: OverkillScope) {
@@ -554,5 +540,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

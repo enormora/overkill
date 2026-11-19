@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import {
     createEngine,
     defineReporter,
@@ -203,22 +203,25 @@ function assertStandaloneFailure(scope: TestScope, result: PromiseSettledResult<
     );
     scope.assert.true(result.reason.errors.length > 0);
 }
-export const testNode = suite('resource check outcomes', [
+export const testNode = authoredSuite('resource check outcomes', [
     ...modes.map(function bodyMode(mode) {
-        return test(`retains resource checks alongside ${mode} body evidence without retry`, async function (scope) {
-            const events: ReporterEvent[] = [];
-            const { result, invocations } = await executeObserved(mode, function retainEvent(event) {
-                events.push(event);
-            }, observedResource());
-            scope.assert.equal(invocations, 1);
-            assertObservedOutcome(scope, result, mode);
-            scope.assert.true(events.some(function finalized(event) {
-                return event.kind === 'resource-check-progress' && event.snapshot.status.kind === 'complete';
-            }));
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `retains resource checks alongside ${mode} body evidence without retry`,
+            async function (scope) {
+                const events: ReporterEvent[] = [];
+                const { result, invocations } = await executeObserved(mode, function retainEvent(event) {
+                    events.push(event);
+                }, observedResource());
+                scope.assert.equal(invocations, 1);
+                assertObservedOutcome(scope, result, mode);
+                scope.assert.true(events.some(function finalized(event) {
+                    return event.kind === 'resource-check-progress' && event.snapshot.status.kind === 'complete';
+                }));
+                return scope.assert.collect();
+            }
+        );
     }),
-    test('nested engine findings do not fail an enclosing test', async function (scope) {
+    authoredTest('nested engine findings do not fail an enclosing test', async function (scope) {
         const result = await executeEnclosing(async function enclosing(outerScope) {
             const nested = await executeObserved('pass', function ignoreEvent() {
                 return undefined;
@@ -230,7 +233,7 @@ export const testNode = suite('resource check outcomes', [
         scope.assert.equal(result.resourceChecks.length, 0);
         return scope.assert.collect();
     }),
-    test('caught standalone findings do not become enclosing engine checks', async function (scope) {
+    authoredTest('caught standalone findings do not become enclosing engine checks', async function (scope) {
         const result = await executeEnclosing(async function enclosing(outerScope) {
             const session = await startResources({
                 resources: { owner: lifetimeResource() },
@@ -244,7 +247,7 @@ export const testNode = suite('resource check outcomes', [
         scope.assert.equal(result.resourceChecks.length, 0);
         return scope.assert.collect();
     }),
-    test('lifetime findings fail the run without inventing failed cases', async function (scope) {
+    authoredTest('lifetime findings fail the run without inventing failed cases', async function (scope) {
         const { result, invocations } = await executeObserved('pass', function ignoreEvent() {
             return undefined;
         }, lifetimeResource());
@@ -260,7 +263,7 @@ export const testNode = suite('resource check outcomes', [
         }));
         return scope.assert.collect();
     }),
-    test('standalone closure exposes findings and owner disposal errors together', async function (scope) {
+    authoredTest('standalone closure exposes findings and owner disposal errors together', async function (scope) {
         const resource = withResourceChecks(
             defineResource({
                 name: 'standalone',
@@ -292,4 +295,3 @@ export const testNode = suite('resource check outcomes', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

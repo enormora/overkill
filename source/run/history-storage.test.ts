@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
 import { createMemoryHistoryStorage } from '../test-support/memory-history-storage.ts';
@@ -33,7 +33,7 @@ function failFirstHistoryWrite(memory: HistoryStorage): HistoryStorage {
     };
 }
 
-export const testNode = suite('history persistence', [
+export const testNode = authoredSuite('history persistence', [
     test('checkpoints stay provisional and completion is idempotent', async function (scope: TestScope) {
         const store = createMemoryHistoryStorage();
         const record = completedHistoryRecord('run');
@@ -106,4 +106,3 @@ export const testNode = suite('history persistence', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

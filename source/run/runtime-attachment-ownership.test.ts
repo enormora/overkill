@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { attachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 
@@ -20,14 +21,10 @@ async function assertMissingSourceFile(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(content.completion, { kind: 'incomplete', reason: 'write-error' });
     scope.assert.equal(content.byteLength, 0);
 }
-export const testNode = createTestCase({
-    title: 'file read errors retain incomplete evidence and fail the owning attempt',
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    async body(scope: TestScope) {
+export const testNode = test(
+    'file read errors retain incomplete evidence and fail the owning attempt',
+    async function (scope: TestScope) {
         await assertMissingSourceFile(scope);
         return scope.assert.collect();
     }
-});
-await runIfMain(import.meta, testNode);
+);

@@ -1,10 +1,6 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    defineReporter,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import { defineReporter } from '../packages/engine/engine.entry-point.ts';
 import {
     defaultIntegrationProfile,
     defaultMicrotestProfile,
@@ -30,129 +26,97 @@ const reporter = defineReporter(function createRunSupportReporter() {
     };
 });
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-support.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'copyConfig() preserves profile behavior while copying mutable containers',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const config = defaultRunConfig({
-                    profiles: {
-                        integration: defaultIntegrationProfile({
-                            files: {
-                                sets: {
-                                    smoke: {
-                                        exclude: [ 'source/slow/**' ],
-                                        include: [ 'source/**/*.test.ts' ]
-                                    }
-                                }
-                            },
-                            reporters: [ reporter ]
-                        }),
-                        microtest: defaultMicrotestProfile({
-                            files: {
-                                exclude: [ 'source/fixtures/**' ],
+export const testNode = suite('source/run/run-support.test.ts', [
+    test('copyConfig() preserves profile behavior while copying mutable containers', function (scope: OverkillScope) {
+        const config = defaultRunConfig({
+            profiles: {
+                integration: defaultIntegrationProfile({
+                    files: {
+                        sets: {
+                            smoke: {
+                                exclude: [ 'source/slow/**' ],
                                 include: [ 'source/**/*.test.ts' ]
-                            },
-                            reporters: null
-                        })
+                            }
+                        }
                     },
                     reporters: [ reporter ]
-                });
-                const copied = copyConfig(config);
-
-                scope.assert.deepEqual(copied, config);
-                scope.assert.notEqual(copied.profiles, config.profiles);
-                scope.assert.notEqual(copied.reporters, config.reporters);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'copyRunRequest() copies resource overrides and debug selectors',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const request = defaultRunRequest({
-                    debug: {
-                        mode: 'off',
-                        selectors: []
+                }),
+                microtest: defaultMicrotestProfile({
+                    files: {
+                        exclude: [ 'source/fixtures/**' ],
+                        include: [ 'source/**/*.test.ts' ]
                     },
-                    processBudgetOverrides: {
-                        activeResourceCount: 1,
-                        javaScriptEngineHeapBytes: null,
-                        residentSetBytes: null,
-                        residentSetGrowthBytesPerSecond: null
-                    }
-                });
-                const copied = copyRunRequest(request);
+                    reporters: null
+                })
+            },
+            reporters: [ reporter ]
+        });
+        const copied = copyConfig(config);
 
-                scope.assert.deepEqual(copied, request);
-                scope.assert.notEqual(copied.paths, request.paths);
-                scope.assert.notEqual(copied.processBudgetOverrides, request.processBudgetOverrides);
+        scope.assert.deepEqual(copied, config);
+        scope.assert.notEqual(copied.profiles, config.profiles);
+        scope.assert.notEqual(copied.reporters, config.reporters);
 
-                return scope.assert.collect();
+        return scope.assert.collect();
+    }),
+    test('copyRunRequest() copies resource overrides and debug selectors', function (scope: OverkillScope) {
+        const request = defaultRunRequest({
+            debug: {
+                mode: 'off',
+                selectors: []
+            },
+            processBudgetOverrides: {
+                activeResourceCount: 1,
+                javaScriptEngineHeapBytes: null,
+                residentSetBytes: null,
+                residentSetGrowthBytesPerSecond: null
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'copyConfig() rejects integration profiles without file discovery',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const config = defaultRunConfig({
-                    profiles: {
-                        integration: {
-                            ...defaultIntegrationProfile({
-                                files: {
-                                    exclude: [],
-                                    include: [ 'source/**/*.test.ts' ]
-                                }
-                            }),
-                            files: null
+        });
+        const copied = copyRunRequest(request);
+
+        scope.assert.deepEqual(copied, request);
+        scope.assert.notEqual(copied.paths, request.paths);
+        scope.assert.notEqual(copied.processBudgetOverrides, request.processBudgetOverrides);
+
+        return scope.assert.collect();
+    }),
+    test('copyConfig() rejects integration profiles without file discovery', function (scope: OverkillScope) {
+        const config = defaultRunConfig({
+            profiles: {
+                integration: {
+                    ...defaultIntegrationProfile({
+                        files: {
+                            exclude: [],
+                            include: [ 'source/**/*.test.ts' ]
                         }
-                    }
-                } as unknown as Partial<NormalizedConfig>);
-
-                scope.assert.throws(function copyInvalidConfig() {
-                    copyConfig(config);
-                }, { message: 'Integration profiles require files.' });
-
-                return scope.assert.collect();
+                    }),
+                    files: null
+                }
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'run engine helpers preserve instance and module identities',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const instanceEngine = { engine: defaultRunEngine, kind: 'instance' as const };
-                const moduleEngine = {
-                    exportKind: 'getter' as const,
-                    exportName: 'createEngine',
-                    kind: 'module' as const,
-                    moduleUrl: 'file:///project/engine.ts'
-                };
+        } as unknown as Partial<NormalizedConfig>);
 
-                scope.assert.deepEqual(copyRunEngineSelection(instanceEngine), instanceEngine);
-                scope.assert.deepEqual(copyRunEngineSelection(moduleEngine), moduleEngine);
-                scope.assert.deepEqual(copyRunEngineSelection({ kind: 'default' }), { kind: 'default' });
-                scope.assert.deepEqual(runEngineFacts(instanceEngine), { kind: 'instance' });
-                scope.assert.deepEqual(runEngineFacts(moduleEngine), moduleEngine);
-                scope.assert.deepEqual(runEngineFacts({ kind: 'default' }), { kind: 'default' });
+        scope.assert.throws(function copyInvalidConfig() {
+            copyConfig(config);
+        }, { message: 'Integration profiles require files.' });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+        return scope.assert.collect();
+    }),
+    test('run engine helpers preserve instance and module identities', function (scope: OverkillScope) {
+        const instanceEngine = { engine: defaultRunEngine, kind: 'instance' as const };
+        const moduleEngine = {
+            exportKind: 'getter' as const,
+            exportName: 'createEngine',
+            kind: 'module' as const,
+            moduleUrl: 'file:///project/engine.ts'
+        };
 
-await runIfMain(import.meta, testNode);
+        scope.assert.deepEqual(copyRunEngineSelection(instanceEngine), instanceEngine);
+        scope.assert.deepEqual(copyRunEngineSelection(moduleEngine), moduleEngine);
+        scope.assert.deepEqual(copyRunEngineSelection({ kind: 'default' }), { kind: 'default' });
+        scope.assert.deepEqual(runEngineFacts(instanceEngine), { kind: 'instance' });
+        scope.assert.deepEqual(runEngineFacts(moduleEngine), moduleEngine);
+        scope.assert.deepEqual(runEngineFacts({ kind: 'default' }), { kind: 'default' });
+
+        return scope.assert.collect();
+    })
+]);

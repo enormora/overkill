@@ -1,4 +1,5 @@
-import { suite } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite } from '@overkill-dev/test';
+
 import { testNode as storage } from '../baselines/calibration-storage-policy.test.ts';
 import { testNode as automatic } from './automatic-normalization-policy.test.ts';
 import { testNode as references } from './calibration-references.test.ts';
@@ -8,7 +9,7 @@ import { testNode as contracts } from './calibration-contracts.test.ts';
 import { testNode as reports } from './calibration-report.test.ts';
 import { testNode as intervals } from './normalization-interval.test.ts';
 
-export const testNode = suite('benchmark calibration', [
+export const testNode = authoredSuite('benchmark calibration', [
     automatic,
     contracts,
     storage,

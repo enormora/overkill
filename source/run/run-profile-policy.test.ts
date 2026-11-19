@@ -1,13 +1,12 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
-    createRoot,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    createTestPlan,
     type TestCase,
     type TestControlsInput,
-    type TestScope as OverkillScope
+    createRoot,
+    createTestPlan
 } from '../packages/engine/engine.entry-point.ts';
+
 import { defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
@@ -23,15 +22,13 @@ const fractionalTimeoutError =
     'Run profile "microtest" cannot run test case timeoutMilliseconds 1.5; expected positive safe integer <= 50.';
 
 function testCaseWithControls(caseTitle: string, controls: TestControlsInput): TestCase {
-    return createOverkillTestCase({
-        annotations: {},
+    return test({
         body(scope: OverkillScope) {
             scope.assert.true(true);
 
             return scope.assert.collect();
         },
         controls,
-        definitionLocations: [ { kind: 'unknown' as const } ],
         title: caseTitle
     });
 }
@@ -49,84 +46,67 @@ function testPlanForCase(testCase: TestCase): TestPlan {
     return testPlanForChildren([ testCase ]);
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-profile-policy.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'assertTestPlanCasesMatchProfilePolicy() rejects selected microtest capture controls',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const testPlan = testPlanForCase(testCaseWithControls('captures', { capture: 'live' }));
+export const testNode = suite('source/run/run-profile-policy.test.ts', [
+    test(
+        'assertTestPlanCasesMatchProfilePolicy() rejects selected microtest capture controls',
+        function (scope: OverkillScope) {
+            const testPlan = testPlanForCase(testCaseWithControls('captures', { capture: 'live' }));
 
-                scope.assert.throws(function assertCaptureControls() {
-                    assertTestPlanCasesMatchProfilePolicy(testPlan, defaultMicrotestProfile());
-                }, {
-                    message: microtestCaptureControlsError,
-                    name: 'RunCollectionError'
-                });
+            scope.assert.throws(function assertCaptureControls() {
+                assertTestPlanCasesMatchProfilePolicy(testPlan, defaultMicrotestProfile());
+            }, {
+                message: microtestCaptureControlsError,
+                name: 'RunCollectionError'
+            });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'assertTestPlanCasesMatchProfilePolicy() validates selected timeout controls',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const profile = defaultMicrotestProfile({
-                    timeouts: { hardMilliseconds: 100, softMilliseconds: 50 }
-                });
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'assertTestPlanCasesMatchProfilePolicy() validates selected timeout controls',
+        function (scope: OverkillScope) {
+            const profile = defaultMicrotestProfile({
+                timeouts: { hardMilliseconds: 100, softMilliseconds: 50 }
+            });
 
+            assertTestPlanCasesMatchProfilePolicy(
+                testPlanForCase(testCaseWithControls('short timeout', { timeoutMilliseconds: 50 })),
+                profile
+            );
+            scope.assert.throws(function assertLongTimeout() {
                 assertTestPlanCasesMatchProfilePolicy(
-                    testPlanForCase(testCaseWithControls('short timeout', { timeoutMilliseconds: 50 })),
+                    testPlanForCase(testCaseWithControls('long timeout', { timeoutMilliseconds: 51 })),
                     profile
                 );
-                scope.assert.throws(function assertLongTimeout() {
-                    assertTestPlanCasesMatchProfilePolicy(
-                        testPlanForCase(testCaseWithControls('long timeout', { timeoutMilliseconds: 51 })),
-                        profile
-                    );
-                }, { message: longTimeoutError, name: 'RunCollectionError' });
-                scope.assert.throws(function assertFractionalTimeout() {
-                    assertTestPlanCasesMatchProfilePolicy(
-                        testPlanForCase(testCaseWithControls('fractional timeout', { timeoutMilliseconds: 1.5 })),
-                        profile
-                    );
-                }, { message: fractionalTimeoutError, name: 'RunCollectionError' });
+            }, { message: longTimeoutError, name: 'RunCollectionError' });
+            scope.assert.throws(function assertFractionalTimeout() {
+                assertTestPlanCasesMatchProfilePolicy(
+                    testPlanForCase(testCaseWithControls('fractional timeout', { timeoutMilliseconds: 1.5 })),
+                    profile
+                );
+            }, { message: fractionalTimeoutError, name: 'RunCollectionError' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'assertCollectedRunPlanCasesMatchProfilePolicy() validates selected cases only',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const validCase = testCaseWithControls('valid', {});
-                const invalidCase = testCaseWithControls('invalid', { capture: 'live' });
-                const allCasesPlan = testPlanForChildren([ validCase, invalidCase ]);
-                const selectedCase = allCasesPlan.cases[0];
-                scope.require.defined(selectedCase);
-                const selectedOnlyPlan = {
-                    ...allCasesPlan,
-                    cases: [ selectedCase ] as const
-                };
-                const collectedPlan = collectedRunPlanFromTestPlan(selectedOnlyPlan);
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'assertCollectedRunPlanCasesMatchProfilePolicy() validates selected cases only',
+        function (scope: OverkillScope) {
+            const validCase = testCaseWithControls('valid', {});
+            const invalidCase = testCaseWithControls('invalid', { capture: 'live' });
+            const allCasesPlan = testPlanForChildren([ validCase, invalidCase ]);
+            const selectedCase = allCasesPlan.cases[0];
+            scope.require.defined(selectedCase);
+            const selectedOnlyPlan = {
+                ...allCasesPlan,
+                cases: [ selectedCase ] as const
+            };
+            const collectedPlan = collectedRunPlanFromTestPlan(selectedOnlyPlan);
 
-                assertCollectedRunPlanCasesMatchProfilePolicy(collectedPlan, defaultMicrotestProfile());
-                scope.assert.equal(collectedPlan.files[0]?.cases.length, 1);
+            assertCollectedRunPlanCasesMatchProfilePolicy(collectedPlan, defaultMicrotestProfile());
+            scope.assert.equal(collectedPlan.files[0]?.cases.length, 1);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

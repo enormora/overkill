@@ -1,4 +1,5 @@
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import { defineResource, defineRuntime, defineRuntimeMatrix } from '../resources/resources.entry-point.ts';
 import { referencedTestBody } from '../../test-support/referenced-test-body.ts';
 import { resolveTestBodyWorkload } from '../../engine/test-body.ts';
@@ -13,7 +14,7 @@ import {
     attachComposedResourceBody,
     mapComposedResourceBody
 } from './resource-wrapper-composition.ts';
-import { suite, test, type TestScope } from './test.entry-point.ts';
+import type { TestScope } from './test.entry-point.ts';
 
 export const testNode = suite('referenced resource composition', [
     test('attaches resource metadata before binding a referenced body', function (scope: TestScope) {
@@ -204,4 +205,3 @@ export const testNode = suite('referenced resource composition', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

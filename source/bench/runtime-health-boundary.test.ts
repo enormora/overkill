@@ -1,6 +1,7 @@
 import { setImmediate as nextTurn } from 'node:timers/promises';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import { prepareAsyncTestCollector, prepareTestCollector } from '../test-support/collector-session.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { processResourceCollector } from './native-metric-collectors.ts';
 import { runtimeHealthCollector } from './runtime-health-collector.ts';
 import type { MetricReadings } from './measurement-types.ts';
@@ -30,7 +31,7 @@ async function stoppedSession(signal: AbortSignal): Promise<Awaited<ReturnType<t
     return session;
 }
 
-export const testNode = suite('runtime health boundaries', [
+export const testNode = authoredSuite('runtime health boundaries', [
     test('freezes loop delay before draining and collector completion work', async function (scope) {
         const session = await stoppedSession(scope.signal);
         await using disposal = new AsyncDisposableStack();

@@ -1,4 +1,4 @@
-import { testDouble } from '../packages/doubles/doubles.entry-point.ts';
+import { createTranscript, defineHarness, testDouble, type Transcript } from '@overkill-dev/test';
 import { createAtomicFileStore, type AtomicFileRuntime, type FileStore } from '../file-store.ts';
 
 export type FileStoreFaults = {
@@ -18,7 +18,7 @@ export const reliableFileStore: FileStoreFaults = {
 type AtomicFileFixture = {
     readonly store: FileStore;
     readonly files: ReadonlyMap<string, string>;
-    readonly events: readonly string[];
+    readonly events: Transcript<readonly [kind: 'file', event: string]>;
 };
 type AtomicFileState = {
     readonly faults: FileStoreFaults;
@@ -93,18 +93,21 @@ function fileRuntime(state: AtomicFileState): AtomicFileRuntime {
         }
     };
 }
-export function atomicFileStore(
-    faults: FileStoreFaults,
-    initial: readonly (readonly [string, string])[]
-): AtomicFileFixture {
+export const atomicFileStore = defineHarness({
+    faults() {
+        return reliableFileStore;
+    },
+    initial(): readonly (readonly [string, string])[] {
+        return [];
+    }
+}, function createAtomicFileFixture(options): AtomicFileFixture {
+    const { faults, initial } = options;
     const files = new Map(initial);
-    const events: string[] = [];
+    const events = createTranscript<readonly [kind: 'file', event: string]>();
     const state: AtomicFileState = {
         faults,
         files,
-        record(event) {
-            events.push(event);
-        },
+        record: events.sink('file'),
         put(file, content) {
             files.set(file, content);
         },
@@ -113,4 +116,4 @@ export function atomicFileStore(
         }
     };
     return { store: createAtomicFileStore(fileRuntime(state)), files, events };
-}
+});

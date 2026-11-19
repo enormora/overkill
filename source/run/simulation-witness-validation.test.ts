@@ -1,10 +1,10 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { defineResource, withFailureArtifacts, withResources } from '../packages/test/resources.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { executeInlineEvidence } from '../test-support/failure-evidence-fixture.ts';
 
-export const testNode = suite('simulation witness validation', [
+export const testNode = authoredSuite('simulation witness validation', [
     test('invalid envelopes retain the body failure and permit disposal', async function (scope) {
         const disposed: string[] = [];
         const resource = withFailureArtifacts(
@@ -55,4 +55,3 @@ export const testNode = suite('simulation witness validation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

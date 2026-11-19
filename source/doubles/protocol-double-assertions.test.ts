@@ -1,26 +1,13 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { TestBody, TestScope } from '../engine/test-scope.ts';
 import { doubleUsage } from './double-usage.ts';
 import { rule } from './double-rule.ts';
 import { createTestDoubleScope } from './test-double.ts';
-import {
-    testAsyncIterable,
-    testAsyncIterator,
-    testDisposable,
-    testIterable
-} from './protocol-double.ts';
-import {
-    installProtocolMetadata,
-    protocolDisposeMethod,
-    protocolIteratorEvents
-} from './protocol-double-metadata.ts';
+import { testAsyncIterable, testAsyncIterator, testDisposable, testIterable } from './protocol-double.ts';
+import { installProtocolMetadata, protocolDisposeMethod, protocolIteratorEvents } from './protocol-double-metadata.ts';
 
 async function executeSingleBody(body: TestBody): Promise<RunResult> {
     const engine = createTestEngine();
@@ -65,297 +52,202 @@ function metadataDisposable(dispose: () => void): MetadataDisposable {
     return disposable;
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/doubles/protocol-double-assertions.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'testAsyncIterator() tracks rejected protocol methods',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const expected = new Error('expected');
-                const values = testAsyncIterator({
-                    next: { fallback: rule.rejects(expected) },
-                    return: { fallback: rule.resolves({ done: true, value: undefined }) },
-                    throw: { fallback: rule.rejects(expected) }
-                });
+export const testNode = suite('source/doubles/protocol-double-assertions.test.ts', [
+    test('testAsyncIterator() tracks rejected protocol methods', async function body(scope: OverkillScope) {
+        const expected = new Error('expected');
+        const values = testAsyncIterator({
+            next: { fallback: rule.rejects(expected) },
+            return: { fallback: rule.resolves({ done: true, value: undefined }) },
+            throw: { fallback: rule.rejects(expected) }
+        });
 
-                await scope.assert.rejects(async function rejectValue() {
-                    await values.next();
-                }, { exact: expected });
-                await scope.assert.rejects(async function rejectValue() {
-                    await values.throw(expected);
-                }, { exact: expected });
+        await scope.assert.rejects(async function rejectValue() {
+            await values.next();
+        }, { exact: expected });
+        await scope.assert.rejects(async function rejectValue() {
+            await values.throw(expected);
+        }, { exact: expected });
 
-                return scope.assert.collect();
+        return scope.assert.collect();
+    }),
+    test('protocol metadata rejects non-protocol values', function body(scope: OverkillScope) {
+        scope.assert.equal(protocolDisposeMethod({}), null);
+        scope.assert.equal(protocolIteratorEvents({}), null);
+
+        return scope.assert.collect();
+    }),
+    test('protocol metadata reports null disposal for iterator protocols', function body(scope: OverkillScope) {
+        scope.assert.equal(protocolDisposeMethod(testAsyncIterator()), null);
+        scope.assert.equal(protocolDisposeMethod(testIterable()), null);
+        scope.assert.equal(protocolDisposeMethod(testAsyncIterable()), null);
+
+        return scope.assert.collect();
+    }),
+    test('protocol iterable metadata ignores thrown iterator factory calls', function body(scope: OverkillScope) {
+        const source = testIterable({
+            iterator: { fallback: rule.throws(new Error('expected')) }
+        });
+
+        scope.assert.throws(function createIterator() {
+            source[Symbol.iterator]();
+        }, { message: /expected/u });
+        const events = protocolIteratorEvents(source);
+
+        scope.require.notNull(events);
+        scope.assert.deepEqual(events, []);
+
+        return scope.assert.collect();
+    }),
+    test('protocol iterator assertions accept protocol objects', async function body(scope: OverkillScope) {
+        const source = testIterable.yields([ 'created', 'updated' ]);
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            scope.assert.deepEqual(Array.from(source), [ 'created', 'updated' ]);
+
+            testScope.assert(doubleUsage.iterated, source);
+            testScope.assert(doubleUsage.iteratorEventCount, source, 3);
+            testScope.assert(doubleUsage.yieldCount, source, 2);
+            testScope.assert(doubleUsage.yieldedExactly, source, [ 'created', 'updated' ]);
+            return testScope.assert.collect();
+        });
+
+        scope.assert.equal(result.summary.passed, 1);
+        scope.assert.equal(result.summary.failed, 0);
+
+        return scope.assert.collect();
+    }),
+    test('disposal assertions accept disposable protocol objects', async function body(scope: OverkillScope) {
+        const first = testDisposable();
+        const second = testDisposable();
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            {
+                using firstResource = first;
+                using secondResource = second;
+
+                scope.assert.deepEqual([ firstResource, secondResource ], [ first, second ]);
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'protocol metadata rejects non-protocol values',
-            annotations: {},
-            controls: {},
-            body: function body(scope: OverkillScope) {
-                scope.assert.equal(protocolDisposeMethod({}), null);
-                scope.assert.equal(protocolIteratorEvents({}), null);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'protocol metadata reports null disposal for iterator protocols',
-            annotations: {},
-            controls: {},
-            body: function body(scope: OverkillScope) {
-                scope.assert.equal(protocolDisposeMethod(testAsyncIterator()), null);
-                scope.assert.equal(protocolDisposeMethod(testIterable()), null);
-                scope.assert.equal(protocolDisposeMethod(testAsyncIterable()), null);
+            testScope.assert(doubleUsage.disposed, first);
+            testScope.assert(doubleUsage.disposeCount, first, 1);
+            testScope.assert(doubleUsage.disposedOnce, first);
+            testScope.assert(doubleUsage.disposeOrder, [ second, first ]);
+            testScope.assert(doubleUsage.notDisposed, testDisposable());
+            return testScope.assert.collect();
+        });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'protocol iterable metadata ignores thrown iterator factory calls',
-            annotations: {},
-            controls: {},
-            body: function body(scope: OverkillScope) {
-                const source = testIterable({
-                    iterator: { fallback: rule.throws(new Error('expected')) }
-                });
+        scope.assert.equal(result.summary.passed, 1);
+        scope.assert.equal(result.summary.failed, 0);
 
-                scope.assert.throws(function createIterator() {
-                    source[Symbol.iterator]();
-                }, { message: /expected/u });
-                const events = protocolIteratorEvents(source);
+        return scope.assert.collect();
+    }),
+    test('disposal assertions reject invalid protocol inputs', async function body(scope: OverkillScope) {
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            testScope.assert(doubleUsage.disposed, {});
+            testScope.assert(doubleUsage.notDisposed, {});
+            testScope.assert(doubleUsage.disposedOnce, {});
+            testScope.assert(doubleUsage.disposeCount, {}, 0);
+            return testScope.assert.collect();
+        });
 
-                scope.require.notNull(events);
-                scope.assert.deepEqual(events, []);
+        scope.assert.equal(result.summary.failed, 1);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'protocol iterator assertions accept protocol objects',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const source = testIterable.yields([ 'created', 'updated' ]);
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    scope.assert.deepEqual(Array.from(source), [ 'created', 'updated' ]);
+        return scope.assert.collect();
+    }),
+    test(
+        'disposal assertions reject protocol inputs without double methods',
+        async function body(scope: OverkillScope) {
+            const disposable = metadataDisposable(function dispose() {
+                return undefined;
+            });
+            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                testScope.assert(doubleUsage.disposed, disposable);
+                return testScope.assert.collect();
+            });
 
-                    testScope.assert(doubleUsage.iterated, source);
-                    testScope.assert(doubleUsage.iteratorEventCount, source, 3);
-                    testScope.assert(doubleUsage.yieldCount, source, 2);
-                    testScope.assert(doubleUsage.yieldedExactly, source, [ 'created', 'updated' ]);
-                    return testScope.assert.collect();
-                });
+            scope.assert.equal(result.summary.failed, 1);
 
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(result.summary.failed, 0);
+            return scope.assert.collect();
+        }
+    ),
+    test('disposal order rejects mixed double scopes', async function body(scope: OverkillScope) {
+        const firstScope = createTestDoubleScope();
+        const secondScope = createTestDoubleScope();
+        const first = metadataDisposable(firstScope.testDouble.returns<() => void>());
+        const second = metadataDisposable(secondScope.testDouble.returns<() => void>());
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            first.dispose();
+            second.dispose();
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'disposal assertions accept disposable protocol objects',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const first = testDisposable();
-                const second = testDisposable();
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    {
-                        using firstResource = first;
-                        using secondResource = second;
+            testScope.assert(doubleUsage.disposeOrder, [ first, second ]);
+            return testScope.assert.collect();
+        });
 
-                        scope.assert.deepEqual([ firstResource, secondResource ], [ first, second ]);
-                    }
+        scope.assert.equal(result.summary.failed, 1);
 
-                    testScope.assert(doubleUsage.disposed, first);
-                    testScope.assert(doubleUsage.disposeCount, first, 1);
-                    testScope.assert(doubleUsage.disposedOnce, first);
-                    testScope.assert(doubleUsage.disposeOrder, [ second, first ]);
-                    testScope.assert(doubleUsage.notDisposed, testDisposable());
-                    return testScope.assert.collect();
-                });
+        return scope.assert.collect();
+    }),
+    test('disposal assertions validate counts and order inputs', async function body(scope: OverkillScope) {
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            testScope.assert(doubleUsage.disposeCount, testDisposable(), -1);
+            return testScope.assert.collect();
+        });
 
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(result.summary.failed, 0);
+        scope.assert.equal(result.summary.failed, 1);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'disposal assertions reject invalid protocol inputs',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.assert(doubleUsage.disposed, {});
-                    testScope.assert(doubleUsage.notDisposed, {});
-                    testScope.assert(doubleUsage.disposedOnce, {});
-                    testScope.assert(doubleUsage.disposeCount, {}, 0);
-                    return testScope.assert.collect();
-                });
+        return scope.assert.collect();
+    }),
+    test('disposal order rejects invalid protocol entries', async function body(scope: OverkillScope) {
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            testScope.assert(doubleUsage.disposeOrder, [ {}, testDisposable() ]);
+            return testScope.assert.collect();
+        });
 
-                scope.assert.equal(result.summary.failed, 1);
+        scope.assert.equal(result.summary.failed, 1);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'disposal assertions reject protocol inputs without double methods',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const disposable = metadataDisposable(function dispose() {
-                    return undefined;
-                });
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.assert(doubleUsage.disposed, disposable);
-                    return testScope.assert.collect();
-                });
+        return scope.assert.collect();
+    }),
+    test('disposal order reports missing disposal events', async function body(scope: OverkillScope) {
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            testScope.assert(doubleUsage.disposeOrder, [ testDisposable(), testDisposable() ]);
+            return testScope.assert.collect();
+        });
 
-                scope.assert.equal(result.summary.failed, 1);
+        scope.assert.equal(result.summary.failed, 1);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'disposal order rejects mixed double scopes',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const firstScope = createTestDoubleScope();
-                const secondScope = createTestDoubleScope();
-                const first = metadataDisposable(firstScope.testDouble.returns<() => void>());
-                const second = metadataDisposable(secondScope.testDouble.returns<() => void>());
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    first.dispose();
-                    second.dispose();
+        return scope.assert.collect();
+    }),
+    test('disposal order rejects too few runtime entries', async function body(scope: OverkillScope) {
+        const disposables: [unknown, unknown] = [ testDisposable(), testDisposable() ];
+        disposables.pop();
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            testScope.assert(doubleUsage.disposeOrder, disposables);
+            return testScope.assert.collect();
+        });
 
-                    testScope.assert(doubleUsage.disposeOrder, [ first, second ]);
-                    return testScope.assert.collect();
-                });
+        scope.assert.equal(result.summary.failed, 1);
 
-                scope.assert.equal(result.summary.failed, 1);
+        return scope.assert.collect();
+    }),
+    test('iterator assertions reject invalid protocol inputs', async function body(scope: OverkillScope) {
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            testScope.assert(doubleUsage.iterated, {});
+            testScope.assert(doubleUsage.notIterated, {});
+            testScope.assert(doubleUsage.iteratorEventCount, {}, 1);
+            testScope.assert(doubleUsage.yieldedExactly, {}, []);
+            return testScope.assert.collect();
+        });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'disposal assertions validate counts and order inputs',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.assert(doubleUsage.disposeCount, testDisposable(), -1);
-                    return testScope.assert.collect();
-                });
+        scope.assert.equal(result.summary.failed, 1);
 
-                scope.assert.equal(result.summary.failed, 1);
+        return scope.assert.collect();
+    }),
+    test('iterator assertions validate expected event counts', async function body(scope: OverkillScope) {
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            testScope.assert(doubleUsage.iteratorEventCount, testIterable.yields([]), -1);
+            return testScope.assert.collect();
+        });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'disposal order rejects invalid protocol entries',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.assert(doubleUsage.disposeOrder, [ {}, testDisposable() ]);
-                    return testScope.assert.collect();
-                });
+        scope.assert.equal(result.summary.failed, 1);
 
-                scope.assert.equal(result.summary.failed, 1);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'disposal order reports missing disposal events',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.assert(doubleUsage.disposeOrder, [ testDisposable(), testDisposable() ]);
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.equal(result.summary.failed, 1);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'disposal order rejects too few runtime entries',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const disposables: [unknown, unknown] = [ testDisposable(), testDisposable() ];
-                disposables.pop();
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.assert(doubleUsage.disposeOrder, disposables);
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.equal(result.summary.failed, 1);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'iterator assertions reject invalid protocol inputs',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.assert(doubleUsage.iterated, {});
-                    testScope.assert(doubleUsage.notIterated, {});
-                    testScope.assert(doubleUsage.iteratorEventCount, {}, 1);
-                    testScope.assert(doubleUsage.yieldedExactly, {}, []);
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.equal(result.summary.failed, 1);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'iterator assertions validate expected event counts',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.assert(doubleUsage.iteratorEventCount, testIterable.yields([]), -1);
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.equal(result.summary.failed, 1);
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

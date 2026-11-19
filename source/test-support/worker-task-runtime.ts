@@ -1,8 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { createDeterministicClock } from '@enormora/clock';
-import {
-    defaultFailureArtifactPolicy
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import type {
     WorkerPoolCommand,
     WorkerRunTask,

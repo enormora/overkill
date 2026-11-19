@@ -1,8 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import type { RunResult } from '../../engine/run-result.ts';
 import { normalizationCommand, normalizationReferences } from '../../test-support/benchmark-normalization-fixture.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { orchestrator, parseRunnerResult, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import { createBenchmarkHtmlReport } from '../../reporters/benchmark-html-model.ts';
 import type { BenchmarkNormalizationEvidence } from '../../packages/bench/bench.entry-point.ts';
@@ -101,9 +100,9 @@ function assertCaptureInvariant(scope: TestScope, canonical: RunResult, captured
     scope.assert.deepEqual(after.benchmark.budgets, before.benchmark.budgets);
     assertCaptureScales(scope, canonical, captured);
 }
-export const testNode = suite('benchmark normalization process boundaries', [
+export const testNode = authoredSuite('benchmark normalization process boundaries', [
     baselineTests,
-    test('display captures preserve logical identity and canonical budget decisions', async function (scope) {
+    authoredTest('display captures preserve logical identity and canonical budget decisions', async function (scope) {
         const command = await normalizationCommand(scope, 'reuse', 'normalized metric');
         const canonical = await runNormalizedBenchmark(scope, command);
         await captureFixedReference(scope, command);
@@ -112,7 +111,7 @@ export const testNode = suite('benchmark normalization process boundaries', [
         return scope.assert.collect();
     }),
     ...([ 'supervised-process', 'reuse', 'fresh-worker-per-unit' ] as const).map(function boundaryTest(boundary) {
-        return test(`captures and normalizes through ${boundary}`, async function (scope: TestScope) {
+        return authoredTest(`captures and normalizes through ${boundary}`, async function (scope: TestScope) {
             const command = await normalizationCommand(scope, boundary, 'normalized metric');
             const store = await normalizationReferences(command);
             const listed = await orchestrator.bench.list(command, { timing: null });
@@ -124,7 +123,7 @@ export const testNode = suite('benchmark normalization process boundaries', [
             return scope.assert.collect();
         });
     }),
-    test(
+    authoredTest(
         'captures without acquiring unrelated fixtures or running benchmark bodies',
         async function (scope: TestScope) {
             const command = await normalizationCommand(scope, 'reuse', 'capture skips benchmark fixtures');
@@ -137,7 +136,7 @@ export const testNode = suite('benchmark normalization process boundaries', [
             return scope.assert.collect();
         }
     ),
-    test('keeps constructor metrics raw without a scaling rule', async function (scope: TestScope) {
+    authoredTest('keeps constructor metrics raw without a scaling rule', async function (scope: TestScope) {
         const command = await normalizationCommand(scope, 'reuse', 'mixed normalized and raw metrics');
         await captureFixedReference(scope, command);
         const result = await runNormalizedBenchmark(scope, command);
@@ -165,7 +164,7 @@ export const testNode = suite('benchmark normalization process boundaries', [
         );
         return scope.assert.collect();
     }),
-    test('normalizes automatically without captured references', async function (scope: TestScope) {
+    authoredTest('normalizes automatically without captured references', async function (scope: TestScope) {
         const command = await normalizationCommand(scope, 'supervised-process', 'normalized metric');
         const result = await orchestrator.bench.run(command, { timing: null });
         assertAutomaticResult(scope, result);
@@ -174,4 +173,3 @@ export const testNode = suite('benchmark normalization process boundaries', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

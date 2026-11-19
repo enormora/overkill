@@ -1,7 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { RunArtifact } from '../engine/run-result.ts';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { snapshotWorkflow, snapshotEvent, snapshotUpdateFixture } from '../test-support/snapshot-workflow.ts';
 import { baselineCaseResult } from '../test-support/baseline-case-fixture.ts';
 import { testNode as valuePolicy } from './snapshot-value-policy.test.ts';
@@ -10,7 +11,7 @@ import { baselineFilename } from './baseline-record.ts';
 function isRuntimeAttachment(artifact: RunArtifact): artifact is RuntimeAttachmentArtifact {
     return artifact.payload.kind === 'runtime-attachment';
 }
-export const testNode = suite('snapshot baseline workflow', [
+export const testNode = authoredSuite('snapshot baseline workflow', [
     valuePolicy,
     test('updates matching snapshot baselines in stable publication order', async function (scope: TestScope) {
         const { workflow, event, filenames } = await snapshotUpdateFixture();
@@ -71,4 +72,3 @@ export const testNode = suite('snapshot baseline workflow', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

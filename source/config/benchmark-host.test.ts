@@ -1,5 +1,7 @@
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { defaultIntegrationProfile } from '../test-support/run-command-factory.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { projectConfigSchema } from './schema.ts';
 import { normalizeConfig } from './config.ts';
 import { copyConfig } from './snapshot.ts';
@@ -19,9 +21,9 @@ function hostConfig(): NormalizedConfig {
     });
 }
 
-export const testNode = suite('benchmark host configuration', [
+export const testNode = authoredSuite('benchmark host configuration', [
     ...([ 'supervised-process', 'worker-pool' ] as const).map(function (processModel) {
-        return test(`copies integration placement ${processModel}`, function (scope: TestScope) {
+        return authoredTest(`copies integration placement ${processModel}`, function (scope: TestScope) {
             const original = {
                 ...hostConfig(),
                 profiles: {
@@ -36,7 +38,7 @@ export const testNode = suite('benchmark host configuration', [
             return scope.assert.collect();
         });
     }),
-    test('copies supervised benchmark placement independently', function (scope: TestScope) {
+    authoredTest('copies supervised benchmark placement independently', function (scope: TestScope) {
         const original = normalizeConfig({
             profiles: {
                 sample: {
@@ -51,7 +53,7 @@ export const testNode = suite('benchmark host configuration', [
         scope.assert.notEqual(copied.profiles.sample?.execution, original.profiles.sample?.execution);
         return scope.assert.collect();
     }),
-    test('requires every limit in direct normalized configuration', function (scope: TestScope) {
+    authoredTest('requires every limit in direct normalized configuration', function (scope: TestScope) {
         const config = copyConfig(hostConfig());
         const profile = config.profiles.startup;
         if (profile?.testFamily !== 'benchmark') {
@@ -63,7 +65,7 @@ export const testNode = suite('benchmark host configuration', [
         }, { name: 'ConfigError' });
         return scope.assert.collect();
     }),
-    test('normalizes relative limits and leaves omitted checks disabled', function (scope: TestScope) {
+    authoredTest('normalizes relative limits and leaves omitted checks disabled', function (scope: TestScope) {
         const profile = hostConfig().profiles.startup;
         if (profile?.testFamily !== 'benchmark') {
             throw new Error('Missing benchmark profile.');
@@ -73,7 +75,7 @@ export const testNode = suite('benchmark host configuration', [
         scope.assert.equal(profile.host.limits.maximumLinuxCpuStallPercent, null);
         return scope.assert.collect();
     }),
-    test('copies host policy independently when snapshotting configuration', function (scope: TestScope) {
+    authoredTest('copies host policy independently when snapshotting configuration', function (scope: TestScope) {
         const config = hostConfig();
         const profile = config.profiles.startup;
         const copied = copyConfig(config).profiles.startup;
@@ -84,7 +86,7 @@ export const testNode = suite('benchmark host configuration', [
         scope.assert.deepEqual(copied.host, profile.host);
         return scope.assert.collect();
     }),
-    test('rejects invalid direct normalized policy', function (scope: TestScope) {
+    authoredTest('rejects invalid direct normalized policy', function (scope: TestScope) {
         const config = hostConfig();
         const profile = config.profiles.startup;
         if (profile?.testFamily !== 'benchmark') {
@@ -100,7 +102,7 @@ export const testNode = suite('benchmark host configuration', [
         }, { name: 'ConfigError' });
         return scope.assert.collect();
     }),
-    test(
+    authoredTest(
         'rejects nonfinite or out-of-range limits, unknown keys, and host policy on ordinary profiles',
         function (scope: TestScope) {
             for (

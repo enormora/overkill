@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { readdir, readFile } from 'node:fs/promises';
-import type { TestScope } from '@overkill-dev/engine';
+import type { TestScope } from '#tests';
 import { z } from 'zod/v4';
 
 type PackagedFilters = {

@@ -1,10 +1,11 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { availableMetric } from './metric-reading.ts';
 import { readRawBenchmarkSamples } from './benchmark-sample-data.ts';
 import { currentMeasurementContext } from './measurement-context.ts';
 
 const reading = availableMetric(7, { collector: 'custom', scope: 'custom', unit: 'ticks' });
-export const testNode = suite('versioned benchmark samples', [
+export const testNode = authoredSuite('versioned benchmark samples', [
     test('rejects unversioned attachments instead of guessing attribution', function (scope) {
         scope.assert.throws(function unversionedSamples() {
             readRawBenchmarkSamples({ value: [ reading ] });

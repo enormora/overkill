@@ -1,8 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import {
     normalizeConfig,
     orchestrator,
@@ -68,20 +67,23 @@ async function commandFor(
 }
 
 const boundaries = [ 'reuse', 'fresh-worker-per-unit', 'supervised-process', 'hosted' ] as const;
-export const testNode = suite(
+export const testNode = authoredSuite(
     'cold module imports',
     [
-        test('retains failed bodies, cleanup, and forced GC in a partial timeline', async function (scope: TestScope) {
-            const command = await commandFor(
-                scope,
-                'reuse',
-                'source/integration-tests/run/fixtures/timeline-failure.bench.test.ts',
-                'off'
-            );
-            assertFailedTimeline(scope, await orchestrator.bench.run(command, { timing: null }));
-            return scope.assert.collect();
-        }),
-        test('rejects host GC for cold imports before measuring', async function (scope: TestScope) {
+        authoredTest(
+            'retains failed bodies, cleanup, and forced GC in a partial timeline',
+            async function (scope: TestScope) {
+                const command = await commandFor(
+                    scope,
+                    'reuse',
+                    'source/integration-tests/run/fixtures/timeline-failure.bench.test.ts',
+                    'off'
+                );
+                assertFailedTimeline(scope, await orchestrator.bench.run(command, { timing: null }));
+                return scope.assert.collect();
+            }
+        ),
+        authoredTest('rejects host GC for cold imports before measuring', async function (scope: TestScope) {
             const command = await commandFor(
                 scope,
                 'hosted',
@@ -103,7 +105,7 @@ export const testNode = suite(
         ...boundaries.map(
             function boundary(value) {
                 const selected = value;
-                return test(`imports a fresh module graph with ${selected}`, async function (scope: TestScope) {
+                return authoredTest(`imports a fresh module graph with ${selected}`, async function (scope: TestScope) {
                     const command = await commandFor(
                         scope,
                         selected,
@@ -128,5 +130,3 @@ export const testNode = suite(
         )
     ]
 );
-
-await runIfMain(import.meta, testNode);

@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { frozenMicrotestPolicy } from '../../test-support/frozen-microtest-policy.ts';
 import { mutationPolicyRequestSchema, mutationPolicyResponseSchema } from './mutation-policy-protocol.ts';
 
-export const testNode = suite('mutation policy protocol validation', [
+export const testNode = authoredSuite('mutation policy protocol validation', [
     test('restores a serialized frozen microtest policy', async function (scope: TestScope) {
         const policy = await frozenMicrotestPolicy();
         const encoded = JSON.stringify({ kind: 'policy', policy });
@@ -55,4 +55,3 @@ export const testNode = suite('mutation policy protocol validation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

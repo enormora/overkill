@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { diagnosticRun } from '../test-support/diagnostic-run.ts';
 import { debuggedWork, runHasAttachmentScopes } from './run-diagnostics.ts';
 import type { RunDebugRequest } from './run-types.ts';
@@ -8,7 +8,7 @@ const debugModes: readonly RunDebugRequest[] = [ { mode: 'off', selectors: [] },
     mode: 'selected',
     selectors: [ 'title~case | title=first' ]
 }, { mode: 'selected', selectors: [ 'title=missing' ] } ];
-export const testNode = suite('run diagnostic selection', [
+export const testNode = authoredSuite('run diagnostic selection', [
     ...[ false, true ].flatMap(function (local) {
         return debugModes.map(function (debug) {
             const selected = debug.mode === 'all' ||
@@ -44,4 +44,3 @@ export const testNode = suite('run diagnostic selection', [
         );
     })
 ]);
-await runIfMain(import.meta, testNode);

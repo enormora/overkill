@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { isDefinedFamilyProfile } from '../../config/types.ts';
-import { suite, test } from '../../packages/test/test.entry-point.ts';
+
 import { normalizeConfig, orchestrator, type NormalizedConfig } from '../../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { family as analysisFamily } from './fixtures/imported-analysis-family.ts';
@@ -37,8 +38,8 @@ function hostedRuntimeConfig(): NormalizedConfig {
     };
 }
 
-export const testNode = suite('imported family transport', [
-    test('executes imported runtime variants through a child worker host', async function (scope) {
+export const testNode = authoredSuite('imported family transport', [
+    authoredTest('executes imported runtime variants through a child worker host', async function (scope) {
         const result = await orchestrator.run({
             cwd: process.cwd(),
             engine: { kind: 'default' },
@@ -50,7 +51,7 @@ export const testNode = suite('imported family transport', [
         scope.assert.deepEqual(result.runnerErrors, []);
         return scope.assert.collect();
     }),
-    test('terminates preparation blocked before case admission', async function (scope) {
+    authoredTest('terminates preparation blocked before case admission', async function (scope) {
         const config = normalizeConfig({
             profiles: {
                 custom: {
@@ -78,7 +79,7 @@ export const testNode = suite('imported family transport', [
         return scope.assert.collect();
     }),
     ...([ 'supervised-process', 'worker-pool' ] as const).map(function analysisBoundary(processModel) {
-        return test(
+        return authoredTest(
             `executes imported analysis through ${processModel} without invoking bodies`,
             async function (scope) {
                 const execution = processModel === 'worker-pool'
@@ -109,7 +110,7 @@ export const testNode = suite('imported family transport', [
         );
     }),
     ...([ 'supervised-process', 'worker-pool' ] as const).map(function processBoundary(processModel) {
-        return test(`executes imported runtime variants through ${processModel}`, async function (scope) {
+        return authoredTest(`executes imported runtime variants through ${processModel}`, async function (scope) {
             const execution = processModel === 'worker-pool'
                 ? {
                     processModel,
@@ -153,5 +154,3 @@ export const testNode = suite('imported family transport', [
         });
     })
 ]);
-
-await runIfMain(import.meta, testNode);

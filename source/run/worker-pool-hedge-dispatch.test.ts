@@ -1,19 +1,8 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { PlacementPlan } from './run-types.ts';
-import {
-    fakeWorkerRuntime,
-    placementPlan,
-    testCaseMetadata
-} from './worker-pool-placement-validation.test.ts';
-import type {
-    WorkerPoolUnitLease,
-    WorkerPoolWorkDispatcher
-} from './worker-pool-dispatch-state.ts';
+import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
+import type { WorkerPoolUnitLease, WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
 import {
     hedgeWakeDelay,
     laneHasPotentialHedge,
@@ -366,11 +355,11 @@ function assertDisposableIsolatedHedge(scope: OverkillScope): void {
     scope.assert.equal(selectHedgeCandidate(state, secondLane(plan)), entry);
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-hedge-dispatch.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool hedge dispatch waits for sampled duration thresholds',
             body(scope: OverkillScope) {
@@ -379,7 +368,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool hedge dispatch suppresses repeated duplicates',
             body(scope: OverkillScope) {
@@ -388,7 +377,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher clears after idle hedge checks',
             body(scope: OverkillScope) {
@@ -397,7 +386,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool hedge dispatch ignores disabled hedging',
             body(scope: OverkillScope) {
@@ -406,7 +395,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool hedge dispatch accepts disposable isolated fresh workers',
             body(scope: OverkillScope) {
@@ -415,7 +404,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool hedge dispatch rejects incompatible lanes',
             body(scope: OverkillScope) {
@@ -426,5 +415,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

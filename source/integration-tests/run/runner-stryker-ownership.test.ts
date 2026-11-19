@@ -1,8 +1,8 @@
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../../packages/test/test.entry-point.ts';
+import { test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { adapterUrl, engineUrl, configUrl } from './stryker-lifecycle-fixture.test.ts';
 import { executeMutationScript } from './stryker-script.test.ts';
 import { strykerCancellationScript, strykerDisconnectScript } from './stryker-ownership-scripts.test.ts';
@@ -14,7 +14,7 @@ const scenarios = [
     { title: 'plugin worker death reaps its blocked invocation', script: strykerDisconnectScript }
 ];
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'Stryker invocation ownership',
     [ 'in-process', 'supervised-process' ].flatMap(
         function processBoundary(processModel) {
@@ -39,5 +39,3 @@ export const testNode = suite(
         }
     )
 );
-
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as hedgeTiming } from './dynamic-dispatch-timing-policy.test.ts';
 import { testNode as emptyPool } from './routed-pool-empty-policy.test.ts';
 import { testNode as workerPoolDynamicHedgingTestNode } from './worker-pool-dynamic-hedging.test.ts';
@@ -9,21 +9,13 @@ import { testNode as workerPoolStaticDispatcherTestNode } from './worker-pool-st
 import { testNode as workerPoolTaskEventsTestNode } from './worker-pool-task-events.test.ts';
 import { testNode as workerPoolWorkLoadTestNode } from './worker-pool-work-load.test.ts';
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-hedging-suite.test.ts',
-    children: [
-        emptyPool,
-        hedgeTiming,
-        workerPoolDynamicHedgingTestNode,
-        workerPoolHedgeDispatchTestNode,
-        workerPoolHedgedArbitrationTestNode,
-        workerPoolStaticDispatcherTestNode,
-        workerPoolTaskEventsTestNode,
-        workerPoolWorkLoadTestNode
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/worker-pool-hedging-suite.test.ts', [
+    emptyPool,
+    hedgeTiming,
+    workerPoolDynamicHedgingTestNode,
+    workerPoolHedgeDispatchTestNode,
+    workerPoolHedgedArbitrationTestNode,
+    workerPoolStaticDispatcherTestNode,
+    workerPoolTaskEventsTestNode,
+    workerPoolWorkLoadTestNode
+]);

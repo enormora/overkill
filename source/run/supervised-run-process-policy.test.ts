@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { CaseId } from '../engine/identity.ts';
 import type { ProcessUsageSnapshot } from '../engine/process-usage.ts';
 import type { ProcessBudgets } from '../config/types.ts';
@@ -82,107 +78,87 @@ function assertCaseId(scope: OverkillScope, actual: CaseId | null, expected: Cas
     scope.assert.deepEqual(actual, expected);
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/supervised-run-process-policy.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'findProcessBudgetBreach() selects the first exceeded process budget',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                assertBreach(
-                    scope,
-                    findProcessBudgetBreach(
-                        {
-                            ...noBudgets(),
-                            activeResourceCount: 1,
-                            residentSetBytes: 1
-                        },
-                        sample,
-                        previousSample
-                    ),
-                    { budget: 1, metric: 'activeResourceCount', observed: 2, sample }
-                );
-                assertBreach(
-                    scope,
-                    findProcessBudgetBreach(
-                        {
-                            ...noBudgets(),
-                            residentSetGrowthBytesPerSecond: 150
-                        },
-                        sample,
-                        previousSample
-                    ),
-                    { budget: 150, metric: 'residentSetGrowthBytesPerSecond', observed: 200, sample }
-                );
-                scope.assert.equal(findProcessBudgetBreach(noBudgetsExceeded, sample, previousSample), null);
+export const testNode = suite('source/run/supervised-run-process-policy.test.ts', [
+    test('findProcessBudgetBreach() selects the first exceeded process budget', function (scope: OverkillScope) {
+        assertBreach(
+            scope,
+            findProcessBudgetBreach(
+                {
+                    ...noBudgets(),
+                    activeResourceCount: 1,
+                    residentSetBytes: 1
+                },
+                sample,
+                previousSample
+            ),
+            { budget: 1, metric: 'activeResourceCount', observed: 2, sample }
+        );
+        assertBreach(
+            scope,
+            findProcessBudgetBreach(
+                {
+                    ...noBudgets(),
+                    residentSetGrowthBytesPerSecond: 150
+                },
+                sample,
+                previousSample
+            ),
+            { budget: 150, metric: 'residentSetGrowthBytesPerSecond', observed: 200, sample }
+        );
+        scope.assert.equal(findProcessBudgetBreach(noBudgetsExceeded, sample, previousSample), null);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'process usage policy errors attribute active case boundaries',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const [ emptyState, singleState, multiState ] = activeCaseStates();
-                const breach = {
-                    budget: 1,
-                    metric: 'activeResourceCount' as const,
-                    observed: 2,
-                    sample
-                };
+        return scope.assert.collect();
+    }),
+    test('process usage policy errors attribute active case boundaries', function (scope: OverkillScope) {
+        const [ emptyState, singleState, multiState ] = activeCaseStates();
+        const breach = {
+            budget: 1,
+            metric: 'activeResourceCount' as const,
+            observed: 2,
+            sample
+        };
 
-                scope.assert.deepEqual(processExhaustionError(breach, emptyState), {
-                    attributedToAttempt: null,
-                    attributedTo: null,
-                    attributedToWork: null,
-                    cause: {
-                        ...breach,
-                        activeCases: [],
-                        activeAttempts: [],
-                        activeWork: [],
-                        enforcement: 'post-test-diagnostic'
-                    },
-                    diagnostics: [
-                        { label: 'metric', value: 'activeResourceCount' },
-                        { label: 'observed', value: '2' },
-                        { label: 'budget', value: '1' }
-                    ],
-                    message: 'Process budget exceeded: activeResourceCount observed 2, budget 1.',
-                    subtype: 'process-exhaustion'
-                });
-                assertCaseId(scope, processExhaustionError(breach, singleState).attributedTo, firstCaseId);
-                assertCaseId(scope, crashError(singleState, 'Crashed.').attributedTo, firstCaseId);
-                scope.assert.equal(processExhaustionError(breach, multiState).attributedTo, null);
-                scope.assert.deepEqual(crashError(multiState, 'Crashed.').cause, {
-                    activeAttempts: [
-                        {
-                            work: { familyVariant: null, case: firstCaseId, runtimes: [], workload: null },
-                            attempt: { index: 0 }
-                        },
-                        {
-                            work: { familyVariant: null, case: secondCaseId, runtimes: [], workload: null },
-                            attempt: { index: 0 }
-                        }
-                    ],
-                    activeCases: [ firstCaseId, secondCaseId ],
-                    activeWork: [
-                        { familyVariant: null, case: firstCaseId, runtimes: [], workload: null },
-                        { familyVariant: null, case: secondCaseId, runtimes: [], workload: null }
-                    ],
-                    reason: 'Crashed.'
-                });
+        scope.assert.deepEqual(processExhaustionError(breach, emptyState), {
+            attributedToAttempt: null,
+            attributedTo: null,
+            attributedToWork: null,
+            cause: {
+                ...breach,
+                activeCases: [],
+                activeAttempts: [],
+                activeWork: [],
+                enforcement: 'post-test-diagnostic'
+            },
+            diagnostics: [
+                { label: 'metric', value: 'activeResourceCount' },
+                { label: 'observed', value: '2' },
+                { label: 'budget', value: '1' }
+            ],
+            message: 'Process budget exceeded: activeResourceCount observed 2, budget 1.',
+            subtype: 'process-exhaustion'
+        });
+        assertCaseId(scope, processExhaustionError(breach, singleState).attributedTo, firstCaseId);
+        assertCaseId(scope, crashError(singleState, 'Crashed.').attributedTo, firstCaseId);
+        scope.assert.equal(processExhaustionError(breach, multiState).attributedTo, null);
+        scope.assert.deepEqual(crashError(multiState, 'Crashed.').cause, {
+            activeAttempts: [
+                {
+                    work: { familyVariant: null, case: firstCaseId, runtimes: [], workload: null },
+                    attempt: { index: 0 }
+                },
+                {
+                    work: { familyVariant: null, case: secondCaseId, runtimes: [], workload: null },
+                    attempt: { index: 0 }
+                }
+            ],
+            activeCases: [ firstCaseId, secondCaseId ],
+            activeWork: [
+                { familyVariant: null, case: firstCaseId, runtimes: [], workload: null },
+                { familyVariant: null, case: secondCaseId, runtimes: [], workload: null }
+            ],
+            reason: 'Crashed.'
+        });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

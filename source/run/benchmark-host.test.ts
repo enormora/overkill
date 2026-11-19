@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { benchmarkHostLimitsSchema } from '../config/benchmark-host.ts';
 import { benchmarkHostSnapshot } from '../test-support/benchmark-host-snapshot.ts';
 import { evaluateBenchmarkHost } from '../bench/benchmark-host-assessment.ts';
@@ -66,7 +66,7 @@ function assertProcessMetric(scope: TestScope, metrics: HostProcessMetrics, expe
     });
 }
 
-export const testNode = suite('benchmark host evidence', [
+export const testNode = authoredSuite('benchmark host evidence', [
     test('records native process deltas, memory values, and resource units', function (scope: TestScope) {
         const metrics = hostProcessMetrics(processSnapshot(10), processSnapshot(20));
         assertProcessMetric(scope, metrics, {
@@ -215,5 +215,3 @@ export const testNode = suite('benchmark host evidence', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

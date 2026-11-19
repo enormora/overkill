@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { AttachmentContent } from '../engine/runtime-attachment.ts';
 import { evaluateSnapshot } from '../baselines/snapshot-context.ts';
 import { baselineIdentityKey } from '../baselines/baseline-planning.ts';
@@ -7,7 +8,7 @@ import { recordSnapshotAttempt, storedSnapshot, snapshotWire as wire } from '../
 import { ordinaryBaselineIdentity } from './baseline-record.ts';
 import { snapshotEvidence } from './snapshot-evidence.ts';
 
-export const testNode = suite('snapshot evidence planning', [
+export const testNode = authoredSuite('snapshot evidence planning', [
     test('keeps matching inline evidence and proposes changed payloads', async function (scope) {
         const captured = await recordSnapshotAttempt({ ...wire, mode: 'update' }, async function capture() {
             await evaluateSnapshot({ kind: 'text', name: 'response', actual: 'hello' });

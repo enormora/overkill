@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { simulatedHttpRequest } from '../test-support/simulated-http-request.ts';
 import { testNode as lifecycle } from './simulated-http-lifecycle.test.ts';
 import { defineSimulatedHttpServer } from './simulation.ts';
@@ -21,7 +21,7 @@ function responseText(body: Uint8Array | string | null): string {
     const decoder = new TextDecoder();
     return typeof body === 'string' ? body : decoder.decode(body ?? new Uint8Array());
 }
-export const testNode = suite('simulated HTTP request routing', [
+export const testNode = authoredSuite('simulated HTTP request routing', [
     test('retains both handler failures and failures writing the error response', async function (scope: TestScope) {
         const failure = new Error('Handler failed.');
         const responseFailure = new Error('Response closed.');
@@ -176,4 +176,3 @@ export const testNode = suite('simulated HTTP request routing', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { supervisedChildCommand } from '../test-support/supervised-child-fixture.ts';
 import { testNode as collectionPolicy } from './host-collection-policy.test.ts';
@@ -17,7 +17,7 @@ const family: FrozenFamilyDefinition = {
     selection: null,
     source: { kind: 'module', module: { moduleUrl: 'file:///project/family.ts', exportName: 'family' } }
 };
-export const testNode = suite(
+export const testNode = authoredSuite(
     'imported family host validation',
     [
         collectionPolicy,
@@ -53,4 +53,3 @@ export const testNode = suite(
         })
     ]
 );
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     composeRuntimes,
     createResourcesModule,
@@ -309,40 +310,20 @@ function assertScenarioCompositionValidation(scope: TestScope): void {
     }, { message: 'Scenario slot "mode" is attached multiple times.' });
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/resources/runtime-composition.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        runtimeScenarioMatrixTestNode,
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'composeRuntimes creates composed runtime graphs and scopes',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                assertRuntimeGraphComposition(scope);
-                assertNestedRuntimeGraphComposition(scope);
-                assertRuntimeGraphContextValidation(scope);
-                assertRuntimeGraphCompositionRejectsInvalidInput(scope);
+export const testNode = suite('source/resources/runtime-composition.test.ts', [
+    runtimeScenarioMatrixTestNode,
+    test('composeRuntimes creates composed runtime graphs and scopes', function (scope: TestScope) {
+        assertRuntimeGraphComposition(scope);
+        assertNestedRuntimeGraphComposition(scope);
+        assertRuntimeGraphContextValidation(scope);
+        assertRuntimeGraphCompositionRejectsInvalidInput(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'runtime scenarios reach nested resource lifecycle contexts',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertScenarioBindingsReachNestedOwners(scope);
-                assertScenarioCompositionValidation(scope);
+        return scope.assert.collect();
+    }),
+    test('runtime scenarios reach nested resource lifecycle contexts', async function (scope: TestScope) {
+        await assertScenarioBindingsReachNestedOwners(scope);
+        assertScenarioCompositionValidation(scope);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

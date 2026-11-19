@@ -1,7 +1,6 @@
+import { suite, test } from '@overkill-dev/test';
 import {
     attachTestBodyResourceAttachments,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
     type TestBodyResourceAttachments
 } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
@@ -64,25 +63,13 @@ function collectedCasesWithAttachments(): readonly [CollectedRunCase, CollectedR
     return [ plannedCase, discoveredCase ];
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/collected-run-plan.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'collectedRunPlanFromTestPlan() carries resource attachment summaries',
-            annotations: {},
-            controls: {},
-            body(scope) {
-                const [ plannedCase, discoveredCase ] = collectedCasesWithAttachments();
+export const testNode = suite('source/run/collected-run-plan.test.ts', [
+    test('collectedRunPlanFromTestPlan() carries resource attachment summaries', function (scope) {
+        const [ plannedCase, discoveredCase ] = collectedCasesWithAttachments();
 
-                scope.assert.deepEqual(plannedCase.resourceAttachments, attachments);
-                scope.assert.deepEqual(discoveredCase.resourceAttachments, attachments);
+        scope.assert.deepEqual(plannedCase.resourceAttachments, attachments);
+        scope.assert.deepEqual(discoveredCase.resourceAttachments, attachments);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+        return scope.assert.collect();
+    })
+]);

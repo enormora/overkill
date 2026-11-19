@@ -1,11 +1,7 @@
 import { execFile } from 'node:child_process';
-import { runIfMain } from '#test-runner';
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { childProcessEnvelope } from './child-process-protocol.ts';
 import type { WorkerPoolCommand } from './worker-pool-protocol.ts';
 import { workerPoolHostCorrelationId } from './worker-pool-host-protocol.ts';
@@ -89,21 +85,10 @@ async function assertEntrypointDispatchesHostCommands(scope: OverkillScope): Pro
     scope.assert.equal(output, 'host commands dispatched\n');
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'worker host entrypoint integration',
-    children: [ createOverkillTestCase({
-        annotations: {},
-        controls: {},
-        definitionLocations: [ { kind: 'unknown' as const } ],
-        title: 'worker-pool host entrypoint dispatches host commands',
-        async body(scope: OverkillScope) {
-            await assertEntrypointDispatchesHostCommands(scope);
+export const testNode = suite('worker host entrypoint integration', [
+    test('worker-pool host entrypoint dispatches host commands', async function (scope: OverkillScope) {
+        await assertEntrypointDispatchesHostCommands(scope);
 
-            return scope.assert.collect();
-        }
-    }) ]
-});
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

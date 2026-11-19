@@ -1,7 +1,8 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { moduleImportChannel, importChannelScenario } from '../test-support/module-import-channel.ts';
 
-export const testNode = suite('module import channel policy', [
+export const testNode = authoredSuite('module import channel policy', [
     test('authenticates readiness and retains import metadata', async (scope: TestScope) => {
         const fixture = await moduleImportChannel(scope, importChannelScenario);
         fixture.session.start();

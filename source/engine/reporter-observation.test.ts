@@ -1,18 +1,16 @@
-import { runIfMain } from '#test-runner';
+import { test } from '@overkill-dev/test';
+
 import { createDeterministicClock } from '@enormora/clock';
-import { createTestCase } from '../packages/engine/engine.entry-point.ts';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createAsyncLeakMonitor } from './async-leak-diagnostics.ts';
 import { createReporterDispatcher } from './reporter-dispatcher.ts';
 import { createPlainOutputRenderer } from './reporter-output.ts';
 import { defineReporter } from './reporter.ts';
 
-export const testNode = createTestCase({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'nested reporter callbacks do not leave test-owned watchdog promises',
-    async body(scope) {
+export const testNode = test(
+    'nested reporter callbacks do not leave test-owned watchdog promises',
+    async function (scope) {
         const engine = createTestEngine();
         const [ testCase ] = engine
             .createTestPlan(engine.createRoot({
@@ -63,6 +61,4 @@ export const testNode = createTestCase({
         scope.assert.equal(monitor.casePromiseLeakError(testCase), null);
         return scope.assert.collect();
     }
-});
-
-await runIfMain(import.meta, testNode);
+);

@@ -1,14 +1,12 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { startFakeIntegrationOutputChild } from '../test-support/supervised-output-fixture.ts';
 import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
     defineOutputRenderer,
     defineReporter,
     type DefinedReporter,
-    type RunArtifact,
-    type TestScope as OverkillScope
+    type RunArtifact
 } from '../packages/engine/engine.entry-point.ts';
 import {
     defaultIntegrationProfile,
@@ -296,62 +294,39 @@ async function assertCaptureControlsOutput(
     scope.assert.equal(output.stderr(), 'case stderr\n');
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/supervised-run-artifacts.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() captures unrestricted integration child output as artifacts',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const artifactRecorder = createArtifactRecorder();
-                const output = createCapturedOutput();
-                const result = await createTestOrchestrator(output).run(
-                    integrationOutputRunCommand(
-                        artifactRecorder.reporter,
-                        integrationOutputFixturePath,
-                        'buffered'
-                    )
-                );
+export const testNode = suite('source/run/supervised-run-artifacts.test.ts', [
+    test(
+        'orchestrator.run() captures unrestricted integration child output as artifacts',
+        async function (scope: OverkillScope) {
+            const artifactRecorder = createArtifactRecorder();
+            const output = createCapturedOutput();
+            const result = await createTestOrchestrator(output).run(
+                integrationOutputRunCommand(
+                    artifactRecorder.reporter,
+                    integrationOutputFixturePath,
+                    'buffered'
+                )
+            );
 
-                assertIntegrationOutputArtifacts(scope, result, artifactRecorder.artifacts());
+            assertIntegrationOutputArtifacts(scope, result, artifactRecorder.artifacts());
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() writes unrestricted integration child output live',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const artifactRecorder = createArtifactRecorder();
-                const output = createCapturedOutput();
+            return scope.assert.collect();
+        }
+    ),
+    test('orchestrator.run() writes unrestricted integration child output live', async function (scope: OverkillScope) {
+        const artifactRecorder = createArtifactRecorder();
+        const output = createCapturedOutput();
 
-                await assertLiveIntegrationOutput(scope, artifactRecorder, output);
+        await assertLiveIntegrationOutput(scope, artifactRecorder, output);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() honors integration case capture controls',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const artifactRecorder = createArtifactRecorder();
-                const output = createCapturedOutput();
+        return scope.assert.collect();
+    }),
+    test('orchestrator.run() honors integration case capture controls', async function (scope: OverkillScope) {
+        const artifactRecorder = createArtifactRecorder();
+        const output = createCapturedOutput();
 
-                await assertCaptureControlsOutput(scope, artifactRecorder, output);
+        await assertCaptureControlsOutput(scope, artifactRecorder, output);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

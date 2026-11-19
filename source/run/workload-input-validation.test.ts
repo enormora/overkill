@@ -1,4 +1,5 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { workload } from '../packages/bench/bench.entry-point.ts';
 import { defineResource, withResource } from '../packages/test/resources.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -91,7 +92,7 @@ function resourceBoundaryKey(testCase: TestPlan['cases'][number], name: string):
     return boundary.key;
 }
 
-export const testNode = suite('workload input validation', [
+export const testNode = authoredSuite('workload input validation', [
     test('splits every shared scope by full workload identity and preserves independent sharing', function (scope) {
         for (const lifetime of [ 'per-file', 'per-run', 'per-suite', 'shared-per-worker' ] as const) {
             const plan = fixturePlan(lifetime, [

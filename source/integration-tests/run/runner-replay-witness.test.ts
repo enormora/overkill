@@ -1,8 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import {
     replayRecords,
     replayProject,
@@ -121,10 +120,10 @@ async function verifyRecordedWitness(scope: TestScope): Promise<void> {
     scope.assert.equal(result.summary.failed, 1);
     scope.assert.false(JSON.stringify(result).includes('generated during replay'));
 }
-export const testNode = suite('witness replay through public surfaces', [
+export const testNode = authoredSuite('witness replay through public surfaces', [
     ...([ 'in-process', 'supervised-process' ] as const).flatMap(function invalidTargets(mode) {
         return ([ 'missing', 'duplicate', 'unreached' ] as const).map(function targetFailure(kind) {
-            return test(`${mode} rejects ${kind} nested witness targets`, async function (scope) {
+            return authoredTest(`${mode} rejects ${kind} nested witness targets`, async function (scope) {
                 const { project, file } = await retainedPropertyProject(scope, true, mode);
                 const invocation = `await parent.forall({key: 'retained', generator: gen.constant(0),
                     test(value, sample) { sample.assert.equal(value, 0); return sample.assert.collect(); }});`;
@@ -160,13 +159,13 @@ export const testNode = test('retained property', withProperties(async parent =>
             });
         });
     }),
-    test('recorded witness replays retain the concrete input', async function (scope: TestScope) {
+    authoredTest('recorded witness replays retain the concrete input', async function (scope: TestScope) {
         await verifyRecordedWitness(scope);
         return scope.assert.collect();
     }),
     ...([ 'in-process', 'supervised-process' ] as const).flatMap(function boundary(mode) {
         return [ false, true ].map(function target(nested) {
-            return test(
+            return authoredTest(
                 `${mode} replays ${nested ? 'nested' : 'direct'} property input without generating`,
                 async function (scope: TestScope) {
                     await verifyPropertyWitness(scope, nested, mode);
@@ -176,4 +175,3 @@ export const testNode = test('retained property', withProperties(async parent =>
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

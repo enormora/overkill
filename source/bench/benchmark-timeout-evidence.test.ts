@@ -1,6 +1,8 @@
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock } from '@enormora/clock';
 import { createRoot, createTestPlan } from '../packages/engine/engine.entry-point.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { createExecutionSupervision, executeCaseBody } from '../engine/execution-supervision.ts';
 import { createDisabledExecutionGlobalErrorObserver } from '../engine/execution-global-error-observer.ts';
 import { benchmark } from './benchmark-authoring.ts';
@@ -77,7 +79,7 @@ function assertSoftCancellation(scope: TestScope, result: PerTestResult): void {
     scope.assert.equal(result.verdict, 'fail');
 }
 
-export const testNode = suite('benchmark timeout evidence', [
+export const testNode = authoredSuite('benchmark timeout evidence', [
     test('soft cancellation retains a completed reading before stopping admission', async function (scope: TestScope) {
         const timed = createTimedBenchmark();
         scope.cleanup(timed.resume);

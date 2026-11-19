@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock } from '@enormora/clock';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import {
     isTestDebugArtifact,
     type ExecuteOptions,
@@ -66,7 +67,7 @@ async function concurrentImportEvidence(specifier: string): Promise<RunResult> {
         execution: { mode: 'concurrent-in-process', maxConcurrency: 2 }
     });
 }
-export const testNode = suite('debug lifecycle', [
+export const testNode = authoredSuite('debug lifecycle', [
     test('concurrent debug scopes attribute module loads to the importing case', async function (scope: TestScope) {
         const specifier = `data:text/javascript,export default ${JSON.stringify('debug-module')}`;
         const result = await concurrentImportEvidence(specifier);
@@ -298,4 +299,3 @@ export const testNode = suite('debug lifecycle', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

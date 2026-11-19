@@ -15,10 +15,7 @@ import {
     createPermissionDiagnosticsSubscriptions,
     readPermissionAuditEnabled
 } from './permission-denial-runtime-policy.ts';
-import {
-    createSnapshotCheckpoints,
-    type RuntimeCapabilityPolicyDependencies
-} from './capability-policy-snapshots.ts';
+import { createSnapshotCheckpoints, type RuntimeCapabilityPolicyDependencies } from './capability-policy-snapshots.ts';
 
 export type RuntimeCapabilityPolicy = TestRuntimePolicy & {
     readonly recordViolation: (
@@ -328,7 +325,12 @@ function permissionDiagnosticsPhase(loadComplete: boolean): RuntimePolicyPhase {
     return loadComplete ? 'out-of-test' : 'load';
 }
 
-export const createPermissionDenialRuntimePolicy: () => TestRuntimePolicy = createPermissionDenialRuntimePolicyCore;
+export function createPermissionDenialRuntimePolicy(): TestRuntimePolicy {
+    return createPermissionDenialRuntimePolicyCore({
+        auditDiagnostics: 'ignore',
+        auditEnabled: readPermissionAuditEnabled()
+    });
+}
 
 export async function withRuntimePolicy<Value>(
     create: () => TestRuntimePolicy,

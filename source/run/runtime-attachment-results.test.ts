@@ -1,18 +1,12 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite,
-    createTestCase,
-    type TestScope,
-    type HedgedConflictArtifact,
-    type RunArtifact
-} from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope, HedgedConflictArtifact, RunArtifact } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { inlineAttachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { attachmentArtifacts, attachmentMatchesAttempt, resultWithRuntimeAttachments } from './attachment-results.ts';
 import { createAttachmentFailure } from './attachment-failure.ts';
 
-const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const metadata = { name: 'attempt-log', mediaType: 'text/plain' };
 const retainEveryBranch = function retainEveryBranch(): boolean {
     return true;
@@ -168,42 +162,24 @@ async function assertIndependentOutputSequence(scope: TestScope): Promise<void> 
     scope.assert.equal(result.artifacts.length, 2);
     scope.assert.deepEqual(attachmentArtifacts(result.artifacts), store.artifacts());
 }
-export const testNode = createSuite({
-    ...definition,
-    title: 'source/run/runtime-attachment-results.test.ts',
-    children: [
-        createTestCase({
-            ...definition,
-            title: 'console captures do not collide with resource attachment sequences',
-            async body(scope: TestScope) {
-                await assertIndependentOutputSequence(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'result merging matches attempt identities, deduplicates artifacts, and reports abandoned owners',
-            async body(scope: TestScope) {
-                await assertResultOwnership(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'discarded branch attachment errors do not fail retained execution',
-            body(scope: TestScope) {
-                assertCancelledErrors(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'hedged conflict evidence applies retry retention to both executions',
-            async body(scope: TestScope) {
-                await assertConflictRetention(scope);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/runtime-attachment-results.test.ts', [
+    test('console captures do not collide with resource attachment sequences', async function (scope: TestScope) {
+        await assertIndependentOutputSequence(scope);
+        return scope.assert.collect();
+    }),
+    test(
+        'result merging matches attempt identities, deduplicates artifacts, and reports abandoned owners',
+        async function (scope: TestScope) {
+            await assertResultOwnership(scope);
+            return scope.assert.collect();
+        }
+    ),
+    test('discarded branch attachment errors do not fail retained execution', function (scope: TestScope) {
+        assertCancelledErrors(scope);
+        return scope.assert.collect();
+    }),
+    test('hedged conflict evidence applies retry retention to both executions', async function (scope: TestScope) {
+        await assertConflictRetention(scope);
+        return scope.assert.collect();
+    })
+]);

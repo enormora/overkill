@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createInvocationBudget } from '../run/run.entry-point.ts';
 import {
     memoryCampaignClient,
@@ -10,7 +10,7 @@ import { testNode as frames } from './campaign-frame-policy.test.ts';
 import { attachCampaignClient, connectCampaign } from './campaign-client.ts';
 import { campaignProtocolVersion } from './campaign-protocol.ts';
 
-export const testNode = suite('campaign client protocol ownership', [
+export const testNode = authoredSuite('campaign client protocol ownership', [
     frames,
     test('correlates requests and releases an idle connection', async function (scope: TestScope) {
         const fixture = await memoryCampaignClient(scope);
@@ -161,4 +161,3 @@ export const testNode = suite('campaign client protocol ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

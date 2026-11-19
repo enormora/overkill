@@ -1,4 +1,5 @@
-import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import type { TestScope } from '../engine/engine.entry-point.ts';
 import {
     defineHarness,
     doubleUsage,
@@ -108,68 +109,47 @@ function assertFreshHarnesses(
     scope.assert(doubleUsage.calledOnceWith, first.loadValue, [ 'id' ]);
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/packages/test/harness-authoring.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test defineHarness() creates fresh object-form harnesses',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                let loadFactoryCalls = 0;
-                const runnerHarness = createFreshRunnerHarness(function recordLoadFactoryCall() {
-                    loadFactoryCalls += 1;
-                });
-                const first = runnerHarness.create();
-                const second = runnerHarness.create();
+export const testNode = suite('source/packages/test/harness-authoring.test.ts', [
+    test('@overkill-dev/test defineHarness() creates fresh object-form harnesses', function (scope: TestScope) {
+        let loadFactoryCalls = 0;
+        const runnerHarness = createFreshRunnerHarness(function recordLoadFactoryCall() {
+            loadFactoryCalls += 1;
+        });
+        const first = runnerHarness.create();
+        const second = runnerHarness.create();
 
-                first.subject('id');
+        first.subject('id');
 
-                assertFreshHarnesses(scope, loadFactoryCalls, first, second);
+        assertFreshHarnesses(scope, loadFactoryCalls, first, second);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test defineHarness() replaces overridden object-form parts',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                let defaultFactoryCalls = 0;
-                const replacementLoadValue = createHarnessLoadValue('replacement');
-                const runnerHarness = createOverrideRunnerHarness(function recordDefaultFactoryCall() {
-                    defaultFactoryCalls += 1;
-                });
-                const harness = runnerHarness.create({ loadValue: replacementLoadValue });
+        return scope.assert.collect();
+    }),
+    test('@overkill-dev/test defineHarness() replaces overridden object-form parts', function (scope: TestScope) {
+        let defaultFactoryCalls = 0;
+        const replacementLoadValue = createHarnessLoadValue('replacement');
+        const runnerHarness = createOverrideRunnerHarness(function recordDefaultFactoryCall() {
+            defaultFactoryCalls += 1;
+        });
+        const harness = runnerHarness.create({ loadValue: replacementLoadValue });
 
-                scope.assert.equal(defaultFactoryCalls, 0);
-                scope.assert.equal(harness.loadValue, replacementLoadValue);
-                scope.assert.equal(harness.subject('id'), 'replacement');
-                scope.assert(doubleUsage.calledOnceWith, replacementLoadValue, [ 'id' ]);
+        scope.assert.equal(defaultFactoryCalls, 0);
+        scope.assert.equal(harness.loadValue, replacementLoadValue);
+        scope.assert.equal(harness.subject('id'), 'replacement');
+        scope.assert(doubleUsage.calledOnceWith, replacementLoadValue, [ 'id' ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test defineHarness() supports sync and async function forms',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const syncHarness = createSyncLabelHarness();
-                const asyncHarness = createAsyncLabelHarness();
+        return scope.assert.collect();
+    }),
+    test(
+        '@overkill-dev/test defineHarness() supports sync and async function forms',
+        async function (scope: TestScope) {
+            const syncHarness = createSyncLabelHarness();
+            const asyncHarness = createAsyncLabelHarness();
 
-                scope.assert.deepEqual(syncHarness.create(), { label: 'default' });
-                scope.assert.deepEqual(syncHarness.create({ label: 'sync' }), { label: 'sync' });
-                scope.assert.deepEqual(await asyncHarness.create({ label: 'async' }), { label: 'async' });
+            scope.assert.deepEqual(syncHarness.create(), { label: 'default' });
+            scope.assert.deepEqual(syncHarness.create({ label: 'sync' }), { label: 'sync' });
+            scope.assert.deepEqual(await asyncHarness.create({ label: 'async' }), { label: 'async' });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+            return scope.assert.collect();
+        }
+    )
+]);

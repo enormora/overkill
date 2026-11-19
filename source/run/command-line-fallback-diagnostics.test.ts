@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { DefinedReporter, Reporter } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
@@ -166,161 +162,129 @@ async function runTests(
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/command-line-fallback-diagnostics.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'maintenance diagnostics reach stderr without failing a passing command',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const diagnostics = [ 'History maintenance failed: permission denied' ];
-                const result = await runTests(memoryReporter, async function runCommand() {
-                    return {
-                        ...runnerResultFactory.build({
-                            perTest: [ { outcome: { kind: 'pass' } } ],
-                            summary: { defined: 1, discovered: 1, planned: 1, passed: 1 }
-                        }),
-                        maintenanceDiagnostics: diagnostics
-                    };
-                }, []);
-                scope.assert.equal(result.exitCode, 0);
-                scope.assert.deepEqual(result.fallbackDiagnostics, diagnostics);
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() maps process exhaustion to exit code 5',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await runTests(memoryReporter, async function runCommand() {
-                    return runnerResultFactory.build({
-                        runnerErrors: [
-                            runnerError('Process budget exceeded.', 'process-exhaustion')
-                        ],
-                        summary: { defined: 1, discovered: 1, planned: 1, processExhausted: 1 }
-                    });
-                }, []);
+export const testNode = suite('source/run/command-line-fallback-diagnostics.test.ts', [
+    test(
+        'maintenance diagnostics reach stderr without failing a passing command',
+        async function (scope: OverkillScope) {
+            const diagnostics = [ 'History maintenance failed: permission denied' ];
+            const result = await runTests(memoryReporter, async function runCommand() {
+                return {
+                    ...runnerResultFactory.build({
+                        perTest: [ { outcome: { kind: 'pass' } } ],
+                        summary: { defined: 1, discovered: 1, planned: 1, passed: 1 }
+                    }),
+                    maintenanceDiagnostics: diagnostics
+                };
+            }, []);
+            scope.assert.equal(result.exitCode, 0);
+            scope.assert.deepEqual(result.fallbackDiagnostics, diagnostics);
+            return scope.assert.collect();
+        }
+    ),
+    test('commandLineRunner.runTests() maps process exhaustion to exit code 5', async function (scope: OverkillScope) {
+        const result = await runTests(memoryReporter, async function runCommand() {
+            return runnerResultFactory.build({
+                runnerErrors: [
+                    runnerError('Process budget exceeded.', 'process-exhaustion')
+                ],
+                summary: { defined: 1, discovered: 1, planned: 1, processExhausted: 1 }
+            });
+        }, []);
 
-                scope.assert.equal(result.exitCode, 5);
+        scope.assert.equal(result.exitCode, 5);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() maps process exhaustion before generic runner errors',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await runTests(memoryReporter, async function runCommand() {
-                    return runnerResultFactory.build({
-                        runnerErrors: [
-                            runnerError('Loader failed.', 'loader'),
-                            runnerError('Process budget exceeded.', 'process-exhaustion')
-                        ],
-                        summary: { defined: 1, discovered: 1, planned: 1, processExhausted: 1 }
-                    });
-                }, []);
+        return scope.assert.collect();
+    }),
+    test(
+        'commandLineRunner.runTests() maps process exhaustion before generic runner errors',
+        async function (scope: OverkillScope) {
+            const result = await runTests(memoryReporter, async function runCommand() {
+                return runnerResultFactory.build({
+                    runnerErrors: [
+                        runnerError('Loader failed.', 'loader'),
+                        runnerError('Process budget exceeded.', 'process-exhaustion')
+                    ],
+                    summary: { defined: 1, discovered: 1, planned: 1, processExhausted: 1 }
+                });
+            }, []);
 
-                scope.assert.equal(result.exitCode, 5);
+            scope.assert.equal(result.exitCode, 5);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() omits terminal-delivered runner error fallback diagnostics',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const deliveredError = runnerError('Loader failed.', 'loader');
-                const result = await runTests(terminalEventReporter, async function runCommand() {
-                    const runResult = createRunResult([ deliveredError ]);
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'commandLineRunner.runTests() omits terminal-delivered runner error fallback diagnostics',
+        async function (scope: OverkillScope) {
+            const deliveredError = runnerError('Loader failed.', 'loader');
+            const result = await runTests(terminalEventReporter, async function runCommand() {
+                const runResult = createRunResult([ deliveredError ]);
 
-                    return runResult;
-                }, []);
+                return runResult;
+            }, []);
 
-                scope.assert.equal(result.exitCode, 2);
-                scope.assert.deepEqual(result.fallbackDiagnostics, []);
+            scope.assert.equal(result.exitCode, 2);
+            scope.assert.deepEqual(result.fallbackDiagnostics, []);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() falls back for finish-only runner errors',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const deliveredError = runnerError('Loader failed.', 'loader');
-                const result = await runTests(
-                    terminalFinishReporter,
-                    async function runCommand() {
-                        return createRunResult([ deliveredError ]);
-                    },
-                    [ deliveredError ]
-                );
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'commandLineRunner.runTests() falls back for finish-only runner errors',
+        async function (scope: OverkillScope) {
+            const deliveredError = runnerError('Loader failed.', 'loader');
+            const result = await runTests(
+                terminalFinishReporter,
+                async function runCommand() {
+                    return createRunResult([ deliveredError ]);
+                },
+                [ deliveredError ]
+            );
 
-                scope.assert.equal(result.exitCode, 2);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill runner error: Loader failed.'
-                ]);
+            scope.assert.equal(result.exitCode, 2);
+            scope.assert.deepEqual(result.fallbackDiagnostics, [
+                'Overkill runner error: Loader failed.'
+            ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() falls back for final-result-only runner errors',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const deliveredError = runnerError('Loader failed.', 'loader');
-                const result = await runTests(
-                    terminalFinalResultReporter,
-                    async function runCommand() {
-                        return createRunResult([ deliveredError ]);
-                    },
-                    [ deliveredError ]
-                );
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'commandLineRunner.runTests() falls back for final-result-only runner errors',
+        async function (scope: OverkillScope) {
+            const deliveredError = runnerError('Loader failed.', 'loader');
+            const result = await runTests(
+                terminalFinalResultReporter,
+                async function runCommand() {
+                    return createRunResult([ deliveredError ]);
+                },
+                [ deliveredError ]
+            );
 
-                scope.assert.equal(result.exitCode, 2);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill runner error: Loader failed.'
-                ]);
+            scope.assert.equal(result.exitCode, 2);
+            scope.assert.deepEqual(result.fallbackDiagnostics, [
+                'Overkill runner error: Loader failed.'
+            ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() falls back to runner errors not delivered to terminal reporters',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const loaderError = runnerError('Loader failed.', 'loader');
-                const disposeError = runnerError('Dispose failed.', 'reporter');
-                const result = await runTests(terminalEventReporter, async function runCommand() {
-                    return createRunResult([ loaderError, disposeError ]);
-                }, [ loaderError, disposeError ]);
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'commandLineRunner.runTests() falls back to runner errors not delivered to terminal reporters',
+        async function (scope: OverkillScope) {
+            const loaderError = runnerError('Loader failed.', 'loader');
+            const disposeError = runnerError('Dispose failed.', 'reporter');
+            const result = await runTests(terminalEventReporter, async function runCommand() {
+                return createRunResult([ loaderError, disposeError ]);
+            }, [ loaderError, disposeError ]);
 
-                scope.assert.equal(result.exitCode, 2);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill runner error: Loader failed.',
-                    'Overkill runner error: Dispose failed.'
-                ]);
+            scope.assert.equal(result.exitCode, 2);
+            scope.assert.deepEqual(result.fallbackDiagnostics, [
+                'Overkill runner error: Loader failed.',
+                'Overkill runner error: Dispose failed.'
+            ]);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

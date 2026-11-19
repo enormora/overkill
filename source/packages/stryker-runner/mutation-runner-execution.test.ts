@@ -1,13 +1,13 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { mutationExecution } from '../../test-support/mutation-execution.ts';
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { createCampaignMutationExecution } from './mutation-runner-execution.ts';
 
 const timeout = { kind: 'timeout', artifacts: [], data: null } as const;
 const activationModes: readonly ('dry' | 'runtime' | 'static')[] = [ 'dry', 'runtime', 'static' ];
-export const testNode = suite('mutation execution environment ownership', [
-    test('creates one local execution session with frozen policy and seed', async function (scope: TestScope) {
+export const testNode = authoredSuite('mutation execution environment ownership', [
+    authoredTest('creates one local execution session with frozen policy and seed', async function (scope: TestScope) {
         const fixture = await mutationExecution(scope, false, timeout);
         scope.assert.equal(fixture.execution.environmentLifetime, 'reused');
         scope.assert.equal(fixture.initialized.length, 1);
@@ -18,18 +18,21 @@ export const testNode = suite('mutation execution environment ownership', [
         await fixture.execution.dispose();
         return scope.assert.collect();
     }),
-    test('forwards invocation data and remaining budget to the local session', async function (scope: TestScope) {
-        const fixture = await mutationExecution(scope, false, timeout);
-        fixture.clock.advanceByMilliseconds(10);
-        scope.assert.equal(await fixture.execution.run({ value: 42 }, fixture.budget), timeout);
-        scope.assert.deepEqual<unknown, unknown>(fixture.local[0]?.data, { value: 42 });
-        scope.assert.equal(fixture.local[0]?.timeoutMilliseconds, 40);
-        await fixture.execution.dispose();
-        scope.assert.deepEqual(fixture.disposals, [ 'local' ]);
-        return scope.assert.collect();
-    }),
+    authoredTest(
+        'forwards invocation data and remaining budget to the local session',
+        async function (scope: TestScope) {
+            const fixture = await mutationExecution(scope, false, timeout);
+            fixture.clock.advanceByMilliseconds(10);
+            scope.assert.equal(await fixture.execution.run({ value: 42 }, fixture.budget), timeout);
+            scope.assert.deepEqual<unknown, unknown>(fixture.local[0]?.data, { value: 42 });
+            scope.assert.equal(fixture.local[0]?.timeoutMilliseconds, 40);
+            await fixture.execution.dispose();
+            scope.assert.deepEqual(fixture.disposals, [ 'local' ]);
+            return scope.assert.collect();
+        }
+    ),
     ...activationModes.map(function (mode) {
-        return test(`admits ${mode} activation in a fresh worker`, async function (scope: TestScope) {
+        return authoredTest(`admits ${mode} activation in a fresh worker`, async function (scope: TestScope) {
             const fixture = await mutationExecution(scope, true, timeout);
             fixture.execution.admitEnvironment('runtime', false);
             fixture.execution.admitEnvironment(mode, true);
@@ -41,20 +44,23 @@ export const testNode = suite('mutation execution environment ownership', [
             return scope.assert.collect();
         });
     }),
-    test('requires worker replacement before reloading a reused environment', async function (scope: TestScope) {
-        const fixture = await mutationExecution(scope, false, timeout);
-        fixture.execution.admitEnvironment('dry', false);
-        fixture.execution.admitEnvironment('runtime', false);
-        scope.assert.throws(function () {
-            fixture.execution.admitEnvironment('runtime', true);
-        }, { message: 'Loaded native ESM requires Stryker worker replacement for reload or static transitions.' });
-        scope.assert.throws(function () {
-            fixture.execution.admitEnvironment('static', false);
-        }, { message: 'Loaded native ESM requires Stryker worker replacement for reload or static transitions.' });
-        await fixture.execution.dispose();
-        return scope.assert.collect();
-    }),
-    test('requires replacement when leaving a loaded static environment', async function (scope: TestScope) {
+    authoredTest(
+        'requires worker replacement before reloading a reused environment',
+        async function (scope: TestScope) {
+            const fixture = await mutationExecution(scope, false, timeout);
+            fixture.execution.admitEnvironment('dry', false);
+            fixture.execution.admitEnvironment('runtime', false);
+            scope.assert.throws(function () {
+                fixture.execution.admitEnvironment('runtime', true);
+            }, { message: 'Loaded native ESM requires Stryker worker replacement for reload or static transitions.' });
+            scope.assert.throws(function () {
+                fixture.execution.admitEnvironment('static', false);
+            }, { message: 'Loaded native ESM requires Stryker worker replacement for reload or static transitions.' });
+            await fixture.execution.dispose();
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('requires replacement when leaving a loaded static environment', async function (scope: TestScope) {
         const fixture = await mutationExecution(scope, false, timeout);
         fixture.execution.admitEnvironment('static', false);
         scope.assert.throws(function () {
@@ -63,7 +69,7 @@ export const testNode = suite('mutation execution environment ownership', [
         await fixture.execution.dispose();
         return scope.assert.collect();
     }),
-    test(
+    authoredTest(
         'uses campaign execution for a supervised profile even without fresh-state',
         async function (scope: TestScope) {
             const fixture = await mutationExecution(scope, true, timeout);
@@ -94,7 +100,7 @@ export const testNode = suite('mutation execution environment ownership', [
             return scope.assert.collect();
         }
     ),
-    test(
+    authoredTest(
         'forwards successful campaign replies without starting a local environment',
         async function (scope: TestScope) {
             const { reply } = mutationCoverageFixture('off');
@@ -105,7 +111,7 @@ export const testNode = suite('mutation execution environment ownership', [
             return scope.assert.collect();
         }
     ),
-    test('rejects invalid campaign execution replies', async function (scope: TestScope) {
+    authoredTest('rejects invalid campaign execution replies', async function (scope: TestScope) {
         const fixture = await mutationExecution(scope, true, timeout);
         const execution = createCampaignMutationExecution({
             ...fixture.input,
@@ -122,7 +128,7 @@ export const testNode = suite('mutation execution environment ownership', [
         await execution.dispose();
         return scope.assert.collect();
     }),
-    test('does not invoke or release a cancelled campaign connection', async function (scope: TestScope) {
+    authoredTest('does not invoke or release a cancelled campaign connection', async function (scope: TestScope) {
         const fixture = await mutationExecution(scope, true, timeout);
         const execution = createCampaignMutationExecution({
             ...fixture.input,
@@ -136,4 +142,3 @@ export const testNode = suite('mutation execution environment ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

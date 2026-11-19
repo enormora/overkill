@@ -1,34 +1,21 @@
 import { setImmediate as scheduleImmediate } from 'node:timers';
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
     createChildRun,
     supervisedChildCommand,
     supervisedChildDependencies
 } from '../test-support/supervised-child-fixture.ts';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type RunnerError,
-    type TestPlan,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
-import {
-    loadDeterministicRunTestModules
-} from '../test-support/deterministic-run-fixtures.ts';
+import type { RunnerError, TestPlan } from '../packages/engine/engine.entry-point.ts';
+import { loadDeterministicRunTestModules } from '../test-support/deterministic-run-fixtures.ts';
 import { createVirtualRunDiscovery } from '../test-support/virtual-run-discovery.ts';
-import {
-    runSupervisedChild,
-    type SupervisedChildHost
-} from './supervised-child.ts';
+import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
 import {
     createSupervisedChildTestPlan,
     runnerErrorFromSupervisedChildFailure,
     runObservedSupervisedChildCommand
 } from './supervised-child-test-plan.ts';
-import type {
-    SupervisedAssignmentCommand,
-    SupervisedChildMessage
-} from './supervised-protocol.ts';
+import type { SupervisedAssignmentCommand, SupervisedChildMessage } from './supervised-protocol.ts';
 
 const cwd = '/project';
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
@@ -139,192 +126,145 @@ async function createModuleEngineSupervisedPlan(): Promise<TestPlan> {
     );
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/supervised-child.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runSupervisedChild() collects tests without waiting for assignments',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const childRun = createChildRun({
-                    assignment: emptyAssignment(),
-                    command: supervisedChildCommand('collect', passingFixturePath),
-                    discoverRunFiles: createDiscovery([ passingFixturePath ]),
-                    loadRunTestModules: loadDeterministicRunTestModules,
-                    readEnvironment() {
-                        return {};
-                    }
-                });
-
-                await runSupervisedChild(childRun.host, supervisedChildDependencies());
-
-                scope.assert.equal(childRun.exitCode(), 0);
-                scope.assert.equal(childRun.disconnected(), true);
-                scope.assert.deepEqual(
-                    childRun.messages().map(function toKind(message) {
-                        return message.kind;
-                    }),
-                    [ 'collected' ]
-                );
-
-                return scope.assert.collect();
+export const testNode = suite('source/run/supervised-child.test.ts', [
+    test('runSupervisedChild() collects tests without waiting for assignments', async function (scope: OverkillScope) {
+        const childRun = createChildRun({
+            assignment: emptyAssignment(),
+            command: supervisedChildCommand('collect', passingFixturePath),
+            discoverRunFiles: createDiscovery([ passingFixturePath ]),
+            loadRunTestModules: loadDeterministicRunTestModules,
+            readEnvironment() {
+                return {};
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runSupervisedChild() records restricted load-time environment changes',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const environment: Record<string, string | undefined> = {};
-                const childRun = createChildRun({
-                    assignment: emptyAssignment(),
-                    command: {
-                        ...supervisedChildCommand('collect', policyFixturePath),
-                        capabilityRestrictions: { mode: 'enabled' }
-                    },
-                    discoverRunFiles: createDiscovery([ policyFixturePath ]),
-                    async loadRunTestModules(files, engine) {
-                        environment.OVERKILL_LOAD_POLICY_FIXTURE = 'after';
+        });
 
-                        return await loadDeterministicRunTestModules(files, engine);
-                    },
-                    readEnvironment() {
-                        return environment;
-                    }
-                });
+        await runSupervisedChild(childRun.host, supervisedChildDependencies());
 
-                await runSupervisedChild(childRun.host, supervisedChildDependencies());
+        scope.assert.equal(childRun.exitCode(), 0);
+        scope.assert.equal(childRun.disconnected(), true);
+        scope.assert.deepEqual(
+            childRun.messages().map(function toKind(message) {
+                return message.kind;
+            }),
+            [ 'collected' ]
+        );
 
-                const [ error ] = runnerErrorsFromCollectedMessage(childRun.messages());
-                scope.require.defined(error);
-                scope.assert.equal(error.subtype, 'runtime-policy');
-                scope.assert.equal(error.message, 'Runtime policy violation: process.env changed.');
+        return scope.assert.collect();
+    }),
+    test(
+        'runSupervisedChild() records restricted load-time environment changes',
+        async function (scope: OverkillScope) {
+            const environment: Record<string, string | undefined> = {};
+            const childRun = createChildRun({
+                assignment: emptyAssignment(),
+                command: {
+                    ...supervisedChildCommand('collect', policyFixturePath),
+                    capabilityRestrictions: { mode: 'enabled' }
+                },
+                discoverRunFiles: createDiscovery([ policyFixturePath ]),
+                async loadRunTestModules(files, engine) {
+                    environment.OVERKILL_LOAD_POLICY_FIXTURE = 'after';
 
-                return scope.assert.collect();
+                    return await loadDeterministicRunTestModules(files, engine);
+                },
+                readEnvironment() {
+                    return environment;
+                }
+            });
+
+            await runSupervisedChild(childRun.host, supervisedChildDependencies());
+
+            const [ error ] = runnerErrorsFromCollectedMessage(childRun.messages());
+            scope.require.defined(error);
+            scope.assert.equal(error.subtype, 'runtime-policy');
+            scope.assert.equal(error.message, 'Runtime policy violation: process.env changed.');
+
+            return scope.assert.collect();
+        }
+    ),
+    test('runSupervisedChild() returns an empty result for empty assignments', async function (scope: OverkillScope) {
+        const childRun = createChildRun({
+            assignment: emptyAssignment(),
+            command: supervisedChildCommand('run', passingFixturePath),
+            discoverRunFiles: createDiscovery([ passingFixturePath ]),
+            loadRunTestModules: loadDeterministicRunTestModules,
+            readEnvironment() {
+                return {};
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runSupervisedChild() returns an empty result for empty assignments',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const childRun = createChildRun({
-                    assignment: emptyAssignment(),
-                    command: supervisedChildCommand('run', passingFixturePath),
-                    discoverRunFiles: createDiscovery([ passingFixturePath ]),
-                    loadRunTestModules: loadDeterministicRunTestModules,
-                    readEnvironment() {
-                        return {};
-                    }
-                });
+        });
 
-                await runSupervisedChild(childRun.host, supervisedChildDependencies());
+        await runSupervisedChild(childRun.host, supervisedChildDependencies());
 
-                const result = childRun.messages().find(function isRunResult(message) {
-                    return message.kind === 'result';
-                });
+        const result = childRun.messages().find(function isRunResult(message) {
+            return message.kind === 'result';
+        });
 
-                scope.require.defined(result);
-                scope.assert.equal(result.kind, 'result');
-                scope.assert.equal(result.result.summary.planned, 0);
-                scope.assert.equal(result.result.summary.discovered, 1);
+        scope.require.defined(result);
+        scope.assert.equal(result.kind, 'result');
+        scope.assert.equal(result.result.summary.planned, 0);
+        scope.assert.equal(result.result.summary.discovered, 1);
 
-                return scope.assert.collect();
+        return scope.assert.collect();
+    }),
+    test('runSupervisedChild() reports collection failures', async function (scope: OverkillScope) {
+        const childRun = createChildRun({
+            assignment: assignment('passes'),
+            command: supervisedChildCommand('collect', passingFixturePath),
+            async discoverRunFiles() {
+                throw new Error('plain failure');
+            },
+            loadRunTestModules: loadDeterministicRunTestModules,
+            readEnvironment() {
+                return {};
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runSupervisedChild() reports collection failures',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const childRun = createChildRun({
-                    assignment: assignment('passes'),
-                    command: supervisedChildCommand('collect', passingFixturePath),
-                    async discoverRunFiles() {
-                        throw new Error('plain failure');
-                    },
-                    loadRunTestModules: loadDeterministicRunTestModules,
-                    readEnvironment() {
-                        return {};
-                    }
-                });
+        });
 
-                await runSupervisedChild(childRun.host, supervisedChildDependencies());
+        await runSupervisedChild(childRun.host, supervisedChildDependencies());
 
-                scope.assert.equal(childRun.exitCode(), 1);
-                scope.assert.equal(firstRunnerErrorMessage(childRun.messages()), 'plain failure');
+        scope.assert.equal(childRun.exitCode(), 1);
+        scope.assert.equal(firstRunnerErrorMessage(childRun.messages()), 'plain failure');
 
-                return scope.assert.collect();
+        return scope.assert.collect();
+    }),
+    test('runObservedSupervisedChildCommand() surfaces global hook failures', async function (scope: OverkillScope) {
+        const observedError = await collectObservedSupervisedFailure();
+        const runnerError = runnerErrorFromSupervisedChildFailure(observedError);
+
+        scope.assert.equal(runnerError.subtype, 'unhandled-rejection');
+        scope.assert.equal(runnerError.message, 'Unhandled rejection: supervised collection failed');
+        scope.assert.equal(runnerErrorFromSupervisedChildFailure('plain').message, 'plain');
+
+        return scope.assert.collect();
+    }),
+    test('createSupervisedChildTestPlan() loads module engines', async function (scope: OverkillScope) {
+        const testPlan = await createModuleEngineSupervisedPlan();
+        const [ firstCase ] = testPlan.cases;
+
+        scope.require.defined(firstCase);
+        scope.assert.equal(testPlan.cases.length, 1);
+        scope.assert.equal(firstCase.id.title, 'passes');
+
+        return scope.assert.collect();
+    }),
+    test('runSupervisedChild() reports assignment mismatches as loader errors', async function (scope: OverkillScope) {
+        const childRun = createChildRun({
+            assignment: assignment('missing-case'),
+            command: supervisedChildCommand('run', passingFixturePath),
+            discoverRunFiles: createDiscovery([ passingFixturePath ]),
+            loadRunTestModules: loadDeterministicRunTestModules,
+            readEnvironment() {
+                return {};
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runObservedSupervisedChildCommand() surfaces global hook failures',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const observedError = await collectObservedSupervisedFailure();
-                const runnerError = runnerErrorFromSupervisedChildFailure(observedError);
+        });
 
-                scope.assert.equal(runnerError.subtype, 'unhandled-rejection');
-                scope.assert.equal(runnerError.message, 'Unhandled rejection: supervised collection failed');
-                scope.assert.equal(runnerErrorFromSupervisedChildFailure('plain').message, 'plain');
+        await runSupervisedChild(childRun.host, supervisedChildDependencies());
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'createSupervisedChildTestPlan() loads module engines',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const testPlan = await createModuleEngineSupervisedPlan();
-                const [ firstCase ] = testPlan.cases;
+        scope.assert.equal(childRun.exitCode(), 1);
+        scope.assert.equal(
+            firstRunnerErrorMessage(childRun.messages()),
+            'Supervised child test plan did not match assigned work identities.'
+        );
 
-                scope.require.defined(firstCase);
-                scope.assert.equal(testPlan.cases.length, 1);
-                scope.assert.equal(firstCase.id.title, 'passes');
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runSupervisedChild() reports assignment mismatches as loader errors',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const childRun = createChildRun({
-                    assignment: assignment('missing-case'),
-                    command: supervisedChildCommand('run', passingFixturePath),
-                    discoverRunFiles: createDiscovery([ passingFixturePath ]),
-                    loadRunTestModules: loadDeterministicRunTestModules,
-                    readEnvironment() {
-                        return {};
-                    }
-                });
-
-                await runSupervisedChild(childRun.host, supervisedChildDependencies());
-
-                scope.assert.equal(childRun.exitCode(), 1);
-                scope.assert.equal(
-                    firstRunnerErrorMessage(childRun.messages()),
-                    'Supervised child test plan did not match assigned work identities.'
-                );
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

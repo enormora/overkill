@@ -1,7 +1,10 @@
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { canonicalJson } from '../canonical-identity.ts';
 import type { MeasurementEvidence } from '../engine/measurement-evidence.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { createRoot, createTestPlan, execute, type TestCase } from '../packages/engine/engine.entry-point.ts';
+
+import { type TestCase, createRoot, createTestPlan, execute } from '../packages/engine/engine.entry-point.ts';
+
 import {
     benchmark,
     workload,
@@ -16,6 +19,7 @@ import { benchmarkResultSchema } from '../run/benchmark-result-schema.ts';
 import { createMeasurementSample } from './measurement-region.ts';
 import { defaultMeasurementTarget, readMeasurementTarget, type MeasurementTarget } from './measurement-target.ts';
 import { resolveCalibratedMeasurement } from './calibrated-measurement.ts';
+import { currentMeasurementContext } from './measurement-context.ts';
 
 const sampling = { ...defaultSamplingPolicy, minimumSamples: 2, maximumSamples: 2 };
 async function runBenchmark(node: TestCase): Promise<Awaited<ReturnType<typeof execute>>> {
@@ -43,7 +47,15 @@ function assertInvocationOrder(scope: TestScope, evidence: MeasurementEvidence):
         return entry.target.name === 'target' && entry.status === 'complete';
     }));
 }
-export const testNode = suite('measurement targets and attribution', [
+export const testNode = authoredSuite('measurement targets and attribution', [
+    test('allocates distinct measurement IDs under microtest policy', function (scope: TestScope) {
+        const executionIds = new Set<string>();
+        for (let invocation = 0; invocation < 129; invocation += 1) {
+            executionIds.add(currentMeasurementContext().invocation.execution);
+        }
+        scope.assert.equal(executionIds.size, 129);
+        return scope.assert.collect();
+    }),
     test('rejects reversed and nonfinite target clock intervals', function (scope) {
         for (const stopped of [ 9, Number.NaN ]) {
             let readings = 0;
@@ -60,7 +72,7 @@ export const testNode = suite('measurement targets and attribution', [
         }
         return scope.assert.collect();
     }),
-    test('requires explicit target names and clock domains', function (scope) {
+    test('requires explicit target names and clock domains', function (scope: TestScope) {
         const target = defaultMeasurementTarget();
         for (const identity of [ { ...target.identity, name: '' }, { ...target.identity, clock: '' } ]) {
             scope.assert.throws(function () {
@@ -69,7 +81,7 @@ export const testNode = suite('measurement targets and attribution', [
         }
         return scope.assert.collect();
     }),
-    test('rejects host CPU metrics for another runtime or target instance', function (scope) {
+    test('rejects host CPU metrics for another runtime or target instance', function (scope: TestScope) {
         const target = defaultMeasurementTarget();
         for (const identity of [ { ...target.identity, scope: 'remote' }, { ...target.identity, instance: 'other' } ]) {
             let operations = 0;

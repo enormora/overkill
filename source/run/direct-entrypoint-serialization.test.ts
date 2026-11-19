@@ -1,5 +1,7 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestNode } from '../packages/engine/engine.entry-point.ts';
+import { test } from '@overkill-dev/test';
+
+import { type TestNode, createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
+
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
@@ -18,9 +20,9 @@ function passingTest(title: string): TestNode {
     });
 }
 
-export const testNode = createTestCase({
-    annotations: {},
-    body(scope) {
+export const testNode = test(
+    'direct entrypoint collection accepts decoded sibling cases and rejects changed case data',
+    function (scope) {
         const expected = defaultRunEngine.createTestPlanFromTestFiles({
             files: [ {
                 file: '/project/direct.test.ts',
@@ -52,10 +54,5 @@ export const testNode = createTestCase({
         }, { message: /runIfMain\(\) argument does not match/u, name: 'RunCollectionError' });
 
         return scope.assert.collect();
-    },
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'direct entrypoint collection accepts decoded sibling cases and rejects changed case data'
-});
-
-await runIfMain(import.meta, testNode);
+    }
+);

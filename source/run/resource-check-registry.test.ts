@@ -1,7 +1,9 @@
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
-import { runIfMain } from '#test-runner';
+
 import { createStoredValue } from '../stored-value.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { createDefaultWorkId } from '../engine/identity.ts';
 import type { ResourceCheckOwner, ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import type { ResourceCheckFrame } from './resource-check-channel.ts';
@@ -140,8 +142,8 @@ async function rejectForeignAcknowledgement(scope: TestScope, scenario: Scenario
     scenario.registry.disconnect(scenario.sibling);
     scope.assert.equal(scenario.sent().length, 1);
 }
-export const testNode = suite('resource check owner registry', [
-    test('flushes empty registries and ignores server response frames', async function (scope: TestScope) {
+export const testNode = authoredSuite('resource check owner registry', [
+    authoredTest('flushes empty registries and ignores server response frames', async function (scope: TestScope) {
         const registry = createResourceCheckRegistry(
             owner.run,
             createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
@@ -156,7 +158,7 @@ export const testNode = suite('resource check owner registry', [
         scope.assert.deepEqual(frames, [ { kind: 'result', request: 'flush', snapshots: [], errors: [] } ]);
         return scope.assert.collect();
     }),
-    test('delivers retained checkpoints to registered observers', async function (scope: TestScope) {
+    authoredTest('delivers retained checkpoints to registered observers', async function (scope: TestScope) {
         const scenario = await registeredOwner(scope, 'per-run');
         const observed: ResourceCheckSnapshot[] = [];
         scenario.registry.observe(function checkpoint(value) {
@@ -167,7 +169,7 @@ export const testNode = suite('resource check owner registry', [
         return scope.assert.collect();
     }),
     ...([ 'per-case', 'per-run' ] as const).map(function (resourceScope) {
-        return test(
+        return authoredTest(
             `routes ${resourceScope} stops only to eligible connected consumers`,
             async function (scope: TestScope) {
                 const scenario = await registeredOwner(scope, resourceScope);
@@ -190,7 +192,7 @@ export const testNode = suite('resource check owner registry', [
         );
     }),
     ...invalidFrames.map(function invalidFrame(testCase) {
-        return test(testCase.title, async function (scope) {
+        return authoredTest(testCase.title, async function (scope) {
             const scenario = await registeredOwner(scope, 'per-run');
             await scope.assert.rejects(async function receiveInvalidFrame() {
                 await scenario.registry.receive(scenario.socket, scenario.send, testCase.frame);
@@ -199,7 +201,7 @@ export const testNode = suite('resource check owner registry', [
             return scope.assert.collect();
         });
     }),
-    test('rejects checkpoints arriving on another owner channel', async function (scope) {
+    authoredTest('rejects checkpoints arriving on another owner channel', async function (scope) {
         const scenario = await registeredOwner(scope, 'per-run');
         await scope.assert.rejects(async function receiveForeignCheckpoint() {
             await scenario.registry.receive(scenario.sibling, scenario.send, { kind: 'checkpoint', snapshot });
@@ -207,7 +209,7 @@ export const testNode = suite('resource check owner registry', [
         scope.assert.equal(scenario.registry.snapshots()[0]?.revision, 0);
         return scope.assert.collect();
     }),
-    test('retains the newest checkpoint when older deliveries arrive', async function (scope) {
+    authoredTest('retains the newest checkpoint when older deliveries arrive', async function (scope) {
         const scenario = await registeredOwner(scope, 'per-run');
         await checkpointOwner(scenario);
         await scenario.registry.receive(scenario.socket, scenario.send, {
@@ -217,7 +219,7 @@ export const testNode = suite('resource check owner registry', [
         scope.assert.equal(scenario.registry.snapshots()[1]?.passing, 1);
         return scope.assert.collect();
     }),
-    test('does not finalize per-case owners for unobserved attempts', async function (scope) {
+    authoredTest('does not finalize per-case owners for unobserved attempts', async function (scope) {
         const scenario = await registeredOwner(scope, 'per-case');
         await finalizeInterval(scenario, attempt, scenario.socket);
         await checkpointOwner(scenario);
@@ -231,7 +233,7 @@ export const testNode = suite('resource check owner registry', [
         );
         return scope.assert.collect();
     }),
-    test('hides worker-local owners from sibling channels', async function (scope) {
+    authoredTest('hides worker-local owners from sibling channels', async function (scope) {
         const scenario = await registeredOwner(scope, 'shared-per-worker');
         await checkpointOwner(scenario);
         await finalizeInterval(scenario, attempt, scenario.sibling);
@@ -239,7 +241,7 @@ export const testNode = suite('resource check owner registry', [
         scope.assert.true(response?.kind === 'result' && response.snapshots.length === 0);
         return scope.assert.collect();
     }),
-    test('reports finalization acknowledgements that never arrive', async function (scope) {
+    authoredTest('reports finalization acknowledgements that never arrive', async function (scope) {
         const scenario = await registeredOwner(scope, 'per-run');
         const waiting = finalizeInterval(scenario, attempt, scenario.socket);
         scenario.clock.advanceByMilliseconds(2000);
@@ -252,7 +254,7 @@ export const testNode = suite('resource check owner registry', [
         );
         return scope.assert.collect();
     }),
-    test('rejects admission after a lifetime stop', async function (scope) {
+    authoredTest('rejects admission after a lifetime stop', async function (scope) {
         const scenario = await registeredOwner(scope, 'per-run');
         await scenario.registry.receive(scenario.socket, scenario.send, {
             kind: 'stop',
@@ -271,7 +273,7 @@ export const testNode = suite('resource check owner registry', [
         );
         return scope.assert.collect();
     }),
-    test('rejects admission after a per-case stop', async function (scope) {
+    authoredTest('rejects admission after a per-case stop', async function (scope) {
         const scenario = await registeredOwner(scope, 'per-case');
         await scenario.registry.receive(scenario.socket, scenario.send, {
             kind: 'stop',
@@ -288,7 +290,7 @@ export const testNode = suite('resource check owner registry', [
         scope.assert.true(response?.kind === 'result' && response.errors.length === 1);
         return scope.assert.collect();
     }),
-    test('rejects admission when the required owner channel has disappeared', async function (scope) {
+    authoredTest('rejects admission when the required owner channel has disappeared', async function (scope) {
         const scenario = await registeredOwner(scope, 'per-run');
         scenario.socket.destroy();
         scenario.registry.disconnect(scenario.socket);
@@ -301,7 +303,7 @@ export const testNode = suite('resource check owner registry', [
         scope.assert.true(response?.kind === 'result' && response.errors.length === 1);
         return scope.assert.collect();
     }),
-    test(
+    authoredTest(
         'retains incomplete evidence when an owner disconnects during finalization',
         async function (scope: TestScope) {
             const scenario = await registeredOwner(scope, 'per-case');
@@ -319,4 +321,3 @@ export const testNode = suite('resource check owner registry', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

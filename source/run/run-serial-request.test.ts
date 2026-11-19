@@ -1,4 +1,5 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { normalizeConfig } from '../config/config.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -19,7 +20,7 @@ function serialCommand(): RunCommand {
     };
 }
 
-export const testNode = suite('serial request validation', [
+export const testNode = authoredSuite('serial request validation', [
     test('rejects unknown execution modes before discovery', async function (scope) {
         const command = serialCommand();
         Object.defineProperty(command.request.execution, 'mode', { value: 'concurrent' });

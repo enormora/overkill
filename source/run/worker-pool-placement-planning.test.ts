@@ -1,4 +1,5 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
     shardBySecondPath,
     createConstrainedPlan,
@@ -14,11 +15,6 @@ import {
     createCollectedPlan
 } from '../test-support/worker-pool-placement.ts';
 
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
 import { defaultRunRequest, defaultIntegrationProfile } from '../test-support/run-command-factory.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 
@@ -30,9 +26,7 @@ import {
     type WorkerPoolPlacementPlanInput
 } from './worker-pool-placement-planning.ts';
 import { runStartTimeFromMilliseconds, workerPoolCollectedPlan } from './worker-pool-runtime.ts';
-import {
-    workUnitsFromCollectedPlan
-} from './work-unit-planning.ts';
+import { workUnitsFromCollectedPlan } from './work-unit-planning.ts';
 
 function assertWorkerPoolPlanHelpers(scope: OverkillScope, collectedPlan: CollectedRunPlan): void {
     scope.assert.equal(runStartTimeFromMilliseconds(0), '1970-01-01T00:00:00.000Z');
@@ -114,111 +108,85 @@ function assertPlacementPlanning(scope: OverkillScope, collectedPlan: CollectedR
     );
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-placement-planning.test.ts',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool placement planning creates file units and placements',
-            body(scope: OverkillScope) {
-                const collectedPlan = createCollectedPlan();
+export const testNode = suite('source/run/worker-pool-placement-planning.test.ts', [
+    test('worker-pool placement planning creates file units and placements', function (scope: OverkillScope) {
+        const collectedPlan = createCollectedPlan();
 
-                assertWorkerPoolPlanHelpers(scope, collectedPlan);
-                assertWorkUnitPlanning(scope, collectedPlan);
-                assertPlacementPlanning(scope, collectedPlan);
+        assertWorkerPoolPlanHelpers(scope, collectedPlan);
+        assertWorkUnitPlanning(scope, collectedPlan);
+        assertPlacementPlanning(scope, collectedPlan);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'supervised planning resolves serial resource requirements',
-            async body(scope: OverkillScope) {
-                const dependencies = fakeWorkerPoolRuntimeDependencies();
-                const profile = defaultIntegrationProfile({
-                    execution: { processModel: 'supervised-process', scheduling: 'concurrent' }
-                });
-                const executionPlan = await createCollectedExecutionPlan({
-                    projectRoot: '/project',
-                    benchmarkHost: null,
-                    collectedPlan: createConstrainedPlan([ { kind: 'serial' } ]),
-                    dependencies,
-                    durationHistoryIndex: null,
-                    files: [
-                        {
-                            file: integrationPath,
-                            fileSet: null,
-                            href: testFileHref(integrationPath),
-                            path: integrationPath
-                        },
-                        {
-                            file: secondIntegrationPath,
-                            fileSet: null,
-                            href: testFileHref(secondIntegrationPath),
-                            path: secondIntegrationPath
-                        }
-                    ],
-                    planKind: 'supervised',
-                    profile,
-                    request: defaultRunRequest({ paths: [ integrationPath ], profile: 'integration' })
-                });
+        return scope.assert.collect();
+    }),
+    test('supervised planning resolves serial resource requirements', async function (scope: OverkillScope) {
+        const dependencies = fakeWorkerPoolRuntimeDependencies();
+        const profile = defaultIntegrationProfile({
+            execution: { processModel: 'supervised-process', scheduling: 'concurrent' }
+        });
+        const executionPlan = await createCollectedExecutionPlan({
+            projectRoot: '/project',
+            benchmarkHost: null,
+            collectedPlan: createConstrainedPlan([ { kind: 'serial' } ]),
+            dependencies,
+            durationHistoryIndex: null,
+            files: [
+                {
+                    file: integrationPath,
+                    fileSet: null,
+                    href: testFileHref(integrationPath),
+                    path: integrationPath
+                },
+                {
+                    file: secondIntegrationPath,
+                    fileSet: null,
+                    href: testFileHref(secondIntegrationPath),
+                    path: secondIntegrationPath
+                }
+            ],
+            planKind: 'supervised',
+            profile,
+            request: defaultRunRequest({ paths: [ integrationPath ], profile: 'integration' })
+        });
 
-                scope.assert.equal(executionPlan.scheduling, 'serial');
+        scope.assert.equal(executionPlan.scheduling, 'serial');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'resource constraints resolve containing work-unit scheduling',
-            body(scope: OverkillScope) {
-                const serialUnits = workUnitsFromCollectedPlan({
-                    runConstraints: emptyWorkUnitResourceConstraints,
-                    fileSetForFile,
-                    order: 'plan',
-                    seed: { value: 1n },
-                    selectedPlan: createConstrainedPlan([ { kind: 'exclusive-resource', name: 'database' } ]),
-                    scheduling: 'concurrent',
-                    workDistribution: { mode: 'file' },
-                    workerLifecycle: 'reuse'
-                });
-                const singleWorkerUnits = workUnitsFromCollectedPlan({
-                    runConstraints: emptyWorkUnitResourceConstraints,
-                    fileSetForFile,
-                    order: 'plan',
-                    seed: { value: 1n },
-                    selectedPlan: createConstrainedPlan([ { kind: 'single-worker' } ]),
-                    scheduling: 'concurrent',
-                    workDistribution: { mode: 'file' },
-                    workerLifecycle: 'reuse'
-                });
+        return scope.assert.collect();
+    }),
+    test('resource constraints resolve containing work-unit scheduling', function (scope: OverkillScope) {
+        const serialUnits = workUnitsFromCollectedPlan({
+            runConstraints: emptyWorkUnitResourceConstraints,
+            fileSetForFile,
+            order: 'plan',
+            seed: { value: 1n },
+            selectedPlan: createConstrainedPlan([ { kind: 'exclusive-resource', name: 'database' } ]),
+            scheduling: 'concurrent',
+            workDistribution: { mode: 'file' },
+            workerLifecycle: 'reuse'
+        });
+        const singleWorkerUnits = workUnitsFromCollectedPlan({
+            runConstraints: emptyWorkUnitResourceConstraints,
+            fileSetForFile,
+            order: 'plan',
+            seed: { value: 1n },
+            selectedPlan: createConstrainedPlan([ { kind: 'single-worker' } ]),
+            scheduling: 'concurrent',
+            workDistribution: { mode: 'file' },
+            workerLifecycle: 'reuse'
+        });
 
-                scope.assert.deepEqual(
-                    serialUnits.map(function toScheduling(unit) {
-                        return unit.scheduling;
-                    }),
-                    [ 'serial', 'concurrent' ]
-                );
-                scope.assert.deepEqual(
-                    singleWorkerUnits.map(function toScheduling(unit) {
-                        return unit.scheduling;
-                    }),
-                    [ 'concurrent', 'concurrent' ]
-                );
+        scope.assert.deepEqual(
+            serialUnits.map(function toScheduling(unit) {
+                return unit.scheduling;
+            }),
+            [ 'serial', 'concurrent' ]
+        );
+        scope.assert.deepEqual(
+            singleWorkerUnits.map(function toScheduling(unit) {
+                return unit.scheduling;
+            }),
+            [ 'concurrent', 'concurrent' ]
+        );
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

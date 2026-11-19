@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
 import { preciseTimingReport, type RunTimingSpan } from '../engine/run-timings.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { facts } from '../test-support/run-record-session-fixture.ts';
@@ -46,66 +46,47 @@ function source(id: string, span: RunTimingSpan): MergeSource {
         })
     };
 }
-export const testNode = createSuite({
-    title: 'merged timing evidence',
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    children: [
-        createTestCase({
-            title: 'preserves aggregate totals and slowest evidence from truncated shards',
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            body(scope) {
-                const { precise } = mergedRunTimings([ source('first', cleanupSpan), source('second', cleanupSpan) ]);
-                if (precise === null) {
-                    throw new Error('Expected precise merged timing evidence.');
-                }
-                scope.assert.deepEqual(precise.aggregates, [ {
-                    kind: 'cleanup',
-                    count: 2,
-                    durationMicroseconds: 40
-                } ]);
-                scope.assert.equal(precise.droppedSpanCount, 2);
-                scope.assert.equal(precise.truncated, true);
-                scope.assert.equal(precise.overhead.aggregationMicroseconds, 4);
-                scope.assert.deepEqual(
-                    precise.slowestSpans.map(function identity(span) {
-                        return span.processId;
-                    }),
-                    [ 'first/parent', 'second/parent' ]
-                );
-                scope.assert.deepEqual(
-                    precise.slowestSpans.map(function offset(span) {
-                        return span.startOffsetMicroseconds;
-                    }),
-                    [ null, null ]
-                );
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            title: 'preserves explicit labels and qualifies coordinator spans without workers',
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            body(scope) {
-                const span = { ...cleanupSpan, label: 'dispose database', processId: null, workerId: null };
-                const { precise } = mergedRunTimings([ source('first', span) ]);
-                if (precise === null) {
-                    throw new Error('Expected precise merged timing evidence.');
-                }
-                const qualifiedSpans: readonly RunTimingSpan[] = [ {
-                    ...span,
-                    label: 'first: dispose database',
-                    processId: 'first/coordinator',
-                    startOffsetMicroseconds: null
-                } ];
-                scope.assert.deepEqual(precise.slowestSpans, qualifiedSpans);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('merged timing evidence', [
+    test('preserves aggregate totals and slowest evidence from truncated shards', function (scope) {
+        const { precise } = mergedRunTimings([ source('first', cleanupSpan), source('second', cleanupSpan) ]);
+        if (precise === null) {
+            throw new Error('Expected precise merged timing evidence.');
+        }
+        scope.assert.deepEqual(precise.aggregates, [ {
+            kind: 'cleanup',
+            count: 2,
+            durationMicroseconds: 40
+        } ]);
+        scope.assert.equal(precise.droppedSpanCount, 2);
+        scope.assert.equal(precise.truncated, true);
+        scope.assert.equal(precise.overhead.aggregationMicroseconds, 4);
+        scope.assert.deepEqual(
+            precise.slowestSpans.map(function identity(span) {
+                return span.processId;
+            }),
+            [ 'first/parent', 'second/parent' ]
+        );
+        scope.assert.deepEqual(
+            precise.slowestSpans.map(function offset(span) {
+                return span.startOffsetMicroseconds;
+            }),
+            [ null, null ]
+        );
+        return scope.assert.collect();
+    }),
+    test('preserves explicit labels and qualifies coordinator spans without workers', function (scope) {
+        const span = { ...cleanupSpan, label: 'dispose database', processId: null, workerId: null };
+        const { precise } = mergedRunTimings([ source('first', span) ]);
+        if (precise === null) {
+            throw new Error('Expected precise merged timing evidence.');
+        }
+        const qualifiedSpans: readonly RunTimingSpan[] = [ {
+            ...span,
+            label: 'first: dispose database',
+            processId: 'first/coordinator',
+            startOffsetMicroseconds: null
+        } ];
+        scope.assert.deepEqual(precise.slowestSpans, qualifiedSpans);
+        return scope.assert.collect();
+    })
+]);

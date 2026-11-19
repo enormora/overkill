@@ -17,7 +17,7 @@ export type AttachmentContext = {
     readonly forProducer: (producer: AttachmentProducer) => RuntimeAttachments;
 };
 
-type AttachmentContextStorage = Readonly<AsyncLocalStorage<AttachmentContext>>;
+type AttachmentContextStorage = Readonly<AsyncLocalStorage<AttachmentContext | null>>;
 const attachmentContextKey = Symbol.for('@overkill-dev/runtime-attachment-context/v1');
 
 function isAttachmentContextStorage(value: unknown): value is AttachmentContextStorage {
@@ -28,7 +28,7 @@ function sharedAttachmentContext(): AttachmentContextStorage {
     if (isAttachmentContextStorage(existing)) {
         return existing;
     }
-    const created = new AsyncLocalStorage<AttachmentContext>();
+    const created = new AsyncLocalStorage<AttachmentContext | null>();
     Object.defineProperty(globalThis, attachmentContextKey, { value: created });
     return created;
 }
@@ -51,7 +51,7 @@ export function resourceAttachments(name: string): RuntimeAttachments {
 }
 
 export async function runWithAttachmentContext<Value>(
-    context: AttachmentContext,
+    context: AttachmentContext | null,
     run: () => Promise<Value>
 ): Promise<Value> {
     return await attachmentContext.run(context, run);

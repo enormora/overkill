@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { createSuite } from '../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as retention } from './runtime-attachment-retention.test.ts';
 import { testNode as worker } from './runtime-attachment-worker.test.ts';
 import { testNode as validation } from './runtime-attachment-validation.test.ts';
@@ -7,11 +7,11 @@ import { testNode as protocol } from './runtime-attachment-protocol.test.ts';
 import { testNode as attachments } from './runtime-attachments.test.ts';
 import { testNode as ownership } from './runtime-attachment-ownership.test.ts';
 
-export const testNode = createSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'runtime attachments',
-    children: [ retention, worker, validation, protocol, attachments, ownership ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('runtime attachments', [
+    retention,
+    worker,
+    validation,
+    protocol,
+    attachments,
+    ownership
+]);

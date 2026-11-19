@@ -1,9 +1,10 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, testDouble, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
+import { testDouble } from '../packages/test/test.entry-point.ts';
 import { executionHost } from '../test-support/execution-host.ts';
 import { serveExecutionSessionHost } from './execution-session-host.ts';
 
-export const testNode = suite('execution host request and reply ownership', [
+export const testNode = authoredSuite('execution host request and reply ownership', [
     test('initializes a frozen invocation and sends checkpoints before the result', async function (scope: TestScope) {
         const fixture = await executionHost('none');
         await serveExecutionSessionHost(fixture.runtime);
@@ -60,4 +61,3 @@ export const testNode = suite('execution host request and reply ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

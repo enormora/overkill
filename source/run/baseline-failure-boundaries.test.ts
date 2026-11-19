@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { defineReporter } from '../packages/engine/engine.entry-point.ts';
 import {
     orchestrator,
@@ -46,7 +47,7 @@ function assertReplayComparison(scope: TestScope, result: RunnerResult): void {
     scope.assert.deepEqual(result.runnerErrors, []);
     scope.assert.equal(readOrdinaryBaselineReport(result)?.writeOutcome.kind, 'read-only');
 }
-export const testNode = suite('ordinary baseline failure boundaries', [
+export const testNode = authoredSuite('ordinary baseline failure boundaries', [
     test('replays a retained baseline update without writing changed proposals', async function (scope: TestScope) {
         const fixture = await createOrdinaryBaselineFixture(scope, 'in-process', 'text');
         const runId = await recordedBaselineUpdate(scope, fixture);

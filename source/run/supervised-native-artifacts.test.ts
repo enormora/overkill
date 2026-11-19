@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import { createBoundaryFailureArtifact, type BoundaryFailure } from '../engine/run-artifact.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -79,9 +79,9 @@ function nativeCompletion(failure: BoundaryFailure): RunResult {
     });
 }
 
-export const testNode = suite('supervised native completion evidence', [
+export const testNode = authoredSuite('supervised native completion evidence', [
     ...failures.map(function nativeFailure(failure) {
-        return test(
+        return authoredTest(
             `retains ${failure.kind} completion evidence after active ownership is cleared`,
             function (scope: TestScope) {
                 const runtime = runningSupervisedRuntime();
@@ -102,7 +102,7 @@ export const testNode = suite('supervised native completion evidence', [
             }
         );
     }),
-    test('ignores process usage samples delivered after terminal failure', function (scope) {
+    authoredTest('ignores process usage samples delivered after terminal failure', function (scope) {
         const runtime = runningSupervisedRuntime();
         runtime.terminalFailure.write(true);
         handleChildMessage({ kind: 'sample', sample }, runtime);
@@ -111,5 +111,3 @@ export const testNode = suite('supervised native completion evidence', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

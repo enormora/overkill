@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { observationCase } from '../test-support/observation-lifetime.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { referencedTestBody } from '../test-support/referenced-test-body.ts';
 import { testBodyExecutionError } from './case-policy.ts';
@@ -12,8 +13,8 @@ const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind:
 function unexecutedBody(): never {
     throw new Error('Collection must not execute bodies.');
 }
-export const testNode = suite('test plan admission and deferred bodies', [
-    test('reports duplicate sibling titles at the root boundary', function (scope: TestScope) {
+export const testNode = authoredSuite('test plan admission and deferred bodies', [
+    authoredTest('reports duplicate sibling titles at the root boundary', function (scope: TestScope) {
         const engine = createTestEngine();
         const children = [ 'duplicate', 'duplicate' ].map(function node(title) {
             return engine.createTestCase({ ...metadata, title, body: unexecutedBody });
@@ -24,7 +25,7 @@ export const testNode = suite('test plan admission and deferred bodies', [
         return scope.assert.collect();
     }),
     ...[ false, true ].map(function (wrapped) {
-        return test(
+        return authoredTest(
             `recovers callable origins when node metadata is absent and body wrapping is ${wrapped}`,
             function (scope: TestScope) {
                 const engine = createTestEngine();
@@ -56,14 +57,14 @@ export const testNode = suite('test plan admission and deferred bodies', [
         );
     }),
 
-    test('keeps skipped cases outside body admission checks', function (scope: TestScope) {
+    authoredTest('keeps skipped cases outside body admission checks', function (scope: TestScope) {
         scope.assert.equal(
             testBodyExecutionError({ ...observationCase(), execution: { kind: 'skip', reason: 'intentional' } }),
             null
         );
         return scope.assert.collect();
     }),
-    test('requires collected declarations for bodies carrying property metadata', function (scope: TestScope) {
+    authoredTest('requires collected declarations for bodies carrying property metadata', function (scope: TestScope) {
         const body = attachTestBodyFamily(function uncollectedBody(): never {
             throw new Error('Admission must not execute the body.');
         }, {
@@ -81,7 +82,7 @@ export const testNode = suite('test plan admission and deferred bodies', [
         return scope.assert.collect();
     }),
     ...([ 'property', 'integration' ] as const).map(function (testFamily) {
-        return test(
+        return authoredTest(
             `admits resource descriptors only for resolved ${testFamily} declarations`,
             function (scope: TestScope) {
                 const original = observationCase();
@@ -116,7 +117,7 @@ export const testNode = suite('test plan admission and deferred bodies', [
         );
     }),
 
-    test('rejects empty file collections supplied through JavaScript', function (scope: TestScope) {
+    authoredTest('rejects empty file collections supplied through JavaScript', function (scope: TestScope) {
         const engine = createTestEngine();
         scope.assert.throws(function () {
             Reflect.apply(engine.createTestPlanFromTestFiles, undefined, [ {
@@ -126,7 +127,7 @@ export const testNode = suite('test plan admission and deferred bodies', [
         }, { message: 'Test plan must contain at least one executable test case.' });
         return scope.assert.collect();
     }),
-    test('rejects duplicate case identities across repeated files', function (scope: TestScope) {
+    authoredTest('rejects duplicate case identities across repeated files', function (scope: TestScope) {
         const engine = createTestEngine();
         scope.assert.throws(function () {
             engine.createTestPlanFromTestFiles({
@@ -142,31 +143,34 @@ export const testNode = suite('test plan admission and deferred bodies', [
         }, { message: /^Duplicate test case identity:/u });
         return scope.assert.collect();
     }),
-    test('keeps referenced table bodies deferred without assigning callable origins', function (scope: TestScope) {
-        const engine = createTestEngine();
-        const { body } = referencedTestBody();
-        const table = engine.createTable({
-            ...metadata,
-            title: 'table',
-            cases: [ 'first', 'second' ].map(function (title) {
-                return { title, parameters: { title }, annotations: {}, controls: {}, body };
-            })
-        });
-        const plan = engine.createTestPlan(
-            engine.createRoot({ title: 'root', annotations: {}, controls: {}, children: [ table ] })
-        );
-        scope.assert.deepEqual(
-            plan.cases.map(function (entry) {
-                return {
-                    origin: entry.bodyOrigin,
-                    deferred: entry.execution.kind === 'body' && entry.execution.body === body
-                };
-            }),
-            [ { origin: null, deferred: true }, { origin: null, deferred: true } ]
-        );
-        return scope.assert.collect();
-    }),
-    test('propagates suite family ownership to its descendants', function (scope: TestScope) {
+    authoredTest(
+        'keeps referenced table bodies deferred without assigning callable origins',
+        function (scope: TestScope) {
+            const engine = createTestEngine();
+            const { body } = referencedTestBody();
+            const table = engine.createTable({
+                ...metadata,
+                title: 'table',
+                cases: [ 'first', 'second' ].map(function (title) {
+                    return { title, parameters: { title }, annotations: {}, controls: {}, body };
+                })
+            });
+            const plan = engine.createTestPlan(
+                engine.createRoot({ title: 'root', annotations: {}, controls: {}, children: [ table ] })
+            );
+            scope.assert.deepEqual(
+                plan.cases.map(function (entry) {
+                    return {
+                        origin: entry.bodyOrigin,
+                        deferred: entry.execution.kind === 'body' && entry.execution.body === body
+                    };
+                }),
+                [ { origin: null, deferred: true }, { origin: null, deferred: true } ]
+            );
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('propagates suite family ownership to its descendants', function (scope: TestScope) {
         const engine = createTestEngine();
         const child = engine.createTestCase({ ...metadata, title: 'case', body: unexecutedBody });
         const nested = engine.createSuite({ ...metadata, title: 'nested', children: [ child ] });
@@ -181,4 +185,3 @@ export const testNode = suite('test plan admission and deferred bodies', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

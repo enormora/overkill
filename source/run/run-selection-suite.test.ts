@@ -1,16 +1,13 @@
-import { runIfMain } from '#test-runner';
-import { createSuite } from '../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as debugRequests } from './run-debug.test.ts';
 import { testNode as lastFailedSelectionTestNode } from './last-failed-selection.test.ts';
 import { testNode as runRuntimeSelectionTestNode } from './run-runtime-selection.test.ts';
 import { testNode as runSelectionFiltersTestNode } from './run-selection-filters.test.ts';
 
-export const testNode = createSuite({
-    annotations: {},
-    children: [ debugRequests, lastFailedSelectionTestNode, runSelectionFiltersTestNode, runRuntimeSelectionTestNode ],
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/run-selection-suite.test.ts'
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/run-selection-suite.test.ts', [
+    debugRequests,
+    lastFailedSelectionTestNode,
+    runSelectionFiltersTestNode,
+    runRuntimeSelectionTestNode
+]);

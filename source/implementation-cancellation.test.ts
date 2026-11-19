@@ -2,9 +2,8 @@ import { mkdtempDisposable, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { z } from 'zod/v4';
-import { suite, test, type TestScope } from './packages/test/test.entry-point.ts';
 import {
     defineImplementationReference,
     prepareImplementation,
@@ -108,7 +107,7 @@ async function verifyCancellation(directory: string, control: PreloadControl, sc
     scope.assert.equal(await control.finished, 'Implementation delivery is closed.');
     await scope.yieldToNextTurn();
 }
-export const testNode = suite('implementation preload cancellation', [
+export const testNode = authoredSuite('implementation preload cancellation', [
     test('closes pending delivery before delayed evaluation can import changed files', async function (scope) {
         await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-cancel-'));
         const control = preloadControl(directory.path);
@@ -119,4 +118,3 @@ export const testNode = suite('implementation preload cancellation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

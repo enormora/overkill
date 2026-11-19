@@ -1,10 +1,6 @@
-import { runIfMain } from '#test-runner';
-import {
-    type ProcessUsageSnapshot,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import type { ProcessUsageSnapshot } from '../packages/engine/engine.entry-point.ts';
 import type { WorkerLifecycle } from '../config/types.ts';
 import type {
     CreatedWorkerPool,
@@ -151,36 +147,22 @@ async function routedProcessUsage(): Promise<{
     };
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-lifecycle-process-usage.test.ts',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool runtime combines mixed lifecycle process usage tracking',
-            async body(scope: OverkillScope) {
-                const usage = await routedProcessUsage();
+export const testNode = suite('source/run/worker-pool-lifecycle-process-usage.test.ts', [
+    test('worker-pool runtime combines mixed lifecycle process usage tracking', async function (scope: OverkillScope) {
+        const usage = await routedProcessUsage();
 
-                scope.assert.equal(usage.sampleCount, 3);
-                scope.assert.deepEqual(usage.startActiveResourceTypes, [
-                    'fresh-worker-per-unit',
-                    'reuse'
-                ]);
-                scope.assert.deepEqual(
-                    usage.samples.map(function toActiveResourceCount(sample) {
-                        return sample.activeResourceCount;
-                    }),
-                    [ 3 ]
-                );
+        scope.assert.equal(usage.sampleCount, 3);
+        scope.assert.deepEqual(usage.startActiveResourceTypes, [
+            'fresh-worker-per-unit',
+            'reuse'
+        ]);
+        scope.assert.deepEqual(
+            usage.samples.map(function toActiveResourceCount(sample) {
+                return sample.activeResourceCount;
+            }),
+            [ 3 ]
+        );
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

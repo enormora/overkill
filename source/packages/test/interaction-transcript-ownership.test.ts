@@ -1,4 +1,5 @@
-import { suite, test, recordSink, recordAsyncSink, type Transcript, type TestScope } from './test.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { recordSink, recordAsyncSink, type Transcript, type TestScope } from './test.entry-point.ts';
 
 type Entry = readonly [kind: 'state', value: number];
 function assertForwardedTranscript(scope: TestScope, transcript: Transcript<Entry>): void {

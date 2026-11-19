@@ -1,16 +1,17 @@
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { DryRunStatus } from '@stryker-mutator/api/test-runner';
 import { z } from 'zod/v4';
-import { suite, test } from '../test/test.entry-point.ts';
+
 import type { CoverageArtifact } from '../engine/engine.entry-point.ts';
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { dryMutationResult } from './dry-run-results.ts';
 import { testNode as selectionTestNode } from './mutation-selection.test.ts';
 import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
 
-export const testNode = suite('mutation coverage delivery', [
+export const testNode = authoredSuite('mutation coverage delivery', [
     selectionTestNode,
     ...([ 'perTest', 'all' ] as const).map(function returnedCoverage(mode) {
-        return test(`${mode} returns detached counters without mutating raw evidence`, function (scope) {
+        return authoredTest(`${mode} returns detached counters without mutating raw evidence`, function (scope) {
             const { reply, baseline } = mutationCoverageFixture(mode);
             const data = mutationLifecycleDataSchema.parse(reply.data);
             const coverage = { ...baseline.coverage, static: { mutant: 4, unloaded: 0 } };
@@ -34,7 +35,7 @@ export const testNode = suite('mutation coverage delivery', [
         });
     }),
     ...([ 'all', 'off', 'perTest' ] as const).map(function coverageMode(mode) {
-        return test(
+        return authoredTest(
             `${mode} accepts complete empty counters without requiring coverage for every case`,
             function (scope) {
                 const { reply } = mutationCoverageFixture(mode);
@@ -57,34 +58,38 @@ export const testNode = suite('mutation coverage delivery', [
             }
         );
     }),
-    test('rejects incomplete results even when selection and completion were shortened together', function (scope) {
-        const { reply } = mutationCoverageFixture('perTest');
-        const data = mutationLifecycleDataSchema.parse(reply.data);
-        const partial = {
-            ...reply,
-            result: { ...reply.result, perTest: reply.result.perTest.slice(0, 1) },
-            data: { ...data, selected: data.selected.slice(0, 1), completed: data.completed.slice(0, 1) }
-        };
-        scope.assert.equal(
-            dryMutationResult('/project', partial, 'perTest', { kind: 'dry', baseline: null, testFiles: null }).status,
-            'error'
-        );
-        scope.assert.equal(
-            dryMutationResult(
-                '/project',
-                {
-                    ...reply,
-                    result: { ...reply.result, perTest: [] }
-                },
-                'perTest',
-                { kind: 'dry', baseline: null, testFiles: null }
-            )
-                .status,
-            'error'
-        );
-        return scope.assert.collect();
-    }),
-    test('rejects unknown owners rather than allowing Stryker to discard their coverage', function (scope) {
+    authoredTest(
+        'rejects incomplete results even when selection and completion were shortened together',
+        function (scope) {
+            const { reply } = mutationCoverageFixture('perTest');
+            const data = mutationLifecycleDataSchema.parse(reply.data);
+            const partial = {
+                ...reply,
+                result: { ...reply.result, perTest: reply.result.perTest.slice(0, 1) },
+                data: { ...data, selected: data.selected.slice(0, 1), completed: data.completed.slice(0, 1) }
+            };
+            scope.assert.equal(
+                dryMutationResult('/project', partial, 'perTest', { kind: 'dry', baseline: null, testFiles: null })
+                    .status,
+                'error'
+            );
+            scope.assert.equal(
+                dryMutationResult(
+                    '/project',
+                    {
+                        ...reply,
+                        result: { ...reply.result, perTest: [] }
+                    },
+                    'perTest',
+                    { kind: 'dry', baseline: null, testFiles: null }
+                )
+                    .status,
+                'error'
+            );
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('rejects unknown owners rather than allowing Stryker to discard their coverage', function (scope) {
         const { reply } = mutationCoverageFixture('perTest');
         const data = mutationLifecycleDataSchema.parse(reply.data);
         const result = dryMutationResult(
@@ -99,7 +104,7 @@ export const testNode = suite('mutation coverage delivery', [
         scope.assert.equal(result.status, 'error');
         return scope.assert.collect();
     }),
-    test('does not substitute V8 report data for missing mutant counters', function (scope) {
+    authoredTest('does not substitute V8 report data for missing mutant counters', function (scope) {
         const { reply } = mutationCoverageFixture('perTest');
         const data = mutationLifecycleDataSchema.parse(reply.data);
         const artifact: CoverageArtifact = {
@@ -141,7 +146,7 @@ export const testNode = suite('mutation coverage delivery', [
         }, { name: 'ZodError' });
         return scope.assert.collect();
     }),
-    test('never replaces missing or malformed counter transport with empty coverage', function (scope) {
+    authoredTest('never replaces missing or malformed counter transport with empty coverage', function (scope) {
         const { reply } = mutationCoverageFixture('perTest');
         const data = mutationLifecycleDataSchema.parse(reply.data);
         const missing = { ...data };

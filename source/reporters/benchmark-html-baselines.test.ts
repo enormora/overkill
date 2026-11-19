@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
 import { withPerformanceBaselineReport } from '../baselines/performance-report.ts';
 import type { PerformanceMetricComparison } from '../baselines/performance-adapter.ts';
@@ -47,7 +48,7 @@ function policyReport(
 function baselineReport(metrics: readonly PerformanceMetricComparison[]): BenchmarkHtmlReport {
     return policyReport(metrics, observation, []);
 }
-export const testNode = suite('benchmark HTML baseline comparisons', [
+export const testNode = authoredSuite('benchmark HTML baseline comparisons', [
     test('retains policy diagnostics without inventing charts for untyped adapters', function (scope: TestScope) {
         const report = policyReport(null, observation, []);
         scope.assert.deepEqual(report.charts.baselines, []);

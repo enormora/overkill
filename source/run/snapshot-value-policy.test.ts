@@ -1,8 +1,8 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { captureSnapshot, snapshotComparisonValue } from './snapshot-value.ts';
 
-export const testNode = suite('snapshot value admission', [
+export const testNode = authoredSuite('snapshot value admission', [
     ...[
         { kind: 'bytes', actual: 'wrong', limit: 100, message: 'Binary snapshots require Uint8Array values.' },
         { kind: 'text', actual: 42, limit: 100, message: 'Text snapshots require string values.' },
@@ -10,7 +10,7 @@ export const testNode = suite('snapshot value admission', [
         { kind: 'value', actual: { a: 1 }, limit: 7, message: 'Snapshot exceeds its byte limit.' }
     ]
         .map(function (scenario) {
-            return test(
+            return authoredTest(
                 `rejects ${scenario.kind} snapshot ${scenario.message} with limit ${scenario.limit}`,
                 function (scope: TestScope) {
                     scope.assert.throws(function () {
@@ -24,7 +24,7 @@ export const testNode = suite('snapshot value admission', [
                 }
             );
         }),
-    test('rejects binary payloads requested as text', function (scope: TestScope) {
+    authoredTest('rejects binary payloads requested as text', function (scope: TestScope) {
         const payload = captureSnapshot({ kind: 'bytes', name: 'value', actual: new Uint8Array([ 1 ]) }, 1);
         scope.assert.throws(function () {
             snapshotComparisonValue(payload, 'text');
@@ -32,4 +32,3 @@ export const testNode = suite('snapshot value admission', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

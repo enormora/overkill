@@ -1,7 +1,8 @@
 import { realpath } from 'node:fs/promises';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { z } from 'zod/v4';
 import type { TestScope } from '../engine/engine.entry-point.ts';
-import { suite, test } from '../test/test.entry-point.ts';
+
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { createMutationBaseline } from './mutation-baseline.ts';
 import { createCampaignWorker, type CampaignWorker } from './campaign-worker.ts';
@@ -47,8 +48,8 @@ async function registeredCampaign(scope: TestScope): Promise<RegisteredCampaign>
     };
 }
 
-export const testNode = suite('mutation baseline evidence', [
-    test('shares campaign identity across workers while separating canonical roots', async function (scope) {
+export const testNode = authoredSuite('mutation baseline evidence', [
+    authoredTest('shares campaign identity across workers while separating canonical roots', async function (scope) {
         const baselines = new Map<string, CampaignBaseline>();
         const campaigns = new Map<string, string>();
         const workers = [ process.cwd(), process.cwd(), import.meta.dirname ].map(function campaignWorker(root) {
@@ -72,7 +73,7 @@ export const testNode = suite('mutation baseline evidence', [
         scope.assert.notEqual(identities[0], identities[2]);
         return scope.assert.collect();
     }),
-    test('retains initially empty eligible files across worker replacement', async function (scope) {
+    authoredTest('retains initially empty eligible files across worker replacement', async function (scope) {
         const { reply, baseline } = mutationCoverageFixture('perTest');
         const { client, replacement, signal } = await registeredCampaign(scope);
         const original = createMutationBaseline();
@@ -86,7 +87,7 @@ export const testNode = suite('mutation baseline evidence', [
         return scope.assert.collect();
     }),
     ...([ 'all', 'off', 'perTest' ] as const).map(function coverageMode(mode) {
-        return test(`${mode} retains raw counters and mode across replacement workers`, async function (scope) {
+        return authoredTest(`${mode} retains raw counters and mode across replacement workers`, async function (scope) {
             const { baseline, reply } = mutationCoverageFixture(mode);
             const { client, replacement, signal } = await registeredCampaign(scope);
             await createMutationBaseline().publish(client, reply, {
@@ -113,12 +114,12 @@ export const testNode = suite('mutation baseline evidence', [
             return scope.assert.collect();
         });
     }),
-    test('does not recover missing baselines from an empty counter object', async function (scope) {
+    authoredTest('does not recover missing baselines from an empty counter object', async function (scope) {
         const { client } = await registeredCampaign(scope);
         scope.assert.equal(await createMutationBaseline().read(client, null), null);
         return scope.assert.collect();
     }),
-    test('propagates disconnected transport without inventing a baseline', async function (scope) {
+    authoredTest('propagates disconnected transport without inventing a baseline', async function (scope) {
         const client: CampaignClient = {
             expireRequests: expireNoRequests,
             async request() {
@@ -133,7 +134,7 @@ export const testNode = suite('mutation baseline evidence', [
         }, { message: 'Campaign IPC disconnected.' });
         return scope.assert.collect();
     }),
-    test('requires publication acknowledgement before retaining the dry-run baseline', async function (scope) {
+    authoredTest('requires publication acknowledgement before retaining the dry-run baseline', async function (scope) {
         const { reply } = mutationCoverageFixture('perTest');
         const client: CampaignClient = {
             expireRequests: expireNoRequests,
@@ -153,7 +154,7 @@ export const testNode = suite('mutation baseline evidence', [
         }, { message: 'Invocation deadline exceeded.' });
         return scope.assert.collect();
     }),
-    test('rejects incompatible campaign frames and baselines missing their evidence', function (scope) {
+    authoredTest('rejects incompatible campaign frames and baselines missing their evidence', function (scope) {
         const { baseline } = mutationCoverageFixture('perTest');
         const missingMode = { ...baseline };
         const missingCounters = { ...baseline };

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { runResultFactory } from '../../test-support/run-result-factory.ts';
 import { exchangedAttachment } from '../../test-support/attachment-exchange.ts';
 import { serializeRunDiagnostics } from '../run/run.entry-point.ts';
@@ -10,9 +10,9 @@ import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
 const project = '/sandbox/project';
 const caseId = { file: '/sandbox/project/source/failure.test.ts', suite: [], title: 'failure', params: null };
 const workId = { familyVariant: null, case: caseId, runtimes: [], workload: null };
-export const testNode = suite('mutation diagnostic evidence identity', [
+export const testNode = authoredSuite('mutation diagnostic evidence identity', [
     guards,
-    test('canonicalizes failed case and attributed runner-error identities', function (scope: TestScope) {
+    authoredTest('canonicalizes failed case and attributed runner-error identities', function (scope: TestScope) {
         const result = runResultFactory.build({
             perTest: [ { id: caseId, workId, verdict: 'fail' } ],
             runnerErrors: [ { attributedTo: caseId, attributedToWork: workId, message: 'failed' } ]
@@ -33,7 +33,7 @@ export const testNode = suite('mutation diagnostic evidence identity', [
         } ]);
         return scope.assert.collect();
     }),
-    test('preserves null error attribution and omits passing and skipped cases', function (scope: TestScope) {
+    authoredTest('preserves null error attribution and omits passing and skipped cases', function (scope: TestScope) {
         const result = runResultFactory.build({
             perTest: [ { id: caseId, workId, verdict: 'pass' }, { id: { ...caseId, title: 'skip' }, verdict: 'skip' } ],
             runnerErrors: [ { attributedTo: null, attributedToWork: null, message: 'run failure' } ]
@@ -52,7 +52,7 @@ export const testNode = suite('mutation diagnostic evidence identity', [
         } ]);
         return scope.assert.collect();
     }),
-    test('canonicalizes case-scoped artifact identities and their active cases', function (scope: TestScope) {
+    authoredTest('canonicalizes case-scoped artifact identities and their active cases', function (scope: TestScope) {
         const artifact = {
             ...exchangedAttachment,
             id: {
@@ -84,7 +84,7 @@ export const testNode = suite('mutation diagnostic evidence identity', [
         }, { id: { scope: { kind: 'run' } } } ]);
         return scope.assert.collect();
     }),
-    test('uses checkpoint diagnostics when a result is unavailable', function (scope: TestScope) {
+    authoredTest('uses checkpoint diagnostics when a result is unavailable', function (scope: TestScope) {
         const result = runResultFactory.build({ perTest: [ { id: caseId, workId, verdict: 'fail' } ] });
         const diagnostics = mutationDiagnosticEvidence(project, {
             kind: 'timeout',
@@ -110,7 +110,7 @@ export const testNode = suite('mutation diagnostic evidence identity', [
         data: { invalid: true }
     } ] as const)
         .map(function (reply, index) {
-            return test(`handles missing checkpoint evidence ${index}`, function (scope: TestScope) {
+            return authoredTest(`handles missing checkpoint evidence ${index}`, function (scope: TestScope) {
                 scope.assert.deepEqual(mutationDiagnosticEvidence(project, reply), {
                     artifacts: [],
                     resourceChecks: [],
@@ -121,4 +121,3 @@ export const testNode = suite('mutation diagnostic evidence identity', [
             });
         })
 ]);
-await runIfMain(import.meta, testNode);

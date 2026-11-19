@@ -1,20 +1,9 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { PlacementTraceEntry } from './placement-trace.ts';
 import type { PlacementPlan } from './run-types.ts';
-import {
-    fakeWorkerRuntime,
-    placementPlan,
-    testCaseMetadata
-} from './worker-pool-placement-validation.test.ts';
-import type {
-    WorkerPoolUnitLease,
-    WorkerPoolWorkDispatcher
-} from './worker-pool-dispatch-state.ts';
+import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
+import type { WorkerPoolUnitLease, WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 import { createWorkDispatcher } from './worker-pool-work-dispatcher.ts';
 
@@ -189,11 +178,11 @@ function assertWarmAffinitySelection(
     scope.assert.equal(trace.score, 5);
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-warm-lane-dispatch.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher prefers warm reusable lanes within equal load',
             body(scope: OverkillScope) {
@@ -210,7 +199,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher ignores warm data for fresh-worker units',
             body(scope: OverkillScope) {
@@ -233,7 +222,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatcher clears warm data after worker crashes',
             body(scope: OverkillScope) {
@@ -259,5 +248,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

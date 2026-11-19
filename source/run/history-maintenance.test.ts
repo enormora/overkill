@@ -1,8 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import {
     normalizeConfig,
     createHistory,
@@ -36,7 +35,7 @@ async function createRecordedHistory(projectRoot: string): Promise<RecordedProje
     return { config, history, target };
 }
 
-export const testNode = suite('automatic history maintenance', [
+export const testNode = authoredSuite('automatic history maintenance', [
     test('lock contention quietly defers at the configured lock timeout', async function (scope: TestScope) {
         await inProject(async function (projectRoot) {
             const config = normalizeConfig({ history: { lockTimeoutMilliseconds: 0 } });
@@ -145,4 +144,3 @@ export const testNode = suite('automatic history maintenance', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

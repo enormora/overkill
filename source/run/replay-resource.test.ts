@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import type { SimulationWitnessFile } from '../engine/witness-file.ts';
 import { defineResource } from '../resources/resources.ts';
 import { acquisitionResourceScenarioBindings } from '../resources/resource-scenario-binding.ts';
@@ -35,14 +35,14 @@ const witness: SimulationWitnessFile = {
 async function withWitness(value: SimulationWitnessFile, execute: () => Promise<void>): Promise<void> {
     await withReplay({ kind: 'witness', witness: value, sourceRunId: null, moduleGraph: 'current' }, null, execute);
 }
-export const testNode = suite('replay resource restoration', [
+export const testNode = authoredSuite('replay resource restoration', [
     http,
-    test('preserves resources outside replay', async function (scope: TestScope) {
+    authoredTest('preserves resources outside replay', async function (scope: TestScope) {
         scope.assert.equal(replayResourceDefinition(resource), resource);
         await replayAcquiredResource(resource, {}, AbortSignal.abort());
         return scope.assert.collect();
     }),
-    test('preserves resources during property replay', async function (scope: TestScope) {
+    authoredTest('preserves resources during property replay', async function (scope: TestScope) {
         await withReplay(
             { kind: 'witness', witness: propertyCorpusEntry, sourceRunId: null, moduleGraph: 'current' },
             null,
@@ -58,14 +58,14 @@ export const testNode = suite('replay resource restoration', [
         { title: 'keeps a witness without a scenario', value: { ...witness, scenario: null } }
     ]
         .map(function unchanged(entry) {
-            return test(entry.title, async function (scope: TestScope) {
+            return authoredTest(entry.title, async function (scope: TestScope) {
                 await withWitness(entry.value, async function replay() {
                     scope.assert.equal(replayResourceDefinition(resource), resource);
                 });
                 return scope.assert.collect();
             });
         }),
-    test('restores the recorded scenario', async function (scope: TestScope) {
+    authoredTest('restores the recorded scenario', async function (scope: TestScope) {
         await withWitness(witness, async function replay() {
             scope.assert.deepEqual(acquisitionResourceScenarioBindings(replayResourceDefinition(resource)), {
                 mode: 'outage'
@@ -78,7 +78,7 @@ export const testNode = suite('replay resource restoration', [
         { scenario: 'outage', name: 'missing' }
     ]
         .map(function unavailable({ scenario, name }) {
-            return test(`rejects unavailable scenario ${scenario}`, async function (scope: TestScope) {
+            return authoredTest(`rejects unavailable scenario ${scenario}`, async function (scope: TestScope) {
                 await withWitness(
                     { ...witness, scenario, simulation: { ...witness.simulation, name } },
                     async function replay() {
@@ -90,7 +90,7 @@ export const testNode = suite('replay resource restoration', [
                 return scope.assert.collect();
             });
         }),
-    test('requires a restoration callback', async function (scope: TestScope) {
+    authoredTest('requires a restoration callback', async function (scope: TestScope) {
         await withWitness(witness, async function replay() {
             await scope.assert.rejects(async function restore() {
                 await replayAcquiredResource(resource, {}, AbortSignal.abort());
@@ -99,7 +99,7 @@ export const testNode = suite('replay resource restoration', [
         return scope.assert.collect();
     }),
     ...[ null, '-7' ].map(function seedValue(seed) {
-        return test(`passes the witness and seed ${seed} to restoration`, async function (scope: TestScope) {
+        return authoredTest(`passes the witness and seed ${seed} to restoration`, async function (scope: TestScope) {
             const controller = new AbortController();
             const handle = { value: 0 };
             const selected = {
@@ -123,4 +123,3 @@ export const testNode = suite('replay resource restoration', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,15 +1,7 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { PlacementPlan } from './run-types.ts';
-import {
-    fakeWorkerRuntime,
-    placementPlan,
-    testCaseMetadata
-} from './worker-pool-placement-validation.test.ts';
+import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
 import { runtimeUnitLoad } from './worker-pool-work-load.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 
@@ -189,11 +181,11 @@ function assertDurationHistoryLoadUsesMedianFallback(scope: OverkillScope): void
     scope.assert.equal(runtimeUnitLoad(runtimeWithSingleDurationHistorySample(plan, unit))(unit), 200_000);
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-work-load.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool duration-history load uses median fallback samples',
             body(scope: OverkillScope) {
@@ -204,5 +196,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

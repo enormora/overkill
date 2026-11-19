@@ -1,14 +1,9 @@
 import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import {
-    createSuite,
-    createTestCase,
-    defineReporter,
-    type ReporterEvent,
-    type TestScope
-} from '../../packages/engine/engine.entry-point.ts';
+import { test as authoredTest, suite } from '@overkill-dev/test';
+
+import { defineReporter, type ReporterEvent, type TestScope } from '../../packages/engine/engine.entry-point.ts';
 import {
     normalizeConfig,
     orchestrator,
@@ -176,11 +171,10 @@ async function assertMeasurements(
     await assertMeasurementLifecycle(scope);
 }
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'measurement runner integration',
-    children: executions.map(function (execution) {
-        return createTestCase({
+export const testNode = suite(
+    'measurement runner integration',
+    executions.map(function (execution) {
+        return authoredTest({
             ...metadata,
             title: execution.processModel,
             async body(scope: TestScope) {
@@ -201,6 +195,4 @@ export const testNode = createSuite({
             }
         });
     })
-});
-
-await runIfMain(import.meta, testNode);
+);

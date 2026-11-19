@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import {
     artifactIdentityProjection,
@@ -18,7 +19,7 @@ const neutral = createDefaultWorkId(logical);
 const first = { ...neutral, familyVariant: { family: '@example/checks', key: 'one' } };
 const second = { ...neutral, familyVariant: { family: '@example/checks', key: 'two' } };
 
-export const testNode = suite('family identity', [
+export const testNode = authoredSuite('family identity', [
     test('retains the exact neutral shard input', function (scope: TestScope) {
         const unit = caseWorkUnitId(neutral);
         const inputs: string[] = [];
@@ -166,4 +167,3 @@ export const testNode = suite('family identity', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

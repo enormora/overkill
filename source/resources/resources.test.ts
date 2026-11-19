@@ -1,7 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import { testNode as jsonFramesTestNode } from '../bounded-json-frames.test.ts';
 import { resourceAttachments } from '../attachments/attachment-context.ts';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     createResourcesModule,
     isDefinedResource,
@@ -491,71 +492,39 @@ async function assertTemporaryDirectoryAcquireAbort(
     });
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/resources/resources.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        jsonFramesTestNode,
-        resourceScenarioValidationTestNode,
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'defineResource returns an inert frozen descriptor',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                assertDatabaseResourceDescriptor(scope);
-                assertDescriptorPredicates(scope);
-                await assertDatabaseResourceCallbacks(scope);
-                await assertServerResourceCallbacks(scope);
+export const testNode = suite('source/resources/resources.test.ts', [
+    jsonFramesTestNode,
+    resourceScenarioValidationTestNode,
+    test('defineResource returns an inert frozen descriptor', async function (scope: TestScope) {
+        assertDatabaseResourceDescriptor(scope);
+        assertDescriptorPredicates(scope);
+        await assertDatabaseResourceCallbacks(scope);
+        await assertServerResourceCallbacks(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'defineRuntime preserves resource keys and freezes runtime identity',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                assertRuntimeDescriptor(scope);
-                assertRuntimeContextComposition(scope);
-                assertRuntimeContextCompositionMergesRuntimeScopes(scope);
-                assertRuntimeContextCompositionRejectsDuplicateScopes(scope);
-                assertRuntimeContextCompositionRejectsInvalidRuntimeScopes(scope);
+        return scope.assert.collect();
+    }),
+    test('defineRuntime preserves resource keys and freezes runtime identity', function (scope: TestScope) {
+        assertRuntimeDescriptor(scope);
+        assertRuntimeContextComposition(scope);
+        assertRuntimeContextCompositionMergesRuntimeScopes(scope);
+        assertRuntimeContextCompositionRejectsDuplicateScopes(scope);
+        assertRuntimeContextCompositionRejectsInvalidRuntimeScopes(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'defineRuntimeMatrix preserves variants and validates shapes',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                assertRuntimeMatrixDescriptor(scope);
-                assertRuntimeMatrixSharedFactories(scope);
-                assertRuntimeMatrixShapeChecks(scope);
-                assertRuntimeMatrixInputChecks(scope);
+        return scope.assert.collect();
+    }),
+    test('defineRuntimeMatrix preserves variants and validates shapes', function (scope: TestScope) {
+        assertRuntimeMatrixDescriptor(scope);
+        assertRuntimeMatrixSharedFactories(scope);
+        assertRuntimeMatrixShapeChecks(scope);
+        assertRuntimeMatrixInputChecks(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'createTemporaryDirectoryResource uses host operations',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                assertTemporaryDirectoryDescriptor(scope, temporaryDirectoryResource);
-                await assertTemporaryDirectoryLifecycle(scope, temporaryDirectoryResource);
-                await assertTemporaryDirectoryAcquireAbort(scope, temporaryDirectoryResource);
+        return scope.assert.collect();
+    }),
+    test('createTemporaryDirectoryResource uses host operations', async function (scope: TestScope) {
+        assertTemporaryDirectoryDescriptor(scope, temporaryDirectoryResource);
+        await assertTemporaryDirectoryLifecycle(scope, temporaryDirectoryResource);
+        await assertTemporaryDirectoryAcquireAbort(scope, temporaryDirectoryResource);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

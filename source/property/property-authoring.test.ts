@@ -1,16 +1,18 @@
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import {
     createEngine,
     attachTestBodyFamily,
     forwardTestBodyFamily,
-    createRoot,
-    createTestPlan,
     readTestBodyFamily,
     resolveSourceLocation,
     type TestNode,
     type TestPlan,
-    type TestScope
+    type TestScope,
+    createRoot,
+    createTestPlan
 } from '../packages/engine/engine.entry-point.ts';
+
 import { defineMacro, suite, test } from '../packages/test/test.entry-point.ts';
 import * as leaf from '../packages/property/property.entry-point.ts';
 import * as standard from '../packages/test/property.entry-point.ts';
@@ -28,8 +30,8 @@ function unexpectedPropertyBody(): never {
     throw new Error('Property body must not execute.');
 }
 
-export const testNode = suite('property authoring', [
-    test('configured wrappers reject family metadata without a declaration', function (scope) {
+export const testNode = authoredSuite('property authoring', [
+    authoredTest('configured wrappers reject family metadata without a declaration', function (scope) {
         const body = attachTestBodyFamily(function malformedPropertyBody() {
             throw new Error('Malformed property body must not execute.');
         }, { family: 'property', definition: null });
@@ -38,7 +40,7 @@ export const testNode = suite('property authoring', [
         }, { message: 'withProperties() settings require a property declaration.' });
         return scope.assert.collect();
     }),
-    test('forwarding metadata preserves an existing declaration and rejects replacement', function (scope) {
+    authoredTest('forwarding metadata preserves an existing declaration and rejects replacement', function (scope) {
         const source = attachTestBodyFamily(function sourceBody() {
             throw new Error('Source must not execute.');
         }, { family: 'property', definition: 'original' });
@@ -55,7 +57,7 @@ export const testNode = suite('property authoring', [
         scope.assert.equal(readTestBodyFamily(target)?.definition, 'original');
         return scope.assert.collect();
     }),
-    test('leaf and standard subpath expose the same narrow surface', function (scope) {
+    authoredTest('leaf and standard subpath expose the same narrow surface', function (scope) {
         scope.assert.deepEqual(
             Object.keys(leaf).toSorted(function compareExportNames(left, right) {
                 return left.localeCompare(right);
@@ -73,7 +75,7 @@ export const testNode = suite('property authoring', [
         scope.assert.equal(leaf.withProperties, standard.withProperties);
         return scope.assert.collect();
     }),
-    test('family metadata rejects invalid bodies and duplicate attachments', function (scope) {
+    authoredTest('family metadata rejects invalid bodies and duplicate attachments', function (scope) {
         const attachment = { family: 'integration', definition: 'foreign' } as const;
         const body = attachTestBodyFamily(function foreignBody() {
             throw new Error('Foreign body must not execute.');
@@ -89,7 +91,7 @@ export const testNode = suite('property authoring', [
         }, { message: 'withProperties() cannot wrap a body belonging to another test family.' });
         return scope.assert.collect();
     }),
-    test('forwarding cannot replace another declaration within the same family', function (scope) {
+    authoredTest('forwarding cannot replace another declaration within the same family', function (scope) {
         const source = attachTestBodyFamily(function sourceBody() {
             throw new Error('Source must not execute.');
         }, { family: 'property', definition: 'original' });
@@ -102,7 +104,7 @@ export const testNode = suite('property authoring', [
         scope.assert.equal(readTestBodyFamily(source)?.definition, 'original');
         return scope.assert.collect();
     }),
-    test('first-class declarations retain inputs without executing them', function (scope: TestScope) {
+    authoredTest('first-class declarations retain inputs without executing them', function (scope: TestScope) {
         const generator = unexecutedGenerator<number>();
         const node = property({ title: 'declared property', generator, test: unexpectedPropertyBody });
         const selected = planFor(node).cases[0];
@@ -122,7 +124,7 @@ export const testNode = suite('property authoring', [
         scope.assert.deepEqual([ Object.isFrozen(attachment), Object.isFrozen(attachment.definition) ], [ true, true ]);
         return scope.assert.collect();
     }),
-    test('first-class nodes preserve engine ownership and snapshot the title', function (scope) {
+    authoredTest('first-class nodes preserve engine ownership and snapshot the title', function (scope) {
         const definition = {
             title: 'declared property',
             generator: unexecutedGenerator<number>(),
@@ -138,7 +140,7 @@ export const testNode = suite('property authoring', [
         scope.assert.equal(node.title, 'declared property');
         return scope.assert.collect();
     }),
-    test('nested authoring retains the enclosing body and adds one case', function (scope) {
+    authoredTest('nested authoring retains the enclosing body and adds one case', function (scope) {
         const body = withProperties(unexpectedPropertyBody);
         const wrappedAgain = withProperties(body);
         const plan = planFor(test('nested', wrappedAgain));
@@ -147,7 +149,7 @@ export const testNode = suite('property authoring', [
         scope.assert.equal(readTestBodyFamily(wrappedAgain)?.definition, readTestBodyFamily(body)?.definition);
         return scope.assert.collect();
     }),
-    test('invalid definitions fail before generator or body execution', function (scope) {
+    authoredTest('invalid definitions fail before generator or body execution', function (scope) {
         const generator = unexecutedGenerator<number>();
         for (const title of [ '', ' ' ]) {
             scope.assert.throws(function () {
@@ -189,7 +191,7 @@ export const testNode = suite('property authoring', [
         });
         return scope.assert.collect();
     }),
-    test('rejects malformed example factories before execution', function (scope) {
+    authoredTest('rejects malformed example factories before execution', function (scope) {
         for (const examples of [ null, {}, [ 1 ] ]) {
             scope.assert.throws(function () {
                 Reflect.apply(property, undefined, [ {
@@ -202,7 +204,7 @@ export const testNode = suite('property authoring', [
         }
         return scope.assert.collect();
     }),
-    test('property macros retain application and definition locations', function (scope) {
+    authoredTest('property macros retain application and definition locations', function (scope) {
         const macro = defineMacro(function () {
             return property({
                 title: 'macro property',
@@ -222,7 +224,7 @@ export const testNode = suite('property authoring', [
         }
         return scope.assert.collect();
     }),
-    test('existing profiles reject property declarations during collection', function (scope) {
+    authoredTest('existing profiles reject property declarations during collection', function (scope) {
         const plan = planFor(property({
             title: 'property profile required',
             generator: unexecutedGenerator<number>(),
@@ -243,7 +245,7 @@ export const testNode = suite('property authoring', [
         });
         return scope.assert.collect();
     }),
-    test('direct engine execution requires resolved property policy', async function (scope: TestScope) {
+    authoredTest('direct engine execution requires resolved property policy', async function (scope: TestScope) {
         const plan = planFor(property({
             title: 'unresolved policy',
             generator: unexecutedGenerator<number>(),
@@ -261,7 +263,7 @@ export const testNode = suite('property authoring', [
         scope.assert.equal(result.runnerErrors.length, 0);
         return scope.assert.collect();
     }),
-    test('direct invocation of nested envelopes rejects execution', async function (scope: TestScope) {
+    authoredTest('direct invocation of nested envelopes rejects execution', async function (scope: TestScope) {
         await scope.assert.rejects(async function () {
             return withProperties(unexpectedPropertyBody)(scope);
         }, {
@@ -270,5 +272,3 @@ export const testNode = suite('property authoring', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

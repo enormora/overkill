@@ -1,5 +1,6 @@
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock } from '@enormora/clock';
-import { runIfMain } from '#test-runner';
 
 import {
     createWorkerMessagePortFixture as createFakePort,
@@ -10,10 +11,7 @@ import { createDefaultWorkId } from '../engine/identity.ts';
 import {
     defaultFailureArtifactPolicy,
     type ProcessUsageSnapshot,
-    type RunProcessUsage,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
+    type RunProcessUsage
 } from '../packages/engine/engine.entry-point.ts';
 import type {
     CreatedWorkerPool,
@@ -21,18 +19,9 @@ import type {
     WorkerPoolProcessUsageTracker,
     WorkerPoolHostProcessStartOptions
 } from './run-orchestrator-dependencies.ts';
-import type {
-    WorkerPoolCommand,
-    WorkerPoolTask
-} from './worker-pool-protocol.ts';
-import {
-    serializeError,
-    serializeWorkerPoolMessage,
-    type WorkerPoolHostCommand
-} from './worker-pool-host-protocol.ts';
+import type { WorkerPoolCommand, WorkerPoolTask } from './worker-pool-protocol.ts';
+import { serializeError, serializeWorkerPoolMessage, type WorkerPoolHostCommand } from './worker-pool-host-protocol.ts';
 import { createHostedWorkerPool } from './worker-pool-host-process.ts';
-
-const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
 type WorkerMessagePort = Readonly<WorkerPoolTask['port']>;
 
@@ -351,134 +340,103 @@ async function startTrackingWithOneSample(
     await start;
 }
 
-export const testNode = createOverkillSuite({
-    ...testMetadata,
+export const testNode = suite('source/run/worker-pool-host-process.test.ts', [
+    test('createHostedWorkerPool() reports a missing host process usage sample', function (scope: OverkillScope) {
+        const { pool } = createPoolFixture(scope, workerPoolOptions(), ignoreStartOptions);
+        const tracker = pool.createProcessUsageTracker?.({ samplingIntervalMilliseconds: 25 });
 
-    title: 'source/run/worker-pool-host-process.test.ts',
-    children: [
-        createOverkillTestCase({
-            ...testMetadata,
+        scope.require.defined(tracker);
+        scope.assert.throws(function finishWithoutSamples() {
+            tracker.finish();
+        }, {
+            message: 'Hosted worker-pool process usage tracking did not receive samples.'
+        });
 
-            title: 'createHostedWorkerPool() reports a missing host process usage sample',
-            body(scope: OverkillScope) {
-                const { pool } = createPoolFixture(scope, workerPoolOptions(), ignoreStartOptions);
-                const tracker = pool.createProcessUsageTracker?.({ samplingIntervalMilliseconds: 25 });
-
-                scope.require.defined(tracker);
-                scope.assert.throws(function finishWithoutSamples() {
-                    tracker.finish();
-                }, {
-                    message: 'Hosted worker-pool process usage tracking did not receive samples.'
-                });
-
-                return scope.assert.collect();
+        return scope.assert.collect();
+    }),
+    test('createHostedWorkerPool() rejects task errors from the child host', async function (scope: OverkillScope) {
+        const fixture = await startRunTask(createPoolFixture(
+            scope,
+            workerPoolOptions({ hostProcess: { kind: 'direct' } }),
+            function expectDirectHost(options) {
+                scope.assert.deepEqual(options.nodeArguments, []);
             }
-        }),
-        createOverkillTestCase({
-            ...testMetadata,
+        ));
+        const runTaskCommand = await waitForRunTaskCommand(fixture.child);
 
-            title: 'createHostedWorkerPool() rejects task errors from the child host',
-            async body(scope: OverkillScope) {
-                const fixture = await startRunTask(createPoolFixture(
-                    scope,
-                    workerPoolOptions({ hostProcess: { kind: 'direct' } }),
-                    function expectDirectHost(options) {
-                        scope.assert.deepEqual(options.nodeArguments, []);
-                    }
-                ));
-                const runTaskCommand = await waitForRunTaskCommand(fixture.child);
+        fixture.child.emitMessage({
+            error: serializeError(newRangeError('task failed')),
+            kind: 'task-error',
+            taskId: runTaskCommand.taskId
+        });
 
-                fixture.child.emitMessage({
-                    error: serializeError(newRangeError('task failed')),
-                    kind: 'task-error',
-                    taskId: runTaskCommand.taskId
-                });
+        await scope.assert.rejects(async function waitForTaskError() {
+            await fixture.result;
+        }, {
+            message: 'task failed',
+            name: 'RangeError'
+        });
 
-                await scope.assert.rejects(async function waitForTaskError() {
-                    await fixture.result;
-                }, {
-                    message: 'task failed',
-                    name: 'RangeError'
-                });
+        return scope.assert.collect();
+    }),
+    test(
+        'createHostedWorkerPool() forwards tasks, output, messages, and aborts',
+        async function (scope: OverkillScope) {
+            const fixture = createForwardingFixture(scope);
+            const runTaskCommand = await waitForRunTaskCommand(fixture.child);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...testMetadata,
+            emitTaskOutput(fixture.child, runTaskCommand);
+            fixture.controller.abort();
+            resolveTask(fixture.child, runTaskCommand);
+            await assertForwardingResult(scope, fixture);
+            scope.assert.equal(fixture.pool.options.isolateWorkers, false);
 
-            title: 'createHostedWorkerPool() forwards tasks, output, messages, and aborts',
-            async body(scope: OverkillScope) {
-                const fixture = createForwardingFixture(scope);
-                const runTaskCommand = await waitForRunTaskCommand(fixture.child);
+            return scope.assert.collect();
+        }
+    ),
+    test('createHostedWorkerPool() exposes host process usage samples', async function (scope: OverkillScope) {
+        const fixture = createTrackingFixture(scope);
+        const usage = await collectTwoProcessUsageSamples(fixture);
 
-                emitTaskOutput(fixture.child, runTaskCommand);
-                fixture.controller.abort();
-                resolveTask(fixture.child, runTaskCommand);
-                await assertForwardingResult(scope, fixture);
-                scope.assert.equal(fixture.pool.options.isolateWorkers, false);
+        scope.assert.deepEqual(fixture.observedSamples, [ 10, 20 ]);
+        scope.assert.equal(usage.sampleCount, 2);
+        scope.assert.equal(usage.peakResidentSetBytes, 260);
+        scope.assert.equal(fixture.pool.options.isolateWorkers, true);
+        scope.assert.deepEqual(
+            fixture.child.sentCommands().map(commandKind),
+            [ 'configure', 'start-process-usage-tracking', 'finish-process-usage-tracking' ]
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...testMetadata,
+        return scope.assert.collect();
+    }),
+    test('createHostedWorkerPool() rejects pending tasks when the host errors', async function (scope: OverkillScope) {
+        const fixture = await startRunTask(createPoolFixture(scope, workerPoolOptions(), ignoreStartOptions));
 
-            title: 'createHostedWorkerPool() exposes host process usage samples',
-            async body(scope: OverkillScope) {
-                const fixture = createTrackingFixture(scope);
-                const usage = await collectTwoProcessUsageSamples(fixture);
+        fixture.child.emitError(new Error('host failed'));
 
-                scope.assert.deepEqual(fixture.observedSamples, [ 10, 20 ]);
-                scope.assert.equal(usage.sampleCount, 2);
-                scope.assert.equal(usage.peakResidentSetBytes, 260);
-                scope.assert.equal(fixture.pool.options.isolateWorkers, true);
-                scope.assert.deepEqual(
-                    fixture.child.sentCommands().map(commandKind),
-                    [ 'configure', 'start-process-usage-tracking', 'finish-process-usage-tracking' ]
-                );
+        await scope.assert.rejects(async function waitForHostFailure() {
+            await fixture.result;
+        }, { message: 'host failed' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...testMetadata,
+        return scope.assert.collect();
+    }),
+    test(
+        'createHostedWorkerPool() destroys an active host and ignores idle destroy',
+        async function (scope: OverkillScope) {
+            const fixture = createPoolFixture(scope, workerPoolOptions(), ignoreStartOptions);
+            const tracker = fixture.pool.createProcessUsageTracker?.({ samplingIntervalMilliseconds: 25 });
 
-            title: 'createHostedWorkerPool() rejects pending tasks when the host errors',
-            async body(scope: OverkillScope) {
-                const fixture = await startRunTask(createPoolFixture(scope, workerPoolOptions(), ignoreStartOptions));
+            scope.require.defined(tracker);
+            await startTrackingWithOneSample(fixture.child, tracker);
+            await fixture.pool.destroy();
+            await fixture.pool.destroy();
 
-                fixture.child.emitError(new Error('host failed'));
+            scope.assert.deepEqual(
+                fixture.child.sentCommands().map(commandKind),
+                [ 'configure', 'start-process-usage-tracking', 'destroy' ]
+            );
 
-                await scope.assert.rejects(async function waitForHostFailure() {
-                    await fixture.result;
-                }, { message: 'host failed' });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...testMetadata,
-
-            title: 'createHostedWorkerPool() destroys an active host and ignores idle destroy',
-            async body(scope: OverkillScope) {
-                const fixture = createPoolFixture(scope, workerPoolOptions(), ignoreStartOptions);
-                const tracker = fixture.pool.createProcessUsageTracker?.({ samplingIntervalMilliseconds: 25 });
-
-                scope.require.defined(tracker);
-                await startTrackingWithOneSample(fixture.child, tracker);
-                await fixture.pool.destroy();
-                await fixture.pool.destroy();
-
-                scope.assert.deepEqual(
-                    fixture.child.sentCommands().map(commandKind),
-                    [ 'configure', 'start-process-usage-tracking', 'destroy' ]
-                );
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

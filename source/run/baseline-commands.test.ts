@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { orchestrator } from '../packages/run/run.entry-point.ts';
 import {
     createOrdinaryBaselineFixture,
@@ -106,7 +107,7 @@ async function assertListing(scope: TestScope, fixture: CommandFixture, paths: r
     scope.assert.equal(listed.runResult, null);
     scope.assert.equal(listed.stdoutLines.length, 2);
 }
-export const testNode = suite('ordinary baseline commands', [
+export const testNode = authoredSuite('ordinary baseline commands', [
     test('bootstraps missing records and preserves mismatched expectations', async function (scope: TestScope) {
         const fixture = await commandFixture(scope, 'text');
         await establishBaselines(scope, fixture);

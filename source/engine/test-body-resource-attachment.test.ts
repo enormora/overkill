@@ -1,9 +1,6 @@
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestBody,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import type { TestBody } from '../packages/engine/engine.entry-point.ts';
 import {
     attachTestBodyResourceAttachments,
     hasAttachedResourceDescriptors,
@@ -58,134 +55,74 @@ function runtimeAttachments(
     };
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/engine/test-body-resource-attachment.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'hasAttachedResourceDescriptors() reads resource descriptors from attachment metadata',
-            annotations: {},
-            controls: {},
-            body(scope) {
-                scope.assert.equal(
-                    hasAttachedResourceDescriptors({
-                        directResources: [],
-                        resourceGraph: [],
-                        runtimeGraphs: []
-                    }),
-                    false
-                );
-                scope.assert.equal(
-                    hasAttachedResourceDescriptors({
-                        directResources: [ { key: 'database', resourceName: 'database' } ],
-                        resourceGraph: [],
-                        runtimeGraphs: []
-                    }),
-                    true
-                );
-                scope.assert.equal(
-                    hasAttachedResourceDescriptors(resourceAttachments([
-                        { key: 'database', resourceName: 'database' }
-                    ])),
-                    true
-                );
-                scope.assert.equal(
-                    hasAttachedResourceDescriptors(runtimeAttachments([
-                        { key: 'database', resourceName: 'database' }
-                    ], [])),
-                    true
-                );
-                scope.assert.equal(
-                    hasAttachedResourceDescriptors(runtimeAttachments([], [
-                        { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 }
-                    ])),
-                    false
-                );
+export const testNode = suite('source/engine/test-body-resource-attachment.test.ts', [
+    test('hasAttachedResourceDescriptors() reads resource descriptors from attachment metadata', function (scope) {
+        scope.assert.equal(
+            hasAttachedResourceDescriptors({
+                directResources: [],
+                resourceGraph: [],
+                runtimeGraphs: []
+            }),
+            false
+        );
+        scope.assert.equal(
+            hasAttachedResourceDescriptors({
+                directResources: [ { key: 'database', resourceName: 'database' } ],
+                resourceGraph: [],
+                runtimeGraphs: []
+            }),
+            true
+        );
+        scope.assert.equal(
+            hasAttachedResourceDescriptors(resourceAttachments([
+                { key: 'database', resourceName: 'database' }
+            ])),
+            true
+        );
+        scope.assert.equal(
+            hasAttachedResourceDescriptors(runtimeAttachments([
+                { key: 'database', resourceName: 'database' }
+            ], [])),
+            true
+        );
+        scope.assert.equal(
+            hasAttachedResourceDescriptors(runtimeAttachments([], [
+                { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 }
+            ])),
+            false
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'resource attachment metadata is readable without becoming a body property',
-            annotations: {},
-            controls: {},
-            body(scope) {
-                const attachments: TestBodyResourceAttachments = {
-                    directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
-                    resourceGraph: [
-                        {
-                            workload: 'independent' as const,
-                            dependencies: [],
-                            handleTransport: 'local',
-                            name: 'scratch',
-                            requirements: [ { kind: 'exclusive-resource', name: 'scratch' } ],
-                            scenarios: [],
-                            scope: 'per-case'
-                        }
-                    ],
-                    runtimeGraphs: []
-                };
-                const body = attachTestBodyResourceAttachments(passingBody, attachments);
+        return scope.assert.collect();
+    }),
+    test('resource attachment metadata is readable without becoming a body property', function (scope) {
+        const attachments: TestBodyResourceAttachments = {
+            directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
+            resourceGraph: [
+                {
+                    workload: 'independent' as const,
+                    dependencies: [],
+                    handleTransport: 'local',
+                    name: 'scratch',
+                    requirements: [ { kind: 'exclusive-resource', name: 'scratch' } ],
+                    scenarios: [],
+                    scope: 'per-case'
+                }
+            ],
+            runtimeGraphs: []
+        };
+        const body = attachTestBodyResourceAttachments(passingBody, attachments);
 
-                scope.assert.equal(hasTestBodyResourceAttachments(body), true);
-                scope.assert.deepEqual(Object.keys(body), []);
-                scope.assert.deepEqual(readTestBodyResourceAttachments(body), attachments);
+        scope.assert.equal(hasTestBodyResourceAttachments(body), true);
+        scope.assert.deepEqual(Object.keys(body), []);
+        scope.assert.deepEqual(readTestBodyResourceAttachments(body), attachments);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'resource attachment metadata rejects empty and duplicate attachment',
-            annotations: {},
-            controls: {},
-            body(scope) {
-                scope.assert.throws(function rejectNonFunctionBody() {
-                    Reflect.apply(attachTestBodyResourceAttachments, undefined, [
-                        {},
-                        {
-                            directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
-                            resourceGraph: [
-                                {
-                                    workload: 'independent' as const,
-                                    dependencies: [],
-                                    handleTransport: 'local',
-                                    name: 'scratch',
-                                    requirements: [],
-                                    scenarios: [],
-                                    scope: 'per-case'
-                                }
-                            ],
-                            runtimeGraphs: []
-                        }
-                    ]);
-                }, { message: 'Resource attachments require a test body function.' });
-                scope.assert.throws(function attachEmptyMetadata() {
-                    attachTestBodyResourceAttachments(
-                        function emptyAttachmentBody(testScope: OverkillScope): ReturnType<TestBody> {
-                            testScope.assert.true(true);
-
-                            return testScope.assert.collect();
-                        },
-                        {
-                            directResources: [],
-                            resourceGraph: [],
-                            runtimeGraphs: []
-                        }
-                    );
-                }, { message: 'Test body resource attachments must not be empty.' });
-
-                const attachedBody = attachTestBodyResourceAttachments(function attached(
-                    testScope: OverkillScope
-                ): ReturnType<TestBody> {
-                    testScope.assert.true(true);
-
-                    return testScope.assert.collect();
-                }, {
+        return scope.assert.collect();
+    }),
+    test('resource attachment metadata rejects empty and duplicate attachment', function (scope) {
+        scope.assert.throws(function rejectNonFunctionBody() {
+            Reflect.apply(attachTestBodyResourceAttachments, undefined, [
+                {},
+                {
                     directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
                     resourceGraph: [
                         {
@@ -199,91 +136,127 @@ export const testNode = createOverkillSuite({
                         }
                     ],
                     runtimeGraphs: []
-                });
+                }
+            ]);
+        }, { message: 'Resource attachments require a test body function.' });
+        scope.assert.throws(function attachEmptyMetadata() {
+            attachTestBodyResourceAttachments(
+                function emptyAttachmentBody(testScope: OverkillScope): ReturnType<TestBody> {
+                    testScope.assert.true(true);
 
-                scope.assert.throws(function attachTwice() {
-                    attachTestBodyResourceAttachments(attachedBody, {
-                        directResources: [ { key: 'database', resourceName: 'database' } ],
-                        resourceGraph: [
-                            {
-                                workload: 'independent' as const,
-                                dependencies: [],
-                                handleTransport: 'local',
-                                name: 'database',
-                                requirements: [],
-                                scenarios: [],
-                                scope: 'per-case'
-                            }
-                        ],
-                        runtimeGraphs: []
-                    });
-                }, { message: 'Test body already has resource attachments.' });
-                scope.assert.throws(function attachDuplicateResourceScope() {
-                    attachTestBodyResourceAttachments(function resourceDuplicateBody(
-                        testScope: OverkillScope
-                    ): ReturnType<TestBody> {
-                        testScope.assert.true(true);
+                    return testScope.assert.collect();
+                },
+                {
+                    directResources: [],
+                    resourceGraph: [],
+                    runtimeGraphs: []
+                }
+            );
+        }, { message: 'Test body resource attachments must not be empty.' });
 
-                        return testScope.assert.collect();
-                    }, {
-                        directResources: [
-                            { key: 'scratch', resourceName: 'scratch' },
-                            { key: 'scratch', resourceName: 'workspace' }
-                        ],
-                        resourceGraph: [
-                            {
-                                workload: 'independent' as const,
-                                dependencies: [],
-                                handleTransport: 'local',
-                                name: 'scratch',
-                                requirements: [],
-                                scenarios: [],
-                                scope: 'per-case'
-                            },
-                            {
-                                workload: 'independent' as const,
-                                dependencies: [],
-                                handleTransport: 'local',
-                                name: 'workspace',
-                                requirements: [],
-                                scenarios: [],
-                                scope: 'per-case'
-                            }
-                        ],
-                        runtimeGraphs: []
-                    });
-                }, { message: 'Resource scope "scratch" is attached multiple times.' });
-                scope.assert.throws(function attachDuplicateRuntimeScope() {
-                    attachTestBodyResourceAttachments(function runtimeDuplicateBody(
-                        testScope: OverkillScope
-                    ): ReturnType<TestBody> {
-                        testScope.assert.true(true);
+        const attachedBody = attachTestBodyResourceAttachments(function attached(
+            testScope: OverkillScope
+        ): ReturnType<TestBody> {
+            testScope.assert.true(true);
 
-                        return testScope.assert.collect();
-                    }, {
-                        directResources: [],
-                        resourceGraph: [],
-                        runtimeGraphs: [
-                            {
-                                dimensions: {},
-                                name: 'api',
-                                requirements: [],
-                                scenarioBindings: [],
-                                resources: []
-                            },
-                            {
-                                dimensions: {},
-                                name: 'api',
-                                requirements: [],
-                                scenarioBindings: [],
-                                resources: []
-                            }
-                        ]
-                    });
-                }, { message: 'Runtime scope "api" is attached multiple times.' });
+            return testScope.assert.collect();
+        }, {
+            directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
+            resourceGraph: [
+                {
+                    workload: 'independent' as const,
+                    dependencies: [],
+                    handleTransport: 'local',
+                    name: 'scratch',
+                    requirements: [],
+                    scenarios: [],
+                    scope: 'per-case'
+                }
+            ],
+            runtimeGraphs: []
+        });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+        scope.assert.throws(function attachTwice() {
+            attachTestBodyResourceAttachments(attachedBody, {
+                directResources: [ { key: 'database', resourceName: 'database' } ],
+                resourceGraph: [
+                    {
+                        workload: 'independent' as const,
+                        dependencies: [],
+                        handleTransport: 'local',
+                        name: 'database',
+                        requirements: [],
+                        scenarios: [],
+                        scope: 'per-case'
+                    }
+                ],
+                runtimeGraphs: []
+            });
+        }, { message: 'Test body already has resource attachments.' });
+        scope.assert.throws(function attachDuplicateResourceScope() {
+            attachTestBodyResourceAttachments(function resourceDuplicateBody(
+                testScope: OverkillScope
+            ): ReturnType<TestBody> {
+                testScope.assert.true(true);
+
+                return testScope.assert.collect();
+            }, {
+                directResources: [
+                    { key: 'scratch', resourceName: 'scratch' },
+                    { key: 'scratch', resourceName: 'workspace' }
+                ],
+                resourceGraph: [
+                    {
+                        workload: 'independent' as const,
+                        dependencies: [],
+                        handleTransport: 'local',
+                        name: 'scratch',
+                        requirements: [],
+                        scenarios: [],
+                        scope: 'per-case'
+                    },
+                    {
+                        workload: 'independent' as const,
+                        dependencies: [],
+                        handleTransport: 'local',
+                        name: 'workspace',
+                        requirements: [],
+                        scenarios: [],
+                        scope: 'per-case'
+                    }
+                ],
+                runtimeGraphs: []
+            });
+        }, { message: 'Resource scope "scratch" is attached multiple times.' });
+        scope.assert.throws(function attachDuplicateRuntimeScope() {
+            attachTestBodyResourceAttachments(function runtimeDuplicateBody(
+                testScope: OverkillScope
+            ): ReturnType<TestBody> {
+                testScope.assert.true(true);
+
+                return testScope.assert.collect();
+            }, {
+                directResources: [],
+                resourceGraph: [],
+                runtimeGraphs: [
+                    {
+                        dimensions: {},
+                        name: 'api',
+                        requirements: [],
+                        scenarioBindings: [],
+                        resources: []
+                    },
+                    {
+                        dimensions: {},
+                        name: 'api',
+                        requirements: [],
+                        scenarioBindings: [],
+                        resources: []
+                    }
+                ]
+            });
+        }, { message: 'Runtime scope "api" is attached multiple times.' });
+
+        return scope.assert.collect();
+    })
+]);

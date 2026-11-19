@@ -1,44 +1,26 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createReportingContext } from '../engine/reporting-context.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createNullReporter } from './null-reporter.ts';
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/reporters/null-reporter.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'null reporter accepts a final result without producing output',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const reporter = createNullReporter()(createReportingContext({ projectRoot: null }));
+export const testNode = suite('source/reporters/null-reporter.test.ts', [
+    test('null reporter accepts a final result without producing output', async function (scope: OverkillScope) {
+        const reporter = createNullReporter()(createReportingContext({ projectRoot: null }));
 
-                scope.assert.equal(reporter.kind, 'final-result');
-                scope.assert.equal(reporter.name, 'null');
-                scope.assert.deepEqual(reporter.sinks, []);
+        scope.assert.equal(reporter.kind, 'final-result');
+        scope.assert.equal(reporter.name, 'null');
+        scope.assert.deepEqual(reporter.sinks, []);
 
-                await reporter.onResult({
-                    context: {
-                        id: null,
-                        startedAt: null,
-                        facts: null
-                    },
-                    result: runResultFactory.build()
-                });
+        await reporter.onResult({
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            },
+            result: runResultFactory.build()
+        });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

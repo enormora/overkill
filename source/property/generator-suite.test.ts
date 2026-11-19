@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite } from '@overkill-dev/test';
+
 import { testNode as edges } from './generator-edge-cases.test.ts';
 import { testNode as primitives } from './generator-primitives.test.ts';
 import { testNode as composition } from './generator-composition.test.ts';
@@ -9,7 +9,7 @@ import { testNode as reconstruction } from './generator-reconstruction.test.ts';
 import { testNode as validity } from './generator-input-validity.test.ts';
 import { testNode as work } from './generator-input-work.test.ts';
 
-export const testNode = suite('generators', [
+export const testNode = authoredSuite('generators', [
     primitives,
     composition,
     recursion,
@@ -19,5 +19,3 @@ export const testNode = suite('generators', [
     work,
     edges
 ]);
-
-await runIfMain(import.meta, testNode);
