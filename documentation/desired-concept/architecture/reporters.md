@@ -479,6 +479,59 @@ no start or progress lines. Recovered retry failures are excluded from final
 failure diagnostics. Inconclusive and native-terminal cases retain counts and
 available runner errors without an additional per-case diagnostic format.
 
+### Repeated Diagnostics
+
+Both brief factories group identical, complete diagnostics within one run.
+The real-time factory renders the first occurrence immediately, suppresses
+repeated detail, and reports final occurrence counts. The final-result factory
+renders each group once. Group order follows first occurrence in the delivered
+data; members retain their full work and attempt identities. Counts describe
+diagnostic occurrences, not additional failed cases.
+
+Equality includes failure kind, assertion source, summary, expected/actual
+values, structured diff, and other diagnostic content. Work identity, attempt
+identity, and occurrence timing are membership data, not diagnostic equality.
+Matching messages or hashes alone are insufficient. Compare the complete
+diagnostic representation after any hash lookup. Missing or truncated evidence
+that could conceal differences prevents grouping. Grouping asserts repeated
+diagnostic content, never a shared root cause.
+
+Grouped output includes bounded member references and an explicit omitted-member
+count. When detailed evidence was retained, inspection can enumerate all members;
+otherwise say that detail is unavailable. No extra persistence is activated by
+grouping. Retained-run inspection using brief formatting reuses these rules.
+Retain at most 1 MiB of additional grouping state. When full, render further
+diagnostics normally within rendering limits rather than guess equality.
+
+This is the brief presentation contract, without a configuration switch.
+Line and dot behavior is unchanged. HTML may collapse repeated details while
+keeping individual entries accessible. JSON, typed results, events, and run
+records preserve individual failures and attribution within their capture,
+serialization, and storage limits. Shared formatting code
+may implement grouping, but the engine does not merge failures.
+
+### Completion Receipt
+
+The final brief summary makes selected work, completed work, unfinished work,
+and verdict counts assessable together with execution completion and diagnostic
+completeness. Reuse the existing count and result contracts; see
+[Run Counts](./run-counts.md#completion-receipt). A compact success line must not
+hide unfinished work, runner errors, or omitted evidence.
+
+### Bounded Text And Agent Consumption
+
+Brief remains concise human-readable text. JSON remains the separate structured
+reporter for programmatic consumers; neither format is assumed inherently more
+token-efficient. Render verdicts, counts, source locations, and distinguishing
+mismatches before optional stacks and large values. Explicitly identify omitted
+detail and any available inspection reference. Rendering never restores data
+discarded by capture or serialization.
+
+Existing selection, batching, replay, and typed results remain the execution
+surface. Inspection is read-only; suggested reruns
+are not automatic follow-up actions. Reporting adds no changed-only execution,
+result reuse, or source-dependency tracking.
+
 ## Timing Output
 
 First-party human reporters render the stable run timing summary. When precise

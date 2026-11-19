@@ -202,9 +202,11 @@ Artifacts produced during a run live in a per-run directory by default:
 .overkill/runs/<run-id>/artifacts/<case-id-derived-path>
 ```
 
-The `.overkill` prefix is the runtime-state directory and is configurable via
-`runtimeStateDir` in `overkill.config.ts` (default `.overkill`). Every path shown
-in this section is rooted at that directory. See
+The `.overkill` prefix in examples denotes the resolved runtime-state directory.
+Git projects default to repository-shared storage; non-Git projects use
+project-local `.overkill`. Explicit `runtimeStateDir` selects local or custom
+storage. Every runtime-state path shown in this section is rooted at that
+directory. See
 [Configuration § Scope Of Configuration](../architecture/configuration.md#scope-of-configuration).
 
 Artifacts that survive runs (baselines, witnesses) live in their own
@@ -268,6 +270,41 @@ across chunks within each stream and attempt. Captured-output payloads explicitl
 record `capture: 'automatic'` and `completeness: 'best-effort'`; `truncated`
 indicates a byte-limit omission. Human rendering caps never modify structured
 assertion evidence.
+
+### Serialization, Storage, And Rendering Boundaries
+
+Capture limits bound retained bytes; diagnostic serialization limits bound both
+retained values and serialization work; rendering limits further bound displayed
+text. Records contain already-bounded diagnostic evidence, not hidden unbounded
+original operands. Inspection cannot recover discarded bytes. Every omission
+identifies its stage and reason, including per-run or shared-storage exhaustion.
+
+Cycle detection covers object graphs and error causes. Bound traversal depth,
+visited nodes, collection entries, error-cause traversal, and diagnostic strings,
+including messages, stacks, and displayed paths. Do not invoke application
+getters, `toJSON`, or custom inspection callbacks to serialize diagnostics.
+Use deterministic traversal and explicit truncation markers. A bounded output
+string alone does not establish bounded serialization work.
+
+The runner also enforces a combined per-run storage budget and a shared-store
+budget, defined in [Reproducibility](../architecture/reproducibility.md#storage-budgets).
+These include retained diagnostics and artifacts, not only console output.
+Terminal rendering limits never rewrite stored diagnostic evidence.
+
+`--unbounded-diagnostics` requests expanded diagnostic capture for one run;
+`RunRequest.diagnosticVolume: 'unbounded'` is its programmatic equivalent.
+The default is `'bounded'`. It removes diagnostic capture/serialization volume
+caps and the per-run storage cap, but preserves cycle detection,
+bounded traversal work, timeouts, and the shared-store ceiling. It does not
+enable unsupported capture, debug recording, or persistence by itself. Human
+rendering remains bounded. Record the request and any remaining omissions;
+the flag does not promise complete capture or unlimited disk access.
+
+Safety traversal limits may still omit values in expanded mode. Replay codecs,
+baseline payloads, and witnesses have lossless contracts: never truncate their
+payload into an apparently valid replacement. Omit optional evidence with an
+explicit reason, or fail the required persistence operation while preserving
+the observed test outcomes.
 
 ## Integration Resource Evidence
 

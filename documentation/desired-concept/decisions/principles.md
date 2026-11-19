@@ -4,6 +4,14 @@
 
 The stable center of Overkill is the programmatic API, not the CLI. A user should be able to build custom runners, IDE integrations, mutation tools, browser adapters, or benchmark harnesses without scraping terminal output or relying on private internals.
 
+Agents orchestrate Overkill through its existing CLI and programmatic APIs.
+First-class agent support means precise requests, compact text, selective
+evidence access, and explicit completion and omission semantics. Overkill makes
+no model requests, owns no model credentials, and requires no agent harness,
+skills, MCP server, or persistent daemon. Machine-readable results remain
+available for caller-side processing without replacing human-readable brief
+output or adding overhead to ordinary microtest execution.
+
 ## TypeScript-First
 
 Overkill is optimized for TypeScript rather than trying to be equally ideal for every JS runtime and authoring style. Types are part of the product experience, especially for runtimes, reporters, and extension APIs.

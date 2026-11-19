@@ -65,13 +65,15 @@ Configuration should mainly cover orchestration and package wiring:
 - timing collection policy (`summary` by default, `precise` for detailed
   runner diagnostics)
 - run-record persistence defaults per profile
-- compact-history retention and maintenance policy
+- shared-store byte budgets, compact-history retention, and maintenance policy
 - profile-scoped `failureArtifacts` limits for captured output, assertion
   serialization, and human diff rendering
 - mutation integration
 - type-test integration
 - browser or benchmark package wiring
-- runtime-state directory (`runtimeStateDir`, default `.overkill`) - root for run records, witnesses, fuzzing/property corpus, debug-mode artifacts, and other runtime-owned outputs
+- runtime-state directory (`runtimeStateDir`) - optional explicit project-local
+  or custom location; persisted evidence otherwise uses repository-shared
+  storage in Git projects and project-local `.overkill` outside Git
 
 Configuration should avoid becoming the place where test logic lives.
 
@@ -231,6 +233,8 @@ const config = defineConfig({
         }
     },
     history: {
+        maxRunBytes: 67_108_864,
+        maxStoreBytes: 1_073_741_824,
         detailedRunLimit: 20,
         successfulArtifactRunLimit: 5,
         failingArtifactRetentionDays: 7,
@@ -331,6 +335,26 @@ Top-level `history` policy owns retention, compact-history sizing, lock
 timeouts, stale-lock handling, and automatic maintenance budgets. It is global
 because pruning and compact history operate on the shared runtime-state
 directory rather than on one selected profile.
+
+`history.maxRunBytes` defaults to 64 MiB and `history.maxStoreBytes` to 1 GiB.
+Both accept a positive safe integer or explicit `null` for no byte ceiling.
+Budgets cover runner-owned stored data and concurrent write reservations;
+ordinary retention windows cannot exceed them. Shared-store policy conflicts
+between worktrees fail persistence rather than silently changing policy.
+
+`runtimeStateDir` is an explicit location override, not a cwd-relative default.
+Relative overrides resolve against the project root. Otherwise Git projects
+resolve a namespace beneath their canonical common Git directory, shared by
+linked worktrees; non-Git projects use `<project-root>/.overkill`. Storage lookup
+does not require source-change tracking or occur on ordinary unrecorded
+microtest runs. The canonical resolution, origin, scope, and policy-transition
+contracts live in [Shared Storage And Portable Evidence](./reproducibility.md#shared-storage-and-portable-evidence).
+
+`--unbounded-diagnostics` and `RunRequest.diagnosticVolume: 'unbounded'`
+request expanded capture for one invocation. Configuration owns finite defaults
+and the shared-store ceiling; the run request cannot disable that ceiling.
+Serialization safety and human rendering limits remain active. See
+[Storage Budgets](./reproducibility.md#storage-budgets).
 
 ## Configuration Layering
 

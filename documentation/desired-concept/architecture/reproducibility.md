@@ -73,6 +73,58 @@ it is an optimization, not the required cross-CI baseline.
 
 ## Run Record Shape
 
+### Shared Storage And Portable Evidence
+
+Persisted evidence defaults to repository-shared storage in Git projects.
+Resolve the canonical common Git directory with
+`git rev-parse --path-format=absolute --git-common-dir`
+([Git reference](https://git-scm.com/docs/git-rev-parse)), using the resolved
+project root rather than the invocation's incidental subdirectory. The default
+store lives under `<git-common-dir>/overkill/<project-key>`. The project key
+derives from the resolved project's repository-relative location; validate its
+stored namespace identity rather than trusting a hash alone. Independent
+projects within one repository have separate namespaces. Separate clones have
+separate stores; remote URLs and package names are not repository identities.
+
+Non-Git projects default to `<project-root>/.overkill`. Explicit
+`runtimeStateDir` chooses project-local or custom storage; resolve relative
+values against the resolved project root. A shared custom location must identify
+the intended project namespace explicitly and reject accidental mixing.
+Resolve storage only when persistence or history access requires it, once per
+invocation, never per test. Ordinary unrecorded microtest execution needs no Git
+probe, storage scan, shared lock, or new telemetry.
+
+Records carry a store-issued originating-checkout identity and project identity.
+The originating cwd and worktree location are provenance, not lookup roots.
+Branch/revision metadata, when available, is descriptive; it does not establish
+source freshness, clean inputs, or equivalent execution. Runs from different
+checkouts remain separate observations even when their work identities match.
+Retain origin in summaries and inspection output without changing `CaseId` or
+`WorkId`.
+
+Runner-owned record and artifact references are store-relative; test source
+locations are repository-relative. Copy retained artifacts into the store before
+publishing references, or mark external dependencies explicitly as non-portable.
+Do not follow an old absolute cwd to inspect a record. Removing the originating
+worktree does not remove its retained evidence. Explicit run-id inspection can
+read any run in the project namespace without loading its test code or requiring
+that checkout. Source navigation resolves against the caller's explicit current
+project root and does not claim that current source matches historical source.
+
+Replay uses the explicitly selected current checkout and compatible resources.
+It never checks out a historical revision, re-creates a deleted worktree, or
+claims that stored evidence preserves the old application. Store portability
+does not imply deterministic replay or automatic cross-machine execution.
+
+The store coordinates concurrent writers, ownership, retention, and byte budgets
+across all worktrees. A store's retention and storage policy is authoritative:
+ordinary runs with conflicting resolved policy fail persistence rather than
+silently replace another checkout's policy. Explicit maintenance may adopt a
+changed policy only without live writers. Baselines and checked-in corpus entries
+remain checkout-owned and are not relocated into shared mutable storage.
+
+### Record Envelope
+
 Ordinary executions save one compact run record. Explicit recording, replay,
 coverage, and attachment workflows retain detailed evidence in that same lifecycle.
 `detail` distinguishes compact outcomes and measured summaries from replayable
@@ -92,6 +144,7 @@ the envelope version only for incompatible meaning or representation.
 
 ```ts
 type SingleRunRecord = {
+    readonly origin: RunOrigin;
     readonly id: string; // ULID
     readonly kind: 'single';
     readonly version: 1;
@@ -117,6 +170,7 @@ type SingleRunRecord = {
 };
 
 type MergedRunRecord = {
+    readonly origins: NonEmptyReadonlyArray<RunOrigin>;
     readonly id: string; // ULID
     readonly kind: 'merged';
     readonly version: 1;
@@ -140,7 +194,7 @@ Completed single records require a result. Started and interrupted attempts may
 have no result. `RunRecordRequest` preserves the request with a decimal string
 seed. `RunRecordResult` preserves result fields while projecting opaque thrown
 values and error causes through bounded diagnostic serialization.
-`RunRecordCoverage` stores the resolved policy and project-relative report and
+`RunRecordCoverage` stores the resolved policy and store-relative report and
 raw directories. Microtests without declared runtimes use `runtime: null`;
 unavailable engine versions use `null`.
 
@@ -248,9 +302,9 @@ this precedence:
 4. `inconclusive`
 5. `passed`
 
-Case and work histories keep the last 20 observations per identity plus
-aggregate counters. Case observations aggregate all executed variants in one
-run: failure wins, then inconclusive, pass, and skip. Retries contribute their
+Case and work histories keep the last 20 observations per originating checkout
+and identity plus aggregate counters. Case observations aggregate all executed
+variants in one run: failure wins, then inconclusive, pass, and skip. Retries contribute their
 final verdict once. Work observations remain keyed by `WorkId`.
 
 Entries that no longer receive updates are pruned after
@@ -258,8 +312,11 @@ Entries that no longer receive updates are pruned after
 90 days, whichever keeps fewer.
 
 `--last-failed` selects cases whose newest completed compact observation is failed.
-A later pass, skip, or inconclusive result clears selection. History is project-wide;
-current discovery and filters bound eligible cases. A readable history with no
+A later pass, skip, or inconclusive result from the same checkout clears selection.
+`--last-failed` and history-based duration scheduling use the originating
+checkout's observations by default; another checkout cannot clear failures or
+silently supply execution history. Shared storage does not merge these scopes.
+Current discovery and filters bound eligible cases. A readable history with no
 matches produces a successful recorded empty selection. Reusable collected plans
 retain their history snapshot until initialized again.
 
@@ -303,6 +360,10 @@ but cannot supply the pruned diagnostics.
 
 `inspectCaseHistory` accepts a structured `CaseId` and returns retained compact
 observations in time order, aggregate counters, and detailed-record availability.
+Its explicit scope selects the current checkout or all checkouts in the project.
+History list and case inspection default to the current checkout; project-scoped
+inspection includes origin for every observation. Explicit run-id inspection and
+comparison can address any run in the project namespace.
 Compact case observations aggregate variants as defined above; variant and attempt
 details are available only from retained detailed records. History does not imply
 an observation for every execution: unrecorded runs are absent, and retention
@@ -315,6 +376,34 @@ An unknown id or identity is unavailable, not a passing result or an empty failu
 report. Inspection never repairs, prunes, or writes history implicitly. Historical
 readers reuse versioned record decoders and bounded diagnostic data without loading
 the producing test family, browser provider, or compiler.
+
+### Selective Evidence Queries
+
+Extend `inspectRun` with typed selection of work items, attempts, and failures,
+and a projection of requested sections: summary/facts, diagnostics, diffs,
+captured output, or artifact references. Keep full work/attempt attribution and
+run-scoped errors accessible; filtering must not silently attribute those errors
+to a selected case. CLI history inspection lowers to these same requests and
+renders concise text, without requiring JSON or a new query language.
+
+Apply selection and projection before formatting or loading optional artifact
+payloads. Bound response entries and bytes; return continuation information and
+the number of omitted matches when known. Continuations bind to the immutable
+run snapshot and query, not a mutable latest-run pointer. Reject mismatched
+continuations, including when an unfinished record has changed since the page;
+pruned evidence is unavailable. If one entry exceeds the response budget, return
+a marked bounded preview or explicit unavailability rather than a non-advancing
+page. Distinguish query exclusion, response truncation, capture/serialization
+omission, storage-budget omission, never-recorded data, and pruned data. Default
+inspection pages contain at most 100 entries and 32 KiB of rendered text,
+including continuation metadata; typed callers receive corresponding bounded
+structured sections. Explicit positive entry/byte limits change a query's
+response budget without altering stored evidence.
+
+Inspection can enumerate grouped brief diagnostic members from individual stored
+failures; it never reconstructs missing operands or executes tests to recover
+detail. Reuse existing decoders, result types, and brief formatting. The compact
+completion receipt follows [Run Counts](./run-counts.md#completion-receipt).
 
 ### Recorded Run Comparison
 
@@ -346,6 +435,65 @@ than parsed terminal text.
 
 ## Retention And Maintenance
 
+### Storage Budgets
+
+Default project policy includes a 64 MiB combined per-run storage limit
+(`history.maxRunBytes: 67_108_864`) and a 1 GiB shared project-store limit
+(`history.maxStoreBytes: 1_073_741_824`). Positive safe integers set finite byte
+limits; `null` explicitly disables the corresponding byte ceiling. Count and age
+retention still apply. Byte ceilings take precedence over retention windows;
+seven-day failure retention is not a promise to retain unlimited bytes.
+
+The store ceiling accounts for records, compact history, artifacts, debug and
+coverage data, local witnesses and corpus, provisional captures, temporary
+files, and reserved writes across concurrent runs. Account for peak replacement
+space during atomic writes as well as final size. Count logical file bytes and
+outstanding reservations; filesystem metadata, allocation overhead, and external
+consumer-owned output are outside this byte-accounting guarantee. External
+references do not imply that their targets are covered by the store budget.
+
+Writers reserve bounded chunks under shared coordination before retaining or
+writing data, including provisional evidence later discarded. Keep accounting
+incremental; do not scan the whole store on every invocation. A crash must not
+silently release reservations for bytes still present. Ownership recovery and
+explicit maintenance reconcile abandoned reservations and temporary files.
+Unknown or inconsistent accounting blocks new persistence until reconciled;
+never assume unaccounted files use zero bytes. No writer may borrow another
+active run's reservation or rely on eventual pruning to admit an over-budget
+write.
+
+Reclaim eligible completed-run evidence first, oldest first with run id as the
+tie-breaker. Active runs and repair-required records are protected. Local
+witnesses and corpus entries follow the same byte accounting and explicit
+ownership; stale unreferenced entries are reclaimable, while retained records'
+required references are preserved or marked unavailable together. Never delete
+checked-in corpus entries or baselines to reclaim runtime-state space.
+
+If admission cannot reclaim enough space within its bounded maintenance work,
+stop retaining additional optional diagnostics and record a storage-budget
+omission. Reserve space for bounded completion metadata before optional capture.
+Preserve observed verdicts and counts; omitted diagnostics do not erase failures
+or become passing results. If required record metadata, history updates, or
+lossless workflow evidence cannot fit, report a persistence runner error while
+preserving the in-memory test outcomes. Do not truncate identities, replay
+payloads, or required result structure into apparently valid records.
+
+`--unbounded-diagnostics` removes diagnostic volume caps and the per-run
+storage cap for one run,
+but cannot override a finite shared-store ceiling. The request is recorded in
+run facts. Cycle detection, serialization work bounds, timeouts, and human
+rendering limits remain in force. See
+[Failure Artifacts](../authoring/failure-artifacts.md#serialization-storage-and-rendering-boundaries).
+
+### Retention Windows And Maintenance
+
+Count and age windows are shared across the project store, while automatic
+history consumers remain checkout-scoped. Store-owned writers and artifact
+producers must honor byte admission; an integration that cannot bound its
+retained output must reject that capture mode before starting it. The store
+ceiling is not an operating-system quota on arbitrary application filesystem
+writes. Explicit external output remains outside its accounting.
+
 The detailed-record limit downgrades older details to compact records. Compact
 records follow summary count and age limits. Aggregate observations and counters
 survive record pruning; repairs report possible loss when source records expired.
@@ -357,6 +505,7 @@ history policy decides how long records and summaries remain.
 Defaults:
 
 - detailed records: last 20 persisted runs
+- per-run stored data: 64 MiB; shared project store: 1 GiB
 - successful per-run artifacts: last 5 successful persisted runs
 - failing per-run artifacts: 7 days
 - run summaries: last 500 persisted runs or 90 days
@@ -382,6 +531,7 @@ Automatic maintenance:
 - may leave retention temporarily exceeded
 - reports pruning failures as diagnostics without changing the test verdict
 
+These best-effort pruning rules never weaken write-time byte admission.
 Automatic maintenance follows completed attempts, including failed tests.
 Escaping exceptions preserve their original failure; later maintenance handles
 the interrupted records. Budget exhaustion, contention, and live owners defer
@@ -403,9 +553,6 @@ Per-run artifact retention is independent of detailed-record and summary
 retention. Before pruning a record whose artifacts survive, maintenance writes
 versioned retention metadata beside its artifacts. Unknown artifact ownership
 or invalid metadata fails pruning before deletion.
-
-Successful runs retain their place in the artifact retention window even when
-they produced no artifacts and their detailed records and summaries expire.
 
 Successful runs retain their place in the artifact retention window even when
 they produced no artifacts and their detailed records and summaries expire.
