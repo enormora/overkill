@@ -35,9 +35,9 @@ The binary parses argv, resolves the command name and shared `--config`, then
 delegates to the selected `commandLineRunner` method from
 `@overkill-dev/run/command-line`.
 `commandLineRunner` is one fixed first-party command namespace with methods
-for `runTests`, `listTests`, replay, baseline, benchmark, and benchmark
-baseline commands. Config loading is common command-line infrastructure shared
-by those methods.
+for `runTests`, `listTests`, replay, history, help, baseline, benchmark, and
+benchmark baseline commands. Config loading is common command-line infrastructure
+for project commands; help bypasses it.
 
 Installing a package does not add commands. There is no package-name scan,
 implicit npm discovery, dynamic command registry, or plugin lifecycle in the
@@ -100,6 +100,13 @@ final-result reporter remains. There is no `--reporter` lookup flag; reporters
 are selected through imported configuration values, not package-name discovery
 or a CLI registry.
 
+### Help
+
+`overkill help [command...]` and `<command> --help` render the same installed-version
+command reference. `overkill --help` renders the top-level reference. Help works
+offline, without project configuration, discovery, or runtime-state access. See
+[Documentation Strategy](../documentation-strategy.md#installed-version-help).
+
 ### Property Corpus
 
 Corpus commands use the typed runner APIs `inspectCorpus(...)`,
@@ -128,17 +135,35 @@ The `history` namespace operates on runtime-owned run history under
 `runtimeStateDir`. It does not run tests and it does not inspect checked-in
 baseline artifacts, witnesses, or corpus entries.
 
-| Command                            | Behavior                                                                            | Reference                                                                                                   |
-| ---------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `overkill history list`            | Show persisted run summaries, including pruned non-replayable summaries.            | [Reproducibility § Compact History](../architecture/reproducibility.md#compact-history)                     |
-| `overkill history prune`           | Apply retention to detailed run records, per-run artifacts, and compact history.    | [Reproducibility § Retention And Maintenance](../architecture/reproducibility.md#retention-and-maintenance) |
-| `overkill history prune --dry-run` | Print what `prune` would remove without deleting anything.                          | same                                                                                                        |
-| `overkill history compact`         | Rebuild or repair the compact history index from retained detailed records.         | same                                                                                                        |
-| `overkill history clear`           | Delete run history state under `runtimeStateDir`; requires confirmation or `--yes`. | same                                                                                                        |
+| Command                                              | Behavior                                                                            | Reference                                                                                                         |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `overkill history list`                              | Show persisted run summaries, including pruned non-replayable summaries.            | [Reproducibility § Compact History](../architecture/reproducibility.md#compact-history)                           |
+| `overkill history show <run-id>`                     | Inspect recorded failures, diffs, output, facts, and artifact availability.         | [Reproducibility § Retained Evidence Inspection](../architecture/reproducibility.md#retained-evidence-inspection) |
+| `overkill history case --file <path> --title <text>` | Show compact observations for matching recorded cases.                              | same                                                                                                              |
+| `overkill history compare <before-id> <after-id>`    | Compare retained work outcomes and recorded execution conditions.                   | [Reproducibility § Recorded Run Comparison](../architecture/reproducibility.md#recorded-run-comparison)           |
+| `overkill history prune`                             | Apply retention to detailed run records, per-run artifacts, and compact history.    | [Reproducibility § Retention And Maintenance](../architecture/reproducibility.md#retention-and-maintenance)       |
+| `overkill history prune --dry-run`                   | Print what `prune` would remove without deleting anything.                          | same                                                                                                              |
+| `overkill history compact`                           | Rebuild or repair the compact history index from retained detailed records.         | same                                                                                                              |
+| `overkill history clear`                             | Delete run history state under `runtimeStateDir`; requires confirmation or `--yes`. | same                                                                                                              |
 
 `history list` shows run id, start time, selected profile, test family,
 aggregate status, duration, and replay availability. Aggregate status is one
 of `passed`, `failed`, `runner-error`, `interrupted`, or `inconclusive`.
+
+`history case` requires both file and title selectors and uses the existing file
+and title matching rules against stored identities, without current discovery.
+It returns every match with its structured case identity rather than choosing an
+ambiguous match. Typed callers use `inspectCaseHistory` with an exact `CaseId`.
+
+`history show` and `history compare` require explicit ids; neither silently
+chooses the latest run. Their typed counterparts are `inspectRun` and
+`compareRuns`. Read commands succeed when requested evidence can be read,
+including records containing failed tests or comparisons containing regressions.
+Partial evidence is marked unavailable in the output; missing requested records,
+no matching case history, corrupt data, unsupported schemas, or unavailable
+comparison results produce a nonzero exit. A readable summary whose details were
+pruned remains inspectable. Read commands never execute tests or write runtime
+state. Inspection and replay remain separate operations.
 
 `history clear` deletes detailed run records, per-run artifacts, compact run
 summaries, and compact case/work history. It does not delete baselines,

@@ -82,6 +82,22 @@ They are useful for maintainers and contributors, but they should not be
 mixed into the primary product explanation or treated as part of the settled
 user-facing concept surface.
 
+## Installed-Version Help
+
+The standard distribution ships offline command reference and concise authoring
+guidance matching its installed version. `overkill help [command...]` and
+`<command> --help` expose command usage; top-level help links the authoring
+guidance. Help requires neither a project nor a network connection and does not
+load configuration, test modules, compilers, or execution backends.
+
+Maintain one documentation source for terminal help, section 1 man pages, and
+the corresponding web reference. Generate and package these outputs with the
+release so commands, defaults, examples, and documented version cannot drift
+independently. The package includes `overkill(1)` and command pages discoverable
+from terminal help. Installing the package need not modify the system man path;
+help identifies the bundled pages and how to read them. Ordinary runtime imports
+do not load documentation assets or their generator.
+
 ## API Presentation
 
 The API overview should not dump every helper equally.

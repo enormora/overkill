@@ -397,6 +397,30 @@ canonical Unicode equivalence note when relevant, and arrays or objects add shal
 identity-oriented hints. Terminal output is capped to keep local failures
 readable; machine-readable reporters still receive the structured result.
 
+## Failure Follow-Up
+
+First-party line and brief diagnostics include concise references to available
+failure artifacts and runner-provided rerun guidance when execution context is
+known. They reuse the existing source locations, structured diffs, and witness
+commands rather than introducing another diagnostic representation.
+Brief failure output includes a bounded expected/actual or diff excerpt when
+available and useful to explain the failed check, with explicit truncation.
+
+Orchestration supplies structured follow-up intent with profile, file, selection,
+runtime/workload identity, and seed where applicable. CLI rendering quotes paths
+and filter operands for the stated shell. A command uses supported selection
+syntax; if it selects more than the failed work, it explicitly names that broader
+scope. Unrepresentable family variants or missing configuration are not replaced
+with an apparently exact command. Direct engine consumers without runner context
+still receive failure evidence without invented CLI guidance.
+
+Retained-run inspection reuses brief diagnostic formatting and labels evidence as
+historical. It identifies missing or pruned artifacts and offers rerun guidance only
+when the retained context supports it. Inspection never re-executes a test to
+reconstruct missing output. Existing witness guidance takes precedence when replay
+of a concrete failing input is available; a generic rerun does not reproduce that
+input automatically. Incomplete witnesses never receive replay commands.
+
 ## Dot Reporter Rendering
 
 `@overkill-dev/reporter-dot` is a compact raw stdout reporter for local and CI
