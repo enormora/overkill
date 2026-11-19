@@ -258,6 +258,65 @@ samples without run identity survive migration; records started before the
 migration cutoff do not add duration samples during repair. Migrated counters
 start from the observations still available.
 
+## Retained Evidence Inspection
+
+`@overkill-dev/run` exposes typed `inspectRun`, `inspectCaseHistory`, and
+`compareRuns` operations. They read retained runtime state without collecting
+tests, importing application modules, acquiring resources, or executing bodies.
+They require neither Git nor coverage. Callers supply the runtime-state location
+explicitly; CLI configuration resolution follows the ordinary CLI contract.
+
+`inspectRun` accepts an explicit run id and returns its recorded status, facts,
+failures, structured assertion diffs, captured output, and artifact references.
+Single and merged records are inspectable. Inspection preserves attempt and full
+work identity, run-scoped errors, truncation, and completeness metadata. Artifact
+references include availability; inspecting a record does not eagerly load every
+external artifact. A retained summary without its detailed record is still useful
+but cannot supply the pruned diagnostics.
+
+`inspectCaseHistory` accepts a structured `CaseId` and returns retained compact
+observations in time order, aggregate counters, and detailed-record availability.
+Compact case observations aggregate variants as defined above; variant and attempt
+details are available only from retained detailed records. History does not imply
+an observation for every execution: unrecorded runs are absent, and retention
+bounds the observations still available.
+
+Readers distinguish available evidence, evidence not recorded, and evidence no
+longer retained. Missing files with otherwise unknown provenance are unavailable,
+not assumed pruned. Corrupt or unsupported records produce explicit read errors.
+An unknown id or identity is unavailable, not a passing result or an empty failure
+report. Inspection never repairs, prunes, or writes history implicitly. Historical
+readers reuse versioned record decoders and bounded diagnostic data without loading
+the producing test family, browser provider, or compiler.
+
+### Recorded Run Comparison
+
+`compareRuns` accepts explicit before and after run ids and compares their retained
+detailed results by full `WorkId`. The result separates:
+
+- failures newly observed after a previous successful execution
+- successful executions after a previous failure
+- other verdict transitions, including skipped and inconclusive outcomes
+- identities observed in only one result
+- planned work without a completed result, when the retained plan establishes it
+
+Only-in-one-result identities are not described as added or removed tests. Different
+selections, shards, interrupted runs, or unavailable evidence can explain their
+absence. A skipped or inconclusive result is not a recovery. Retries compare final
+authoritative verdicts while preserving attempt evidence for inspection.
+
+Comparison reports recorded differences in profile, family/version, selection,
+runtime, workload, seed, and execution conditions alongside transitions. It does
+not merge distinct variants, infer renamed cases, certify freshness, or attribute
+failures to source changes. Unknown conditions remain unknown. Missing detailed
+results make comparison unavailable; compact summaries are not substituted for
+work-level evidence. Comparison creates no merged record or new execution result.
+
+CLI commands and read-operation exit behavior are defined in
+[CLI Reference](../reference/cli.md#history). Human output reuses the brief
+reporter's diagnostic formatting; typed callers receive structured evidence rather
+than parsed terminal text.
+
 ## Retention And Maintenance
 
 Run-record retention is global project policy under top-level `history`
