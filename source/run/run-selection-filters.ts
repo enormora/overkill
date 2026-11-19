@@ -169,28 +169,28 @@ function hasInvalidSuiteItem(value: unknown): boolean {
 
 const caseIdFieldValidators: readonly CaseIdFieldValidator[] = [
     function invalidCaseFile(id) {
-        if (typeof id['file'] !== 'string' && id['file'] !== null) {
+        if (typeof id.file !== 'string' && id.file !== null) {
             return 'Run filter case id file must be a string or null.';
         }
 
         return null;
     },
     function invalidCaseTitle(id) {
-        if (typeof id['title'] !== 'string' || id['title'].trim().length === 0) {
+        if (typeof id.title !== 'string' || id.title.trim().length === 0) {
             return 'Run filter case id title must be a non-empty string.';
         }
 
         return null;
     },
     function invalidCaseParams(id) {
-        if (typeof id['params'] !== 'string' && id['params'] !== null) {
+        if (typeof id.params !== 'string' && id.params !== null) {
             return 'Run filter case id params must be a string or null.';
         }
 
         return null;
     },
     function invalidCaseSuite(id) {
-        if (hasInvalidSuiteItem(id['suite'])) {
+        if (hasInvalidSuiteItem(id.suite)) {
             return 'Run filter case id suite must contain non-empty strings.';
         }
 
@@ -222,7 +222,7 @@ function invalidStringFilterMessage(
     filter: Readonly<Record<string, unknown>>,
     valueField: 'pattern' | 'value'
 ): string | null {
-    if (!isRunStringFilterField(filter['field'])) {
+    if (!isRunStringFilterField(filter.field)) {
         return 'Run filter field is unknown.';
     }
 
@@ -234,7 +234,7 @@ function invalidStringFilterMessage(
 }
 
 function invalidCompositeFilterMessage(filter: Readonly<Record<string, unknown>>): string | null {
-    if (!Array.isArray(filter['filters']) || filter['filters'].length === 0) {
+    if (!Array.isArray(filter.filters) || filter.filters.length === 0) {
         return 'Composite run filters must contain at least one child filter.';
     }
 
@@ -252,7 +252,7 @@ function invalidRuntimeFieldsMessage(
     filter: Readonly<Record<string, unknown>>,
     fields: readonly string[]
 ): string | null {
-    const label = typeof filter['kind'] === 'string' ? runtimeFilterLabels[filter['kind']] : undefined;
+    const label = typeof filter.kind === 'string' ? runtimeFilterLabels[filter.kind] : undefined;
 
     for (const field of fields) {
         const value = filter[field];
@@ -267,12 +267,12 @@ function invalidRuntimeFieldsMessage(
 
 const filterNodeValidators: Readonly<Record<string, FilterNodeValidator>> = {
     'work-id': function invalidWorkIdentity(filter) {
-        return workIdSchema.safeParse(filter['id']).success ? null : 'Run filter work id is invalid.';
+        return workIdSchema.safeParse(filter.id).success ? null : 'Run filter work id is invalid.';
     },
     all: invalidCompositeFilterMessage,
     any: invalidCompositeFilterMessage,
     'case-id': function invalidCaseIdFilter(filter) {
-        return invalidCaseIdMessage(filter['id']);
+        return invalidCaseIdMessage(filter.id);
     },
     contains: function invalidContainsFilter(filter) {
         return invalidStringFilterMessage(filter, 'value');
@@ -284,7 +284,7 @@ const filterNodeValidators: Readonly<Record<string, FilterNodeValidator>> = {
         return invalidStringFilterMessage(filter, 'pattern');
     },
     not: function invalidNotFilter(filter) {
-        return isRecord(filter['filter']) ? null : 'Run filter must be an object.';
+        return isRecord(filter.filter) ? null : 'Run filter must be an object.';
     },
     runtime: function invalidRuntimeFilter(filter) {
         return invalidRuntimeFieldsMessage(filter, [ 'runtime' ]);
@@ -301,17 +301,17 @@ const filterNodeValidators: Readonly<Record<string, FilterNodeValidator>> = {
 };
 
 function invalidKnownFilterMessage(filter: Readonly<Record<string, unknown>>): string | null {
-    const validate = typeof filter['kind'] === 'string' ? filterNodeValidators[filter['kind']] : undefined;
+    const validate = typeof filter.kind === 'string' ? filterNodeValidators[filter.kind] : undefined;
 
     return validate === undefined ? 'Run filter kind is unknown.' : validate(filter);
 }
 
 function filterChildren(filter: Readonly<Record<string, unknown>>): readonly unknown[] {
-    if ((filter['kind'] === 'all' || filter['kind'] === 'any') && Array.isArray(filter['filters'])) {
-        return filter['filters'];
+    if ((filter.kind === 'all' || filter.kind === 'any') && Array.isArray(filter.filters)) {
+        return filter.filters;
     }
 
-    return filter['kind'] === 'not' ? [ filter['filter'] ] : [];
+    return filter.kind === 'not' ? [ filter.filter ] : [];
 }
 
 function invalidFilterNodeMessage(filter: unknown): string | null {
@@ -361,12 +361,12 @@ export function invalidRunSelectionMessage(selection: unknown): string | null {
         return 'Run selection must be an object.';
     }
 
-    if (selection['kind'] === 'all' || selection['kind'] === 'none') {
+    if (selection.kind === 'all' || selection.kind === 'none') {
         return null;
     }
 
-    if (selection['kind'] === 'filter') {
-        return invalidRunFilterMessage(selection['filter']);
+    if (selection.kind === 'filter') {
+        return invalidRunFilterMessage(selection.filter);
     }
 
     return 'Run selection kind is unknown.';

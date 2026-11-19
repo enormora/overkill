@@ -79,7 +79,7 @@ export const testNode = suite('runner managed runtime composition', [
         const [ scoped ] = Object.values(resources);
         scope.require.defined(scoped);
         scope.assert.includes(scoped.name, 'service@');
-        const dependency = scoped.dependencies['connection'];
+        const dependency = scoped.dependencies.connection;
         scope.require.defined(dependency);
         scope.assert.includes(dependency.name, 'connection@');
         scope.assert.deepEqual(lifecycleScenarioBindings(dependency), { mode: 'alternate' });

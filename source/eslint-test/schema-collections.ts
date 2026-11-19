@@ -8,11 +8,11 @@ type PropertyEntry = { readonly name: string; readonly data: unknown; readonly p
 type Build = (value: unknown) => PropertyGenerator<unknown>;
 
 function bounds(schema: Schema): CollectionBounds {
-    const minLength = typeof schema['minItems'] === 'number' ? schema['minItems'] : 0;
+    const minLength = typeof schema.minItems === 'number' ? schema.minItems : 0;
     return {
         minLength,
-        maxLength: typeof schema['maxItems'] === 'number'
-            ? schema['maxItems']
+        maxLength: typeof schema.maxItems === 'number'
+            ? schema.maxItems
             : Math.max(defaultMaximumItems, minLength)
     };
 }
@@ -20,12 +20,12 @@ function bounds(schema: Schema): CollectionBounds {
 function tuple(schema: Schema, items: readonly unknown[], build: Build): PropertyGenerator<unknown> {
     const elements = items.map(build);
     const { minLength, maxLength } = bounds(schema);
-    const limit = schema['additionalItems'] === false ? Math.min(maxLength, elements.length) : maxLength;
+    const limit = schema.additionalItems === false ? Math.min(maxLength, elements.length) : maxLength;
     return gen
         .integer({ min: minLength, max: limit })
         .flatMap(function length(size) {
-            const extra = typeof schema['additionalItems'] === 'object' && schema['additionalItems'] !== null
-                ? build(schema['additionalItems'])
+            const extra = typeof schema.additionalItems === 'object' && schema.additionalItems !== null
+                ? build(schema.additionalItems)
                 : jsonValue();
             return gen.tuple(...Array.from({ length: size }, function element(_value, index) {
                 return elements[index] ?? extra;
@@ -37,10 +37,10 @@ function tuple(schema: Schema, items: readonly unknown[], build: Build): Propert
 }
 
 function array(schema: Schema, build: Build): PropertyGenerator<unknown> {
-    if (Array.isArray(schema['items'])) {
-        return tuple(schema, schema['items'], build);
+    if (Array.isArray(schema.items)) {
+        return tuple(schema, schema.items, build);
     }
-    const element = schema['items'] === undefined ? jsonValue() : build(schema['items']);
+    const element = schema.items === undefined ? jsonValue() : build(schema.items);
     return gen.array(element, bounds(schema)).map(function values(value): unknown {
         return value;
     });
@@ -62,8 +62,8 @@ function optionalProperty(
 }
 
 function object(schema: Schema, build: Build): PropertyGenerator<unknown> {
-    const properties = readSchema(schema['properties'] ?? {});
-    const required = Array.isArray(schema['required']) ? schema['required'] : [];
+    const properties = readSchema(schema.properties ?? {});
+    const required = Array.isArray(schema.required) ? schema.required : [];
     const names = Array.from(
         new Set([
             ...Object.keys(properties),
@@ -90,5 +90,5 @@ function object(schema: Schema, build: Build): PropertyGenerator<unknown> {
 }
 
 export function collectionSchema(schema: Schema, build: Build): PropertyGenerator<unknown> {
-    return schema['type'] === 'array' ? array(schema, build) : object(schema, build);
+    return schema.type === 'array' ? array(schema, build) : object(schema, build);
 }

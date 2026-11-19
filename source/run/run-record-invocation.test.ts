@@ -120,7 +120,7 @@ function assertReplayPlanSnapshot(scope: TestScope, fixture: CoverageRecordFixtu
 
 export const testNode = suite('ordinary and reusable recording invocations', [
     test('profile-required recording persists without an explicit request', async function (scope: TestScope) {
-        const profile = config.profiles['microtest'];
+        const profile = config.profiles.microtest;
         scope.require.defined(profile);
         const required = {
             ...config,
@@ -149,7 +149,7 @@ export const testNode = suite('ordinary and reusable recording invocations', [
     test('invalid profile persistence fails before starting a record', async function (scope: TestScope) {
         await withMemoryCoverageRecordFixture(config, [], async function execute(fixture) {
             const { command, orchestrator } = recordedInvocation(fixture);
-            const profile = command.config.profiles['microtest'];
+            const profile = command.config.profiles.microtest;
             scope.require.defined(profile);
             const runRecords = { ...profile.runRecords };
             Reflect.set(runRecords, 'persist', 'invalid');

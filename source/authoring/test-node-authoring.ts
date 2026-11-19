@@ -179,10 +179,10 @@ function readTestDefinition(value: unknown): RuntimeTestDefinition {
     const definition = readAuthoringRecord(value, testArgumentsError);
 
     return {
-        annotations: readAuthoringAnnotations(definition['annotations'] ?? {}),
-        body: readAuthoringTestImplementation(definition['body']),
-        controls: readAuthoringControls(definition['controls'] ?? {}),
-        title: readAuthoringString(definition['title'], testArgumentsError)
+        annotations: readAuthoringAnnotations(definition.annotations ?? {}),
+        body: readAuthoringTestImplementation(definition.body),
+        controls: readAuthoringControls(definition.controls ?? {}),
+        title: readAuthoringString(definition.title, testArgumentsError)
     };
 }
 
@@ -190,10 +190,10 @@ function readSkippedTestDefinition(value: unknown): RuntimeSkippedTestDefinition
     const definition = readAuthoringRecord(value, skippedTestArgumentsError);
 
     return {
-        annotations: readAuthoringAnnotations(definition['annotations'] ?? {}),
-        controls: readAuthoringControls(definition['controls'] ?? {}),
-        reason: readReason(definition['reason']),
-        title: readAuthoringString(definition['title'], skippedTestArgumentsError)
+        annotations: readAuthoringAnnotations(definition.annotations ?? {}),
+        controls: readAuthoringControls(definition.controls ?? {}),
+        reason: readReason(definition.reason),
+        title: readAuthoringString(definition.title, skippedTestArgumentsError)
     };
 }
 
@@ -201,10 +201,10 @@ function readSuiteDefinition(value: unknown): RuntimeSuiteDefinition {
     const definition = readAuthoringRecord(value, suiteArgumentsError);
 
     return {
-        annotations: readAuthoringAnnotations(definition['annotations'] ?? {}),
-        children: readChildren(definition['children'], suiteArgumentsError),
-        controls: readAuthoringControls(definition['controls'] ?? {}),
-        title: readAuthoringString(definition['title'], suiteArgumentsError)
+        annotations: readAuthoringAnnotations(definition.annotations ?? {}),
+        children: readChildren(definition.children, suiteArgumentsError),
+        controls: readAuthoringControls(definition.controls ?? {}),
+        title: readAuthoringString(definition.title, suiteArgumentsError)
     };
 }
 

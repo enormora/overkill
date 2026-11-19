@@ -63,7 +63,7 @@
         "@enormora/eslint-config-test-base": "0.0.21",
         "@enormora/eslint-config-typescript": "0.0.58",
         "@enormora/objectory": "0.0.25",
-        "@enormora/tsconfig-node": "0.0.2",
+        "@enormora/tsconfig-node": "0.0.3",
         "@ls-lint/ls-lint": "2.3.2",
         "@overkill-dev/assert": "0.0.69",
         "@overkill-dev/doubles": "0.0.67",

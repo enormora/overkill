@@ -107,7 +107,7 @@ export function checkResolvedConfig(
     checkRules(actual, expected);
     const { parser, ...language } = expected.languageOptions;
     if (Object.hasOwn(expected.languageOptions, 'parser')) {
-        assert.equal(actual.languageOptions['parser'], parser, 'Parser identity differs.');
+        assert.equal(actual.languageOptions.parser, parser, 'Parser identity differs.');
     }
     assert.partialDeepStrictEqual(actual.languageOptions, language);
     assert.partialDeepStrictEqual(actual.settings, expected.settings);

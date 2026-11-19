@@ -87,7 +87,7 @@ async function connectRegisteredCampaign(
     input: RunnerInitialization,
     connect: MutationInitializationRuntime['connect']
 ): Promise<CampaignClient> {
-    const endpoint = campaignEndpointSchema.parse(input.options['overkillCampaign'] ?? defaultCampaignEndpoint);
+    const endpoint = campaignEndpointSchema.parse(input.options.overkillCampaign ?? defaultCampaignEndpoint);
     const client = await connect(endpoint, input.signal);
     input.connected(client);
     return client;
@@ -103,7 +103,7 @@ export async function initializeCampaignRunner(
     input: RunnerInitialization,
     runtime: MutationInitializationRuntime
 ): Promise<ReadyMutationRunner> {
-    const settings = parseRunnerOptions(input.options['overkill']);
+    const settings = parseRunnerOptions(input.options.overkill);
     input.logger.info('Overkill campaign seed: %s', settings.seed);
     const sandbox = await runtime.sandbox({ originalRoot, cwd: process.cwd(), fileDescriptions: input.files });
     await runtime.exclude(sandbox);

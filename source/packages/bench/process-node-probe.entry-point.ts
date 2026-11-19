@@ -37,12 +37,12 @@ function childRuntimeProbe(port: number, token: string, reportPath: string): voi
     });
 }
 
-const endpoint = process.env['OVERKILL_BENCH_PROBE_PORT'];
-const token = process.env['OVERKILL_BENCH_PROBE_TOKEN'];
-const reportPath = process.env['OVERKILL_BENCH_PROBE_REPORT'];
+const endpoint = process.env.OVERKILL_BENCH_PROBE_PORT;
+const token = process.env.OVERKILL_BENCH_PROBE_TOKEN;
+const reportPath = process.env.OVERKILL_BENCH_PROBE_REPORT;
 if (isMainThread && endpoint !== undefined && token !== undefined && reportPath !== undefined) {
-    delete process.env['OVERKILL_BENCH_PROBE_PORT'];
-    delete process.env['OVERKILL_BENCH_PROBE_TOKEN'];
-    delete process.env['OVERKILL_BENCH_PROBE_REPORT'];
+    delete process.env.OVERKILL_BENCH_PROBE_PORT;
+    delete process.env.OVERKILL_BENCH_PROBE_TOKEN;
+    delete process.env.OVERKILL_BENCH_PROBE_REPORT;
     childRuntimeProbe(Number(endpoint), token, reportPath);
 }

@@ -29,7 +29,7 @@ export function witnessReplayInput(): ReplayContext & ReplayWitnessInput {
             }
         }
     });
-    const profile = config.profiles['integration'];
+    const profile = config.profiles.integration;
     if (profile === undefined) {
         throw new Error('Missing integration profile.');
     }

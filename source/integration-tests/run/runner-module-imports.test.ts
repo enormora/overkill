@@ -14,7 +14,7 @@ import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { assertModuleBenchmark, assertFailedTimeline } from './module-import-assertions.test.ts';
 
 function hostedModuleCommand(command: RunCommand): RunCommand {
-    const profile = command.config.profiles['imports'];
+    const profile = command.config.profiles.imports;
     if (profile?.testFamily !== 'benchmark' || profile.execution.processModel !== 'worker-pool') {
         throw new Error('Missing module benchmark profile.');
     }

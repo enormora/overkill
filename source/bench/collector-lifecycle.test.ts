@@ -253,7 +253,7 @@ export const testNode = suite('collector lifecycle ownership', [
                 return 1;
             }
         );
-        const reading = measured.metrics['count'];
+        const reading = measured.metrics.count;
         scope.require.defined(reading);
         scope.assert.partialDeepEqual(reading, { availability: 'unavailable' });
         scope.assert.true(reading.availability === 'unavailable' && reading.reason === 'overflow');

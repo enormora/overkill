@@ -121,14 +121,14 @@ function attributeValue(span: Readonly<Record<string, unknown>>, key: string): u
             return record(value, `attribute ${index}`);
         })
         .find(function hasKey(value) {
-            return value['key'] === key;
+            return value.key === key;
         });
 
     if (attribute === undefined) {
         throw new Error(`Expected attribute "${key}".`);
     }
 
-    return attribute['value'];
+    return attribute.value;
 }
 
 function exportedSpans(content: string): readonly Readonly<Record<string, unknown>>[] {
@@ -142,13 +142,13 @@ function exportedSpans(content: string): readonly Readonly<Record<string, unknow
 }
 
 function assertRootSpan(scope: OverkillScope, span: Readonly<Record<string, unknown>>): void {
-    scope.assert.equal(span['name'], 'overkill.run');
-    scope.assert.equal(span['traceId'], '00000000000000000000000000000001');
-    scope.assert.equal(span['spanId'], '0000000000000001');
-    scope.assert.equal(span['parentSpanId'], '');
-    scope.assert.equal(span['startTimeUnixNano'], '1700000000000000000');
-    scope.assert.equal(span['endTimeUnixNano'], '1700000000000050000');
-    scope.assert.deepEqual(span['status'], { code: 2 });
+    scope.assert.equal(span.name, 'overkill.run');
+    scope.assert.equal(span.traceId, '00000000000000000000000000000001');
+    scope.assert.equal(span.spanId, '0000000000000001');
+    scope.assert.equal(span.parentSpanId, '');
+    scope.assert.equal(span.startTimeUnixNano, '1700000000000000000');
+    scope.assert.equal(span.endTimeUnixNano, '1700000000000050000');
+    scope.assert.deepEqual(span.status, { code: 2 });
     scope.assert.deepEqual(attributeValue(span, 'overkill.run.summary.failed'), { intValue: '1' });
     scope.assert.deepEqual(attributeValue(span, 'overkill.run.summary.process_exhausted'), { intValue: '1' });
     scope.assert.deepEqual(attributeValue(span, 'overkill.timing.aggregate.resource.acquire.count'), {
@@ -157,13 +157,13 @@ function assertRootSpan(scope: OverkillScope, span: Readonly<Record<string, unkn
 }
 
 function assertChildSpan(scope: OverkillScope, span: Readonly<Record<string, unknown>>): void {
-    scope.assert.equal(span['name'], 'overkill.timing.resource.acquire');
-    scope.assert.equal(span['traceId'], '00000000000000000000000000000001');
-    scope.assert.equal(span['spanId'], '0000000000000002');
-    scope.assert.equal(span['parentSpanId'], '0000000000000001');
-    scope.assert.equal(span['startTimeUnixNano'], '1700000000000010000');
-    scope.assert.equal(span['endTimeUnixNano'], '1700000000000030000');
-    scope.assert.deepEqual(span['status'], { code: 2 });
+    scope.assert.equal(span.name, 'overkill.timing.resource.acquire');
+    scope.assert.equal(span.traceId, '00000000000000000000000000000001');
+    scope.assert.equal(span.spanId, '0000000000000002');
+    scope.assert.equal(span.parentSpanId, '0000000000000001');
+    scope.assert.equal(span.startTimeUnixNano, '1700000000000010000');
+    scope.assert.equal(span.endTimeUnixNano, '1700000000000030000');
+    scope.assert.deepEqual(span.status, { code: 2 });
     scope.assert.deepEqual(attributeValue(span, 'overkill.resource.name'), { stringValue: 'database' });
 }
 
@@ -254,8 +254,8 @@ export const testNode = createOverkillSuite({
                 }
 
                 const spans = exportedSpans(write.content);
-                scope.assert.deepEqual(entry(spans, 0, 'root span')['status'], {});
-                scope.assert.deepEqual(entry(spans, 1, 'child span')['status'], {});
+                scope.assert.deepEqual(entry(spans, 0, 'root span').status, {});
+                scope.assert.deepEqual(entry(spans, 1, 'child span').status, {});
 
                 return scope.assert.collect();
             }

@@ -57,7 +57,7 @@ export const testNode = suite('final result reporter preparation', [
         const definition = defineReporter({
             createReporter: createInMemoryFinalResultReporter(),
             validateRunFacts(facts) {
-                if (facts['value'] !== 42) {
+                if (facts.value !== 42) {
                     throw new TypeError('Missing required fact.');
                 }
             }

@@ -18,7 +18,7 @@ export function createOverkillTestRunner(
         clock: createClock(),
         initialize: initializeMutationRunner
     });
-    const invocations = createMutationRunnerInvocations(createMutationBaseline(), options['ignoreStatic'] === true);
+    const invocations = createMutationRunnerInvocations(createMutationBaseline(), options.ignoreStatic === true);
     return {
         async capabilities() {
             const runner = await lifecycle.ready(null);

@@ -20,7 +20,7 @@ function familyProfile(definition: TestFamily<null>): DefinedFamilyProfile {
             }
         }
     });
-    const profile = config.profiles['custom'];
+    const profile = config.profiles.custom;
     if (profile === undefined || !isDefinedFamilyProfile(profile)) {
         throw new Error('Missing test profile.');
     }
@@ -58,7 +58,7 @@ export const testNode = suite('family recording policy', [
         return scope.assert.collect();
     }),
     test('rejects replacement of a recorded family with a built-in profile', async function (scope: TestScope) {
-        const current = normalizeConfig({ profiles: { custom: { testFamily: 'microtest' } } }).profiles['custom'];
+        const current = normalizeConfig({ profiles: { custom: { testFamily: 'microtest' } } }).profiles.custom;
         scope.require.defined(current);
         await scope.assert.rejects(async function restoreChangedKind() {
             await restoreFamilyReplayProfile(recordedReplayProfile(familyProfile(family)), current);

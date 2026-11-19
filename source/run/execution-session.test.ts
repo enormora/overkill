@@ -32,7 +32,7 @@ async function sessionOptions(
     files: readonly string[]
 ): Promise<RunExecutionSessionOptions> {
     const command = collectedRunCommand();
-    const profile = command.config.profiles['microtest'];
+    const profile = command.config.profiles.microtest;
     if (profile?.testFamily !== 'microtest') {
         throw new Error('Missing microtest fixture profile.');
     }
@@ -191,7 +191,7 @@ export const testNode = suite('public execution session boundaries', [
             scope.assert.equal(reply.result.summary.discovered, 3);
             scope.assert.equal(reply.result.summary.planned, 1);
             scope.assert.equal(reply.result.perTest.length, 1);
-            scope.assert.equal(reply.result.bySuite['fixture']?.planned, 1);
+            scope.assert.equal(reply.result.bySuite.fixture?.planned, 1);
             return scope.assert.collect();
         });
     }),

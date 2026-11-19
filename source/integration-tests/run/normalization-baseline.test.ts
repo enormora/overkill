@@ -10,7 +10,7 @@ import { normalizationCommand, normalizationReferences } from '../../test-suppor
 import { normalizationBaselineAdapter } from '../../test-support/normalization-baseline-adapter.ts';
 
 function withBaselineAdapters(command: RunCommand, adapters: readonly string[]): RunCommand {
-    const profile = command.config.profiles['bench'];
+    const profile = command.config.profiles.bench;
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Expected benchmark profile.');
     }
@@ -52,7 +52,7 @@ async function saveReference(scope: TestScope, command: RunCommand): Promise<voi
     scope.assert.equal(saved.writeOutcome.kind, 'written');
 }
 async function performanceStore(command: RunCommand): Promise<PerformanceBaselineStore> {
-    const profile = command.config.profiles['bench'];
+    const profile = command.config.profiles.bench;
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Expected benchmark profile.');
     }
@@ -74,7 +74,7 @@ async function replaceSavedCalibration(
     if (baseline.normalization === null) {
         throw new Error('Expected normalized baseline.');
     }
-    const metric = baseline.normalization.metrics['value'];
+    const metric = baseline.normalization.metrics.value;
     scope.require.defined(metric);
     const normalization = {
         ...baseline.normalization,
@@ -100,7 +100,7 @@ function assertSavedReference(scope: TestScope, result: RunResult): void {
     scope.require.defined(measured);
     const { normalization } = measured;
     scope.require.defined(normalization);
-    const metric = normalization.metrics['value'];
+    const metric = normalization.metrics.value;
     scope.require.defined(metric);
     scope.assert.equal(metric.source, 'baseline');
     scope.assert.equal(metric.summary?.median, 200);
@@ -108,7 +108,7 @@ function assertSavedReference(scope: TestScope, result: RunResult): void {
     scope.assert.equal(measured.budgets[0]?.estimate, 0.5);
 }
 function rawCommand(command: RunCommand): RunCommand {
-    const profile = command.config.profiles['bench'];
+    const profile = command.config.profiles.bench;
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Expected benchmark profile.');
     }
@@ -148,7 +148,7 @@ async function assertStaleDiffAndApply(scope: TestScope, raw: RunCommand): Promi
     scope.assert.deepEqual(await store.list(), []);
 }
 function boundedCapture(command: RunCommand): RunCommand {
-    const profile = command.config.profiles['bench'];
+    const profile = command.config.profiles.bench;
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Expected benchmark profile.');
     }
@@ -166,7 +166,7 @@ function boundedCapture(command: RunCommand): RunCommand {
     };
 }
 function completeCapture(command: RunCommand): RunCommand {
-    const profile = command.config.profiles['bench'];
+    const profile = command.config.profiles.bench;
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Expected benchmark profile.');
     }

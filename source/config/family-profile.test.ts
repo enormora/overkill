@@ -136,9 +136,9 @@ export const testNode = suite('imported family profiles', [
         });
         validateNormalizedConfig(config);
         const snapshot = copyConfig(config);
-        scope.assert.equal(snapshot.profiles['custom']?.testFamily, family);
+        scope.assert.equal(snapshot.profiles.custom?.testFamily, family);
         scope.assert.deepEqual(events, []);
-        scope.assert.equal(config.profiles['microtest']?.testFamily, 'microtest');
+        scope.assert.equal(config.profiles.microtest?.testFamily, 'microtest');
         return scope.assert.collect();
     }),
     test('parses settings once for direct calls and repeated profile invocations', async function (scope) {

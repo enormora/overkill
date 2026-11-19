@@ -138,7 +138,7 @@ export const testNode = suite('measurement regions and collectors', [
                     return 1;
                 });
         }, { type: Error });
-        scope.assert.equal(runtimeHealthReadings([])['gcObservedCount']?.availability, 'unavailable');
+        scope.assert.equal(runtimeHealthReadings([]).gcObservedCount?.availability, 'unavailable');
         return scope.assert.collect();
     }),
     test('rejects invalid region callbacks and operations before collector acquisition', function (scope) {
@@ -216,9 +216,9 @@ export const testNode = suite('measurement regions and collectors', [
     }),
     test('empty runtime histograms remain unavailable rather than zero', function (scope) {
         const readings = runtimeHealthReadings([ null, null, 0, 0, 0 ]);
-        scope.assert.equal(readings['eventLoopDelayMeanMicroseconds']?.availability, 'unavailable');
-        scope.assert.equal(readings['eventLoopDelayMaximumMicroseconds']?.availability, 'unavailable');
-        scope.assert.equal(readings['gcObservedCount']?.availability, 'available');
+        scope.assert.equal(readings.eventLoopDelayMeanMicroseconds?.availability, 'unavailable');
+        scope.assert.equal(readings.eventLoopDelayMaximumMicroseconds?.availability, 'unavailable');
+        scope.assert.equal(readings.gcObservedCount?.availability, 'available');
         return scope.assert.collect();
     }),
     test('preserves synchronous operation results and runs collectors outside the action', function (scope) {
@@ -392,9 +392,9 @@ export const testNode = suite('measurement regions and collectors', [
             return 'complete';
         });
         scope.assert.equal(measured.value, 'complete');
-        scope.assert.equal(measured.metrics['eventLoopDelayMeanMicroseconds']?.provenance.scope, 'runtime');
-        scope.assert.equal(measured.metrics['eventLoopDelayMeanMicroseconds']?.availability, 'unavailable');
-        scope.assert.equal(measured.metrics['gcObservedDurationMicroseconds']?.provenance.unit, 'microseconds');
+        scope.assert.equal(measured.metrics.eventLoopDelayMeanMicroseconds?.provenance.scope, 'runtime');
+        scope.assert.equal(measured.metrics.eventLoopDelayMeanMicroseconds?.availability, 'unavailable');
+        scope.assert.equal(measured.metrics.gcObservedDurationMicroseconds?.provenance.unit, 'microseconds');
         return scope.assert.collect();
     }),
     test('awaits collector start and stop around the operation', async function (scope) {

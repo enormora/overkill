@@ -56,7 +56,7 @@ export function readWorkloadId(value: unknown): WorkloadId {
     if (!isWorkloadRecord(value)) {
         throw new TypeError('Workload identities require a name and string parameter record.');
     }
-    return Object.freeze({ name: readWorkloadName(value['name']), params: readIdentityParameters(value['params']) });
+    return Object.freeze({ name: readWorkloadName(value.name), params: readIdentityParameters(value.params) });
 }
 
 export function snapshotWorkloadInput(input: WorkloadInput): WorkloadInput {

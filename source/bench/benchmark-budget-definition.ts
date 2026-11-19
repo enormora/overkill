@@ -56,9 +56,9 @@ export function normalizeMetricBudget(metric: string, budget: MetricBudget): Nor
 
     const normalized = budgetSchema.parse({
         metric,
-        minimum: input['minimum'] ?? null,
-        maximum: input['maximum'] ?? null,
-        statistic: input['statistic'] ?? { kind: 'quantile', probability: 0.5 }
+        minimum: input.minimum ?? null,
+        maximum: input.maximum ?? null,
+        statistic: input.statistic ?? { kind: 'quantile', probability: 0.5 }
     });
     return Object.freeze({ ...normalized, statistic: immutableStatistic(normalized.statistic) });
 }

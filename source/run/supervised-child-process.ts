@@ -201,10 +201,10 @@ function sanitizedMicrotestEnvironment(
 ): Record<string, string> {
     const environment = definedEnvironmentVariables(environmentVariables);
 
-    delete environment['NODE_OPTIONS'];
-    delete environment['NODE_CONFIG'];
-    delete environment['NODE_CHANNEL_FD'];
-    delete environment['NODE_UNIQUE_ID'];
+    delete environment.NODE_OPTIONS;
+    delete environment.NODE_CONFIG;
+    delete environment.NODE_CHANNEL_FD;
+    delete environment.NODE_UNIQUE_ID;
 
     return environment;
 }
@@ -387,7 +387,7 @@ const ignoredTraceEnvMutationVariables = new Set([
 function traceEnvMutationVariable(line: string): string | null {
     const match = /^\[--trace-env\] (?:delete|set) "(?<variable>[^"]+)"/u.exec(line);
 
-    return match?.groups?.['variable'] ?? null;
+    return match?.groups?.variable ?? null;
 }
 
 function traceEnvMutation(line: string): TraceEnvMutation | null {

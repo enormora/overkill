@@ -22,7 +22,7 @@ function benchmarkCommand(): RunCommand {
 
 function preparedBenchmark(scope: TestScope): RunResult {
     const command = benchmarkCommand();
-    const profile = command.config.profiles['startup'];
+    const profile = command.config.profiles.startup;
     scope.require.defined(profile);
     if (profile.testFamily !== 'benchmark') {
         throw new Error('Expected benchmark profile.');

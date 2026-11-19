@@ -105,7 +105,7 @@ async function assertDefaultScenario(scope: TestScope): Promise<void> {
         }),
         async function selectedScenario(capture) {
             await capture.attachments.json(evidence, {
-                scenario: capture.scenarios['mode'],
+                scenario: capture.scenarios.mode,
                 owner: capture.handle.scenario
             });
         }

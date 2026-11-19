@@ -24,7 +24,7 @@ function observedValue(input: PerformanceObservationInput): PerformanceObservati
         return { kind: 'missing', reason: 'Raw benchmark samples are unavailable.' };
     }
     const samples = readRawBenchmarkSamples(artifact.payload.content.value);
-    return observedSampleValue(samples.metrics['value'] ?? []);
+    return observedSampleValue(samples.metrics.value ?? []);
 }
 export function normalizationBaselineAdapter(id: string): PerformanceBaselineAdapter {
     return {

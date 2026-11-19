@@ -51,7 +51,7 @@ export const testNode = createSuite({
                 title: `integration normalizes ${maxAttempts} total attempts with default retention`,
                 async body(scope: TestScope) {
                     const config = await integrationConfig({ maxAttempts });
-                    const profile = config.profiles['service'];
+                    const profile = config.profiles.service;
                     scope.require.defined(profile);
                     if (profile.testFamily !== 'integration') {
                         throw new Error('Expected an integration profile.');

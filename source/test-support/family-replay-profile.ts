@@ -11,7 +11,7 @@ export function familyReplayProfile(): FamilyReplayProfileFixture {
     const config = normalizeConfig({
         profiles: { analysis: { testFamily: family, settings: null, files: { include: [ 'source/case.ts' ] } } }
     });
-    const current = config.profiles['analysis'];
+    const current = config.profiles.analysis;
     if (current === undefined || typeof current.testFamily === 'string') {
         throw new Error('Expected a defined family profile.');
     }

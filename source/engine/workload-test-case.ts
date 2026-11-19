@@ -10,14 +10,14 @@ export type WorkloadVariant<Body> = {
 };
 
 function readVariant<Body>(value: unknown, isBody: (value: unknown) => value is Body): WorkloadVariant<Body> {
-    if (!isWorkloadRecord(value) || !isBody(value['body'])) {
+    if (!isWorkloadRecord(value) || !isBody(value.body)) {
         throw new TypeError('Workload test cases require workload identities and body functions.');
     }
-    const id = readWorkloadId(value['id']);
+    const id = readWorkloadId(value.id);
     const parameters = Object.hasOwn(value, 'parameters')
-        ? snapshotWorkloadInput({ id, parameters: snapshotWorkloadParameters(value['parameters']) }).parameters
+        ? snapshotWorkloadInput({ id, parameters: snapshotWorkloadParameters(value.parameters) }).parameters
         : null;
-    return Object.freeze({ body: value['body'], id, parameters });
+    return Object.freeze({ body: value.body, id, parameters });
 }
 
 export function readWorkloadTestCaseVariants<Body>(

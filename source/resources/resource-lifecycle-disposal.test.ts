@@ -203,7 +203,7 @@ async function assertNullDispose(scope: TestScope): Promise<void> {
     const session = await startRuntime({ runtime: nullDisposeRuntime(), signal: testSignal() });
 
     await session.disposeOnce({ signal: testSignal() });
-    scope.assert.equal(session.context['resource'], 'handle');
+    scope.assert.equal(session.context.resource, 'handle');
 }
 
 async function assertInvalidDescriptors(scope: TestScope): Promise<void> {

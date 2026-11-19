@@ -21,7 +21,7 @@ function referenceReading(
     returned: unknown,
     unit: string
 ): Extract<MetricReading, { readonly availability: 'available'; }> {
-    const reading = normalizeBenchmarkMetrics(returned)['reference'];
+    const reading = normalizeBenchmarkMetrics(returned).reference;
     if (reading?.availability !== 'available' || reading.provenance.unit !== unit || reading.value <= 0) {
         throw new TypeError('Calibration must return an available, positive reading in its declared unit.');
     }
@@ -33,7 +33,7 @@ function preciseReference(samples: readonly number[], definition: ReferenceDefin
     const interval = quantileInterval(samples, medianProbability, delta);
     const tolerance = Math.max(
         Math.abs(interval.estimate) * policy.relativePrecision,
-        policy.absolutePrecision['reference'] ?? 0
+        policy.absolutePrecision.reference ?? 0
     );
     return interval.lower !== null && interval.upper !== null &&
         (interval.upper - interval.lower) / intervalSides <= tolerance;

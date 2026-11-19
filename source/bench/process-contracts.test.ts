@@ -99,7 +99,7 @@ export const testNode = suite('external process contracts', [
         const parsed = parseProcessRequest(input);
         environment.MODE = 'changed';
         requestedCommand[1] = 'changed.js';
-        scope.assert.equal(parsed.env?.['MODE'], 'original');
+        scope.assert.equal(parsed.env?.MODE, 'original');
         scope.assert.deepEqual(parsed.command, [ 'node', 'cli.js' ]);
         scope.assert.true(Object.isFrozen(processMeasurement({ instrumentation: 'off' })));
         return scope.assert.collect();

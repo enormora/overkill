@@ -90,7 +90,7 @@ function sourceLocationFromStackGroups(groups: StackFrameGroups): SourceLocation
 }
 
 function isStackFrameGroups(groups: Record<string, string | undefined>): groups is StackFrameGroups {
-    return groups['file'] !== undefined && groups['line'] !== undefined && groups['column'] !== undefined;
+    return groups.file !== undefined && groups.line !== undefined && groups.column !== undefined;
 }
 
 function sourceLocationFromStackLine(line: string): SourceLocation | null {

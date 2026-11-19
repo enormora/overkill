@@ -34,7 +34,7 @@ export const testNode = suite('property reporting', [
             status: summary.status,
             executed: summary.accounting.phases.exploration.executed,
             denominator: summary.coverage.denominator,
-            hits: summary.coverage.phases['exploration'],
+            hits: summary.coverage.phases.exploration,
             seed: summary.runSeed,
             cases: result.perTest.length
         }, {

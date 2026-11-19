@@ -137,7 +137,7 @@ export const testNode = suite('project-backed ESLint properties', [
     }),
     test('requires explicit integration property budgets before execution', async function (scope) {
         const command = await projectPropertyCommand(scope, 'supervised-process');
-        const profile = command.config.profiles['cases'];
+        const profile = command.config.profiles.cases;
         if (profile?.testFamily !== 'integration') {
             throw new TypeError('Expected an integration profile.');
         }

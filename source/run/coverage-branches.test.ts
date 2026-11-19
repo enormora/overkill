@@ -95,7 +95,7 @@ async function assertBranchReports(
     scope.assert.includes(lcov, 'DA:2,1\n');
     scope.assert.deepEqual(
         Array.from(lcov.matchAll(/^BRDA:1,0,[01],(?<count>\d+)$/gmu), function branchCount(match) {
-            return Number(match.groups?.['count']);
+            return Number(match.groups?.count);
         }),
         expected.counts
     );

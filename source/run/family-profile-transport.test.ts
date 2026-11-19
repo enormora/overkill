@@ -40,7 +40,7 @@ function transport(module: FamilyModuleReference | null, source: RunCollectionSo
             }
         }
     });
-    const profile = config.profiles['analysis'];
+    const profile = config.profiles.analysis;
     if (profile === undefined) {
         throw new Error('Missing analysis profile.');
     }

@@ -124,7 +124,7 @@ export const testNode = suite('fixed witness replay preparation', [
     test('requires explicit selection when multiple eligible profiles exist', async function (scope: TestScope) {
         const fixture = witnessReplayAccess(replayPropertyWitness, null);
         const command = propertyReplayCommand(null);
-        const profile = command.config.profiles['integration'];
+        const profile = command.config.profiles.integration;
         scope.require.defined(profile);
         await scope.assert.rejects(async function () {
             await resolvePropertyReplay({

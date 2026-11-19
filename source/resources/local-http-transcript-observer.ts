@@ -154,39 +154,39 @@ function requestUrl(request: IncomingMessage, baseUrl: string): string {
 }
 
 function isObservedServerResponse(value: unknown): value is ObservedServerResponse {
-    return isRecord(value) && typeof value['getHeaders'] === 'function' &&
-        typeof value['statusCode'] === 'number' &&
-        (value['statusMessage'] === undefined || typeof value['statusMessage'] === 'string');
+    return isRecord(value) && typeof value.getHeaders === 'function' &&
+        typeof value.statusCode === 'number' &&
+        (value.statusMessage === undefined || typeof value.statusMessage === 'string');
 }
 
 function serverMessage(message: unknown, server: unknown): ServerDiagnostic | null {
     if (
-        !isRecord(message) || message['server'] !== server || !(message['request'] instanceof IncomingMessage) ||
-        !isObservedServerResponse(message['response'])
+        !isRecord(message) || message.server !== server || !(message.request instanceof IncomingMessage) ||
+        !isObservedServerResponse(message.response)
     ) {
         return null;
     }
 
-    return { request: message['request'], response: message['response'] };
+    return { request: message.request, response: message.response };
 }
 
 function undiciMessage(message: unknown): { readonly request: UndiciRequest; } | null {
-    return isRecord(message) && isRecord(message['request']) ? { request: message['request'] } : null;
+    return isRecord(message) && isRecord(message.request) ? { request: message.request } : null;
 }
 
 function undiciUrl(request: UndiciRequest): string | null {
-    if (typeof request['origin'] !== 'string' || typeof request['path'] !== 'string') {
+    if (typeof request.origin !== 'string' || typeof request.path !== 'string') {
         return null;
     }
 
-    const url = new URL(request['path'], request['origin']);
+    const url = new URL(request.path, request.origin);
 
     return url.href;
 }
 
 function isObservedNodeClientRequest(value: unknown): value is ObservedNodeClientRequest {
-    return isRecord(value) && typeof value['getHeader'] === 'function' && typeof value['method'] === 'string' &&
-        typeof value['path'] === 'string' && typeof value['protocol'] === 'string';
+    return isRecord(value) && typeof value.getHeader === 'function' && typeof value.method === 'string' &&
+        typeof value.path === 'string' && typeof value.protocol === 'string';
 }
 
 function nodeClientUrl(request: ObservedNodeClientRequest): string | null {
@@ -208,11 +208,11 @@ function requestIdentity(method: string, url: string): string {
 }
 
 function undiciRequestIdentity(request: UndiciRequest, url: string): string {
-    if (typeof request['method'] !== 'string') {
+    if (typeof request.method !== 'string') {
         throw new TypeError('Undici diagnostics request method is unavailable.');
     }
 
-    return requestIdentity(request['method'], url);
+    return requestIdentity(request.method, url);
 }
 
 function responseHeader(name: unknown, value: unknown): readonly [string, string] {
@@ -247,17 +247,17 @@ function responseStatusText(status: number, statusText: string | undefined): str
 
 function responseSnapshot(response: UndiciResponse, body: RecordedHttpBody): HttpResponseSnapshot {
     if (
-        typeof response['statusCode'] !== 'number' ||
-        response['statusText'] !== undefined && typeof response['statusText'] !== 'string'
+        typeof response.statusCode !== 'number' ||
+        response.statusText !== undefined && typeof response.statusText !== 'string'
     ) {
         throw new TypeError('Undici diagnostics response metadata is unavailable.');
     }
 
     return {
         body,
-        headers: responseHeaders(response['headers']),
-        status: response['statusCode'],
-        statusText: responseStatusText(response['statusCode'], response['statusText'])
+        headers: responseHeaders(response.headers),
+        status: response.statusCode,
+        statusText: responseStatusText(response.statusCode, response.statusText)
     };
 }
 
@@ -304,17 +304,17 @@ function observeUndiciCreate(state: ObserverState, message: unknown): void {
 }
 
 function observeNodeClientStart(state: ObserverState, message: unknown): void {
-    if (!isRecord(message) || !isObservedNodeClientRequest(message['request'])) {
+    if (!isRecord(message) || !isObservedNodeClientRequest(message.request)) {
         return;
     }
 
-    const url = nodeClientUrl(message['request']);
+    const url = nodeClientUrl(message.request);
 
     if (!observesUrl(state, url)) {
         return;
     }
 
-    const identity = requestIdentity(message['request'].method, url);
+    const identity = requestIdentity(message.request.method, url);
 
     state.expectedRequests.remember(identity, state.recorder.currentScope(), null);
 }
@@ -420,8 +420,8 @@ function undiciObservation(state: ObserverState, message: unknown): UndiciDiagno
 function observeUndiciBody(state: ObserverState, message: unknown): void {
     const diagnostic = undiciObservation(state, message);
 
-    if (diagnostic !== null && isRecord(message) && message['chunk'] instanceof Uint8Array) {
-        diagnostic.observation.responseBody.append(message['chunk']);
+    if (diagnostic !== null && isRecord(message) && message.chunk instanceof Uint8Array) {
+        diagnostic.observation.responseBody.append(message.chunk);
     }
 }
 
@@ -491,8 +491,8 @@ function observeUndiciCompletion(state: ObserverState, message: unknown): void {
 function observeUndiciHeaders(state: ObserverState, message: unknown): void {
     const diagnostic = undiciObservation(state, message);
 
-    if (diagnostic !== null && isRecord(message) && isRecord(message['response'])) {
-        state.undiciResponses.set(diagnostic.request, message['response']);
+    if (diagnostic !== null && isRecord(message) && isRecord(message.response)) {
+        state.undiciResponses.set(diagnostic.request, message.response);
     }
 }
 
@@ -507,7 +507,7 @@ function observeUndiciError(state: ObserverState, message: unknown): void {
     if (serverObservation !== undefined) {
         state.recorder.record({
             context: null,
-            outcome: { error: recordedHttpError(message['error']), kind: 'error' },
+            outcome: { error: recordedHttpError(message.error), kind: 'error' },
             request: { ...serverObservation.request, body: serverObservation.body.body() },
             sequence: serverObservation.sequence
         }, serverObservation.scope);

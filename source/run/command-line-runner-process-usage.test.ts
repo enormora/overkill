@@ -213,7 +213,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
 
 function assertProcessUsageCommand(scope: OverkillScope, suppliedCommand: ConfiguredRunCommand | RunCommand): void {
     const { command } = snapshotRunCommand(suppliedCommand);
-    const profile = command.config.profiles['microtest'];
+    const profile = command.config.profiles.microtest;
 
     scope.require.defined(profile);
     scope.assert.deepEqual(profile, {

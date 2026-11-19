@@ -505,11 +505,11 @@ function ensureFileBackedNodeInput(file: unknown, owner: TestNodeOwner): asserts
 
     assertKnownFileBackedNodeFields(file);
 
-    if (typeof file['file'] !== 'string' || file['file'].trim().length === 0) {
+    if (typeof file.file !== 'string' || file.file.trim().length === 0) {
         throw new TypeError('Test file identity must not be empty.');
     }
 
-    if (!isOwnedTestNode(file['testNode'], owner)) {
+    if (!isOwnedTestNode(file.testNode, owner)) {
         throw new TypeError('Test file must provide a TestNode created by the selected engine.');
     }
 }

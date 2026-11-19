@@ -42,8 +42,8 @@ export const testNode = suite('benchmark profile command boundaries', [
         const snapshot = copyConfig(config);
         scope.assert.deepEqual(snapshot, config);
         scope.assert.notEqual(snapshot.profiles, config.profiles);
-        scope.assert.notEqual(snapshot.profiles['service'], config.profiles['service']);
-        scope.assert.notEqual(snapshot.profiles['unit'], config.profiles['unit']);
+        scope.assert.notEqual(snapshot.profiles.service, config.profiles.service);
+        scope.assert.notEqual(snapshot.profiles.unit, config.profiles.unit);
         return scope.assert.collect();
     }),
     ...([ 'run', 'list' ] as const).map(function (command) {
@@ -104,12 +104,12 @@ export const testNode = suite('benchmark profile command boundaries', [
                 })
             });
             scope.assert.equal(resolved.facts.execution.testFamily, 'microtest');
-            scope.require.defined(resolved.config.profiles['startup']);
-            scope.require.defined(config.profiles['startup']);
-            scope.assert.deepEqual(resolved.config.profiles['startup'], config.profiles['startup']);
+            scope.require.defined(resolved.config.profiles.startup);
+            scope.require.defined(config.profiles.startup);
+            scope.assert.deepEqual(resolved.config.profiles.startup, config.profiles.startup);
             scope.assert.deepEqual(config, snapshot);
             scope.assert.deepEqual(
-                { config: Object.isFrozen(config), profile: Object.isFrozen(config.profiles['startup']) },
+                { config: Object.isFrozen(config), profile: Object.isFrozen(config.profiles.startup) },
                 { config: false, profile: false }
             );
             return scope.assert.collect();

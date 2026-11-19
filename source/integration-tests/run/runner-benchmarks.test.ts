@@ -106,7 +106,7 @@ function createBenchmarkCommand(
         reporters: [ reporter ],
         runtimeStateDir: directory
     });
-    const profile = config.profiles['startup'];
+    const profile = config.profiles.startup;
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Missing benchmark profile.');
     }
@@ -191,9 +191,9 @@ function assertBenchmarkHostMetadata(scope: TestScope, _result: RunResult, obser
     scope.assert.false(Object.hasOwn(runMetadata, 'version'));
     scope.assert.equal(runMetadata.calibration, null);
     scope.assert.equal(runMetadata.host.snapshot.version, 1);
-    scope.assert.equal(canonicalIdentityJson(start.facts['benchmarkHost']), canonicalIdentityJson(runMetadata.host));
+    scope.assert.equal(canonicalIdentityJson(start.facts.benchmarkHost), canonicalIdentityJson(runMetadata.host));
     scope.assert.equal(
-        canonicalIdentityJson(start.facts['benchmarkPlacement']),
+        canonicalIdentityJson(start.facts.benchmarkPlacement),
         canonicalIdentityJson(runMetadata.placement)
     );
 }

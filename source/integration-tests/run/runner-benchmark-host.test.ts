@@ -58,8 +58,8 @@ export const testNode = suite('benchmark host observer integration', [
         const linux = await collectPlatformPressure('linux', AbortSignal.abort());
         const darwin = await collectPlatformPressure('darwin', AbortSignal.abort());
         scope.assert.equal(linux['linux.memory.some.avg10']?.availability, 'unavailable');
-        scope.assert.equal(darwin['CPU_Speed_Limit']?.availability, 'unavailable');
-        scope.assert.equal(darwin['darwinMemoryPressureCode']?.availability, 'unavailable');
+        scope.assert.equal(darwin.CPU_Speed_Limit?.availability, 'unavailable');
+        scope.assert.equal(darwin.darwinMemoryPressureCode?.availability, 'unavailable');
         return scope.assert.collect();
     }),
     test(

@@ -36,7 +36,7 @@ const scenarios = [
 ];
 
 function registeredProfile(config: NormalizedConfig): DefinedFamilyProfile {
-    const profile = config.profiles['types'];
+    const profile = config.profiles.types;
     if (profile === undefined || !isDefinedFamilyProfile(profile)) {
         throw new Error('Missing family profile.');
     }
@@ -161,9 +161,9 @@ export const testNode = suite('imported analysis profile configuration', [
                 const config = normalizeConfig({ profiles: { types: scenario.profile } });
                 const copied = copyConfig(config);
                 scope.assert.deepEqual(copied, config);
-                scope.assert.equal(copied.profiles['types']?.testFamily, family);
-                scope.assert.notEqual(copied.profiles['types'], config.profiles['types']);
-                scope.assert.notEqual(copied.profiles['types']?.files, config.profiles['types']?.files);
+                scope.assert.equal(copied.profiles.types?.testFamily, family);
+                scope.assert.notEqual(copied.profiles.types, config.profiles.types);
+                scope.assert.notEqual(copied.profiles.types?.files, config.profiles.types?.files);
                 return scope.assert.collect();
             })
         ];
@@ -209,7 +209,7 @@ export const testNode = suite('imported analysis profile configuration', [
                 }
             }
         });
-        const profile = config.profiles['types'];
+        const profile = config.profiles.types;
         if (profile === undefined) {
             throw new Error('Missing family profile.');
         }
@@ -218,8 +218,8 @@ export const testNode = suite('imported analysis profile configuration', [
             softMilliseconds: 100,
             hardMilliseconds: 200
         });
-        scope.assert.equal(config.profiles['types']?.runRecords.persist, 'always');
-        scope.assert.equal(config.profiles['types']?.timings.collection, 'precise');
+        scope.assert.equal(config.profiles.types?.runRecords.persist, 'always');
+        scope.assert.equal(config.profiles.types?.timings.collection, 'precise');
         return scope.assert.collect();
     })
 ]);

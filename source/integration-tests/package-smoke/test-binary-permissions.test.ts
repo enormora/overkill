@@ -111,7 +111,7 @@ async function runBinary(profile: string, file: string): Promise<CliResult> {
     const environment = readProcessEnvironment(process);
     const child = spawn(binaryPath, [ 'run', '--config', 'overkill.config.js', '--profile', profile, file ], {
         cwd: consumerFolder,
-        env: { ...environment, PATH: `${path.dirname(process.execPath)}${path.delimiter}${environment['PATH'] ?? ''}` },
+        env: { ...environment, PATH: `${path.dirname(process.execPath)}${path.delimiter}${environment.PATH ?? ''}` },
         stdio: [ 'ignore', 'pipe', 'pipe' ]
     });
     const stdout = text(child.stdout);

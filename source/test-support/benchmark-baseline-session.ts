@@ -31,7 +31,7 @@ export function benchmarkBaselineSessionFixture(input: BenchmarkSessionScenario)
             }
         }
     });
-    const profile = config.profiles['bench'];
+    const profile = config.profiles.bench;
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Missing benchmark session profile.');
     }

@@ -339,7 +339,7 @@ export const testNode = createOverkillSuite({
                 });
 
                 await policy.runAttempt(policyTestCase, { index: 0 }, async function createObservedSideEffects() {
-                    environment['AFTER'] = 'yes';
+                    environment.AFTER = 'yes';
                     sessionStorageValues.set('after', 'yes');
                     localStorageValues.set('after', 'yes');
                     policy.recordViolation(

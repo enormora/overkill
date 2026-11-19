@@ -12,7 +12,8 @@ const command = { cwd: '/project', config: defaultRunConfig({}), engine: { kind:
 const propertyProfile = normalizeConfig({
     profiles: { laws: { testFamily: 'property', files: { include: [ '**/*.test.ts' ], exclude: [] } } }
 })
-    .profiles['laws'];
+    .profiles
+    .laws;
 export const testNode = suite('run request validation boundaries', [
     test('rejects ordinary recording combined with merge recording', function (scope: TestScope) {
         scope.assert.throws(function () {

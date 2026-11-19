@@ -34,7 +34,7 @@ export function envelopeMessage<Message>(
     correlationId: string,
     messageSchema: Readonly<z.ZodType<Message>>
 ): Message | null {
-    if (!isRecord(value) || value['kind'] !== childProcessMessageKind || value['correlationId'] !== correlationId) {
+    if (!isRecord(value) || value.kind !== childProcessMessageKind || value.correlationId !== correlationId) {
         return null;
     }
 

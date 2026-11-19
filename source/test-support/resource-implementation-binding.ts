@@ -44,7 +44,7 @@ export function resourceImplementationBinding(): ResourceImplementationBinding {
             events.push(`dispose:${handle.href}:${input.prefix}`);
         },
         exposeHandle(handle, context) {
-            return new URL(`${handle.href}#${context.scenarios['mode']}`);
+            return new URL(`${handle.href}#${context.scenarios.mode}`);
         },
         serializeHandle(handle) {
             return { url: handle.href };
@@ -55,7 +55,7 @@ export function resourceImplementationBinding(): ResourceImplementationBinding {
             return { address: `${z.strictObject({ url: z.string() }).parse(payload).url}:${input.prefix}` };
         },
         exposeHandle(handle, context) {
-            return { address: `${handle.address}#${context.scenarios['mode']}` };
+            return { address: `${handle.address}#${context.scenarios.mode}` };
         }
     };
     return {

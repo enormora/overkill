@@ -15,7 +15,7 @@ import {
 const execution = { processModel: 'supervised-process', maxConcurrency: 1, scheduling: 'serial' } as const;
 
 function withAdapters(command: RunCommand, adapters: readonly PerformanceBaselineAdapter[]): RunCommand {
-    const profile = command.config.profiles['startup'];
+    const profile = command.config.profiles.startup;
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Missing benchmark profile.');
     }
@@ -55,7 +55,7 @@ async function assertObservationFailure(scope: TestScope): Promise<void> {
 }
 
 function withAdditionalMetric(command: RunCommand): RunCommand {
-    const profile = command.config.profiles['startup'];
+    const profile = command.config.profiles.startup;
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Missing benchmark profile.');
     }
@@ -139,11 +139,12 @@ async function assertPartialWrite(scope: TestScope, fixture: BaselineFixture): P
 }
 
 function diskOnlyCommand(command: RunCommand): RunCommand {
-    const profile = command.config.profiles['startup'];
+    const profile = command.config.profiles.startup;
     const defaults = normalizeConfig({
         profiles: { startup: { testFamily: 'benchmark', files: { include: [ 'missing-file.bench.ts' ] } } }
     })
-        .profiles['startup'];
+        .profiles
+        .startup;
     if (
         profile?.testFamily !== 'benchmark' || defaults?.testFamily !== 'benchmark' ||
         defaults.execution.processModel !== 'worker-pool'
@@ -189,7 +190,7 @@ async function assertListIsolation(scope: TestScope): Promise<void> {
 type FailingBenchmarkCase = { readonly file: string; readonly title: string; };
 
 function commandWithFailingCase(command: RunCommand, failedCase: FailingBenchmarkCase): RunCommand {
-    const profile = command.config.profiles['startup'];
+    const profile = command.config.profiles.startup;
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Missing benchmark profile.');
     }

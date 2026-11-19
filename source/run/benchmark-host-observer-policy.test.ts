@@ -9,23 +9,23 @@ export const testNode = suite('benchmark host observation ownership', [
             const fixture = hostObservation(hostObservationScenario);
             const result = await observeBenchmarkHost(AbortSignal.any([]), fixture.runtime);
             scope.assert.partialDeepEqual<unknown, unknown>(result.cpuBusy, { availability: 'available', value: 75 });
-            scope.assert.partialDeepEqual<unknown, unknown>(result.metrics['gcObservedCount'], {
+            scope.assert.partialDeepEqual<unknown, unknown>(result.metrics.gcObservedCount, {
                 availability: 'available',
                 value: 2
             });
-            scope.assert.partialDeepEqual<unknown, unknown>(result.metrics['gcObservedDurationMicroseconds'], {
+            scope.assert.partialDeepEqual<unknown, unknown>(result.metrics.gcObservedDurationMicroseconds, {
                 availability: 'available',
                 value: 3000
             });
-            scope.assert.partialDeepEqual<unknown, unknown>(result.metrics['eventLoopDelayMeanMicroseconds'], {
+            scope.assert.partialDeepEqual<unknown, unknown>(result.metrics.eventLoopDelayMeanMicroseconds, {
                 availability: 'available',
                 value: 2
             });
-            scope.assert.partialDeepEqual<unknown, unknown>(result.metrics['eventLoopDelayMaximumMicroseconds'], {
+            scope.assert.partialDeepEqual<unknown, unknown>(result.metrics.eventLoopDelayMaximumMicroseconds, {
                 availability: 'available',
                 value: 5
             });
-            scope.assert.partialDeepEqual<unknown, unknown>(result.metrics['eventLoopUtilization'], {
+            scope.assert.partialDeepEqual<unknown, unknown>(result.metrics.eventLoopUtilization, {
                 availability: 'available',
                 value: 0.75
             });
@@ -44,11 +44,11 @@ export const testNode = suite('benchmark host observation ownership', [
     test('marks unsampled event loop delays unavailable', async function (scope: TestScope) {
         const fixture = hostObservation({ ...hostObservationScenario, count: 0 });
         const result = await observeBenchmarkHost(AbortSignal.any([]), fixture.runtime);
-        scope.assert.partialDeepEqual<unknown, unknown>(result.metrics['eventLoopDelayMeanMicroseconds'], {
+        scope.assert.partialDeepEqual<unknown, unknown>(result.metrics.eventLoopDelayMeanMicroseconds, {
             availability: 'unavailable',
             reason: 'No event-loop observations were collected.'
         });
-        scope.assert.partialDeepEqual<unknown, unknown>(result.metrics['eventLoopDelayMaximumMicroseconds'], {
+        scope.assert.partialDeepEqual<unknown, unknown>(result.metrics.eventLoopDelayMaximumMicroseconds, {
             availability: 'unavailable'
         });
         return scope.assert.collect();
@@ -65,7 +65,7 @@ export const testNode = suite('benchmark host observation ownership', [
     test('releases observers after waiting fails and retains the reason', async function (scope: TestScope) {
         const fixture = hostObservation({ ...hostObservationScenario, waitFailure: new Error('Wait failed.') });
         const result = await observeBenchmarkHost(AbortSignal.any([]), fixture.runtime);
-        scope.assert.partialDeepEqual<unknown, unknown>(result.metrics['observation'], {
+        scope.assert.partialDeepEqual<unknown, unknown>(result.metrics.observation, {
             availability: 'unavailable',
             reason: 'Wait failed.'
         });
@@ -76,7 +76,7 @@ export const testNode = suite('benchmark host observation ownership', [
     test('normalizes nonerror observation failures', async function (scope: TestScope) {
         const fixture = hostObservation({ ...hostObservationScenario, waitFailure: 'unavailable' });
         const result = await observeBenchmarkHost(AbortSignal.any([]), fixture.runtime);
-        scope.assert.partialDeepEqual<unknown, unknown>(result.metrics['observation'], {
+        scope.assert.partialDeepEqual<unknown, unknown>(result.metrics.observation, {
             availability: 'unavailable',
             reason: 'unavailable'
         });
@@ -85,7 +85,7 @@ export const testNode = suite('benchmark host observation ownership', [
     test('cleans up partially initialized observation windows', async function (scope: TestScope) {
         const fixture = hostObservation({ ...hostObservationScenario, beginFailure: new Error('Cannot observe.') });
         const result = await observeBenchmarkHost(AbortSignal.any([]), fixture.runtime);
-        scope.assert.partialDeepEqual<unknown, unknown>(result.metrics['observation'], {
+        scope.assert.partialDeepEqual<unknown, unknown>(result.metrics.observation, {
             availability: 'unavailable',
             reason: 'Cannot observe.'
         });
