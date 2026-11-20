@@ -9,6 +9,7 @@ import {
     type AssertCompositeAssertionReturn,
     type NarrowingCompositeAssertionReference,
     type BuiltInAssertAssertionNode,
+    type CheckedThrownMatcher,
     type CompositeAssertionChildNode,
     type ForeignAssertionNode,
     type AssertionSource,
@@ -96,15 +97,15 @@ export type CompositeCheckBuilder<Source extends AssertionSource = AssertionSour
         actual: DeepComparable<Actual>,
         expectedSubset: DeepComparable<Expected>
     ) => BuiltInAssertAssertionNode<Source>;
-    readonly rejects: (
+    readonly rejects: <Matcher extends ThrownMatcher>(
         thunk: () => PromiseLike<unknown>,
-        matcher: ThrownMatcher
+        matcher: CheckedThrownMatcher<Matcher>
     ) => Promise<CompositeAssertionGroup<Source>>;
     readonly startsWith: (actual: string, expected: string) => BuiltInAssertAssertionNode<Source>;
     readonly string: (actual: unknown) => BuiltInAssertAssertionNode<Source>;
-    readonly throws: <Body extends () => unknown>(
+    readonly throws: <Body extends () => unknown, Matcher extends ThrownMatcher = ThrownMatcher>(
         body: SynchronousCallback<Body>,
-        matcher: ThrownMatcher
+        matcher: CheckedThrownMatcher<Matcher>
     ) => CompositeAssertionGroup<Source>;
     readonly true: (actual: unknown) => BuiltInAssertAssertionNode<Source>;
     readonly undefined: (actual: unknown) => BuiltInAssertAssertionNode<Source>;

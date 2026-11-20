@@ -53,6 +53,7 @@ export type {
     UnknownSourceLocation
 } from '../../assertion-protocol/assertion-node-shape.ts';
 export type {
+    CheckedThrownMatcher,
     ErrorMatcher,
     ExactThrownMatcher,
     SynchronousCallback,

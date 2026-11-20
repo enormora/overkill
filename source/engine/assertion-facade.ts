@@ -12,6 +12,7 @@ import type {
 import { sourceLocationsWithCurrentForwarding } from '../assertion-protocol/source-location-forwarding.ts';
 import { captureSourceLocation } from '../assertion-protocol/source-location.ts';
 import {
+    type CheckedThrownMatcher,
     createThrownMatcherAssertion,
     type SynchronousCallback,
     type ThrownMatcher
@@ -87,16 +88,16 @@ export type AssertAssertionFacade = {
         expectedSubset: DeepComparable<Expected>,
         options?: AssertionOptions
     ) => void;
-    readonly rejects: (
+    readonly rejects: <Matcher extends ThrownMatcher>(
         thunk: () => PromiseLike<unknown>,
-        matcher: ThrownMatcher,
+        matcher: CheckedThrownMatcher<Matcher>,
         options?: AssertionOptions
     ) => Promise<void>;
     readonly startsWith: (actual: string, expected: string, options?: AssertionOptions) => void;
     readonly string: (actual: unknown, options?: AssertionOptions) => void;
-    readonly throws: <Body extends () => unknown>(
+    readonly throws: <Body extends () => unknown, Matcher extends ThrownMatcher = ThrownMatcher>(
         body: SynchronousCallback<Body>,
-        matcher: ThrownMatcher,
+        matcher: CheckedThrownMatcher<Matcher>,
         options?: AssertionOptions
     ) => void;
     readonly true: (actual: unknown, options?: AssertionOptions) => void;

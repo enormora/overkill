@@ -2,6 +2,12 @@ import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { processProbeReportStorage, processProbeReport } from '../test-support/process-probe-report.ts';
 
+const invalidReportMatchers = {
+    'invalid-json': { type: SyntaxError },
+    'invalid-report': { message: /"path":\s*\[\s*"version"\s*\]/u },
+    oversized: { message: 'Node probe exceeded the final report limit.' }
+} as const;
+
 export const testNode: TestNode = suite('bounded process probe reports', [
     test('combines partial reads and releases file and directory ownership', async function (scope) {
         const fixture = processProbeReportStorage('pass');
@@ -31,12 +37,7 @@ export const testNode: TestNode = suite('bounded process probe reports', [
             if (scenario === 'read-error') {
                 await scope.assert.rejects(storage.read, { exact: fixture.failure });
             } else {
-                await scope.assert.rejects(
-                    storage.read,
-                    scenario === 'oversized'
-                        ? { message: 'Node probe exceeded the final report limit.' }
-                        : { type: Error }
-                );
+                await scope.assert.rejects(storage.read, invalidReportMatchers[scenario]);
             }
             scope.assert.deepEqual(Array.from(fixture.calls), [ 'directory', 'open:/reports/report.json', 'close' ]);
             await storage.dispose();

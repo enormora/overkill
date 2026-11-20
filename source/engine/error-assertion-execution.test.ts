@@ -64,14 +64,18 @@ function firstBodyError(outcome: FailOutcome): BodyErrorTestFailure | null {
 
 export const testNode: TestNode = suite('Error assertion execution', [
     test('counts throws and awaited rejects as assertion boundaries', async function (scope) {
+        class RateLimitError extends Error {
+            public override name = 'RateLimitError';
+        }
+
         const result = await executeSingleBody(async function testBody(testScope) {
             testScope.plan(2);
             testScope.assert.throws(function throwExpectedError() {
-                throw new Error('expected');
-            }, { message: 'expected' });
+                throw new RateLimitError('expected');
+            }, { type: RateLimitError });
             await testScope.assert.rejects(async function rejectExpectedError() {
                 await Promise.reject(new Error('expected'));
-            }, { message: 'expected' });
+            }, { type: Error, message: 'expected' });
 
             return testScope.assert.collect();
         });

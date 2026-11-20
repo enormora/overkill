@@ -225,7 +225,7 @@ export const testNode: TestNode = suite('process timeline checkpoints', [
                     io: { kind: 'pipes' },
                     completion: { kind: 'ready', marker: { stream: 'stdout', text: 'missing' } }
                 });
-            }, { type: Error });
+            }, { message: 'Process closed before the requested output marker.' });
         }, 'off');
         scope.assert.deepEqual(helperEvents(fixture), [ 'process:measured:0/readiness/failed' ]);
         scope.assert.deepEqual(await fixture.execution.finish(), []);

@@ -1,5 +1,6 @@
 import { deserialize, serialize } from 'node:v8';
 import { type TestNode, suite, test } from '@overkill-dev/test';
+import { z } from 'zod/v4';
 
 import {
     ConfigError,
@@ -108,7 +109,7 @@ export const testNode: TestNode = suite('mutation invocation transport', [
         for (const message of invalid) {
             scope.assert.throws(function rejectMalformedResponse() {
                 return executionReplySchema.parse(message);
-            }, { type: Error });
+            }, { type: z.ZodError });
         }
         scope.assert.throws(function rejectMalformedRequest() {
             return executionHostRequestSchema.parse({
@@ -117,10 +118,10 @@ export const testNode: TestNode = suite('mutation invocation transport', [
                 seed: { value: -1n },
                 selection: { kind: 'all' }
             });
-        }, { type: Error });
+        }, { message: /"path":\s*\[\s*"policy",\s*"source"\s*\]/u });
         scope.assert.throws(function rejectMalformedSelection() {
             return parseRunSelection({ kind: 'filter', filter: { kind: 'case-id', id: {} } });
-        }, { type: Error });
+        }, { message: 'Run filter case id file must be a string or null.' });
         return scope.assert.collect();
     })
 ]);

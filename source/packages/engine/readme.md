@@ -257,7 +257,8 @@ Assertion bodies:
 - Thrown matchers are explicit objects. Use `{ exact: value }` for `Object.is`
   matching, or structured error fields such as `type`, `message`, `code`,
   `name`, and recursive `cause`. Structured error matchers require at least
-  one field, and a string `message` is exact.
+  one field, and a string `message` is exact. `{ type: Error }` requires
+  another field. A specific subclass can stand on its own.
 - `scope.assert.annotated(message).*` and `scope.require.annotated(message).*`
   record message-scoped checks without positional message overloads.
 - `scope.assert.annotated(message)(reference, ...)` annotates a custom

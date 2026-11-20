@@ -85,7 +85,7 @@ export const testNode: TestNode = suite('ordinary baseline file validation', [
         ], [ 'failed', 'blocked', 'artifact' ]);
         await scope.assert.rejects(async function () {
             return await orchestrator.baseline.list({ ...command, request: { profile: 'unit', paths: [] } });
-        }, { type: Error });
+        }, { message: /^Invalid baseline file: [a-f0-9]{64}\.baseline\.json$/u });
         return scope.assert.collect();
     }),
     test('rejects baseline directories outside the project root', async function (scope) {
@@ -106,13 +106,18 @@ export const testNode: TestNode = suite('ordinary baseline file validation', [
         }, { message: 'Baseline path does not match its identity.' });
         return scope.assert.collect();
     }),
-    test('rejects malformed JSON and oversized stored records', async function (scope) {
+    test('rejects malformed, oversized, and unsupported stored records', async function (scope) {
         const fixture = await storedFixture(scope);
-        for (const content of [ '{', 'x'.repeat(2048), JSON.stringify({ ...storedBaseline, version: 2 }) ]) {
+        const invalid = [
+            [ '{', { type: SyntaxError } ],
+            [ 'x'.repeat(2048), { message: `Invalid baseline file: ${path.basename(fixture.file)}` } ],
+            [ JSON.stringify({ ...storedBaseline, version: 2 }), { message: /"path":\s*\[\s*"version"\s*\]/u } ]
+        ] as const;
+        for (const [ content, matcher ] of invalid) {
             await writeFile(fixture.file, content);
             await scope.assert.rejects(async function () {
                 return await fixture.store.list();
-            }, { type: Error });
+            }, matcher);
         }
         return scope.assert.collect();
     }),
@@ -124,7 +129,7 @@ export const testNode: TestNode = suite('ordinary baseline file validation', [
         await symlink(target, fixture.file);
         await scope.assert.rejects(async function () {
             return await fixture.store.list();
-        }, { type: Error });
+        }, { message: `Invalid baseline file: ${path.basename(fixture.file)}` });
         return scope.assert.collect();
     }),
     test(

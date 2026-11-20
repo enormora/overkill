@@ -16,13 +16,13 @@ export const testNode: TestNode = suite('mutation policy protocol validation', [
         const policy = await frozenMicrotestPolicy();
         scope.assert.throws(function () {
             mutationPolicyResponseSchema.parse({ kind: 'policy', policy: { ...policy, files: [] } });
-        }, { type: Error });
+        }, { message: /"path":\s*\[\s*"files",\s*0\s*\]/u });
         scope.assert.throws(function () {
             mutationPolicyResponseSchema.parse({
                 kind: 'policy',
                 policy: { ...policy, profile: { ...policy.profile, testFamily: 'integration' } }
             });
-        }, { type: Error });
+        }, { message: /"path":\s*\[\s*"profile",\s*"testFamily"\s*\]/u });
         return scope.assert.collect();
     }),
     test('preserves typed failure classifications across serialization', function (scope) {
@@ -45,13 +45,13 @@ export const testNode: TestNode = suite('mutation policy protocol validation', [
         scope.assert.deepEqual(mutationPolicyRequestSchema.parse(input), input);
         scope.assert.throws(function () {
             mutationPolicyRequestSchema.parse({ ...input, cwd: 42 });
-        }, { type: Error });
+        }, { message: /"path":\s*\[\s*"cwd"\s*\]/u });
         scope.assert.throws(function () {
             mutationPolicyRequestSchema.parse({ ...input, unexpected: true });
-        }, { type: Error });
+        }, { message: /Unrecognized key: \\"unexpected\\"/u });
         scope.assert.throws(function () {
             mutationPolicyResponseSchema.parse({ kind: 'resolution-error', message: 'Failure.', code: 'unknown' });
-        }, { type: Error });
+        }, { message: /"path":\s*\[\s*"code"\s*\]/u });
         return scope.assert.collect();
     })
 ]);

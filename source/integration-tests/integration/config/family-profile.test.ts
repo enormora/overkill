@@ -122,7 +122,7 @@ export const testNode: TestNode = suite('imported family profiles', [
                         }
                     }
                 });
-            }, { type: Error });
+            }, { message: /"path":\s*\[\s*"count"\s*\]/u });
             scope.assert.deepEqual(events, []);
             return scope.assert.collect();
         }

@@ -1,5 +1,5 @@
 import { setImmediate as waitForImmediate } from 'node:timers/promises';
-import type { ThrownMatcher } from '../assertion-protocol/thrown-matcher.ts';
+import type { CheckedThrownMatcher, ThrownMatcher } from '../assertion-protocol/thrown-matcher.ts';
 import type { AssertAssertionFacade } from './assertion-facade.ts';
 import type { TestContractFailure } from './run-result.ts';
 
@@ -15,7 +15,7 @@ type InFlightRecord<Value> = {
 };
 
 export type InFlightTask<Value> = {
-    readonly rejects: (matcher: ThrownMatcher) => Promise<void>;
+    readonly rejects: <Matcher extends ThrownMatcher>(matcher: CheckedThrownMatcher<Matcher>) => Promise<void>;
     readonly wait: () => Promise<Value>;
 };
 
@@ -138,7 +138,7 @@ export function startInFlight<Value>(
     state.registerInFlight(record);
 
     return {
-        async rejects(matcher) {
+        async rejects(matcher: ThrownMatcher) {
             record.markObserved();
             await assertContext.rejects(async function waitForTrackedRejection() {
                 return record.promise;

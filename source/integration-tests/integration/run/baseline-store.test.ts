@@ -37,7 +37,7 @@ async function assertHeldLock(scope: TestScope, fixture: StoreFixture): Promise<
     try {
         await scope.assert.rejects(async function () {
             return await fixture.store.publish(fixture.changes);
-        }, { type: Error });
+        }, { message: 'Lock file is already being held' });
         scope.assert.deepEqual(await fixture.store.list(), []);
     } finally {
         await release();
