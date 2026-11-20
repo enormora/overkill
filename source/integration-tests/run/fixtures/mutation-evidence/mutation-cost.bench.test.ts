@@ -30,9 +30,9 @@ const extension = import.meta.url.endsWith('.ts') ? 'ts' : 'js';
 const driverModule = new URL(`./mutation-cost-evidence.test.${extension}`, import.meta.url).href;
 const driver = `
 const { measureMutationCosts } = await import(process.argv[1]);
-const [modules, parameters, replacementFirst] = JSON.parse(process.argv[2]);
+const [modules, parameters] = JSON.parse(process.argv[2]);
 process.stdout.write('MUTATION_COST_READY\\n');
-process.stdout.write(JSON.stringify(await measureMutationCosts(modules, parameters, replacementFirst)));
+process.stdout.write(JSON.stringify(await measureMutationCosts(modules, parameters)));
 `;
 const project = defineResource({
     name: 'mutation-cost-project',
@@ -83,11 +83,6 @@ function phaseMetrics(evidence: MutationCostEvidence): BenchmarkMetrics {
     if (evidence.tier === 'campaign') {
         return {
             campaignMicroseconds: microseconds(evidence.campaignMicroseconds),
-            ...(evidence.replacementWorkers === 0 ? {} : {
-                replacementMicroseconds: microseconds(evidence.replacementMicroseconds),
-                replacementWorkers: count(evidence.replacementWorkers),
-                replacementConfigResolutions: count(evidence.replacementConfigResolutions)
-            }),
             workers: count(evidence.workers),
             configResolutions: count(evidence.configResolutions),
             reloadRequests: count(evidence.reloadRequests),
@@ -125,10 +120,8 @@ function phaseMetrics(evidence: MutationCostEvidence): BenchmarkMetrics {
     };
 }
 type Context = BenchmarkMeasureContext<MutationCostParameters, ProcessSample>;
-let campaignSample = 0;
 const measure = withResource<typeof project, Context, BenchmarkMetrics>(project, async function measureCost(context) {
     const parameters = mutationCostParametersSchema.parse(context.workload.parameters);
-    const replacementFirst = campaignSample++ % 2 === 1;
     const run = await context.sample.process({
         command: [
             process.execPath,
@@ -136,7 +129,7 @@ const measure = withResource<typeof project, Context, BenchmarkMetrics>(project,
             '--eval',
             driver,
             driverModule,
-            JSON.stringify([ sourceMutationModules, parameters, replacementFirst ])
+            JSON.stringify([ sourceMutationModules, parameters ])
         ],
         cwd: context.resources['mutation-cost-project'].cwd,
         env: null,
@@ -175,16 +168,16 @@ export const createMutationCostSuite = defineMacro(
             : [ { name: 'small', files: 1, casesPerFile: 2 } ];
         const parameters = sizes.flatMap((size) =>
             modes.flatMap((mode) => [
-                ...([ 'perTest', 'off' ] as const).map((coverage) =>
-                    mutationCostParametersSchema.parse({
-                        ...mode,
-                        files: size.files,
-                        casesPerFile: size.casesPerFile,
-                        tier: 'campaign',
-                        coverage,
-                        mutants: size.files
-                    })
-                ),
+                ...([ 'perTest', 'off' ] as const).flatMap((coverage) => {
+                    const comparison = size.files > 1 && coverage === 'off' &&
+                        mode.processModel === 'in-process' && mode.freshState;
+                    return (comparison ? [ false, true ] : [ false ]).map(workerReplacement =>
+                        mutationCostParametersSchema.parse({
+                            ...mode, files: size.files, casesPerFile: size.casesPerFile, tier: 'campaign',
+                            coverage, mutants: size.files, workerReplacement
+                        })
+                    );
+                }),
                 mutationCostParametersSchema.parse({
                     ...mode,
                     files: size.files,
@@ -200,8 +193,9 @@ export const createMutationCostSuite = defineMacro(
                 if (size.name === 'small') {
                     return [ { title: tier, tier, files: size.files, sampleCount: samples } ];
                 }
-                return Array.from({ length: samples }, function observations(_, sample) {
-                    return { title: `${tier} multi-file sample ${sample + 1}`, tier, files: size.files, sampleCount: 1 };
+                const batches = samples >= 4 ? [ 2, samples - 2 ] : [ samples ];
+                return batches.map(function observations(sampleCount, index) {
+                    return { title: `${tier} multi-file batch ${index + 1}`, tier, files: size.files, sampleCount };
                 });
             });
         });
@@ -213,7 +207,8 @@ export const createMutationCostSuite = defineMacro(
                     workload(
                         `${parameters.files}-files-${parameters.casesPerFile}-cases-${parameters.processModel}-${
                             String(parameters.freshState)
-                        }-${parameters.coverage}`,
+                        }-${parameters.coverage}${parameters.tier === 'campaign' && parameters.workerReplacement
+                            ? '-replace-worker' : ''}`,
                         parameters
                     )
                 );
@@ -224,8 +219,7 @@ export const createMutationCostSuite = defineMacro(
                     measure,
                     diagnosticMetrics: [
                         ...commonMetrics,
-                        ...(tier === 'campaign' ? [ 'campaignMicroseconds', 'replacementMicroseconds', 'workers',
-                            'replacementWorkers', 'configResolutions', 'replacementConfigResolutions', 'reloadRequests', 'executedCases' ] : sessionMetrics)
+                        ...(tier === 'campaign' ? [ 'campaignMicroseconds', 'workers', 'configResolutions', 'reloadRequests', 'executedCases' ] : sessionMetrics)
                     ],
                     budgets: Object.fromEntries(workloads
                         .map((workload, index) => {

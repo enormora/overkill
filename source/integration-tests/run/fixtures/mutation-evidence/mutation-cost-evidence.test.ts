@@ -12,7 +12,8 @@ const dimensions = {
     ...mutationModeSchema.shape, files: z.number().int().positive(), casesPerFile: z.number().int().positive()
 };
 export const mutationCostParametersSchema = z.discriminatedUnion('tier', [
-    z.strictObject({ ...dimensions, tier: z.literal('campaign'), coverage: z.enum([ 'perTest', 'off' ]), mutants: z.number().int().positive() }),
+    z.strictObject({ ...dimensions, tier: z.literal('campaign'), coverage: z.enum([ 'perTest', 'off' ]), mutants: z.number().int().positive(),
+        workerReplacement: z.boolean() }),
     z.strictObject({ ...dimensions, tier: z.literal('execution-session'), coverage: z.literal('none') })
 ]);
 export type MutationCostParameters = z.infer<typeof mutationCostParametersSchema>;
@@ -24,9 +25,8 @@ export const sessionObservationSchema = z.strictObject({
 });
 export const mutationCostEvidenceSchema = z.discriminatedUnion('tier', [
     z.strictObject({ tier: z.literal('campaign'), completedInvocations: z.number().int().positive(),
-        campaignMicroseconds: duration, replacementMicroseconds: duration, workers: z.number().int().nonnegative(),
-        configResolutions: z.number().int().nonnegative(), replacementConfigResolutions: z.number().int().nonnegative(),
-        replacementWorkers: z.number().int().nonnegative(), reloadRequests: z.number().int().nonnegative(),
+        campaignMicroseconds: duration, workers: z.number().int().nonnegative(),
+        configResolutions: z.number().int().nonnegative(), reloadRequests: z.number().int().nonnegative(),
         executedCases: z.number().int().nonnegative() }),
     z.strictObject({ tier: z.literal('execution-session'), completedInvocations: z.literal(2),
         observations: z.array(sessionObservationSchema).length(2), disposalMicroseconds: duration,
@@ -124,20 +124,23 @@ async function measureExecutionSession(
 }
 
 export async function measureMutationCosts(
-    modules: MutationModuleUrls, parameters: MutationCostParameters, replacementFirst: boolean
+    modules: MutationModuleUrls, parameters: MutationCostParameters
 ): Promise<MutationCostEvidence> {
     if (parameters.tier === 'execution-session') return await measureExecutionSession(modules, parameters);
     const targets = Array.from({ length: parameters.mutants }, (_, index) => `subject-${index}.mjs`);
     const request = {
         modules, mode: parameters, seed: '42', coverage: parameters.coverage, catalog: false, targets
     };
-    const paired = parameters.mutants > 1 && parameters.processModel === 'in-process' && parameters.freshState &&
-        parameters.coverage === 'off';
-    const before = paired && replacementFirst ? await runMutationCampaign({ ...request, reload: 'replace-worker' }) : null;
-    const campaign = await runMutationCampaign({ ...request, reload: parameters.mutants > 1 ? 'native' : 'unchanged' });
-    const replacement = paired
-        ? before ?? await runMutationCampaign({ ...request, reload: 'replace-worker' })
-        : null;
+    const reload = parameters.workerReplacement ? 'replace-worker' : parameters.mutants > 1 ? 'native' : 'unchanged';
+    const campaign = await runMutationCampaign({ ...request, reload });
+    if (parameters.workerReplacement) {
+        assert.ok(campaign.workers > 1, 'Expected Stryker to replace the plugin worker.');
+    } else if (
+        parameters.mutants > 1 && parameters.processModel === 'in-process' && parameters.freshState &&
+        parameters.coverage === 'off'
+    ) {
+        assert.ok(campaign.reloadRequests > 0, 'Expected Stryker to request a reload.');
+    }
     assert.equal(campaign.results.length, parameters.mutants);
     for (const mutant of campaign.results) {
         assert.equal(mutant.status, 'Survived', JSON.stringify(mutant));
@@ -145,20 +148,9 @@ export async function measureMutationCosts(
         assert.equal(mutant.testsCompleted, parameters.coverage === 'perTest'
             ? parameters.casesPerFile : parameters.files * parameters.casesPerFile);
     }
-    if (replacement !== null) {
-        assert.deepEqual(
-            replacement.results.map(({ fileName, ...outcome }) => ({ ...outcome, file: fileName.split('/').at(-1) })),
-            campaign.results.map(({ fileName, ...outcome }) => ({ ...outcome, file: fileName.split('/').at(-1) }))
-        );
-        assert.ok(campaign.reloadRequests > 0);
-        assert.ok(replacement.workers > campaign.workers);
-        assert.ok(replacement.configResolutions > campaign.configResolutions);
-    }
     return {
-        tier: 'campaign', completedInvocations: campaign.results.length,
-        campaignMicroseconds: campaign.durationMicroseconds, replacementMicroseconds: replacement?.durationMicroseconds ?? 0,
-        workers: campaign.workers, configResolutions: campaign.configResolutions,
-        replacementConfigResolutions: replacement?.configResolutions ?? 0, replacementWorkers: replacement?.workers ?? 0, reloadRequests: campaign.reloadRequests,
+        tier: 'campaign', completedInvocations: campaign.results.length, campaignMicroseconds: campaign.durationMicroseconds,
+        workers: campaign.workers, configResolutions: campaign.configResolutions, reloadRequests: campaign.reloadRequests,
         executedCases: campaign.results.reduce((total, mutant) => total + mutant.testsCompleted, 0)
     };
 }
