@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
@@ -33,7 +33,7 @@ async function leavePendingCompletion(scope: TestScope, store: HistoryStorage): 
     }, { message: 'History unavailable' });
 }
 
-export const testNode = authoredSuite('history reader', [
+export const testNode: TestNode = suite('history reader', [
     test('required history rejects older indexes without overwriting them', async function (scope: TestScope) {
         const store = await committedStore();
         const indexPath = `${directory}/history/index.json`;
@@ -48,7 +48,7 @@ export const testNode = authoredSuite('history reader', [
     }),
     test(
         'required selection history rejects missing and corrupt state without rebuilding it',
-        async function (scope: TestScope) {
+        async function (scope) {
             const store = createMemoryHistoryStorage();
             await scope.assert.rejects(async function missingHistory() {
                 await readRequiredCompactHistory(store, directory);
@@ -72,7 +72,7 @@ export const testNode = authoredSuite('history reader', [
             return scope.assert.collect();
         }
     ),
-    test('missing aggregate history is cold and corrupt history requires repair', async function (scope: TestScope) {
+    test('missing aggregate history is cold and corrupt history requires repair', async function (scope) {
         const store = await committedStore();
         const missing = {
             ...store,
@@ -87,7 +87,7 @@ export const testNode = authoredSuite('history reader', [
         }, { message: /overkill history compact/ });
         return scope.assert.collect();
     }),
-    test('IO failures remain runtime-state errors with a repair hint', async function (scope: TestScope) {
+    test('IO failures remain runtime-state errors with a repair hint', async function (scope) {
         const store = {
             ...createMemoryHistoryStorage(),
             async read() {

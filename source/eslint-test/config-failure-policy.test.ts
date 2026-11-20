@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { ResourceLifecycleError } from '../resources/resource-lifecycle-error.ts';
 import { projectFailure } from './config-errors.ts';
@@ -11,7 +11,7 @@ class ConfigBackendError extends Error {
     }
 }
 
-export const testNode = authoredSuite('ESLint config failure propagation', [
+export const testNode: TestNode = suite('ESLint config failure propagation', [
     test('normalizes project paths in error messages and preserved stacks', function (scope: TestScope) {
         const original = new ConfigBackendError();
         const failure = projectFailure(original, '/project', scope.signal);
@@ -21,27 +21,27 @@ export const testNode = authoredSuite('ESLint config failure propagation', [
         scope.assert.equal(failure.stack, 'Error: Failure in <project>/source.js\n    at <project>/source.js:1:1');
         return scope.assert.collect();
     }),
-    test('retains non-Error thrown values', function (scope: TestScope) {
+    test('retains non-Error thrown values', function (scope) {
         const failure = { reason: 'parser failed' };
         scope.assert.equal(projectFailure(failure, '/project', scope.signal), failure);
         scope.assert.equal(projectFailure(42, '/project', scope.signal), 42);
         return scope.assert.collect();
     }),
-    test('propagates owner cancellation before normalizing an execution failure', function (scope: TestScope) {
+    test('propagates owner cancellation before normalizing an execution failure', function (scope) {
         const reason = new Error('Cancelled.');
         scope.assert.throws(function () {
             projectFailure(new Error('Execution failed.'), '/project', AbortSignal.abort(reason));
         }, { exact: reason });
         return scope.assert.collect();
     }),
-    test('preserves permission denials nested in Error causes', function (scope: TestScope) {
+    test('preserves permission denials nested in Error causes', function (scope) {
         const denied = Object.assign(new Error('Permission denied.'), { code: 'ERR_ACCESS_DENIED' });
         scope.assert.throws(function () {
             projectFailure(new Error('Wrapper.', { cause: denied }), '/project', scope.signal);
         }, { exact: denied });
         return scope.assert.collect();
     }),
-    test('preserves control failures inside resource lifecycle aggregates', function (scope: TestScope) {
+    test('preserves control failures inside resource lifecycle aggregates', function (scope) {
         const denied = Object.assign(new Error('Permission denied.'), { code: 'ERR_ACCESS_DENIED' });
         const error = new ResourceLifecycleError('Acquisition failed.', {
             cause: null,

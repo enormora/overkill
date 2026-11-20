@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 
@@ -13,8 +13,8 @@ const mapDiff = defineNarrowingCompositeAssertion<Diff, Extract<Diff, { readonly
     }
 });
 
-export const testNode = suite('source/compare/comparison.test.ts', [
-    test('compareEqualValues() uses Object.is primitive semantics', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Value comparison', [
+    test('compareEqualValues() uses Object.is primitive semantics', function (scope) {
         scope.assert.equal(compareEqualValues(Number.NaN, Number.NaN).passed, true);
         scope.assert.equal(compareEqualValues(-0, 0).passed, false);
         scope.assert.equal(compareEqualValues(42, 42n).passed, false);
@@ -41,7 +41,7 @@ export const testNode = suite('source/compare/comparison.test.ts', [
     }),
     test(
         'compareStringEquality() emits bounded string hunks for string equality failures only',
-        function (scope: OverkillScope) {
+        function (scope: TestScope) {
             const result = compareStringEquality('first\nactual\nlast', 'first\nexpected\nlast');
             const { diff } = result;
 
@@ -66,14 +66,14 @@ export const testNode = suite('source/compare/comparison.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('failedResult() uses an empty path for structured diffs without operations', function (scope: OverkillScope) {
+    test('failedResult() uses an empty path for structured diffs without operations', function (scope) {
         const result = failedResult([ 1 ], [ 2 ], { kind: 'array', operations: [] });
 
         scope.assert.deepEqual(result.path, []);
 
         return scope.assert.collect();
     }),
-    test('compareDeepValues() distinguishes numeric and primitive edge cases', function (scope: OverkillScope) {
+    test('distinguishes numeric and primitive edge cases', function (scope: TestScope) {
         scope.assert.equal(compareDeepValues(Number.NaN, Number.NaN).passed, true);
         scope.assert.equal(compareDeepValues(-0, 0).passed, false);
         const { diff } = compareDeepValues(-0, 0);
@@ -88,8 +88,8 @@ export const testNode = suite('source/compare/comparison.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'compareDeepValues() compares arrays including holes, undefined, length, and paths',
-        function (scope: OverkillScope) {
+        'compares arrays including holes, undefined, length, and paths',
+        function (scope: TestScope) {
             const hole: unknown[] = [];
             hole.length = 1;
 
@@ -125,8 +125,8 @@ export const testNode = suite('source/compare/comparison.test.ts', [
         }
     ),
     test(
-        'compareDeepValues() compares enumerable string and symbol data without invoking accessors',
-        function (scope: OverkillScope) {
+        'compares enumerable string and symbol data without invoking accessors',
+        function (scope: TestScope) {
             const symbolKey = Symbol('id');
             const actual = {
                 [symbolKey]: 1,
@@ -172,7 +172,7 @@ export const testNode = suite('source/compare/comparison.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('compareDeepValues() ignores non-enumerable properties', function (scope: OverkillScope) {
+    test('ignores non-enumerable properties', function (scope) {
         const actual = {};
         const expected = {};
         Object.defineProperty(actual, 'hidden', { enumerable: false, value: 1 });
@@ -183,8 +183,8 @@ export const testNode = suite('source/compare/comparison.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'compareDeepValues() requires matching class prototypes before enumerable data comparison',
-        function (scope: OverkillScope) {
+        'requires matching class prototypes before enumerable data comparison',
+        function (scope: TestScope) {
             const actual = { id: 1 };
             const expected = { id: 1 };
             Object.setPrototypeOf(actual, { constructor: { name: 'Actual' } });
@@ -201,8 +201,8 @@ export const testNode = suite('source/compare/comparison.test.ts', [
         }
     ),
     test(
-        'compareDeepValues() compares Map entries order independently with deep keys and values',
-        function (scope: OverkillScope) {
+        'compares Map entries order independently with deep keys and values',
+        function (scope) {
             const actual = new Map<unknown, unknown>([
                 [ { id: 2 }, { name: 'Grace' } ],
                 [ { id: 1 }, { name: 'Ada' } ]
@@ -234,7 +234,7 @@ export const testNode = suite('source/compare/comparison.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('compareDeepValues() reports missing Map entries by key', function (scope: OverkillScope) {
+    test('reports missing Map entries by key', function (scope: TestScope) {
         const actual = new Map<unknown, unknown>([
             [ { id: 2 }, { name: 'Grace' } ],
             [ { id: 1 }, { name: 'Ada' } ]

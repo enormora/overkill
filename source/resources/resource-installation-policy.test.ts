@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { defineResource, type AnyResourceDefinition } from './resources.ts';
 import {
@@ -36,8 +36,8 @@ function installationSession(install: ResourceCheckInstaller<AnyResourceDefiniti
 function finish(): void {
     return undefined;
 }
-export const testNode = authoredSuite('resource observation installation admission', [
-    authoredTest('rejects observation errors recorded during installation', async function (scope: TestScope) {
+export const testNode: TestNode = suite('resource observation installation admission', [
+    test('rejects observation errors recorded during installation', async function (scope) {
         const session = installationSession(function (context) {
             context.ledger.error({ kind: 'lifetime' }, null, new Error('installation evidence failed'));
             return {
@@ -53,8 +53,15 @@ export const testNode = authoredSuite('resource observation installation admissi
         scope.assert.throws(session.assertAdmitted, { message: 'Resource observation is stopped.' });
         return scope.assert.collect();
     }),
-    ...[ 'prepare', 'finalize' ].map(function (method) {
-        return authoredTest(`rejects malformed ${method} observer callbacks`, async function (scope: TestScope) {
+    table({
+        title: 'rejects malformed observer callbacks',
+        cases: [ 'prepare', 'finalize' ],
+        caseTitle(method) {
+            return method;
+        },
+        async test(scope) {
+            const method = scope.parameters;
+
             const session = installationSession(function () {
                 const observation = {
                     prepare: finish,
@@ -70,9 +77,9 @@ export const testNode = authoredSuite('resource observation installation admissi
             }, { message: 'Resource observers require preparation and finalization callbacks.' });
             scope.assert.throws(session.assertAdmitted, { message: 'Resource observation is stopped.' });
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('retains cleanup failures registered after closure', async function (scope: TestScope) {
+    test('retains cleanup failures registered after closure', async function (scope) {
         const installed = Promise.withResolvers<ResourceCheckInstallationContext<AnyResourceDefinition>>();
         const session = installationSession(function (context) {
             installed.resolve(context);

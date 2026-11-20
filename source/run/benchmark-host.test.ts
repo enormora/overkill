@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { benchmarkHostLimitsSchema } from '../config/benchmark-host.ts';
 import { benchmarkHostSnapshot } from '../test-support/benchmark-host-snapshot.ts';
@@ -66,8 +66,8 @@ function assertProcessMetric(scope: TestScope, metrics: HostProcessMetrics, expe
     });
 }
 
-export const testNode = authoredSuite('benchmark host evidence', [
-    test('records native process deltas, memory values, and resource units', function (scope: TestScope) {
+export const testNode: TestNode = suite('benchmark host evidence', [
+    test('records native process deltas, memory values, and resource units', function (scope) {
         const metrics = hostProcessMetrics(processSnapshot(10), processSnapshot(20));
         assertProcessMetric(scope, metrics, {
             name: 'processCpuUserMicroseconds',
@@ -107,7 +107,7 @@ export const testNode = authoredSuite('benchmark host evidence', [
         });
         return scope.assert.collect();
     }),
-    test('rejects duplicate PSI fields and levels', function (scope: TestScope) {
+    test('rejects duplicate PSI fields and levels', function (scope) {
         scope.assert.throws(function () {
             parseLinuxPressure(psi.replace('avg60=2.50', 'avg10=2.50'), 'psi');
         }, { name: 'TypeError' });
@@ -116,7 +116,7 @@ export const testNode = authoredSuite('benchmark host evidence', [
         }, { name: 'TypeError' });
         return scope.assert.collect();
     }),
-    test('derives percentages from capacity rather than absolute host sizes', function (scope: TestScope) {
+    test('derives percentages from capacity rather than absolute host sizes', function (scope) {
         assertRelativeReadings(scope);
         const before = [ { model: 'cpu', speed: 1, times: { user: 10, sys: 0, nice: 0, idle: 20, irq: 0 } } ];
         const after = [ { model: 'cpu', speed: 1, times: { user: 20, sys: 0, nice: 0, idle: 50, irq: 0 } } ];
@@ -134,7 +134,7 @@ export const testNode = authoredSuite('benchmark host evidence', [
         scope.assert.partialDeepEqual(cpuBusyPercent(before, []), { availability: 'unavailable' });
         return scope.assert.collect();
     }),
-    test('passes equality and blocks violated or unavailable configured signals', function (scope: TestScope) {
+    test('passes equality and blocks violated or unavailable configured signals', function (scope) {
         const snapshot = benchmarkHostSnapshot();
         const limits = benchmarkHostLimitsSchema.parse({
             maximumCpuBusyPercent: 25,

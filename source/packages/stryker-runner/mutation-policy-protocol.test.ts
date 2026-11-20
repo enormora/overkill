@@ -1,10 +1,10 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { frozenMicrotestPolicy } from '../../test-support/frozen-microtest-policy.ts';
 import { mutationPolicyRequestSchema, mutationPolicyResponseSchema } from './mutation-policy-protocol.ts';
 
-export const testNode = authoredSuite('mutation policy protocol validation', [
-    test('restores a serialized frozen microtest policy', async function (scope: TestScope) {
+export const testNode: TestNode = suite('mutation policy protocol validation', [
+    test('restores a serialized frozen microtest policy', async function (scope) {
         const policy = await frozenMicrotestPolicy();
         const encoded = JSON.stringify({ kind: 'policy', policy });
         const response = mutationPolicyResponseSchema.parse(JSON.parse(encoded));
@@ -12,7 +12,7 @@ export const testNode = authoredSuite('mutation policy protocol validation', [
         scope.assert.true(Object.isFrozen(response));
         return scope.assert.collect();
     }),
-    test('rejects incomplete policies and policies for other test families', async function (scope: TestScope) {
+    test('rejects incomplete policies and policies for other test families', async function (scope) {
         const policy = await frozenMicrotestPolicy();
         scope.assert.throws(function () {
             mutationPolicyResponseSchema.parse({ kind: 'policy', policy: { ...policy, files: [] } });
@@ -25,7 +25,7 @@ export const testNode = authoredSuite('mutation policy protocol validation', [
         }, { type: Error });
         return scope.assert.collect();
     }),
-    test('preserves typed failure classifications across serialization', function (scope: TestScope) {
+    test('preserves typed failure classifications across serialization', function (scope) {
         for (
             const response of [
                 { kind: 'config-error', message: 'Invalid configuration.', cause: 'Invalid seed.' },
@@ -40,7 +40,7 @@ export const testNode = authoredSuite('mutation policy protocol validation', [
         }
         return scope.assert.collect();
     }),
-    test('validates request structure before resolving configuration', function (scope: TestScope) {
+    test('validates request structure before resolving configuration', function (scope) {
         const input = { kind: 'resolve-policy', cwd: '/project', sandbox: null, settings: { seed: '42' } };
         scope.assert.deepEqual(mutationPolicyRequestSchema.parse(input), input);
         scope.assert.throws(function () {

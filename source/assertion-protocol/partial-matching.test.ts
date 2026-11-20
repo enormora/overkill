@@ -1,10 +1,10 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { collectionCount } from './collection-count.ts';
 import { isPlainObject, ownKeys, partialDeepEqual } from './partial-matching.ts';
 
-export const testNode = suite('source/assertion-protocol/partial-matching.test.ts', [
-    test('partialDeepEqual() matches nested partial arrays, maps, sets, and objects', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Partial value matching', [
+    test('partialDeepEqual() matches nested partial arrays, maps, sets, and objects', function (scope) {
         const symbolKey = Symbol('id');
 
         scope.assert.equal(partialDeepEqual([ { id: 1, name: 'Ada' } ], [ { id: 1 } ]), true);
@@ -20,7 +20,7 @@ export const testNode = suite('source/assertion-protocol/partial-matching.test.t
 
         return scope.assert.collect();
     }),
-    test('partialDeepEqual() rejects mismatched partial collection shapes', function (scope: OverkillScope) {
+    test('partialDeepEqual() rejects mismatched partial collection shapes', function (scope) {
         scope.assert.equal(partialDeepEqual({ 0: 'value' }, [ 'value' ]), false);
         scope.assert.equal(partialDeepEqual({ id: 1 }, new Map([ [ 'id', 1 ] ])), false);
         scope.assert.equal(partialDeepEqual([ 1 ], new Set([ 1 ])), false);
@@ -30,7 +30,7 @@ export const testNode = suite('source/assertion-protocol/partial-matching.test.t
     }),
     test(
         'collectionCount() reports known, iterable, and unsupported collection counts',
-        function (scope: OverkillScope) {
+        function (scope) {
             function* values(): Generator<number> {
                 yield 1;
                 yield 2;
@@ -61,7 +61,7 @@ export const testNode = suite('source/assertion-protocol/partial-matching.test.t
             return scope.assert.collect();
         }
     ),
-    test('isPlainObject() and ownKeys() expose plain-object identity and keys', function (scope: OverkillScope) {
+    test('isPlainObject() and ownKeys() expose plain-object identity and keys', function (scope) {
         const symbolKey = Symbol('id');
         const plainObject = Object.create(null) as Record<PropertyKey, unknown>;
         plainObject.name = 'Ada';

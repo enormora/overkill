@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 
@@ -48,7 +48,7 @@ const assertionTestFailure = defineNarrowingCompositeAssertion<TestFailure, Asse
     }
 });
 
-function assertExplicitFailureFields(scope: OverkillScope, runResult: RunResult): void {
+function assertExplicitFailureFields(scope: TestScope, runResult: RunResult): void {
     const failedOutcome = runResult.perTest[0]?.outcome;
     scope.require.defined(failedOutcome);
     scope.require(failOutcome, failedOutcome);
@@ -69,8 +69,8 @@ function assertExplicitFailureFields(scope: OverkillScope, runResult: RunResult)
     });
 }
 
-export const testNode = suite('source/test-support/run-result-factory.test.ts', [
-    test('runResultFactory builds nested result data', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Run result factory', [
+    test('runResultFactory builds nested result data', function (scope: TestScope) {
         const runResult = runResultFactory.build({
             orphans: [ {} ],
             perTest: [
@@ -108,7 +108,7 @@ export const testNode = suite('source/test-support/run-result-factory.test.ts', 
 
         return scope.assert.collect();
     }),
-    test('runResultFactory builds non-failing outcome variants', function (scope: OverkillScope) {
+    test('runResultFactory builds non-failing outcome variants', function (scope) {
         const runResult = runResultFactory.build({
             perTest: [
                 { outcome: { kind: 'pass' } },
@@ -130,7 +130,7 @@ export const testNode = suite('source/test-support/run-result-factory.test.ts', 
 
         return scope.assert.collect();
     }),
-    test('runResultFactory builds default and empty failure fallbacks', function (scope: OverkillScope) {
+    test('runResultFactory builds default and empty failure fallbacks', function (scope) {
         const runResult = runResultFactory.build({
             perTest: [
                 { outcome: { kind: 'fail' } },
@@ -164,7 +164,7 @@ export const testNode = suite('source/test-support/run-result-factory.test.ts', 
 
         return scope.assert.collect();
     }),
-    test('runResultFactory builds body-error and default contract failures', function (scope: OverkillScope) {
+    test('runResultFactory builds body-error and default contract failures', function (scope) {
         const runResult = runResultFactory.build({
             perTest: [
                 { outcome: { failures: [ { kind: 'body-error' } ], kind: 'fail' } },
@@ -177,7 +177,7 @@ export const testNode = suite('source/test-support/run-result-factory.test.ts', 
 
         return scope.assert.collect();
     }),
-    test('runResultFactory preserves explicit failure and verdict fields', function (scope: OverkillScope) {
+    test('runResultFactory preserves explicit failure and verdict fields', function (scope) {
         const runResult = runResultFactory.build({
             perTest: [
                 {

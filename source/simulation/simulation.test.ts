@@ -1,6 +1,5 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     defineSimulatedHttpServer,
     defineSimulation,
@@ -109,18 +108,18 @@ function assertSimulationValidation(scope: TestScope): void {
     }, { message: 'Simulated HTTP server requires a handler function.' });
 }
 
-export const testNode = suite('source/simulation/simulation.test.ts', [
-    test('simulation descriptors preserve finite typed scenario catalogs', function (scope: TestScope) {
+export const testNode: TestNode = suite('Simulation runtimes', [
+    test('simulation descriptors preserve finite typed scenario catalogs', function (scope) {
         assertSimulationDescriptor(scope);
 
         return scope.assert.collect();
     }),
-    test('simulated HTTP server descriptors expose typed handlers', function (scope: TestScope) {
+    test('simulated HTTP server descriptors expose typed handlers', function (scope) {
         assertSimulatedHttpDescriptor(scope);
 
         return scope.assert.collect();
     }),
-    test('simulation descriptors reject invalid catalogs', function (scope: TestScope) {
+    test('simulation descriptors reject invalid catalogs', function (scope) {
         assertSimulationValidation(scope);
 
         return scope.assert.collect();

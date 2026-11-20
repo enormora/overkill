@@ -1,9 +1,9 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { distributionScale, sampleHistogram, sampleBox } from './benchmark-html-distribution.ts';
 
-export const testNode = authoredSuite('benchmark HTML distributions', [
-    test('bins every observation and includes both endpoints', function (scope: TestScope) {
+export const testNode: TestNode = suite('benchmark HTML distributions', [
+    test('bins every observation and includes both endpoints', function (scope) {
         const values = [ -10, 0, 10 ];
         const histogram = sampleHistogram(values, distributionScale([ values ]));
         scope.assert.equal(histogram.length, 20);

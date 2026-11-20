@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
@@ -11,8 +11,8 @@ type ClientFactory = {
     new (baseUrl: string): ClientWithId;
 };
 
-export const testNode = suite('source/doubles/test-double-configuration.test.ts', [
-    test('testDouble() rejects invalid configuration arguments', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Test double configuration', [
+    test('rejects invalid configuration arguments', function (scope) {
         const createDoubleFromUnknowns = testDouble as unknown as (
             ...configuration: readonly unknown[]
         ) => unknown;
@@ -26,7 +26,7 @@ export const testNode = suite('source/doubles/test-double-configuration.test.ts'
 
         return scope.assert.collect();
     }),
-    test('testDouble() ignores invalid configuration entries', function (scope: OverkillScope) {
+    test('ignores invalid configuration entries', function (scope) {
         type LoadValue = () => string;
 
         const loadValue = testDouble<LoadValue>(
@@ -43,7 +43,7 @@ export const testNode = suite('source/doubles/test-double-configuration.test.ts'
 
         return scope.assert.collect();
     }),
-    test('fallback can configure call defaults without construction defaults', function (scope: OverkillScope) {
+    test('fallback can configure call defaults without construction defaults', function (scope) {
         const calledClient = { id: 'called' };
         const clientFactory = testDouble<ClientFactory>(
             {
@@ -60,7 +60,7 @@ export const testNode = suite('source/doubles/test-double-configuration.test.ts'
 
         return scope.assert.collect();
     }),
-    test('fallback can configure construction defaults without call defaults', function (scope: OverkillScope) {
+    test('fallback can configure construction defaults without call defaults', function (scope) {
         const constructedClient = { id: 'constructed' };
         const clientFactory = testDouble<ClientFactory>(
             {
@@ -77,7 +77,7 @@ export const testNode = suite('source/doubles/test-double-configuration.test.ts'
 
         return scope.assert.collect();
     }),
-    test('fallback behaviors that cannot answer an invocation fall through', function (scope: OverkillScope) {
+    test('fallback behaviors that cannot answer an invocation fall through', function (scope) {
         const constructedClient = { id: 'constructed' };
         const clientFactory = testDouble<ClientFactory>({
             rules: [ rule.onConstruction(0).constructs(constructedClient) ],
@@ -91,7 +91,7 @@ export const testNode = suite('source/doubles/test-double-configuration.test.ts'
 
         return scope.assert.collect();
     }),
-    test('sequence entries that cannot answer an invocation fall through', function (scope: OverkillScope) {
+    test('sequence entries that cannot answer an invocation fall through', function (scope) {
         type ClientConstructor = new () => ClientWithId;
 
         const Client = testDouble<ClientConstructor>(

@@ -1,11 +1,11 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { CalibrationPublicationError } from '../baselines/calibration-store.ts';
 import { readCalibrationReferenceReport } from '../bench/calibration-report.ts';
 import { calibrationCapture } from '../test-support/calibration-capture.ts';
 
-export const testNode = authoredSuite('calibration capture publication', [
-    test('deduplicates references and records their consuming work', async function (scope: TestScope) {
+export const testNode: TestNode = suite('calibration capture publication', [
+    test('deduplicates references and records their consuming work', async function (scope) {
         const fixture = calibrationCapture(null, 4096);
         const result = await fixture.session.finalize(fixture.result);
         scope.assert.equal(fixture.session.prepareResult(fixture.result), fixture.result);
@@ -19,21 +19,21 @@ export const testNode = authoredSuite('calibration capture publication', [
         ]);
         return scope.assert.collect();
     }),
-    test('does not publish references after an unsuccessful execution', async function (scope: TestScope) {
+    test('does not publish references after an unsuccessful execution', async function (scope) {
         const fixture = calibrationCapture(null, 4096);
         const result = await fixture.session.finalize({ ...fixture.result, status: 'failed' });
         scope.assert.deepEqual(fixture.written, []);
         scope.assert.equal(readCalibrationReferenceReport(result)?.outcome, 'blocked');
         return scope.assert.collect();
     }),
-    test('finishes an empty capture without writing a reference', async function (scope: TestScope) {
+    test('finishes an empty capture without writing a reference', async function (scope) {
         const fixture = calibrationCapture(null, 4096);
         const result = await fixture.session.finalize({ ...fixture.result, perTest: [] });
         scope.assert.deepEqual(fixture.written, []);
         scope.assert.deepEqual<unknown, unknown>(readCalibrationReferenceReport(result)?.completed, []);
         return scope.assert.collect();
     }),
-    test('retains publication failures in the execution result', async function (scope: TestScope) {
+    test('retains publication failures in the execution result', async function (scope) {
         const fixture = calibrationCapture(new Error('Publication failed.'), 4096);
         const result = await fixture.session.finalize(fixture.result);
         scope.assert.equal(result.status, 'failed');
@@ -42,7 +42,7 @@ export const testNode = authoredSuite('calibration capture publication', [
         scope.assert.deepEqual<unknown, unknown>(readCalibrationReferenceReport(result)?.completed, []);
         return scope.assert.collect();
     }),
-    test('preserves completed paths after a partial publication failure', async function (scope: TestScope) {
+    test('preserves completed paths after a partial publication failure', async function (scope) {
         const fixture = calibrationCapture(
             new CalibrationPublicationError('Partial publication.', {
                 cause: new Error('Storage failed.'),
@@ -57,7 +57,7 @@ export const testNode = authoredSuite('calibration capture publication', [
         ]);
         return scope.assert.collect();
     }),
-    test('reports oversized evidence without publishing references', async function (scope: TestScope) {
+    test('reports oversized evidence without publishing references', async function (scope) {
         const fixture = calibrationCapture(null, 1);
         const result = await fixture.session.finalize(fixture.result);
         scope.assert.equal(result.status, 'failed');

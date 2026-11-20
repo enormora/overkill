@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
@@ -9,10 +9,10 @@ import { readCompactHistory, updateCompactHistory } from './history-storage.ts';
 const directory = '/project/state';
 const context = { directory, policy: defaultHistoryPolicy, now: historyTimestamp, mode: 'explicit' as const };
 
-export const testNode = authoredSuite('history repair failures', [
-    authoredTest(
+export const testNode: TestNode = suite('history repair failures', [
+    test(
         'unresolved records retain their known summary family during repair',
-        async function (scope: TestScope) {
+        async function (scope) {
             const store = createMemoryHistoryStorage();
             const record = {
                 ...completedHistoryRecord('known'),
@@ -30,9 +30,9 @@ export const testNode = authoredSuite('history repair failures', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'explicit repair recovers corrupt durations and reports the lost history',
-        async function (scope: TestScope) {
+        async function (scope) {
             const store = createMemoryHistoryStorage();
             await store.write(`${directory}/history/index.json`, '{');
             await store.write(`${directory}/runs/record.json`, JSON.stringify(completedHistoryRecord('record')));
@@ -44,9 +44,9 @@ export const testNode = authoredSuite('history repair failures', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'automatic repair preserves corrupt duration state for explicit recovery',
-        async function (scope: TestScope) {
+        async function (scope) {
             const store = createMemoryHistoryStorage();
             const filePath = `${directory}/history/index.json`;
             await store.write(filePath, '{');
@@ -57,7 +57,7 @@ export const testNode = authoredSuite('history repair failures', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('future duration schemas are preserved during explicit repair', async function (scope: TestScope) {
+    test('future duration schemas are preserved during explicit repair', async function (scope) {
         const store = createMemoryHistoryStorage();
         const filePath = `${directory}/history/index.json`;
         const source = JSON.stringify({ version: 99 });
@@ -68,9 +68,9 @@ export const testNode = authoredSuite('history repair failures', [
         scope.assert.equal(await store.read(filePath), source);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'interrupted records reuse their known family without contributing case outcomes',
-        async function (scope: TestScope) {
+        async function (scope) {
             const store = createMemoryHistoryStorage();
             const record = { ...completedHistoryRecord('interrupted'), status: 'interrupted', result: null };
             await store.write(`${directory}/runs/interrupted.json`, JSON.stringify(record));
@@ -81,9 +81,9 @@ export const testNode = authoredSuite('history repair failures', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'unresolved records fail automatic repair and report explicit recovery losses',
-        async function (scope: TestScope) {
+        async function (scope) {
             const store = createMemoryHistoryStorage();
             const record = { ...completedHistoryRecord('unresolved'), status: 'started', facts: null, result: null };
             await store.write(`${directory}/runs/unresolved.json`, JSON.stringify(record));
@@ -96,9 +96,9 @@ export const testNode = authoredSuite('history repair failures', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'a record disappearing after enumeration aborts repair before publication',
-        async function (scope: TestScope) {
+        async function (scope) {
             const memory = createMemoryHistoryStorage();
             const store = {
                 ...memory,
@@ -113,7 +113,7 @@ export const testNode = authoredSuite('history repair failures', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('automatic repair stops when enumeration exhausts its time budget', async function (scope: TestScope) {
+    test('automatic repair stops when enumeration exhausts its time budget', async function (scope) {
         let elapsed = 0;
         const repair = createHistoryRepair(function () {
             return elapsed;
@@ -133,16 +133,18 @@ export const testNode = authoredSuite('history repair failures', [
         scope.assert.equal(await store.read(`${directory}/history/index.json`), null);
         return scope.assert.collect();
     }),
-    ...[ 'null', '42', '{"version":"invalid"}' ].map(function invalidVersion(source) {
-        return authoredTest(
-            `explicit repair reports malformed schema metadata ${source}`,
-            async function (scope: TestScope) {
-                const store = createMemoryHistoryStorage();
-                await store.write(`${directory}/history/index.json`, source);
-                const repaired = await repairHistory(store, context);
-                scope.assert.equal(repaired.dataLoss, true);
-                return scope.assert.collect();
-            }
-        );
+    table({
+        title: 'explicit repair reports malformed schema metadata',
+        cases: [ 'null', '42', '{"version":"invalid"}' ],
+        caseTitle: String,
+        async test(scope) {
+            const source = scope.parameters;
+
+            const store = createMemoryHistoryStorage();
+            await store.write(`${directory}/history/index.json`, source);
+            const repaired = await repairHistory(store, context);
+            scope.assert.equal(repaired.dataLoss, true);
+            return scope.assert.collect();
+        }
     })
 ]);

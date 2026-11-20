@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 
@@ -132,8 +132,8 @@ function firstOutcome(result: RunResult): TestOutcome | undefined {
     return result.perTest.at(0)?.outcome ?? undefined;
 }
 
-export const testNode = suite('source/engine/execution-reporting.test.ts', [
-    test('execute() records thrown test body errors', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Execution reporting', [
+    test('records thrown test body errors', async function (scope: TestScope) {
         const engine = createEngine();
         const testPlan = engine.createTestPlan(
             engine.createRoot({
@@ -180,7 +180,7 @@ export const testNode = suite('source/engine/execution-reporting.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() preserves assertions recorded before a thrown body error', async function (scope: OverkillScope) {
+    test('preserves assertions recorded before a thrown body error', async function (scope: TestScope) {
         const engine = createEngine();
         const testPlan = engine.createTestPlan(
             engine.createRoot({
@@ -216,7 +216,7 @@ export const testNode = suite('source/engine/execution-reporting.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() records rejected test body promises as body errors', async function (scope: OverkillScope) {
+    test('records rejected test body promises as body errors', async function (scope: TestScope) {
         const engine = createEngine();
         const testPlan = engine.createTestPlan(
             engine.createRoot({
@@ -249,7 +249,7 @@ export const testNode = suite('source/engine/execution-reporting.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() delivers events and final results to reporters', async function (scope: OverkillScope) {
+    test('delivers events and final results to reporters', async function (scope) {
         const engine = createEngine();
         const realTimeReporter = createInMemoryRealTimeReporter();
         const finalResultReporter = createInMemoryFinalResultReporter();
@@ -340,7 +340,7 @@ export const testNode = suite('source/engine/execution-reporting.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() emits suite events for table path segments', async function (scope: OverkillScope) {
+    test('emits suite events for table path segments', async function (scope) {
         const engine = createEngine();
         const realTimeReporter = createInMemoryRealTimeReporter();
         const testPlan = engine.createTestPlan(
@@ -427,7 +427,7 @@ export const testNode = suite('source/engine/execution-reporting.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() rejects reporter sink conflicts before starting the run', async function (scope: OverkillScope) {
+    test('rejects reporter sink conflicts before starting the run', async function (scope) {
         const engine = createEngine();
         const executionState = createReporterConflictExecutionState();
         const testPlan = createReporterConflictPlan(engine, executionState);

@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import type { MeasurementComparisonIdentity } from '../engine/measurement-evidence.ts';
@@ -32,7 +32,7 @@ function baselineFor(identity: MeasurementComparisonIdentity): StoredPerformance
         expected: { calibration: { kind: 'comparable', machineClass: 'host', context: {}, metadata: {} }, value: 7 }
     };
 }
-export const testNode = authoredSuite('measurement comparison identity', [
+export const testNode: TestNode = suite('measurement comparison identity', [
     test('retains stable measurement facts in versioned baselines', function (scope) {
         const baseline = baselineFor(measurement);
         const encoded = JSON.stringify(baseline);

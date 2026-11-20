@@ -1,15 +1,18 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, type TestNode, suite, test } from '@overkill-dev/test';
+import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
 
 import {
-    type TestBody as DirectTestBody,
     type TestNode as DirectTestNode,
-    type TestScope as DirectScope,
     createTestCase as createDirectTestCase
 } from '../packages/engine/engine.entry-point.ts';
 
 import { createDirectRunFixture } from '../test-support/direct-run-fixture.ts';
 
-function passingBody(scope: DirectScope): ReturnType<DirectTestBody> {
+type PassingBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
+
+function passingBody(
+    scope: PassingBodyAssertions
+): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
 
     return scope.assert.collect();
@@ -25,8 +28,8 @@ function passingCase(): DirectTestNode {
     });
 }
 
-export const testNode = suite('source/run/run-if-main-profile-file-sets.test.ts', [
-    test('runIfMain() rejects empty file sets while selecting direct profiles', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Run if main profile file sets', [
+    test('rejects empty file sets while selecting direct profiles', async function (scope) {
         const fixture = createDirectRunFixture({
             config: {
                 profiles: {
@@ -55,7 +58,7 @@ export const testNode = suite('source/run/run-if-main-profile-file-sets.test.ts'
 
         return scope.assert.collect();
     }),
-    test('runIfMain() rejects a non-microtest fallback profile named microtest', async function (scope: OverkillScope) {
+    test('rejects a non-microtest fallback profile named microtest', async function (scope) {
         const fixture = createDirectRunFixture({
             config: {
                 profiles: {

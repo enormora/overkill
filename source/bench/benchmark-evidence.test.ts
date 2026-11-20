@@ -1,4 +1,5 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
+
 import {
     type RunResult,
     type TestCase,
@@ -21,7 +22,7 @@ async function runBenchmark(node: TestCase): Promise<RunResult> {
     );
 }
 
-export const testNode = authoredSuite('benchmark evidence contracts', [
+export const testNode: TestNode = suite('benchmark evidence contracts', [
     test('workload identities retain values beyond diagnostic serialization limits', function (scope) {
         const values = Array.from({ length: 101 }, function () {
             return 1;

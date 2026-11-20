@@ -1,9 +1,9 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { processProbeReportStorage, processProbeReport } from '../test-support/process-probe-report.ts';
 
-export const testNode = authoredSuite('bounded process probe reports', [
-    authoredTest('combines partial reads and releases file and directory ownership', async function (scope: TestScope) {
+export const testNode: TestNode = suite('bounded process probe reports', [
+    test('combines partial reads and releases file and directory ownership', async function (scope) {
         const fixture = processProbeReportStorage('pass');
         const storage = await fixture.prepare();
         scope.assert.equal(storage.path, '/reports/report.json');
@@ -17,8 +17,15 @@ export const testNode = authoredSuite('bounded process probe reports', [
         ]);
         return scope.assert.collect();
     }),
-    ...([ 'invalid-json', 'invalid-report', 'oversized', 'read-error' ] as const).map(function (scenario) {
-        return authoredTest(`rejects ${scenario} reports and closes the file`, async function (scope: TestScope) {
+    table({
+        title: 'rejects invalid probe reports and closes the file',
+        cases: [ 'invalid-json', 'invalid-report', 'oversized', 'read-error' ] as const,
+        caseTitle(scenario) {
+            return scenario;
+        },
+        async test(scope) {
+            const scenario = scope.parameters;
+
             const fixture = processProbeReportStorage(scenario);
             const storage = await fixture.prepare();
             if (scenario === 'read-error') {
@@ -34,6 +41,6 @@ export const testNode = authoredSuite('bounded process probe reports', [
             scope.assert.deepEqual(Array.from(fixture.calls), [ 'directory', 'open:/reports/report.json', 'close' ]);
             await storage.dispose();
             return scope.assert.collect();
-        });
+        }
     })
 ]);

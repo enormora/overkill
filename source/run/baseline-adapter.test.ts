@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import {
@@ -20,8 +20,8 @@ function unexpectedCallback(): never {
     throw new Error('Unexpected adapter callback.');
 }
 
-export const testNode = authoredSuite('ordinary baseline adapters', [
-    test('rejects blank adapter IDs before invoking callbacks', function (scope: TestScope) {
+export const testNode: TestNode = suite('ordinary baseline adapters', [
+    test('rejects blank adapter IDs before invoking callbacks', function (scope) {
         scope.assert.throws(function () {
             return defineBaselineAdapter({
                 subtype: 'content-snapshot',
@@ -39,7 +39,7 @@ export const testNode = authoredSuite('ordinary baseline adapters', [
         }, { type: TypeError, message: 'Baseline adapter ID must not be empty.' });
         return scope.assert.collect();
     }),
-    test('keeps observation, comparison, and proposal values distinct', async function (scope: TestScope) {
+    test('keeps observation, comparison, and proposal values distinct', async function (scope) {
         const adapter = defineBaselineAdapter({
             subtype: 'content-snapshot',
             comparisonContext: {},
@@ -83,7 +83,7 @@ export const testNode = authoredSuite('ordinary baseline adapters', [
         });
         return scope.assert.collect();
     }),
-    test('does not propose during comparison or existing bootstrap', async function (scope: TestScope) {
+    test('does not propose during comparison or existing bootstrap', async function (scope) {
         const adapter = defineBaselineAdapter({
             subtype: 'terminal-snapshot',
             comparisonContext: {},
@@ -120,7 +120,7 @@ export const testNode = authoredSuite('ordinary baseline adapters', [
         }
         return scope.assert.collect();
     }),
-    test('passes unavailable observations through without invoking codecs', async function (scope: TestScope) {
+    test('passes unavailable observations through without invoking codecs', async function (scope) {
         for (const observation of [ { kind: 'not-applicable' }, { kind: 'missing', reason: 'No output' } ] as const) {
             const adapter = defineBaselineAdapter({
                 subtype: 'visual-snapshot',
@@ -154,7 +154,7 @@ export const testNode = authoredSuite('ordinary baseline adapters', [
         }
         return scope.assert.collect();
     }),
-    test('creates binary proposals for every write and preview mode', async function (scope: TestScope) {
+    test('creates binary proposals for every write and preview mode', async function (scope) {
         const definition: BaselineAdapterDefinition<Uint8Array, Uint8Array, Uint8Array> = {
             subtype: 'visual-snapshot',
             comparisonContext: { browser: 'test-browser' },

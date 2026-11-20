@@ -1,12 +1,12 @@
-import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+import { test, type TestNode, suite } from '@overkill-dev/test';
 
 import { memoryCampaignWorker } from '../../test-support/memory-campaign-worker.ts';
 import { campaignProtocolVersion, campaignRequestSchema } from './campaign-protocol.ts';
 
 const invocation = { kind: 'invoke', data: null } as const;
 
-export const testNode = authoredSuite('campaign invocation admission', [
-    test('rejects execution settings supplied with an invocation', function (scope: TestScope) {
+export const testNode: TestNode = suite('campaign invocation admission', [
+    test('rejects execution settings supplied with an invocation', function (scope) {
         const parsed = campaignRequestSchema.safeParse({
             kind: 'request',
             version: campaignProtocolVersion,
@@ -18,18 +18,17 @@ export const testNode = authoredSuite('campaign invocation admission', [
         scope.assert.equal(parsed.success, false);
         return scope.assert.collect();
     }),
-    test('requires a frozen policy before running', async function (scope: TestScope) {
-        const { worker, sandbox, invocations } = await memoryCampaignWorker(null);
+    test('requires a frozen policy before running', async function (scope) {
+        const { worker, sandbox, invocations } = await memoryCampaignWorker.create();
         await worker.respond({ kind: 'register', root: sandbox.root }, scope.signal, null);
         await scope.assert.rejects(async function () {
             return await worker.respond(invocation, scope.signal, 50);
         }, { message: 'Campaign execution requires a frozen policy.' });
         scope.assert.equal(invocations.length, 0);
-        await worker.dispose();
         return scope.assert.collect();
     }),
-    test('requires a budget and rejects invocations after release', async function (scope: TestScope) {
-        const { worker, sandbox, invocations } = await memoryCampaignWorker(null);
+    test('requires a budget and rejects invocations after release', async function (scope) {
+        const { worker, sandbox, invocations } = await memoryCampaignWorker.create();
         await worker.respond({ kind: 'register', root: sandbox.root }, scope.signal, null);
         await worker.respond({ kind: 'resolve-policy', sandbox, settings: { seed: '42' } }, scope.signal, null);
         await scope.assert.rejects(async function () {
@@ -40,7 +39,6 @@ export const testNode = authoredSuite('campaign invocation admission', [
             return await worker.respond(invocation, scope.signal, 50);
         }, { type: Error });
         scope.assert.equal(invocations.length, 0);
-        await worker.dispose();
         return scope.assert.collect();
     })
 ]);

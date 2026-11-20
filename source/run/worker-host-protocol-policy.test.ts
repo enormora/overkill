@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 
@@ -88,7 +88,7 @@ function createProtocolFixture(): ProtocolFixture {
     };
 }
 
-function assertErrorProtocol(scope: OverkillScope, fixture: ProtocolFixture): void {
+function assertErrorProtocol(scope: TestScope, fixture: ProtocolFixture): void {
     const deserializedFields = fixture.deserializedError as Error & Readonly<Record<string, unknown>>;
 
     scope.assert.equal(fixture.serializedError.stack, null);
@@ -102,13 +102,13 @@ function assertErrorProtocol(scope: OverkillScope, fixture: ProtocolFixture): vo
     scope.assert.equal(deserializedFields.resource, '/project/output.txt');
 }
 
-function assertFallbackErrorProtocol(scope: OverkillScope, fixture: ProtocolFixture): void {
+function assertFallbackErrorProtocol(scope: TestScope, fixture: ProtocolFixture): void {
     scope.assert.equal(fixture.deserializedWithoutStack.message, 'no stack');
     scope.assert.equal(serializeError('plain').message, 'plain');
     scope.assert.equal(serializeError('plain').code, null);
 }
 
-function assertWorkerMessageProtocol(scope: OverkillScope, fixture: ProtocolFixture): void {
+function assertWorkerMessageProtocol(scope: TestScope, fixture: ProtocolFixture): void {
     scope.assert.equal(fixture.decodedEnvelope?.kind, 'event');
     scope.assert.equal(
         envelopeMessage(
@@ -129,10 +129,10 @@ function assertWorkerMessageProtocol(scope: OverkillScope, fixture: ProtocolFixt
     );
 }
 
-export const testNode = suite('worker host protocol', [
+export const testNode: TestNode = suite('worker host protocol', [
     test(
         'closing a worker channel settles completion without a terminal message',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const channel = createWorkerPoolMessageChannel(function () {
                 return undefined;
             });
@@ -147,7 +147,7 @@ export const testNode = suite('worker host protocol', [
     ),
     test(
         'createWorkerPoolHostProcessStarter() forks the shared child host entrypoint',
-        function (scope: OverkillScope) {
+        function (scope) {
             const child = createChildProcess();
             const forkCalls: {
                 readonly childArguments: readonly string[];
@@ -195,7 +195,7 @@ export const testNode = suite('worker host protocol', [
             return scope.assert.collect();
         }
     ),
-    test('worker-pool host protocol preserves errors and worker messages', function (scope: OverkillScope) {
+    test('worker-pool host protocol preserves errors and worker messages', function (scope) {
         const fixture = createProtocolFixture();
 
         assertErrorProtocol(scope, fixture);
@@ -206,7 +206,7 @@ export const testNode = suite('worker host protocol', [
     }),
     test(
         'worker-pool message channels deliver queued messages before completion',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const receivedKinds: string[] = [];
             const channel = createWorkerPoolMessageChannel(function recordMessage(message) {
                 receivedKinds.push(message.kind);

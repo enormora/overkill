@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 
@@ -234,8 +234,8 @@ function recordAssertNodes(facade: AssertAssertionFacade): void {
     });
 }
 
-export const testNode = suite('source/engine/assertion-facade.test.ts', [
-    test('createRecordingAssertFacade() records every built-in assertion node', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Recorded assertion facade', [
+    test('records every built-in assertion node', function (scope: TestScope) {
         const recording = createAssertRecording();
 
         recordAssertNodes(recording.facade);
@@ -333,8 +333,8 @@ export const testNode = suite('source/engine/assertion-facade.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'createRecordingAssertFacade() records async rejects assertions through pending sink',
-        async function (scope: OverkillScope) {
+        'records async rejects assertions through pending sink',
+        async function (scope) {
             const recording = createAssertRecording();
 
             await recording.facade.rejects(async function rejectExpectedError() {
@@ -352,8 +352,8 @@ export const testNode = suite('source/engine/assertion-facade.test.ts', [
         }
     ),
     test(
-        'createRecordingAssertFacade() applies annotated messages without requiring the builder API',
-        function (scope: OverkillScope) {
+        'applies annotated messages without requiring the builder API',
+        function (scope) {
             const recording = createAssertRecording();
 
             recording.facade.annotated('annotated value').empty([]);

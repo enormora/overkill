@@ -1,5 +1,6 @@
 import { mock, type Mock } from 'node:test';
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock, type Clock, type DeterministicClock } from '@enormora/clock';
 import { defaultRuntimeCooldownPolicy } from '../packages/bench/bench.entry-point.ts';
 import type { BenchmarkCooldownResult } from '../engine/benchmark-result.ts';
@@ -71,7 +72,7 @@ async function completeObservationWindow(
     await scope.settleAsyncWork();
 }
 
-export const testNode = authoredSuite('bounded runtime cooldown', [
+export const testNode: TestNode = suite('bounded runtime cooldown', [
     test('requires consecutive quiet windows and accepts threshold equality', async function (scope) {
         const cooldown = startCooldown([ 0.1, 0.8, 0.1, 0.1 ], 0);
         scope.cleanup(function () {
@@ -122,15 +123,18 @@ export const testNode = authoredSuite('bounded runtime cooldown', [
         scope.assert.equal(cooldown.cleared.mock.calls.length, 2);
         return scope.assert.collect();
     }),
-    test('records unavailable observations without retaining invalid numeric evidence', async function (scope) {
-        const cooldown = startCooldown([ Number.NaN ], 0);
-        cooldown.clock.advanceByMilliseconds(50);
-        const result = await cooldown.pending;
-        scope.assert.equal(result.evidence.outcome, 'unavailable');
-        scope.assert.equal(result.evidence.lastUtilization, null);
-        scope.assert.equal(result.error?.runnerError(caseId, workId).subtype, 'measurement');
-        return scope.assert.collect();
-    }),
+    test(
+        'records unavailable observations without retaining invalid numeric evidence',
+        async function (scope) {
+            const cooldown = startCooldown([ Number.NaN ], 0);
+            cooldown.clock.advanceByMilliseconds(50);
+            const result = await cooldown.pending;
+            scope.assert.equal(result.evidence.outcome, 'unavailable');
+            scope.assert.equal(result.evidence.lastUtilization, null);
+            scope.assert.equal(result.error?.runnerError(caseId, workId).subtype, 'measurement');
+            return scope.assert.collect();
+        }
+    ),
     test('completes full observation windows when timer callbacks arrive early', async function (scope) {
         const cooldown = startCooldown([ 0, 0 ], 1);
         scope.cleanup(function cancelPendingObservation() {

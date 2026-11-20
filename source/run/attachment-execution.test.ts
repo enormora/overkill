@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
@@ -20,8 +20,8 @@ function assertPreparedOwner(scope: TestScope, operation: AttachmentOperation | 
     scope.assert.equal(operation.owner.kind, 'case');
 }
 
-export const testNode = authoredSuite('attachment execution ownership', [
-    authoredTest('sends a JSON snapshot with attempt and branch ownership', async function (scope: TestScope) {
+export const testNode: TestNode = suite('attachment execution ownership', [
+    test('sends a JSON snapshot with attempt and branch ownership', async function (scope) {
         const recorded = recordAttachmentExchange();
         const execution = createAttachmentExecution(recorded.exchange, defaultAttachmentLimits);
         const result = await execution.runBranch(
@@ -45,7 +45,7 @@ export const testNode = authoredSuite('attachment execution ownership', [
         scope.assert.deepEqual(await execution.finish(), []);
         return scope.assert.collect();
     }),
-    authoredTest('omits JSON that exceeds the inline limit', async function (scope: TestScope) {
+    test('omits JSON that exceeds the inline limit', async function (scope) {
         const recorded = recordAttachmentExchange();
         const execution = createAttachmentExecution(recorded.exchange, {
             ...defaultAttachmentLimits,
@@ -61,7 +61,7 @@ export const testNode = authoredSuite('attachment execution ownership', [
         scope.assert.deepEqual(await execution.finish(), []);
         return scope.assert.collect();
     }),
-    authoredTest('uses the artifact limit for prepared witnesses', async function (scope: TestScope) {
+    test('uses the artifact limit for prepared witnesses', async function (scope) {
         const recorded = recordAttachmentExchange();
         const execution = createAttachmentExecution(recorded.exchange, {
             ...defaultAttachmentLimits,
@@ -86,7 +86,7 @@ export const testNode = authoredSuite('attachment execution ownership', [
         scope.assert.deepEqual(await execution.finish(), []);
         return scope.assert.collect();
     }),
-    authoredTest('reports invalid JSON to the owning attempt once', async function (scope: TestScope) {
+    test('reports invalid JSON to the owning attempt once', async function (scope) {
         const recorded = recordAttachmentExchange();
         const execution = createAttachmentExecution(recorded.exchange, defaultAttachmentLimits);
         await execution.runAttempt(work, attempt, async function captureInvalidJson() {
@@ -103,9 +103,9 @@ export const testNode = authoredSuite('attachment execution ownership', [
         scope.assert.deepEqual(execution.takeErrors(owner), []);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'keeps nested matching attempts active until the outer attempt ends',
-        async function (scope: TestScope) {
+        async function (scope) {
             const recorded = recordAttachmentExchange();
             const execution = createAttachmentExecution(recorded.exchange, defaultAttachmentLimits);
             await execution.runAttempt(work, attempt, async function outerAttempt() {
@@ -131,7 +131,7 @@ export const testNode = authoredSuite('attachment execution ownership', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('closes writers left open by an attempt', async function (scope: TestScope) {
+    test('closes writers left open by an attempt', async function (scope) {
         const recorded = recordAttachmentExchange();
         const execution = createAttachmentExecution(recorded.exchange, defaultAttachmentLimits);
         await execution.runAttempt(work, attempt, async function leaveWriterOpen() {
@@ -142,7 +142,7 @@ export const testNode = authoredSuite('attachment execution ownership', [
         scope.assert.deepEqual(await execution.finish(), []);
         return scope.assert.collect();
     }),
-    authoredTest('closes run writers and reports their errors at finish', async function (scope: TestScope) {
+    test('closes run writers and reports their errors at finish', async function (scope) {
         const recorded = recordAttachmentExchange();
         const execution = createAttachmentExecution(recorded.exchange, defaultAttachmentLimits);
         await execution.context.forProducer(producer).open({ ...metadata, kind: 'text' });
@@ -152,9 +152,9 @@ export const testNode = authoredSuite('attachment execution ownership', [
         scope.assert.deepEqual(await execution.finish(), []);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'rejects writes after the owning attempt and integration run expire',
-        async function (scope: TestScope) {
+        async function (scope) {
             const recorded = recordAttachmentExchange();
             const execution = createAttachmentExecution(recorded.exchange, defaultAttachmentLimits);
             let escaped = async function missingWriter(): Promise<void> {
@@ -179,7 +179,7 @@ export const testNode = authoredSuite('attachment execution ownership', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('requires prepared artifacts to belong to an active attempt', async function (scope: TestScope) {
+    test('requires prepared artifacts to belong to an active attempt', async function (scope) {
         const recorded = recordAttachmentExchange();
         const execution = createAttachmentExecution(recorded.exchange, defaultAttachmentLimits);
         const prepared = execution.context.prepareForProducer(
@@ -205,7 +205,7 @@ export const testNode = authoredSuite('attachment execution ownership', [
         assertPreparedOwner(scope, recorded.operations[0]);
         return scope.assert.collect();
     }),
-    authoredTest('registers resource consumers and failures', async function (scope: TestScope) {
+    test('registers resource consumers and failures', async function (scope) {
         const recorded = recordAttachmentExchange();
         const execution = createAttachmentExecution(recorded.exchange, defaultAttachmentLimits);
         await execution.registerResourceConsumers('service', [ work ]);
@@ -216,30 +216,36 @@ export const testNode = authoredSuite('attachment execution ownership', [
         ]);
         return scope.assert.collect();
     }),
-    ...[
-        { response: { kind: 'written' }, message: 'Attachment open returned an invalid reply.' },
-        { response: { kind: 'error', reason: 'denied', message: 'rejected' }, message: 'rejected' }
-    ]
-        .map(function rejectedResponse(expected) {
-            return authoredTest(`rejects open reply ${expected.response.kind}`, async function (scope: TestScope) {
-                const response: AttachmentResponse = expected.response.kind === 'error'
-                    ? { kind: 'error', reason: 'denied', message: 'rejected' }
-                    : { kind: 'written' };
-                const execution = createAttachmentExecution(async function () {
-                    return response;
-                }, defaultAttachmentLimits);
-                await scope.assert.rejects(
-                    async function () {
-                        return await execution.context.forProducer(producer).open({ ...metadata, kind: 'text' });
-                    },
-                    { message: expected.message }
-                );
-                const errors = await execution.finish();
-                scope.assert.equal(errors.length, 1);
-                return scope.assert.collect();
-            });
-        }),
-    authoredTest('reports transport failures', async function (scope: TestScope) {
+    table({
+        title: 'rejects invalid open replies',
+        cases: [
+            { response: { kind: 'written' }, message: 'Attachment open returned an invalid reply.' },
+            { response: { kind: 'error', reason: 'denied', message: 'rejected' }, message: 'rejected' }
+        ],
+        caseTitle(expected) {
+            return expected.response.kind;
+        },
+        async test(scope) {
+            const expected = scope.parameters;
+
+            const response: AttachmentResponse = expected.response.kind === 'error'
+                ? { kind: 'error', reason: 'denied', message: 'rejected' }
+                : { kind: 'written' };
+            const execution = createAttachmentExecution(async function () {
+                return response;
+            }, defaultAttachmentLimits);
+            await scope.assert.rejects(
+                async function () {
+                    return await execution.context.forProducer(producer).open({ ...metadata, kind: 'text' });
+                },
+                { message: expected.message }
+            );
+            const errors = await execution.finish();
+            scope.assert.equal(errors.length, 1);
+            return scope.assert.collect();
+        }
+    }),
+    test('reports transport failures', async function (scope) {
         const execution = createAttachmentExecution(async function unavailable(): Promise<AttachmentResponse> {
             throw new Error('transport unavailable');
         }, defaultAttachmentLimits);

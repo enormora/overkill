@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createInMemoryFinalResultReporter, createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { createPlainOutputRenderer } from './reporter-output.ts';
@@ -32,23 +32,29 @@ function deliveredReporters(final: boolean, kind: 'empty' | 'final' | 'live'): r
             return reporter.name;
         });
 }
-export const testNode = authoredSuite('final result reporter preparation', [
-    ...[ false, true ].flatMap(function (final) {
-        return ([ 'empty', 'final', 'live' ] as const).map(function (kind) {
-            const ordinary = kind === 'empty'
-                ? []
-                : [ kind === 'final' ? 'in-memory-final-result' : 'in-memory-real-time' ];
-            const expected = final ? [ 'in-memory-final-result' ] : ordinary;
-            return authoredTest(
-                `selects ${kind} reporter definitions for final delivery ${final}`,
-                function (scope: TestScope) {
-                    scope.assert.deepEqual(deliveredReporters(final, kind), expected);
-                    return scope.assert.collect();
-                }
-            );
-        });
+export const testNode: TestNode = suite('final result reporter preparation', [
+    table({
+        title: 'selects reporter definitions for final delivery',
+        cases: [ false, true ].flatMap(function (final) {
+            return ([ 'empty', 'final', 'live' ] as const).map(function (kind) {
+                const ordinary = kind === 'empty'
+                    ? []
+                    : [ kind === 'final' ? 'in-memory-final-result' : 'in-memory-real-time' ];
+                const expected = final ? [ 'in-memory-final-result' ] : ordinary;
+                return { final, kind, expected };
+            });
+        }),
+        caseTitle({ final, kind }) {
+            return [ kind, final ].map(String).join(', ');
+        },
+        test(scope) {
+            const { final, kind, expected } = scope.parameters;
+
+            scope.assert.deepEqual(deliveredReporters(final, kind), expected);
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('validates required facts before final result delivery', function (scope: TestScope) {
+    test('validates required facts before final result delivery', function (scope) {
         const reporters: Reporter[] = [];
         const reporting = createDeliveryReportingContext({
             facts: { value: 42 },

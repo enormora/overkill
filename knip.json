@@ -2,8 +2,8 @@
     "$schema": "https://unpkg.com/knip@5/schema.json",
     "entry": [
         "source/**/*.test.ts",
-        "!source/integration-tests/run/fixtures/**/*.test.ts",
-        "source/integration-tests/run/fixtures/custom-engine.ts",
+        "!source/integration-tests/integration/fixtures/**/*.test.ts",
+        "source/integration-tests/integration/fixtures/custom-engine.ts",
         "source/**/*.type-test.ts",
         "source/packages/**/*.ts",
         "source/run/node-command-line-runner.entry-point.ts",
@@ -14,17 +14,17 @@
         "source/reporters/benchmark-html-browser.entry-point.ts",
         "dependency-cruiser.config.js",
         "packtory.config.js",
-        "overkill.config.js",
+        "overkill.config.ts",
         "tstyche.json"
     ],
     "project": [
         "source/**/*.ts!",
-        "*.js",
+        "*.{js,ts}",
         "!source/**/*.test.ts!",
         "!source/**/*.type-test.ts!"
     ],
     "ignore": [
-        "source/integration-tests/run/fixtures/**/*.test.ts"
+        "source/integration-tests/integration/fixtures/**/*.test.ts"
     ],
     "ignoreDependencies": [
         "@ls-lint/ls-lint",

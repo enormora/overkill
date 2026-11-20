@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createDefaultWorkId } from '../engine/identity.ts';
 import { createBoundaryFailureArtifact } from '../engine/run-artifact.ts';
@@ -82,7 +82,7 @@ function crashArtifact(attempt: number): RunArtifact {
     );
 }
 
-export const testNode = authoredSuite('terminal failure reporting', [
+export const testNode: TestNode = suite('terminal failure reporting', [
     test('reports pending crashes absent from the final result and collected plan', async function (scope) {
         const events: ReporterEvent[] = [];
         const result = runResultFactory.build();
@@ -105,36 +105,39 @@ export const testNode = authoredSuite('terminal failure reporting', [
         scope.assert.deepEqual(reported, result);
         return scope.assert.collect();
     }),
-    test('reports the final attempt and its artifacts while retaining reporter errors', async function (scope) {
-        const events: ReporterEvent[] = [];
-        const finalAttempt = { ...pending.attempts[0], attempt: { index: 2 }, durationMicroseconds: 20 };
-        const completed: PerTestResult = {
-            ...pending,
-            durationMicroseconds: 30,
-            attempts: [ ...pending.attempts, finalAttempt ]
-        };
-        const artifact = crashArtifact(2);
-        const result = {
-            ...runResultFactory.build(),
-            perTest: [ completed ],
-            artifacts: [ crashArtifact(1), artifact ]
-        };
-        const reported = await reportTerminalCases(result, [ pending ], emptyPlan, {
-            async reportEvent(event) {
-                events.push(event);
-                return [ reporterError ];
-            }
-        });
-        scope.assert.partialDeepEqual(onlyTerminalEvent(events), {
-            attempt: 2,
-            durationMicroseconds: 20,
-            artifacts: [ artifact ]
-        });
-        scope.assert.partialDeepEqual(reported, {
-            runnerErrors: [ reporterError ],
-            perTest: [ completed ],
-            status: 'failed'
-        });
-        return scope.assert.collect();
-    })
+    test(
+        'reports the final attempt and its artifacts while retaining reporter errors',
+        async function (scope) {
+            const events: ReporterEvent[] = [];
+            const finalAttempt = { ...pending.attempts[0], attempt: { index: 2 }, durationMicroseconds: 20 };
+            const completed: PerTestResult = {
+                ...pending,
+                durationMicroseconds: 30,
+                attempts: [ ...pending.attempts, finalAttempt ]
+            };
+            const artifact = crashArtifact(2);
+            const result = {
+                ...runResultFactory.build(),
+                perTest: [ completed ],
+                artifacts: [ crashArtifact(1), artifact ]
+            };
+            const reported = await reportTerminalCases(result, [ pending ], emptyPlan, {
+                async reportEvent(event) {
+                    events.push(event);
+                    return [ reporterError ];
+                }
+            });
+            scope.assert.partialDeepEqual(onlyTerminalEvent(events), {
+                attempt: 2,
+                durationMicroseconds: 20,
+                artifacts: [ artifact ]
+            });
+            scope.assert.partialDeepEqual(reported, {
+                runnerErrors: [ reporterError ],
+                perTest: [ completed ],
+                status: 'failed'
+            });
+            return scope.assert.collect();
+        }
+    )
 ]);

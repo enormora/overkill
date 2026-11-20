@@ -1,6 +1,11 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
-
-import { doubleUsage, testDouble as publishedTestDouble } from '../packages/doubles/doubles.entry-point.ts';
+import {
+    type TestNode,
+    type TestScope,
+    suite,
+    test,
+    testDouble as callbackDouble,
+    doubleUsage
+} from '@overkill-dev/test';
 
 import type { BehaviorRuntime, Invocation } from './double-behavior.ts';
 import { rule } from './double-rule.ts';
@@ -23,8 +28,8 @@ const unusedBehaviorRuntime: BehaviorRuntime = {
     }
 };
 
-export const testNode = suite('source/doubles/test-double-callback.test.ts', [
-    test('rule.callsCallback() invokes a callback argument synchronously', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Test double callback', [
+    test('rule.callsCallback() invokes a callback argument synchronously', function (scope) {
         const seen: unknown[] = [];
         const readValue = testDouble<ReadValue>({
             fallback: rule.callsCallback(1, [ null, 'contents' ], undefined)
@@ -38,7 +43,7 @@ export const testNode = suite('source/doubles/test-double-callback.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('rule.callsCallbackAsync() invokes a callback argument in a microtask', async function (scope: OverkillScope) {
+    test('rule.callsCallbackAsync() invokes a callback argument in a microtask', async function (scope) {
         const seen: string[] = [];
         const readValue = testDouble<ReadValue>({
             rules: [
@@ -57,15 +62,15 @@ export const testNode = suite('source/doubles/test-double-callback.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('callback rule factories expose their configured return values', function (scope: OverkillScope) {
+    test('callback rule factories expose their configured return values', function (scope) {
         scope.assert.equal(rule.callsCallback(0, [], 'sync').result(), 'sync');
         scope.assert.equal(rule.callsCallbackAsync(0, [], 'async').result(), 'async');
 
         return scope.assert.collect();
     }),
-    test('rule.callsCallback() binds a callback receiver', function (scope: OverkillScope) {
+    test('rule.callsCallback() binds a callback receiver', function (scope: TestScope) {
         const receiver = { scope: 'test' };
-        const callback = publishedTestDouble<(value: string) => undefined>();
+        const callback = callbackDouble<(value: string) => undefined>();
         const loadScoped = testDouble<LoadScopedCallback>({
             rules: [
                 rule.when('known').callsCallback(1, [ 'value' ], 'returned', receiver)
@@ -82,9 +87,9 @@ export const testNode = suite('source/doubles/test-double-callback.test.ts', [
     }),
     test(
         'rule.callsCallbackAsync() supports argument rules and receiver binding',
-        async function (scope: OverkillScope) {
+        async function (scope: TestScope) {
             const receiver = { scope: 'async' };
-            const callback = publishedTestDouble<(value: string) => undefined>();
+            const callback = callbackDouble<(value: string) => undefined>();
             const loadScoped = testDouble<LoadScopedCallback>({
                 rules: [
                     rule.when('known').callsCallbackAsync(1, [ 'value' ], 'returned', receiver)
@@ -110,7 +115,7 @@ export const testNode = suite('source/doubles/test-double-callback.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('rule.callsCallback() supports argument rules and ordered rules', function (scope: OverkillScope) {
+    test('rule.callsCallback() supports argument rules and ordered rules', function (scope) {
         const seen: string[] = [];
         const readValue = testDouble<ReadValue>({
             rules: [
@@ -132,7 +137,7 @@ export const testNode = suite('source/doubles/test-double-callback.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('rule.callsCallback() validates callback behavior at runtime', function (scope: OverkillScope) {
+    test('rule.callsCallback() validates callback behavior at runtime', function (scope) {
         scope.assert.throws(function createNegativeCallbackRule() {
             rule.callsCallback(-1, [], undefined);
         }, { message: /non-negative integer/u });
@@ -147,7 +152,7 @@ export const testNode = suite('source/doubles/test-double-callback.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('rule.callsCallback() rejects construction invocations', function (scope: OverkillScope) {
+    test('rule.callsCallback() rejects construction invocations', function (scope) {
         const constructionInvocation: Invocation = {
             arguments: [],
             index: 0,
@@ -161,7 +166,7 @@ export const testNode = suite('source/doubles/test-double-callback.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('rule.callsCallback() snapshots callback arguments', function (scope: OverkillScope) {
+    test('rule.callsCallback() snapshots callback arguments', function (scope) {
         const values: [string] = [ 'first' ];
         const seen: string[] = [];
         const loadValue = testDouble<(callback: (value: string) => void) => undefined>({
@@ -177,7 +182,7 @@ export const testNode = suite('source/doubles/test-double-callback.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('rule.sequence() supports callback behavior entries', async function (scope: OverkillScope) {
+    test('rule.sequence() supports callback behavior entries', async function (scope) {
         const seen: string[] = [];
         const readValue = testDouble<ReadValue>({
             fallback: rule.sequence([

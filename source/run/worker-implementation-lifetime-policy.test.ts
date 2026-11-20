@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     workerImplementationLifetime,
@@ -6,8 +6,8 @@ import {
     aggregateLeaseFailure
 } from '../test-support/worker-implementation-lifetime.ts';
 
-export const testNode = authoredSuite('worker implementation lease ownership', [
-    test('runs inline plans without creating a body lease', async function (scope: TestScope) {
+export const testNode: TestNode = suite('worker implementation lease ownership', [
+    test('runs inline plans without creating a body lease', async function (scope) {
         const fixture = workerImplementationLifetime(healthyImplementationLease);
         const result = await fixture.lifetime.with('worker', fixture.inline, async function (plan) {
             return plan.root.title;
@@ -17,7 +17,7 @@ export const testNode = authoredSuite('worker implementation lease ownership', [
         scope.assert.deepEqual(fixture.events, []);
         return scope.assert.collect();
     }),
-    test('retains admitted leases until their worker is closed', async function (scope: TestScope) {
+    test('retains admitted leases until their worker is closed', async function (scope) {
         const fixture = workerImplementationLifetime(healthyImplementationLease);
         const result = await fixture.lifetime.with('worker', fixture.plan, async function (plan) {
             return plan.root.title;
@@ -31,7 +31,7 @@ export const testNode = authoredSuite('worker implementation lease ownership', [
         scope.assert.deepEqual(fixture.events, [ 'start:1', 'enter:1', 'leave:1', 'enter:1', 'leave:1', 'close:1' ]);
         return scope.assert.collect();
     }),
-    test('nests retained leases and closes them in reverse admission order', async function (scope: TestScope) {
+    test('nests retained leases and closes them in reverse admission order', async function (scope) {
         const fixture = workerImplementationLifetime(healthyImplementationLease);
         await fixture.lifetime.with('worker', fixture.plan, async function () {
             return undefined;
@@ -54,7 +54,7 @@ export const testNode = authoredSuite('worker implementation lease ownership', [
         ]);
         return scope.assert.collect();
     }),
-    test('closes only the failed assignment while retaining older leases', async function (scope: TestScope) {
+    test('closes only the failed assignment while retaining older leases', async function (scope) {
         const fixture = workerImplementationLifetime(healthyImplementationLease);
         await fixture.lifetime.with('worker', fixture.plan, async function () {
             return undefined;
@@ -72,7 +72,7 @@ export const testNode = authoredSuite('worker implementation lease ownership', [
         scope.assert.deepEqual(fixture.events.slice(-4), [ 'close:2', 'enter:1', 'leave:1', 'close:1' ]);
         return scope.assert.collect();
     }),
-    test('removes a failed first lease before later work', async function (scope: TestScope) {
+    test('removes a failed first lease before later work', async function (scope) {
         const fixture = workerImplementationLifetime(healthyImplementationLease);
         const failure = new Error('assignment failed');
         await scope.assert.rejects(async function () {
@@ -87,7 +87,7 @@ export const testNode = authoredSuite('worker implementation lease ownership', [
         scope.assert.deepEqual(fixture.events, [ 'start:1', 'enter:1', 'leave:1', 'close:1' ]);
         return scope.assert.collect();
     }),
-    test('preserves admission failures without retaining a lease', async function (scope: TestScope) {
+    test('preserves admission failures without retaining a lease', async function (scope) {
         const failure = new Error('admission failed');
         const fixture = workerImplementationLifetime({ ...healthyImplementationLease, start: failure });
         await scope.assert.rejects(async function () {
@@ -99,7 +99,7 @@ export const testNode = authoredSuite('worker implementation lease ownership', [
         scope.assert.deepEqual(fixture.events, []);
         return scope.assert.collect();
     }),
-    test('reports every close failure and still releases all leases', async function (scope: TestScope) {
+    test('reports every close failure and still releases all leases', async function (scope) {
         const failure = new Error('close failed');
         const fixture = workerImplementationLifetime({ ...healthyImplementationLease, close: failure });
         await fixture.lifetime.with('worker', fixture.plan, async function () {
@@ -117,7 +117,7 @@ export const testNode = authoredSuite('worker implementation lease ownership', [
         scope.assert.deepEqual(fixture.events.slice(-2), [ 'close:2', 'close:1' ]);
         return scope.assert.collect();
     }),
-    test('preserves execution and failed-lease cleanup errors together', async function (scope: TestScope) {
+    test('preserves execution and failed-lease cleanup errors together', async function (scope) {
         const failure = new Error('close failed');
         const work = new Error('work failed');
         const fixture = workerImplementationLifetime({ ...healthyImplementationLease, close: failure });
@@ -132,7 +132,7 @@ export const testNode = authoredSuite('worker implementation lease ownership', [
         await fixture.lifetime.close('worker');
         return scope.assert.collect();
     }),
-    test('keeps worker keys independent', async function (scope: TestScope) {
+    test('keeps worker keys independent', async function (scope) {
         const fixture = workerImplementationLifetime(healthyImplementationLease);
         await fixture.lifetime.with('first', fixture.plan, async function () {
             return undefined;

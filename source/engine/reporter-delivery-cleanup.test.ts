@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -135,7 +135,7 @@ function createRunEndFailingReporter(): RealTimeReporter {
     };
 }
 
-function assertRunEndErrorResult(scope: OverkillScope, result: RunResult | null): void {
+function assertRunEndErrorResult(scope: TestScope, result: RunResult | null): void {
     scope.require.defined(result);
     scope.assert.deepEqual(resultRunnerErrorMessages(result), [ 'run-end-broken: cannot close run' ]);
 }
@@ -223,8 +223,8 @@ function createConcurrentFinishFixture(): ConcurrentFinishFixture {
     };
 }
 
-export const testNode = suite('source/engine/reporter-delivery-cleanup.test.ts', [
-    test('execute() times out reporter disposal', async function body(scope: OverkillScope) {
+export const testNode: TestNode = suite('Reporter cleanup after execution', [
+    test('times out reporter disposal', async function body(scope) {
         const { disposeSignal, engine, wallClock } = createReporterDeliveryFixture();
         const hangingReporter: RealTimeReporter = {
             async dispose() {
@@ -263,7 +263,7 @@ export const testNode = suite('source/engine/reporter-delivery-cleanup.test.ts',
 
         return scope.assert.collect();
     }),
-    test('execute() disposes reporters after validation failure', async function body(scope: OverkillScope) {
+    test('disposes reporters after validation failure', async function body(scope) {
         const engine = createDefaultReporterDeliveryEngine();
         let disposed = false;
         const firstReporter: RealTimeReporter = {
@@ -304,8 +304,8 @@ export const testNode = suite('source/engine/reporter-delivery-cleanup.test.ts',
         return scope.assert.collect();
     }),
     test(
-        'execute() throws AggregateError when execution and cleanup both fail',
-        async function body(scope: OverkillScope) {
+        'throws AggregateError when execution and cleanup both fail',
+        async function body(scope: TestScope) {
             const engine = createDefaultReporterDeliveryEngine();
             const firstReporter: RealTimeReporter = {
                 dispose() {
@@ -355,7 +355,7 @@ export const testNode = suite('source/engine/reporter-delivery-cleanup.test.ts',
             return scope.assert.collect();
         }
     ),
-    test('execute() does not retry disposal after disposal throws', async function body(scope: OverkillScope) {
+    test('does not retry disposal after disposal throws', async function body(scope) {
         const engine = createDefaultReporterDeliveryEngine();
         const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
         let disposeCalls = 0;
@@ -406,8 +406,8 @@ export const testNode = suite('source/engine/reporter-delivery-cleanup.test.ts',
         return scope.assert.collect();
     }),
     test(
-        'execute() includes run-end reporter errors before final reporting',
-        async function body(scope: OverkillScope) {
+        'includes run-end reporter errors before final reporting',
+        async function body(scope) {
             const engine = createDefaultReporterDeliveryEngine();
             const finalReporter = createInMemoryFinalResultReporter();
             const finishReporter = createInMemoryRealTimeReporter();
@@ -427,7 +427,7 @@ export const testNode = suite('source/engine/reporter-delivery-cleanup.test.ts',
             return scope.assert.collect();
         }
     ),
-    test('execute() records dispose failures without reporter re-entry', async function body(scope: OverkillScope) {
+    test('records dispose failures without reporter re-entry', async function body(scope) {
         const engine = createDefaultReporterDeliveryEngine();
         const observer = createInMemoryRealTimeReporter();
         const failingReporter: RealTimeReporter = {
@@ -463,8 +463,8 @@ export const testNode = suite('source/engine/reporter-delivery-cleanup.test.ts',
         return scope.assert.collect();
     }),
     test(
-        'execute() preserves concurrent final-result and real-time finish callbacks',
-        async function body(scope: OverkillScope) {
+        'preserves concurrent final-result and real-time finish callbacks',
+        async function body(scope) {
             const fixture = createConcurrentFinishFixture();
 
             const execution = fixture.engine.execute(createPassingPlan(fixture.engine), {

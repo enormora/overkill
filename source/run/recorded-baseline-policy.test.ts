@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     defineBaselineAdapter,
@@ -47,8 +47,8 @@ function configuredProfile(baselineAdapter: OrdinaryBaselineAdapter): MicrotestP
     }
     return profile;
 }
-export const testNode = authoredSuite('recorded ordinary baseline policy', [
-    test('restores adapter references after JSON transport', function (scope: TestScope) {
+export const testNode: TestNode = suite('recorded ordinary baseline policy', [
+    test('restores adapter references after JSON transport', function (scope) {
         const profile = configuredProfile(adapter({ browser: 'reference', platform: 'test' }));
         const json = JSON.stringify(recordedReplayProfile(profile));
         const serialized: unknown = JSON.parse(json);
@@ -58,7 +58,7 @@ export const testNode = authoredSuite('recorded ordinary baseline policy', [
         scope.assert.equal(restored.baselines.directory, profile.baselines.directory);
         return scope.assert.collect();
     }),
-    test('rejects unavailable adapters and changed comparison contexts', function (scope: TestScope) {
+    test('rejects unavailable adapters and changed comparison contexts', function (scope) {
         const profile = configuredProfile(adapter({ browser: 'reference' }));
         const serialized = recordedReplayProfile(profile);
         const unavailable = { ...profile, baselines: { ...profile.baselines, adapters: [] } };
@@ -72,7 +72,7 @@ export const testNode = authoredSuite('recorded ordinary baseline policy', [
         });
         return scope.assert.collect();
     }),
-    test('keeps legacy profiles free of newly configured baseline adapters', function (scope: TestScope) {
+    test('keeps legacy profiles free of newly configured baseline adapters', function (scope) {
         const profile = configuredProfile(adapter({}));
         const { baselines: _baselines, reporters: _reporters, ...legacy } = profile;
         const restored = restoreReplayProfile(legacy, profile);

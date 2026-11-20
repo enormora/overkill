@@ -1,11 +1,8 @@
 import { resolve } from 'node:path';
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { workIdentityKey, type CollectedRunPlan, type WorkId } from '../run/run.entry-point.ts';
 import { collectedMutationPlan } from '../../test-support/mutation-plan-fixture.ts';
-import { testNode as evidenceValidation } from './mutation-catalog-validation.test.ts';
-import { testNode as admissionTestNode } from './mutation-lifecycle.test.ts';
-import { testNode as observationTestNode } from './mutation-observation.test.ts';
 import {
     canonicalWork,
     eligibleMutationCatalog,
@@ -23,10 +20,7 @@ const work: WorkId = {
     workload: null
 };
 
-export const testNode = authoredSuite('mutation catalog contract', [
-    evidenceValidation,
-    observationTestNode,
-    admissionTestNode,
+export const testNode: TestNode = suite('mutation catalog contract', [
     test('rejects duplicate, missing, and empty exact selections', function (scope) {
         const plan = collectedMutationPlan([ work ]);
         const id = workIdentityKey(work);

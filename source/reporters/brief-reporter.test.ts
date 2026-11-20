@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
@@ -106,7 +106,7 @@ function failEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
     };
 }
 
-function assertFailureAnnotations(scope: OverkillScope, failureOutput: readonly OutputLineIntent[]): void {
+function assertFailureAnnotations(scope: TestScope, failureOutput: readonly OutputLineIntent[]): void {
     const locatedAnnotation = failureOutput[0]?.annotation;
     const unlocatedAnnotation = failureOutput[1]?.annotation;
 
@@ -138,7 +138,7 @@ function runnerErrorEvent(): Extract<ReporterEvent, { readonly kind: 'runner-err
     };
 }
 
-function assertRunnerErrorOutput(scope: OverkillScope, errorOutput: readonly OutputLineIntent[]): void {
+function assertRunnerErrorOutput(scope: TestScope, errorOutput: readonly OutputLineIntent[]): void {
     scope.assert.deepEqual(
         errorOutput.map(function toText(intent) {
             return intent.text;
@@ -155,10 +155,10 @@ function assertRunnerErrorOutput(scope: OverkillScope, errorOutput: readonly Out
     scope.assert.equal(annotation.title, 'Runner error');
 }
 
-export const testNode = suite('source/reporters/brief-reporter.test.ts', [
+export const testNode: TestNode = suite('Brief reporter', [
     test(
         'retry failures do not create annotations or increment completion counts',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const reporter = createBriefRuntimeReporter();
             const output = await readOutput(reporter.onEvent({ ...failEvent(), completion: 'retry' }));
             scope.assert.equal(output[0]?.annotation, null);
@@ -181,14 +181,14 @@ export const testNode = suite('source/reporters/brief-reporter.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('brief reporter declares managed primary stdout', function (scope: OverkillScope) {
+    test('declares managed primary stdout', function (scope) {
         const reporter = createBriefRuntimeReporter();
 
         scope.assert.deepEqual(reporter.sinks, [ { kind: 'stdout-managed-primary' } ]);
 
         return scope.assert.collect();
     }),
-    test('brief reporter prints run start and omits passing test lines', async function (scope: OverkillScope) {
+    test('prints run start and omits passing test lines', async function (scope) {
         const reporter = createBriefRuntimeReporter();
         const startOutput = await readOutput(reporter.onEvent({
             facts: { cases: [ { annotations: {}, controls: {}, id: caseId } ] },
@@ -208,7 +208,7 @@ export const testNode = suite('source/reporters/brief-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('brief reporter includes order and seed on run start', async function (scope: OverkillScope) {
+    test('includes order and seed on run start', async function (scope) {
         const reporter = createBriefRuntimeReporter();
         const startOutput = await readOutput(reporter.onEvent({
             facts: {
@@ -230,7 +230,7 @@ export const testNode = suite('source/reporters/brief-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('brief reporter ignores incomplete ordering facts', async function (scope: OverkillScope) {
+    test('ignores incomplete ordering facts', async function (scope) {
         const reporter = createBriefRuntimeReporter();
         const missingSeed = await readOutput(reporter.onEvent({
             facts: {
@@ -280,7 +280,7 @@ export const testNode = suite('source/reporters/brief-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('brief run fact summary rejects malformed ordering facts', function (scope: OverkillScope) {
+    test('brief run fact summary rejects malformed ordering facts', function (scope) {
         scope.assert.equal(formatRunFactSummary(runFacts(null, { seed: '123' })), null);
         scope.assert.equal(formatRunFactSummary(runFacts({ order: 'seeded' }, null)), null);
         scope.assert.equal(formatRunFactSummary(runFacts({}, { seed: '123' })), null);
@@ -288,7 +288,7 @@ export const testNode = suite('source/reporters/brief-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('brief reporter prints progress every one hundred completed tests', async function (scope: OverkillScope) {
+    test('prints progress every one hundred completed tests', async function (scope) {
         const reporter = createBriefRuntimeReporter();
 
         await reporter.onEvent({
@@ -314,8 +314,8 @@ export const testNode = suite('source/reporters/brief-reporter.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'brief reporter uses an unknown progress denominator without run facts',
-        async function (scope: OverkillScope) {
+        'uses an unknown progress denominator without run facts',
+        async function (scope) {
             const reporter = createBriefRuntimeReporter();
 
             for (let index = 0; index < 99; index += 1) {
@@ -334,7 +334,7 @@ export const testNode = suite('source/reporters/brief-reporter.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('brief reporter suppresses final progress at the planned count', async function (scope: OverkillScope) {
+    test('suppresses final progress at the planned count', async function (scope) {
         const reporter = createBriefRuntimeReporter();
 
         await reporter.onEvent({
@@ -354,7 +354,7 @@ export const testNode = suite('source/reporters/brief-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('brief reporter prints one diagnostic line per failure cause', async function (scope: OverkillScope) {
+    test('prints one diagnostic line per failure cause', async function (scope) {
         const reporter = createBriefRuntimeReporter();
         const failureOutput = await readOutput(reporter.onEvent(failEvent()));
 
@@ -371,7 +371,7 @@ export const testNode = suite('source/reporters/brief-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('brief reporter prints runner errors and ignores suite events', async function (scope: OverkillScope) {
+    test('prints runner errors and ignores suite events', async function (scope) {
         const reporter = createBriefRuntimeReporter();
         const suiteOutput = await readOutput(reporter.onEvent({
             kind: 'suite-start',
@@ -384,7 +384,7 @@ export const testNode = suite('source/reporters/brief-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('brief reporter emits slow runner overhead as managed output', async function (scope: OverkillScope) {
+    test('emits slow runner overhead as managed output', async function (scope: TestScope) {
         const reporter = createBriefRuntimeReporter();
         scope.require.notNull(reporter.onFinish);
         const finishOutput = await readOutput(reporter.onFinish({
@@ -450,7 +450,7 @@ export const testNode = suite('source/reporters/brief-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('brief reporter prints final counts', async function (scope: OverkillScope) {
+    test('prints final counts', async function (scope: TestScope) {
         const reporter = createBriefRuntimeReporter();
         scope.require.notNull(reporter.onFinish);
 

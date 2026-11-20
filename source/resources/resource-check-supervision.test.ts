@@ -1,11 +1,11 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
 import { superviseResourceObservation } from './resource-check-supervision.ts';
 
-export const testNode = authoredSuite('resource observation deadlines', [
-    test('returns completed observation values and removes its timer', async function (scope: TestScope) {
+export const testNode: TestNode = suite('resource observation deadlines', [
+    test('returns completed observation values and removes its timer', async function (scope) {
         const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
         const signals: AbortSignal[] = [];
         const result = await superviseResourceObservation(

@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultRunConfig, defaultRunRequest, defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
@@ -16,34 +16,37 @@ function command(processModel: 'in-process' | 'supervised-process'): RunCommand 
     };
 }
 
-export const testNode = authoredSuite('public cancellation options', [
-    test('pre-aborted supervised calls return unattributed infrastructure diagnostics', async function (scope) {
-        const controller = new AbortController();
-        controller.abort();
-        const runner = createDeterministicRunOrchestrator();
-        const options = { timing: null, signal: controller.signal };
-        const direct = await runner.run(command('supervised-process'), options);
-        const delivered = await runner.runWithReporterDelivery(command('supervised-process'), options);
-        scope.assert.deepEqual(
-            [ direct, delivered.result ].map(function cancellationResult(result) {
-                return {
-                    status: result.status,
-                    executed: result.perTest.length,
-                    errors: result.runnerErrors.map(function diagnostic(error) {
-                        return { message: error.message, subtype: error.subtype, attribution: error.attributedTo };
-                    })
-                };
-            }),
-            [ 0, 1 ].map(function expectedCancellation() {
-                return {
-                    status: 'failed',
-                    executed: 0,
-                    errors: [ { message: supervisedCancellationMessage, subtype: 'crash', attribution: null } ]
-                };
-            })
-        );
-        return scope.assert.collect();
-    }),
+export const testNode: TestNode = suite('public cancellation options', [
+    test(
+        'pre-aborted supervised calls return unattributed infrastructure diagnostics',
+        async function (scope) {
+            const controller = new AbortController();
+            controller.abort();
+            const runner = createDeterministicRunOrchestrator();
+            const options = { timing: null, signal: controller.signal };
+            const direct = await runner.run(command('supervised-process'), options);
+            const delivered = await runner.runWithReporterDelivery(command('supervised-process'), options);
+            scope.assert.deepEqual(
+                [ direct, delivered.result ].map(function cancellationResult(result) {
+                    return {
+                        status: result.status,
+                        executed: result.perTest.length,
+                        errors: result.runnerErrors.map(function diagnostic(error) {
+                            return { message: error.message, subtype: error.subtype, attribution: error.attributedTo };
+                        })
+                    };
+                }),
+                [ 0, 1 ].map(function expectedCancellation() {
+                    return {
+                        status: 'failed',
+                        executed: 0,
+                        errors: [ { message: supervisedCancellationMessage, subtype: 'crash', attribution: null } ]
+                    };
+                })
+            );
+            return scope.assert.collect();
+        }
+    ),
     test('malformed cancellation fails before test execution', async function (scope) {
         const options = { timing: null, signal: 'invalid' };
         await scope.assert.rejects(async function invalidSignal() {

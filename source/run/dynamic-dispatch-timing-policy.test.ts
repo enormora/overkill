@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -136,8 +136,8 @@ function observeDispatchWake(dispatcher: WorkerPoolWorkDispatcher): DispatchWake
         }
     };
 }
-export const testNode = authoredSuite('dynamic dispatch hedge timing', [
-    test('wakes an idle lane when its hedge delay expires', async function (scope: TestScope) {
+export const testNode: TestNode = suite('dynamic dispatch hedge timing', [
+    test('wakes an idle lane when its hedge delay expires', async function (scope) {
         const { clock, dispatcher, lane } = dispatchFixture([]);
         const wake = observeDispatchWake(dispatcher);
         scope.assert.deepEqual([ dispatcher.blocked(lane), dispatcher.blocked(lane) ], [ true, true ]);
@@ -149,7 +149,7 @@ export const testNode = authoredSuite('dynamic dispatch hedge timing', [
         scope.assert.equal(dispatcher.pull(lane)?.kind, 'hedged-duplicate');
         return scope.assert.collect();
     }),
-    test('cancels a scheduled hedge wake when the queue is cleared', async function (scope: TestScope) {
+    test('cancels a scheduled hedge wake when the queue is cleared', async function (scope) {
         const fixture = dispatchFixture([]);
         scope.assert.true(fixture.dispatcher.blocked(fixture.lane));
         const wake = fixture.dispatcher.waitForChange();
@@ -160,7 +160,7 @@ export const testNode = authoredSuite('dynamic dispatch hedge timing', [
         scope.assert.equal(fixture.cancellations(), 1);
         return scope.assert.collect();
     }),
-    test('does not hedge onto a lane without fault-domain capacity', function (scope: TestScope) {
+    test('does not hedge onto a lane without fault-domain capacity', function (scope) {
         const { dispatcher, lane } = dispatchFixture([ 'rack' ]);
         scope.assert.false(dispatcher.blocked(lane));
         scope.assert.equal(dispatcher.pull(lane), null);

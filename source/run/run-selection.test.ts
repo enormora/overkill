@@ -1,6 +1,13 @@
-import { type TestScope as OverkillScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { subjectTestNode } from '../test-support/create-test-engine.ts';
 
-import type { NormalizedConfig, ResolvedRun, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
+import type {
+    NormalizedConfig,
+    ResolvedRun,
+    RunCommand,
+    RunRequest,
+    RunFilter
+} from '../packages/run/run.entry-point.ts';
 import {
     attachTestBodyResourceAttachments,
     stampTestNodeFamily,
@@ -15,9 +22,17 @@ import { createUnitRunOrchestrator } from '../test-support/create-deterministic-
 import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 
 import { expandRuntimeMatrices } from '../engine/runtime-matrix-expansion.ts';
-import type { RunFilter } from './run-request-types.ts';
 
-import { caseId, file, owner, params, runtimeScenario, suite, tag, title } from './run-selection-filters.ts';
+import {
+    caseId,
+    file,
+    owner,
+    params,
+    runtimeScenario,
+    suite as subjectSuite,
+    tag,
+    title
+} from './run-selection-filters.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import {
     selectedCollectedRunPlan,
@@ -37,7 +52,7 @@ type SelectionScenario = {
     readonly titles: readonly string[];
 };
 
-const selectionFixturePath = 'source/integration-tests/run/fixtures/selection.test.ts';
+const selectionFixturePath = 'source/integration-tests/integration/fixtures/selection.test.ts';
 
 const localSelectionConfig: NormalizedConfig = defaultRunConfig({
     profiles: {
@@ -136,14 +151,14 @@ function scenarioRuntimeAttachments(value: string): TestBodyResourceAttachments 
 }
 
 function testCaseWithAttachments(attachments: TestBodyResourceAttachments): TestCase {
-    return test(
+    return subjectTestNode(test(
         'uses metadata',
-        attachTestBodyResourceAttachments(function attachedBody(scope: OverkillScope) {
+        attachTestBodyResourceAttachments(function attachedBody(scope: TestScope) {
             scope.assert.true(true);
 
             return scope.assert.collect();
         }, attachments)
-    );
+    ));
 }
 
 function testPlanForCase(testCase: TestCase): TestPlan {
@@ -182,10 +197,10 @@ function selectedCaseTitles(resolvedRun: ResolvedRun): readonly string[] {
     });
 }
 
-export const testNode = authoredSuite('source/run/run-selection.test.ts', [
+export const testNode: TestNode = suite('Run selection', [
     test(
         'assertTestPlanMatchesTestFamily() rejects microtest cases with resource descriptors',
-        function (scope: OverkillScope) {
+        function (scope) {
             for (
                 const attachments of [
                     directResourceAttachments(),
@@ -206,7 +221,7 @@ export const testNode = authoredSuite('source/run/run-selection.test.ts', [
     ),
     test(
         'assertTestPlanMatchesTestFamily() accepts pure runtime descriptors for microtests',
-        function (scope: OverkillScope) {
+        function (scope) {
             const testPlan = testPlanWithAttachments(pureRuntimeAttachments());
 
             assertTestPlanMatchesTestFamily(testPlan, 'microtest');
@@ -217,7 +232,7 @@ export const testNode = authoredSuite('source/run/run-selection.test.ts', [
     ),
     test(
         'assertCollectedRunPlanMatchesTestFamily() rejects collected microtest resource descriptors',
-        function (scope: OverkillScope) {
+        function (scope) {
             for (
                 const attachments of [
                     directResourceAttachments(),
@@ -241,7 +256,7 @@ export const testNode = authoredSuite('source/run/run-selection.test.ts', [
     ),
     test(
         'assertCollectedRunPlanMatchesTestFamily() accepts collected pure runtime descriptors',
-        function (scope: OverkillScope) {
+        function (scope) {
             const collectedPlan = collectedRunPlanFromTestPlan(testPlanWithAttachments(pureRuntimeAttachments()));
 
             assertCollectedRunPlanMatchesTestFamily(collectedPlan, 'microtest');
@@ -252,7 +267,7 @@ export const testNode = authoredSuite('source/run/run-selection.test.ts', [
     ),
     test(
         'assertTestPlanMatchesTestFamily() reports family mismatch before resource descriptors',
-        function (scope: OverkillScope) {
+        function (scope) {
             const testCase = testCaseWithAttachments(runtimeResourceAttachments());
             stampTestNodeFamily(testCase, 'integration');
 
@@ -268,7 +283,7 @@ export const testNode = authoredSuite('source/run/run-selection.test.ts', [
     ),
     test(
         'orchestrator.resolve() selects local test cases by stable filter dimensions',
-        async function (scope: OverkillScope) {
+        async function (scope: TestScope) {
             const runOrchestrator = createUnitRunOrchestrator();
             const allCases = await runOrchestrator.resolve(createRunCommand({
                 config: localSelectionConfig,
@@ -283,11 +298,11 @@ export const testNode = authoredSuite('source/run/run-selection.test.ts', [
 
             const scenarios: readonly SelectionScenario[] = [
                 {
-                    filter: file('source/integration-tests/run/fixtures/*.test.ts'),
+                    filter: file('source/integration-tests/integration/fixtures/*.test.ts'),
                     titles: [ 'charges card', 'refunds card', 'query row', 'other query row' ]
                 },
                 { filter: title('CHARGES'), titles: [ 'charges card' ] },
-                { filter: suite('PAYMENTS'), titles: [ 'charges card', 'refunds card' ] },
+                { filter: subjectSuite('PAYMENTS'), titles: [ 'charges card', 'refunds card' ] },
                 { filter: params('alpha'), titles: [ 'query row' ] },
                 { filter: tag('fast'), titles: [ 'charges card' ] },
                 { filter: owner('@search'), titles: [ 'query row' ] },
@@ -312,7 +327,7 @@ export const testNode = authoredSuite('source/run/run-selection.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('runtime scenario filters select expanded local and collected cases', function (scope: OverkillScope) {
+    test('runtime scenario filters select expanded local and collected cases', function (scope: TestScope) {
         const expanded = expandRuntimeMatrices(testPlanWithAttachments(
             scenarioRuntimeAttachments('payments-500')
         ));
@@ -334,7 +349,7 @@ export const testNode = authoredSuite('source/run/run-selection.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('orchestrator.resolve() rejects local filters that match no cases', async function (scope: OverkillScope) {
+    test('orchestrator.resolve() rejects local filters that match no cases', async function (scope) {
         const runOrchestrator = createUnitRunOrchestrator();
 
         await scope.assert.rejects(async function resolveMissingSelection() {
@@ -350,7 +365,7 @@ export const testNode = authoredSuite('source/run/run-selection.test.ts', [
     }),
     test(
         'orchestrator.run() returns a zero-plan result when local selection matches no cases',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const runOrchestrator = createUnitRunOrchestrator();
             const result = await runOrchestrator.run(createRunCommand({
                 config: localSelectionConfig,
@@ -383,7 +398,7 @@ export const testNode = authoredSuite('source/run/run-selection.test.ts', [
     ),
     test(
         'orchestrator.run() executes selected supervised cases and preserves discovered counts',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const runOrchestrator = createUnitRunOrchestrator();
             const result = await runOrchestrator.run(createRunCommand({
                 config: supervisedSelectionConfig,
@@ -422,7 +437,7 @@ export const testNode = authoredSuite('source/run/run-selection.test.ts', [
     ),
     test(
         'orchestrator.run() returns a zero-plan result when supervised selection matches no cases',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const runOrchestrator = createUnitRunOrchestrator();
             const result = await runOrchestrator.run(createRunCommand({
                 config: supervisedSelectionConfig,

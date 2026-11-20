@@ -1,4 +1,4 @@
-import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { placementPlan } from './worker-pool-placement-validation.test.ts';
 import type { PlacementPlan } from './run-types.ts';
@@ -317,9 +317,16 @@ function invalidPlacements(): readonly InvalidPlacement[] {
         }
     ];
 }
-export const testNode = authoredSuite('invalid retained replay decisions', [
-    ...invalidTraces().map(function invalidTrace(entry) {
-        return test(entry.title, function (scope: TestScope) {
+export const testNode: TestNode = suite('invalid retained replay decisions', [
+    table({
+        title: 'rejects invalid replay execution evidence',
+        cases: invalidTraces(),
+        caseTitle(entry) {
+            return entry.title;
+        },
+        test(scope) {
+            const entry = scope.parameters;
+
             const fixture = traceFixture();
             scope.assert.throws(function rejectInvalidTrace() {
                 compileReplayTrace(fixture.plan, {
@@ -328,15 +335,22 @@ export const testNode = authoredSuite('invalid retained replay decisions', [
                 });
             }, { message: entry.message });
             return scope.assert.collect();
-        });
+        }
     }),
-    ...invalidPlacements().map(function invalidPlacement(entry) {
-        return test(entry.title, function (scope: TestScope) {
+    table({
+        title: 'rejects invalid replay placement evidence',
+        cases: invalidPlacements(),
+        caseTitle(entry) {
+            return entry.title;
+        },
+        test(scope) {
+            const entry = scope.parameters;
+
             const fixture = traceFixture();
             scope.assert.throws(function rejectInvalidPlacement() {
                 validateReplayPlacement(entry.change(fixture), fixture.assignment.work);
             }, { message: entry.message });
             return scope.assert.collect();
-        });
+        }
     })
 ]);

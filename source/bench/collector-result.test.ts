@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { CollectorCompleteness } from '../engine/measurement-evidence.ts';
 import type { MetricCollector, MetricReadings } from './measurement-types.ts';
@@ -28,8 +28,8 @@ function collectorReturning(readings: MetricReadings, completeness: CollectorCom
         }
     };
 }
-export const testNode = authoredSuite('collector result admission', [
-    test('rejects a reading reused by another invocation', function (scope: TestScope) {
+export const testNode: TestNode = suite('collector result admission', [
+    test('rejects a reading reused by another invocation', function (scope) {
         const collector = collectorReturning({ count: availableMetric(7, metric) }, { kind: 'complete' });
         const strategy = measurementStrategy([ collector ]);
         const first = createMeasurementSample(strategy, scope.signal).sample.measure(function () {
@@ -84,7 +84,7 @@ export const testNode = authoredSuite('collector result admission', [
         });
         return scope.assert.collect();
     }),
-    test('rejects readings outside the declared metric set', function (scope: TestScope) {
+    test('rejects readings outside the declared metric set', function (scope) {
         const collector = collectorReturning({ unexpected: availableMetric(7, metric) }, { kind: 'complete' });
         scope.assert.throws(function () {
             createMeasurementSample(measurementStrategy([ collector ]), scope.signal).sample.measure(function () {
@@ -93,7 +93,7 @@ export const testNode = authoredSuite('collector result admission', [
         }, { message: 'Collector returned an undeclared metric.' });
         return scope.assert.collect();
     }),
-    test('rejects changes to declared metric provenance', function (scope: TestScope) {
+    test('rejects changes to declared metric provenance', function (scope) {
         const collector = collectorReturning({ count: availableMetric(7, { ...metric, unit: 'bytes' }) }, {
             kind: 'complete'
         });

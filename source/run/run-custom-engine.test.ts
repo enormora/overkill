@@ -1,5 +1,5 @@
 import { pathToFileURL } from 'node:url';
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -15,9 +15,9 @@ type RunCommandParts = {
     readonly request: RunRequest;
 };
 
-const customEngineFixturePath = 'source/integration-tests/run/fixtures/custom-engine.ts';
-const customEnginePassingFixturePath = 'source/integration-tests/run/fixtures/custom-engine-passing.test.ts';
-const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const customEngineFixturePath = 'source/integration-tests/integration/fixtures/custom-engine.ts';
+const customEnginePassingFixturePath = 'source/integration-tests/integration/fixtures/custom-engine-passing.test.ts';
+const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 const customEngineModuleUrl = pathToFileURL(`${process.cwd()}/${customEngineFixturePath}`).href;
 const supervisedCollectionConfig: NormalizedConfig = defaultRunConfig({
     profiles: {
@@ -89,8 +89,8 @@ function invalidCustomEngineCommand(engine: RunCommand['engine']): RunCommand {
     });
 }
 
-export const testNode = suite('source/run/run-custom-engine.test.ts', [
-    test('orchestrator.run() rejects instance engines for supervised execution', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Custom runner engines', [
+    test('rejects instance engines for supervised execution', async function (scope) {
         const orchestrator = createUnitRunOrchestrator();
 
         await scope.assert.rejects(async function runWithCustomSupervisedEngine() {
@@ -106,7 +106,7 @@ export const testNode = suite('source/run/run-custom-engine.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('orchestrator.run() rejects invalid supervised module engine requests', async function (scope: OverkillScope) {
+    test('rejects invalid supervised module engine requests', async function (scope) {
         const orchestrator = createUnitRunOrchestrator();
 
         await scope.assert.rejects(async function runWithEmptyModuleUrl() {
@@ -144,7 +144,7 @@ export const testNode = suite('source/run/run-custom-engine.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadRunEngineModule() loads value and getter engine exports', async function (scope: OverkillScope) {
+    test('loadRunEngineModule() loads value and getter engine exports', async function (scope) {
         const moduleUrl = 'file:///project/custom-engine.js';
         const loadRunEngineModule = createModuleLoader({
             [moduleUrl]: {
@@ -163,7 +163,7 @@ export const testNode = suite('source/run/run-custom-engine.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadRunEngineModule() reports invalid module exports', async function (scope: OverkillScope) {
+    test('loadRunEngineModule() reports invalid module exports', async function (scope) {
         const moduleUrl = 'file:///project/invalid-custom-engine.js';
         const loadRunEngineModule = createModuleLoader({
             [moduleUrl]: {
@@ -189,7 +189,7 @@ export const testNode = suite('source/run/run-custom-engine.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('orchestrator.run() executes a supervised module engine value export', async function (scope: OverkillScope) {
+    test('executes a supervised module engine value export', async function (scope) {
         const orchestrator = createUnitRunOrchestrator();
         const result = await orchestrator.run(customEngineCommand('engine', 'value'));
 
@@ -200,7 +200,7 @@ export const testNode = suite('source/run/run-custom-engine.test.ts', [
     }),
     test(
         'orchestrator.resolve() collects a supervised module engine getter export',
-        async function (scope: OverkillScope) {
+        async function (scope: TestScope) {
             const orchestrator = createUnitRunOrchestrator();
             const resolvedRun = await orchestrator.resolve(customEngineCommand('getEngine', 'getter'));
             const firstCase = resolvedRun.facts.cases[0];
@@ -217,7 +217,7 @@ export const testNode = suite('source/run/run-custom-engine.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('orchestrator.run() reports invalid module engine exports', async function (scope: OverkillScope) {
+    test('reports invalid module engine exports', async function (scope) {
         const orchestrator = createUnitRunOrchestrator();
         const invalidValueResult = await orchestrator.run(customEngineCommand('invalidEngine', 'value'));
         const asyncGetterResult = await orchestrator.run(customEngineCommand('getAsyncEngine', 'getter'));
@@ -234,8 +234,8 @@ export const testNode = suite('source/run/run-custom-engine.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'orchestrator.run() rejects module engines when test nodes use another engine',
-        async function (scope: OverkillScope) {
+        'rejects module engines when test nodes use another engine',
+        async function (scope) {
             const orchestrator = createUnitRunOrchestrator();
             const result = await orchestrator.run(customEngineCommand('engine', 'value', [ passingFixturePath ]));
 

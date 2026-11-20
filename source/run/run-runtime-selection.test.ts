@@ -1,10 +1,9 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import {
     attachTestBodyResourceAttachments,
     type TestBodyResourceAttachments,
     type TestPlan,
-    type TestScope,
     createRoot,
     createTestCase,
     createTestPlan
@@ -55,7 +54,7 @@ function runtimeMatrixAttachments(): TestBodyResourceAttachments {
 function expandedRuntimePlan(): TestPlan {
     const testCase = createTestCase({
         annotations: {},
-        body: attachTestBodyResourceAttachments(function attachedBody(scope: TestScope) {
+        body: attachTestBodyResourceAttachments(function attachedBody(scope) {
             scope.assert.true(true);
 
             return scope.assert.collect();
@@ -105,8 +104,8 @@ function assertSelectedVariants(
     scope.assert.deepEqual(selectedCollectedRuntimeVariants(plan, filter), expectedVariants);
 }
 
-export const testNode = suite('source/run/run-runtime-selection.test.ts', [
-    test('runtime filters select expanded plans by public identity', function (scope: TestScope) {
+export const testNode: TestNode = suite('Run runtime selection', [
+    test('runtime filters select expanded plans by public identity', function (scope) {
         const plan = expandedRuntimePlan();
 
         assertSelectedVariants(scope, plan, runtime('browser'), [ 'chromium', 'firefox' ]);

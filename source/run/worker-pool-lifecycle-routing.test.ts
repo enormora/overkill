@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
@@ -22,8 +22,8 @@ type RoutedLifecycles = {
     readonly push: (...workerLifecycle: readonly WorkerLifecycle[]) => number;
 };
 
-const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
-const secondIntegrationPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
+const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const secondIntegrationPath = 'source/integration-tests/integration/fixtures/delayed-pass.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 
@@ -289,7 +289,7 @@ function runOptions(): Parameters<CreatedWorkerPool['run']>[1] {
     };
 }
 
-async function assertRoutedPoolErrors(scope: OverkillScope, runtime: WorkerPoolRunRuntime): Promise<void> {
+async function assertRoutedPoolErrors(scope: TestScope, runtime: WorkerPoolRunRuntime): Promise<void> {
     await scope.assert.rejects(async function runInvalidTask() {
         await runtime.pool.run(invalidWorkerPoolTask(), runOptions());
     }, { message: 'Worker-pool received an invalid task.' });
@@ -309,7 +309,7 @@ async function assertRoutedPoolErrors(scope: OverkillScope, runtime: WorkerPoolR
 }
 
 async function assertRoutedLifecycleRuns(
-    scope: OverkillScope,
+    scope: TestScope,
     runtime: WorkerPoolRunRuntime,
     routedLifecycles: readonly WorkerLifecycle[],
     routedHostOutputSinks: readonly WorkerLifecycle[]
@@ -341,8 +341,8 @@ async function assertRoutedLifecycleRuns(
     ]);
 }
 
-export const testNode = suite('source/run/worker-pool-lifecycle-routing.test.ts', [
-    test('worker-pool runtime splits and routes mixed lifecycle pools', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Worker pool lifecycle routing', [
+    test('worker-pool runtime splits and routes mixed lifecycle pools', async function (scope) {
         const createdWorkerPools: WorkerPoolCreationOptions[] = [];
         const routedLifecycles: WorkerLifecycle[] = [];
         const routedHostOutputSinks: WorkerLifecycle[] = [];

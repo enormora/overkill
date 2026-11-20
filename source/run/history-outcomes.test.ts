@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { historyFacts, completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
@@ -6,7 +6,7 @@ import { emptyCompactHistory, ingestCompactRecord } from './compact-history.ts';
 import { historyRunSummary, recordDurationContributions, caseOutcomes } from './history-outcomes.ts';
 
 const context = { policy: defaultHistoryPolicy, now: historyTimestamp, testFamily: 'microtest' };
-export const testNode = authoredSuite('history outcomes', [
+export const testNode: TestNode = suite('history outcomes', [
     test(
         'a failed variant wins over a passing variant without adding two case observations',
         function (scope: TestScope) {
@@ -29,7 +29,7 @@ export const testNode = authoredSuite('history outcomes', [
     ),
     test(
         'run status applies interruption then runner errors then failures then inconclusive',
-        function (scope: TestScope) {
+        function (scope) {
             const record = completedHistoryRecord('run');
             const failed = { ...record.result, summary: { ...record.result.summary, failed: 1, inconclusive: 1 } };
             const runnerError = {
@@ -63,7 +63,7 @@ export const testNode = authoredSuite('history outcomes', [
             return scope.assert.collect();
         }
     ),
-    test('observation trimming preserves counters and removes stale identities', function (scope: TestScope) {
+    test('observation trimming preserves counters and removes stale identities', function (scope) {
         let index = emptyCompactHistory(historyTimestamp);
         const observations = 25;
         for (let observation = 0; observation < observations; observation += 1) {
@@ -80,7 +80,7 @@ export const testNode = authoredSuite('history outcomes', [
         scope.assert.deepEqual(retained.cases, []);
         return scope.assert.collect();
     }),
-    test('unresolved attempts have no duration, replay source, or case observations', function (scope: TestScope) {
+    test('unresolved attempts have no duration, replay source, or case observations', function (scope) {
         const record = {
             ...completedHistoryRecord('unresolved'),
             status: 'started' as const,
@@ -98,7 +98,7 @@ export const testNode = authoredSuite('history outcomes', [
         );
         return scope.assert.collect();
     }),
-    test('invalid duration observations never enter scheduling history', function (scope: TestScope) {
+    test('invalid duration observations never enter scheduling history', function (scope) {
         const record = completedHistoryRecord('invalid-duration');
         const perTest = [ Number.NaN, Number.POSITIVE_INFINITY, -1 ].flatMap(
             function invalidDuration(durationMicroseconds) {
@@ -110,7 +110,7 @@ export const testNode = authoredSuite('history outcomes', [
         scope.assert.equal(recordDurationContributions({ ...record, result: { ...record.result, perTest } }).length, 0);
         return scope.assert.collect();
     }),
-    test('worker observations retain lifecycle metadata across profiles', function (scope: TestScope) {
+    test('worker observations retain lifecycle metadata across profiles', function (scope) {
         const record = completedHistoryRecord('worker');
         const observations = recordDurationContributions({
             ...record,

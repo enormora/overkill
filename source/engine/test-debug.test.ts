@@ -1,4 +1,5 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { type EngineCaseBody, createTestEngine } from '../test-support/create-test-engine.ts';
 
 import {
     defineReporter,
@@ -6,16 +7,15 @@ import {
     type RunArtifact,
     type RunResult,
     type ExecuteDebugSelection,
-    type TestDebugArtifact,
-    type TestScope
+    type TestDebugArtifact
 } from '../packages/engine/engine.entry-point.ts';
-import { createTestEngine } from '../test-support/create-test-engine.ts';
+
 import { parseRunArtifacts } from '../run/run-artifact-schema.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 async function executeProbe(
     debug: ExecuteDebugSelection,
-    body: (scope: TestScope) => void,
+    body: (...parameters: Parameters<EngineCaseBody>) => void,
     retries: number,
     reporters: readonly DefinedReporter[]
 ): Promise<RunResult> {
@@ -28,7 +28,7 @@ async function executeProbe(
             engine.createTestCase({
                 ...metadata,
                 title: 'probe',
-                body(scope: TestScope) {
+                body(scope) {
                     body(scope);
                     return scope.assert.collect();
                 }
@@ -70,8 +70,8 @@ const failingDebugReporter = defineReporter(function () {
     };
 });
 
-export const testNode = authoredSuite('debug diagnostics', [
-    test('a busy timeline keeps one checkpoint in flight', async function (scope: TestScope) {
+export const testNode: TestNode = suite('debug diagnostics', [
+    test('a busy timeline keeps one checkpoint in flight', async function (scope) {
         const checkpoints: number[] = [];
         const reporter = defineReporter(function () {
             return {
@@ -89,7 +89,7 @@ export const testNode = authoredSuite('debug diagnostics', [
         });
         const result = await executeProbe(
             { mode: 'all' },
-            function body(inner: TestScope) {
+            function body(inner) {
                 for (let index = 0; index < 80; index += 1) {
                     inner.assert.equal(index, index);
                 }
@@ -101,11 +101,11 @@ export const testNode = authoredSuite('debug diagnostics', [
         scope.assert.equal(debugArtifacts(result.artifacts)[0]?.payload.stats.assertCount, 80);
         return scope.assert.collect();
     }),
-    test('debug off never reads registered providers', async function (scope: TestScope) {
+    test('debug off never reads registered providers', async function (scope) {
         let reads = 0;
         const result = await executeProbe(
             { mode: 'off' },
-            function body(inner: TestScope) {
+            function body(inner) {
                 inner.debug.includeRecording({
                     name: 'http',
                     recorded() {
@@ -126,7 +126,9 @@ export const testNode = authoredSuite('debug diagnostics', [
     test('debug records passing attempts and JSON-safe provider evidence', async function (scope: TestScope) {
         const result = await executeProbe(
             { mode: 'all' },
-            function body(inner: TestScope) {
+            function body(inner) {
+                const innerRequire: typeof inner.require = inner.require;
+
                 inner.plan(2);
                 inner.debug.includeRecording({
                     name: 'http',
@@ -134,7 +136,7 @@ export const testNode = authoredSuite('debug diagnostics', [
                         return [ { kind: 'http.request', at: 5n } ];
                     }
                 });
-                inner.require.defined(1);
+                innerRequire.defined(1);
                 inner.assert.equal(2, 2);
             },
             1,
@@ -159,7 +161,7 @@ export const testNode = authoredSuite('debug diagnostics', [
         const oversized = 'x'.repeat(11 * 1024 * 1024);
         const result = await executeProbe(
             { mode: 'all' },
-            function body(inner: TestScope) {
+            function body(inner) {
                 inner.debug.includeRecording({
                     name: oversized,
                     recorded() {
@@ -188,10 +190,10 @@ export const testNode = authoredSuite('debug diagnostics', [
         } ]);
         return scope.assert.collect();
     }),
-    test('provider and reporter failures preserve the passing case verdict', async function (scope: TestScope) {
+    test('provider and reporter failures preserve the passing case verdict', async function (scope) {
         const result = await executeProbe(
             { mode: 'all' },
-            function body(inner: TestScope) {
+            function body(inner) {
                 inner.debug.includeRecording({
                     name: 'broken',
                     recorded() {
@@ -220,10 +222,10 @@ export const testNode = authoredSuite('debug diagnostics', [
         );
         return scope.assert.collect();
     }),
-    test('selected debug work does not remove ordinary cases', async function (scope: TestScope) {
+    test('selected debug work does not remove ordinary cases', async function (scope) {
         const result = await executeProbe(
             { mode: 'selected', work: [] },
-            function body(inner: TestScope) {
+            function body(inner) {
                 inner.assert.equal(1, 1);
             },
             1,
@@ -233,10 +235,10 @@ export const testNode = authoredSuite('debug diagnostics', [
         scope.assert.equal(debugArtifacts(result.artifacts).length, 0);
         return scope.assert.collect();
     }),
-    test('each retry keeps its own diagnostics', async function (scope: TestScope) {
+    test('each retry keeps its own diagnostics', async function (scope) {
         const result = await executeProbe(
             { mode: 'all' },
-            function body(inner: TestScope) {
+            function body(inner) {
                 inner.assert.equal(1, 2);
             },
             3,

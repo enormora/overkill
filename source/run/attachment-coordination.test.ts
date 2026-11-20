@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     attachmentCoordination,
@@ -7,8 +7,8 @@ import {
 } from '../test-support/attachment-coordination.ts';
 import { attachmentWork, attachmentPeerWork } from '../test-support/attachment-fixture.ts';
 
-export const testNode = authoredSuite('run attachment coordination', [
-    test('retains case evidence and filters it by attempt and work identity', async function (scope: TestScope) {
+export const testNode: TestNode = suite('run attachment coordination', [
+    test('retains case evidence and filters it by attempt and work identity', async function (scope) {
         const { coordinator } = attachmentCoordination(null);
         const artifact = await captureCoordinatedAttachment(coordinator, attachmentWork, { index: 0 }, null);
         scope.assert.deepEqual(coordinator.caseArtifacts(attachmentWork, { index: 0 }, null), [ artifact ]);
@@ -19,7 +19,7 @@ export const testNode = authoredSuite('run attachment coordination', [
     }),
     test(
         'assigns stable branch endpoints without sharing identities between branches',
-        async function (scope: TestScope) {
+        async function (scope) {
             const { coordinator } = attachmentCoordination(null);
             const branch = {};
             const endpoint = coordinator.branchEndpoint(branch, function () {
@@ -44,7 +44,7 @@ export const testNode = authoredSuite('run attachment coordination', [
             return scope.assert.collect();
         }
     ),
-    test('retains branch evidence according to its settlement authority', async function (scope: TestScope) {
+    test('retains branch evidence according to its settlement authority', async function (scope) {
         const { coordinator } = attachmentCoordination(null);
         const branch = {};
         const endpoint = coordinator.branchEndpoint(branch, function () {
@@ -57,7 +57,7 @@ export const testNode = authoredSuite('run attachment coordination', [
         scope.assert.equal(result.artifacts.length, 1);
         return scope.assert.collect();
     }),
-    test('finalizes and prunes evidence once while preserving existing results', async function (scope: TestScope) {
+    test('finalizes and prunes evidence once while preserving existing results', async function (scope) {
         const fixture = attachmentCoordination(null);
         const artifact = await captureCoordinatedAttachment(fixture.coordinator, attachmentWork, { index: 0 }, null);
         fixture.coordinator.settleAttempt(attachmentWork, { index: 0 }, 'pass', null);
@@ -68,7 +68,7 @@ export const testNode = authoredSuite('run attachment coordination', [
         scope.assert.equal(result.status, 'passed');
         return scope.assert.collect();
     }),
-    test('preserves server shutdown failures during finalization', async function (scope: TestScope) {
+    test('preserves server shutdown failures during finalization', async function (scope) {
         const fixture = attachmentCoordination(new Error('Shutdown failed.'));
         await scope.assert.rejects(async function () {
             await fixture.coordinator.finalize(attachmentCoordinationResult);

@@ -1,6 +1,7 @@
 import { Transform } from 'node:stream';
 import { buffer } from 'node:stream/consumers';
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+
 import { boundedJsonFrames } from './packages/resources/attachment-context.entry-point.ts';
 import { createJsonFrameLimiter } from './json-frame-limiter.ts';
 
@@ -19,7 +20,7 @@ async function assertRejectedWebFrame(scope: TestScope, chunks: readonly unknown
     writer.releaseLock();
 }
 
-export const testNode = authoredSuite('bounded JSON frames', [
+export const testNode: TestNode = suite('bounded JSON frames', [
     test('Web frames count bytes across chunks and reset at newlines', async function (scope) {
         const frames = boundedJsonFrames(3, 'JSON');
         const reading = Array.fromAsync(frames.readable);

@@ -1,7 +1,7 @@
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 
 export async function frozenTypeProject(scope: TestScope, files: Readonly<Record<string, string>>): Promise<string> {
     const directory = await mkdtemp(join(tmpdir(), 'overkill-frozen-'));

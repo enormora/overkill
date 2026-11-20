@@ -1,11 +1,4 @@
-import {
-    type TestScope as OverkillScope,
-    suite,
-    test,
-    doubleUsage,
-    testDouble,
-    type TestDouble
-} from '@overkill-dev/test';
+import { type TestNode, suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -96,8 +89,8 @@ async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
     });
 }
 
-export const testNode = suite('source/reporters/line-reporter.test.ts', [
-    test('line reporter reports the start event', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Line reporter', [
+    test('reports the start event', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
 
@@ -119,7 +112,7 @@ export const testNode = suite('source/reporters/line-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('line reporter includes order and seed in the start event', async function (scope: OverkillScope) {
+    test('includes order and seed in the start event', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
 
@@ -144,8 +137,8 @@ export const testNode = suite('source/reporters/line-reporter.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'line reporter prints concise assertion failure progress for a failed test-end event',
-        async function (scope: OverkillScope) {
+        'prints concise assertion failure progress for a failed test-end event',
+        async function (scope) {
             const log = testDouble<LogFunction>();
             const reporter = lineReporterWithLog(log);
 
@@ -198,7 +191,7 @@ export const testNode = suite('source/reporters/line-reporter.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('line reporter prints unicode string mismatch summaries', async function (scope: OverkillScope) {
+    test('prints unicode string mismatch summaries', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
         const [ composedName, decomposedName ] = [ 'Ad\u{00E4}le', 'Ada\u{0308}le' ];
@@ -260,7 +253,7 @@ export const testNode = suite('source/reporters/line-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('line reporter prints body error summaries', async function (scope: OverkillScope) {
+    test('prints body error summaries', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
 
@@ -297,7 +290,7 @@ export const testNode = suite('source/reporters/line-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('line reporter prints test-contract summaries', async function (scope: OverkillScope) {
+    test('prints test-contract summaries', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
 
@@ -335,7 +328,7 @@ export const testNode = suite('source/reporters/line-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('line reporter prints object identity summaries', async function (scope: OverkillScope) {
+    test('prints object identity summaries', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
 
@@ -402,7 +395,7 @@ export const testNode = suite('source/reporters/line-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('line reporter prints a passed test-end event', async function (scope: OverkillScope) {
+    test('prints a passed test-end event', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
 
@@ -427,7 +420,7 @@ export const testNode = suite('source/reporters/line-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('line reporter prints neutral test-end events with outcome reasons', async function (scope: OverkillScope) {
+    test('prints neutral test-end events with outcome reasons', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
 
@@ -471,7 +464,7 @@ export const testNode = suite('source/reporters/line-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('line reporter prints nested suite prefixes', async function (scope: OverkillScope) {
+    test('prints nested suite prefixes', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
 

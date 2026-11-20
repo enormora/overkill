@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { emptyWorkUnitResourceConstraints, type PlacementLane, type WorkUnit } from './run-types.ts';
 import { createWarmLaneAffinity } from './worker-pool-warm-lane-affinity.ts';
@@ -76,8 +76,8 @@ function unitWithWorkload(key: string): WorkUnit {
     };
 }
 
-export const testNode = suite('source/run/worker-pool-warm-lane-affinity.test.ts', [
-    test('worker-pool warm-lane affinity evicts keys after retained unit limit', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Worker pool warm lane affinity', [
+    test('evicts keys after retained unit limit', function (scope) {
         const affinity = createWarmLaneAffinity();
         const workerLane = lane();
         const expired = workUnit('expired', 'source/expired/expired.test.ts', 'expired-runtime');
@@ -93,7 +93,7 @@ export const testNode = suite('source/run/worker-pool-warm-lane-affinity.test.ts
 
         return scope.assert.collect();
     }),
-    test('worker-pool warm-lane affinity scores key specificity', function (scope: OverkillScope) {
+    test('scores key specificity', function (scope) {
         const affinity = createWarmLaneAffinity();
         const workerLane = lane();
 
@@ -121,7 +121,7 @@ export const testNode = suite('source/run/worker-pool-warm-lane-affinity.test.ts
 
         return scope.assert.collect();
     }),
-    test('worker-pool warm-lane affinity ignores non-reusable and fileless units', function (scope: OverkillScope) {
+    test('ignores non-reusable and fileless units', function (scope) {
         const affinity = createWarmLaneAffinity();
         const workerLane = lane();
 
@@ -144,7 +144,7 @@ export const testNode = suite('source/run/worker-pool-warm-lane-affinity.test.ts
 
         return scope.assert.collect();
     }),
-    test('worker-pool warm-lane affinity decrements retained duplicate keys', function (scope: OverkillScope) {
+    test('decrements retained duplicate keys', function (scope) {
         const affinity = createWarmLaneAffinity();
         const workerLane = lane();
         const shared = workUnit('shared', 'source/shared/case.test.ts', 'shared-runtime');

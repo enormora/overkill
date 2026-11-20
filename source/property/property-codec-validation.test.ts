@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import { capturePropertyInput, decodePropertyInput } from './property-graph.ts';
@@ -22,7 +22,7 @@ function numericCodec(): PropertyInputCodec<number> {
     return { name: 'number', version: 2, previousDecoders: [], encode: Number, decode: Number };
 }
 
-export const testNode = authoredSuite('property codec validation', [
+export const testNode: TestNode = suite('property codec validation', [
     test('rejects hidden native state after prototype replacement', function (scope) {
         for (
             const value of [
@@ -148,57 +148,63 @@ export const testNode = authoredSuite('property codec validation', [
         }
         return scope.assert.collect();
     }),
-    test('validates references, sparse bounds, escaped keys and native state before hydration', function (scope) {
-        const encoded = capturePropertyInput(null, null, consume);
-        for (
-            const payload of [
-                [ { unsafe: 0 } ],
-                [ [ 'null', '$key' ] ],
-                [ [ -7, 3, 0 ] ],
-                [ [ -7, 3, 3, 0 ] ],
-                [ [ -7, -1 ] ],
-                [ [ 'Object', 0 ] ],
-                [ [ 'DataView', 0, -1, 8 ] ],
-                [ [ 'RegExp', 'a', 'invalid' ] ],
-                [ [ 'ArrayBuffer', 'invalid bytes' ] ],
-                [ [ 'Set', -2 ] ]
-            ]
-        ) {
-            scope.assert.throws(function invalidGraph() {
-                decodePropertyInput({ ...encoded, payload }, null, consume);
-            }, { name: 'PropertyCodecError' });
+    test(
+        'validates references, sparse bounds, escaped keys and native state before hydration',
+        function (scope) {
+            const encoded = capturePropertyInput(null, null, consume);
+            for (
+                const payload of [
+                    [ { unsafe: 0 } ],
+                    [ [ 'null', '$key' ] ],
+                    [ [ -7, 3, 0 ] ],
+                    [ [ -7, 3, 3, 0 ] ],
+                    [ [ -7, -1 ] ],
+                    [ [ 'Object', 0 ] ],
+                    [ [ 'DataView', 0, -1, 8 ] ],
+                    [ [ 'RegExp', 'a', 'invalid' ] ],
+                    [ [ 'ArrayBuffer', 'invalid bytes' ] ],
+                    [ [ 'Set', -2 ] ]
+                ]
+            ) {
+                scope.assert.throws(function invalidGraph() {
+                    decodePropertyInput({ ...encoded, payload }, null, consume);
+                }, { name: 'PropertyCodecError' });
+            }
+            return scope.assert.collect();
         }
-        return scope.assert.collect();
-    }),
-    test('propagates work exhaustion and cancellation without wrapping them as codec failures', function (scope) {
-        const signal = AbortSignal.abort();
-        const controller = new AbortController();
-        const work = createPropertyWork({ ...defaultPropertyPolicy, maxWork: 1 }, controller.signal);
-        const encoded = capturePropertyInput({ value: 1 }, null, consume);
-        scope.assert.equal(
-            propertyExhaustion(failureOf(function exhaustedCapture() {
-                return capturePropertyInput({ value: 1 }, null, work.context.consumeWork);
-            })),
-            'work-exhausted'
-        );
-        scope.assert.equal(
-            propertyExhaustion(failureOf(function exhaustedDecode() {
-                return decodePropertyInput(encoded, null, work.context.consumeWork);
-            })),
-            'work-exhausted'
-        );
-        scope.assert.throws(function cancelledCapture() {
-            capturePropertyInput(null, null, function checkCancellation() {
-                signal.throwIfAborted();
-            });
-        }, { name: 'AbortError' });
-        scope.assert.throws(function cancelledDecode() {
-            decodePropertyInput(encoded, null, function checkCancellation() {
-                signal.throwIfAborted();
-            });
-        }, { name: 'AbortError' });
-        return scope.assert.collect();
-    }),
+    ),
+    test(
+        'propagates work exhaustion and cancellation without wrapping them as codec failures',
+        function (scope) {
+            const signal = AbortSignal.abort();
+            const controller = new AbortController();
+            const work = createPropertyWork({ ...defaultPropertyPolicy, maxWork: 1 }, controller.signal);
+            const encoded = capturePropertyInput({ value: 1 }, null, consume);
+            scope.assert.equal(
+                propertyExhaustion(failureOf(function exhaustedCapture() {
+                    return capturePropertyInput({ value: 1 }, null, work.context.consumeWork);
+                })),
+                'work-exhausted'
+            );
+            scope.assert.equal(
+                propertyExhaustion(failureOf(function exhaustedDecode() {
+                    return decodePropertyInput(encoded, null, work.context.consumeWork);
+                })),
+                'work-exhausted'
+            );
+            scope.assert.throws(function cancelledCapture() {
+                capturePropertyInput(null, null, function checkCancellation() {
+                    signal.throwIfAborted();
+                });
+            }, { name: 'AbortError' });
+            scope.assert.throws(function cancelledDecode() {
+                decodePropertyInput(encoded, null, function checkCancellation() {
+                    signal.throwIfAborted();
+                });
+            }, { name: 'AbortError' });
+            return scope.assert.collect();
+        }
+    ),
     test('rejects asynchronous encoders and decoders at the runtime boundary', function (scope) {
         const definition = numericCodec();
         const asynchronousValue = Promise.resolve.bind(Promise);

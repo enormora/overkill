@@ -1,6 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
-
-import { testNode as argumentsPolicy } from '../packages/test/run-shard-parser.test.ts';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import type { CollectedRunCaseEntry } from './collected-run-plan.ts';
@@ -77,9 +75,8 @@ function runCaseEntry(title: string): CollectedRunCaseEntry {
     };
 }
 
-export const testNode = suite('run shard policy', [
-    argumentsPolicy,
-    test('run shard hashing canonicalizes work-unit identity before hashing', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Run shard policy', [
+    test('hashing canonicalizes work-unit identity before hashing', function (scope) {
         const recording = createRecordingHasher(1n);
         const decomposedAccent = 'Cafe\u{301}';
         const richUnit = {
@@ -114,7 +111,7 @@ export const testNode = suite('run shard policy', [
 
         return scope.assert.collect();
     }),
-    test('run shard hashing rejects sharded checks without a hasher', function (scope: OverkillScope) {
+    test('hashing rejects sharded checks without a hasher', function (scope) {
         scope.assert.throws(function shardWithoutHasher() {
             workUnitBelongsToShard(unit, { index: 1, total: 2 }, null);
         }, {
@@ -123,7 +120,7 @@ export const testNode = suite('run shard policy', [
 
         return scope.assert.collect();
     }),
-    test('run shard hashing rejects noncanonical identity values', function (scope: OverkillScope) {
+    test('hashing rejects noncanonical identity values', function (scope) {
         scope.assert.throws(function shardInvalidNumberIdentity() {
             workUnitBelongsToShard(
                 {
@@ -151,7 +148,7 @@ export const testNode = suite('run shard policy', [
 
         return scope.assert.collect();
     }),
-    test('run shard filtering keeps collected cases assigned to the shard', function (scope: OverkillScope) {
+    test('filtering keeps collected cases assigned to the shard', function (scope) {
         const first = runCaseEntry('first');
         const second = runCaseEntry('second');
         const hasher: RunShardHasher = {

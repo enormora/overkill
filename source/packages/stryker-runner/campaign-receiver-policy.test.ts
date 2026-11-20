@@ -1,10 +1,11 @@
 import { once } from 'node:events';
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
+
 import { campaignReceiverChannel, receiverWorker } from '../../test-support/campaign-receiver.ts';
 import { campaignProtocolVersion } from './campaign-protocol.ts';
 
-export const testNode = authoredSuite('campaign receiver admission', [
-    test('serializes and correlates admitted worker responses', async function (scope: TestScope) {
+export const testNode: TestNode = suite('campaign receiver admission', [
+    test('serializes and correlates admitted worker responses', async function (scope) {
         const worker = receiverWorker({ kind: 'baseline', baseline: null });
         const fixture = campaignReceiverChannel(scope, worker.worker);
         const response = fixture.nextSent();
@@ -17,7 +18,7 @@ export const testNode = authoredSuite('campaign receiver admission', [
         scope.assert.deepEqual(worker.events, [ 'fetch' ]);
         return scope.assert.collect();
     }),
-    test('cancels the worker before processing release requests', async function (scope: TestScope) {
+    test('cancels the worker before processing release requests', async function (scope) {
         const worker = receiverWorker({ kind: 'accepted' });
         const fixture = campaignReceiverChannel(scope, worker.worker);
         const response = fixture.nextSent();
@@ -26,7 +27,7 @@ export const testNode = authoredSuite('campaign receiver admission', [
         scope.assert.deepEqual(worker.events, [ 'cancel', 'release' ]);
         return scope.assert.collect();
     }),
-    test('serializes worker exceptions into error responses', async function (scope: TestScope) {
+    test('serializes worker exceptions into error responses', async function (scope) {
         const worker = receiverWorker({ kind: 'accepted' });
         const fixture = campaignReceiverChannel(scope, {
             ...worker.worker,
@@ -43,7 +44,7 @@ export const testNode = authoredSuite('campaign receiver admission', [
         });
         return scope.assert.collect();
     }),
-    test('rejects unauthenticated frames by closing their channel', async function (scope: TestScope) {
+    test('rejects unauthenticated frames by closing their channel', async function (scope) {
         const worker = receiverWorker({ kind: 'accepted' });
         const fixture = campaignReceiverChannel(scope, worker.worker);
         const closed = new Promise<void>(function (resolve) {
@@ -62,7 +63,7 @@ export const testNode = authoredSuite('campaign receiver admission', [
         scope.assert.true(worker.events.includes('cancel'));
         return scope.assert.collect();
     }),
-    test('expires queued requests before invoking a worker', async function (scope: TestScope) {
+    test('expires queued requests before invoking a worker', async function (scope) {
         const worker = receiverWorker({ kind: 'accepted' });
         const fixture = campaignReceiverChannel(scope, worker.worker);
         const response = fixture.nextSent();
@@ -75,7 +76,7 @@ export const testNode = authoredSuite('campaign receiver admission', [
         scope.assert.deepEqual(worker.events, []);
         return scope.assert.collect();
     }),
-    test('delivers deadline cancellation to an active worker', async function (scope: TestScope) {
+    test('delivers deadline cancellation to an active worker', async function (scope) {
         const worker = receiverWorker({ kind: 'accepted' });
         const started = Promise.withResolvers<undefined>();
         const fixture = campaignReceiverChannel(scope, {
@@ -98,7 +99,7 @@ export const testNode = authoredSuite('campaign receiver admission', [
         });
         return scope.assert.collect();
     }),
-    test('preserves ordinary cancellation as an error response', async function (scope: TestScope) {
+    test('preserves ordinary cancellation as an error response', async function (scope) {
         const worker = receiverWorker({ kind: 'accepted' });
         const started = Promise.withResolvers<undefined>();
         const fixture = campaignReceiverChannel(scope, {
@@ -121,7 +122,7 @@ export const testNode = authoredSuite('campaign receiver admission', [
         });
         return scope.assert.collect();
     }),
-    test('closes duplicate request identities without concurrent execution', async function (scope: TestScope) {
+    test('closes duplicate request identities without concurrent execution', async function (scope) {
         const worker = receiverWorker({ kind: 'accepted' });
         const started = Promise.withResolvers<undefined>();
         const fixture = campaignReceiverChannel(scope, {

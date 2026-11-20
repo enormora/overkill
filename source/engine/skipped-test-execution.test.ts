@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineReporter, type DefinedReporter, type ReporterEvent } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
@@ -111,7 +111,7 @@ function createSkippedExecutionPlan(engine: Engine): ReturnType<Engine['createTe
     }));
 }
 
-function assertSkippedExecutionResult(scope: OverkillScope, result: RunResult): void {
+function assertSkippedExecutionResult(scope: TestScope, result: RunResult): void {
     const outcome = { kind: 'skip' as const, reason: 'unsupported platform' };
     const skippedCaseId = {
         file: null,
@@ -155,8 +155,8 @@ function assertSkippedExecutionResult(scope: OverkillScope, result: RunResult): 
     });
 }
 
-export const testNode = suite('source/engine/skipped-test-execution.test.ts', [
-    test('execute() records skipped cases without running body infrastructure', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Skipped test execution', [
+    test('execute() records skipped cases without running body infrastructure', async function (scope) {
         const engine = createEngine();
         const lifecycle = createLifecycleRecorder();
         const probe = createRuntimePolicyProbe();

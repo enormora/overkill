@@ -1,9 +1,7 @@
-import { suite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defineResource, defineRuntime, composeRuntimes } from '../resources/resources.entry-point.ts';
-import { testNode as metadata } from './resource-metadata-policy.test.ts';
-import { testNode as resources } from './resource-scope-policy.test.ts';
-import type { TestScope } from './test.entry-point.ts';
+
 import { composeRuntimeScope } from './resource-wrapper-runtime-scope.ts';
 
 const resource = defineResource({
@@ -18,10 +16,8 @@ const resource = defineResource({
 const api = defineRuntime({ name: 'api', dimensions: {}, resources: { value: resource }, requirements: [] });
 const worker = defineRuntime({ name: 'worker', dimensions: {}, resources: { value: resource }, requirements: [] });
 const composed = composeRuntimes(api, worker);
-export const testNode = suite('runtime wrapper scope composition', [
-    metadata,
-    resources,
-    authoredTest('preserves existing runtime scopes and freezes newly composed contexts', function (scope: TestScope) {
+export const testNode: TestNode = suite('runtime wrapper scope composition', [
+    test('preserves existing runtime scopes and freezes newly composed contexts', function (scope) {
         const context = composeRuntimeScope({ ...scope, runtimes: { existing: { value: 'original' } } }, api, {
             value: 'api'
         });
@@ -30,12 +26,12 @@ export const testNode = suite('runtime wrapper scope composition', [
         scope.assert.true(Object.isFrozen(context.runtimes));
         return scope.assert.collect();
     }),
-    authoredTest('composes every runtime in a shared graph', function (scope: TestScope) {
+    test('composes every runtime in a shared graph', function (scope) {
         const context = composeRuntimeScope(scope, composed, { api: { value: 'api' }, worker: { value: 'worker' } });
         scope.assert.deepEqual(context.runtimes, { api: { value: 'api' }, worker: { value: 'worker' } });
         return scope.assert.collect();
     }),
-    authoredTest('rejects duplicate runtime scopes before replacing existing values', function (scope: TestScope) {
+    test('rejects duplicate runtime scopes before replacing existing values', function (scope) {
         const runtimes = { api: { value: 'existing' } };
         scope.assert.throws(function () {
             composeRuntimeScope({ ...scope, runtimes }, api, { value: 'replacement' });
@@ -43,15 +39,25 @@ export const testNode = suite('runtime wrapper scope composition', [
         scope.assert.deepEqual(runtimes, { api: { value: 'existing' } });
         return scope.assert.collect();
     }),
-    ...[ null, [], 'invalid' ].map(function (runtimes, index) {
-        return authoredTest(`rejects invalid runtime scope map ${index}`, function (scope: TestScope) {
+    table({
+        title: 'rejects invalid runtime scope map',
+        cases: [ { description: 'null', input: null }, { description: 'array', input: [] }, {
+            description: 'string',
+            input: 'invalid'
+        } ],
+        caseTitle({ description }) {
+            return description;
+        },
+        test(scope) {
+            const runtimes = scope.parameters.input;
+
             scope.assert.throws(function () {
                 Reflect.apply(composeRuntimeScope, undefined, [ { ...scope, runtimes }, api, { value: 'api' } ]);
             }, { message: 'Runtime scope composition failed.' });
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('rejects missing handles for individual and composed runtimes', function (scope: TestScope) {
+    test('rejects missing handles for individual and composed runtimes', function (scope) {
         scope.assert.throws(function () {
             Reflect.apply(composeRuntimeScope, undefined, [ scope, api, undefined ]);
         }, { message: 'Runtime scope composition failed.' });

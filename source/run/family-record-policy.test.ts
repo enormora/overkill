@@ -1,10 +1,10 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { isDefinedFamilyProfile, type DefinedFamilyProfile } from '../config/types.ts';
 
 import { defineTestFamily, type TestFamily } from '../packages/engine/engine.entry-point.ts';
 import { normalizeConfig } from '../packages/run/run.entry-point.ts';
-import { family } from '../integration-tests/run/fixtures/imported-runtime-family.ts';
+import { family } from '../integration-tests/integration/fixtures/imported-runtime-family.ts';
 import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
 import { historyRecordSchema } from './history-record.ts';
 import { recordedReplayProfile } from './run-record-input.ts';
@@ -28,16 +28,21 @@ function familyProfile(definition: TestFamily<null>): DefinedFamilyProfile {
     return profile;
 }
 
-export const testNode = authoredSuite('family recording policy', [
-    ...[ 2, 3 ].map(function unsupportedVersion(version) {
-        return authoredTest(`rejects unsupported record version ${version}`, function (scope) {
+export const testNode: TestNode = suite('family recording policy', [
+    table({
+        title: 'rejects unsupported record versions',
+        cases: [ 2, 3 ],
+        caseTitle: String,
+        test(scope) {
+            const version = scope.parameters;
+
             scope.assert.throws(function parseFutureRecord() {
                 historyRecordSchema.parse({ ...completedHistoryRecord('unsupported'), version });
             }, { name: 'ZodError' });
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('inspects merged v1 records without resolving family modules', function (scope) {
+    test('inspects merged v1 records without resolving family modules', function (scope) {
         const record = completedHistoryRecord('historical-merged');
         const parsed = historyRecordSchema.parse({
             ...record,
@@ -58,7 +63,7 @@ export const testNode = authoredSuite('family recording policy', [
         scope.assert.equal(parsed.replayPlan, null);
         return scope.assert.collect();
     }),
-    authoredTest('rejects replacement of a recorded family with a built-in profile', async function (scope: TestScope) {
+    test('rejects replacement of a recorded family with a built-in profile', async function (scope: TestScope) {
         const current = normalizeConfig({ profiles: { custom: { testFamily: 'microtest' } } }).profiles.custom;
         scope.require.defined(current);
         await scope.assert.rejects(async function restoreChangedKind() {
@@ -66,14 +71,14 @@ export const testNode = authoredSuite('family recording policy', [
         }, { message: 'Recorded family configuration changed; collect a new run.' });
         return scope.assert.collect();
     }),
-    authoredTest('rejects changed configured settings before backend loading', async function (scope) {
+    test('rejects changed configured settings before backend loading', async function (scope) {
         const profile = familyProfile(family);
         await scope.assert.rejects(async function restoreChangedSettings() {
             await restoreFamilyReplayProfile(recordedReplayProfile(profile), { ...profile, settings: 'changed' });
         }, { message: 'Recorded family configuration settings changed; collect a new run.' });
         return scope.assert.collect();
     }),
-    authoredTest('serializes a family profile without executable definitions', async function (scope) {
+    test('serializes a family profile without executable definitions', async function (scope) {
         const profile = familyProfile(family);
         const serialized = JSON.stringify(recordedReplayProfile(profile));
         const restored = await restoreFamilyReplayProfile(JSON.parse(serialized), profile);
@@ -83,15 +88,18 @@ export const testNode = authoredSuite('family recording policy', [
         scope.assert.equal(serialized.includes('load'), false);
         return scope.assert.collect();
     }),
-    authoredTest('requires explicit configuration when the recorded definition has no module', async function (scope) {
-        const local = defineTestFamily({ ...family, module: null });
-        const saved = recordedReplayProfile(familyProfile(local));
-        await scope.assert.rejects(async function restoreLocalOnlyFamily() {
-            await restoreFamilyReplayProfile(saved, undefined);
-        }, { message: 'Recorded family requires an explicit compatible configuration.' });
-        return scope.assert.collect();
-    }),
-    authoredTest('rejects a changed implementation version before backend loading', async function (scope) {
+    test(
+        'requires explicit configuration when the recorded definition has no module',
+        async function (scope) {
+            const local = defineTestFamily({ ...family, module: null });
+            const saved = recordedReplayProfile(familyProfile(local));
+            await scope.assert.rejects(async function restoreLocalOnlyFamily() {
+                await restoreFamilyReplayProfile(saved, undefined);
+            }, { message: 'Recorded family requires an explicit compatible configuration.' });
+            return scope.assert.collect();
+        }
+    ),
+    test('rejects a changed implementation version before backend loading', async function (scope) {
         const profile = familyProfile(family);
         const changed = defineTestFamily({
             ...family,
@@ -105,7 +113,7 @@ export const testNode = authoredSuite('family recording policy', [
         }, { message: 'Frozen family identity or implementation version changed; collect a new run.' });
         return scope.assert.collect();
     }),
-    authoredTest('inspects v1 records without resolving family modules', function (scope) {
+    test('inspects v1 records without resolving family modules', function (scope) {
         const record = completedHistoryRecord('historical');
         const parsed = historyRecordSchema.parse({
             ...record,

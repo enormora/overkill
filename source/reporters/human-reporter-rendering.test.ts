@@ -1,14 +1,13 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { createDefaultWorkId, type CaseId } from '../engine/identity.ts';
 import type { RunResult, RunArtifact } from '../engine/run-result.ts';
 import { preciseTimingReport, runTimingSummary, type RunTimingSpan } from '../engine/run-timings.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { testNode as debug } from './human-debug-rendering-policy.test.ts';
+
 import { contextPrefix, problemLines } from './human-reporter-rendering.ts';
 import { formatTimingOffenderLines } from './run-summary-rendering.ts';
-import { testNode as attachmentRendering } from './human-attachment-rendering.test.ts';
 
 const passingCaseId: CaseId = { file: null, params: null, suite: [], title: 'passes' };
 const failingCaseId: CaseId = { file: 'source/fails.test.ts', params: null, suite: [ 'root' ], title: 'fails' };
@@ -151,14 +150,14 @@ function resultWithTimingSpans(spans: readonly RunTimingSpan[]): RunResult {
     });
 }
 
-export const testNode = suite('source/reporters/human-reporter-rendering.test.ts', [
-    test('human context prefixes retain nested suites when color is requested', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Human reporter rendering', [
+    test('human context prefixes retain nested suites when color is requested', function (scope) {
         const prefix = contextPrefix([], null, [ 'root', 'child' ], { color: true, wrap: false });
         scope.assert.includes(prefix, 'root');
         scope.assert.includes(prefix, ' > child]');
         return scope.assert.collect();
     }),
-    test('human problem output preserves workload attribution on runner errors', function (scope: OverkillScope) {
+    test('human problem output preserves workload attribution on runner errors', function (scope) {
         const result = runResultFactory.build({
             runnerErrors: [ {
                 message: 'worker stopped',
@@ -186,7 +185,7 @@ export const testNode = suite('source/reporters/human-reporter-rendering.test.ts
         );
         return scope.assert.collect();
     }),
-    test('human problem output labels case artifacts without a corresponding result', function (scope: OverkillScope) {
+    test('human problem output labels case artifacts without a corresponding result', function (scope) {
         const result = runResultFactory.build({ artifacts: [ caseOutputArtifact() ], perTest: [] });
         scope.assert.deepEqual(
             problemLines(result, {
@@ -199,9 +198,7 @@ export const testNode = suite('source/reporters/human-reporter-rendering.test.ts
         );
         return scope.assert.collect();
     }),
-    debug,
-    attachmentRendering,
-    test('human timing output shows at most five spans strictly above 500 ms', function (scope: OverkillScope) {
+    test('human timing output shows at most five spans strictly above 500 ms', function (scope) {
         const spans: readonly RunTimingSpan[] = [
             {
                 ...successfulTimingSpan('resource.acquire', 1_200_000),
@@ -237,7 +234,7 @@ export const testNode = suite('source/reporters/human-reporter-rendering.test.ts
 
         return scope.assert.collect();
     }),
-    test('human timing output omits the block without a qualifying precise span', function (scope: OverkillScope) {
+    test('human timing output omits the block without a qualifying precise span', function (scope) {
         scope.assert.deepEqual(formatTimingOffenderLines(runResultFactory.build()), []);
         scope.assert.deepEqual(
             formatTimingOffenderLines(resultWithTimingSpans([
@@ -250,7 +247,7 @@ export const testNode = suite('source/reporters/human-reporter-rendering.test.ts
     }),
     test(
         'human reporter problem lines include verbose passing artifacts and attributed runner errors',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const result = runResultFactory.build({
                 artifacts: [ caseOutputArtifact(), truncatedCaseOutputArtifact(), ignoredRunArtifact() ],
                 perTest: [
@@ -296,7 +293,7 @@ export const testNode = suite('source/reporters/human-reporter-rendering.test.ts
             return scope.assert.collect();
         }
     ),
-    test('human context prefixes render sorted runtime scenarios', function (scope: OverkillScope) {
+    test('human context prefixes render sorted runtime scenarios', function (scope) {
         const plainRuntime = {
             dimensions: {},
             name: 'api',

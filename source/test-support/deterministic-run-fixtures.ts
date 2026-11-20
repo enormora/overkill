@@ -6,7 +6,7 @@ import type {
     RunProcessUsageTracker,
     RunResult,
     TestNode,
-    TestScope
+    TestCaseOptions
 } from '../packages/engine/engine.entry-point.ts';
 import { collectedRunPlanFromTestPlan, createRunResultFromCollectedPlan } from '../run/collected-run-plan.ts';
 import { defaultRunEngine } from '../run/default-run-engine.ts';
@@ -16,14 +16,19 @@ import type { DiscoveredRunFile, CollectedRunPlan, RunCollectionRoot, WorkId } f
 import type { SupervisedChildCommand } from '../run/supervised-protocol.ts';
 import { createMemoryHistoryStorage } from './memory-history-storage.ts';
 
+type FixtureCaseBody = Extract<
+    TestCaseOptions['body'],
+    (...arguments_: readonly never[]) => unknown
+>;
+
 const deterministicRunFixturePaths = {
-    emptySuite: 'source/integration-tests/run/fixtures/empty-suite.test.ts',
-    customEnginePassing: 'source/integration-tests/run/fixtures/custom-engine-passing.test.ts',
-    loadEnvPolicy: 'source/integration-tests/run/fixtures/load-env-policy.test.ts',
-    microtestCaptureControls: 'source/integration-tests/run/fixtures/microtest-capture-controls.test.ts',
-    passing: 'source/integration-tests/run/fixtures/passing.test.ts',
-    selection: 'source/integration-tests/run/fixtures/selection.test.ts',
-    throwsOnImport: 'source/integration-tests/run/fixtures/throws-on-import.test.ts'
+    emptySuite: 'source/integration-tests/integration/fixtures/empty-suite.test.ts',
+    customEnginePassing: 'source/integration-tests/integration/fixtures/custom-engine-passing.test.ts',
+    loadEnvPolicy: 'source/integration-tests/integration/fixtures/load-env-policy.test.ts',
+    microtestCaptureControls: 'source/integration-tests/integration/fixtures/microtest-capture-controls.test.ts',
+    passing: 'source/integration-tests/integration/fixtures/passing.test.ts',
+    selection: 'source/integration-tests/integration/fixtures/selection.test.ts',
+    throwsOnImport: 'source/integration-tests/integration/fixtures/throws-on-import.test.ts'
 };
 
 export type DeterministicRunCollection = {
@@ -92,11 +97,10 @@ function assertValidDeterministicModuleCollection(input: DeterministicRunCollect
     }
 }
 
-function pass(scope: TestScope): ReturnType<TestScope['assert']['collect']> {
+const pass: FixtureCaseBody = function (scope) {
     scope.assert.true(true, { message: 'passes' });
-
     return scope.assert.collect();
-}
+};
 
 function passingFixtureTestNode(): TestNode {
     return defaultRunEngine.createSuite({

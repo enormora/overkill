@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { FailedForeignCheck, FailedLeafCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
@@ -32,10 +32,10 @@ function failedCheck(diff: Diff | null): FailedLeafCheck {
     };
 }
 
-export const testNode = suite('source/reporters/line-failure-rendering-edge.test.ts', [
+export const testNode: TestNode = suite('Line failure rendering edge', [
     test(
         'line failure formatter retains the summary of conflicting duplicate completions',
-        function (scope: OverkillScope) {
+        function (scope) {
             scope.assert.deepEqual(
                 formatFailure({
                     kind: 'hedged-duplicate-conflict',
@@ -55,7 +55,7 @@ export const testNode = suite('source/reporters/line-failure-rendering-edge.test
             return scope.assert.collect();
         }
     ),
-    test('line failure formatter renders scalar serialized value variants', function (scope: OverkillScope) {
+    test('line failure formatter renders scalar serialized value variants', function (scope) {
         const diff: Diff = {
             actual: {
                 constructorName: 'Uint8Array',
@@ -85,7 +85,7 @@ export const testNode = suite('source/reporters/line-failure-rendering-edge.test
 
         return scope.assert.collect();
     }),
-    test('line failure formatter renders valid property paths and named functions', function (scope: OverkillScope) {
+    test('line failure formatter renders valid property paths and named functions', function (scope) {
         const lines = formatFailure({
             checks: [
                 {
@@ -109,7 +109,7 @@ export const testNode = suite('source/reporters/line-failure-rendering-edge.test
 
         return scope.assert.collect();
     }),
-    test('line failure formatter renders foreign checks without diff data', function (scope: OverkillScope) {
+    test('line failure formatter renders foreign checks without diff data', function (scope) {
         const check: FailedForeignCheck = {
             actual: serializeValue('foreign assertion'),
             diff: null,
@@ -139,7 +139,7 @@ export const testNode = suite('source/reporters/line-failure-rendering-edge.test
     }),
     test(
         'line failure formatter renders arrays, objects, maps, sets, and invalid dates',
-        function (scope: OverkillScope) {
+        function (scope) {
             const diff: Diff = {
                 actual: {
                     entries: [
@@ -177,7 +177,7 @@ export const testNode = suite('source/reporters/line-failure-rendering-edge.test
     ),
     test(
         'line failure formatter renders regexp, errors, data views, circulars, opaque, and unavailable values',
-        function (scope: OverkillScope) {
+        function (scope) {
             const diff: Diff = {
                 kind: 'array',
                 operations: [
@@ -210,7 +210,7 @@ export const testNode = suite('source/reporters/line-failure-rendering-edge.test
             return scope.assert.collect();
         }
     ),
-    test('line failure formatter truncates long diff output by line count', function (scope: OverkillScope) {
+    test('line failure formatter truncates long diff output by line count', function (scope) {
         const failure: TestFailure = {
             error: {
                 message: 'boom',
@@ -232,7 +232,7 @@ export const testNode = suite('source/reporters/line-failure-rendering-edge.test
 
         return scope.assert.collect();
     }),
-    test('line failure formatter renders missing collection operations', function (scope: OverkillScope) {
+    test('line failure formatter renders missing collection operations', function (scope) {
         const objectLines = formatFailure({
             checks: [
                 failedCheck({
@@ -292,7 +292,7 @@ export const testNode = suite('source/reporters/line-failure-rendering-edge.test
 
         return scope.assert.collect();
     }),
-    test('line failure formatter renders timeout failures', function (scope: OverkillScope) {
+    test('line failure formatter renders timeout failures', function (scope) {
         const timeoutLines = formatFailure({
             deadlineMilliseconds: 10,
             elapsedMilliseconds: 12,
@@ -306,7 +306,7 @@ export const testNode = suite('source/reporters/line-failure-rendering-edge.test
 
         return scope.assert.collect();
     }),
-    test('failure summary formats timeout failures', function (scope: OverkillScope) {
+    test('failure summary formats timeout failures', function (scope) {
         scope.assert.equal(
             formatFailureSummary({
                 deadlineMilliseconds: 250,

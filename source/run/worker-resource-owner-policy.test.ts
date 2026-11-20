@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { workerResourceOwner } from '../test-support/worker-resource-owner.ts';
 import {
@@ -7,28 +7,37 @@ import {
     workerPoolProjectedResourcesForWork
 } from './worker-pool-resource-lifecycle-execution.ts';
 
-export const testNode = authoredSuite('worker resource owner acknowledgements', [
-    ...[ { runnerErrors: [] }, null, new Error('owner disconnected') ].map(function (output, index) {
-        return authoredTest(
-            `settles owner completion response ${index} exactly once`,
-            async function (scope: TestScope) {
-                const fixture = await workerResourceOwner(output);
-                scope.cleanup(fixture.runtime.pool.destroy);
-                await completeWorkerPoolResourceMembers(fixture.runtime, fixture.lifecycle, fixture.members);
-                await completeWorkerPoolResourceMembers(fixture.runtime, fixture.lifecycle, fixture.members);
-                scope.assert.deepEqual(fixture.calls, [ 'acquire-run-resources', 'complete-resource-owner-work' ]);
-                scope.assert.equal(fixture.runtime.terminalFailure.read(), index !== 0);
-                scope.assert.deepEqual(
-                    fixture.runtime.runState.runnerErrors().map(function (error) {
-                        return error.message;
-                    }),
-                    index === 0 ? [] : [ 'Worker-pool resource owner completion failed.' ]
-                );
-                return scope.assert.collect();
+export const testNode: TestNode = suite('worker resource owner acknowledgements', [
+    table({
+        title: 'settles owner completion response exactly once',
+        cases: [ { runnerErrors: [] }, null, new Error('owner disconnected') ].map(function (output, index) {
+            return { output, index };
+        }),
+        caseTitle({ output }) {
+            if (output instanceof Error) {
+                return 'disconnected owner';
             }
-        );
+            return output === null ? 'missing response' : 'successful response';
+        },
+        async test(scope) {
+            const { output, index } = scope.parameters;
+
+            const fixture = await workerResourceOwner(output);
+            scope.cleanup(fixture.runtime.pool.destroy);
+            await completeWorkerPoolResourceMembers(fixture.runtime, fixture.lifecycle, fixture.members);
+            await completeWorkerPoolResourceMembers(fixture.runtime, fixture.lifecycle, fixture.members);
+            scope.assert.deepEqual(fixture.calls, [ 'acquire-run-resources', 'complete-resource-owner-work' ]);
+            scope.assert.equal(fixture.runtime.terminalFailure.read(), index !== 0);
+            scope.assert.deepEqual(
+                fixture.runtime.runState.runnerErrors().map(function (error) {
+                    return error.message;
+                }),
+                index === 0 ? [] : [ 'Worker-pool resource owner completion failed.' ]
+            );
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('disposes an infrastructure owner after successful completion', async function (scope: TestScope) {
+    test('disposes an infrastructure owner after successful completion', async function (scope) {
         const fixture = await workerResourceOwner({ runnerErrors: [] });
         scope.cleanup(fixture.runtime.pool.destroy);
         await completeWorkerPoolResourceMembers(fixture.runtime, fixture.lifecycle, fixture.members);
@@ -41,7 +50,7 @@ export const testNode = authoredSuite('worker resource owner acknowledgements', 
         scope.assert.deepEqual(fixture.runtime.runState.runnerErrors(), []);
         return scope.assert.collect();
     }),
-    authoredTest('projects only the boundaries required by assigned work', async function (scope: TestScope) {
+    test('projects only the boundaries required by assigned work', async function (scope) {
         const fixture = await workerResourceOwner({ runnerErrors: [] });
         scope.cleanup(fixture.runtime.pool.destroy);
         const work = fixture.members.flatMap(function (member) {

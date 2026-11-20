@@ -1,11 +1,11 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
 import type { FailedCompositeCheck } from '../assertion-protocol/assertion-node-shape.ts';
-import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
-import type { BodyErrorTestFailure, FailOutcome, RunResult } from './run-result.ts';
-import type { TestBody, TestScope } from './test-scope.ts';
 
-async function executeSingleBody(body: TestBody): Promise<RunResult> {
+import type { BodyErrorTestFailure, FailOutcome, RunResult } from './run-result.ts';
+
+async function executeSingleBody(body: EngineCaseBody): Promise<RunResult> {
     const engine = createEngine();
 
     return await engine.execute(
@@ -62,9 +62,9 @@ function firstBodyError(outcome: FailOutcome): BodyErrorTestFailure | null {
     return null;
 }
 
-export const testNode = suite('source/engine/error-assertion-execution.test.ts', [
-    test('execute() counts throws and awaited rejects as assertion boundaries', async function (scope: OverkillScope) {
-        const result = await executeSingleBody(async function testBody(testScope: TestScope) {
+export const testNode: TestNode = suite('Error assertion execution', [
+    test('counts throws and awaited rejects as assertion boundaries', async function (scope) {
+        const result = await executeSingleBody(async function testBody(testScope) {
             testScope.plan(2);
             testScope.assert.throws(function throwExpectedError() {
                 throw new Error('expected');
@@ -80,8 +80,8 @@ export const testNode = suite('source/engine/error-assertion-execution.test.ts',
 
         return scope.assert.collect();
     }),
-    test('execute() rejects unawaited async rejects assertions at collect', async function (scope: OverkillScope) {
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+    test('rejects unawaited async rejects assertions at collect', async function (scope: TestScope) {
+        const result = await executeSingleBody(function testBody(testScope) {
             const pendingAssertions = [
                 testScope.assert.rejects(async function rejectExpectedError() {
                     await Promise.reject(new Error('expected'));
@@ -106,12 +106,12 @@ export const testNode = suite('source/engine/error-assertion-execution.test.ts',
 
         return scope.assert.collect();
     }),
-    test('execute() treats sync throws from rejects thunks as body errors', async function (scope: OverkillScope) {
+    test('treats sync throws from rejects thunks as body errors', async function (scope: TestScope) {
         function throwBeforePromise(): never {
             throw new TypeError('sync boom');
         }
 
-        const result = await executeSingleBody(async function testBody(testScope: TestScope) {
+        const result = await executeSingleBody(async function testBody(testScope) {
             await testScope.assert.rejects(throwBeforePromise, { message: 'sync boom' });
 
             return testScope.assert.collect();
@@ -126,9 +126,9 @@ export const testNode = suite('source/engine/error-assertion-execution.test.ts',
         return scope.assert.collect();
     }),
     test(
-        'execute() reports throws matcher field failures under one composite boundary',
-        async function (scope: OverkillScope) {
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        'reports throws matcher field failures under one composite boundary',
+        async function (scope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 testScope.assert.throws(
                     function throwWrongError() {
                         throw new TypeError('actual');

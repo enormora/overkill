@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createLocalProcessOutput, type LocalProcessOutputWriters } from './local-process-output.ts';
 
@@ -29,8 +29,8 @@ function capturedOutput(maximumBytes: number): CapturedProcessOutput {
     });
     return { ...output, stdout, stderr };
 }
-export const testNode = authoredSuite('bounded process output', [
-    test('retains only the newest bytes independently for each stream', function (scope: TestScope) {
+export const testNode: TestNode = suite('bounded process output', [
+    test('retains only the newest bytes independently for each stream', function (scope) {
         const output = createLocalProcessOutput(5, { stdout: null, stderr: null });
         output.appendStdout(Buffer.from('remake'));
         output.appendStdout(Buffer.from('r'));
@@ -40,7 +40,7 @@ export const testNode = authoredSuite('bounded process output', [
         scope.assert.deepEqual(output.output.stdout.bytes(), new Uint8Array(Buffer.from('maker')));
         return scope.assert.collect();
     }),
-    test('does not expose mutable backing buffers', function (scope: TestScope) {
+    test('does not expose mutable backing buffers', function (scope) {
         const output = createLocalProcessOutput(5, { stdout: null, stderr: null });
         output.appendStdout(Buffer.from('estate'));
         const bytes = output.output.stdout.bytes();
@@ -50,7 +50,7 @@ export const testNode = authoredSuite('bounded process output', [
         scope.assert.true(Object.isFrozen(output.output.stdout));
         return scope.assert.collect();
     }),
-    test('supports a zero-byte tail without discarding capture text', function (scope: TestScope) {
+    test('supports a zero-byte tail without discarding capture text', function (scope) {
         const output = capturedOutput(0);
         output.appendStdout(Buffer.from('value'));
         output.appendStderr(Buffer.from('error'));
@@ -60,7 +60,7 @@ export const testNode = authoredSuite('bounded process output', [
         scope.assert.equal(output.stderr.join(''), 'error');
         return scope.assert.collect();
     }),
-    test('decodes split UTF-8 sequences before forwarding captures', function (scope: TestScope) {
+    test('decodes split UTF-8 sequences before forwarding captures', function (scope) {
         const output = capturedOutput(8);
         const text = Buffer.from('😊');
         output.appendStdout(text.subarray(0, 2));
@@ -75,7 +75,7 @@ export const testNode = authoredSuite('bounded process output', [
         });
         return scope.assert.collect();
     }),
-    test('flushes incomplete UTF-8 sequences when streams end', function (scope: TestScope) {
+    test('flushes incomplete UTF-8 sequences when streams end', function (scope) {
         const output = capturedOutput(8);
         output.appendStdout(Buffer.from([ 0xE2, 0x82 ]));
         output.appendStderr(Buffer.from([ 0xF0 ]));
@@ -87,7 +87,7 @@ export const testNode = authoredSuite('bounded process output', [
         });
         return scope.assert.collect();
     }),
-    test('can finish incomplete streams with capture disabled', function (scope: TestScope) {
+    test('can finish incomplete streams with capture disabled', function (scope) {
         const output = createLocalProcessOutput(8, { stdout: null, stderr: null });
         output.appendStdout(Buffer.from([ 0xE2 ]));
         output.appendStderr(Buffer.from([ 0xF0 ]));

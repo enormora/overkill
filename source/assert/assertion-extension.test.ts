@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     isAssertionReference,
@@ -81,8 +81,8 @@ function foreignLocations(
     });
 }
 
-export const testNode = suite('source/assert/assertion-extension.test.ts', [
-    test('createCompositeCheckBuilder() creates every built-in composite child node', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Custom assertion definitions', [
+    test('creates every built-in composite child node', function (scope) {
         const check = createCompositeCheckBuilder('assert', 'child', [ unknownSourceLocation ]);
         const children = builtInChildren(check);
         const annotated = check.annotated('annotated').true(true);
@@ -146,7 +146,7 @@ export const testNode = suite('source/assert/assertion-extension.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createCompositeCheckBuilder() flattens composite assertion groups', function (scope: OverkillScope) {
+    test('flattens composite assertion groups', function (scope) {
         const check = createCompositeCheckBuilder('assert', 'child', [ unknownSourceLocation ]);
         const group = check.group([
             check.true(true),
@@ -159,7 +159,7 @@ export const testNode = suite('source/assert/assertion-extension.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createCompositeCheckBuilder() creates async rejects groups', async function (scope: OverkillScope) {
+    test('creates async rejects groups', async function (scope) {
         const check = createCompositeCheckBuilder('assert', 'child', [ unknownSourceLocation ]);
         const group = await check.rejects(async function rejectExpectedError() {
             await Promise.reject(new Error('expected'));
@@ -169,7 +169,7 @@ export const testNode = suite('source/assert/assertion-extension.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('composite foreign bridges normalize passing and failing callbacks', async function (scope: OverkillScope) {
+    test('composite foreign bridges normalize passing and failing callbacks', async function (scope) {
         const location = { column: 5, file: '/test/composite.test.ts', kind: 'known' as const, line: 10 };
         const check = createCompositeCheckBuilder('assert', null, [ location ]);
         const thrown = check.fromThrowable('throws', function throwForeignError() {
@@ -195,7 +195,7 @@ export const testNode = suite('source/assert/assertion-extension.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('assertion references expose brand and empty-name validation', function (scope: OverkillScope) {
+    test('assertion references expose brand and empty-name validation', function (scope) {
         const reference = defineCompositeAssertion({
             assert(check) {
                 return check.true(true);

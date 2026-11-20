@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { suite, test } from '#tests';
+import { type TestNode, suite, test } from '#tests';
 
 async function execute(script: string): Promise<string> {
     return new Promise(function executeConsumer(resolve, reject) {
@@ -75,7 +75,7 @@ if (repeated.summary.failed !== 1 || JSON.stringify(repeated).includes('unexpect
 console.log('linearizability package loaded');
 `;
 
-export const testNode = suite('packaged linearizability authoring', [
+export const testNode: TestNode = suite('packaged linearizability authoring', [
     test('checks histories through the installed package', async function (scope) {
         const result = await execute(script);
         scope.assert.equal(result.trim(), 'linearizability package loaded');

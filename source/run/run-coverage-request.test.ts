@@ -1,12 +1,12 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultIntegrationProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 
-const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 
-export const testNode = suite('source/run/run-coverage-request.test.ts', [
-    test('orchestrator.resolve() rejects integration coverage before discovery', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Run coverage request', [
+    test('orchestrator.resolve() rejects integration coverage before discovery', async function (scope) {
         const runOrchestrator = createUnitRunOrchestrator();
 
         await scope.assert.rejects(async function resolveIntegrationCoverage() {
@@ -28,7 +28,7 @@ export const testNode = suite('source/run/run-coverage-request.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('orchestrator.resolve() records requested microtest coverage', async function (scope: OverkillScope) {
+    test('orchestrator.resolve() records requested microtest coverage', async function (scope) {
         const runOrchestrator = createUnitRunOrchestrator();
         const resolvedRun = await runOrchestrator.resolve({
             config: defaultRunConfig(),

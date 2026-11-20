@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { childRoleArgument, supervisedChildRole } from './child-process-roles.ts';
 import {
@@ -164,8 +164,8 @@ function emitRestrictedOutput(stdout: OutputRecord, stderr: OutputRecord): void 
     );
 }
 
-export const testNode = suite('source/run/supervised-child-process.test.ts', [
-    test('startSupervisedChild() sanitizes the microtest child environment', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Supervised child processes', [
+    test('sanitizes the microtest child environment', async function (scope: TestScope) {
         const fixture = createStarterFixture();
         const child = await fixture.startSupervisedChild({
             capabilityRestrictions: { mode: 'disabled' },
@@ -203,7 +203,7 @@ export const testNode = suite('source/run/supervised-child-process.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('startSupervisedChild() preserves the integration child environment', async function (scope: OverkillScope) {
+    test('preserves the integration child environment', async function (scope: TestScope) {
         const fixture = createStarterFixture();
 
         await fixture.startSupervisedChild({
@@ -236,8 +236,8 @@ export const testNode = suite('source/run/supervised-child-process.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'startSupervisedChild() allows canonical read roots when restrictions are enabled',
-        async function (scope: OverkillScope) {
+        'allows canonical read roots when restrictions are enabled',
+        async function (scope: TestScope) {
             const fixture = createStarterFixture();
 
             await fixture.startSupervisedChild({
@@ -270,8 +270,8 @@ export const testNode = suite('source/run/supervised-child-process.test.ts', [
         }
     ),
     test(
-        'startSupervisedChild() grants native coverage access when restrictions are enabled',
-        async function (scope: OverkillScope) {
+        'grants native coverage access when restrictions are enabled',
+        async function (scope: TestScope) {
             const fixture = createStarterFixture();
 
             await fixture.startSupervisedChild({
@@ -308,7 +308,7 @@ export const testNode = suite('source/run/supervised-child-process.test.ts', [
     ),
     test(
         'runSupervisedChildProcessEntryPoint() loads only supervised child invocations',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             let loadCount = 0;
             const loadSupervisedChild = async function loadSupervisedChild(): Promise<void> {
                 loadCount += 1;
@@ -325,9 +325,35 @@ export const testNode = suite('source/run/supervised-child-process.test.ts', [
             return scope.assert.collect();
         }
     ),
+    test('keeps environment trace frames separate from interleaved warnings', function (scope) {
+        const stdout = createOutputRecord();
+        const stderr = createOutputRecord();
+        const state = createSupervisedRunState('first-failure-and-final');
+        const terminalFailure = createStoredRunValue(false);
+        observeRestrictedOutput(stdout, stderr, state, terminalFailure);
+        for (
+            const chunk of [
+                '[--trace-env] get "EXAMPLE"\n',
+                'Runtime warning.\n',
+                '----- JavaScript stack trace -----\n1: readEnvironment (runtime.js:1:1)\n'
+            ]
+        ) {
+            stderr.emit(chunk);
+        }
+        scope.assert.true(terminalFailure.read());
+        scope.assert.deepEqual(
+            state.runnerErrors().map(function (error) {
+                return error.message;
+            }),
+            [
+                'Runtime policy violation: supervised child wrote to stderr.'
+            ]
+        );
+        return scope.assert.collect();
+    }),
     test(
         'observeSupervisedChildOutput() reports restricted raw and environment output',
-        function (scope: OverkillScope) {
+        function (scope) {
             const stdout = createOutputRecord();
             const stderr = createOutputRecord();
             const state = createSupervisedRunState('first-failure-and-final');

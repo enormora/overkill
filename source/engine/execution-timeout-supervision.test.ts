@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -145,7 +145,7 @@ async function executeHardTimedCase(
 }
 
 function assertHardTimeoutResult(
-    scope: OverkillScope,
+    scope: TestScope,
     executedCase: Awaited<ReturnType<typeof executeCaseBody>>,
     error: RunnerError | undefined
 ): void {
@@ -157,32 +157,32 @@ function assertHardTimeoutResult(
     scope.assert.equal(error.attributedTo.title, 'hard timeout');
 }
 
-export const testNode = suite('source/engine/execution-timeout-supervision.test.ts', [
-    ...[ { hardTimeoutMilliseconds: 10, timeoutMilliseconds: 100 }, softTimeoutPolicy ].map(function timeoutOrder(
-        timeoutPolicy
-    ) {
-        return test(
-            `executeCaseBody() retains hard timeout after a ${timeoutPolicy.timeoutMilliseconds} ms soft limit`,
-            async function (scope: OverkillScope) {
-                const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
-                const supervision = createExecutionSupervision();
-                const bodyGate = Promise.withResolvers<undefined>();
-                scope.cleanup(function releaseTimedOutBody() {
-                    bodyGate.resolve(undefined);
-                });
-                const execution = executeHardTimedCase(wallClock, supervision, timeoutPolicy, bodyGate.promise);
+export const testNode: TestNode = suite('Case timeout supervision', [
+    table({
+        title: 'retains hard timeout after the soft limit',
+        cases: [ { hardTimeoutMilliseconds: 10, timeoutMilliseconds: 100 }, softTimeoutPolicy ],
+        caseTitle(timeoutPolicy) {
+            return String(timeoutPolicy.timeoutMilliseconds);
+        },
+        async test(scope) {
+            const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+            const supervision = createExecutionSupervision();
+            const bodyGate = Promise.withResolvers<undefined>();
+            scope.cleanup(function releaseTimedOutBody() {
+                bodyGate.resolve(undefined);
+            });
+            const execution = executeHardTimedCase(wallClock, supervision, scope.parameters, bodyGate.promise);
 
-                wallClock.advanceByMilliseconds(timeoutPolicy.hardTimeoutMilliseconds);
-                const executedCase = await execution;
-                const [ error ] = supervision.runnerErrors;
+            wallClock.advanceByMilliseconds(scope.parameters.hardTimeoutMilliseconds);
+            const executedCase = await execution;
+            const [ error ] = supervision.runnerErrors;
 
-                assertHardTimeoutResult(scope, executedCase, error);
+            assertHardTimeoutResult(scope, executedCase, error);
 
-                return scope.assert.collect();
-            }
-        );
+            return scope.assert.collect();
+        }
     }),
-    test('executeCaseBody() appends a soft timeout failure to body failures', async function (scope: OverkillScope) {
+    test('appends a soft timeout failure to body failures', async function (scope) {
         const bodyGate = Promise.withResolvers<undefined>();
         const testCase = createPlannedCase(
             'soft timeout and failure',
@@ -206,8 +206,8 @@ export const testNode = suite('source/engine/execution-timeout-supervision.test.
         return scope.assert.collect();
     }),
     test(
-        'executeCaseBody() converts a passing body into a soft timeout failure',
-        async function (scope: OverkillScope) {
+        'converts a passing body into a soft timeout failure',
+        async function (scope) {
             const bodyGate = Promise.withResolvers<undefined>();
             const testCase = createPlannedCase(
                 'soft timeout with passing body',
@@ -232,8 +232,8 @@ export const testNode = suite('source/engine/execution-timeout-supervision.test.
         }
     ),
     test(
-        'executeCaseBody() detects a synchronous body that reaches its timeout',
-        async function (scope: OverkillScope) {
+        'detects a synchronous body that reaches its timeout',
+        async function (scope) {
             const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
             const testCase = createPlannedCase(
                 'synchronous timeout',
@@ -252,7 +252,7 @@ export const testNode = suite('source/engine/execution-timeout-supervision.test.
             return scope.assert.collect();
         }
     ),
-    test('executeCaseBody() reports timeout elapsed time in milliseconds', async function (scope: OverkillScope) {
+    test('reports timeout elapsed time in milliseconds', async function (scope) {
         const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
         const bodyGate = Promise.withResolvers<undefined>();
         const testCase = createPlannedCase(

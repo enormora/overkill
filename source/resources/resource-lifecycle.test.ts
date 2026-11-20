@@ -1,8 +1,5 @@
-import { suite } from '@overkill-dev/test';
+import { type TestNode, defineMacro, test, suite, type TestScope } from '@overkill-dev/test';
 
-import { type TestNode, type TestScope, createTestCase } from '../packages/engine/engine.entry-point.ts';
-
-import { testNode as workloadResourceTestNode } from './workload-resource.test.ts';
 import {
     defineResource,
     defineRuntime,
@@ -508,25 +505,20 @@ async function assertGraphFailures(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(cycleError.failures().map(graphFailureSummary), [ [ 'graph', 'cycle' ] ]);
 }
 
-function lifecycleTestCase(
-    title: string,
-    assertion: (scope: TestScope) => Promise<void>
-): TestNode {
-    return createTestCase({
-        definitionLocations: [ { kind: 'unknown' } ],
+const lifecycleTestCase = defineMacro(function (title: string, assertion: (scope: TestScope) => Promise<void>) {
+    return test({
         title,
         annotations: {},
         controls: {},
-        async body(scope: TestScope) {
+        async body(scope) {
             await assertion(scope);
 
             return scope.assert.collect();
         }
     });
-}
+});
 
-export const testNode = suite('source/resources/resource-lifecycle.test.ts', [
-    workloadResourceTestNode,
+export const testNode: TestNode = suite('Resource lifecycle', [
     lifecycleTestCase(
         'startRuntime acquires dependencies and disposes them once in reverse order',
         assertRuntimeLifecycle

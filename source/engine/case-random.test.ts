@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { Hash } from 'node:crypto';
 import { mock } from 'node:test';
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestRandom } from '@overkill-dev/test';
 
-import type { ExecuteExecution, TestRandom } from '../packages/engine/engine.entry-point.ts';
+import type { ExecuteExecution } from '../packages/engine/engine.entry-point.ts';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createTestRandom } from './case-random.ts';
-import { testNode as scopeTestNode } from './case-scope.test.ts';
 
 type RandomEvidence = { readonly seed: string; readonly values: readonly number[]; };
 
@@ -76,8 +76,7 @@ function randomFromZeroDigest(): TestRandom {
     }
 }
 
-export const testNode = authoredSuite('case random streams', [
-    scopeTestNode,
+export const testNode: TestNode = suite('case random streams', [
     test('recovers from an all-zero hashed generator state', function (scope) {
         const random = randomFromZeroDigest();
         scope.assert.notDeepEqual(draw(random), draw(random));

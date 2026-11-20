@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     benchmarkPlacementFactsSchema,
@@ -23,120 +23,132 @@ function withSignals(signals: Partial<BenchmarkHostSnapshot['signals']>): Benchm
     return { ...host, snapshot: { ...host.snapshot, signals: { ...host.snapshot.signals, ...signals } } };
 }
 
-export const testNode = authoredSuite('adaptive benchmark placement policy', [
-    test('trusts artifact-size returns and does not treat async mode as capacity evidence', function (scope) {
-        for (const mode of [ 'sync', 'async' ] as const) {
-            const facts = resolveBenchmarkPlacement({
-                definitions: [ { ...definition(), measurement: { mode, target: null, collectors: [] } } ],
-                host: quietHost(),
-                processModel: 'worker-pool'
-            });
-            scope.assert.equal(facts.maximumWorkers, 7);
-            scope.assert.equal(benchmarkPlacementFactsSchema.safeParse(facts).success, true);
-        }
-        return scope.assert.collect();
-    }),
-    test('serializes process strategies even for artifact-size kinds without timing budgets', function (scope) {
-        const facts = resolveBenchmarkPlacement({
-            definitions: [ { ...definition(), measurement: { mode: 'process', instrumentation: 'off' } } ],
-            host: quietHost(),
-            processModel: 'worker-pool'
-        });
-        scope.assert.equal(facts.maximumWorkers, 1);
-        scope.assert.true(facts.limits.some(function measurementLimit(limit) {
-            return limit.reason === 'measurement';
-        }));
-        return scope.assert.collect();
-    }),
-    test('serializes timing metrics, every collector, other kinds, missing metadata and mixed work', function (scope) {
-        const size = definition();
-        const sensitive = [
-            null,
-            { ...size, kind: 'runtime' },
-            { ...size, diagnostics: [ 'durationMicroseconds' ] },
-            {
-                ...size,
-                budgets: {
-                    small: [ {
-                        ...size
-                            .budgets
-                            .small
-                            ?.[0],
-                        metric: 'operationsPerSecond',
-                        maximum: 100,
-                        minimum: null,
-                        statistic: { kind: 'observed-maximum' as const }
-                    } ]
-                }
-            },
-            {
-                ...size,
-                measurement: {
-                    mode: 'sync' as const,
-                    target: null,
-                    collectors: [ { name: 'custom', version: '1', metrics: [] } ]
-                }
+export const testNode: TestNode = suite('adaptive benchmark placement policy', [
+    test(
+        'trusts artifact-size returns and does not treat async mode as capacity evidence',
+        function (scope) {
+            for (const mode of [ 'sync', 'async' ] as const) {
+                const facts = resolveBenchmarkPlacement({
+                    definitions: [ { ...definition(), measurement: { mode, target: null, collectors: [] } } ],
+                    host: quietHost(),
+                    processModel: 'worker-pool'
+                });
+                scope.assert.equal(facts.maximumWorkers, 7);
+                scope.assert.equal(benchmarkPlacementFactsSchema.safeParse(facts).success, true);
             }
-        ];
-        for (const candidate of sensitive) {
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'serializes process strategies even for artifact-size kinds without timing budgets',
+        function (scope) {
             const facts = resolveBenchmarkPlacement({
-                definitions: [ size, candidate ],
+                definitions: [ { ...definition(), measurement: { mode: 'process', instrumentation: 'off' } } ],
                 host: quietHost(),
                 processModel: 'worker-pool'
             });
             scope.assert.equal(facts.maximumWorkers, 1);
-            scope.assert.true(facts.limits.some(function measurement(limit) {
+            scope.assert.true(facts.limits.some(function measurementLimit(limit) {
                 return limit.reason === 'measurement';
             }));
+            return scope.assert.collect();
         }
-        return scope.assert.collect();
-    }),
-    test('uses CPU demand and reserves coordination capacity without summing correlated signals', function (scope) {
-        scope.assert.equal(ceiling(quietHost()), 7);
-        scope.assert.equal(ceiling(withSignals({ cpuBusyPercent: reading(50) })), 3);
-        scope.assert.equal(ceiling(withSignals({ cpuBusyPercent: reading(100) })), 1);
-        const host = withSignals({ cpuBusyPercent: reading(50) });
-        const loaded = {
-            ...host,
-            snapshot: {
-                ...host.snapshot,
-                capacity: {
-                    ...host
-                        .snapshot
-                        .capacity,
-                    loadAverage: {
-                        availability: 'available' as const,
-                        value: [ 4, 0, 0 ] as const,
-                        source: 'fixture',
-                        scope: 'host' as const,
-                        unit: 'load'
+    ),
+    test(
+        'serializes timing metrics, every collector, other kinds, missing metadata and mixed work',
+        function (scope) {
+            const size = definition();
+            const sensitive = [
+                null,
+                { ...size, kind: 'runtime' },
+                { ...size, diagnostics: [ 'durationMicroseconds' ] },
+                {
+                    ...size,
+                    budgets: {
+                        small: [ {
+                            ...size
+                                .budgets
+                                .small
+                                ?.[0],
+                            metric: 'operationsPerSecond',
+                            maximum: 100,
+                            minimum: null,
+                            statistic: { kind: 'observed-maximum' as const }
+                        } ]
+                    }
+                },
+                {
+                    ...size,
+                    measurement: {
+                        mode: 'sync' as const,
+                        target: null,
+                        collectors: [ { name: 'custom', version: '1', metrics: [] } ]
                     }
                 }
+            ];
+            for (const candidate of sensitive) {
+                const facts = resolveBenchmarkPlacement({
+                    definitions: [ size, candidate ],
+                    host: quietHost(),
+                    processModel: 'worker-pool'
+                });
+                scope.assert.equal(facts.maximumWorkers, 1);
+                scope.assert.true(facts.limits.some(function measurement(limit) {
+                    return limit.reason === 'measurement';
+                }));
             }
-        };
-        scope.assert.equal(ceiling(loaded), 3);
-        scope.assert.equal(
-            ceiling({
-                ...loaded,
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'uses CPU demand and reserves coordination capacity without summing correlated signals',
+        function (scope) {
+            scope.assert.equal(ceiling(quietHost()), 7);
+            scope.assert.equal(ceiling(withSignals({ cpuBusyPercent: reading(50) })), 3);
+            scope.assert.equal(ceiling(withSignals({ cpuBusyPercent: reading(100) })), 1);
+            const host = withSignals({ cpuBusyPercent: reading(50) });
+            const loaded = {
+                ...host,
                 snapshot: {
-                    ...loaded.snapshot,
+                    ...host.snapshot,
                     capacity: {
-                        ...loaded.snapshot.capacity,
+                        ...host
+                            .snapshot
+                            .capacity,
                         loadAverage: {
-                            ...loaded
-                                .snapshot
-                                .capacity
-                                .loadAverage,
-                            availability: 'available',
-                            value: [ 6, 0, 0 ]
+                            availability: 'available' as const,
+                            value: [ 4, 0, 0 ] as const,
+                            source: 'fixture',
+                            scope: 'host' as const,
+                            unit: 'load'
                         }
                     }
                 }
-            }),
-            1
-        );
-        return scope.assert.collect();
-    }),
+            };
+            scope.assert.equal(ceiling(loaded), 3);
+            scope.assert.equal(
+                ceiling({
+                    ...loaded,
+                    snapshot: {
+                        ...loaded.snapshot,
+                        capacity: {
+                            ...loaded.snapshot.capacity,
+                            loadAverage: {
+                                ...loaded
+                                    .snapshot
+                                    .capacity
+                                    .loadAverage,
+                                availability: 'available',
+                                value: [ 6, 0, 0 ]
+                            }
+                        }
+                    }
+                }),
+                1
+            );
+            return scope.assert.collect();
+        }
+    ),
     test('falls back on missing or invalid required evidence and zero memory', function (scope) {
         scope.assert.equal(ceiling(null), 1);
         scope.assert.equal(ceiling(withSignals({ availableMemoryPercent: reading(0) })), 1);
@@ -157,63 +169,68 @@ export const testNode = authoredSuite('adaptive benchmark placement policy', [
         );
         return scope.assert.collect();
     }),
-    test('serializes native pressure and Darwin throttling without requiring platform probes', function (scope) {
-        for (const signal of [ 'linuxCpuStallPercent', 'linuxMemoryStallPercent', 'linuxIoStallPercent' ] as const) {
-            scope.assert.equal(ceiling(withSignals({ [signal]: reading(0.01) })), 1);
-        }
-        const host = quietHost();
-        for (const signal of [ 'darwinCpuSpeedPercent', 'darwinCpuSchedulerPercent' ] as const) {
+    test(
+        'serializes native pressure and Darwin throttling without requiring platform probes',
+        function (scope) {
+            for (
+                const signal of [ 'linuxCpuStallPercent', 'linuxMemoryStallPercent', 'linuxIoStallPercent' ] as const
+            ) {
+                scope.assert.equal(ceiling(withSignals({ [signal]: reading(0.01) })), 1);
+            }
+            const host = quietHost();
+            for (const signal of [ 'darwinCpuSpeedPercent', 'darwinCpuSchedulerPercent' ] as const) {
+                scope.assert.equal(
+                    ceiling({
+                        ...host,
+                        snapshot: {
+                            ...host.snapshot,
+                            runtime: {
+                                ...host
+                                    .snapshot
+                                    .runtime,
+                                operatingSystem: 'darwin'
+                            },
+                            signals: { ...host.snapshot.signals, [signal]: reading(99) }
+                        }
+                    }),
+                    1
+                );
+            }
+            const unavailable = {
+                availability: 'unavailable' as const,
+                source: 'fixture',
+                scope: 'host' as const,
+                unit: 'percent',
+                reason: 'unsupported'
+            };
+            scope.assert.equal(
+                ceiling(
+                    withSignals({
+                        linuxCpuStallPercent: unavailable,
+                        linuxMemoryStallPercent: unavailable,
+                        linuxIoStallPercent: unavailable
+                    })
+                ),
+                7
+            );
             scope.assert.equal(
                 ceiling({
                     ...host,
                     snapshot: {
                         ...host.snapshot,
-                        runtime: {
+                        capacity: {
                             ...host
                                 .snapshot
-                                .runtime,
-                            operatingSystem: 'darwin'
-                        },
-                        signals: { ...host.snapshot.signals, [signal]: reading(99) }
+                                .capacity,
+                            loadAverage: { ...unavailable, unit: 'load' }
+                        }
                     }
                 }),
-                1
+                7
             );
+            return scope.assert.collect();
         }
-        const unavailable = {
-            availability: 'unavailable' as const,
-            source: 'fixture',
-            scope: 'host' as const,
-            unit: 'percent',
-            reason: 'unsupported'
-        };
-        scope.assert.equal(
-            ceiling(
-                withSignals({
-                    linuxCpuStallPercent: unavailable,
-                    linuxMemoryStallPercent: unavailable,
-                    linuxIoStallPercent: unavailable
-                })
-            ),
-            7
-        );
-        scope.assert.equal(
-            ceiling({
-                ...host,
-                snapshot: {
-                    ...host.snapshot,
-                    capacity: {
-                        ...host
-                            .snapshot
-                            .capacity,
-                        loadAverage: { ...unavailable, unit: 'load' }
-                    }
-                }
-            }),
-            7
-        );
-        return scope.assert.collect();
-    }),
+    ),
     test('records supervised and uncalibrated ceilings without inventing host evidence', function (scope) {
         const facts = resolveBenchmarkPlacement({
             definitions: [ definition() ],

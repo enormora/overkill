@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     isTestDebugArtifact,
@@ -20,7 +20,7 @@ import {
 } from './worker-pool-hedged-arbitration.ts';
 import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from './worker-pool-runtime.ts';
 
-const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 const testCaseMetadata = {
     annotations: {},
     controls: {},
@@ -87,7 +87,7 @@ function retriedResult(first: PerTestResult, final: PerTestResult): PerTestResul
 }
 
 function assertConflictArtifactIdentity(
-    scope: OverkillScope,
+    scope: TestScope,
     runtime: WorkerPoolRunRuntime,
     result: PerTestResult
 ): void {
@@ -365,7 +365,7 @@ function disposableIsolatedUnit(taskRun: WorkerPoolTaskRun): WorkerPoolTaskRun['
     };
 }
 
-function assertConflictChains(scope: OverkillScope, payload: HedgedConflictArtifactPayload): void {
+function assertConflictChains(scope: TestScope, payload: HedgedConflictArtifactPayload): void {
     scope.assert.deepEqual(
         payload.authoritative.attempts.map(function verdict(attempt) {
             return attempt.verdict;
@@ -380,7 +380,7 @@ function assertConflictChains(scope: OverkillScope, payload: HedgedConflictArtif
     );
 }
 
-function assertRetriedConflict(scope: OverkillScope, runtime: WorkerPoolRunRuntime): void {
+function assertRetriedConflict(scope: TestScope, runtime: WorkerPoolRunRuntime): void {
     const result = flattenPerTest(runtime)[0];
     scope.require.defined(result);
     const artifact = runtime.runState.artifacts()[0];
@@ -403,14 +403,14 @@ function assertRetriedConflict(scope: OverkillScope, runtime: WorkerPoolRunRunti
     assertConflictArtifactIdentity(scope, runtime, result);
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-hedged-arbitration.test.ts',
+    title: 'Worker pool hedged arbitration',
     children: [
         test({
             ...testCaseMetadata,
             title: 'hedged conflicts retain debug evidence from both placements',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const runtime = await conflictingDebugEvidence();
                 const artifacts = runtime.runState.artifacts();
                 scope.assert.deepEqual(
@@ -432,7 +432,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'hedged conflicts preserve both retry chains while overriding the logical verdict',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const recovered = retriedResult(failResult(), passResult());
                 const exhausted = retriedResult(failResult(), failResult());
                 assertRetriedConflict(scope, await conflictingHedgedResult(recovered, exhausted));
@@ -442,7 +442,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool hedged arbitration finalizes the winner after cancelling a peer',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const { peerTask, runtime } = await cancelledHedgedPeerResult();
 
                 scope.assert.equal(peerTask.endedByParent.read(), true);
@@ -461,7 +461,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool hedged arbitration fails conflicting duplicate outcomes',
-            async body(scope: OverkillScope) {
+            async body(scope: TestScope) {
                 const runtime = await conflictingHedgedResult(passResult(), failResult());
                 const result = flattenPerTest(runtime)[0];
 
@@ -483,7 +483,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool hedged arbitration finalizes a lone first authority',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 scope.assert.equal(flattenPerTest(await firstHedgedAuthorityResult()).length, 1);
 
                 return scope.assert.collect();
@@ -492,7 +492,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool hedged arbitration ignores conflicts without comparable results',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const runtime = await emptyHedgedConflictResult();
 
                 scope.assert.equal(flattenPerTest(runtime).length, 0);
@@ -504,7 +504,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool hedged arbitration discards matching duplicate outcomes',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const { duplicateTask, runtime } = await matchingHedgedDuplicateResult();
 
                 scope.assert.equal(duplicateTask.includeArtifacts.read(), false);
@@ -522,7 +522,9 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool hedged arbitration buffers only safe single-work units',
-            body(scope: OverkillScope) {
+            body(
+                scope: TestScope
+            ) {
                 const runtime = runtimeWithHedging();
                 const taskRun = taskRunWithLane('worker-1', runtime);
                 const duplicateWork = taskRun.unit.work[0];

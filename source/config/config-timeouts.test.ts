@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { configFixtureCwd, createSingleConfigModuleLoader } from '../test-support/run-config-module-loader.ts';
 
@@ -8,10 +8,10 @@ async function loadConfigValue(config: unknown): Promise<unknown> {
     return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
-export const testNode = suite('source/config/config-timeouts.test.ts', [
+export const testNode: TestNode = suite('Configuration timeouts', [
     test(
         'loadConfig() rejects profile soft timeouts greater than hard timeouts',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             await scope.assert.rejects(async function loadInvalidConfig() {
                 await loadConfigValue({
                     profiles: {

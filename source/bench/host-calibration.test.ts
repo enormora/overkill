@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     calibrateBenchmarkHost,
@@ -24,8 +24,8 @@ function referenceCalibration(machineClass: string, medianMicroseconds: number):
     };
 }
 
-export const testNode = authoredSuite('benchmark calibration', [
-    test('records real reference samples and stable machine attribution', function (scope: TestScope) {
+export const testNode: TestNode = suite('benchmark calibration', [
+    test('records real reference samples and stable machine attribution', function (scope) {
         const first = calibrateBenchmarkHost();
         const second = calibrateBenchmarkHost();
         if (first.kind !== 'comparable' || second.kind !== 'comparable') {
@@ -44,7 +44,7 @@ export const testNode = authoredSuite('benchmark calibration', [
         );
         return scope.assert.collect();
     }),
-    test('normalizes durations only through explicit matching-class calibration', function (scope: TestScope) {
+    test('normalizes durations only through explicit matching-class calibration', function (scope) {
         const actualCalibration = referenceCalibration('cpu-a', 200);
         const baselineCalibration = referenceCalibration('cpu-a', 100);
         scope.assert.equal(

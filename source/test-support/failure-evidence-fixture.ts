@@ -1,15 +1,18 @@
-import type { TestScope, TestBody, RunResult, WorkId } from '../packages/engine/engine.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
+
+import type { RunResult, WorkId } from '../packages/engine/engine.entry-point.ts';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createResourceLifecycleRuntimePolicy } from '../run/resource-lifecycle.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
-import { createTestEngine } from './create-test-engine.ts';
+import { type EngineCaseBody, createTestEngine } from './create-test-engine.ts';
+
 import { attachmentFixtureForWork, inlineAttachmentFixture, type AttachmentFixture } from './attachment-fixture.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 type EvidenceRun = AttachmentFixture & { readonly result: RunResult; };
 type EvidenceAttachments = (work: readonly WorkId[]) => Promise<AttachmentFixture>;
 async function executeWithEvidence(
-    body: TestBody,
+    body: EngineCaseBody,
     attempts: number,
     attachments: EvidenceAttachments
 ): Promise<EvidenceRun> {
@@ -39,7 +42,7 @@ async function executeWithEvidence(
 
 export async function executeEvidence(
     scope: TestScope,
-    body: TestBody,
+    body: EngineCaseBody,
     attempts: number,
     limits: AttachmentLimits
 ): Promise<EvidenceRun> {
@@ -49,7 +52,7 @@ export async function executeEvidence(
 }
 
 export async function executeInlineEvidence(
-    body: TestBody,
+    body: EngineCaseBody,
     attempts: number,
     limits: AttachmentLimits
 ): Promise<EvidenceRun> {

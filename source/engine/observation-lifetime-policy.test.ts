@@ -1,6 +1,6 @@
 import { AsyncResource } from 'node:async_hooks';
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
-import { testNode as processPolicy } from '../run/process-boundary-observation-policy.test.ts';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+
 import { observationCase, observationError } from '../test-support/observation-lifetime.ts';
 import { registerExecutionDisposal } from '../execution-ownership.ts';
 import type { RunnerError } from './run-result.ts';
@@ -15,11 +15,10 @@ async function rejectedObservationValue(operation: Promise<unknown>): Promise<un
     }
 }
 
-export const testNode = authoredSuite('execution observation lifetime policy', [
-    processPolicy,
+export const testNode: TestNode = suite('execution observation lifetime policy', [
     test(
         'retains origin attribution for callbacks observed after their attempt closes',
-        async function (scope: TestScope) {
+        async function (scope) {
             const observation = createExecutionObservation();
             const caseNode = observationCase();
             let inspect = function (): RunnerError {
@@ -42,7 +41,7 @@ export const testNode = authoredSuite('execution observation lifetime policy', [
             return scope.assert.collect();
         }
     ),
-    test('unregisters observation disposers before closure', function (scope: TestScope) {
+    test('unregisters observation disposers before closure', function (scope) {
         const observation = createExecutionObservation();
         let disposed = false;
         const remove = observation.register(function () {
@@ -54,7 +53,7 @@ export const testNode = authoredSuite('execution observation lifetime policy', [
         scope.assert.false(observation.open());
         return scope.assert.collect();
     }),
-    test('preserves operation failures when observation shutdown succeeds', async function (scope: TestScope) {
+    test('preserves operation failures when observation shutdown succeeds', async function (scope) {
         const failure = new Error('Operation failed.');
         await scope.assert.rejects(async function () {
             await withExecutionObservation(async function () {
@@ -63,7 +62,6 @@ export const testNode = authoredSuite('execution observation lifetime policy', [
         }, { exact: failure });
         return scope.assert.collect();
     }),
-
     test('preserves operation and observation shutdown failures', async function (scope: TestScope) {
         const operationError = new Error('operation sentinel');
         const shutdownError = new Error('shutdown sentinel');

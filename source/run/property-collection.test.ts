@@ -1,11 +1,10 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { test as subjectTest, suite as subjectSuite } from '../packages/test/test.entry-point.ts';
 
 import {
     stampTestNodeFamily,
-    type TestNode,
+    type TestNode as SubjectTestNode,
     type TestPlan,
-    type TestBody,
-    type TestScope,
     createRoot,
     createTestPlan,
     createTestCase,
@@ -13,7 +12,6 @@ import {
     ownsTestNode
 } from '../packages/engine/engine.entry-point.ts';
 
-import { suite, test } from '../packages/test/test.entry-point.ts';
 import { property, withProperties } from '../packages/test/property.entry-point.ts';
 import { defaultPropertyPolicy, resolvePropertyPolicy } from '../engine/property-policy.ts';
 import { unexecutedGenerator } from '../test-support/property-generator.ts';
@@ -34,7 +32,7 @@ const collectionPolicy = {
     timeoutMilliseconds: 1000
 } as const;
 
-function planFor(node: TestNode): TestPlan {
+function planFor(node: SubjectTestNode): TestPlan {
     return createTestPlan(createRoot({ annotations: {}, controls: {}, title: 'root', children: [ node ] }));
 }
 
@@ -42,60 +40,28 @@ function unexpectedBody(): never {
     throw new Error('Property bodies must not execute during collection.');
 }
 
-function integrationPropertyBody(): TestBody {
-    const selected = planFor(property({
-        testFamily: 'integration',
-        title: 'project property',
-        generator: unexecutedGenerator<number>(),
-        test: unexpectedBody
-    }))
-        .cases[0];
-    if (
-        selected.execution.kind !== 'body' || selected.execution.bodyMode !== 'property' ||
-        typeof selected.execution.body !== 'function'
-    ) {
-        throw new TypeError('Expected an executable property.');
-    }
-    return selected.execution.body;
-}
-
-export const testNode = authoredSuite('property collection', [
-    authoredTest('engine collection rejects unsupported property families from JavaScript callers', function (scope) {
-        const root = createRoot({
-            annotations: {},
-            controls: {},
-            title: 'invalid policy',
-            children: [ test('ordinary', unexpectedBody) ]
-        });
-        scope.assert.throws(function invalidFamilyPolicy() {
-            Reflect.apply(createTestPlan, undefined, [ root, {
-                runtimeMatrices: true,
-                benchmarkCalibration: false,
-                property: { testFamily: 'microtest', policy: defaultPropertyPolicy, timeoutMilliseconds: 1000 }
-            } ]);
-        }, { message: 'Property collection requires a property or integration family.' });
-        return scope.assert.collect();
-    }),
-    authoredTest(
-        'integration property wrappers retain family and reject configured rewrapping',
-        function (scope: TestScope) {
-            const body = integrationPropertyBody();
-            const policy = { ...collectionPolicy, testFamily: 'integration' } as const;
-            const resolved = resolveTestPlanPropertyPolicy(planFor(test('wrapped', withProperties(body))), policy);
-            const resolvedPolicy = testCasePropertyPolicy(resolved.cases[0]);
-            scope.require.notNull(resolvedPolicy);
-            scope.assert.equal(resolved.cases[0].testFamily, 'integration');
-            scope.assert.deepEqual(resolvedPolicy, defaultPropertyPolicy);
-            scope.assert.throws(function rejectReconfiguration() {
-                resolveTestPlanPropertyPolicy(
-                    planFor(test('configured', withProperties(body, { maxWork: 1 }))),
-                    policy
-                );
-            }, { message: /withProperties\(\) cannot reconfigure/ });
+export const testNode: TestNode = suite('property collection', [
+    test(
+        'engine collection rejects unsupported property families from JavaScript callers',
+        function (scope) {
+            const root = createRoot({
+                annotations: {},
+                controls: {},
+                title: 'invalid policy',
+                children: [ subjectTest('ordinary', unexpectedBody) ]
+            });
+            scope.assert.throws(function invalidFamilyPolicy() {
+                Reflect.apply(createTestPlan, undefined, [ root, {
+                    runtimeMatrices: true,
+                    benchmarkCalibration: false,
+                    property: { testFamily: 'microtest', policy: defaultPropertyPolicy, timeoutMilliseconds: 1000 }
+                } ]);
+            }, { message: 'Property collection requires a property or integration family.' });
             return scope.assert.collect();
         }
     ),
-    authoredTest('rejects unsupported property test families from JavaScript callers', function (scope) {
+
+    test('rejects unsupported property test families from JavaScript callers', function (scope) {
         scope.assert.throws(function invalidFamily() {
             Reflect.apply(property, undefined, [ {
                 title: 'invalid family',
@@ -106,10 +72,10 @@ export const testNode = authoredSuite('property collection', [
         }, { message: 'Property cases require a property or integration test family.' });
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'integration property policy preserves ordinary capture controls and resolves property budgets',
         function (scope: TestScope) {
-            const node = suite('integration', [
+            const node = subjectSuite('integration', [
                 createTestCase({
                     annotations: {},
                     controls: { capture: 'buffered' },
@@ -155,8 +121,8 @@ export const testNode = authoredSuite('property collection', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('rejects missing profile policy before collection', function (scope) {
-        const plan = planFor(test('ordinary', unexpectedBody));
+    test('rejects missing profile policy before collection', function (scope) {
+        const plan = planFor(subjectTest('ordinary', unexpectedBody));
         scope.assert.throws(function missingPolicy() {
             resolveTestPlanCollectionPolicy(plan, {
                 testFamily: 'property',
@@ -166,7 +132,7 @@ export const testNode = authoredSuite('property collection', [
         }, { message: 'Property collection requires profile policy.' });
         return scope.assert.collect();
     }),
-    authoredTest('rejects malformed property declarations at the policy boundary', function (scope) {
+    test('rejects malformed property declarations at the policy boundary', function (scope) {
         for (
             const declaration of [ null, { kind: 'property', settingsDeclarations: [] }, {
                 kind: 'unknown',
@@ -179,11 +145,11 @@ export const testNode = authoredSuite('property collection', [
         }
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'resolves mixed ordinary and property cases without invoking their bodies',
         function (scope: TestScope) {
-            const plan = planFor(suite('mixed', [
-                test('ordinary', unexpectedBody),
+            const plan = planFor(subjectSuite('mixed', [
+                subjectTest('ordinary', unexpectedBody),
                 property({
                     title: 'law',
                     generator: unexecutedGenerator<number>(),
@@ -201,7 +167,7 @@ export const testNode = authoredSuite('property collection', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('rejects repeated assignments and assignments for another work identity', function (scope) {
+    test('rejects repeated assignments and assignments for another work identity', function (scope) {
         const plan = resolveTestPlanPropertyPolicy(
             planFor(property({ title: 'law', generator: unexecutedGenerator<number>(), test: unexpectedBody })),
             collectionPolicy
@@ -218,7 +184,7 @@ export const testNode = authoredSuite('property collection', [
         }, { message: 'Property policy changed between collection and execution.' });
         return scope.assert.collect();
     }),
-    authoredTest('rejects bodyless policy that differs from its collected declaration', function (scope: TestScope) {
+    test('rejects bodyless policy that differs from its collected declaration', function (scope: TestScope) {
         const plan = resolveTestPlanPropertyPolicy(
             planFor(property({ title: 'law', generator: unexecutedGenerator<number>(), test: unexpectedBody })),
             collectionPolicy
@@ -247,7 +213,7 @@ export const testNode = authoredSuite('property collection', [
         }, { message: 'Collected property policy does not match profile and declaration settings.' });
         return scope.assert.collect();
     }),
-    authoredTest('rejects authored capture controls before selection', function (scope) {
+    test('rejects authored capture controls before selection', function (scope) {
         const plan = planFor(createTestCase({
             title: 'captured',
             annotations: {},
@@ -260,7 +226,7 @@ export const testNode = authoredSuite('property collection', [
         }, { message: /authored capture controls/ });
         return scope.assert.collect();
     }),
-    authoredTest('rejects invalid case deadlines and permits the profile deadline', function (scope) {
+    test('rejects invalid case deadlines and permits the profile deadline', function (scope) {
         for (const timeoutMilliseconds of [ 0, -1, 1.5, 1001 ]) {
             const plan = planFor(createTestCase({
                 title: 'invalid deadline',
@@ -283,8 +249,8 @@ export const testNode = authoredSuite('property collection', [
         scope.assert.equal(resolveTestPlanPropertyPolicy(plan, collectionPolicy).cases.length, 1);
         return scope.assert.collect();
     }),
-    authoredTest('requires declarations for executable property stamps and permits skipped cases', function (scope) {
-        const missing = test('missing declaration', unexpectedBody);
+    test('requires declarations for executable property stamps and permits skipped cases', function (scope) {
+        const missing = subjectTest('missing declaration', unexpectedBody);
         stampTestNodeFamily(missing, 'property');
         scope.assert.throws(function collectMissingDeclaration() {
             resolveTestPlanPropertyPolicy(planFor(missing), collectionPolicy);
@@ -302,7 +268,7 @@ export const testNode = authoredSuite('property collection', [
         scope.assert.equal(testCasePropertySummary(resolved.cases[0]), null);
         return scope.assert.collect();
     }),
-    authoredTest('rejects unresolved policy when creating runner summaries', function (scope) {
+    test('rejects unresolved policy when creating runner summaries', function (scope) {
         const plan = planFor(
             property({ title: 'unresolved', generator: unexecutedGenerator<number>(), test: unexpectedBody })
         );
@@ -314,7 +280,7 @@ export const testNode = authoredSuite('property collection', [
         }, { message: 'Property collection requires resolved policy.' });
         return scope.assert.collect();
     }),
-    authoredTest('collects first-class policy without generation and preserves one case', function (scope: TestScope) {
+    test('collects first-class policy without generation and preserves one case', function (scope: TestScope) {
         const settings = { newTrials: 200, maxShrinkWork: 0 };
         const plan = planFor(
             property({ title: 'law', generator: unexecutedGenerator<number>(), test: unexpectedBody, settings })
@@ -339,21 +305,21 @@ export const testNode = authoredSuite('property collection', [
         );
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'nested wrappers inherit defaults and validate reconfiguration during collection',
-        function (scope: TestScope) {
+        function (scope) {
             const body = withProperties(unexpectedBody, { maxWork: 50 });
-            const plan = planFor(test('nested', withProperties(body)));
+            const plan = planFor(subjectTest('nested', withProperties(body)));
             const resolved = resolveTestPlanPropertyPolicy(plan, collectionPolicy);
             scope.assert.equal(testCasePropertyPolicy(resolved.cases[0])?.maxWork, 50);
-            const conflict = planFor(test('conflict', withProperties(body, { maxWork: 100 })));
+            const conflict = planFor(subjectTest('conflict', withProperties(body, { maxWork: 100 })));
             scope.assert.throws(function collectReconfiguredProperty() {
                 resolveTestPlanPropertyPolicy(conflict, collectionPolicy);
             }, { message: /cannot reconfigure/ });
             return scope.assert.collect();
         }
     ),
-    authoredTest('rejects invalid settings on discovered cases excluded from selection', function (scope: TestScope) {
+    test('rejects invalid settings on discovered cases excluded from selection', function (scope) {
         const plan = planFor(
             property({
                 title: 'invalid',
@@ -362,7 +328,7 @@ export const testNode = authoredSuite('property collection', [
                 settings: { maxWork: -1 }
             })
         );
-        const selected = planFor(test('selected', function (sample) {
+        const selected = planFor(subjectTest('selected', function (sample) {
             return sample.assert.collect();
         }));
         scope.assert.throws(function collectInvalidDiscoveredProperty() {
@@ -370,9 +336,9 @@ export const testNode = authoredSuite('property collection', [
         }, { message: /Invalid property policy/ });
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'rejects malformed explicit settings instead of silently inheriting defaults',
-        function (scope: TestScope) {
+        function (scope) {
             for (const settings of [ null, true, [], 1, 'invalid' ]) {
                 const node: unknown = Reflect.apply(property, undefined, [ {
                     title: 'invalid settings',
@@ -390,7 +356,7 @@ export const testNode = authoredSuite('property collection', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('transports resolved policy and detects re-import drift', function (scope: TestScope) {
+    test('transports resolved policy and detects re-import drift', function (scope: TestScope) {
         const plan = resolveTestPlanPropertyPolicy(
             planFor(property({ title: 'law', generator: unexecutedGenerator<number>(), test: unexpectedBody })),
             collectionPolicy

@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { selectTestProfile } from '../run/test-profile.ts';
 
@@ -42,7 +42,7 @@ async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
     return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
-function reporterNames(scope: OverkillScope, config: LoadedConfig): readonly [string, string] {
+function reporterNames(scope: TestScope, config: LoadedConfig): readonly [string, string] {
     const globalReporters = config.reporters;
     const profileReporters = selectTestProfile('microtest', config).reporters;
 
@@ -58,16 +58,16 @@ function reporterNames(scope: OverkillScope, config: LoadedConfig): readonly [st
     return [ globalReporter(context).name, profileReporter(context).name ];
 }
 
-export const testNode = suite('source/config/config-reporters.test.ts', [
+export const testNode: TestNode = suite('Configuration reporters', [
     test(
         'loadConfig() preserves global reporter fallback and profile reporter overrides',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             scope.assert.deepEqual(reporterNames(scope, await loadReporterConfig()), [ 'global', 'profile' ]);
 
             return scope.assert.collect();
         }
     ),
-    test('loadConfig() rejects an explicit empty reporter list', async function (scope: OverkillScope) {
+    test('loadConfig() rejects an explicit empty reporter list', async function (scope) {
         await scope.assert.rejects(async function loadInvalidConfig() {
             await loadConfigValue({ reporters: [] });
         }, {

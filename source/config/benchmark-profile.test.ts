@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../engine/failure-artifact-policy.ts';
 
@@ -88,7 +88,7 @@ const invalidExecutions: readonly { readonly execution: ProfileConfig['execution
     }
 ];
 
-export const testNode = authoredSuite('benchmark profile configuration', [
+export const testNode: TestNode = suite('benchmark profile configuration', [
     test('rejects normalized execution policies that invalidate benchmark isolation', function (scope) {
         for (const { execution, message } of invalidExecutions) {
             scope.assert.throws(function validateIncompatibleBenchmark() {
@@ -208,7 +208,7 @@ export const testNode = authoredSuite('benchmark profile configuration', [
         }
         return scope.assert.collect();
     }),
-    test('rejects resourceUsage in every profile family', async function (scope: TestScope) {
+    test('rejects resourceUsage in every profile family', async function (scope) {
         for (const testFamily of [ 'microtest', 'integration', 'benchmark' ]) {
             const load = createSingleConfigModuleLoader('overkill.config.ts', {
                 config: {
@@ -223,7 +223,7 @@ export const testNode = authoredSuite('benchmark profile configuration', [
         }
         return scope.assert.collect();
     }),
-    test('rejects malformed benchmark profiles and unsupported policy fields', async function (scope: TestScope) {
+    test('rejects malformed benchmark profiles and unsupported policy fields', async function (scope) {
         const invalidProfiles: readonly unknown[] = [
             { testFamily: 'benchmark', files: benchmarkFiles, garbageCollection: 'profile-default' },
             { testFamily: 'benchmark', files: benchmarkFiles, garbageCollection: true },
@@ -269,7 +269,7 @@ export const testNode = authoredSuite('benchmark profile configuration', [
         }
         return scope.assert.collect();
     }),
-    test('rejects the separate benchmark namespace and invalid profile names', async function (scope: TestScope) {
+    test('rejects the separate benchmark namespace and invalid profile names', async function (scope) {
         for (
             const config of [
                 { benchmark: { profiles: { startup: { files: benchmarkFiles } } } },
@@ -283,7 +283,7 @@ export const testNode = authoredSuite('benchmark profile configuration', [
         }
         return scope.assert.collect();
     }),
-    test('validates in-memory policy and preserves file-origin requirements', function (scope: TestScope) {
+    test('validates in-memory policy and preserves file-origin requirements', function (scope) {
         scope.assert.throws(function () {
             normalizeConfig({ profiles: { unit: { testFamily: 'microtest', timeouts: { hardMilliseconds: 0 } } } });
         }, { type: ConfigError, message: /positive safe integer/ });

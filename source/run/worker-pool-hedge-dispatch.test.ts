@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { PlacementPlan } from './run-types.ts';
 import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
@@ -264,7 +264,7 @@ function readyHedgeLease(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): He
     };
 }
 
-function assertIncompatibleLaneSuppressesHedge(scope: OverkillScope): void {
+function assertIncompatibleLaneSuppressesHedge(scope: TestScope): void {
     const unit = hedgeSafeUnit();
     const plan = twoLanePlan(unit);
     const runtime = runtimeWithHedging(plan);
@@ -281,7 +281,7 @@ function assertIncompatibleLaneSuppressesHedge(scope: OverkillScope): void {
 }
 
 function assertEarlyHedgeDelay(
-    scope: OverkillScope,
+    scope: TestScope,
     state: HedgeDispatchState,
     lane: PlacementLane
 ): void {
@@ -290,7 +290,7 @@ function assertEarlyHedgeDelay(
     scope.assert.equal(selectHedgeCandidate(state, lane), null);
 }
 
-function assertSampledHedgeDelay(scope: OverkillScope): void {
+function assertSampledHedgeDelay(scope: TestScope): void {
     const unit = hedgeSafeUnit();
     const plan = twoLanePlan(unit);
     const runtime = runtimeWithSampledHedging(plan, unit);
@@ -303,7 +303,7 @@ function assertSampledHedgeDelay(scope: OverkillScope): void {
     scope.assert.equal(selectHedgeCandidate(readyState, secondLane(plan)), readyEntry);
 }
 
-function assertDuplicateHedgeSuppression(scope: OverkillScope): void {
+function assertDuplicateHedgeSuppression(scope: TestScope): void {
     const unit = hedgeSafeUnit();
     const plan = twoLanePlan(unit);
     const runtime = runtimeWithHedging(plan);
@@ -315,7 +315,7 @@ function assertDuplicateHedgeSuppression(scope: OverkillScope): void {
     scope.assert.equal(selectHedgeCandidate(state, secondLane(plan)), null);
 }
 
-function assertIdleHedgeCheckClears(scope: OverkillScope): void {
+function assertIdleHedgeCheckClears(scope: TestScope): void {
     const unit = hedgeSafeUnit();
     const plan = splitCandidatePlan(unit);
     const dispatcher = createWorkDispatcher(runtimeWithSampledHedging(plan, unit), plan);
@@ -332,7 +332,7 @@ function assertIdleHedgeCheckClears(scope: OverkillScope): void {
     scope.assert.equal(dispatcher.pull(secondLane(plan)), null);
 }
 
-function assertHedgingOffSuppressesPotential(scope: OverkillScope): void {
+function assertHedgingOffSuppressesPotential(scope: TestScope): void {
     const unit = hedgeSafeUnit();
     const plan = twoLanePlan(unit);
     const runtime = fakeWorkerRuntime(plan);
@@ -344,7 +344,7 @@ function assertHedgingOffSuppressesPotential(scope: OverkillScope): void {
     scope.assert.equal(selectHedgeCandidate(state, secondLane(plan)), null);
 }
 
-function assertDisposableIsolatedHedge(scope: OverkillScope): void {
+function assertDisposableIsolatedHedge(scope: TestScope): void {
     const unit = disposableIsolatedUnit();
     const plan = twoLanePlan(unit);
     const runtime = runtimeWithHedging(plan);
@@ -355,14 +355,14 @@ function assertDisposableIsolatedHedge(scope: OverkillScope): void {
     scope.assert.equal(selectHedgeCandidate(state, secondLane(plan)), entry);
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-hedge-dispatch.test.ts',
+    title: 'Worker pool hedge dispatch',
     children: [
         test({
             ...testCaseMetadata,
             title: 'worker-pool hedge dispatch waits for sampled duration thresholds',
-            body(scope: OverkillScope) {
+            body(scope) {
                 assertSampledHedgeDelay(scope);
 
                 return scope.assert.collect();
@@ -371,7 +371,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool hedge dispatch suppresses repeated duplicates',
-            body(scope: OverkillScope) {
+            body(scope) {
                 assertDuplicateHedgeSuppression(scope);
 
                 return scope.assert.collect();
@@ -379,8 +379,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool dynamic dispatcher clears after idle hedge checks',
-            body(scope: OverkillScope) {
+            title: 'clears after idle hedge checks',
+            body(scope) {
                 assertIdleHedgeCheckClears(scope);
 
                 return scope.assert.collect();
@@ -389,7 +389,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool hedge dispatch ignores disabled hedging',
-            body(scope: OverkillScope) {
+            body(scope) {
                 assertHedgingOffSuppressesPotential(scope);
 
                 return scope.assert.collect();
@@ -398,7 +398,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool hedge dispatch accepts disposable isolated fresh workers',
-            body(scope: OverkillScope) {
+            body(scope) {
                 assertDisposableIsolatedHedge(scope);
 
                 return scope.assert.collect();
@@ -407,7 +407,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool hedge dispatch rejects incompatible lanes',
-            body(scope: OverkillScope) {
+            body(scope) {
                 assertIncompatibleLaneSuppressesHedge(scope);
 
                 return scope.assert.collect();

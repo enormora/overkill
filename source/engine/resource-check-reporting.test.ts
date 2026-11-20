@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     type TestPlan,
@@ -146,7 +146,7 @@ async function stoppedObservation(scenario: ReportingScenario): Promise<RunResul
         return runResultFactory.build({ status: 'passed' });
     });
 }
-export const testNode = authoredSuite('resource check reporting ownership', [
+export const testNode: TestNode = suite('resource check reporting ownership', [
     test('forwards owner evidence and cancellation through the active transport', async function (scope) {
         const scenario = reportingScenario();
         const events: string[] = [];

@@ -4,9 +4,33 @@ import { nodeConfig, nodeConfigFileConfig, nodeEntryPointFileConfig } from '@eno
 import { testSupportConfig } from '@enormora/eslint-config-test-base';
 import { typescriptConfig } from '@enormora/eslint-config-typescript';
 
+const frameworkScopeNames = [
+    'TestScope',
+    'ParameterizedTestScope',
+    'TestScopeAssertContext',
+    'TestRandom',
+    'TestBody',
+    'ThrowingTestScope',
+    'ThrowingTestBody'
+]
+    .join('|');
+
+const publishedAuthors = [ '@overkill-dev/test', '#tests' ].flatMap(function authorModule(moduleName) {
+    return [ 'suite', 'test' ].map(function authorName(name) {
+        return {
+            selector: [
+                `ImportDeclaration[source.value="${moduleName}"]`,
+                `ImportSpecifier[imported.name="${name}"]:not([local.name="${name}"])`
+            ]
+                .join(' > '),
+            message: `Use the published ${name} author without an alias.`
+        };
+    });
+});
+
 export default [
     {
-        ignores: [ 'source/integration-tests/run/fixtures/**/*.test.ts', 'target/**/*' ]
+        ignores: [ 'source/integration-tests/integration/fixtures/**/*.test.ts', 'target/**/*' ]
     },
     ...baseConfig,
     {
@@ -36,7 +60,24 @@ export default [
     },
     {
         ...testSupportConfig,
-        files: [ '**/*.test.ts' ]
+        files: [ '**/*.test.ts', 'source/integration-tests/*/support/**/*.ts' ]
+    },
+    {
+        files: [ 'source/**/*.test.ts', 'source/test-support/**/*.ts', 'source/integration-tests/*/support/**/*.ts' ],
+        ignores: [ '**/*.type-test.ts' ],
+        rules: {
+            'no-restricted-syntax': [ 'error', {
+                selector: [
+                    'ImportDeclaration[source.value=/^[.]/]',
+                    `ImportSpecifier[imported.name=/^(${frameworkScopeNames})$/]`
+                ]
+                    .join(' > '),
+                message: 'Import test framework types from @overkill-dev/test or its compatibility subpath.'
+            }, {
+                selector: `TSQualifiedName[right.name=/^(${frameworkScopeNames})$/]`,
+                message: 'Use named test framework type imports from @overkill-dev/test.'
+            }, ...publishedAuthors ]
+        }
     },
     {
         files: [ 'source/**/*.ts' ],
@@ -59,7 +100,7 @@ export default [
     },
     {
         ...nodeConfigFileConfig,
-        files: [ 'dependency-cruiser.config.js', 'eslint.config.js', 'overkill.config.js' ]
+        files: [ 'dependency-cruiser.config.js', 'eslint.config.js', 'overkill.config.ts' ]
     },
     {
         ...nodeEntryPointFileConfig,

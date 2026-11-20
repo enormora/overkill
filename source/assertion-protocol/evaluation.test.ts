@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createCompositeCheckBuilder } from '../assert/assertion-extension.ts';
@@ -148,10 +148,10 @@ const failingAssertions: readonly EvaluationCase[] = [
     { assertion: check.undefined(null), fails: true }
 ];
 
-export const testNode = suite('source/assertion-protocol/evaluation.test.ts', [
+export const testNode: TestNode = suite('Assertion evaluation', [
     test(
-        'evaluateAssertion() passes built-in catalog assertions with strict semantics',
-        function (scope: OverkillScope) {
+        'passes built-in catalog assertions with strict semantics',
+        function (scope) {
             scope.assert.deepEqual(
                 passingAssertions.map(function toEvaluation(testCase) {
                     return evaluateAssertion(testCase.assertion, 1) === null;
@@ -165,8 +165,8 @@ export const testNode = suite('source/assertion-protocol/evaluation.test.ts', [
         }
     ),
     test(
-        'evaluateAssertion() fails built-in catalog assertions with source-aware checks',
-        function (scope: OverkillScope) {
+        'fails built-in catalog assertions with source-aware checks',
+        function (scope) {
             scope.assert.deepEqual(
                 failingAssertions.map(function toEvaluation(testCase) {
                     return evaluateAssertion(testCase.assertion, 1) !== null;
@@ -179,7 +179,7 @@ export const testNode = suite('source/assertion-protocol/evaluation.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('evaluateAssertion() preserves custom messages and assertion source', function (scope: OverkillScope) {
+    test('preserves custom messages and assertion source', function (scope: TestScope) {
         const failedCheck = evaluateAssertion({
             actual: 1,
             check: 'equal',
@@ -204,7 +204,7 @@ export const testNode = suite('source/assertion-protocol/evaluation.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('evaluateAssertion() reports unsupported collection operands', function (scope: OverkillScope) {
+    test('reports unsupported collection operands', function (scope) {
         const failedChecks = [
             evaluateAssertion(check.empty(42), 1),
             evaluateAssertion(check.length(42, 0), 2),
@@ -224,7 +224,7 @@ export const testNode = suite('source/assertion-protocol/evaluation.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('evaluateAssertion() passes thrown matcher composites', async function (scope: OverkillScope) {
+    test('passes thrown matcher composites', async function (scope) {
         const exactAssertion = createThrownMatcherAssertion({
             kind: 'rejects',
             matcher: { exact: 'expected' },
@@ -251,7 +251,7 @@ export const testNode = suite('source/assertion-protocol/evaluation.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('evaluateAssertion() reports thrown matcher field failures', function (scope: OverkillScope) {
+    test('reports thrown matcher field failures', function (scope) {
         const group = check.throws(function throwMismatchedError() {
             throw Object.assign(new TypeError('actual'), { code: 'ACTUAL' });
         }, {
@@ -276,7 +276,7 @@ export const testNode = suite('source/assertion-protocol/evaluation.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('evaluateAssertion() reports missing and non-error thrown values', function (scope: OverkillScope) {
+    test('reports missing and non-error thrown values', function (scope) {
         const missingGroup = check.throws(function returnNormally() {
             return 'value';
         }, { exact: 'expected' });
@@ -304,7 +304,7 @@ export const testNode = suite('source/assertion-protocol/evaluation.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('invalidDeepAssertionOperand() accepts structural and reference operands', function (scope: OverkillScope) {
+    test('invalidDeepAssertionOperand() accepts structural and reference operands', function (scope) {
         scope.assert.equal(invalidDeepAssertionOperand(check.deepEqual({ id: 1 }, { id: 1 })), null);
         scope.assert.equal(invalidDeepAssertionOperand(check.deepEqual(values, values)), null);
         scope.assert.equal(
@@ -320,7 +320,7 @@ export const testNode = suite('source/assertion-protocol/evaluation.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('invalidDeepAssertionOperand() reports primitive exact deep operands', function (scope: OverkillScope) {
+    test('invalidDeepAssertionOperand() reports primitive exact deep operands', function (scope: TestScope) {
         const nullOperand = invalidDeepAssertionOperand(deepAssertion('deep-equal', null, {}));
         const undefinedOperand = invalidDeepAssertionOperand(deepAssertion('not-deep-equal', {}, undefined));
         const symbolOperand = invalidDeepAssertionOperand(
@@ -351,7 +351,7 @@ export const testNode = suite('source/assertion-protocol/evaluation.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('invalidDeepAssertionOperand() reports primitive partial member operands', function (scope: OverkillScope) {
+    test('invalidDeepAssertionOperand() reports primitive partial member operands', function (scope: TestScope) {
         const actualOperand = invalidDeepAssertionOperand(
             deepAssertion('array-contains-partial', 1, { id: 1 })
         );
@@ -386,7 +386,7 @@ export const testNode = suite('source/assertion-protocol/evaluation.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('invalidDeepAssertionOperand() reports primitive composite child operands', function (scope: OverkillScope) {
+    test('invalidDeepAssertionOperand() reports primitive composite child operands', function (scope: TestScope) {
         const operand = invalidDeepAssertionOperand(compositeAssertion([
             check.true(true),
             deepAssertion('members-partial-deep-equal', [ { id: 1 } ], [ 'id' ])

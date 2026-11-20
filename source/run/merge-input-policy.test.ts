@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { mergeRecordFixture } from '../test-support/merge-record-fixture.ts';
 
@@ -6,8 +6,8 @@ import { mergeInputStorage, mergedInputDocument } from '../test-support/merge-in
 import { RunResolutionError } from './run-errors.ts';
 import { readMergeInput } from './merge-results-input.ts';
 
-export const testNode = authoredSuite('merge input discovery and decoding', [
-    test('sorts equal shard indices by canonical path', async function (scope: TestScope) {
+export const testNode: TestNode = suite('merge input discovery and decoding', [
+    test('sorts equal shard indices by canonical path', async function (scope) {
         const fixture = mergeInputStorage();
         fixture.seed('/records/second.json', JSON.stringify(mergeRecordFixture('second', 1, 1)));
         const result = await readMergeInput(fixture.command, fixture.access);
@@ -20,7 +20,7 @@ export const testNode = authoredSuite('merge input discovery and decoding', [
         scope.assert.deepEqual(result.errors, []);
         return scope.assert.collect();
     }),
-    test('preserves classified input failures from storage discovery', async function (scope: TestScope) {
+    test('preserves classified input failures from storage discovery', async function (scope) {
         const fixture = mergeInputStorage();
         const failure = new RunResolutionError('Invalid merge location.', {}, 'invalid-request');
         await scope.assert.rejects(async function () {
@@ -33,7 +33,7 @@ export const testNode = authoredSuite('merge input discovery and decoding', [
         }, { exact: failure });
         return scope.assert.collect();
     }),
-    test('retains canonical records when explicit-path reinspection fails', async function (scope: TestScope) {
+    test('retains canonical records when explicit-path reinspection fails', async function (scope) {
         const fixture = mergeInputStorage();
         let inspections = 0;
         const result = await readMergeInput({
@@ -60,7 +60,7 @@ export const testNode = authoredSuite('merge input discovery and decoding', [
         return scope.assert.collect();
     }),
 
-    test('sorts shard records and excludes unrelated directory entries', async function (scope: TestScope) {
+    test('sorts shard records and excludes unrelated directory entries', async function (scope) {
         const fixture = mergeInputStorage();
         fixture.seed('/records/notes.txt', 'ignore');
         const result = await readMergeInput(fixture.command, fixture.access);
@@ -73,7 +73,7 @@ export const testNode = authoredSuite('merge input discovery and decoding', [
         scope.assert.deepEqual(result.errors, []);
         return scope.assert.collect();
     }),
-    test('canonicalizes and deduplicates explicit aliases', async function (scope: TestScope) {
+    test('canonicalizes and deduplicates explicit aliases', async function (scope) {
         const fixture = mergeInputStorage();
         fixture.alias('/alias', '/records/first.json');
         const result = await readMergeInput({
@@ -84,7 +84,7 @@ export const testNode = authoredSuite('merge input discovery and decoding', [
         scope.assert.equal(result.sources[0]?.path, '/records/first.json');
         return scope.assert.collect();
     }),
-    test('skips previous merged results discovered in a directory', async function (scope: TestScope) {
+    test('skips previous merged results discovered in a directory', async function (scope) {
         const fixture = mergeInputStorage();
         fixture.seed('/records/merged.json', mergedInputDocument());
         const result = await readMergeInput(fixture.command, fixture.access);
@@ -92,7 +92,7 @@ export const testNode = authoredSuite('merge input discovery and decoding', [
         scope.assert.deepEqual(result.errors, []);
         return scope.assert.collect();
     }),
-    test('reports an explicitly selected merged record as invalid input', async function (scope: TestScope) {
+    test('reports an explicitly selected merged record as invalid input', async function (scope) {
         const fixture = mergeInputStorage();
         fixture.seed('/records/merged.json', mergedInputDocument());
         const result = await readMergeInput({
@@ -103,7 +103,7 @@ export const testNode = authoredSuite('merge input discovery and decoding', [
         scope.assert.equal(result.errors[0]?.subtype, 'merge');
         return scope.assert.collect();
     }),
-    test('retains valid records alongside malformed JSON diagnostics', async function (scope: TestScope) {
+    test('retains valid records alongside malformed JSON diagnostics', async function (scope) {
         const fixture = mergeInputStorage();
         fixture.seed('/records/broken.json', '{');
         const result = await readMergeInput(fixture.command, fixture.access);
@@ -111,7 +111,7 @@ export const testNode = authoredSuite('merge input discovery and decoding', [
         scope.assert.equal(result.errors[0]?.message, 'Cannot read merge input: /records/broken.json');
         return scope.assert.collect();
     }),
-    test('rejects a declared input kind that disagrees with storage', async function (scope: TestScope) {
+    test('rejects a declared input kind that disagrees with storage', async function (scope) {
         const fixture = mergeInputStorage();
         await scope.assert.rejects(async function () {
             return await readMergeInput(
@@ -121,7 +121,7 @@ export const testNode = authoredSuite('merge input discovery and decoding', [
         }, { message: 'Merge input is not a file: /records' });
         return scope.assert.collect();
     }),
-    test('rejects storage entries that are neither files nor directories', async function (scope: TestScope) {
+    test('rejects storage entries that are neither files nor directories', async function (scope) {
         const fixture = mergeInputStorage();
         await scope.assert.rejects(async function () {
             return await readMergeInput(fixture.command, {
@@ -133,7 +133,7 @@ export const testNode = authoredSuite('merge input discovery and decoding', [
         }, { message: 'Merge input must be a file or directory: records' });
         return scope.assert.collect();
     }),
-    test('reports unreadable inputs without discarding their cause', async function (scope: TestScope) {
+    test('reports unreadable inputs without discarding their cause', async function (scope) {
         const fixture = mergeInputStorage();
         const result = await readMergeInput(
             { ...fixture.command, inputs: [ { kind: 'path', path: 'missing' } ] },
@@ -144,7 +144,7 @@ export const testNode = authoredSuite('merge input discovery and decoding', [
         scope.assert.equal(result.errors[0]?.message, 'Cannot read merge input: missing');
         return scope.assert.collect();
     }),
-    test('rejects an empty directory instead of reporting a successful merge', async function (scope: TestScope) {
+    test('rejects an empty directory instead of reporting a successful merge', async function (scope) {
         const fixture = mergeInputStorage();
         await scope.assert.rejects(async function () {
             return await readMergeInput(fixture.command, {

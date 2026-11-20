@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     passingFixturePath,
@@ -12,7 +12,7 @@ import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import type { NormalizedConfig } from '../config/types.ts';
-import { testNode as runCollectionErrorReportingTestNode } from './run-collection-error-reporting.test.ts';
+
 import { RunResolutionError } from './run-errors.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
 
@@ -23,9 +23,8 @@ type RunCommandParts = {
     readonly request: RunRequest;
 };
 
-const emptyTestData = { annotations: {}, controls: {} };
-
-const microtestCaptureControlsFixturePath = 'source/integration-tests/run/fixtures/microtest-capture-controls.test.ts';
+const microtestCaptureControlsFixturePath =
+    'source/integration-tests/integration/fixtures/microtest-capture-controls.test.ts';
 
 const defaultConfig: NormalizedConfig = defaultRunConfig({
     profiles: {
@@ -46,14 +45,14 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
     };
 }
 
-export const testNode = suite({
-    title: 'source/run/run.test.ts',
-    ...emptyTestData,
+export const testNode: TestNode = suite({
+    title: 'Test run orchestration',
+
     children: [
         test({
             title: 'orchestrator.resolve() rejects live capture for microtest profiles',
-            ...emptyTestData,
-            async body(scope: OverkillScope) {
+
+            async body(scope) {
                 const runOrchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveMicrotestLiveCapture() {
@@ -73,8 +72,8 @@ export const testNode = suite({
         }),
         test({
             title: 'orchestrator.resolve() rejects worker counts for non-worker-pool profiles',
-            ...emptyTestData,
-            async body(scope: OverkillScope) {
+
+            async body(scope) {
                 const runOrchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveMicrotestWorkerCount() {
@@ -94,8 +93,8 @@ export const testNode = suite({
         }),
         test({
             title: 'orchestrator.resolve() rejects capture controls for microtest profiles',
-            ...emptyTestData,
-            async body(scope: OverkillScope) {
+
+            async body(scope) {
                 const runOrchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveMicrotestCaptureControls() {
@@ -114,8 +113,8 @@ export const testNode = suite({
         }),
         test({
             title: 'orchestrator.resolve() returns frozen run facts for explicit paths',
-            ...emptyTestData,
-            async body(scope: OverkillScope) {
+
+            async body(scope) {
                 const runOrchestrator = createUnitRunOrchestrator();
                 const resolvedRun = await runOrchestrator.resolve(createRunCommand({
                     config: defaultConfig,
@@ -196,8 +195,8 @@ export const testNode = suite({
         }),
         test({
             title: 'orchestrator.resolve() generates a seed when the request does not provide one',
-            ...emptyTestData,
-            async body(scope: OverkillScope) {
+
+            async body(scope) {
                 const runOrchestrator = createUnitRunOrchestrator();
                 const resolvedRun = await runOrchestrator.resolve(createRunCommand({
                     config: defaultConfig,
@@ -216,8 +215,8 @@ export const testNode = suite({
         }),
         test({
             title: 'orchestrator.resolve() rejects empty input without profile file discovery',
-            ...emptyTestData,
-            async body(scope: OverkillScope) {
+
+            async body(scope) {
                 const runOrchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveEmptyPaths() {
@@ -239,8 +238,8 @@ export const testNode = suite({
         }),
         test({
             title: 'orchestrator.resolve() rejects invalid negative seeds',
-            ...emptyTestData,
-            async body(scope: OverkillScope) {
+
+            async body(scope) {
                 const runOrchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveInvalidSeed() {
@@ -262,8 +261,8 @@ export const testNode = suite({
         }),
         test({
             title: 'orchestrator.resolve() rejects unknown profiles',
-            ...emptyTestData,
-            async body(scope: OverkillScope) {
+
+            async body(scope) {
                 const runOrchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveUnknownProfile() {
@@ -285,8 +284,8 @@ export const testNode = suite({
         }),
         test({
             title: 'orchestrator.resolve() rejects process budget overrides without measurement',
-            ...emptyTestData,
-            async body(scope: OverkillScope) {
+
+            async body(scope) {
                 const runOrchestrator = createUnitRunOrchestrator();
 
                 await scope.assert.rejects(async function resolveInvalidProcessUsage() {
@@ -314,8 +313,10 @@ export const testNode = suite({
         }),
         test({
             title: 'orchestrator.run() executes the resolved plan and reports run facts',
-            ...emptyTestData,
-            async body(scope: OverkillScope) {
+
+            async body(
+                scope: TestScope
+            ) {
                 const reporter = createInMemoryRealTimeReporter();
                 const runOrchestrator = createUnitRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand({
@@ -421,8 +422,8 @@ export const testNode = suite({
         }),
         test({
             title: 'orchestrator.run() executes the supervised process profile in a child process',
-            ...emptyTestData,
-            async body(scope: OverkillScope) {
+
+            async body(scope) {
                 const runOrchestrator = createUnitRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand({
                     config: defaultRunConfig({
@@ -456,8 +457,8 @@ export const testNode = suite({
         }),
         test({
             title: 'RunResolutionError exposes stable error codes',
-            ...emptyTestData,
-            async body(scope: OverkillScope) {
+
+            async body(scope) {
                 const error = new RunResolutionError('Unsupported.', undefined, 'unsupported-request');
 
                 scope.assert.equal(error.name, 'RunResolutionError');
@@ -465,7 +466,6 @@ export const testNode = suite({
 
                 return scope.assert.collect();
             }
-        }),
-        runCollectionErrorReportingTestNode
+        })
     ]
 });

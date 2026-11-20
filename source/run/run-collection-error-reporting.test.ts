@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { NormalizedConfig, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
 
@@ -23,8 +23,8 @@ type ReporterLifecycleRecorder = {
     readonly reporter: DefinedReporter;
 };
 
-const throwsOnImportFixturePath = 'source/integration-tests/run/fixtures/throws-on-import.test.ts';
-const emptySuiteFixturePath = 'source/integration-tests/run/fixtures/empty-suite.test.ts';
+const throwsOnImportFixturePath = 'source/integration-tests/integration/fixtures/throws-on-import.test.ts';
+const emptySuiteFixturePath = 'source/integration-tests/integration/fixtures/empty-suite.test.ts';
 const defaultRequest = defaultRunRequest();
 const supervisedCollectionConfig = defaultRunConfig({
     profiles: {
@@ -117,8 +117,8 @@ function createFakeDependencies(
     } as unknown as RunOrchestratorDependencies;
 }
 
-export const testNode = suite('source/run/run-collection-error-reporting.test.ts', [
-    test('orchestrator.run() returns collection failures as runner errors', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Run collection error reporting', [
+    test('orchestrator.run() returns collection failures as runner errors', async function (scope) {
         const runOrchestrator = createUnitRunOrchestrator();
         const importFailureResult = await runOrchestrator.run(createRunCommand({
             config: supervisedCollectionConfig,
@@ -176,7 +176,7 @@ export const testNode = suite('source/run/run-collection-error-reporting.test.ts
 
         return scope.assert.collect();
     }),
-    test('orchestrator.run() reports collection failures before disposal', async function (scope: OverkillScope) {
+    test('orchestrator.run() reports collection failures before disposal', async function (scope) {
         const lifecycle = createReporterLifecycleRecorder();
         const runOrchestrator = createUnitRunOrchestrator();
         const result = await runOrchestrator.run(createRunCommand({
@@ -207,7 +207,7 @@ export const testNode = suite('source/run/run-collection-error-reporting.test.ts
     }),
     test(
         'orchestrator.runWithReporterDelivery() tracks terminal collection-error delivery',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const runOrchestrator = createUnitRunOrchestrator();
             const result = await runOrchestrator.runWithReporterDelivery(createRunCommand({
                 config: defaultRunConfig({
@@ -231,7 +231,7 @@ export const testNode = suite('source/run/run-collection-error-reporting.test.ts
             return scope.assert.collect();
         }
     ),
-    test('createResultFromResolutionError() rethrows non-collection errors', async function (scope: OverkillScope) {
+    test('createResultFromResolutionError() rethrows non-collection errors', async function (scope) {
         const error = new Error('not collection');
 
         await scope.assert.rejects(async function createResult() {
@@ -240,7 +240,7 @@ export const testNode = suite('source/run/run-collection-error-reporting.test.ts
 
         return scope.assert.collect();
     }),
-    test('reportCollectionErrorResult() appends reporter delivery errors', async function (scope: OverkillScope) {
+    test('reportCollectionErrorResult() appends reporter delivery errors', async function (scope) {
         const result = createResultFromResolutionError(directCollectionError, null);
         const reported = await reportCollectionErrorResult(
             createFakeCollectionResultCommand(),
@@ -304,7 +304,7 @@ export const testNode = suite('source/run/run-collection-error-reporting.test.ts
     }),
     test(
         'reportCollectionErrorResult() aggregates cleanup errors after delivery failure',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const result = createResultFromResolutionError(directCollectionError, null);
 
             await scope.assert.rejects(async function reportCollectionResult() {

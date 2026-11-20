@@ -1,7 +1,7 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { implementationFacts } from '../implementation-reference.ts';
-import { testNode as trialErrors } from './trial-policy-errors.test.ts';
+
 import { defineBodyReference, type BodyReference } from './body-reference.ts';
 import {
     executableBody,
@@ -25,9 +25,8 @@ function referencedBody(): BodyReference<number, number> {
         }
     });
 }
-export const testNode = authoredSuite('body forwarding and source ownership', [
-    trialErrors,
-    test('requires admission before executing a referenced body', function (scope: TestScope) {
+export const testNode: TestNode = suite('body forwarding and source ownership', [
+    test('requires admission before executing a referenced body', function (scope) {
         const reference = referencedBody();
         scope.assert.throws(function () {
             executableBody(reference);
@@ -36,7 +35,7 @@ export const testNode = authoredSuite('body forwarding and source ownership', [
     }),
     test(
         'preserves family metadata and workload resolution when forwarding referenced resources',
-        function (scope: TestScope) {
+        function (scope) {
             const reference = referencedBody();
             const family = attachTestBodyFamily(reference, { family: 'microtest', definition: { value: 42 } });
             const source = attachTestBodyWorkloadResolver(family, function () {
@@ -70,7 +69,7 @@ export const testNode = authoredSuite('body forwarding and source ownership', [
     ),
     test(
         'prefers known body origins over fallbacks and resolves unknown origins through the fallback',
-        function (scope: TestScope) {
+        function (scope) {
             const known = { kind: 'known' as const, file: 'case.ts', line: 1, column: 2 };
             const fallback = { kind: 'known' as const, file: 'fallback.ts', line: 3, column: 4 };
             function body(): number {

@@ -1,11 +1,11 @@
-import { suite as authoredSuite, test as authoredTest, table } from '@overkill-dev/test';
+import { type TestNode, suite, test, table } from '@overkill-dev/test';
 
 import { gen, property, type PropertySampleScope } from '../packages/property/property.entry-point.ts';
 import { differential } from '../packages/differential/differential.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 
-export const testNode = authoredSuite('differential lifecycle', [
-    authoredTest('require signals stop execution instead of becoming comparable errors', async function (scope) {
+export const testNode: TestNode = suite('differential lifecycle', [
+    test('require signals stop execution instead of becoming comparable errors', async function (scope) {
         let later = 0;
         const result = await executePropertyNode(
             property({
@@ -42,46 +42,49 @@ export const testNode = authoredSuite('differential lifecycle', [
         scope.assert.equal(result.summary.failed, 1);
         return scope.assert.collect();
     }),
-    authoredTest('cancellation after settlement prevents comparison and later implementations', async function (scope) {
-        let later = 0;
-        const controller = new AbortController();
-        const body = differential<number, number>({
-            implementations: [
-                {
-                    name: 'cancel',
-                    run(value) {
-                        controller.abort(new Error('stopped'));
-                        return value;
+    test(
+        'cancellation after settlement prevents comparison and later implementations',
+        async function (scope) {
+            let later = 0;
+            const controller = new AbortController();
+            const body = differential<number, number>({
+                implementations: [
+                    {
+                        name: 'cancel',
+                        run(value) {
+                            controller.abort(new Error('stopped'));
+                            return value;
+                        }
+                    },
+                    {
+                        name: 'later',
+                        run(value) {
+                            later += 1;
+                            return value;
+                        }
                     }
-                },
-                {
-                    name: 'later',
-                    run(value) {
-                        later += 1;
-                        return value;
+                ],
+                check(_observations, sample) {
+                    later += 1;
+                    return sample.assert.collect();
+                }
+            });
+            const result = await executePropertyNode(
+                property({
+                    title: 'cancel',
+                    generator: gen.constant<number>(1),
+                    async test(value, sample) {
+                        return body(value, { ...sample, signal: controller.signal });
                     }
-                }
-            ],
-            check(_observations, sample) {
-                later += 1;
-                return sample.assert.collect();
-            }
-        });
-        const result = await executePropertyNode(
-            property({
-                title: 'cancel',
-                generator: gen.constant<number>(1),
-                async test(value, sample) {
-                    return body(value, { ...sample, signal: controller.signal });
-                }
-            }),
-            propertyExecutionDefaults
-        );
-        scope.assert.equal(later, 0);
-        scope.assert.equal(result.summary.passed, 0);
-        return scope.assert.collect();
-    }),
-    authoredTest(
+                }),
+                propertyExecutionDefaults
+            );
+            scope.assert.equal(later, 0);
+            scope.assert.equal(result.summary.passed, 0);
+            return scope.assert.collect();
+        }
+    ),
+    test(
         'reconstruction exhaustion remains inconclusive before implementation execution',
         async function (scope) {
             let calls = 0;
@@ -206,7 +209,7 @@ export const testNode = authoredSuite('differential lifecycle', [
             return scope.assert.collect();
         }
     }),
-    authoredTest('a comparison without assertions fails its contract', async function (scope) {
+    test('a comparison without assertions fails its contract', async function (scope) {
         const result = await executePropertyNode(
             property({
                 title: 'empty check',

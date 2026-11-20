@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import {
     benchmarkBaselineSessionFixture,
@@ -10,8 +10,8 @@ import { performanceBaselineError } from '../baselines/performance-evaluation.ts
 import { readPerformanceBaselineReport } from '../baselines/performance-report.ts';
 import { openBenchmarkBaselineSession } from './benchmark-baseline-session.ts';
 
-export const testNode = authoredSuite('benchmark baseline session ownership', [
-    authoredTest('preserves prepared results and attaches the baseline report', async function (scope: TestScope) {
+export const testNode: TestNode = suite('benchmark baseline session ownership', [
+    test('preserves prepared results and attaches the baseline report', async function (scope) {
         const fixture = benchmarkBaselineSessionFixture(benchmarkSessionScenario);
         const session = await openBenchmarkBaselineSession(fixture.input, fixture.store);
         scope.assert.equal(session.prepareResult(baselineCaseResult), baselineCaseResult);
@@ -20,9 +20,9 @@ export const testNode = authoredSuite('benchmark baseline session ownership', [
         scope.assert.equal(readPerformanceBaselineReport(result)?.writeOutcome.kind, 'read-only');
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'forwards case events and reporter disposal through the baseline delivery',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = benchmarkBaselineSessionFixture(benchmarkSessionScenario);
             const session = await openBenchmarkBaselineSession(fixture.input, fixture.store);
             const delivery = await session.reporterDispatcher.createDelivery(
@@ -36,9 +36,9 @@ export const testNode = authoredSuite('benchmark baseline session ownership', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'forwards runner errors without evaluating them as benchmark outcomes',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = benchmarkBaselineSessionFixture(benchmarkSessionScenario);
             const session = await openBenchmarkBaselineSession(fixture.input, fixture.store);
             const delivery = await session.reporterDispatcher.createDelivery(
@@ -55,9 +55,9 @@ export const testNode = authoredSuite('benchmark baseline session ownership', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'retains report publication errors before reporter delivery starts',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = benchmarkBaselineSessionFixture({ ...benchmarkSessionScenario, maxBytes: 1 });
             const session = await openBenchmarkBaselineSession(fixture.input, fixture.store);
             const result = await session.finalize(baselineCaseResult);
@@ -66,9 +66,9 @@ export const testNode = authoredSuite('benchmark baseline session ownership', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'notifies the active reporter when baseline report publication fails',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = benchmarkBaselineSessionFixture({ ...benchmarkSessionScenario, maxBytes: 1 });
             const session = await openBenchmarkBaselineSession(fixture.input, fixture.store);
             const delivery = await session.reporterDispatcher.createDelivery(
@@ -84,28 +84,32 @@ export const testNode = authoredSuite('benchmark baseline session ownership', [
             return scope.assert.collect();
         }
     ),
-    ...([ 'complete', 'paths', 'selection', 'shard' ] as const).map(function (selection) {
-        return authoredTest(
-            `prunes stale baselines only with ${selection} inventory admission`,
-            async function (scope: TestScope) {
-                const fixture = benchmarkBaselineSessionFixture({
-                    ...benchmarkSessionScenario,
-                    mode: 'apply',
-                    existing: true
-                });
-                const request = {
-                    ...fixture.input.request,
-                    paths: selection === 'paths' ? [ 'subject.bench.ts' ] : [],
-                    selection: selection === 'selection' ? { kind: 'none' as const } : { kind: 'all' as const },
-                    shard: selection === 'shard' ? { index: 1, total: 2 } : { index: 1, total: 1 }
-                };
-                const session = await openBenchmarkBaselineSession({ ...fixture.input, request }, fixture.store);
-                const result = await session.finalize(baselineCaseResult);
-                const stored = await fixture.store.list();
-                scope.assert.equal(result.status, 'passed');
-                scope.assert.equal(stored.length, selection === 'complete' ? 0 : 1);
-                return scope.assert.collect();
-            }
-        );
+    table({
+        title: 'requires complete inventory admission before pruning stale baselines',
+        cases: [ 'complete', 'paths', 'selection', 'shard' ] as const,
+        caseTitle(selection) {
+            return selection;
+        },
+        async test(scope) {
+            const selection = scope.parameters;
+
+            const fixture = benchmarkBaselineSessionFixture({
+                ...benchmarkSessionScenario,
+                mode: 'apply',
+                existing: true
+            });
+            const request = {
+                ...fixture.input.request,
+                paths: selection === 'paths' ? [ 'subject.bench.ts' ] : [],
+                selection: selection === 'selection' ? { kind: 'none' as const } : { kind: 'all' as const },
+                shard: selection === 'shard' ? { index: 1, total: 2 } : { index: 1, total: 1 }
+            };
+            const session = await openBenchmarkBaselineSession({ ...fixture.input, request }, fixture.store);
+            const result = await session.finalize(baselineCaseResult);
+            const stored = await fixture.store.list();
+            scope.assert.equal(result.status, 'passed');
+            scope.assert.equal(stored.length, selection === 'complete' ? 0 : 1);
+            return scope.assert.collect();
+        }
     })
 ]);

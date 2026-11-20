@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     witnessReplayInput,
@@ -9,8 +9,8 @@ import {
 } from '../test-support/witness-replay-preparation.ts';
 import { resolveWitnessReplay, resolvePropertyReplay, propertyWitnessCommand } from './witness-replay-preparation.ts';
 
-export const testNode = authoredSuite('fixed witness replay preparation', [
-    authoredTest('builds exact property work selection and verifies its source', async function (scope: TestScope) {
+export const testNode: TestNode = suite('fixed witness replay preparation', [
+    test('builds exact property work selection and verifies its source', async function (scope) {
         const fixture = witnessReplayAccess(replayPropertyWitness, null);
         const prepared = await resolveWitnessReplay(witnessReplayInput(), fixture.access);
         scope.assert.deepEqual(fixture.calls, [ 'read:/project/witness.json', 'verify:/project:laws.ts' ]);
@@ -34,9 +34,9 @@ export const testNode = authoredSuite('fixed witness replay preparation', [
         });
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'builds case selection for simulation witnesses without property state',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = witnessReplayAccess(replaySimulationWitness, null);
             const prepared = await resolveWitnessReplay(witnessReplayInput(), fixture.access);
             scope.assert.deepEqual(propertyWitnessCommand(replaySimulationWitness), {});
@@ -47,22 +47,25 @@ export const testNode = authoredSuite('fixed witness replay preparation', [
             return scope.assert.collect();
         }
     ),
-    ...([ null, '/outside.ts', '../escape.ts', 'sub/../escape.ts', 'sub\\..\\escape.ts' ] as const).map(
-        function (file) {
-            return authoredTest(`rejects invalid witness source ${String(file)}`, async function (scope: TestScope) {
-                const fixture = witnessReplayAccess({
-                    ...replayPropertyWitness,
-                    case: { ...replayPropertyWitness.case, file }
-                }, null);
-                await scope.assert.rejects(async function () {
-                    await resolveWitnessReplay(witnessReplayInput(), fixture.access);
-                }, { message: 'Witness must identify a project-relative source module.' });
-                scope.assert.deepEqual(fixture.calls, [ 'read:/project/witness.json' ]);
-                return scope.assert.collect();
-            });
+    table({
+        title: 'rejects invalid witness sources',
+        cases: [ null, '/outside.ts', '../escape.ts', 'sub/../escape.ts', 'sub\\..\\escape.ts' ] as const,
+        caseTitle: String,
+        async test(scope) {
+            const file = scope.parameters;
+
+            const fixture = witnessReplayAccess({
+                ...replayPropertyWitness,
+                case: { ...replayPropertyWitness.case, file }
+            }, null);
+            await scope.assert.rejects(async function () {
+                await resolveWitnessReplay(witnessReplayInput(), fixture.access);
+            }, { message: 'Witness must identify a project-relative source module.' });
+            scope.assert.deepEqual(fixture.calls, [ 'read:/project/witness.json' ]);
+            return scope.assert.collect();
         }
-    ),
-    authoredTest('retains source validation failures', async function (scope: TestScope) {
+    }),
+    test('retains source validation failures', async function (scope) {
         const error = new Error('missing source');
         const fixture = witnessReplayAccess(replayPropertyWitness, error);
         await scope.assert.rejects(async function () {
@@ -71,9 +74,9 @@ export const testNode = authoredSuite('fixed witness replay preparation', [
         scope.assert.equal(fixture.calls.length, 2);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'normalizes incompatible witnesses before attempting source access',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = witnessReplayAccess({ version: 2 }, null);
             await scope.assert.rejects(async function () {
                 await resolveWitnessReplay(witnessReplayInput(), fixture.access);
@@ -82,25 +85,39 @@ export const testNode = authoredSuite('fixed witness replay preparation', [
             return scope.assert.collect();
         }
     ),
-    ...([ { path: '.overkill/runs/run-42/witness.json', id: 'run-42' }, { path: '.overkill/runs/run-42', id: null }, {
-        path: '../outside/witness.json',
-        id: null
-    }, { path: '.overkill/runs/invalid.id/witness.json', id: null } ] as const)
-        .map(function (entry) {
-            return authoredTest(`identifies witness owner for ${entry.path}`, async function (scope: TestScope) {
-                const input = witnessReplayInput();
-                const fixture = witnessReplayAccess(replayPropertyWitness, null);
-                const prepared = await resolveWitnessReplay({
-                    ...input,
-                    path: entry.path,
-                    config: { ...input.config, runtimeStateDir: '.overkill' }
-                }, fixture.access);
-                scope.assert.partialDeepEqual(prepared.replay, { sourceRunId: entry.id });
-                return scope.assert.collect();
-            });
-        }),
-    ...([ null, 'integration' ] as const).map(function (profile) {
-        return authoredTest(`resolves requested replay policy ${String(profile)}`, async function (scope: TestScope) {
+    table({
+        title: 'identifies witness owners',
+        cases: [ { path: '.overkill/runs/run-42/witness.json', id: 'run-42' }, {
+            path: '.overkill/runs/run-42',
+            id: null
+        }, {
+            path: '../outside/witness.json',
+            id: null
+        }, { path: '.overkill/runs/invalid.id/witness.json', id: null } ] as const,
+        caseTitle(entry) {
+            return entry.path;
+        },
+        async test(scope) {
+            const entry = scope.parameters;
+
+            const input = witnessReplayInput();
+            const fixture = witnessReplayAccess(replayPropertyWitness, null);
+            const prepared = await resolveWitnessReplay({
+                ...input,
+                path: entry.path,
+                config: { ...input.config, runtimeStateDir: '.overkill' }
+            }, fixture.access);
+            scope.assert.partialDeepEqual(prepared.replay, { sourceRunId: entry.id });
+            return scope.assert.collect();
+        }
+    }),
+    table({
+        title: 'resolves requested replay policies',
+        cases: [ null, 'integration' ] as const,
+        caseTitle: String,
+        async test(scope) {
+            const profile = scope.parameters;
+
             const fixture = witnessReplayAccess(replayPropertyWitness, null);
             const command = propertyReplayCommand(profile);
             const prepared = await resolvePropertyReplay(command, fixture.access);
@@ -125,9 +142,9 @@ export const testNode = authoredSuite('fixed witness replay preparation', [
                 }
             });
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest(
+    test(
         'requires explicit selection when multiple eligible profiles exist',
         async function (scope: TestScope) {
             const fixture = witnessReplayAccess(replayPropertyWitness, null);
@@ -144,7 +161,7 @@ export const testNode = authoredSuite('fixed witness replay preparation', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('rejects unknown replay profiles before reading inputs', async function (scope: TestScope) {
+    test('rejects unknown replay profiles before reading inputs', async function (scope) {
         const fixture = witnessReplayAccess(replayPropertyWitness, null);
         await scope.assert.rejects(async function () {
             await resolvePropertyReplay(propertyReplayCommand('missing'), fixture.access);

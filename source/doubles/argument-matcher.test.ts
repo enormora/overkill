@@ -1,11 +1,10 @@
-import { suite, test } from '@overkill-dev/test';
-
+import { type TestNode, suite, test } from '@overkill-dev/test';
 import { P } from 'ts-pattern';
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
-import { doubleUsage, matches, rule, testDouble } from '../packages/doubles/doubles.entry-point.ts';
+import { subjectAssertion } from '../test-support/assertion-reference-boundary.ts';
+import { doubleUsage as subjectUsage, matches, rule, testDouble } from '../packages/doubles/doubles.entry-point.ts';
 
-export const testNode = suite('typed argument patterns', [
-    test('wrapped rules require exact arity while raw rules preserve prefixes', function (scope: TestScope) {
+export const testNode: TestNode = suite('typed argument patterns', [
+    test('wrapped rules require exact arity while raw rules preserve prefixes', function (scope) {
         const wrapped = testDouble<(id: string, extra?: number) => string>({
             rules: [ rule.when(matches(P.string)).returns('matched') ],
             fallback: rule.returns('fallback')
@@ -18,7 +17,7 @@ export const testNode = suite('typed argument patterns', [
         scope.assert.equal(raw('id', 1), 'matched');
         return scope.assert.collect();
     }),
-    test('nested patterns support unions optional properties arrays and instances', function (scope: TestScope) {
+    test('nested patterns support unions optional properties arrays and instances', function (scope) {
         const pattern = matches({
             id: P.union('a', 'b'),
             tags: P.array(P.string),
@@ -31,28 +30,31 @@ export const testNode = suite('typed argument patterns', [
         scope.assert.true(Object.isFrozen(pattern));
         return scope.assert.collect();
     }),
-    test('constructor patterns preserve original history', function (scope: TestScope) {
+    test('constructor patterns preserve original history', function (scope) {
         const instance = { id: 'client' };
         const Client = testDouble<new (url: string) => typeof instance>({
             rules: [ rule.whenConstructedWith(matches(P.string)).constructs(instance) ]
         });
         scope.assert.equal(new Client('url'), instance);
-        scope.assert(doubleUsage.constructedOnceWith, Client, [ matches(P.string) ]);
+        scope.assert(subjectAssertion(subjectUsage.constructedOnceWith), Client, [ matches(P.string) ]);
         scope.assert.equal(Client.firstConstruction?.arguments[0], 'url');
         return scope.assert.collect();
     }),
-    test('mixed assertions preserve partial exact and prefix semantics', function (scope: TestScope) {
+    test('mixed assertions preserve partial exact and prefix semantics', function (scope) {
         const save = testDouble.returns('saved');
         save('id', { id: 1, extra: true });
-        scope.assert(doubleUsage.calledWith, save, [ matches(P.string), { id: 1 } ]);
-        scope.assert(doubleUsage.calledWithExactly, save, [ matches(P.string), { id: 1, extra: true } ]);
-        scope.assert(doubleUsage.calledWithPrefix, save, [ matches(P.string) ]);
-        scope.assert(doubleUsage.lastCalledWith, save, [ matches(P.string), { id: 1 } ]);
-        scope.assert(doubleUsage.nthCallWith, save, 0, [ matches(P.string), { id: 1 } ]);
-        scope.assert(doubleUsage.interactedOnceWith, save, [ matches(P.string), { id: 1 } ]);
+        scope.assert(subjectAssertion(subjectUsage.calledWith), save, [ matches(P.string), { id: 1 } ]);
+        scope.assert(subjectAssertion(subjectUsage.calledWithExactly), save, [ matches(P.string), {
+            id: 1,
+            extra: true
+        } ]);
+        scope.assert(subjectAssertion(subjectUsage.calledWithPrefix), save, [ matches(P.string) ]);
+        scope.assert(subjectAssertion(subjectUsage.lastCalledWith), save, [ matches(P.string), { id: 1 } ]);
+        scope.assert(subjectAssertion(subjectUsage.nthCallWith), save, 0, [ matches(P.string), { id: 1 } ]);
+        scope.assert(subjectAssertion(subjectUsage.interactedOnceWith), save, [ matches(P.string), { id: 1 } ]);
         return scope.assert.collect();
     }),
-    test('predicate errors retain identity and bypass fallback', function (scope: TestScope) {
+    test('predicate errors retain identity and bypass fallback', function (scope) {
         const error = new Error('predicate failed');
         const load = testDouble({
             rules: [
@@ -70,7 +72,7 @@ export const testNode = suite('typed argument patterns', [
         scope.assert.equal(load.lastResult?.status, 'threw');
         return scope.assert.collect();
     }),
-    test('pattern assertions evaluate each examined predicate once', function (scope: TestScope) {
+    test('pattern assertions evaluate each examined predicate once', function (scope) {
         let count = 0;
         const pattern = matches(P.when(function counted(value: unknown) {
             count += 1;
@@ -79,7 +81,7 @@ export const testNode = suite('typed argument patterns', [
         const save = testDouble.returns('saved');
         save('id');
         save('another');
-        scope.assert(doubleUsage.calledWith, save, [ pattern ]);
+        scope.assert(subjectAssertion(subjectUsage.calledWith), save, [ pattern ]);
         scope.assert.equal(count, 1);
         return scope.assert.collect();
     })

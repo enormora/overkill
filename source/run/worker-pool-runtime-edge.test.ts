@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { fakeWorkerPoolRuntimeDependencies as fakeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
@@ -47,8 +47,8 @@ async function createRuntime(resolvedRun: ResolvedRun): Promise<void> {
     });
 }
 
-export const testNode = suite('source/run/worker-pool-runtime-edge.test.ts', [
-    test('worker-pool runtime rejects invalid placement plans', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Worker pool runtime edge', [
+    test('worker-pool runtime rejects invalid placement plans', async function (scope) {
         const resolvedRun = workerPoolResolvedRun(createCollectedPlan());
         const plan = placementPlan(resolvedRun);
         const [ unit ] = plan.units;

@@ -1,6 +1,7 @@
 import os from 'node:os';
 import { mock } from 'node:test';
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
+
 import type { HostReading } from '../bench/benchmark-host-snapshot.ts';
 import { benchmarkHostSnapshot } from '../test-support/benchmark-host-snapshot.ts';
 import {
@@ -65,8 +66,8 @@ function unavailable(reason: string): HostReading<never> {
     });
 }
 
-export const testNode = authoredSuite('unavailable benchmark host evidence', [
-    test('marks unsupported Windows load and resource counters unavailable', function (scope: TestScope) {
+export const testNode: TestNode = suite('unavailable benchmark host evidence', [
+    test('marks unsupported Windows load and resource counters unavailable', function (scope) {
         const { capacity, metrics } = windowsHostEvidence();
         scope.assert.partialDeepEqual(capacity.loadAverage, {
             availability: 'unavailable',
@@ -80,7 +81,7 @@ export const testNode = authoredSuite('unavailable benchmark host evidence', [
         });
         return scope.assert.collect();
     }),
-    test('records zero native capacity and invalid load as unavailable', function (scope: TestScope) {
+    test('records zero native capacity and invalid load as unavailable', function (scope) {
         const capacity = invalidNativeCapacity();
         scope.assert.partialDeepEqual(capacity, {
             logicalCpuCount: { availability: 'unavailable', reason: 'Logical CPU count is unavailable.' },
@@ -94,13 +95,13 @@ export const testNode = authoredSuite('unavailable benchmark host evidence', [
         });
         return scope.assert.collect();
     }),
-    test('rejects pressure data missing the partial-stall level', function (scope: TestScope) {
+    test('rejects pressure data missing the partial-stall level', function (scope) {
         scope.assert.throws(function () {
             parseLinuxPressure('full avg10=0 avg60=0 avg300=0 total=0', 'psi');
         }, { name: 'TypeError', message: 'Missing or duplicate PSI pressure level.' });
         return scope.assert.collect();
     }),
-    test('retains native errors and rejects nonfinite and negative readings', function (scope: TestScope) {
+    test('retains native errors and rejects nonfinite and negative readings', function (scope) {
         scope.assert.partialDeepEqual(unavailable('denied'), { availability: 'unavailable', reason: 'denied' });
         for (const value of [ Number.NaN, Number.POSITIVE_INFINITY, -1 ]) {
             scope.assert.partialDeepEqual(reading(value), { availability: 'unavailable' });
@@ -108,7 +109,7 @@ export const testNode = authoredSuite('unavailable benchmark host evidence', [
         scope.assert.partialDeepEqual(reading(0), { availability: 'available', value: 0 });
         return scope.assert.collect();
     }),
-    test('propagates unavailable ratio operands and rejects zero capacity', function (scope: TestScope) {
+    test('propagates unavailable ratio operands and rejects zero capacity', function (scope) {
         scope.assert.partialDeepEqual(hostPercentage('ratio', 'host', unavailable('numerator'), reading(10)), {
             availability: 'unavailable',
             reason: 'numerator'
@@ -123,7 +124,7 @@ export const testNode = authoredSuite('unavailable benchmark host evidence', [
         });
         return scope.assert.collect();
     }),
-    test('rejects memory above capacity and preserves missing load and capacity', function (scope: TestScope) {
+    test('rejects memory above capacity and preserves missing load and capacity', function (scope) {
         const { capacity } = benchmarkHostSnapshot();
         scope.assert.partialDeepEqual(availableMemoryPercent({ ...capacity, availableMemoryBytes: reading(10_000) }), {
             availability: 'unavailable',
@@ -153,7 +154,7 @@ export const testNode = authoredSuite('unavailable benchmark host evidence', [
         });
         return scope.assert.collect();
     }),
-    test('rejects changed CPU identity and nonfinite CPU counters', function (scope: TestScope) {
+    test('rejects changed CPU identity and nonfinite CPU counters', function (scope) {
         const cpu = { model: 'cpu', speed: 1, times: { user: 10, sys: 0, nice: 0, idle: 20, irq: 0 } };
         scope.assert.partialDeepEqual(cpuBusyPercent([ cpu ], [ { ...cpu, model: 'replacement' } ]), {
             availability: 'unavailable',
@@ -168,7 +169,7 @@ export const testNode = authoredSuite('unavailable benchmark host evidence', [
         );
         return scope.assert.collect();
     }),
-    test('propagates unavailable native process windows', function (scope: TestScope) {
+    test('propagates unavailable native process windows', function (scope) {
         const before = readHostProcessWindow();
         const after = {
             ...before,
@@ -186,7 +187,7 @@ export const testNode = authoredSuite('unavailable benchmark host evidence', [
         });
         return scope.assert.collect();
     }),
-    test('retains signed deltas but rejects nonfinite native observations', function (scope: TestScope) {
+    test('retains signed deltas but rejects nonfinite native observations', function (scope) {
         const signed = {
             source: 'delta',
             scope: 'process' as const,

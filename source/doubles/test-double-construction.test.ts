@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
@@ -7,8 +7,8 @@ type ClientWithId = {
     readonly id: string;
 };
 
-export const testNode = suite('source/doubles/test-double-construction.test.ts', [
-    test('construction rules can call custom answers', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Test double construction', [
+    test('construction rules can call custom answers', function (scope) {
         type ClientConstructor = new (id: string) => ClientWithId;
 
         const Client = testDouble<ClientConstructor>({
@@ -23,7 +23,7 @@ export const testNode = suite('source/doubles/test-double-construction.test.ts',
 
         return scope.assert.collect();
     }),
-    test('construction rules can sequence answers', function (scope: OverkillScope) {
+    test('construction rules can sequence answers', function (scope) {
         type ClientConstructor = new (id: string) => ClientWithId;
 
         const firstClient = { id: 'first' };
@@ -42,7 +42,7 @@ export const testNode = suite('source/doubles/test-double-construction.test.ts',
 
         return scope.assert.collect();
     }),
-    test('construction rules can throw', function (scope: OverkillScope) {
+    test('construction rules can throw', function (scope) {
         type ClientConstructor = new () => ClientWithId;
 
         const error = new Error('expected');
@@ -56,7 +56,7 @@ export const testNode = suite('source/doubles/test-double-construction.test.ts',
 
         return scope.assert.collect();
     }),
-    test('constructor doubles throw TypeError when no behavior can answer', function (scope: OverkillScope) {
+    test('constructor doubles throw TypeError when no behavior can answer', function (scope) {
         type ClientConstructor = new (id: string) => ClientWithId;
 
         const Client = testDouble<ClientConstructor>({
@@ -69,7 +69,7 @@ export const testNode = suite('source/doubles/test-double-construction.test.ts',
 
         return scope.assert.collect();
     }),
-    test('constructor doubles reject primitive behavior answers', function (scope: OverkillScope) {
+    test('constructor doubles reject primitive behavior answers', function (scope) {
         type ClientConstructor = new () => ClientWithId;
 
         const Client = testDouble<ClientConstructor>({

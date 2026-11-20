@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { planningInput } from '../test-support/benchmark-plan-input.ts';
 import { frozenMicrotestPolicy } from '../test-support/frozen-microtest-policy.ts';
@@ -11,8 +11,8 @@ import {
     createWorkerPoolCommand
 } from './run-isolated-command.ts';
 
-export const testNode = authoredSuite('isolated command transport policy', [
-    test('preserves benchmark collection policy and resolves an absent seed', function (scope: TestScope) {
+export const testNode: TestNode = suite('isolated command transport policy', [
+    test('preserves benchmark collection policy and resolves an absent seed', function (scope) {
         const input = planningInput();
         const command = {
             config: defaultRunConfig({ profiles: { sizes: input.profile } }),
@@ -50,7 +50,7 @@ export const testNode = authoredSuite('isolated command transport policy', [
     }),
     test(
         'encodes frozen collection, ordinary execution and session execution distinctly',
-        async function (scope: TestScope) {
+        async function (scope) {
             const input = planningInput();
             const policy = await frozenMicrotestPolicy();
             const profile = defaultMicrotestProfile();

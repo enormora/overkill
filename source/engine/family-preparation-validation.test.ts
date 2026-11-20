@@ -1,5 +1,5 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
-import { test } from '../packages/test/test.entry-point.ts';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
     attachTestBodyResourceAttachments,
@@ -10,10 +10,8 @@ import {
     type FamilyExecuteOptions,
     type FamilyPreparation,
     type FamilyPreparationInput,
-    type TestCase,
     type TestFamily,
-    type TestPlan,
-    type TestScope
+    type TestPlan
 } from '../packages/engine/engine.entry-point.ts';
 
 const controller = new AbortController();
@@ -94,18 +92,6 @@ function defineAnalysis(prepare: FamilyBackend<null>['prepare']): TestFamily<nul
     });
 }
 
-function rejectPolicy(policy: AuthoredPolicy, message: RegExp): TestCase {
-    return test(`rejects ${policy} policy before loading analysis`, async function (scope) {
-        const engine = createTestEngine();
-        const testFamily = defineAnalysis(prepareRuntime);
-        const testPlan = plan(engine, policy);
-        await scope.assert.rejects(async function () {
-            await engine.prepareFamily({ testPlan, testFamily, settings: null, projectRoot, signal });
-        }, { message });
-        return scope.assert.collect();
-    });
-}
-
 async function collectExecutable(
     engine: Engine,
     testFamily: TestFamily<null>,
@@ -125,8 +111,8 @@ function runtimeFamily(): TestFamily<null> {
     });
 }
 
-export const testNode = authoredSuite('family preparation validation', [
-    authoredTest('rejects analysis collections that lose their execution callback', async function (scope) {
+export const testNode: TestNode = suite('family preparation validation', [
+    test('rejects analysis collections that lose their execution callback', async function (scope) {
         const engine = createTestEngine();
         const testFamily = defineAnalysis(async function prepareMalformedCollection(input) {
             return {
@@ -156,10 +142,27 @@ export const testNode = authoredSuite('family preparation validation', [
         }, { message: 'Analysis collection requires an execute callback.' });
         return scope.assert.collect();
     }),
-    rejectPolicy('capture', /does not support capture/u),
-    rejectPolicy('foreign', /requires test family/u),
-    rejectPolicy('resources', /does not support resources/u),
-    authoredTest('rejects forged settings bindings before backend preparation', async function (scope) {
+    table({
+        title: 'rejects unsupported policies',
+        cases: [ { policy: 'capture', message: /does not support capture/u }, {
+            policy: 'foreign',
+            message: /requires test family/u
+        }, { policy: 'resources', message: /does not support resources/u } ] as const,
+        caseTitle(parameters) {
+            return parameters.policy;
+        },
+        async test(scope) {
+            const { policy, message } = scope.parameters;
+            const engine = createTestEngine();
+            const testFamily = defineAnalysis(prepareRuntime);
+            const testPlan = plan(engine, policy);
+            await scope.assert.rejects(async function () {
+                await engine.prepareFamily({ testPlan, testFamily, settings: null, projectRoot, signal });
+            }, { message });
+            return scope.assert.collect();
+        }
+    }),
+    test('rejects forged settings bindings before backend preparation', async function (scope) {
         const engine = createTestEngine();
         const testFamily = defineAnalysis(prepareRuntime);
         const request = {
@@ -175,7 +178,7 @@ export const testNode = authoredSuite('family preparation validation', [
         }, { message: /engine-issued family settings/u });
         return scope.assert.collect();
     }),
-    authoredTest('rejects a plan from a different engine', async function (scope) {
+    test('rejects a plan from a different engine', async function (scope) {
         const engine = createTestEngine();
         const testPlan = plan(createTestEngine(), 'ordinary');
         await scope.assert.rejects(async function () {
@@ -189,7 +192,7 @@ export const testNode = authoredSuite('family preparation validation', [
         }, { message: /engine-created plan/u });
         return scope.assert.collect();
     }),
-    authoredTest('rejects families requiring process supervision', async function (scope) {
+    test('rejects families requiring process supervision', async function (scope) {
         const engine = createTestEngine();
         const testFamily = defineTestFamily({
             ...defineAnalysis(prepareRuntime),
@@ -206,7 +209,7 @@ export const testNode = authoredSuite('family preparation validation', [
         }, { message: /direct in-process/u });
         return scope.assert.collect();
     }),
-    authoredTest('rejects duplicate variant keys during expansion', async function (scope) {
+    test('rejects duplicate variant keys during expansion', async function (scope) {
         const engine = createTestEngine();
         const testFamily = defineAnalysis(async function (input) {
             return await prepareRuntime({
@@ -225,7 +228,7 @@ export const testNode = authoredSuite('family preparation validation', [
         }, { message: /unique nonempty keys/u });
         return scope.assert.collect();
     }),
-    authoredTest('rejects backend replacement plans and disposes the rejected preparation', async function (scope) {
+    test('rejects backend replacement plans and disposes the rejected preparation', async function (scope) {
         const engine = createTestEngine();
         const disposed: string[] = [];
         const testFamily = defineAnalysis(async function (input) {
@@ -249,12 +252,12 @@ export const testNode = authoredSuite('family preparation validation', [
         scope.assert.deepEqual(disposed, [ 'disposed' ]);
         return scope.assert.collect();
     }),
-    authoredTest('rejects a collection with a different execution kind', async function (scope) {
+    test('rejects a collection with a different execution kind', async function (scope) {
         const engine = createTestEngine();
         await collectExecutable(engine, defineAnalysis(prepareRuntime), plan(engine, 'ordinary'), scope);
         return scope.assert.collect();
     }),
-    authoredTest('rejects foreign collections and unsupported retry policy', async function (scope) {
+    test('rejects foreign collections and unsupported retry policy', async function (scope) {
         const engine = createTestEngine();
         const testPlan = plan(engine, 'ordinary');
         await using prepared = await engine.prepareFamily({
@@ -273,7 +276,7 @@ export const testNode = authoredSuite('family preparation validation', [
         }, { message: /does not support retries/u });
         return scope.assert.collect();
     }),
-    authoredTest('rejects a JavaScript call that omits collected execution options', async function (scope) {
+    test('rejects a JavaScript call that omits collected execution options', async function (scope) {
         const engine = createTestEngine();
         const testPlan = plan(engine, 'ordinary');
         await using prepared = await engine.prepareFamily({
@@ -289,7 +292,7 @@ export const testNode = authoredSuite('family preparation validation', [
         }, { message: /requires an AbortSignal/u });
         return scope.assert.collect();
     }),
-    authoredTest('rejects a runtime plan with an explicit optional family requirement', async function (scope) {
+    test('rejects a runtime plan with an explicit optional family requirement', async function (scope) {
         const engine = createTestEngine();
         await scope.assert.rejects(async function () {
             await engine.execute(plan(engine, 'foreign'));

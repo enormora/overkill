@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { INSTRUMENTER_CONSTANTS, type InstrumenterContext, type MutantCoverage } from '@stryker-mutator/api/core';
 
-import type { TestScope } from '../engine/engine.entry-point.ts';
 import { createInvocationInstrumentation } from './instrumentation-context.entry-point.ts';
 import { createMutationLifecycle } from './mutation-lifecycle.ts';
 
@@ -110,8 +109,8 @@ async function activateLifecycle(mode: 'runtime' | 'static'): Promise<void> {
     await lifecycle.beforeCases();
 }
 
-export const testNode = authoredSuite('invocation instrumentation ownership', [
-    authoredTest('resets counters without assigning or replacing retained objects', function (scope) {
+export const testNode: TestNode = suite('invocation instrumentation ownership', [
+    test('resets counters without assigning or replacing retained objects', function (scope) {
         const context = staleContext(scope);
         const references = captureReferences(context);
         Object.defineProperty(context, 'mutantCoverage', { writable: false });
@@ -123,7 +122,7 @@ export const testNode = authoredSuite('invocation instrumentation ownership', [
         invocation.dispose();
         return scope.assert.collect();
     }),
-    authoredTest('resets subsequent invocations without replacing retained counters', function (scope) {
+    test('resets subsequent invocations without replacing retained counters', function (scope) {
         const context = staleContext(scope);
         const references = captureReferences(context);
         const invocation = createInvocationInstrumentation();
@@ -135,7 +134,7 @@ export const testNode = authoredSuite('invocation instrumentation ownership', [
         next.dispose();
         return scope.assert.collect();
     }),
-    authoredTest('disposes transient state repeatedly', function (scope) {
+    test('disposes transient state repeatedly', function (scope) {
         const context = staleContext(scope);
         const invocation = createInvocationInstrumentation();
         invocation.activate('next', 0);
@@ -147,7 +146,7 @@ export const testNode = authoredSuite('invocation instrumentation ownership', [
         scope.assert.equal(environment[activeEnvironment], undefined);
         return scope.assert.collect();
     }),
-    authoredTest('retains collected counters after disposal', function (scope) {
+    test('retains collected counters after disposal', function (scope) {
         const context = staleContext(scope);
         const invocation = createInvocationInstrumentation();
         context.mutantCoverage.static['0'] = 4;
@@ -155,15 +154,18 @@ export const testNode = authoredSuite('invocation instrumentation ownership', [
         scope.assert.deepEqual(context.mutantCoverage, { static: { 0: 4 }, perTest: {} });
         return scope.assert.collect();
     }),
-    ...[ null, 0, 3 ].map(function hitPolicy(hitLimit) {
-        return authoredTest(`initializes explicit hit policy ${String(hitLimit)}`, function (scope) {
+    table({
+        title: 'initializes explicit hit policies',
+        cases: [ null, 0, 3 ],
+        caseTitle: String,
+        test(scope) {
             installContext(scope, undefined);
             const invocation = createInvocationInstrumentation();
-            invocation.activate('mutant', hitLimit);
+            invocation.activate('mutant', scope.parameters);
             scope.assert.deepEqual(structuredClone(invocation.context), {
                 mutantCoverage: { static: {}, perTest: {} },
                 activeMutant: 'mutant',
-                ...hitLimit === null ? {} : { hitCount: 0, hitLimit }
+                ...scope.parameters === null ? {} : { hitCount: 0, hitLimit: scope.parameters }
             });
             invocation.dispose();
             const next = createInvocationInstrumentation();
@@ -174,9 +176,9 @@ export const testNode = authoredSuite('invocation instrumentation ownership', [
             });
             next.dispose();
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('continues resetting counters and activation after a counter deletion fails', function (scope) {
+    test('continues resetting counters and activation after a counter deletion fails', function (scope) {
         const context = staleContext(scope);
         const staticCounters = context.mutantCoverage.static;
         Object.defineProperty(staticCounters, 'blocked', { value: 7, enumerable: true, configurable: false });
@@ -188,7 +190,7 @@ export const testNode = authoredSuite('invocation instrumentation ownership', [
         scope.assert.equal(environment[activeEnvironment], undefined);
         return scope.assert.collect();
     }),
-    authoredTest('continues clearing activation after one transient property cannot be deleted', function (scope) {
+    test('continues clearing activation after one transient property cannot be deleted', function (scope) {
         const context = staleContext(scope);
         Object.defineProperty(context, 'currentTestId', { configurable: false });
         scope.assert.throws(createInvocationInstrumentation, {
@@ -198,7 +200,7 @@ export const testNode = authoredSuite('invocation instrumentation ownership', [
         scope.assert.equal(environment[activeEnvironment], undefined);
         return scope.assert.collect();
     }),
-    authoredTest('rolls back a failed partial activation without replacing the namespace', function (scope) {
+    test('rolls back a failed partial activation without replacing the namespace', function (scope) {
         const context = staleContext(scope);
         const invocation = createInvocationInstrumentation();
         const failure = new Error('Cannot install hit limit.');
@@ -219,7 +221,7 @@ export const testNode = authoredSuite('invocation instrumentation ownership', [
         invocation.dispose();
         return scope.assert.collect();
     }),
-    authoredTest('disposes independent state and reports every blocked property', function (scope) {
+    test('disposes independent state and reports every blocked property', function (scope) {
         const context = staleContext(scope);
         const invocation = createInvocationInstrumentation();
         invocation.activate('mutant', 3);
@@ -237,7 +239,7 @@ export const testNode = authoredSuite('invocation instrumentation ownership', [
         scope.assert.equal(environment[activeEnvironment], undefined);
         return scope.assert.collect();
     }),
-    authoredTest('rejects invalid namespaces while cleaning independently removable state', function (scope) {
+    test('rejects invalid namespaces while cleaning independently removable state', function (scope) {
         const context = { activeMutant: 'old', currentTestId: 'case', mutantCoverage: 'invalid' };
         installContext(scope, context);
         scope.assert.throws(createInvocationInstrumentation, { message: 'Invalid Stryker instrumentation namespace.' });
@@ -246,7 +248,7 @@ export const testNode = authoredSuite('invocation instrumentation ownership', [
         scope.assert.equal(environment[activeEnvironment], undefined);
         return scope.assert.collect();
     }),
-    authoredTest('cleans activation when a missing coverage object cannot be installed', function (scope) {
+    test('cleans activation when a missing coverage object cannot be installed', function (scope) {
         const context = Object.preventExtensions({ activeMutant: 'old' });
         installContext(scope, context);
         scope.assert.throws(createInvocationInstrumentation, {
@@ -256,7 +258,7 @@ export const testNode = authoredSuite('invocation instrumentation ownership', [
         scope.assert.equal(environment[activeEnvironment], undefined);
         return scope.assert.collect();
     }),
-    authoredTest('cleans the environment when a missing namespace cannot be installed', function (scope) {
+    test('cleans the environment when a missing namespace cannot be installed', function (scope) {
         installContext(scope, undefined);
         Object.defineProperty(globalThis, namespace, { writable: false });
         scope.assert.throws(createInvocationInstrumentation, {
@@ -266,8 +268,15 @@ export const testNode = authoredSuite('invocation instrumentation ownership', [
         scope.assert.equal(environment[activeEnvironment], undefined);
         return scope.assert.collect();
     }),
-    ...([ 'static', 'runtime' ] as const).map(function activationMode(mode) {
-        return authoredTest(`rolls back failed ${mode} lifecycle activation`, async function (scope) {
+    table({
+        title: 'rolls back failed lifecycle activation',
+        cases: [ 'static', 'runtime' ] as const,
+        caseTitle(mode) {
+            return mode;
+        },
+        async test(scope) {
+            const mode = scope.parameters;
+
             const context = blockedHitPolicy(scope);
             await scope.assert.rejects(async function () {
                 await activateLifecycle(mode);
@@ -276,6 +285,6 @@ export const testNode = authoredSuite('invocation instrumentation ownership', [
             scope.assert.equal(Reflect.get(globalThis, namespace), context);
             scope.assert.equal(environment[activeEnvironment], undefined);
             return scope.assert.collect();
-        });
+        }
     })
 ]);

@@ -1,4 +1,4 @@
-#!/usr/bin/env -S node --permission-audit
+#!/usr/bin/env -S node --permission-audit --allow-inspector --disable-warning=PERM0004
 import type { CommandLineRunner } from '../run/command-line.entry-point.ts';
 import { runOverkillCommandLine } from './command-line-runner.ts';
 

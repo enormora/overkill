@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { TestBodyExecutionRequirementSummary } from '../packages/engine/engine.entry-point.ts';
 import type { WorkId } from '../engine/identity.ts';
@@ -86,10 +86,10 @@ function workId(title: string): WorkId {
     };
 }
 
-export const testNode = suite('source/run/work-unit-resource-constraints.test.ts', [
+export const testNode: TestNode = suite('Work unit resource constraints', [
     test(
-        'workResourceConstraints() combines runtime variants and workload-dependent resources',
-        function (scope: OverkillScope) {
+        'combines runtime variants and workload-dependent resources',
+        function (scope) {
             const testCase: CollectedRunCase = {
                 ...collectedCase('runtime requirements', [
                     { ...resource('consumer', 'per-suite', []), dependencies: [ 'supplier' ] },
@@ -149,7 +149,7 @@ export const testNode = suite('source/run/work-unit-resource-constraints.test.ts
         }
     ),
 
-    test('workResourceConstraints() lowers resource scopes and requirements', function (scope: OverkillScope) {
+    test('lowers resource scopes and requirements', function (scope) {
         const firstCase = collectedCase('first', [
             resource('runScoped', 'per-run', []),
             resource('caseScoped', 'per-case', []),
@@ -208,8 +208,8 @@ export const testNode = suite('source/run/work-unit-resource-constraints.test.ts
         return scope.assert.collect();
     }),
     test(
-        'workResourceConstraints() lowers duplicate execution controls and forbidden override',
-        function (scope: OverkillScope) {
+        'lowers duplicate execution controls and forbidden override',
+        function (scope) {
             const idempotentCase = collectedCaseWithControls(
                 'idempotent',
                 [],
@@ -239,7 +239,7 @@ export const testNode = suite('source/run/work-unit-resource-constraints.test.ts
             return scope.assert.collect();
         }
     ),
-    test('workResourceConstraints() keeps unmatched work empty', function (scope: OverkillScope) {
+    test('keeps unmatched work empty', function (scope) {
         scope.assert.equal(
             workResourceConstraints([
                 {

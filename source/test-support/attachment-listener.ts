@@ -1,8 +1,8 @@
 import { EventEmitter } from 'node:events';
 import { Duplex } from 'node:stream';
+import type { TestScope } from '@overkill-dev/test';
 import type { AttachmentServerRuntime, AttachmentServerStore } from '../run/attachment-server.ts';
 import type { AttachmentOperation, AttachmentOwner } from '../run/attachment-protocol.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
 
 type AttachmentListenerScenario = {
     readonly start: Error | null;

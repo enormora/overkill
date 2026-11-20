@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import type { RunnerError } from '../engine/run-result.ts';
@@ -32,8 +32,8 @@ function crash(termination: 'cancelled' | 'hard-timeout' | null): RunnerError {
         subtype: 'crash'
     };
 }
-export const testNode = authoredSuite('execution reply policy', [
-    authoredTest('keeps the last checkpoint until final lifecycle data arrives', function (scope: TestScope) {
+export const testNode: TestNode = suite('execution reply policy', [
+    test('keeps the last checkpoint until final lifecycle data arrives', function (scope) {
         const observation = createExecutionDataObservation();
         observeExecutionMessage(
             observation,
@@ -52,8 +52,15 @@ export const testNode = authoredSuite('execution reply policy', [
         });
         return scope.assert.collect();
     }),
-    ...([ 'execution-data', 'execution-checkpoint' ] as const).map(function (kind) {
-        return authoredTest(`rejects ${kind} arriving after final lifecycle data`, function (scope: TestScope) {
+    table({
+        title: 'rejects replies arriving after final lifecycle data',
+        cases: [ 'execution-data', 'execution-checkpoint' ] as const,
+        caseTitle(kind) {
+            return kind;
+        },
+        test(scope) {
+            const kind = scope.parameters;
+
             const observation = createExecutionDataObservation();
             observeExecutionMessage(
                 observation,
@@ -71,9 +78,9 @@ export const testNode = authoredSuite('execution reply policy', [
             });
             scope.assert.true(observation.invalid.signal.aborted);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('uses child plan counts while retaining parent result evidence', function (scope: TestScope) {
+    test('uses child plan counts while retaining parent result evidence', function (scope) {
         const observation = createExecutionDataObservation();
         const parent = runResultFactory.build({ summary: { planned: 2 } });
         const child = runResultFactory.build({ summary: { planned: 7 }, planStatus: 'empty-selection' });
@@ -92,8 +99,13 @@ export const testNode = authoredSuite('execution reply policy', [
         });
         return scope.assert.collect();
     }),
-    ...([ 'cancelled', 'hard-timeout', null ] as const).map(function (termination) {
-        return authoredTest(`classifies missing lifecycle data after ${termination}`, function (scope: TestScope) {
+    table({
+        title: 'classifies missing lifecycle data after termination',
+        cases: [ 'cancelled', 'hard-timeout', null ] as const,
+        caseTitle: String,
+        test(scope) {
+            const termination = scope.parameters;
+
             const observation = createExecutionDataObservation();
             const reply = observedReply(
                 runResultFactory.build({ runnerErrors: [ crash(termination) ] }),
@@ -102,9 +114,9 @@ export const testNode = authoredSuite('execution reply policy', [
             );
             scope.assert.equal(reply.kind, termination === 'hard-timeout' ? 'timeout' : 'failure');
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('preserves explicit cancellation when child only reports crashes', function (scope: TestScope) {
+    test('preserves explicit cancellation when child only reports crashes', function (scope) {
         const controller = new AbortController();
         controller.abort(new Error('caller cancelled'));
         const reply = observedReply(
@@ -118,7 +130,7 @@ export const testNode = authoredSuite('execution reply policy', [
         });
         return scope.assert.collect();
     }),
-    authoredTest('ignores ordinary reporter events while waiting for lifecycle data', function (scope: TestScope) {
+    test('ignores ordinary reporter events while waiting for lifecycle data', function (scope) {
         const observation = createExecutionDataObservation();
         observeExecutionMessage(
             observation,

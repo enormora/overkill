@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { selectTestProfile } from '../run/test-profile.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
@@ -13,8 +13,8 @@ async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
     return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
-export const testNode = suite('source/config/config-integration-profile.test.ts', [
-    test('rejects snapshot enablement in strict profiles', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Integration profile configuration', [
+    test('rejects snapshot enablement in strict profiles', async function (scope) {
         for (const testFamily of [ 'microtest', 'property' ] as const) {
             await scope.assert.rejects(async function strictSnapshotProfile() {
                 await loadConfigValue({
@@ -30,7 +30,7 @@ export const testNode = suite('source/config/config-integration-profile.test.ts'
         }
         return scope.assert.collect();
     }),
-    test('loadConfig() normalizes integration profile defaults', async function (scope: OverkillScope) {
+    test('normalizes integration profile defaults', async function (scope: TestScope) {
         const config = await loadConfigValue({
             profiles: {
                 service: {
@@ -82,8 +82,8 @@ export const testNode = suite('source/config/config-integration-profile.test.ts'
         return scope.assert.collect();
     }),
     test(
-        'loadConfig() normalizes worker-pool lifecycle and distribution overrides',
-        async function (scope: OverkillScope) {
+        'normalizes worker-pool lifecycle and distribution overrides',
+        async function (scope: TestScope) {
             const config = await loadConfigValue({
                 profiles: {
                     defaultedService: {
@@ -164,7 +164,7 @@ export const testNode = suite('source/config/config-integration-profile.test.ts'
             return scope.assert.collect();
         }
     ),
-    test('loadConfig() normalizes and validates worker-pool hedging', async function (scope: OverkillScope) {
+    test('normalizes and validates worker-pool hedging', async function (scope: TestScope) {
         const config = await loadConfigValue({
             profiles: {
                 service: {
@@ -222,7 +222,7 @@ export const testNode = suite('source/config/config-integration-profile.test.ts'
 
         return scope.assert.collect();
     }),
-    test('loadConfig() rejects invalid grouped work distribution', async function (scope: OverkillScope) {
+    test('rejects invalid grouped work distribution', async function (scope) {
         await scope.assert.rejects(async function loadGroupedWithoutFileSets() {
             await loadConfigValue({
                 profiles: {
@@ -352,7 +352,7 @@ export const testNode = suite('source/config/config-integration-profile.test.ts'
 
         return scope.assert.collect();
     }),
-    test('loadConfig() normalizes integration execution overrides', async function (scope: OverkillScope) {
+    test('normalizes integration execution overrides', async function (scope: TestScope) {
         const config = await loadConfigValue({
             profiles: {
                 service: {

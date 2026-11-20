@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { storedBaseline } from '../test-support/baseline-case-fixture.ts';
 import { memoryOrdinaryBaselines } from '../test-support/memory-ordinary-baselines.ts';
@@ -8,10 +8,10 @@ import type { OrdinaryBaselineChange } from './baseline-record.ts';
 const first: OrdinaryBaselineChange = { kind: 'create', baseline: storedBaseline };
 const second: OrdinaryBaselineChange = { kind: 'create', baseline: { ...storedBaseline, adapter: 'second' } };
 
-export const testNode = authoredSuite('ordinary baseline batch publication', [
+export const testNode: TestNode = suite('ordinary baseline batch publication', [
     test(
         'retains completed writes and the original error after a later write fails',
-        async function (scope: TestScope) {
+        async function (scope) {
             const store = memoryOrdinaryBaselines([]);
             const error = new Error('Storage became unavailable.');
             const publish = createBaselinePublication({
@@ -42,7 +42,7 @@ export const testNode = authoredSuite('ordinary baseline batch publication', [
             return scope.assert.collect();
         }
     ),
-    test('validates the entire batch while locked and releases after writing', async function (scope: TestScope) {
+    test('validates the entire batch while locked and releases after writing', async function (scope) {
         const operations: string[] = [];
         const publish = createBaselinePublication({
             async acquire() {
@@ -65,7 +65,7 @@ export const testNode = authoredSuite('ordinary baseline batch publication', [
         scope.assert.deepEqual(operations, [ 'lock', 'validate 2', 'output', 'second', 'release' ]);
         return scope.assert.collect();
     }),
-    test('blocks the whole batch when validation fails', async function (scope: TestScope) {
+    test('blocks the whole batch when validation fails', async function (scope) {
         const error = new Error('Baseline changed during execution.');
         const operations: string[] = [];
         const publish = createBaselinePublication({
@@ -85,7 +85,7 @@ export const testNode = authoredSuite('ordinary baseline batch publication', [
         scope.assert.deepEqual(operations, [ 'release' ]);
         return scope.assert.collect();
     }),
-    test('preserves written changes when releasing the lock fails', async function (scope: TestScope) {
+    test('preserves written changes when releasing the lock fails', async function (scope) {
         const error = new Error('Release failed.');
         const store = memoryOrdinaryBaselines([]);
         const publish = createBaselinePublication({
@@ -105,7 +105,7 @@ export const testNode = authoredSuite('ordinary baseline batch publication', [
         scope.assert.equal(records.length, 1);
         return scope.assert.collect();
     }),
-    test('retains validation and release errors together', async function (scope: TestScope) {
+    test('retains validation and release errors together', async function (scope) {
         const validation = new Error('Invalid batch.');
         const release = new Error('Release failed.');
         const publish = createBaselinePublication({
@@ -127,7 +127,7 @@ export const testNode = authoredSuite('ordinary baseline batch publication', [
         });
         return scope.assert.collect();
     }),
-    test('propagates lock acquisition errors without attempting writes', async function (scope: TestScope) {
+    test('propagates lock acquisition errors without attempting writes', async function (scope) {
         const error = new Error('Lock unavailable.');
         const publish = createBaselinePublication({
             async acquire() {
@@ -145,7 +145,7 @@ export const testNode = authoredSuite('ordinary baseline batch publication', [
         }, { message: error.message });
         return scope.assert.collect();
     }),
-    test('does not acquire a lock for an empty batch', async function (scope: TestScope) {
+    test('does not acquire a lock for an empty batch', async function (scope) {
         const publish = createBaselinePublication({
             async acquire() {
                 throw new Error('Empty batches do not need a lock.');

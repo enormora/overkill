@@ -1,4 +1,5 @@
-import { suite as authoredSuite, test, table } from '@overkill-dev/test';
+import { type TestNode, suite, test, table } from '@overkill-dev/test';
+
 import { workload, type WorkloadParameters } from '../packages/bench/bench.entry-point.ts';
 
 function nestedRecord(depth: number): WorkloadParameters {
@@ -48,7 +49,7 @@ function invalidRecords(): readonly { readonly name: string; readonly value: unk
     ];
 }
 
-export const testNode = authoredSuite('workload descriptors', [
+export const testNode: TestNode = suite('workload descriptors', [
     test('snapshots and freezes JSON inputs without freezing their source', function (scope) {
         const input = { packages: 5, nested: { values: [ 1, 2 ], enabled: true, empty: null } };
         const small = workload(' small ', input);

@@ -2,8 +2,9 @@ import { execFile } from 'node:child_process';
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { test } from '#tests';
-import { resolvePackagedExport } from './packaged-module.test.ts';
+import { type TestNode, test } from '#tests';
+
+import { resolvePackagedExport } from './support/packaged-module.ts';
 
 const modules = {
     core: import.meta.resolve('@stryker-mutator/core'),
@@ -58,16 +59,18 @@ async function runPackagedCampaign(cwd: string): Promise<string> {
     });
 }
 
-export const testNode = test('installed Stryker plugin kills one mutant in a one-line module', async function (scope) {
-    const cwd = await realpath(await mkdtemp(join(tmpdir(), 'overkill-package-stryker-')));
-    scope.cleanup(async function removeConsumer() {
-        await rm(cwd, { recursive: true, force: true });
-    });
-    await writeFile(join(cwd, 'package.json'), '{"type":"module"}');
-    await writeFile(join(cwd, 'subject.mjs'), 'export const value = true;\n');
-    await writeFile(
-        join(cwd, 'overkill.config.mjs'),
-        `
+export const testNode: TestNode = test(
+    'installed Stryker plugin kills one mutant in a one-line module',
+    async function (scope) {
+        const cwd = await realpath(await mkdtemp(join(tmpdir(), 'overkill-package-stryker-')));
+        scope.cleanup(async function removeConsumer() {
+            await rm(cwd, { recursive: true, force: true });
+        });
+        await writeFile(join(cwd, 'package.json'), '{"type":"module"}');
+        await writeFile(join(cwd, 'subject.mjs'), 'export const value = true;\n');
+        await writeFile(
+            join(cwd, 'overkill.config.mjs'),
+            `
 import { defineConfig } from ${JSON.stringify(modules.config)};
 export const config = defineConfig({ profiles: { microtest: {
     testFamily: 'microtest',
@@ -76,10 +79,10 @@ export const config = defineConfig({ profiles: { microtest: {
     timeouts: { collectionMilliseconds: 30000, softMilliseconds: 5000, hardMilliseconds: 10000 }
 } } });
 `
-    );
-    await writeFile(
-        join(cwd, 'case.test.mjs'),
-        `
+        );
+        await writeFile(
+            join(cwd, 'case.test.mjs'),
+            `
 import { createTestCase } from ${JSON.stringify(modules.engine)};
 import { value } from './subject.mjs';
 export const testNode = createTestCase({
@@ -87,7 +90,8 @@ export const testNode = createTestCase({
     body(scope) { scope.assert.equal(value, true); return scope.assert.collect(); }
 });
 `
-    );
-    scope.assert.equal(await runPackagedCampaign(cwd), 'packaged Stryker campaign passed\n');
-    return scope.assert.collect();
-});
+        );
+        scope.assert.equal(await runPackagedCampaign(cwd), 'packaged Stryker campaign passed\n');
+        return scope.assert.collect();
+    }
+);

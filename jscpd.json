@@ -10,7 +10,7 @@
         "**/target/**",
         "**/node_modules/**",
         "**/*.test.ts",
-        "**/source/integration-tests/run/fixtures/**/*.test.ts",
+        "**/source/integration-tests/integration/fixtures/**/*.test.ts",
         "**/*.type-test.ts",
         "**/tsconfig*.json"
     ]

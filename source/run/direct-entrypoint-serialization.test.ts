@@ -1,13 +1,17 @@
-import { test } from '@overkill-dev/test';
+import { type TestNode, test } from '@overkill-dev/test';
 
-import { type TestNode, createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
+import {
+    type TestNode as SubjectTestNode,
+    createSuite,
+    createTestCase
+} from '../packages/engine/engine.entry-point.ts';
 
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import { assertDirectEntrypointCollectionMatches } from './direct-entrypoint-collection.ts';
 
-function passingTest(title: string): TestNode {
+function passingTest(title: string): SubjectTestNode {
     return createTestCase({
         annotations: {},
         body(scope) {
@@ -20,7 +24,7 @@ function passingTest(title: string): TestNode {
     });
 }
 
-export const testNode = test(
+export const testNode: TestNode = test(
     'direct entrypoint collection accepts decoded sibling cases and rejects changed case data',
     function (scope) {
         const expected = defaultRunEngine.createTestPlanFromTestFiles({

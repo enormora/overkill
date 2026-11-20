@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { DefinedReporter, Reporter } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
@@ -162,10 +162,10 @@ async function runTests(
     });
 }
 
-export const testNode = suite('source/run/command-line-fallback-diagnostics.test.ts', [
+export const testNode: TestNode = suite('CLI fallback diagnostics', [
     test(
         'maintenance diagnostics reach stderr without failing a passing command',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const diagnostics = [ 'History maintenance failed: permission denied' ];
             const result = await runTests(memoryReporter, async function runCommand() {
                 return {
@@ -181,7 +181,7 @@ export const testNode = suite('source/run/command-line-fallback-diagnostics.test
             return scope.assert.collect();
         }
     ),
-    test('commandLineRunner.runTests() maps process exhaustion to exit code 5', async function (scope: OverkillScope) {
+    test('maps process exhaustion to exit code 5', async function (scope) {
         const result = await runTests(memoryReporter, async function runCommand() {
             return runnerResultFactory.build({
                 runnerErrors: [
@@ -196,8 +196,8 @@ export const testNode = suite('source/run/command-line-fallback-diagnostics.test
         return scope.assert.collect();
     }),
     test(
-        'commandLineRunner.runTests() maps process exhaustion before generic runner errors',
-        async function (scope: OverkillScope) {
+        'maps process exhaustion before generic runner errors',
+        async function (scope) {
             const result = await runTests(memoryReporter, async function runCommand() {
                 return runnerResultFactory.build({
                     runnerErrors: [
@@ -214,8 +214,8 @@ export const testNode = suite('source/run/command-line-fallback-diagnostics.test
         }
     ),
     test(
-        'commandLineRunner.runTests() omits terminal-delivered runner error fallback diagnostics',
-        async function (scope: OverkillScope) {
+        'omits terminal-delivered runner error fallback diagnostics',
+        async function (scope) {
             const deliveredError = runnerError('Loader failed.', 'loader');
             const result = await runTests(terminalEventReporter, async function runCommand() {
                 const runResult = createRunResult([ deliveredError ]);
@@ -230,8 +230,8 @@ export const testNode = suite('source/run/command-line-fallback-diagnostics.test
         }
     ),
     test(
-        'commandLineRunner.runTests() falls back for finish-only runner errors',
-        async function (scope: OverkillScope) {
+        'falls back for finish-only runner errors',
+        async function (scope) {
             const deliveredError = runnerError('Loader failed.', 'loader');
             const result = await runTests(
                 terminalFinishReporter,
@@ -250,8 +250,8 @@ export const testNode = suite('source/run/command-line-fallback-diagnostics.test
         }
     ),
     test(
-        'commandLineRunner.runTests() falls back for final-result-only runner errors',
-        async function (scope: OverkillScope) {
+        'falls back for final-result-only runner errors',
+        async function (scope) {
             const deliveredError = runnerError('Loader failed.', 'loader');
             const result = await runTests(
                 terminalFinalResultReporter,
@@ -270,8 +270,8 @@ export const testNode = suite('source/run/command-line-fallback-diagnostics.test
         }
     ),
     test(
-        'commandLineRunner.runTests() falls back to runner errors not delivered to terminal reporters',
-        async function (scope: OverkillScope) {
+        'falls back to runner errors not delivered to terminal reporters',
+        async function (scope) {
             const loaderError = runnerError('Loader failed.', 'loader');
             const disposeError = runnerError('Dispose failed.', 'reporter');
             const result = await runTests(terminalEventReporter, async function runCommand() {

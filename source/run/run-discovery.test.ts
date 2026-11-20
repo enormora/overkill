@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createVirtualRunDiscovery } from '../test-support/virtual-run-discovery.ts';
 import type { ProfileFiles } from '../config/types.ts';
@@ -33,7 +33,7 @@ function profileFiles(files: ProfileFiles): ProfileFiles {
     return files;
 }
 
-async function rejectMissingInputs(scope: OverkillScope, filePath: string): Promise<void> {
+async function rejectMissingInputs(scope: TestScope, filePath: string): Promise<void> {
     const discovery = createDiscovery([ filePath ]);
 
     await scope.assert.rejects(async function discoverEmptyInput() {
@@ -51,7 +51,7 @@ async function rejectMissingInputs(scope: OverkillScope, filePath: string): Prom
 }
 
 async function rejectInvalidFileShapes(
-    scope: OverkillScope,
+    scope: TestScope,
     filePath: string,
     outsideFilePath: string
 ): Promise<void> {
@@ -73,8 +73,8 @@ async function rejectInvalidFileShapes(
     }, { message: 'Run path must not be duplicated: example.test.ts' });
 }
 
-export const testNode = suite('source/run/run-discovery.test.ts', [
-    test('discoverRunFiles() resolves canonical file identities under cwd', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Test file discovery', [
+    test('resolves canonical file identities under cwd', async function (scope) {
         const discovery = createDiscovery([ 'nested/example.test.ts' ]);
         const files = await discovery.discoverRunFiles({
             cwd,
@@ -86,7 +86,7 @@ export const testNode = suite('source/run/run-discovery.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('discoverRunFiles() discovers profile files with separate excludes', async function (scope: OverkillScope) {
+    test('discovers profile files with separate excludes', async function (scope) {
         const discovery = createDiscovery([
             'source/unit/a.test.ts',
             'source/unit/b.test.ts',
@@ -108,7 +108,7 @@ export const testNode = suite('source/run/run-discovery.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('discoverRunFiles() annotates explicit files with profile file sets', async function (scope: OverkillScope) {
+    test('annotates explicit files with profile file sets', async function (scope) {
         const discovery = createDiscovery([
             'source/unit/a.test.ts',
             'source/integration/b.test.ts'
@@ -130,7 +130,7 @@ export const testNode = suite('source/run/run-discovery.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('discoverRunFiles() rejects invalid profile file set shapes', async function (scope: OverkillScope) {
+    test('rejects invalid profile file set shapes', async function (scope) {
         const discovery = createDiscovery([ 'source/unit/a.test.ts' ]);
 
         await scope.assert.rejects(async function discoverEmptyFileSets() {
@@ -174,7 +174,7 @@ export const testNode = suite('source/run/run-discovery.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('discoverRunFiles() ignores profile glob matches that are not files', async function (scope: OverkillScope) {
+    test('ignores profile glob matches that are not files', async function (scope) {
         const discovery = createVirtualRunDiscovery({
             cwd,
             directories: [ 'source/unit' ],
@@ -194,7 +194,7 @@ export const testNode = suite('source/run/run-discovery.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('discoverRunFiles() reports empty profile discovery', async function (scope: OverkillScope) {
+    test('reports empty profile discovery', async function (scope) {
         const discovery = createDiscovery([]);
 
         await scope.assert.rejects(async function discoverEmptyProfileFiles() {
@@ -210,7 +210,7 @@ export const testNode = suite('source/run/run-discovery.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('discoverRunFiles() filters profile discovery by directory operands', async function (scope: OverkillScope) {
+    test('filters profile discovery by directory operands', async function (scope) {
         const discovery = createDiscovery([
             'source/unit/a.test.ts',
             'source/unit/nested/b.test.ts',
@@ -232,7 +232,7 @@ export const testNode = suite('source/run/run-discovery.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('discoverRunFiles() rejects ineffective and mixed directory filters', async function (scope: OverkillScope) {
+    test('rejects ineffective and mixed directory filters', async function (scope) {
         const discovery = createVirtualRunDiscovery({
             cwd,
             directories: [ 'source/empty' ],
@@ -275,7 +275,7 @@ export const testNode = suite('source/run/run-discovery.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('discoverRunFiles() rejects directory symlinks outside cwd', async function (scope: OverkillScope) {
+    test('rejects directory symlinks outside cwd', async function (scope) {
         const discovery = createVirtualRunDiscovery({
             cwd,
             directories: [ 'outside-link', '/outside' ],
@@ -298,7 +298,7 @@ export const testNode = suite('source/run/run-discovery.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('discoverRunFiles() rejects unsupported profile glob syntax', async function (scope: OverkillScope) {
+    test('rejects unsupported profile glob syntax', async function (scope) {
         const discovery = createDiscovery([]);
 
         await scope.assert.rejects(async function discoverBlankInclude() {
@@ -354,7 +354,7 @@ export const testNode = suite('source/run/run-discovery.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('discoverRunFiles() rejects invalid explicit inputs before import', async function (scope: OverkillScope) {
+    test('rejects invalid explicit inputs before import', async function (scope) {
         await rejectMissingInputs(scope, 'example.test.ts');
         await rejectInvalidFileShapes(scope, 'example.test.ts', '/outside/outside.test.ts');
         await scope.assert.rejects(async function discoverSpecialFile() {

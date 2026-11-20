@@ -1,11 +1,11 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { mutationInitialization } from '../../test-support/mutation-initialization.ts';
 import { runExecutionFailure } from '../run/run.entry-point.ts';
 import { initializeCampaignRunner } from './mutation-runner-initialization.ts';
 
-export const testNode = authoredSuite('mutation adapter initialization', [
-    test('registers the campaign before freezing policy and creating execution', async function (scope: TestScope) {
+export const testNode: TestNode = suite('mutation adapter initialization', [
+    test('registers the campaign before freezing policy and creating execution', async function (scope) {
         const fixture = await mutationInitialization([ { kind: 'registered', campaign: 'campaign' } ], null);
         const result = await initializeCampaignRunner(fixture.input, fixture.runtime);
         scope.assert.deepEqual(fixture.events, [ 'log', 'sandbox', 'exclude', 'connect', 'connected', 'execute' ]);
@@ -24,7 +24,7 @@ export const testNode = authoredSuite('mutation adapter initialization', [
         });
         return scope.assert.collect();
     }),
-    test('disposes the client when registration exceeds its deadline', async function (scope: TestScope) {
+    test('disposes the client when registration exceeds its deadline', async function (scope) {
         const fixture = await mutationInitialization([ { kind: 'timeout', artifacts: [], data: null } ], null);
         await scope.assert.rejects(async function () {
             return await initializeCampaignRunner(fixture.input, fixture.runtime);
@@ -33,7 +33,7 @@ export const testNode = authoredSuite('mutation adapter initialization', [
         scope.assert.equal(fixture.requests.length, 1);
         return scope.assert.collect();
     }),
-    test('rejects invalid campaign registration responses', async function (scope: TestScope) {
+    test('rejects invalid campaign registration responses', async function (scope) {
         const fixture = await mutationInitialization([ { kind: 'accepted' } ], null);
         await scope.assert.rejects(async function () {
             return await initializeCampaignRunner(fixture.input, fixture.runtime);
@@ -41,7 +41,7 @@ export const testNode = authoredSuite('mutation adapter initialization', [
         scope.assert.equal(fixture.events.at(-1), 'dispose');
         return scope.assert.collect();
     }),
-    test('disposes the client when policy resolution times out', async function (scope: TestScope) {
+    test('disposes the client when policy resolution times out', async function (scope) {
         const fixture = await mutationInitialization([ { kind: 'registered', campaign: 'campaign' }, {
             kind: 'timeout',
             artifacts: [],
@@ -53,7 +53,7 @@ export const testNode = authoredSuite('mutation adapter initialization', [
         scope.assert.equal(fixture.events.at(-1), 'dispose');
         return scope.assert.collect();
     }),
-    test('rejects responses that do not contain a frozen policy', async function (scope: TestScope) {
+    test('rejects responses that do not contain a frozen policy', async function (scope) {
         const fixture = await mutationInitialization([ { kind: 'registered', campaign: 'campaign' }, {
             kind: 'accepted'
         } ], null);
@@ -63,7 +63,7 @@ export const testNode = authoredSuite('mutation adapter initialization', [
         scope.assert.equal(fixture.events.at(-1), 'dispose');
         return scope.assert.collect();
     }),
-    test('restores campaign policy failures and releases the client', async function (scope: TestScope) {
+    test('restores campaign policy failures and releases the client', async function (scope) {
         const fixture = await mutationInitialization([ { kind: 'registered', campaign: 'campaign' }, {
             kind: 'failure',
             artifacts: [],
@@ -76,7 +76,7 @@ export const testNode = authoredSuite('mutation adapter initialization', [
         scope.assert.equal(fixture.events.at(-1), 'dispose');
         return scope.assert.collect();
     }),
-    test('does not connect when sandbox validation fails', async function (scope: TestScope) {
+    test('does not connect when sandbox validation fails', async function (scope) {
         const failure = new Error('sandbox failed');
         const fixture = await mutationInitialization([], failure);
         await scope.assert.rejects(async function () {
@@ -85,7 +85,7 @@ export const testNode = authoredSuite('mutation adapter initialization', [
         scope.assert.deepEqual(fixture.events, [ 'log', 'sandbox' ]);
         return scope.assert.collect();
     }),
-    test('validates adapter options before logging or connecting', async function (scope: TestScope) {
+    test('validates adapter options before logging or connecting', async function (scope) {
         const fixture = await mutationInitialization([], null);
         await scope.assert.rejects(async function () {
             return await initializeCampaignRunner(

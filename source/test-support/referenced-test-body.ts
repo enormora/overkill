@@ -4,16 +4,15 @@ import {
     type ImplementationFacts,
     type ImplementationInputContext
 } from '../implementation-reference.ts';
-import type { TestScope, AssertionResult } from '../packages/engine/engine.entry-point.ts';
 
 type ReferencedTestBodyFixture = {
-    readonly body: BodyReference<TestScope, AssertionResult>;
+    readonly body: BodyReference;
     readonly context: ImplementationInputContext;
     readonly facts: ImplementationFacts;
 };
 export function referencedTestBody(): ReferencedTestBodyFixture {
     const context = { projectRoot: '/project' };
-    const body = defineBodyReference<null, TestScope, AssertionResult>({
+    const body = defineBodyReference<null>({
         module: { moduleUrl: 'file:///project/body.ts', exportName: 'body' },
         realm: 'host',
         version: '1',

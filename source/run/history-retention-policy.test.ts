@@ -1,11 +1,11 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { historyRetention, historyRetentionScenario } from '../test-support/history-retention.ts';
 import { applyHistoryRetention } from './history-pruning.ts';
 import { readCompactHistory } from './history-storage.ts';
 
-export const testNode = authoredSuite('history retention publication', [
-    test('previews record and artifact removals without changing storage', async function (scope: TestScope) {
+export const testNode: TestNode = suite('history retention publication', [
+    test('previews record and artifact removals without changing storage', async function (scope) {
         const fixture = await historyRetention(historyRetentionScenario);
         const result = await applyHistoryRetention(fixture.context, { dryRun: true }, fixture.runtime);
         scope.assert.deepEqual<unknown, unknown>(result, {
@@ -25,7 +25,7 @@ export const testNode = authoredSuite('history retention publication', [
         scope.assert.deepEqual<unknown, unknown>(fixture.written, []);
         return scope.assert.collect();
     }),
-    test('commits retained summaries after removing expired records and artifacts', async function (scope: TestScope) {
+    test('commits retained summaries after removing expired records and artifacts', async function (scope) {
         const fixture = await historyRetention(historyRetentionScenario);
         const result = await applyHistoryRetention(fixture.context, { dryRun: false }, fixture.runtime);
         const index = await readCompactHistory(fixture.context.store, fixture.context.directory);
@@ -45,7 +45,7 @@ export const testNode = authoredSuite('history retention publication', [
     }),
     test(
         'refreshes metadata for retained artifacts and preserves replayable summaries',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = await historyRetention({ ...historyRetentionScenario, keepRecords: true });
             const result = await applyHistoryRetention(fixture.context, { dryRun: false }, fixture.runtime);
             const index = await readCompactHistory(fixture.context.store, fixture.context.directory);
@@ -71,7 +71,7 @@ export const testNode = authoredSuite('history retention publication', [
             return scope.assert.collect();
         }
     ),
-    test('requires a compact history index before deleting records', async function (scope: TestScope) {
+    test('requires a compact history index before deleting records', async function (scope) {
         const fixture = await historyRetention({ ...historyRetentionScenario, missingIndex: true });
         await scope.assert.rejects(async function () {
             return applyHistoryRetention(fixture.context, { dryRun: false }, fixture.runtime);
@@ -82,7 +82,7 @@ export const testNode = authoredSuite('history retention publication', [
         scope.assert.deepEqual<unknown, unknown>(fixture.written, []);
         return scope.assert.collect();
     }),
-    test('expires summaries and case observations past their retention windows', async function (scope: TestScope) {
+    test('expires summaries and case observations past their retention windows', async function (scope) {
         const fixture = await historyRetention({ ...historyRetentionScenario, expired: true });
         const result = await applyHistoryRetention(fixture.context, { dryRun: false }, fixture.runtime);
         const index = await readCompactHistory(fixture.context.store, fixture.context.directory);
@@ -94,7 +94,7 @@ export const testNode = authoredSuite('history retention publication', [
         scope.assert.deepEqual<unknown, unknown>(index?.cases, []);
         return scope.assert.collect();
     }),
-    test('preserves the compact index when a filesystem removal fails', async function (scope: TestScope) {
+    test('preserves the compact index when a filesystem removal fails', async function (scope) {
         const failure = new Error('Cannot remove history.');
         const fixture = await historyRetention({ ...historyRetentionScenario, removalFailure: failure });
         await scope.assert.rejects(async function () {
@@ -106,7 +106,7 @@ export const testNode = authoredSuite('history retention publication', [
         scope.assert.deepEqual<unknown, unknown>(fixture.written, [ '/project/state/runs/new.json' ]);
         return scope.assert.collect();
     }),
-    test('publishes duration retention and summaries in a single history index', async function (scope: TestScope) {
+    test('publishes duration retention and summaries in a single history index', async function (scope) {
         const fixture = await historyRetention(historyRetentionScenario);
         await applyHistoryRetention(fixture.context, { dryRun: false }, fixture.runtime);
         const index = await readCompactHistory(fixture.context.store, fixture.context.directory);

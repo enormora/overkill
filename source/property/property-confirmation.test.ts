@@ -1,7 +1,8 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
-import type { RunResult, TestScope } from '../packages/engine/engine.entry-point.ts';
+import type { RunResult } from '../packages/engine/engine.entry-point.ts';
+
 import { property } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
@@ -16,9 +17,16 @@ function assertConfirmedRecipe(scope: TestScope, result: RunResult, phase: strin
     scope.assert.notNull(evidence.confirmedWitness);
 }
 
-export const testNode = authoredSuite('input recipe confirmation', [
-    ...([ 'examples', 'automatic-edges', 'exhaustive' ] as const).map(function recipePhase(phase) {
-        return authoredTest(`confirms fresh ${phase} inputs without shrink state`, async function (scope: TestScope) {
+export const testNode: TestNode = suite('input recipe confirmation', [
+    table({
+        title: 'confirms fresh inputs without shrink state',
+        cases: [ 'examples', 'automatic-edges', 'exhaustive' ] as const,
+        caseTitle(phase) {
+            return phase;
+        },
+        async test(scope) {
+            const phase = scope.parameters;
+
             const seen: number[] = [];
             const result = await executePropertyNode(
                 property({
@@ -51,9 +59,9 @@ export const testNode = authoredSuite('input recipe confirmation', [
             scope.assert.deepEqual(seen, phase === 'examples' ? [ 42, 42 ] : [ 0, 0 ]);
             assertConfirmedRecipe(scope, result, phase);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('detects non-reproducible examples before requiring shrink state', async function (scope: TestScope) {
+    test('detects non-reproducible examples before requiring shrink state', async function (scope: TestScope) {
         let calls = 0;
         const result = await executePropertyNode(
             property({

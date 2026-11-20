@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 
@@ -47,9 +47,16 @@ const collected: CollectedFamilyMetadata = {
     facts: { id: frozen.id, version: frozen.version, settings: null, preparation: null, collection: null }
 };
 
-export const testNode = authoredSuite('frozen family resolution', [
-    ...([ 'builtin', 'config-file' ] as const).map(function builtinSource(kind) {
-        return authoredTest(`resolves a built-in definition through ${kind}`, async function (scope) {
+export const testNode: TestNode = suite('frozen family resolution', [
+    table({
+        title: 'resolves built-in family definitions',
+        cases: [ 'builtin', 'config-file' ] as const,
+        caseTitle(kind) {
+            return kind;
+        },
+        async test(scope) {
+            const kind = scope.parameters;
+
             const binding = await resolveFrozenFamily(
                 {
                     ...frozen,
@@ -71,9 +78,9 @@ export const testNode = authoredSuite('frozen family resolution', [
             scope.assert.equal(binding.testFamily.id, 'microtest');
             scope.assert.equal(binding.settings, null);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('rejects changed configuration settings before backend loading', async function (scope) {
+    test('rejects changed configuration settings before backend loading', async function (scope) {
         await scope.assert.rejects(async function resolveChangedConfiguration() {
             await resolveFrozenFamily(
                 {
@@ -98,17 +105,17 @@ export const testNode = authoredSuite('frozen family resolution', [
         }, { message: 'Failed to resolve the frozen test family.' });
         return scope.assert.collect();
     }),
-    authoredTest('accepts complete collection facts with unchanged frozen evidence', function (scope) {
+    test('accepts complete collection facts with unchanged frozen evidence', function (scope) {
         scope.assert.equal(validateFrozenFamilyCollection(collected, collected, []), collected);
         return scope.assert.collect();
     }),
-    authoredTest('rejects missing selected collection facts', function (scope) {
+    test('rejects missing selected collection facts', function (scope) {
         scope.assert.throws(function validateMissingCollection() {
             validateFrozenFamilyCollection(collected, null, []);
         }, { message: 'Selected family collection did not return complete facts.' });
         return scope.assert.collect();
     }),
-    authoredTest('rejects collection facts accompanied by a loader failure', function (scope) {
+    test('rejects collection facts accompanied by a loader failure', function (scope) {
         scope.assert.throws(function validateFailedCollection() {
             validateFrozenFamilyCollection(collected, collected, [ {
                 attributedToAttempt: null,
@@ -121,7 +128,7 @@ export const testNode = authoredSuite('frozen family resolution', [
         }, { message: 'Selected family collection did not return complete facts.' });
         return scope.assert.collect();
     }),
-    authoredTest('rejects selected collection facts from a changed catalog', function (scope) {
+    test('rejects selected collection facts from a changed catalog', function (scope) {
         scope.assert.throws(function validateChangedCatalog() {
             validateFrozenFamilyCollection(collected, {
                 ...collected,
@@ -130,7 +137,7 @@ export const testNode = authoredSuite('frozen family resolution', [
         }, { message: 'Frozen family work changed; collect a new run.' });
         return scope.assert.collect();
     }),
-    authoredTest('retains an explicit configuration source through command normalization', function (scope) {
+    test('retains an explicit configuration source through command normalization', function (scope) {
         const source = {
             kind: 'config-file',
             request: { cwd: '/project', configPath: 'overkill.config.ts' },
@@ -152,7 +159,7 @@ export const testNode = authoredSuite('frozen family resolution', [
         scope.assert.equal(snapshot.command.request.profile, 'unit');
         return scope.assert.collect();
     }),
-    authoredTest('rejects changed preparation evidence', function (scope) {
+    test('rejects changed preparation evidence', function (scope) {
         const expected = {
             id: frozen.id,
             version: frozen.version,
@@ -164,7 +171,7 @@ export const testNode = authoredSuite('frozen family resolution', [
         }, { message: 'Frozen family preparation changed; collect a new run.' });
         return scope.assert.collect();
     }),
-    authoredTest('resolves a named branded definition without loading its backend', async function (scope) {
+    test('resolves a named branded definition without loading its backend', async function (scope) {
         const family = definition('1');
         const binding = await resolveFrozenFamily(frozen, 'in-process', {
             async loadConfig() {
@@ -178,43 +185,49 @@ export const testNode = authoredSuite('frozen family resolution', [
         scope.assert.equal(binding.settings, null);
         return scope.assert.collect();
     }),
-    ...[
-        { name: 'a changed version', exported: definition('2'), processModel: 'in-process' },
-        {
-            name: 'a changed identity',
-            exported: defineTestFamily({ ...definition('1'), id: '@example/changed' }),
-            processModel: 'in-process'
-        },
-        {
-            name: 'a factory export',
-            exported() {
-                return definition('1');
+    table({
+        title: 'rejects changed and incompatible family definitions',
+        cases: [
+            { name: 'a changed version', exported: definition('2'), processModel: 'in-process' },
+            {
+                name: 'a changed identity',
+                exported: defineTestFamily({ ...definition('1'), id: '@example/changed' }),
+                processModel: 'in-process'
             },
-            processModel: 'in-process'
+            {
+                name: 'a factory export',
+                exported() {
+                    return definition('1');
+                },
+                processModel: 'in-process'
+            },
+            { name: 'an unbranded export', exported: { id: frozen.id, version: '1' }, processModel: 'in-process' },
+            { name: 'unsupported placement', exported: definition('1'), processModel: 'worker-pool' }
+        ],
+        caseTitle(scenario) {
+            return scenario.name;
         },
-        { name: 'an unbranded export', exported: { id: frozen.id, version: '1' }, processModel: 'in-process' },
-        { name: 'unsupported placement', exported: definition('1'), processModel: 'worker-pool' }
-    ]
-        .map(function invalidResolution(scenario) {
-            return authoredTest(`rejects ${scenario.name}`, async function (scope) {
-                await scope.assert.rejects(async function resolve() {
-                    await resolveFrozenFamily(
-                        frozen,
-                        scenario.processModel === 'worker-pool' ? 'worker-pool' : 'in-process',
-                        {
-                            async loadConfig() {
-                                throw new Error('Unexpected configuration load.');
-                            },
-                            async importModule() {
-                                return { family: scenario.exported };
-                            }
+        async test(scope) {
+            const scenario = scope.parameters;
+
+            await scope.assert.rejects(async function resolve() {
+                await resolveFrozenFamily(
+                    frozen,
+                    scenario.processModel === 'worker-pool' ? 'worker-pool' : 'in-process',
+                    {
+                        async loadConfig() {
+                            throw new Error('Unexpected configuration load.');
+                        },
+                        async importModule() {
+                            return { family: scenario.exported };
                         }
-                    );
-                }, { message: 'Failed to resolve the frozen test family.' });
-                return scope.assert.collect();
-            });
-        }),
-    authoredTest('rejects changed settings normalization before backend loading', async function (scope) {
+                    }
+                );
+            }, { message: 'Failed to resolve the frozen test family.' });
+            return scope.assert.collect();
+        }
+    }),
+    test('rejects changed settings normalization before backend loading', async function (scope) {
         const original = definition('1');
         const family = defineTestFamily({
             id: original.id,
@@ -240,27 +253,33 @@ export const testNode = authoredSuite('frozen family resolution', [
         }, { message: 'Failed to resolve the frozen test family.' });
         return scope.assert.collect();
     }),
-    ...[
-        { name: 'a null namespace', value: null },
-        { name: 'a non-module namespace', value: 42 },
-        { name: 'a missing named export', value: {} }
-    ]
-        .map(function malformedModule(scenario) {
-            return authoredTest(`rejects ${scenario.name}`, async function (scope) {
-                await scope.assert.rejects(async function resolveMalformedModule() {
-                    await resolveFrozenFamily(frozen, 'in-process', {
-                        async loadConfig() {
-                            throw new Error('Unexpected configuration load.');
-                        },
-                        async importModule() {
-                            return scenario.value;
-                        }
-                    });
-                }, { message: 'Failed to resolve the frozen test family.' });
-                return scope.assert.collect();
-            });
-        }),
-    authoredTest('rejects a missing configuration profile without importing a replacement', async function (scope) {
+    table({
+        title: 'rejects malformed family module exports',
+        cases: [
+            { name: 'a null namespace', value: null },
+            { name: 'a non-module namespace', value: 42 },
+            { name: 'a missing named export', value: {} }
+        ],
+        caseTitle(scenario) {
+            return scenario.name;
+        },
+        async test(scope) {
+            const scenario = scope.parameters;
+
+            await scope.assert.rejects(async function resolveMalformedModule() {
+                await resolveFrozenFamily(frozen, 'in-process', {
+                    async loadConfig() {
+                        throw new Error('Unexpected configuration load.');
+                    },
+                    async importModule() {
+                        return scenario.value;
+                    }
+                });
+            }, { message: 'Failed to resolve the frozen test family.' });
+            return scope.assert.collect();
+        }
+    }),
+    test('rejects a missing configuration profile without importing a replacement', async function (scope) {
         let imports = 0;
         await scope.assert.rejects(async function resolveMissingProfile() {
             await resolveFrozenFamily(
@@ -280,7 +299,7 @@ export const testNode = authoredSuite('frozen family resolution', [
         scope.assert.equal(imports, 0);
         return scope.assert.collect();
     }),
-    authoredTest('does not fall back to module resolution after configuration failure', async function (scope) {
+    test('does not fall back to module resolution after configuration failure', async function (scope) {
         let imports = 0;
         await scope.assert.rejects(async function resolve() {
             await resolveFrozenFamily(
@@ -300,7 +319,7 @@ export const testNode = authoredSuite('frozen family resolution', [
         scope.assert.equal(imports, 0);
         return scope.assert.collect();
     }),
-    authoredTest('resolves a local definition through its explicit configuration', async function (scope) {
+    test('resolves a local definition through its explicit configuration', async function (scope) {
         const family = definition('1');
         const config = normalizeConfig({
             profiles: {

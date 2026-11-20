@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { ReporterDelivery } from './reporter-dispatcher.ts';
 import type { ReporterEvent } from './reporter.ts';
@@ -45,8 +45,8 @@ function createRejectingDispatcher(): RejectingDispatcher {
     };
 }
 
-export const testNode = suite('source/engine/reporter-event-queue.test.ts', [
-    test('reporter event queue continues after a previous report rejects', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Reporter event queue', [
+    test('continues after a previous report rejects', async function (scope) {
         const rejectingDispatcher = createRejectingDispatcher();
         const queue = createReporterEventQueue(rejectingDispatcher.delivery);
 

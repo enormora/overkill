@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { rule } from './double-rule.ts';
 import { testDouble, type TestDouble } from './test-double.ts';
@@ -80,8 +80,8 @@ function createRejectedResultRecord(error: Error): RejectedResultRecord {
     return { firstResult, loadValue, promise };
 }
 
-export const testNode = suite('source/doubles/test-double-history-runtime.test.ts', [
-    test('doubles expose aggregate counts for returned calls', function body(scope: OverkillScope) {
+export const testNode: TestNode = suite('Test double history runtime', [
+    test('doubles expose aggregate counts for returned calls', function body(scope) {
         const { loadValue } = createRecordedScopedLoadValue();
 
         scope.assert.equal(loadValue.interactionCount, 1);
@@ -91,7 +91,7 @@ export const testNode = suite('source/doubles/test-double-history-runtime.test.t
 
         return scope.assert.collect();
     }),
-    test('doubles expose aggregate call history for returned calls', function body(scope: OverkillScope) {
+    test('doubles expose aggregate call history for returned calls', function body(scope: TestScope) {
         const { actual, loadValue, receiver } = createRecordedScopedLoadValue();
         const { firstInteraction, firstCall } = loadValue;
         const nthCall = loadValue.nthCall(0);
@@ -122,7 +122,7 @@ export const testNode = suite('source/doubles/test-double-history-runtime.test.t
 
         return scope.assert.collect();
     }),
-    test('doubles expose returned call result history', function body(scope: OverkillScope) {
+    test('doubles expose returned call result history', function body(scope: TestScope) {
         const { actual, loadValue } = createRecordedScopedLoadValue();
         const { lastResult } = loadValue;
 
@@ -132,7 +132,7 @@ export const testNode = suite('source/doubles/test-double-history-runtime.test.t
 
         return scope.assert.collect();
     }),
-    test('doubles expose construction counts for returned constructions', function body(scope: OverkillScope) {
+    test('doubles expose construction counts for returned constructions', function body(scope) {
         const { Client } = createRecordedClientConstructor();
 
         scope.assert.equal(Client.interactionCount, 1);
@@ -141,7 +141,7 @@ export const testNode = suite('source/doubles/test-double-history-runtime.test.t
 
         return scope.assert.collect();
     }),
-    test('doubles expose construction history for returned constructions', function body(scope: OverkillScope) {
+    test('doubles expose construction history for returned constructions', function body(scope: TestScope) {
         const { Client, actual, client } = createRecordedClientConstructor();
         const { firstConstruction, firstInteraction } = Client;
 
@@ -155,7 +155,7 @@ export const testNode = suite('source/doubles/test-double-history-runtime.test.t
 
         return scope.assert.collect();
     }),
-    test('aggregate history counts calls and constructions together', function body(scope: OverkillScope) {
+    test('aggregate history counts calls and constructions together', function body(scope) {
         const { calledClient, calledResult, clientFactoryDouble, constructedClient, constructedResult } =
             createRecordedClientFactory();
 
@@ -167,7 +167,7 @@ export const testNode = suite('source/doubles/test-double-history-runtime.test.t
 
         return scope.assert.collect();
     }),
-    test('aggregate history preserves chronological call and construction order', function body(scope: OverkillScope) {
+    test('aggregate history preserves chronological call and construction order', function body(scope: TestScope) {
         const { calledClient, calledResult, clientFactoryDouble, constructedClient, constructedResult } =
             createRecordedClientFactory();
 
@@ -205,7 +205,7 @@ export const testNode = suite('source/doubles/test-double-history-runtime.test.t
 
         return scope.assert.collect();
     }),
-    test('history records thrown calls', function (scope: OverkillScope) {
+    test('history records thrown calls', function (scope) {
         type LoadValue = (id: string) => string;
 
         const expected = new Error('expected');
@@ -219,7 +219,7 @@ export const testNode = suite('source/doubles/test-double-history-runtime.test.t
 
         return scope.assert.collect();
     }),
-    test('history records missing behavior', function (scope: OverkillScope) {
+    test('history records missing behavior', function (scope) {
         type LoadValue = (id: string) => string;
 
         const missingLoadValue = testDouble<LoadValue>({
@@ -234,7 +234,7 @@ export const testNode = suite('source/doubles/test-double-history-runtime.test.t
 
         return scope.assert.collect();
     }),
-    test('history records unsupported invocation modes', function body(scope: OverkillScope) {
+    test('history records unsupported invocation modes', function body(scope) {
         const Client = testDouble.constructs({ id: 'client' });
 
         scope.assert.throws(function callConstructorDouble() {
@@ -246,7 +246,7 @@ export const testNode = suite('source/doubles/test-double-history-runtime.test.t
 
         return scope.assert.collect();
     }),
-    test('history records thrown constructions with null instances', function body(scope: OverkillScope) {
+    test('history records thrown constructions with null instances', function body(scope: TestScope) {
         type ClientConstructor = new () => ClientWithId;
 
         const error = new Error('expected');
@@ -268,7 +268,7 @@ export const testNode = suite('source/doubles/test-double-history-runtime.test.t
     }),
     test(
         'promise results are recorded immediately without awaiting settlement',
-        async function body(scope: OverkillScope) {
+        async function body(scope: TestScope) {
             const error = new Error('expected');
             const { firstResult, loadValue, promise } = createRejectedResultRecord(error);
 

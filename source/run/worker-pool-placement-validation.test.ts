@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import { defaultFailureArtifactPolicy, type CaseId, type RunResult } from '../packages/engine/engine.entry-point.ts';
@@ -14,7 +14,7 @@ const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { k
 
 type PlacementPlan = NonNullable<WorkerPoolRunRuntime['resolvedRun']['facts']['execution']['placementPlan']>;
 type WorkUnit = PlacementPlan['units'][number];
-export const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
+export const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 export const testCaseMetadata = {
     ...testMetadata
@@ -433,14 +433,14 @@ function runtimeWithInstanceEngine(): WorkerPoolRunRuntime {
     };
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-placement-validation.test.ts',
+    title: 'Worker pool placement validation',
     children: [
         test({
             ...testCaseMetadata,
-            title: 'worker-pool execution rejects placement assignments for missing units',
-            async body(scope: OverkillScope) {
+            title: 'rejects placement assignments for missing units',
+            async body(scope) {
                 await scope.assert.rejects(async function executeMissingUnit() {
                     await executeWorkerPoolUnits(fakeWorkerRuntime(placementPlan()), placementPlanWithMissingUnit(), 0);
                 }, { message: 'Placement assignment referenced an unknown work unit.' });
@@ -449,8 +449,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool execution rejects placement assignments for missing lanes',
-            async body(scope: OverkillScope) {
+            title: 'rejects placement assignments for missing lanes',
+            async body(scope) {
                 await scope.assert.rejects(async function executeMissingLane() {
                     await executeWorkerPoolUnits(fakeWorkerRuntime(placementPlan()), placementPlanWithMissingLane(), 0);
                 }, { message: 'Placement assignment referenced an unknown lane.' });
@@ -459,8 +459,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool execution rejects mixed lifecycle placement lanes',
-            async body(scope: OverkillScope) {
+            title: 'rejects mixed lifecycle placement lanes',
+            async body(scope) {
                 await scope.assert.rejects(async function executeMixedLifecycleLane() {
                     await executeWorkerPoolUnits(
                         fakeWorkerRuntime(placementPlan()),
@@ -473,8 +473,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool execution reports instance engines as crashes',
-            async body(scope: OverkillScope) {
+            title: 'reports instance engines as crashes',
+            async body(scope) {
                 const completed = await executeWorkerPoolUnits(runtimeWithInstanceEngine(), placementPlan(), 0);
                 scope.assert.equal(
                     completed[0]?.state.runnerErrors()[0]?.message,

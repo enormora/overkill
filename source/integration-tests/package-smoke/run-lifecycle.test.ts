@@ -1,7 +1,8 @@
 import { execFile } from 'node:child_process';
 import { rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { suite, test } from '#tests';
+import { type TestNode, suite, test } from '#tests';
+
 import { createProgram, getPreEmitDiagnostics, ModuleKind, ScriptTarget } from 'typescript';
 
 const lifecycleScript = `
@@ -168,7 +169,7 @@ async function executeLifecycleScript(): Promise<string> {
     });
 }
 
-export const testNode = suite('packaged public runner lifecycle', [
+export const testNode: TestNode = suite('packaged public runner lifecycle', [
     test(
         'published runner accepts engine nodes, reporters, and renderers without type aliases',
         async function (scope) {

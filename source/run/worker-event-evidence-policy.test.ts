@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -18,7 +18,7 @@ type AttachmentFixture = {
     readonly runtime: WorkerPoolRunRuntime;
 };
 
-function attachmentFixture(scope: TestScope): AttachmentFixture {
+function attachmentFixture(): AttachmentFixture {
     const source = fakeWorkerRuntime(createCollectedPlan());
     const task = { ...createTaskRun(source.runState), reporterEventsBuffered: true };
     const work = task.members[0].unit.work[0];
@@ -39,13 +39,12 @@ function attachmentFixture(scope: TestScope): AttachmentFixture {
         }
     };
     const attachments = attachmentCoordinationForWork(null, [ work ]);
-    scope.cleanup(attachments.coordinator.close);
     const runtime = { ...source, attachments: attachments.coordinator };
     return { task, work, attachment, runtime };
 }
 
-export const testNode = authoredSuite('worker event evidence ownership', [
-    test('records local worker timing observations', function (scope: TestScope) {
+export const testNode: TestNode = suite('worker event evidence ownership', [
+    test('records local worker timing observations', function (scope) {
         const source = fakeWorkerRuntime(createCollectedPlan());
         const timing = createRunTimingMeasurement(createDeterministicClock({ initialUnixEpochMicroseconds: 0n }));
         const runtime = { ...source, timing };
@@ -65,7 +64,7 @@ export const testNode = authoredSuite('worker event evidence ownership', [
         scope.assert.deepEqual(timing.report().spans, [ { ...span, startOffsetMicroseconds: null } ]);
         return scope.assert.collect();
     }),
-    test('preserves foreign debug checkpoint identities', async function (scope: TestScope) {
+    test('preserves foreign debug checkpoint identities', async function (scope) {
         const runtime = fakeWorkerRuntime(createCollectedPlan());
         const task = { ...createTaskRun(runtime.runState), reporterEventsBuffered: true };
         const { artifact } = await debugArtifactFixture('foreign');
@@ -83,8 +82,8 @@ export const testNode = authoredSuite('worker event evidence ownership', [
         scope.assert.equal(task.state.artifacts()[0]?.id.sequence, 99);
         return scope.assert.collect();
     }),
-    test('settles attachment ownership while retaining ordinary case evidence', function (scope: TestScope) {
-        const { task, work, attachment, runtime } = attachmentFixture(scope);
+    test('settles attachment ownership while retaining ordinary case evidence', function (scope) {
+        const { task, work, attachment, runtime } = attachmentFixture();
         handleWorkerMessage(
             {
                 kind: 'event',

@@ -1,15 +1,16 @@
-import { suite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
-import type { RunResult, ReporterEvent, TestScope } from '../packages/engine/engine.entry-point.ts';
+import type { RunResult, ReporterEvent } from '../packages/engine/engine.entry-point.ts';
+
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
 import { resultWithAttemptHistory } from '../engine/test-attempt-history.ts';
 import { createBriefReporter } from './brief-reporter.ts';
 import { createDotReporter } from './dot-reporter.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+const metadata = { definitionLocations: [ { kind: 'unknown' } ] } as const;
 const context = createReportingContext({ projectRoot: null });
 type TestEndEvent = Extract<ReporterEvent, { readonly kind: 'test-end'; }>;
 
@@ -20,8 +21,8 @@ function recoveredResult(): RunResult {
     });
     return {
         ...result,
-        perTest: result.perTest.map(function recoveredTest(test) {
-            return resultWithAttemptHistory(test, [ {
+        perTest: result.perTest.map(function recoveredTest(testResult) {
+            return resultWithAttemptHistory(testResult, [ {
                 property: null,
                 benchmark: null,
                 attempt: { index: 0 },
@@ -44,8 +45,8 @@ function recoveredResult(): RunResult {
 }
 
 function retryEvent(result: RunResult): TestEndEvent {
-    const test = result.perTest[0];
-    if (test === undefined) {
+    const testResult = result.perTest[0];
+    if (testResult === undefined) {
         throw new Error('Retry reporting requires one logical test.');
     }
     return {
@@ -54,50 +55,53 @@ function retryEvent(result: RunResult): TestEndEvent {
         completion: 'retry',
         attempt: 0,
         artifacts: [],
-        case: test.id,
-        workId: { familyVariant: null, case: test.id, runtimes: [], workload: null },
+        case: testResult.id,
+        workId: { familyVariant: null, case: testResult.id, runtimes: [], workload: null },
         definitionLocations: metadata.definitionLocations,
         durationMicroseconds: 1,
         kind: 'test-end',
-        outcome: test.attempts[0].outcome,
+        outcome: testResult.attempts[0].outcome,
         suitePath: [],
         verdict: 'fail'
     };
 }
 
-export const testNode = suite('source/reporters/retry-reporting.test.ts', [
-    ...([ 'process-exhausted', 'crashed', 'runtime-policy' ] as const).map(function terminalRetry(verdict) {
-        return authoredTest({
-            ...metadata,
-            title: `dot reporter renders terminal retry ${verdict}`,
-            async body(scope: TestScope) {
-                let text = '';
-                const reporter = createDotReporter({
-                    interactive: false,
-                    stdout: {
-                        columns: 80,
-                        on() {
-                            return undefined;
-                        },
-                        off() {
-                            return undefined;
-                        },
-                        write(value) {
-                            text += value;
-                        }
+export const testNode: TestNode = suite('Retry reporting', [
+    table({
+        title: 'renders terminal retry verdicts',
+        cases: [ 'process-exhausted', 'crashed', 'runtime-policy' ] as const,
+        caseTitle(verdict) {
+            return verdict;
+        },
+        async test(scope) {
+            const verdict = scope.parameters;
+
+            let text = '';
+            const reporter = createDotReporter({
+                interactive: false,
+                stdout: {
+                    columns: 80,
+                    on() {
+                        return undefined;
+                    },
+                    off() {
+                        return undefined;
+                    },
+                    write(value) {
+                        text += value;
                     }
-                })(context);
-                const event = retryEvent(recoveredResult());
-                await reporter.onEvent({ ...event, completion: 'final', attempt: 1, outcome: null, verdict });
-                scope.assert.equal(
-                    text,
-                    verdict === 'runtime-policy' ? colors.cyan('?') : colors.red(figures.warning)
-                );
-                return scope.assert.collect();
-            }
-        });
+                }
+            })(context);
+            const event = retryEvent(recoveredResult());
+            await reporter.onEvent({ ...event, completion: 'final', attempt: 1, outcome: null, verdict });
+            scope.assert.equal(
+                text,
+                verdict === 'runtime-policy' ? colors.cyan('?') : colors.red(figures.warning)
+            );
+            return scope.assert.collect();
+        }
     }),
-    authoredTest(
+    test(
         'brief progress counts a final failure once after an intermediate retry',
         async function (scope: TestScope) {
             const reporter = createBriefReporter()(context);
@@ -125,7 +129,7 @@ export const testNode = suite('source/reporters/retry-reporting.test.ts', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'brief summary reports recovered retries without failure annotations',
         async function (scope: TestScope) {
             const reporter = createBriefReporter()(context);
@@ -146,7 +150,7 @@ export const testNode = suite('source/reporters/retry-reporting.test.ts', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'dot reporter omits retry marks and reports recovered logical counts',
         async function (scope: TestScope) {
             let text = '';

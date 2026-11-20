@@ -1,5 +1,6 @@
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 import type { JsonValue } from 'type-fest';
+import type { TestScope } from '@overkill-dev/test';
 import {
     createInvocationBudget,
     type InvocationBudget,
@@ -13,7 +14,6 @@ import {
 import { createMutationBaseline } from '../packages/stryker-runner/mutation-baseline.ts';
 import { campaignBaselineSchema, type CampaignBaseline } from '../packages/stryker-runner/mutation-catalog.ts';
 import type { ReadyMutationRunner } from '../packages/stryker-runner/mutation-runner-initialization.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
 
 const invocationMilliseconds = 50;
 export type MutationInvocationFixture = {

@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import { defineFixedReporter } from '../test-support/reporter-definition.ts';
@@ -281,7 +281,7 @@ function createLimitedConcurrencyScenario(): LimitedConcurrencyScenario {
     };
 }
 
-function assertLimitedResult(scope: OverkillScope, result: RunResult): void {
+function assertLimitedResult(scope: TestScope, result: RunResult): void {
     scope.assert.deepEqual(result.runnerErrors, []);
     scope.assert.deepEqual(
         result.perTest.map(function toTitle(testResult) {
@@ -328,10 +328,10 @@ async function executeFatalLimitedPlan(recordStart: (title: string) => void): Pr
     });
 }
 
-export const testNode = suite('source/engine/execution-concurrent-reporting.test.ts', [
+export const testNode: TestNode = suite('Concurrent execution reporting', [
     test(
-        'execute() runs concurrent in-process cases with plan-ordered starts and results',
-        async function (scope: OverkillScope) {
+        'runs concurrent in-process cases with plan-ordered starts and results',
+        async function (scope) {
             const engine = createEngine();
             const scenario = createPlanOrderedConcurrentScenario(engine);
             const execution = executeConcurrentTestPlan(engine, scenario.testPlan, scenario.reporter);
@@ -351,7 +351,7 @@ export const testNode = suite('source/engine/execution-concurrent-reporting.test
             return scope.assert.collect();
         }
     ),
-    test('execute() serializes reporter callbacks during concurrent execution', async function (scope: OverkillScope) {
+    test('serializes reporter callbacks during concurrent execution', async function (scope) {
         const engine = createEngine();
         const scenario = createReporterSerializationScenario(engine);
         const execution = executeConcurrentTestPlan(engine, scenario.testPlan, scenario.reporter);
@@ -364,7 +364,7 @@ export const testNode = suite('source/engine/execution-concurrent-reporting.test
 
         return scope.assert.collect();
     }),
-    test('execute() admits concurrent cases through a sliding limit', async function (scope: OverkillScope) {
+    test('admits concurrent cases through a sliding limit', async function (scope) {
         const scenario = createLimitedConcurrencyScenario();
 
         await scenario.initialCasesStarted.promise;
@@ -378,7 +378,7 @@ export const testNode = suite('source/engine/execution-concurrent-reporting.test
 
         return scope.assert.collect();
     }),
-    test('execute() does not start queued cases after a fatal error', async function (scope: OverkillScope) {
+    test('does not start queued cases after a fatal error', async function (scope) {
         const startedCases: string[] = [];
         const result = await executeFatalLimitedPlan(function recordStart(title) {
             startedCases.push(title);

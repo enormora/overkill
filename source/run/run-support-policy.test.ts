@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { TestRuntimePolicy } from '../engine/case-execution-context.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -37,14 +37,14 @@ const transparentPolicy: TestRuntimePolicy = {
         return [];
     }
 };
-export const testNode = authoredSuite('run support policy boundaries', [
-    test('preserves a lone runtime policy on either side of composition', function (scope: TestScope) {
+export const testNode: TestNode = suite('run support policy boundaries', [
+    test('preserves a lone runtime policy on either side of composition', function (scope) {
         scope.assert.equal(composeRunRuntimePolicies(transparentPolicy, null), transparentPolicy);
         scope.assert.equal(composeRunRuntimePolicies(null, transparentPolicy), transparentPolicy);
         scope.assert.equal(composeRunRuntimePolicies(null, null), null);
         return scope.assert.collect();
     }),
-    test('requires executable selection when witness context is present', function (scope: TestScope) {
+    test('requires executable selection when witness context is present', function (scope) {
         const command = Object.assign(metadataCommand('supervised-process'), {
             propertyReplay: { retained: 'witness' }
         });
@@ -58,7 +58,7 @@ export const testNode = authoredSuite('run support policy boundaries', [
         scope.assert.deepEqual(propertyReplayContext(metadataCommand('supervised-process')), {});
         return scope.assert.collect();
     }),
-    test('attaches benchmark collection failure metadata through run finalization', async function (scope: TestScope) {
+    test('attaches benchmark collection failure metadata through run finalization', async function (scope) {
         const command = metadataCommand('supervised-process');
         const result = await withRunErrorMetadata(runResultFactory.build(), command, null);
         scope.assert.equal(readBenchmarkRunMetadata(result.preparationFacts)?.execution.profile, 'startup');

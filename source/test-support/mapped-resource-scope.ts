@@ -1,5 +1,5 @@
+import type { TestScope } from '@overkill-dev/test';
 import { attachComposedResourceActions } from '../packages/test/resource-wrapper-composition.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
 
 export async function mappedResourceScope(value: unknown, scope: TestScope): Promise<unknown> {
     const body: unknown = Reflect.apply(attachComposedResourceActions, undefined, [ [ {

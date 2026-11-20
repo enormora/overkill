@@ -1,10 +1,9 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import type { NormalizedConfig } from '../config/types.ts';
-import { testNode as requests } from './run-request-validation-policy.test.ts';
-import { testNode as frozenSource } from './frozen-policy-validation-policy.test.ts';
+
 import type { RunCommand, RunRequest } from './run-types.ts';
 import { validateRunInput } from './run-validation.ts';
 
@@ -15,7 +14,7 @@ type RunCommandParts = {
     readonly request: RunRequest;
 };
 
-const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 const defaultConfig: NormalizedConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
@@ -34,10 +33,8 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
     };
 }
 
-export const testNode = suite('source/run/run-validation.test.ts', [
-    requests,
-    frozenSource,
-    test('programmatic calls can omit debug activation', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Run validation', [
+    test('programmatic calls can omit debug activation', async function (scope) {
         const orchestrator = createUnitRunOrchestrator();
         const { debug: _debug, ...request } = defaultRequest;
         const command = {
@@ -52,7 +49,7 @@ export const testNode = suite('source/run/run-validation.test.ts', [
         scope.assert.deepEqual(result.artifacts, []);
         return scope.assert.collect();
     }),
-    test('programmatic debug requests validate their shape and selectors', function (scope: OverkillScope) {
+    test('programmatic debug requests validate their shape and selectors', function (scope) {
         const command = { config: defaultConfig, cwd: process.cwd(), engine: { kind: 'default' as const } };
         const empty = { mode: 'selected', selectors: [] } as unknown as RunRequest['debug'];
         scope.assert.throws(function validateEmptySelection() {
@@ -66,7 +63,7 @@ export const testNode = suite('source/run/run-validation.test.ts', [
         }, { message: 'Run filter expression must not be empty.' });
         return scope.assert.collect();
     }),
-    test('orchestrator.resolve() rejects invalid sharding', async function (scope: OverkillScope) {
+    test('orchestrator.resolve() rejects invalid sharding', async function (scope) {
         const runOrchestrator = createUnitRunOrchestrator();
         const invalidShardCases = [
             { message: 'Shard total must be a positive safe integer.', shard: { index: 1, total: 0 } },
@@ -89,7 +86,7 @@ export const testNode = suite('source/run/run-validation.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('orchestrator.run() rejects invalid requests before collection', async function (scope: OverkillScope) {
+    test('orchestrator.run() rejects invalid requests before collection', async function (scope) {
         const runOrchestrator = createUnitRunOrchestrator();
 
         await scope.assert.rejects(async function runInvalidRequest() {

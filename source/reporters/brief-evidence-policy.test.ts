@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { FailedCheck } from '../packages/engine/engine.entry-point.ts';
 import type { RunResult, PropertyCaseEvidence } from '../engine/run-result.ts';
@@ -68,8 +68,8 @@ function summaryEvidence(): RunResult {
         })
     };
 }
-export const testNode = authoredSuite('brief final evidence rendering', [
-    test('renders property diagnostics and collected unit coverage summaries', function (scope: TestScope) {
+export const testNode: TestNode = suite('brief final evidence rendering', [
+    test('renders property diagnostics and collected unit coverage summaries', function (scope) {
         const lines = briefSummaryIntents(summaryEvidence()).map(function text(intent) {
             return intent.text;
         });
@@ -81,7 +81,7 @@ export const testNode = authoredSuite('brief final evidence rendering', [
         }));
         return scope.assert.collect();
     }),
-    test('renders every lifetime resource finding with its target', function (scope: TestScope) {
+    test('renders every lifetime resource finding with its target', function (scope) {
         const check = failedCheck();
         const result: RunResult = {
             ...runResultFactory.build({}),

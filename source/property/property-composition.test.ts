@@ -1,27 +1,31 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { type EngineCaseBody, createTestEngine } from '../test-support/create-test-engine.ts';
+import {
+    createTestFacade,
+    test as subjectTest,
+    table as subjectTable,
+    suite as subjectSuite
+} from '../packages/test/test.entry-point.ts';
 
 import {
     readTestBodyFamily,
-    type TestBody,
-    type TestNode,
+    type TestNode as SubjectTestNode,
     type TestPlan,
     type TestPlanCase,
-    type TestScope,
     createRoot,
     createTestPlan,
     createWorkloadTestCase
 } from '../packages/engine/engine.entry-point.ts';
 
-import { suite, table, test, createTestFacade } from '../packages/test/test.entry-point.ts';
 import { defineResource, defineRuntime, withResource, withRuntime } from '../packages/test/resources.entry-point.ts';
-import { createTestEngine } from '../test-support/create-test-engine.ts';
+
 import { unexecutedGenerator } from '../test-support/property-generator.ts';
 import { stampTestNodeFamily } from '../engine/test-node.ts';
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import { resolveTestPlanCollectionPolicy } from '../run/run-selection.ts';
 import { property, withProperties } from './property-authoring.ts';
 
-function planFor(node: TestNode): TestPlan {
+function planFor(node: SubjectTestNode): TestPlan {
     return createTestPlan(createRoot({ annotations: {}, children: [ node ], controls: {}, title: 'composition root' }));
 }
 
@@ -29,8 +33,8 @@ function unexpectedBody(): never {
     throw new Error('Nested body must not execute.');
 }
 
-async function assertUnavailableResourceProperty(scope: TestScope, body: TestBody): Promise<void> {
-    const plan = planFor(test('resource property', body));
+async function assertUnavailableResourceProperty(scope: TestScope, body: EngineCaseBody): Promise<void> {
+    const plan = planFor(subjectTest('resource property', body));
     scope.assert.equal(plan.cases[0].testFamily, 'property');
     scope.assert.deepEqual(plan.cases[0].resourceAttachments.directResources, [ {
         key: 'fixture',
@@ -45,7 +49,7 @@ async function assertUnavailableResourceProperty(scope: TestScope, body: TestBod
     );
 }
 
-function assertNestedPropertyDeclaration(scope: TestScope, planned: TestPlanCase, body: TestBody): void {
+function assertNestedPropertyDeclaration(scope: TestScope, planned: TestPlanCase, body: EngineCaseBody): void {
     scope.assert.equal(planned.testFamily, 'property');
     if (planned.execution.kind !== 'body') {
         throw new Error('Expected an executable property declaration.');
@@ -53,8 +57,8 @@ function assertNestedPropertyDeclaration(scope: TestScope, planned: TestPlanCase
     scope.assert.equal(readTestBodyFamily(planned.execution.body)?.definition, readTestBodyFamily(body)?.definition);
 }
 
-export const testNode = authoredSuite('property composition', [
-    authoredTest('property profiles reject resource descriptors before acquisition', function (scope) {
+export const testNode: TestNode = suite('property composition', [
+    test('property profiles reject resource descriptors before acquisition', function (scope) {
         let acquisitions = 0;
         const resource = defineResource({
             name: 'fixture',
@@ -66,7 +70,7 @@ export const testNode = authoredSuite('property composition', [
             },
             dispose: null
         });
-        const plan = planFor(test('resource property', withProperties(withResource(resource, unexpectedBody))));
+        const plan = planFor(subjectTest('resource property', withProperties(withResource(resource, unexpectedBody))));
         scope.assert.throws(function collectPropertyResource() {
             resolveTestPlanCollectionPolicy(plan, {
                 testFamily: 'property',
@@ -77,7 +81,7 @@ export const testNode = authoredSuite('property composition', [
         scope.assert.equal(acquisitions, 0);
         return scope.assert.collect();
     }),
-    authoredTest('resource wrapper orders preserve declarations and prevent acquisition', async function (scope) {
+    test('resource wrapper orders preserve declarations and prevent acquisition', async function (scope) {
         let acquisitions = 0;
         const resource = defineResource({
             name: 'fixture',
@@ -100,7 +104,7 @@ export const testNode = authoredSuite('property composition', [
         ) {
             throw new Error('Expected a property body.');
         }
-        const bodies: readonly TestBody[] = [
+        const bodies: readonly EngineCaseBody[] = [
             withResource(resource, withProperties(unexpectedBody)),
             withResource(resource, firstClass.execution.body),
             withProperties(withResource(resource, unexpectedBody))
@@ -111,7 +115,7 @@ export const testNode = authoredSuite('property composition', [
         scope.assert.equal(acquisitions, 0);
         return scope.assert.collect();
     }),
-    authoredTest('runtime wrappers and facade mapping preserve nested declarations', function (scope) {
+    test('runtime wrappers and facade mapping preserve nested declarations', function (scope) {
         const runtime = defineRuntime({ name: 'local', dimensions: {}, resources: {}, requirements: [] });
         const nested = withProperties(unexpectedBody);
         const facade = createTestFacade({
@@ -122,8 +126,8 @@ export const testNode = authoredSuite('property composition', [
         });
         for (
             const node of [
-                test('runtime outside', withRuntime(runtime, nested)),
-                test('property outside', withProperties(withRuntime(runtime, unexpectedBody))),
+                subjectTest('runtime outside', withRuntime(runtime, nested)),
+                subjectTest('property outside', withProperties(withRuntime(runtime, unexpectedBody))),
                 facade.test('facade property', nested)
             ]
         ) {
@@ -133,10 +137,10 @@ export const testNode = authoredSuite('property composition', [
         }
         return scope.assert.collect();
     }),
-    authoredTest('tables and workloads resolve property identity from each final body', function (scope) {
+    test('tables and workloads resolve property identity from each final body', function (scope) {
         const body = withProperties(unexpectedBody);
         const nodes = [
-            table({ title: 'property rows', cases: [ 1, 2 ], test: body }),
+            subjectTable({ title: 'property rows', cases: [ 1, 2 ], test: body }),
             createWorkloadTestCase({
                 annotations: {},
                 controls: {},
@@ -157,8 +161,8 @@ export const testNode = authoredSuite('property composition', [
         }
         return scope.assert.collect();
     }),
-    authoredTest('table family stamps cannot conceal property bodies', function (scope) {
-        const node = table({ title: 'conflict', cases: [ 1, 2 ], test: withProperties(unexpectedBody) });
+    test('table family stamps cannot conceal property bodies', function (scope) {
+        const node = subjectTable({ title: 'conflict', cases: [ 1, 2 ], test: withProperties(unexpectedBody) });
         stampTestNodeFamily(node, 'microtest');
         scope.assert.throws(function () {
             return planFor(node);
@@ -167,13 +171,13 @@ export const testNode = authoredSuite('property composition', [
         });
         return scope.assert.collect();
     }),
-    authoredTest('selection excludes unavailable property execution', async function (scope: TestScope) {
-        const nested = test('excluded', withProperties(unexpectedBody));
-        const ordinary = test('selected', function (inner) {
+    test('selection excludes unavailable property execution', async function (scope: TestScope) {
+        const nested = subjectTest('excluded', withProperties(unexpectedBody));
+        const ordinary = subjectTest('selected', function (inner) {
             inner.assert.equal(Object.hasOwn(inner, 'forall'), false);
             return inner.assert.collect();
         });
-        const plan = planFor(suite('selected cases', [ nested, ordinary ]));
+        const plan = planFor(subjectSuite('selected cases', [ nested, ordinary ]));
         const selected = plan.cases[1];
         scope.require.defined(selected);
         const result = await createTestEngine().execute({ ...plan, cases: [ selected ] });

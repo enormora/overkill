@@ -1,7 +1,7 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { resourceImplementationBinding } from '../test-support/resource-implementation-binding.ts';
-import { testNode as observers } from './resource-observer-binding.test.ts';
+
 import { defineResourceReference } from './resource-reference.ts';
 import { resourceImplementationParticipants } from './resource-implementation-participants.ts';
 import { resourceReferenceCallbacks } from './resource-reference-binding.ts';
@@ -14,8 +14,7 @@ const resourceDeclaration = {
     scenarios: {},
     workload: null
 } as const;
-export const testNode = authoredSuite('resource implementation binding', [
-    observers,
+export const testNode: TestNode = suite('resource implementation binding', [
     test('binds owner acquisition, disposal, projection and scenario exposure', async function (scope: TestScope) {
         const fixture = resourceImplementationBinding();
         const callbacks = fixture.owner.bind(fixture.admission);
@@ -36,7 +35,7 @@ export const testNode = authoredSuite('resource implementation binding', [
         });
         return scope.assert.collect();
     }),
-    test('preserves absent owner callbacks', function (scope: TestScope) {
+    test('preserves absent owner callbacks', function (scope) {
         const fixture = resourceImplementationBinding();
         const callbacks = fixture.owner.bind({
             ...fixture.admission,
@@ -59,7 +58,7 @@ export const testNode = authoredSuite('resource implementation binding', [
         }, { dispose: null, serialize: null, expose: null });
         return scope.assert.collect();
     }),
-    test('rejects changed admitted inputs before calling the owner', function (scope: TestScope) {
+    test('rejects changed admitted inputs before calling the owner', function (scope) {
         const fixture = resourceImplementationBinding();
         scope.assert.throws(function () {
             return fixture.owner.bind({
@@ -70,7 +69,7 @@ export const testNode = authoredSuite('resource implementation binding', [
         scope.assert.deepEqual(fixture.events, []);
         return scope.assert.collect();
     }),
-    test('rejects invalid owner callback shapes', function (scope: TestScope) {
+    test('rejects invalid owner callback shapes', function (scope) {
         const fixture = resourceImplementationBinding();
         for (const field of [ 'acquire', 'dispose', 'exposeHandle', 'serializeHandle' ]) {
             scope.assert.throws(function () {
@@ -97,7 +96,7 @@ export const testNode = authoredSuite('resource implementation binding', [
         });
         return scope.assert.collect();
     }),
-    test('preserves absent consumer exposure and rejects native projection payloads', function (scope: TestScope) {
+    test('preserves absent consumer exposure and rejects native projection payloads', function (scope) {
         const fixture = resourceImplementationBinding();
         const callbacks = fixture.consumer.bind({
             ...fixture.admission,
@@ -113,7 +112,7 @@ export const testNode = authoredSuite('resource implementation binding', [
         }, { message: 'Portable inputs require lossless, acyclic JSON.' });
         return scope.assert.collect();
     }),
-    test('rejects invalid consumer callbacks', function (scope: TestScope) {
+    test('rejects invalid consumer callbacks', function (scope) {
         const fixture = resourceImplementationBinding();
         for (const field of [ 'deserializeHandle', 'exposeHandle' ]) {
             scope.assert.throws(function () {

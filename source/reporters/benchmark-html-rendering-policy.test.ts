@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
 import { validateReporterRunFacts } from '../engine/reporter.ts';
@@ -100,32 +100,38 @@ function lifecycleModel(): BenchmarkHtmlReport {
         context: { id: null, startedAt: null, facts: null }
     });
 }
-export const testNode = authoredSuite('benchmark HTML rendering', [
-    ...[ null, { mode: 'off' as const } ].map(function garbageCollectionEvidence(garbageCollection) {
-        return authoredTest(
-            `renders garbage collection evidence ${garbageCollection?.mode ?? 'unavailable'}`,
-            function (scope: TestScope) {
-                const report = lifecycleModel();
-                const first = report.cases[0];
-                scope.require.defined(first);
-                scope.require.defined(first.lifecycle);
-                const html = renderBenchmarkHtml({
-                    ...report,
-                    cases: [ { ...first, lifecycle: { ...first.lifecycle, garbageCollection } } ]
-                }, '');
-                scope.assert.includes(
-                    html,
-                    `<td>${garbageCollection?.mode ?? 'unavailable'}</td><td>unavailable</td><td>unavailable</td>`
-                );
-                scope.assert.includes(
-                    html,
-                    '<td>recorded target</td><td>monotonic</td><td>12</td><td>14</td><td>complete</td>'
-                );
-                return scope.assert.collect();
-            }
-        );
+export const testNode: TestNode = suite('benchmark HTML rendering', [
+    table({
+        title: 'renders garbage collection evidence',
+        cases: [ null, { mode: 'off' as const } ],
+        caseTitle(garbageCollection) {
+            return garbageCollection?.mode ?? 'unavailable';
+        },
+        test(scope) {
+            const require: typeof scope.require = scope.require;
+
+            const garbageCollection = scope.parameters;
+
+            const report = lifecycleModel();
+            const first = report.cases[0];
+            require.defined(first);
+            require.defined(first.lifecycle);
+            const html = renderBenchmarkHtml({
+                ...report,
+                cases: [ { ...first, lifecycle: { ...first.lifecycle, garbageCollection } } ]
+            }, '');
+            scope.assert.includes(
+                html,
+                `<td>${garbageCollection?.mode ?? 'unavailable'}</td><td>unavailable</td><td>unavailable</td>`
+            );
+            scope.assert.includes(
+                html,
+                '<td>recorded target</td><td>monotonic</td><td>12</td><td>14</td><td>complete</td>'
+            );
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('renders recorded cooldown outcomes and durations', function (scope: TestScope) {
+    test('renders recorded cooldown outcomes and durations', function (scope: TestScope) {
         const report = lifecycleModel();
         const first = report.cases[0];
         scope.require.defined(first);
@@ -150,7 +156,7 @@ export const testNode = authoredSuite('benchmark HTML rendering', [
         scope.assert.includes(html, '<td>settled</td><td>250</td>');
         return scope.assert.collect();
     }),
-    authoredTest('identifies recorded timelines that contain no events', function (scope: TestScope) {
+    test('identifies recorded timelines that contain no events', function (scope) {
         const report = lifecycleModel();
         const timelines = [ {
             label: 'empty',
@@ -168,7 +174,7 @@ export const testNode = authoredSuite('benchmark HTML rendering', [
         scope.assert.includes(html, 'No timeline events are available.');
         return scope.assert.collect();
     }),
-    authoredTest('renders warmup and cleanup separately from measured distributions', function (scope: TestScope) {
+    test('renders warmup and cleanup separately from measured distributions', function (scope) {
         const html = renderBenchmarkHtml(lifecycleModel(), '');
         scope.assert.includes(html, 'Warmup samples');
         scope.assert.includes(
@@ -179,7 +185,7 @@ export const testNode = authoredSuite('benchmark HTML rendering', [
         scope.assert.includes(html, 'Warmup raw evidence: recorded');
         return scope.assert.collect();
     }),
-    authoredTest('identifies historical lifecycle evidence as unavailable', function (scope: TestScope) {
+    test('identifies historical lifecycle evidence as unavailable', function (scope) {
         const html = renderBenchmarkHtml(
             createBenchmarkHtmlReport({
                 result: benchmarkHtmlFixture('historical'),
@@ -190,7 +196,7 @@ export const testNode = authoredSuite('benchmark HTML rendering', [
         scope.assert.includes(html, 'Lifecycle evidence unavailable.');
         return scope.assert.collect();
     }),
-    authoredTest('rejects blank output paths and missing benchmark evidence', function (scope: TestScope) {
+    test('rejects blank output paths and missing benchmark evidence', function (scope) {
         scope.assert.throws(function () {
             createBenchmarkHtmlReporter({ outputFile: ' '.repeat(3) });
         }, { message: 'Benchmark HTML report outputFile must not be blank.' });
@@ -203,7 +209,7 @@ export const testNode = authoredSuite('benchmark HTML rendering', [
         }, { message: 'Benchmark HTML reporter requires benchmark result evidence.' });
         return scope.assert.collect();
     }),
-    authoredTest('renders open budget intervals without inferred estimates', function (scope: TestScope) {
+    test('renders open budget intervals without inferred estimates', function (scope) {
         const html = unboundedBenchmarkHtml(scope);
         scope.assert.includes(
             html,
@@ -212,7 +218,7 @@ export const testNode = authoredSuite('benchmark HTML rendering', [
         scope.assert.includes(html, '<td>false</td><td>undecided</td>');
         return scope.assert.collect();
     }),
-    authoredTest('retains authoritative intervals without embedding raw observations', function (scope: TestScope) {
+    test('retains authoritative intervals without embedding raw observations', function (scope: TestScope) {
         const report = createBenchmarkHtmlReport({
             result: benchmarkHtmlFixture('latency'),
             context: { id: null, startedAt: null, facts: null }
@@ -227,7 +233,7 @@ export const testNode = authoredSuite('benchmark HTML rendering', [
         scope.assert.equal(JSON.stringify(report).includes('"availability":"available"'), false);
         return scope.assert.collect();
     }),
-    authoredTest('escapes untrusted names in HTML and embedded chart scripts', function (scope: TestScope) {
+    test('escapes untrusted names in HTML and embedded chart scripts', function (scope) {
         const report = createBenchmarkHtmlReport({
             result: benchmarkHtmlFixture('</script><script>attack()</script>'),
             context: { id: null, startedAt: null, facts: null }
@@ -239,7 +245,7 @@ export const testNode = authoredSuite('benchmark HTML rendering', [
         scope.assert.includes(html, 'noscript');
         return scope.assert.collect();
     }),
-    authoredTest('rejects non-benchmark facts before creating output', function (scope: TestScope) {
+    test('rejects non-benchmark facts before creating output', function (scope) {
         const reporter = createBenchmarkHtmlReporter({ outputFile: 'target/unwanted-benchmark.html' });
         scope.assert.throws(function () {
             validateReporterRunFacts(reporter, { execution: { testFamily: 'microtest' } });

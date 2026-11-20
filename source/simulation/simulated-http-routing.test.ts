@@ -1,7 +1,7 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { simulatedHttpRequest } from '../test-support/simulated-http-request.ts';
-import { testNode as lifecycle } from './simulated-http-lifecycle.test.ts';
+
 import { defineSimulatedHttpServer } from './simulation.ts';
 
 const simulation = defineSimulatedHttpServer({
@@ -21,8 +21,8 @@ function responseText(body: Uint8Array | string | null): string {
     const decoder = new TextDecoder();
     return typeof body === 'string' ? body : decoder.decode(body ?? new Uint8Array());
 }
-export const testNode = authoredSuite('simulated HTTP request routing', [
-    test('retains both handler failures and failures writing the error response', async function (scope: TestScope) {
+export const testNode: TestNode = suite('simulated HTTP request routing', [
+    test('retains both handler failures and failures writing the error response', async function (scope) {
         const failure = new Error('Handler failed.');
         const responseFailure = new Error('Response closed.');
         const fixture = simulatedHttpRequest(
@@ -41,7 +41,7 @@ export const testNode = authoredSuite('simulated HTTP request routing', [
         scope.assert.equal(fixture.response.status, null);
         return scope.assert.collect();
     }),
-    test('uses the root path when an incoming request has no URL', async function (scope: TestScope) {
+    test('uses the root path when an incoming request has no URL', async function (scope) {
         const fixture = simulatedHttpRequest(scope, simulation);
         Reflect.deleteProperty(fixture.request, 'url');
         await fixture.serve();
@@ -49,7 +49,7 @@ export const testNode = authoredSuite('simulated HTTP request routing', [
         scope.assert.deepEqual(fixture.errors, []);
         return scope.assert.collect();
     }),
-    test('uses GET without consuming a body when an incoming method is absent', async function (scope: TestScope) {
+    test('uses GET without consuming a body when an incoming method is absent', async function (scope) {
         const fixture = simulatedHttpRequest(scope, simulation);
         Reflect.deleteProperty(fixture.request, 'method');
         const pending = fixture.serve();
@@ -59,7 +59,7 @@ export const testNode = authoredSuite('simulated HTTP request routing', [
         scope.assert.deepEqual(fixture.errors, []);
         return scope.assert.collect();
     }),
-    test('accepts portable request bytes and scalar or repeated headers', async function (scope: TestScope) {
+    test('accepts portable request bytes and scalar or repeated headers', async function (scope) {
         const fixture = simulatedHttpRequest(scope, simulation);
         fixture.request.method = 'POST';
         fixture.request.headers = { 'x-one': 'one', 'x-repeat': [ 'a', 'b' ], unused: undefined };
@@ -77,8 +77,7 @@ export const testNode = authoredSuite('simulated HTTP request routing', [
         scope.assert.deepEqual(fixture.errors, []);
         return scope.assert.collect();
     }),
-    lifecycle,
-    test('routes the default scenario and records its response', async function (scope: TestScope) {
+    test('routes the default scenario and records its response', async function (scope) {
         const fixture = simulatedHttpRequest(scope, simulation);
         await fixture.serve();
         scope.assert.equal(fixture.response.status, 200);
@@ -93,7 +92,7 @@ export const testNode = authoredSuite('simulated HTTP request routing', [
         scope.assert.deepEqual(fixture.errors, []);
         return scope.assert.collect();
     }),
-    test('removes scenario selection from the request delivered to the handler', async function (scope: TestScope) {
+    test('removes scenario selection from the request delivered to the handler', async function (scope) {
         const fixture = simulatedHttpRequest(scope, simulation);
         fixture.request.url = '/resource?value=one&__overkill_scenario=unavailable';
         await fixture.serve();
@@ -108,7 +107,7 @@ export const testNode = authoredSuite('simulated HTTP request routing', [
         scope.assert.equal(fixture.transcript.entryCount, 1);
         return scope.assert.collect();
     }),
-    test('rejects unknown scenarios without invoking a handler', async function (scope: TestScope) {
+    test('rejects unknown scenarios without invoking a handler', async function (scope) {
         const fixture = simulatedHttpRequest(scope, simulation);
         fixture.request.url = '/?__overkill_scenario=missing';
         await fixture.serve();
@@ -118,7 +117,7 @@ export const testNode = authoredSuite('simulated HTTP request routing', [
         scope.assert.equal(fixture.transcript.entryCount, 1);
         return scope.assert.collect();
     }),
-    test('combines incoming body chunks and repeated headers', async function (scope: TestScope) {
+    test('combines incoming body chunks and repeated headers', async function (scope) {
         const fixture = simulatedHttpRequest(scope, simulation);
         fixture.request.method = 'POST';
         fixture.request.headers = { 'x-values': [ 'one', 'two' ], unused: undefined };
@@ -136,7 +135,7 @@ export const testNode = authoredSuite('simulated HTTP request routing', [
         });
         return scope.assert.collect();
     }),
-    test('does not read a HEAD request body', async function (scope: TestScope) {
+    test('does not read a HEAD request body', async function (scope) {
         const fixture = simulatedHttpRequest(scope, simulation);
         fixture.request.method = 'HEAD';
         await fixture.serve();
@@ -144,7 +143,7 @@ export const testNode = authoredSuite('simulated HTTP request routing', [
         scope.assert.deepEqual(fixture.errors, []);
         return scope.assert.collect();
     }),
-    test('reports handler failures and records error evidence', async function (scope: TestScope) {
+    test('reports handler failures and records error evidence', async function (scope) {
         const failure = new Error('Handler failed.');
         const fixture = simulatedHttpRequest(
             scope,
@@ -163,7 +162,7 @@ export const testNode = authoredSuite('simulated HTTP request routing', [
         scope.assert.equal(fixture.transcript.entryCount, 1);
         return scope.assert.collect();
     }),
-    test('reports request stream failures without claiming a completed interaction', async function (scope: TestScope) {
+    test('reports request stream failures without claiming a completed interaction', async function (scope) {
         const failure = new Error('Request failed.');
         const fixture = simulatedHttpRequest(scope, simulation);
         fixture.request.method = 'POST';

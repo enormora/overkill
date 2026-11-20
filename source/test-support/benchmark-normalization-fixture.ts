@@ -1,12 +1,12 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { join, relative } from 'node:path';
+import type { TestScope } from '@overkill-dev/test';
 import { createNullReporter } from '../reporters/null-reporter.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
 import { normalizeConfig, type RunCommand } from '../packages/run/run.entry-point.ts';
 import { createCalibrationReferenceStore, type CalibrationReferenceStore } from '../baselines/calibration-store.ts';
 import { defaultRunRequest } from './run-command-factory.ts';
 
-const fixture = 'source/integration-tests/run/fixtures/normalization.bench.test.ts';
+const fixture = 'source/integration-tests/integration/fixtures/normalization.bench.test.ts';
 export type Boundary = 'fresh-worker-per-unit' | 'reuse' | 'supervised-process';
 export async function normalizationCommand(scope: TestScope, boundary: Boundary, title: string): Promise<RunCommand> {
     const directory = await mkdtemp(join(process.cwd(), 'target/normalization-'));

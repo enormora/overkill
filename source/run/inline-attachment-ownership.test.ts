@@ -1,12 +1,12 @@
 import { AsyncResource } from 'node:async_hooks';
-import { suite, test } from '@overkill-dev/test';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import {
     createFailureArtifactStream,
     closeAttemptFailureStreams,
     type FailureArtifactStream
 } from '../attachments/failure-artifact-stream.ts';
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
+
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import {
     inlineAttachmentFixture,
@@ -16,7 +16,6 @@ import {
 import { attachmentsForProducer, preparedResourceAttachments } from '../attachments/attachment-context.ts';
 import { runWithAttachmentExecution } from './resource-lifecycle-state.ts';
 
-const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const metadata = { mediaType: 'application/json', name: 'evidence' };
 
 async function assertExpiredAttempt(scope: TestScope): Promise<void> {
@@ -205,53 +204,54 @@ async function assertUnknownPreparedAttempt(scope: TestScope): Promise<void> {
     scope.assert.equal(errors[0]?.subtype, 'attribution-drift');
     scope.assert.deepEqual(store.artifacts(), []);
 }
-export const testNode = suite('inline attachment ownership', [
+export const testNode: TestNode = suite('inline attachment ownership', [
     test(
         'prepared evidence cannot borrow an active attempt when its own attempt is unknown',
-        async function (scope: TestScope) {
+        async function (scope) {
             await assertUnknownPreparedAttempt(scope);
             return scope.assert.collect();
         }
     ),
     test(
         'simultaneous runs keep service streams with identical work identities separate',
-        async function (scope: TestScope) {
+        async function (scope) {
             await assertSeparateRunStreams(scope);
             return scope.assert.collect();
         }
     ),
-    test('late service output preserves its expired attempt attribution', async function (scope: TestScope) {
+    test('late service output preserves its expired attempt attribution', async function (scope) {
         await assertLateServiceOutput(scope);
         return scope.assert.collect();
     }),
     test(
         'captured resource attachment APIs reject writes after the integration run ends',
-        async function (scope: TestScope) {
+        async function (scope) {
             await assertExpiredRun(scope);
             return scope.assert.collect();
         }
     ),
-    ...[ 255, 195 ].map(function invalidTextByte(byte) {
-        return test({
-            ...definition,
-            title: `rejects malformed UTF-8 byte ${byte} without exceeding the text limit`,
-            async body(scope: TestScope) {
-                await assertRejectedTextBytes(scope, byte);
-                return scope.assert.collect();
-            }
-        });
+    table({
+        title: 'rejects malformed UTF-8 byte without exceeding the text limit',
+        cases: [ 255, 195 ],
+        caseTitle: String,
+        async test(scope) {
+            const byte = scope.parameters;
+
+            await assertRejectedTextBytes(scope, byte);
+            return scope.assert.collect();
+        }
     }),
-    test('expired attempts fail without attributing evidence to another attempt', async function (scope: TestScope) {
+    test('expired attempts fail without attributing evidence to another attempt', async function (scope) {
         await assertExpiredAttempt(scope);
         return scope.assert.collect();
     }),
-    test('attachment budgets span every attempt in a retry chain', async function (scope: TestScope) {
+    test('attachment budgets span every attempt in a retry chain', async function (scope) {
         await assertRetryBudget(scope);
         return scope.assert.collect();
     }),
     test(
         'oversized JSON is omitted and caught validation errors still fail the attempt',
-        async function (scope: TestScope) {
+        async function (scope) {
             await assertCaughtJsonErrors(scope);
             return scope.assert.collect();
         }

@@ -1,9 +1,9 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { definition } from '../test-support/benchmark-placement-fixture.ts';
 import { planningInput, mixedMeasurements, mixedLifecycleInput } from '../test-support/benchmark-plan-input.ts';
 import { collectedPlanning as createCollectedExecutionPlan } from '../test-support/collected-planning.ts';
-import { testNode as profileDefaults } from './placement-profile-policy.test.ts';
+
 import type { CollectedExecutionPlanInput as PlanningInput } from './collected-placement.ts';
 import type { CollectedExecutionPlan } from './run-collected-planning.ts';
 import { selectedCollectedRunPlan } from './run-selection.ts';
@@ -21,8 +21,7 @@ async function shardPlans(input: PlanningInput): Promise<readonly CollectedExecu
     }));
 }
 
-export const testNode = authoredSuite('adaptive benchmark planning', [
-    profileDefaults,
+export const testNode: TestNode = suite('adaptive benchmark planning', [
     test('caps lanes without rewriting request, host or profile facts', async function (scope) {
         const plan = await createCollectedExecutionPlan(planningInput());
         scope.assert.deepEqual<unknown, unknown>(plan.workerCount, {

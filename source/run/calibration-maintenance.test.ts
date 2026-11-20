@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createClock } from '@enormora/clock';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
@@ -76,26 +76,36 @@ function maintenance(remove: MaintenanceInput['store']['remove']): MaintenanceIn
         }
     };
 }
-export const testNode = authoredSuite('calibration maintenance failures', [
-    ...([ 'apply', 'diff', 'none' ] as const).map(function (mode) {
-        return authoredTest(`retains maintenance report in ${mode} mode`, async function (scope: TestScope) {
+export const testNode: TestNode = suite('calibration maintenance failures', [
+    table({
+        title: 'retains maintenance reports across modes',
+        cases: [ 'apply', 'diff', 'none' ] as const,
+        caseTitle(mode) {
+            return mode;
+        },
+        async test(scope) {
+            const require: typeof scope.require = scope.require;
+
             const original = maintenance(async function () {
                 return [ 'calibration/old.json' ];
             });
             const session = calibrationMaintenanceSession({
                 ...original,
-                input: { ...original.input, request: { ...original.input.request, baselineUpdateMode: mode } }
+                input: {
+                    ...original.input,
+                    request: { ...original.input.request, baselineUpdateMode: scope.parameters }
+                }
             });
-            scope.require.defined(session);
+            require.defined(session);
             const result = await session.finalize(successful);
             const report = readCalibrationReferenceReport(result);
-            scope.require.defined(report);
-            scope.assert.equal(report.outcome, mode === 'apply' ? 'written' : 'read-only');
-            scope.assert.equal(result.status, mode === 'none' ? 'failed' : 'passed');
+            require.defined(report);
+            scope.assert.equal(report.outcome, scope.parameters === 'apply' ? 'written' : 'read-only');
+            scope.assert.equal(result.status, scope.parameters === 'none' ? 'failed' : 'passed');
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest(
+    test(
         'delegates result preparation and finalization to the baseline session',
         async function (scope: TestScope) {
             const calls: string[] = [];
@@ -123,50 +133,54 @@ export const testNode = authoredSuite('calibration maintenance failures', [
             return scope.assert.collect();
         }
     ),
-    ...[ { paths: [ 'selected.bench.ts' ] }, { selection: { kind: 'none' as const } } ].map(function (request) {
-        return authoredTest(
-            `skips maintenance for incomplete inventory ${JSON.stringify(request)}`,
-            function (scope: TestScope) {
-                const original = maintenance(unexpectedOperation);
-                scope.assert.equal(
-                    calibrationMaintenanceSession({
-                        ...original,
-                        input: {
-                            ...original.input,
-                            request: {
-                                ...original
-                                    .input
-                                    .request,
-                                ...request
-                            }
+    table({
+        title: 'skips maintenance for incomplete inventory',
+        cases: [ { paths: [ 'selected.bench.ts' ] }, { selection: { kind: 'none' as const } } ],
+        caseTitle(request) {
+            return JSON.stringify(request);
+        },
+        test(scope) {
+            const request = scope.parameters;
+
+            const original = maintenance(unexpectedOperation);
+            scope.assert.equal(
+                calibrationMaintenanceSession({
+                    ...original,
+                    input: {
+                        ...original.input,
+                        request: {
+                            ...original
+                                .input
+                                .request,
+                            ...request
                         }
-                    }),
-                    null
-                );
-                return scope.assert.collect();
-            }
-        );
+                    }
+                }),
+                null
+            );
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('returns the baseline when no references exist', function (scope: TestScope) {
+    test('returns the baseline when no references exist', function (scope) {
         scope.assert.equal(
             calibrationMaintenanceSession({ ...maintenance(unexpectedOperation), references: [] }),
             null
         );
         return scope.assert.collect();
     }),
-    authoredTest('prepares results without a baseline', function (scope: TestScope) {
+    test('prepares results without a baseline', function (scope: TestScope) {
         const session = calibrationMaintenanceSession(maintenance(unexpectedOperation));
         scope.require.defined(session);
         scope.assert.equal(session.prepareResult(successful), successful);
         return scope.assert.collect();
     }),
-    authoredTest('preserves references outside the selected shard', function (scope: TestScope) {
+    test('preserves references outside the selected shard', function (scope) {
         const original = maintenance(unexpectedOperation);
         const input = { ...original.input, request: { ...original.input.request, shard: { index: 1, total: 2 } } };
         scope.assert.equal(calibrationMaintenanceSession({ ...original, input }), null);
         return scope.assert.collect();
     }),
-    authoredTest('reports invalid profile types without deleting references', async function (scope: TestScope) {
+    test('reports invalid profile types without deleting references', async function (scope: TestScope) {
         const original = maintenance(unexpectedOperation);
         const session = calibrationMaintenanceSession({
             ...original,
@@ -178,7 +192,7 @@ export const testNode = authoredSuite('calibration maintenance failures', [
         scope.assert.equal(readCalibrationReferenceReport(result), null);
         return scope.assert.collect();
     }),
-    authoredTest('preserves references owned by skipped cases', async function (scope: TestScope) {
+    test('preserves references owned by skipped cases', async function (scope: TestScope) {
         const owner = reference.owners[0];
         scope.require.defined(owner);
         const session = calibrationMaintenanceSession(maintenance(unexpectedOperation));
@@ -191,38 +205,44 @@ export const testNode = authoredSuite('calibration maintenance failures', [
         scope.assert.equal(await session.finalize(skipped), skipped);
         return scope.assert.collect();
     }),
-    ...[
-        { name: 'ordinary removal failures', error: new Error('Reference changed'), completed: [] },
-        {
-            name: 'partial removal failures',
-            error: new CalibrationPublicationError('Removal interrupted', {
-                cause: new Error('offline'),
+    table({
+        title: 'reports maintenance failures with completed removals',
+        cases: [
+            { name: 'ordinary removal failures', error: new Error('Reference changed'), completed: [] },
+            {
+                name: 'partial removal failures',
+                error: new CalibrationPublicationError('Removal interrupted', {
+                    cause: new Error('offline'),
+                    completed: [ 'calibration/first.json' ]
+                }),
                 completed: [ 'calibration/first.json' ]
-            }),
-            completed: [ 'calibration/first.json' ]
-        }
-    ]
-        .map(function removalFailureCase(input) {
-            return authoredTest(`reports ${input.name} with completed removals`, async function (scope: TestScope) {
-                const session = calibrationMaintenanceSession(maintenance(async function () {
-                    throw input.error;
-                }));
-                scope.require.defined(session);
-                const result = await session.finalize(successful);
-                const report = readCalibrationReferenceReport(result);
-                scope.require.defined(report);
-                scope.assert.equal(result.status, 'failed');
-                scope.assert.deepEqual({ outcome: report.outcome, completed: report.completed }, {
-                    outcome: 'failed',
-                    completed: input.completed
-                });
-                scope.assert.true(result.runnerErrors.some(function (error) {
-                    return error.subtype === 'artifact';
-                }));
-                return scope.assert.collect();
+            }
+        ],
+        caseTitle(input) {
+            return input.name;
+        },
+        async test(scope) {
+            const require: typeof scope.require = scope.require;
+
+            const session = calibrationMaintenanceSession(maintenance(async function () {
+                throw scope.parameters.error;
+            }));
+            require.defined(session);
+            const result = await session.finalize(successful);
+            const report = readCalibrationReferenceReport(result);
+            require.defined(report);
+            scope.assert.equal(result.status, 'failed');
+            scope.assert.deepEqual({ outcome: report.outcome, completed: report.completed }, {
+                outcome: 'failed',
+                completed: scope.parameters.completed
             });
-        }),
-    authoredTest(
+            scope.assert.true(result.runnerErrors.some(function (error) {
+                return error.subtype === 'artifact';
+            }));
+            return scope.assert.collect();
+        }
+    }),
+    test(
         'retains errors when even the failure report exceeds the artifact limit',
         async function (scope: TestScope) {
             const original = maintenance(unexpectedOperation);
@@ -244,14 +264,14 @@ export const testNode = authoredSuite('calibration maintenance failures', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('retains references when the run fails', async function (scope: TestScope) {
+    test('retains references when the run fails', async function (scope: TestScope) {
         const session = calibrationMaintenanceSession(maintenance(unexpectedOperation));
         scope.require.defined(session);
         const failed = runResultFactory.build({ status: 'failed', summary: { planned: 0 } });
         scope.assert.equal(await session.finalize(failed), failed);
         return scope.assert.collect();
     }),
-    authoredTest('preserves references when machine attribution is unavailable', async function (scope: TestScope) {
+    test('preserves references when machine attribution is unavailable', async function (scope: TestScope) {
         const original = maintenance(unexpectedOperation);
         const session = calibrationMaintenanceSession({
             ...original,

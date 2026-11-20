@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { AttemptId, RunnerError, TestPlanCase, WorkId } from '../packages/engine/engine.entry-point.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution-context.ts';
@@ -49,8 +49,8 @@ function assertSnapshotError(
     scope.assert.deepEqual({ work: error.attributedToWork, attempt: error.attributedToAttempt }, { work, attempt });
 }
 
-export const testNode = authoredSuite('snapshot runtime error ownership', [
-    test('attributes infrastructure errors to attempts and drains each once', async function (scope: TestScope) {
+export const testNode: TestNode = suite('snapshot runtime error ownership', [
+    test('attributes infrastructure errors to attempts and drains each once', async function (scope) {
         const { testCase, policy } = createPolicyFixture(scope);
         const cause = new TypeError('invalid snapshot');
         for (const index of [ 0, 1 ]) {
@@ -71,7 +71,7 @@ export const testNode = authoredSuite('snapshot runtime error ownership', [
         scope.assert.deepEqual(policy.takeRunErrors(), []);
         return scope.assert.collect();
     }),
-    test('restores context and preserves ordinary body failures', async function (scope: TestScope) {
+    test('restores context and preserves ordinary body failures', async function (scope) {
         const { testCase, policy } = createPolicyFixture(scope);
         const completed = await policy.runAttempt(testCase, { index: 0 }, async function inspectContext() {
             scope.assert.deepEqual({ active: currentSnapshotRun() }, { active: snapshotWire });
@@ -88,7 +88,7 @@ export const testNode = authoredSuite('snapshot runtime error ownership', [
         scope.assert.deepEqual(policy.takeRunErrors(), []);
         return scope.assert.collect();
     }),
-    test('preserves disabled policies and non-error causes', function (scope: TestScope) {
+    test('preserves disabled policies and non-error causes', function (scope) {
         const fixture = createPolicyFixture(scope);
         scope.assert.equal(snapshotRuntimePolicy(null, snapshotWire), null);
         scope.assert.equal(snapshotRuntimePolicy(fixture.policy, null), fixture.policy);

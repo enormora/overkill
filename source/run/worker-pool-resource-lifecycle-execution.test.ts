@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { WorkId } from '../packages/engine/engine.entry-point.ts';
 import type { ResourceScope } from '../resources/resources.ts';
@@ -123,7 +123,7 @@ function readTaskLane(task: unknown): string {
     return lane;
 }
 
-async function assertPerRunResourcesUseOwner(scope: OverkillScope): Promise<void> {
+async function assertPerRunResourcesUseOwner(scope: TestScope): Promise<void> {
     const runtime = runtimeWithPoolRun(
         collectedPlanWithResources([ resource('database', 'per-run') ]),
         async function runResourceTask(task) {
@@ -145,7 +145,7 @@ async function assertPerRunResourcesUseOwner(scope: OverkillScope): Promise<void
     });
 }
 
-async function assertInvalidRunResourceOutputIsRejected(scope: OverkillScope): Promise<void> {
+async function assertInvalidRunResourceOutputIsRejected(scope: TestScope): Promise<void> {
     const runtime = runtimeWithPoolRun(
         collectedPlanWithResources([ resource('database', 'per-run') ]),
         async function runInvalidResourceTask() {
@@ -158,7 +158,7 @@ async function assertInvalidRunResourceOutputIsRejected(scope: OverkillScope): P
     }, { message: 'Worker-pool run resource task returned an invalid result.' });
 }
 
-async function assertLaneResourceDisposalRunsOnEachLane(scope: OverkillScope): Promise<void> {
+async function assertLaneResourceDisposalRunsOnEachLane(scope: TestScope): Promise<void> {
     const disposedLanes: string[] = [];
     const runtime = runtimeWithPoolRun(
         collectedPlanWithResources([ resource('scratch', 'per-case') ]),
@@ -176,7 +176,7 @@ async function assertLaneResourceDisposalRunsOnEachLane(scope: OverkillScope): P
     scope.assert.deepEqual(disposedLanes, [ 'worker-1' ]);
 }
 
-async function assertRunResourceDisposalFailureRecordsRunnerError(scope: OverkillScope): Promise<void> {
+async function assertRunResourceDisposalFailureRecordsRunnerError(scope: TestScope): Promise<void> {
     const runtime = runtimeWithPoolRun(
         collectedPlanWithResources([ resource('database', 'per-run') ]),
         async function runResourceTask(task) {
@@ -223,7 +223,7 @@ function preparationRuntime(
         }
     };
 }
-function assertPreparationResponse(scope: OverkillScope, reply: WorkerPoolPreparationReply, failed: boolean): void {
+function assertPreparationResponse(scope: TestScope, reply: WorkerPoolPreparationReply, failed: boolean): void {
     scope.assert.equal(reply.kind, 'resource-artifacts-prepared');
     scope.assert.equal(reply.request, 'request-2');
     if (failed) {
@@ -235,7 +235,7 @@ function assertPreparationResponse(scope: OverkillScope, reply: WorkerPoolPrepar
     }
 }
 async function exchangePreparationMessages(
-    scope: OverkillScope,
+    scope: TestScope,
     channel: WorkerPoolMessageChannel,
     work: WorkId,
     received: readonly WorkerPoolMessage[]
@@ -254,7 +254,7 @@ async function exchangePreparationMessages(
     return reply;
 }
 async function collectPreparationReply(
-    scope: OverkillScope,
+    scope: TestScope,
     runtime: WorkerPoolRunRuntime
 ): Promise<WorkerPoolPreparationReply> {
     const received: WorkerPoolMessage[] = [];
@@ -267,7 +267,7 @@ async function collectPreparationReply(
     scope.require.defined(work);
     return await exchangePreparationMessages(scope, channel, work, received);
 }
-async function assertPreparationReply(scope: OverkillScope, output: unknown, ownsResources: boolean): Promise<void> {
+async function assertPreparationReply(scope: TestScope, output: unknown, ownsResources: boolean): Promise<void> {
     const calls: string[] = [];
     const runtime = preparationRuntime(output, ownsResources, function recordTask(kind) {
         calls.push(kind);
@@ -277,26 +277,31 @@ async function assertPreparationReply(scope: OverkillScope, output: unknown, own
     scope.assert.deepEqual(calls, ownsResources ? [ 'prepare-resource-artifacts' ] : []);
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-resource-lifecycle-execution.test.ts',
+    title: 'Worker pool resource lifecycle execution',
     children: [
-        ...[ { runnerErrors: [] }, null, new Error('owner disconnected') ].map(
-            function ownerPreparation(output, index) {
-                return test({
-                    ...testCaseMetadata,
-                    title: `resource preparation replies preserve request identity: ${index}`,
-                    async body(scope: OverkillScope) {
-                        await assertPreparationReply(scope, output, true);
-                        return scope.assert.collect();
-                    }
-                });
+        table({
+            ...testCaseMetadata,
+            title: 'resource preparation replies preserve request identity',
+            cases: [ { description: 'successful response', input: { runnerErrors: [] } }, {
+                description: 'missing response',
+                input: null
+            }, { description: 'disconnected owner', input: new Error('owner disconnected') } ],
+            caseTitle({ description }) {
+                return description;
+            },
+            async test(scope) {
+                const output = scope.parameters.input;
+
+                await assertPreparationReply(scope, output, true);
+                return scope.assert.collect();
             }
-        ),
+        }),
         test({
             ...testCaseMetadata,
             title: 'preparation without an external owner replies without scheduling a task',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 await assertPreparationReply(scope, null, false);
                 return scope.assert.collect();
             }
@@ -304,7 +309,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool per-run resources acquire through the owner lane',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 await assertPerRunResourcesUseOwner(scope);
 
                 return scope.assert.collect();
@@ -313,7 +318,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool per-run resource acquisition rejects invalid worker output',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 await assertInvalidRunResourceOutputIsRejected(scope);
 
                 return scope.assert.collect();
@@ -322,7 +327,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool lane resources dispose each lane lifecycle',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 await assertLaneResourceDisposalRunsOnEachLane(scope);
 
                 return scope.assert.collect();
@@ -331,7 +336,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool run resource disposal records runner errors',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 await assertRunResourceDisposalFailureRecordsRunnerError(scope);
 
                 return scope.assert.collect();

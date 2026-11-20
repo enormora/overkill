@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, type TestScope, table, suite, test } from '@overkill-dev/test';
 
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import { createBoundaryFailureArtifact, type BoundaryFailure } from '../engine/run-artifact.ts';
@@ -113,24 +113,24 @@ function activeNativeRuntime(scope: TestScope): SupervisedRunRuntime {
     return runtime;
 }
 
-export const testNode = authoredSuite('supervised native completion evidence', [
-    ...failures.map(function nativeFailure(failure) {
-        return authoredTest(
-            `retains ${failure.kind} completion evidence after active ownership is cleared`,
-            function (scope: TestScope) {
-                const runtime = activeNativeRuntime(scope);
-                const result = nativeCompletion(failure);
-                runtime.state.removeActiveCase(workIdentityKey(work));
-                handleChildMessage({ kind: 'result', result }, runtime);
-                scope.assert.deepEqual(runtime.state.artifacts(), [ result.artifacts[0] ]);
-                const completed = runtime.completedResult.read();
-                scope.require.notNull(completed);
-                scope.assert.deepEqual(completed, result);
-                return scope.assert.collect();
-            }
-        );
+export const testNode: TestNode = suite('supervised native completion evidence', [
+    table({
+        title: 'retains completion evidence after active ownership clears',
+        cases: failures,
+        caseTitle(failure) {
+            return failure.kind;
+        },
+        test(scope) {
+            const runtime = activeNativeRuntime(scope);
+            const result = nativeCompletion(scope.parameters);
+            runtime.state.removeActiveCase(workIdentityKey(work));
+            handleChildMessage({ kind: 'result', result }, runtime);
+            scope.assert.deepEqual(runtime.state.artifacts(), [ result.artifacts[0] ]);
+            scope.assert.deepEqual<unknown, unknown>(runtime.completedResult.read(), result);
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('ignores process usage samples delivered after terminal failure', function (scope) {
+    test('ignores process usage samples delivered after terminal failure', function (scope) {
         const runtime = runningSupervisedRuntime();
         runtime.terminalFailure.write(true);
         handleChildMessage({ kind: 'sample', sample }, runtime);

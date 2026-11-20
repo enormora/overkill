@@ -1,12 +1,12 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { mergedRecordSession } from '../test-support/merged-record-session.ts';
 import { runMergedRecordSession } from './merged-record-session.ts';
 
-export const testNode = authoredSuite('merged record persistence and delivery', [
+export const testNode: TestNode = suite('merged record persistence and delivery', [
     test(
         'persists completion, disposes reporters and releases the run before maintenance',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = await mergedRecordSession('none');
             const result = await runMergedRecordSession(fixture.command, fixture.storage, fixture.runtime);
             scope.assert.equal(result.record.status, 'completed');
@@ -25,7 +25,7 @@ export const testNode = authoredSuite('merged record persistence and delivery', 
             return scope.assert.collect();
         }
     ),
-    test('persists interruption and releases the run after reporter failure', async function (scope: TestScope) {
+    test('persists interruption and releases the run after reporter failure', async function (scope) {
         const fixture = await mergedRecordSession('delivery');
         await scope.assert.rejects(async function () {
             return await runMergedRecordSession(fixture.command, fixture.storage, fixture.runtime);
@@ -46,7 +46,7 @@ export const testNode = authoredSuite('merged record persistence and delivery', 
         ]);
         return scope.assert.collect();
     }),
-    test('releases the run after reporter disposal fails', async function (scope: TestScope) {
+    test('releases the run after reporter disposal fails', async function (scope) {
         const fixture = await mergedRecordSession('disposal');
         await scope.assert.rejects(async function () {
             return await runMergedRecordSession(fixture.command, fixture.storage, fixture.runtime);
@@ -55,7 +55,7 @@ export const testNode = authoredSuite('merged record persistence and delivery', 
         scope.assert.equal(fixture.events.at(-1), 'release');
         return scope.assert.collect();
     }),
-    test('retains persistence failures when both writes fail', async function (scope: TestScope) {
+    test('retains persistence failures when both writes fail', async function (scope) {
         const fixture = await mergedRecordSession('write');
         await fixture.storage.persist('completed');
         scope.assert.equal(fixture.storage.current().result.status, 'failed');
@@ -65,7 +65,7 @@ export const testNode = authoredSuite('merged record persistence and delivery', 
         await fixture.storage.release();
         return scope.assert.collect();
     }),
-    test('rewrites the detailed record with compact history failures', async function (scope: TestScope) {
+    test('rewrites the detailed record with compact history failures', async function (scope) {
         const fixture = await mergedRecordSession('history');
         await fixture.storage.persist('started');
         scope.assert.equal(fixture.storage.current().result.status, 'failed');
@@ -74,7 +74,7 @@ export const testNode = authoredSuite('merged record persistence and delivery', 
         await fixture.storage.release();
         return scope.assert.collect();
     }),
-    test('leaves a successful result unchanged when no errors are retained', async function (scope: TestScope) {
+    test('leaves a successful result unchanged when no errors are retained', async function (scope) {
         const fixture = await mergedRecordSession('none');
         const before = fixture.storage.current();
         fixture.storage.retainErrors([]);

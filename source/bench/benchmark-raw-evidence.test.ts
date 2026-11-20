@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
 
@@ -33,7 +33,7 @@ function sampleObservations(): MetricObservations {
     return observations;
 }
 
-export const testNode = authoredSuite('benchmark raw evidence', [
+export const testNode: TestNode = suite('benchmark raw evidence', [
     test('requires generated checks and preserves undecided lower-bound diagnostics', function (scope) {
         const context = { locations: [ { kind: 'unknown' as const } ], workload: workload('one', {}) } as const;
         scope.assert.throws(function () {

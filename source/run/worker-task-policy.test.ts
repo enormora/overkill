@@ -1,24 +1,15 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { workerTaskRuntime } from '../test-support/worker-task-runtime.ts';
-import { testNode as idlePool } from './idle-worker-pool-policy.test.ts';
-import { testNode as supervised } from './supervised-orchestration-policy.test.ts';
-import { testNode as hostProtocol } from './worker-host-protocol-policy.test.ts';
-import { testNode as lifetimes } from './worker-implementation-lifetime-policy.test.ts';
-import { testNode as projection } from './projected-resource-preparation-policy.test.ts';
+
 import type { WorkerPoolCollection } from './worker-pool-protocol.ts';
 import { runWorkerPoolTask } from './worker-pool-worker.ts';
 
 function isCollectionOutput(value: unknown): value is WorkerPoolCollection {
     return typeof value === 'object' && value !== null && Object.hasOwn(value, 'collectedPlan');
 }
-export const testNode = authoredSuite('worker task dispatch and ownership', [
-    idlePool,
-    hostProtocol,
-    supervised,
-    lifetimes,
-    projection,
-    test('collects and closes the task channel after publishing timing', async function (scope: TestScope) {
+export const testNode: TestNode = suite('worker task dispatch and ownership', [
+    test('collects and closes the task channel after publishing timing', async function (scope) {
         const fixture = workerTaskRuntime(null, null);
         const result = await runWorkerPoolTask({ ...fixture.task, kind: 'collect' }, fixture.runtime);
         scope.assert.equal(isCollectionOutput(result) ? result.collectedPlan.defined : null, 1);
@@ -29,7 +20,7 @@ export const testNode = authoredSuite('worker task dispatch and ownership', [
     }),
     test(
         'restores collection output and closes the channel after collection failure',
-        async function (scope: TestScope) {
+        async function (scope) {
             const error = new Error('collection failed');
             const fixture = workerTaskRuntime(error, null);
             await scope.assert.rejects(async function () {
@@ -43,14 +34,14 @@ export const testNode = authoredSuite('worker task dispatch and ownership', [
             return scope.assert.collect();
         }
     ),
-    test('returns an empty assignment without capturing execution output', async function (scope: TestScope) {
+    test('returns an empty assignment without capturing execution output', async function (scope) {
         const fixture = workerTaskRuntime(null, null);
         const result = await runWorkerPoolTask({ ...fixture.task, assignedUnits: [] }, fixture.runtime);
         scope.assert.deepEqual<unknown, unknown>(result, { results: [] });
         scope.assert.deepEqual(Array.from(fixture.events), [ 'suppress', 'collect', 'restore-suppression', 'close' ]);
         return scope.assert.collect();
     }),
-    test('runs assigned work and reports attempt boundaries', async function (scope: TestScope) {
+    test('runs assigned work and reports attempt boundaries', async function (scope) {
         const fixture = workerTaskRuntime(null, null);
         const result = await runWorkerPoolTask(fixture.task, fixture.runtime);
         scope.assert.partialDeepEqual<unknown, unknown>(result, {
@@ -79,7 +70,7 @@ export const testNode = authoredSuite('worker task dispatch and ownership', [
         await runWorkerPoolTask({ ...fixture.task, kind: 'dispose-lane-lifecycle' }, fixture.runtime);
         return scope.assert.collect();
     }),
-    test('restores output and closes the channel after execution failure', async function (scope: TestScope) {
+    test('restores output and closes the channel after execution failure', async function (scope) {
         const error = new Error('execution failed');
         const fixture = workerTaskRuntime(null, error);
         await scope.assert.rejects(async function () {
@@ -96,7 +87,7 @@ export const testNode = authoredSuite('worker task dispatch and ownership', [
         await runWorkerPoolTask({ ...fixture.task, kind: 'dispose-lane-lifecycle' }, fixture.runtime);
         return scope.assert.collect();
     }),
-    test('restores bootstrap output after assignment collection failure', async function (scope: TestScope) {
+    test('restores bootstrap output after assignment collection failure', async function (scope) {
         const error = new Error('collection failed');
         const fixture = workerTaskRuntime(error, null);
         await scope.assert.rejects(async function () {
@@ -105,7 +96,7 @@ export const testNode = authoredSuite('worker task dispatch and ownership', [
         scope.assert.deepEqual(Array.from(fixture.events), [ 'suppress', 'collect', 'restore-suppression', 'close' ]);
         return scope.assert.collect();
     }),
-    test('acquires, completes and disposes the resource owner', async function (scope: TestScope) {
+    test('acquires, completes and disposes the resource owner', async function (scope) {
         const fixture = workerTaskRuntime(null, null);
         const result = await runWorkerPoolTask(
             { ...fixture.task, kind: 'acquire-run-resources', boundaryKeys: [] },

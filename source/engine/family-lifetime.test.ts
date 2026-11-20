@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test as authoredTest, table } from '@overkill-dev/test';
+import { type TestNode, suite, test, table } from '@overkill-dev/test';
 
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
@@ -142,8 +142,8 @@ async function abandonActiveExecution(): Promise<AbandonmentObservation> {
     };
 }
 
-export const testNode = authoredSuite('family lifetime', [
-    authoredTest('retains backend and cleanup failures together without repeating disposal', async function (scope) {
+export const testNode: TestNode = suite('family lifetime', [
+    test('retains backend and cleanup failures together without repeating disposal', async function (scope) {
         const engine = createTestEngine();
         const failures = [ new Error('execution sentinel'), new Error('cleanup sentinel') ] as const;
         await using prepared = await prepare(engine, async function ({ testPlan }) {
@@ -223,7 +223,7 @@ export const testNode = authoredSuite('family lifetime', [
             return scope.assert.collect();
         }
     }),
-    authoredTest('abandonment cancels active execution and waits before cleanup', async function (scope) {
+    test('abandonment cancels active execution and waits before cleanup', async function (scope) {
         scope.assert.deepEqual(await abandonActiveExecution(), {
             beforeCleanup: { aborted: true, events: [] },
             events: [ 'settled', 'dispose' ],
@@ -233,7 +233,7 @@ export const testNode = authoredSuite('family lifetime', [
         });
         return scope.assert.collect();
     }),
-    authoredTest('rejects concurrent collection without cancelling the first call', async function (scope) {
+    test('rejects concurrent collection without cancelling the first call', async function (scope) {
         const release = Promise.withResolvers<undefined>();
         await using prepared = await prepare(createTestEngine(), async function backend({ testPlan }) {
             return {
@@ -265,7 +265,7 @@ export const testNode = authoredSuite('family lifetime', [
         scope.assert.equal(collected.testPlan.cases.length, 1);
         return scope.assert.collect();
     }),
-    authoredTest('rejects concurrent execution without cancelling admitted work', async function (scope) {
+    test('rejects concurrent execution without cancelling admitted work', async function (scope) {
         const engine = createTestEngine();
         const release = Promise.withResolvers<undefined>();
         await using prepared = await prepare(engine, async function backend({ testPlan }) {
@@ -297,7 +297,7 @@ export const testNode = authoredSuite('family lifetime', [
         await first;
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'consumes collections, rejects foreign engines, and completes missing evidence',
         async function (scope) {
             const engine = createTestEngine();
@@ -339,7 +339,7 @@ export const testNode = authoredSuite('family lifetime', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('awaits active collection before disposing once', async function (scope) {
+    test('awaits active collection before disposing once', async function (scope) {
         const release = Promise.withResolvers<undefined>();
         const observed: string[] = [];
         await using prepared = await prepare(createTestEngine(), async function backend({ testPlan }) {
@@ -372,7 +372,7 @@ export const testNode = authoredSuite('family lifetime', [
         scope.assert.deepEqual(observed, [ 'aborted', 'dispose' ]);
         return scope.assert.collect();
     }),
-    authoredTest('delivers cleanup failures before final reporting without redelivery', async function (scope) {
+    test('delivers cleanup failures before final reporting without redelivery', async function (scope) {
         const engine = createTestEngine();
         const failure = new Error('cleanup failed');
         const observed: string[] = [];

@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     performanceStorage,
@@ -14,14 +14,14 @@ async function storedValues(store: PerformanceBaselineStore): Promise<readonly S
         return entry.baseline;
     });
 }
-export const testNode = authoredSuite('performance storage policy', [
-    test('lists an absent store without preparing storage', async function (scope: TestScope) {
+export const testNode: TestNode = suite('performance storage policy', [
+    test('lists an absent store without preparing storage', async function (scope) {
         const fixture = await performanceStorage(performanceStorageScenario);
         scope.assert.deepEqual(await fixture.store.list(), []);
         scope.assert.deepEqual(fixture.events, []);
         return scope.assert.collect();
     }),
-    test('creates updates and removes a stable identity', async function (scope: TestScope) {
+    test('creates updates and removes a stable identity', async function (scope) {
         const fixture = await performanceStorage(performanceStorageScenario);
         await fixture.store.apply({ kind: 'create', baseline });
         scope.assert.deepEqual(
@@ -39,7 +39,7 @@ export const testNode = authoredSuite('performance storage policy', [
         scope.assert.deepEqual(fixture.events, [ 'prepare', 'create', 'prepare', 'update', 'remove' ]);
         return scope.assert.collect();
     }),
-    test('rejects lexical and physical directory escapes', async function (scope: TestScope) {
+    test('rejects lexical and physical directory escapes', async function (scope) {
         const fixture = await performanceStorage(performanceStorageScenario);
         const message = 'Baseline directory must remain inside the project root.';
         await scope.assert.rejects(
@@ -58,7 +58,7 @@ export const testNode = authoredSuite('performance storage policy', [
         });
         return scope.assert.collect();
     }),
-    test('does not overwrite a concurrently created baseline', async function (scope: TestScope) {
+    test('does not overwrite a concurrently created baseline', async function (scope) {
         const fixture = await performanceStorage(performanceStorageScenario);
         await fixture.store.apply({ kind: 'create', baseline });
         await scope.assert.rejects(async function () {
@@ -72,7 +72,7 @@ export const testNode = authoredSuite('performance storage policy', [
         );
         return scope.assert.collect();
     }),
-    test('requires the expected previous baseline before changing or removing it', async function (scope: TestScope) {
+    test('requires the expected previous baseline before changing or removing it', async function (scope) {
         const fixture = await performanceStorage(performanceStorageScenario);
         await scope.assert.rejects(async function () {
             return fixture.store.apply({ kind: 'remove', baseline });
@@ -88,7 +88,7 @@ export const testNode = authoredSuite('performance storage policy', [
         });
         return scope.assert.collect();
     }),
-    test('bounds encoded baseline content before preparing files', async function (scope: TestScope) {
+    test('bounds encoded baseline content before preparing files', async function (scope) {
         const fixture = await performanceStorage({ ...performanceStorageScenario, maxBytes: 1 });
         await scope.assert.rejects(async function () {
             return fixture.store.apply({ kind: 'create', baseline });
@@ -98,7 +98,7 @@ export const testNode = authoredSuite('performance storage policy', [
         scope.assert.deepEqual(fixture.events, []);
         return scope.assert.collect();
     }),
-    test('rejects nonregular files and bounds reads before parsing', async function (scope: TestScope) {
+    test('rejects nonregular files and bounds reads before parsing', async function (scope) {
         const fixture = await performanceStorage({ ...performanceStorageScenario, regular: false });
         fixture.seed('baselines/performance/invalid.benchmark.json', '{}');
         await scope.assert.rejects(async function () {
@@ -115,7 +115,7 @@ export const testNode = authoredSuite('performance storage policy', [
         });
         return scope.assert.collect();
     }),
-    test('detects files disappearing between metadata and content reads', async function (scope: TestScope) {
+    test('detects files disappearing between metadata and content reads', async function (scope) {
         const fixture = await performanceStorage({ ...performanceStorageScenario, disappeared: true });
         fixture.seed('baselines/performance/missing.benchmark.json', '{}');
         await scope.assert.rejects(async function () {
@@ -125,7 +125,7 @@ export const testNode = authoredSuite('performance storage policy', [
         });
         return scope.assert.collect();
     }),
-    test('ignores unrelated files and rejects identity mismatches', async function (scope: TestScope) {
+    test('ignores unrelated files and rejects identity mismatches', async function (scope) {
         const fixture = await performanceStorage(performanceStorageScenario);
         fixture.seed('baselines/performance/notes.txt', 'ignored');
         scope.assert.deepEqual(await fixture.store.list(), []);

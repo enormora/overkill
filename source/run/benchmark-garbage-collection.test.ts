@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { definition } from '../test-support/benchmark-placement-fixture.ts';
 import { defaultBenchmarkLifecyclePolicy } from '../bench/benchmark-lifecycle-policy.ts';
@@ -23,8 +23,8 @@ function selected(
     } ];
 }
 
-export const testNode = authoredSuite('benchmark GC host policy', [
-    test('preserves existing flags and recognizes GC aliases without duplication', function (scope: TestScope) {
+export const testNode: TestNode = suite('benchmark GC host policy', [
+    test('preserves existing flags and recognizes GC aliases without duplication', function (scope) {
         for (const flag of [ '--expose-gc', '--expose_gc' ]) {
             const original = { kind: 'child', nodeArguments: [ '--cpu-prof', flag ] } as const;
             const resolved = resolveBenchmarkGarbageCollectionHost(original, 'off', selected('after-sample'));
@@ -41,7 +41,7 @@ export const testNode = authoredSuite('benchmark GC host policy', [
         );
         return scope.assert.collect();
     }),
-    test('rejects conflicting disable aliases only when selected work requests GC', function (scope: TestScope) {
+    test('rejects conflicting disable aliases only when selected work requests GC', function (scope) {
         const prefixes = [ '--no-', '--no_', '--no' ];
         for (const prefix of prefixes) {
             const original = { kind: 'child', nodeArguments: [ `${prefix}expose-gc` ] } as const;
@@ -57,7 +57,7 @@ export const testNode = authoredSuite('benchmark GC host policy', [
         }
         return scope.assert.collect();
     }),
-    test('resolves a GC-capable host for calibration-only requests', function (scope: TestScope) {
+    test('resolves a GC-capable host for calibration-only requests', function (scope) {
         const cases = selected('off').map(function calibrationCase(entry) {
             return {
                 testCase: {
@@ -85,7 +85,7 @@ export const testNode = authoredSuite('benchmark GC host policy', [
         });
         return scope.assert.collect();
     }),
-    test('ignores absent and skipped selected work', function (scope: TestScope) {
+    test('ignores absent and skipped selected work', function (scope) {
         const original = { kind: 'direct' } as const;
         scope.assert.equal(resolveBenchmarkGarbageCollectionHost(original, 'off', []), original);
         const skipped = selected('after-sample').map(function (entry) {

@@ -1,22 +1,19 @@
-import { suite, test } from '@overkill-dev/test';
-
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { createDeterministicClock } from '@enormora/clock';
+import { type EngineCaseBody, createTestEngine } from '../test-support/create-test-engine.ts';
+
 import {
     defineReporter,
     type ReporterEvent,
     type DefinedReporter,
     type TestPlan,
-    type RunResult,
-    type TestBody,
-    type TestScope
+    type RunResult
 } from '../packages/engine/engine.entry-point.ts';
-import { createTestEngine } from '../test-support/create-test-engine.ts';
+
 import { createEngine, type Engine } from './engine.ts';
 import { createExecute, type ExecuteOptions } from './execution.ts';
 import { createReporterDispatcher } from './reporter-dispatcher.ts';
 import { CaseRunnerError } from './run-result.ts';
-import { testNode as retryPromiseAttributionTestNode } from './retry-promise-attribution.test.ts';
-import { testNode as retryAdmissionTestNode } from './retry-admission.test.ts';
 
 const options: ExecuteOptions = {
     debug: { mode: 'off' },
@@ -37,11 +34,11 @@ type RetryProbe = {
     readonly signals: () => readonly AbortSignal[];
     readonly cleanup: () => readonly number[];
     readonly events: () => readonly ReporterEvent[];
-    readonly body: TestBody;
+    readonly body: EngineCaseBody;
     readonly reporter: DefinedReporter;
 };
 
-async function executeBody(body: TestBody, executionOptions: ExecuteOptions): Promise<RunResult> {
+async function executeBody(body: EngineCaseBody, executionOptions: ExecuteOptions): Promise<RunResult> {
     const engine = createTestEngine();
     const plan = engine.createTestPlan(engine.createRoot({
         annotations: {},
@@ -58,7 +55,7 @@ async function executeBody(body: TestBody, executionOptions: ExecuteOptions): Pr
     return await engine.execute(plan, executionOptions);
 }
 
-function retryPlan(engine: Engine, body: TestBody): TestPlan {
+function retryPlan(engine: Engine, body: EngineCaseBody): TestPlan {
     return engine.createTestPlan(engine.createRoot({
         annotations: {},
         controls: {},
@@ -230,26 +227,26 @@ function assertCompletionFailure(scope: TestScope, result: RunResult): void {
     scope.assert.equal(error.attributedToAttempt?.index, 1);
 }
 
-export const testNode = suite('source/engine/retry-execution.test.ts', [
-    retryPromiseAttributionTestNode,
-    retryAdmissionTestNode,
-    ...schedulingCases.map(function retryScheduling(execution) {
-        return test({
-            annotations: {},
-            controls: {},
-            title: `retry execution preserves attempts under ${execution.mode}`,
-            async body(scope: TestScope) {
-                const probe = createRetryProbe();
-                const result = await executeBody(probe.body, {
-                    ...options,
-                    execution,
-                    reporters: [ probe.reporter ]
-                });
-                assertRecoveredCase(scope, result);
-                assertRetryProbe(scope, probe);
-                return scope.assert.collect();
-            }
-        });
+export const testNode: TestNode = suite('Retry execution', [
+    table({
+        title: 'preserves attempts across retry scheduling modes',
+        cases: schedulingCases,
+        caseTitle(execution) {
+            return execution.mode;
+        },
+        async test(scope) {
+            const execution = scope.parameters;
+
+            const probe = createRetryProbe();
+            const result = await executeBody(probe.body, {
+                ...options,
+                execution,
+                reporters: [ probe.reporter ]
+            });
+            assertRecoveredCase(scope, result);
+            assertRetryProbe(scope, probe);
+            return scope.assert.collect();
+        }
     }),
     test('retries stop at the total attempt limit', async function (scope: TestScope) {
         let runs = 0;
@@ -266,7 +263,7 @@ export const testNode = suite('source/engine/retry-execution.test.ts', [
         scope.assert.deepEqual(first.retried, { attempts: 3, finalVerdict: 'fail' });
         return scope.assert.collect();
     }),
-    test('cooperative soft timeouts reset per attempt after cleanup', async function (scope: TestScope) {
+    test('cooperative soft timeouts reset per attempt after cleanup', async function (scope) {
         const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
         const engine = deterministicEngine(clock);
         const probe = { runs: 0, cleaned: 0 };
@@ -289,7 +286,7 @@ export const testNode = suite('source/engine/retry-execution.test.ts', [
         scope.assert.equal(result.perTest[0]?.durationMicroseconds, 6000);
         return scope.assert.collect();
     }),
-    test('explicit non-integration families reject retries before running bodies', async function (scope: TestScope) {
+    test('explicit non-integration families reject retries before running bodies', async function (scope) {
         const engine = createTestEngine();
         let runs = 0;
         const plan = retryPlan(engine, function (attemptScope) {
@@ -304,26 +301,28 @@ export const testNode = suite('source/engine/retry-execution.test.ts', [
         scope.assert.equal(runs, 0);
         return scope.assert.collect();
     }),
-    ...[ null, { maxAttempts: 1 } ].map(function disabledRetries(retryPolicy) {
-        return test({
-            annotations: {},
-            controls: {},
-            title: `retries disabled with ${retryPolicy?.maxAttempts ?? 'no policy'}`,
-            async body(scope: TestScope) {
-                let runs = 0;
-                const result = await executeBody(function (attemptScope) {
-                    runs += 1;
-                    attemptScope.assert.fail();
-                    return attemptScope.assert.collect();
-                }, { ...options, retryPolicy });
-                scope.assert.equal(runs, 1);
-                scope.assert.equal(result.perTest[0]?.retried, null);
-                scope.assert.equal(result.perTest[0]?.attempts.length, 1);
-                return scope.assert.collect();
-            }
-        });
+    table({
+        title: 'leaves retries disabled without additional attempts',
+        cases: [ null, { maxAttempts: 1 } ],
+        caseTitle(retryPolicy) {
+            return String(retryPolicy?.maxAttempts ?? 'no policy');
+        },
+        async test(scope) {
+            const retryPolicy = scope.parameters;
+
+            let runs = 0;
+            const result = await executeBody(function (attemptScope) {
+                runs += 1;
+                attemptScope.assert.fail();
+                return attemptScope.assert.collect();
+            }, { ...options, retryPolicy });
+            scope.assert.equal(runs, 1);
+            scope.assert.equal(result.perTest[0]?.retried, null);
+            scope.assert.equal(result.perTest[0]?.attempts.length, 1);
+            return scope.assert.collect();
+        }
     }),
-    test('ordinary body errors can recover', async function (scope: TestScope) {
+    test('ordinary body errors can recover', async function (scope) {
         let runs = 0;
         const result = await executeBody(function (attemptScope) {
             runs += 1;
@@ -338,35 +337,37 @@ export const testNode = suite('source/engine/retry-execution.test.ts', [
         scope.assert.equal(runs, 2);
         return scope.assert.collect();
     }),
-    ...[ 'contract', 'cleanup', 'infrastructure' ].map(function terminalFailure(kind) {
-        return test({
-            annotations: {},
-            controls: {},
-            title: `${kind} failures are terminal`,
-            async body(scope: TestScope) {
-                let runs = 0;
-                const result = await executeBody(function (attemptScope) {
-                    runs += 1;
-                    if (kind === 'contract') {
-                        return attemptScope.assert.collect();
-                    }
-                    if (kind === 'infrastructure') {
-                        throw new CaseRunnerError('fixture failed', { cause: null, subtype: 'fixture' });
-                    }
-                    attemptScope.cleanup(function () {
-                        throw new Error('cleanup failed');
-                    });
-                    attemptScope.assert.fail();
+    table({
+        title: 'failures are terminal',
+        cases: [ 'contract', 'cleanup', 'infrastructure' ],
+        caseTitle(kind) {
+            return kind;
+        },
+        async test(scope) {
+            const kind = scope.parameters;
+
+            let runs = 0;
+            const result = await executeBody(function (attemptScope) {
+                runs += 1;
+                if (kind === 'contract') {
                     return attemptScope.assert.collect();
-                }, options);
-                scope.assert.equal(runs, 1);
-                scope.assert.equal(result.status, 'failed');
-                scope.assert.equal(result.perTest[0]?.retried, null);
-                return scope.assert.collect();
-            }
-        });
+                }
+                if (kind === 'infrastructure') {
+                    throw new CaseRunnerError('fixture failed', { cause: null, subtype: 'fixture' });
+                }
+                attemptScope.cleanup(function () {
+                    throw new Error('cleanup failed');
+                });
+                attemptScope.assert.fail();
+                return attemptScope.assert.collect();
+            }, options);
+            scope.assert.equal(runs, 1);
+            scope.assert.equal(result.status, 'failed');
+            scope.assert.equal(result.perTest[0]?.retried, null);
+            return scope.assert.collect();
+        }
     }),
-    test('reporter errors fail the run without stopping retries', async function (scope: TestScope) {
+    test('reporter errors fail the run without stopping retries', async function (scope) {
         let runs = 0;
         const reporter = defineReporter(function () {
             return {
@@ -432,7 +433,7 @@ export const testNode = suite('source/engine/retry-execution.test.ts', [
     }),
     test(
         'logical completion failure is terminal and preserves the recovered body evidence',
-        async function (scope: TestScope) {
+        async function (scope) {
             let runs = 0;
             let completed = 0;
             const result = await executeBody(function (attemptScope) {

@@ -1,11 +1,9 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
-import { testNode as shutdown } from './worker-pool-shutdown-policy.test.ts';
 import { createPool } from './worker-pool-creation.ts';
 
-export const testNode = authoredSuite('idle fresh-worker pool policy', [
-    shutdown,
-    test('keeps fresh-worker pools idle until work is assigned', async function (scope: TestScope) {
+export const testNode: TestNode = suite('idle fresh-worker pool policy', [
+    test('keeps fresh-worker pools idle until work is assigned', async function (scope) {
         const pool = createPool({
             cwd: '/project',
             hostProcess: { kind: 'direct' },

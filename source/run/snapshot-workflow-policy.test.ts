@@ -1,19 +1,18 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { RunArtifact } from '../engine/run-result.ts';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 
 import { snapshotWorkflow, snapshotEvent, snapshotUpdateFixture } from '../test-support/snapshot-workflow.ts';
 import { baselineCaseResult } from '../test-support/baseline-case-fixture.ts';
-import { testNode as valuePolicy } from './snapshot-value-policy.test.ts';
+
 import { baselineFilename } from './baseline-record.ts';
 
 function isRuntimeAttachment(artifact: RunArtifact): artifact is RuntimeAttachmentArtifact {
     return artifact.payload.kind === 'runtime-attachment';
 }
-export const testNode = authoredSuite('snapshot baseline workflow', [
-    valuePolicy,
-    test('updates matching snapshot baselines in stable publication order', async function (scope: TestScope) {
+export const testNode: TestNode = suite('snapshot baseline workflow', [
+    test('updates matching snapshot baselines in stable publication order', async function (scope) {
         const { workflow, event, filenames } = await snapshotUpdateFixture();
         const evaluated = await workflow.evaluate(event);
         scope.assert.deepEqual(evaluated.errors, []);
@@ -33,7 +32,7 @@ export const testNode = authoredSuite('snapshot baseline workflow', [
         scope.assert.deepEqual(workflow.warnings, []);
         return scope.assert.collect();
     }),
-    test('creates snapshot proposals when no stored baseline exists', async function (scope: TestScope) {
+    test('creates snapshot proposals when no stored baseline exists', async function (scope) {
         const workflow = await snapshotWorkflow([]);
         const event = await snapshotEvent([ { kind: 'text', name: 'response', actual: 'body' } ]);
         const evaluated = await workflow.evaluate(event);
@@ -62,7 +61,7 @@ export const testNode = authoredSuite('snapshot baseline workflow', [
         scope.assert.deepEqual(workflow.changes, []);
         return scope.assert.collect();
     }),
-    test('accepts successful cases without snapshot evidence', async function (scope: TestScope) {
+    test('accepts successful cases without snapshot evidence', async function (scope) {
         const workflow = await snapshotWorkflow([]);
         const event = await snapshotEvent([]);
         const result = await workflow.evaluate(event);

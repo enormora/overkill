@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { WorkerPoolAssignmentPolicy, WorkerLifecycle } from '../config/types.ts';
 import {
@@ -80,8 +80,8 @@ function assignedLanes(
     });
 }
 
-export const testNode = suite('source/run/worker-pool-lanes.test.ts', [
-    test('worker-pool lanes partition mixed worker lifecycles', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Worker pool lanes', [
+    test('partition mixed worker lifecycles', function (scope) {
         const units = [
             workUnit('reuse-1', 'reuse'),
             workUnit('reuse-2', 'reuse'),
@@ -109,7 +109,7 @@ export const testNode = suite('source/run/worker-pool-lanes.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker-pool lanes keep fresh-only units on fresh lanes', function (scope: OverkillScope) {
+    test('keep fresh-only units on fresh lanes', function (scope) {
         const units = [
             workUnit('fresh-1', 'fresh-worker-per-unit'),
             workUnit('fresh-2', 'fresh-worker-per-unit'),
@@ -127,7 +127,7 @@ export const testNode = suite('source/run/worker-pool-lanes.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker-pool lanes keep reuse-only units on reusable lanes', function (scope: OverkillScope) {
+    test('keep reuse-only units on reusable lanes', function (scope) {
         const units = [
             workUnit('reuse-1', 'reuse'),
             workUnit('reuse-2', 'reuse'),
@@ -142,7 +142,7 @@ export const testNode = suite('source/run/worker-pool-lanes.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker-pool lanes give tied extra capacity to the first lifecycle', function (scope: OverkillScope) {
+    test('give tied extra capacity to the first lifecycle', function (scope) {
         const units = [
             workUnit('fresh-1', 'fresh-worker-per-unit'),
             workUnit('reuse-1', 'reuse'),
@@ -159,7 +159,7 @@ export const testNode = suite('source/run/worker-pool-lanes.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker-pool lanes reject units with unknown lifecycles', function (scope: OverkillScope) {
+    test('reject units with unknown lifecycles', function (scope) {
         const unit = {
             ...workUnit('unknown-1', 'reuse'),
             workerLifecycle: 'unknown' as WorkerLifecycle
@@ -180,8 +180,8 @@ export const testNode = suite('source/run/worker-pool-lanes.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'worker-pool lanes assign extra mixed capacity proportionally to reuse units',
-        function (scope: OverkillScope) {
+        'assign extra mixed capacity proportionally to reuse units',
+        function (scope) {
             const units = [
                 workUnit('fresh-1', 'fresh-worker-per-unit'),
                 workUnit('fresh-2', 'fresh-worker-per-unit'),
@@ -201,7 +201,7 @@ export const testNode = suite('source/run/worker-pool-lanes.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('worker-pool lanes apply resource placement constraints', function (scope: OverkillScope) {
+    test('apply resource placement constraints', function (scope) {
         scope.assert.deepEqual(
             assignedLanes([
                 workUnitWithConstraints('serial-1', 'reuse', 1, {
@@ -295,7 +295,7 @@ export const testNode = suite('source/run/worker-pool-lanes.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker-pool lanes balance mixed lifecycle ties deterministically', function (scope: OverkillScope) {
+    test('balance mixed lifecycle ties deterministically', function (scope) {
         scope.assert.deepEqual(
             assignedLanes(
                 [
@@ -335,7 +335,7 @@ export const testNode = suite('source/run/worker-pool-lanes.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker-pool lanes stop mixed lifecycle allocation at unit capacity', function (scope: OverkillScope) {
+    test('stop mixed lifecycle allocation at unit capacity', function (scope) {
         const freshUnit = workUnitWithCases('fresh', 'fresh-worker-per-unit', 1);
         const reuseUnit = workUnitWithCases('reuse', 'reuse', 1);
         const units = [ freshUnit, reuseUnit ];
@@ -358,7 +358,7 @@ export const testNode = suite('source/run/worker-pool-lanes.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker-pool lanes balance selected case counts', function (scope: OverkillScope) {
+    test('balance selected case counts', function (scope) {
         scope.assert.deepEqual(
             assignedLanes(
                 [
@@ -394,7 +394,7 @@ export const testNode = suite('source/run/worker-pool-lanes.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker-pool lanes redistribute capped mixed lifecycle capacity', function (scope: OverkillScope) {
+    test('redistribute capped mixed lifecycle capacity', function (scope) {
         scope.assert.deepEqual(
             assignedLanes(
                 [
@@ -416,7 +416,7 @@ export const testNode = suite('source/run/worker-pool-lanes.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker-pool lanes reject invalid available parallelism', function (scope: OverkillScope) {
+    test('reject invalid available parallelism', function (scope) {
         scope.assert.deepEqual(
             workerPoolLanes({
                 assignmentPolicy: 'stable',

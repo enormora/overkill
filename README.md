@@ -16,13 +16,18 @@ quickstart and package surface.
 
 Repository tests use the published `@overkill-dev/test` authoring API and
 `overkill` CLI. It is the repository's only direct Overkill dependency.
-Profiles in `overkill.config.js` select each suite. Package smoke
+Profiles in `overkill.config.ts` select each suite. Package smoke
 tests import their outer authoring API through `#tests` so it resolves from the
 repository dependencies while consumer checks use the freshly packed packages.
 Leaf-package checks require exports from that packed consumer installation.
 Imports for the code under test continue to target source modules. Engine
 singletons are scoped to compatible execution protocols, so the checkout can
 exercise its implementation alongside the published distribution.
+Fixture programs under `source/integration-tests/integration/fixtures` provide
+inputs to the source runner under test. Repository suite hosting and verification
+come from the published package. Coverage integration checks execute source APIs
+in a separate SUT process. CLI coverage checks exercise both execution modes through
+the same source TypeScript entry point.
 Tests of unmanaged engine execution use `runWithAttachmentContext(null, ...)`
 to isolate it from the integration runner's attachment context.
 
@@ -33,29 +38,29 @@ CI runs four categories of tests:
 - Unit tests: `npx just test-unit-with-coverage`. This is the only unit run in CI.
   Overkill coverage includes production code under `source`, including `source/packages`,
   and excludes `*.entry-point.ts`, tests, fixtures, and test support. TypeScript
-  files with no executable code are omitted from runtime coverage. The coverage
-  recipe grants Node's inspector capability for V8 collection in audit mode.
-- Integration tests: `npx just test-integration`. The suite in
-  `source/integration-tests/repository.test.ts` owns tests that use real files,
-  processes, compiler projects, or external execution boundaries. These tests
+  files with no executable code are omitted from runtime coverage. The CLI configures V8 collection.
+- Integration tests: `npx just test-integration`. Profiles under
+  `source/integration-tests/<profile>/**/*.test.ts` cover real files, processes,
+  compiler projects, and external execution boundaries. These tests
   do not contribute to unit coverage. The command also runs the
-  `mutationCampaigns` profile with a separate budget for its subprocess matrix.
+  `mutation-campaigns` profile with a separate budget for its subprocess matrix.
   `npx just test-process-integration` runs
   the process suite on Linux and macOS.
 - Type tests: `npx just test-types`, for compile-time public API assertions.
 - Package smoke tests: `npx just test-package-smoke`, for installed exports,
   declarations, CLI startup, and interoperability across package boundaries.
-  These are integration tests in the `packageSmoke` profile. The published
+  These are integration tests in the `package-smoke` profile. The published
   runner executes them against packages freshly packed from this checkout.
   The Stryker smoke test runs one mutant against a one-line module; campaign
-  matrices run in the `mutationCampaigns` profile.
+  matrices run in the `mutation-campaigns` profile.
   Publication dry runs execute as a separate CI job alongside package smoke tests.
 
-Integration, process, compiler, package-smoke, and benchmark recipes invoke the
-published CLI with Node so audit flags do not propagate into consumer processes.
+Profiles discover TypeScript test sources directly through the published CLI.
+Unit tests run in a supervised process with concurrent scheduling. Package
+compilation is needed only for installed-package checks and publication.
 
 Use `npx just test-unit` for a local unit run without coverage. Keep integration
-test nodes out of the unit aggregation rooted at `source/overkill.test.ts`.
+tests under their profile directory so the unit glob excludes them.
 Tests of property, benchmark, and mutation support are ordinary unit or
 integration tests of those features. `npx just benchmark-mutation-cost` runs the
 benchmark profile through the published CLI. CI does not run a mutation-score or
@@ -66,7 +71,10 @@ assertions for shared domain checks. Test doubles and transcripts come from
 `@overkill-dev/test`; keep source imports when those APIs are the subject of a
 test. Integration fixtures can bind resources through
 `@overkill-dev/test/resources`. Microtests keep setup in memory and use scope
-methods for async checkpoints and cleanup.
+methods for async checkpoints and cleanup of live resources. Memory-only fixtures
+need no disposal unless disposal itself is under test. Let test callback scope
+types infer where assertion narrowing permits it. Suite and child names should
+read together without repeating their subject.
 
 Compilation and static analysis are separate checks. Unit and integration tests
 share one TypeScript compilation project. CI deliberately starts ESLint without

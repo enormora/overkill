@@ -1,11 +1,9 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { workerPlacementExecution } from '../test-support/worker-placement-execution.ts';
-import { testNode as output } from './worker-task-output-policy.test.ts';
 
-export const testNode = authoredSuite('worker placement execution policy', [
-    output,
-    test('completes a placement after receiving the worker message boundary', async function (scope: TestScope) {
+export const testNode: TestNode = suite('worker placement execution policy', [
+    test('completes a placement after receiving the worker message boundary', async function (scope) {
         const fixture = workerPlacementExecution('none');
         const tasks = await fixture.run();
         scope.assert.equal(fixture.calls(), 1);
@@ -24,7 +22,7 @@ export const testNode = authoredSuite('worker placement execution policy', [
         scope.assert.deepEqual(fixture.runtime.runState.runnerErrors(), []);
         return scope.assert.collect();
     }),
-    test('does not requeue work stopped deliberately by its parent', async function (scope: TestScope) {
+    test('does not requeue work stopped deliberately by its parent', async function (scope) {
         const fixture = workerPlacementExecution('parent-stop');
         const tasks = await fixture.run();
         scope.assert.equal(fixture.calls(), 1);
@@ -34,7 +32,7 @@ export const testNode = authoredSuite('worker placement execution policy', [
         scope.assert.equal(fixture.runtime.activeTasks.size, 0);
         return scope.assert.collect();
     }),
-    test('requeues parent-interrupted work until the crash limit is reached', async function (scope: TestScope) {
+    test('requeues parent-interrupted work until the crash limit is reached', async function (scope) {
         const fixture = workerPlacementExecution('parent-retry');
         const tasks = await fixture.run();
         scope.assert.equal(fixture.calls(), 3);
@@ -48,7 +46,7 @@ export const testNode = authoredSuite('worker placement execution policy', [
         scope.assert.equal(fixture.runtime.activeTasks.size, 0);
         return scope.assert.collect();
     }),
-    test('stops runtime-policy failures without retrying forbidden operations', async function (scope: TestScope) {
+    test('stops runtime-policy failures without retrying forbidden operations', async function (scope) {
         const fixture = workerPlacementExecution('permission');
         const tasks = await fixture.run();
         scope.assert.equal(fixture.calls(), 1);
@@ -57,7 +55,7 @@ export const testNode = authoredSuite('worker placement execution policy', [
         scope.assert.equal(fixture.runtime.activeTasks.size, 0);
         return scope.assert.collect();
     }),
-    test('prioritizes host errors over worker crash recovery', async function (scope: TestScope) {
+    test('prioritizes host errors over worker crash recovery', async function (scope) {
         const fixture = workerPlacementExecution('host');
         await fixture.run();
         scope.assert.equal(fixture.calls(), 1);
@@ -69,7 +67,7 @@ export const testNode = authoredSuite('worker placement execution policy', [
         scope.assert.equal(fixture.runtime.activeTasks.size, 0);
         return scope.assert.collect();
     }),
-    test('rejects malformed worker output and bounds crash recovery', async function (scope: TestScope) {
+    test('rejects malformed worker output and bounds crash recovery', async function (scope) {
         const fixture = workerPlacementExecution('invalid');
         const tasks = await fixture.run();
         scope.assert.equal(fixture.calls(), 3);

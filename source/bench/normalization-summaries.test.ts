@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
 
@@ -66,8 +66,8 @@ function incompleteDisplay(missing: 'factor' | 'summary'): BenchmarkExecutionRes
         }
     };
 }
-export const testNode = authoredSuite('normalization summaries', [
-    authoredTest('reads historical normalized results without inventing a budget scale', function (scope: TestScope) {
+export const testNode: TestNode = suite('normalization summaries', [
+    test('reads historical normalized results without inventing a budget scale', function (scope: TestScope) {
         const result = normalizedResult();
         const metric = result.normalization?.metrics.latency;
         scope.require.defined(metric);
@@ -76,23 +76,27 @@ export const testNode = authoredSuite('normalization summaries', [
         scope.assert.equal(restored.normalization?.metrics.latency?.budgetFactor, null);
         return scope.assert.collect();
     }),
-    ...([ 'summary', 'factor' ] as const).map(function incompleteDisplayCase(missing) {
-        return authoredTest(
-            `keeps only raw charts when the normalized ${missing} is unavailable`,
-            function (scope: TestScope) {
-                const fixture = benchmarkHtmlFixture('incomplete normalization');
-                const measured = fixture.perTest[0];
-                scope.require.defined(measured);
-                const benchmark = incompleteDisplay(missing);
-                const groups = benchmarkMetricGroups({ ...fixture, perTest: [ { ...measured, benchmark } ] });
-                scope.assert.equal(groups.length, 1);
-                scope.assert.equal(groups[0]?.rows[0]?.summary, benchmark.metrics.latency);
-                scope.assert.deepEqual({ budgets: groups[0]?.rows[0]?.budgets }, { budgets: [] });
-                return scope.assert.collect();
-            }
-        );
+    table({
+        title: 'keeps raw charts when normalization is unavailable',
+        cases: [ 'summary', 'factor' ] as const,
+        caseTitle(missing) {
+            return missing;
+        },
+        test(scope) {
+            const require: typeof scope.require = scope.require;
+
+            const fixture = benchmarkHtmlFixture('incomplete normalization');
+            const measured = fixture.perTest[0];
+            require.defined(measured);
+            const benchmark = incompleteDisplay(scope.parameters);
+            const groups = benchmarkMetricGroups({ ...fixture, perTest: [ { ...measured, benchmark } ] });
+            scope.assert.equal(groups.length, 1);
+            scope.assert.equal(groups[0]?.rows[0]?.summary, benchmark.metrics.latency);
+            scope.assert.deepEqual({ budgets: groups[0]?.rows[0]?.budgets }, { budgets: [] });
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('scales displayed observations and budgets while retaining raw evidence', function (scope: TestScope) {
+    test('scales displayed observations and budgets while retaining raw evidence', function (scope) {
         const result = normalizedResult();
         const evidence = summarizeNormalization(result, 1);
         scope.assert.deepEqual({ summary: evidence?.metrics.latency?.summary }, {
@@ -116,7 +120,7 @@ export const testNode = authoredSuite('normalization summaries', [
         scope.assert.equal(result.metrics.latency?.median, 2.5);
         return scope.assert.collect();
     }),
-    authoredTest('retains absent metrics and observations instead of inventing summaries', function (scope: TestScope) {
+    test('retains absent metrics and observations instead of inventing summaries', function (scope) {
         const result = normalizedResult();
         const absent = summarizeNormalization({ ...result, metrics: {}, budgets: [] }, 0);
         scope.assert.equal(absent?.metrics.latency?.summary, null);
@@ -124,7 +128,7 @@ export const testNode = authoredSuite('normalization summaries', [
         scope.assert.equal(summarizeNormalization({ ...result, normalization: null }, 1), null);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'marks overflowing displays non-comparable while preserving raw observations',
         function (scope: TestScope) {
             const result = normalizedResult();

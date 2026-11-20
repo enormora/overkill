@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createCommandLineRunner } from './command-line-runner.ts';
 import {
@@ -9,10 +9,10 @@ import {
 } from './command-line-list-runner.test.ts';
 import { RunCollectionError } from './run-errors.ts';
 
-export const testNode = suite('source/run/command-line-list-runner-errors.test.ts', [
+export const testNode: TestNode = suite('CLI list errors', [
     test(
-        'commandLineRunner.listTests() maps collection runner errors without printing the plan',
-        async function (scope: OverkillScope) {
+        'maps collection runner errors without printing the plan',
+        async function (scope) {
             const result = await listTests(
                 createListDependencies(async function resolveCommand(command) {
                     return createResolvedRun(command, [
@@ -39,7 +39,7 @@ export const testNode = suite('source/run/command-line-list-runner-errors.test.t
             return scope.assert.collect();
         }
     ),
-    test('commandLineRunner.listTests() maps config load errors', async function (scope: OverkillScope) {
+    test('maps config load errors', async function (scope) {
         const runner = createCommandLineRunner({
             ...createListDependencies(async function resolveCommand(command) {
                 return createResolvedRun(command, []);
@@ -72,7 +72,7 @@ export const testNode = suite('source/run/command-line-list-runner-errors.test.t
 
         return scope.assert.collect();
     }),
-    test('commandLineRunner.listTests() maps thrown collection errors', async function (scope: OverkillScope) {
+    test('maps thrown collection errors', async function (scope) {
         const result = await listTests(
             createListDependencies(async function resolveCommand() {
                 throw new RunCollectionError('Collection failed.', { cause: null }, 'loader');

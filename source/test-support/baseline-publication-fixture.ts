@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { createClock } from '@enormora/clock';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import { createReporterDispatcher, type ReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { RunResult } from '../engine/run-result.ts';

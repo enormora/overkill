@@ -1,7 +1,8 @@
 import { mock } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { types as runtimeTypes } from 'node:util';
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+
 import { createAsyncMeasurementSample, createMeasurementSample } from './measurement-region.ts';
 import { asyncMeasurementStrategy, measurementStrategy, wallClockMeasurement } from './measurement-strategy.ts';
 import { availableMetric } from './metric-reading.ts';
@@ -54,7 +55,7 @@ function actionError(action: () => unknown): unknown {
     }
 }
 
-export const testNode = authoredSuite('measurement regions and collectors', [
+export const testNode: TestNode = suite('measurement regions and collectors', [
     test('marks throughput unavailable when the wall clock cannot resolve the region', function (scope) {
         const clock = mock.method(process.hrtime, 'bigint', function () {
             return 0n;
@@ -175,45 +176,48 @@ export const testNode = authoredSuite('measurement regions and collectors', [
         lifecycle.ensureMeasured();
         return scope.assert.collect();
     }),
-    test('cancellation during async preparation disposes collectors before invoking work', async function (scope) {
-        const controller = new AbortController();
-        const cancelled = new Error('cancelled during preparation');
-        const counts = { actions: 0, disposed: 0 };
-        const collector: AsyncMetricCollector = {
-            version: '1',
-            name: 'cancelled',
-            mode: 'async',
-            metrics: [],
-            async prepare(context) {
-                context.cleanup.defer(async function releaseCollector() {
-                    counts.disposed += 1;
-                });
+    test(
+        'cancellation during async preparation disposes collectors before invoking work',
+        async function (scope) {
+            const controller = new AbortController();
+            const cancelled = new Error('cancelled during preparation');
+            const counts = { actions: 0, disposed: 0 };
+            const collector: AsyncMetricCollector = {
+                version: '1',
+                name: 'cancelled',
+                mode: 'async',
+                metrics: [],
+                async prepare(context) {
+                    context.cleanup.defer(async function releaseCollector() {
+                        counts.disposed += 1;
+                    });
 
-                await Promise.resolve();
-                controller.abort(cancelled);
-                return {
-                    start() {
-                        return undefined;
-                    },
-                    stop() {
-                        return undefined;
-                    },
-                    async finalize(finalization) {
-                        return finalization.readings({});
-                    }
-                };
-            }
-        };
-        const lifecycle = createAsyncMeasurementSample(asyncMeasurementStrategy([ collector ]), controller.signal);
-        await scope.assert.rejects(async function () {
-            return lifecycle.sample.measure(function () {
-                counts.actions += 1;
-            });
-        }, { exact: cancelled });
-        scope.assert.equal(counts.actions, 0);
-        scope.assert.equal(counts.disposed, 1);
-        return scope.assert.collect();
-    }),
+                    await Promise.resolve();
+                    controller.abort(cancelled);
+                    return {
+                        start() {
+                            return undefined;
+                        },
+                        stop() {
+                            return undefined;
+                        },
+                        async finalize(finalization) {
+                            return finalization.readings({});
+                        }
+                    };
+                }
+            };
+            const lifecycle = createAsyncMeasurementSample(asyncMeasurementStrategy([ collector ]), controller.signal);
+            await scope.assert.rejects(async function () {
+                return lifecycle.sample.measure(function () {
+                    counts.actions += 1;
+                });
+            }, { exact: cancelled });
+            scope.assert.equal(counts.actions, 0);
+            scope.assert.equal(counts.disposed, 1);
+            return scope.assert.collect();
+        }
+    ),
     test('empty runtime histograms remain unavailable rather than zero', function (scope) {
         const readings = runtimeHealthReadings([ null, null, 0, 0, 0 ]);
         scope.assert.equal(readings.eventLoopDelayMeanMicroseconds?.availability, 'unavailable');
@@ -342,61 +346,67 @@ export const testNode = authoredSuite('measurement regions and collectors', [
         scope.assert.equal(calls, 0);
         return scope.assert.collect();
     }),
-    test('reports native counter units and scopes without attributing process data to a thread', function (scope) {
-        const lifecycle = createMeasurementSample(
-            measurementStrategy([
-                threadCpuCollector(),
-                processCpuCollector(),
-                memoryCollector(),
-                processResourceCollector()
-            ]),
-            scope.signal
-        );
-        const measured = lifecycle.sample.measure(function () {
-            return new Uint8Array(4096);
-        });
-        scope.assert.equal(measured.value.length, 4096);
-        for (
-            const [ name, field, expected ] of [
-                [ 'threadCpuTotalMicroseconds', 'scope', 'thread' ],
-                [ 'processCpuTotalMicroseconds', 'scope', 'process' ],
-                [ 'residentSetBytes', 'scope', 'process' ],
-                [ 'heapUsedBytesDelta', 'unit', 'bytes' ],
-                [ 'processMaximumResidentSetBytes', 'unit', 'bytes' ],
-                [ 'fsReadDelta', 'unit', 'count' ]
-            ] as const
-        ) {
-            scope.assert.equal(measured.metrics[name]?.provenance[field], expected);
-        }
-        for (const reading of Object.values(measured.metrics)) {
-            scope.assert.deepEqual(
-                Object.keys(reading.provenance).toSorted(function (left, right) {
-                    return left.localeCompare(right);
-                }),
-                [ 'collector', 'scope', 'unit' ]
+    test(
+        'reports native counter units and scopes without attributing process data to a thread',
+        function (scope) {
+            const lifecycle = createMeasurementSample(
+                measurementStrategy([
+                    threadCpuCollector(),
+                    processCpuCollector(),
+                    memoryCollector(),
+                    processResourceCollector()
+                ]),
+                scope.signal
             );
-        }
-        return scope.assert.collect();
-    }),
-    test('primes observers without inventing loop observations for synchronous work', async function (scope) {
-        const lifecycle = createAsyncMeasurementSample(
-            asyncMeasurementStrategy([ runtimeHealthCollector() ]),
-            scope.signal
-        );
-        const measured = await lifecycle.sample.measure(function () {
-            const started = process.hrtime.bigint();
-            let elapsed = 0n;
-            while (elapsed < 1_000_000n) {
-                elapsed = process.hrtime.bigint() - started;
+            const measured = lifecycle.sample.measure(function () {
+                return new Uint8Array(4096);
+            });
+            scope.assert.equal(measured.value.length, 4096);
+            for (
+                const [ name, field, expected ] of [
+                    [ 'threadCpuTotalMicroseconds', 'scope', 'thread' ],
+                    [ 'processCpuTotalMicroseconds', 'scope', 'process' ],
+                    [ 'residentSetBytes', 'scope', 'process' ],
+                    [ 'heapUsedBytesDelta', 'unit', 'bytes' ],
+                    [ 'processMaximumResidentSetBytes', 'unit', 'bytes' ],
+                    [ 'fsReadDelta', 'unit', 'count' ]
+                ] as const
+            ) {
+                scope.assert.equal(measured.metrics[name]?.provenance[field], expected);
             }
-            return 'complete';
-        });
-        scope.assert.equal(measured.value, 'complete');
-        scope.assert.equal(measured.metrics.eventLoopDelayMeanMicroseconds?.provenance.scope, 'runtime');
-        scope.assert.equal(measured.metrics.eventLoopDelayMeanMicroseconds?.availability, 'unavailable');
-        scope.assert.equal(measured.metrics.gcObservedDurationMicroseconds?.provenance.unit, 'microseconds');
-        return scope.assert.collect();
-    }),
+            for (const reading of Object.values(measured.metrics)) {
+                scope.assert.deepEqual(
+                    Object.keys(reading.provenance).toSorted(function (left, right) {
+                        return left.localeCompare(right);
+                    }),
+                    [ 'collector', 'scope', 'unit' ]
+                );
+            }
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'primes observers without inventing loop observations for synchronous work',
+        async function (scope) {
+            const lifecycle = createAsyncMeasurementSample(
+                asyncMeasurementStrategy([ runtimeHealthCollector() ]),
+                scope.signal
+            );
+            const measured = await lifecycle.sample.measure(function () {
+                const started = process.hrtime.bigint();
+                let elapsed = 0n;
+                while (elapsed < 1_000_000n) {
+                    elapsed = process.hrtime.bigint() - started;
+                }
+                return 'complete';
+            });
+            scope.assert.equal(measured.value, 'complete');
+            scope.assert.equal(measured.metrics.eventLoopDelayMeanMicroseconds?.provenance.scope, 'runtime');
+            scope.assert.equal(measured.metrics.eventLoopDelayMeanMicroseconds?.availability, 'unavailable');
+            scope.assert.equal(measured.metrics.gcObservedDurationMicroseconds?.provenance.unit, 'microseconds');
+            return scope.assert.collect();
+        }
+    ),
     test('awaits collector start and stop around the operation', async function (scope) {
         const events: string[] = [];
         const collector: AsyncMetricCollector = {

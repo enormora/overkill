@@ -1,21 +1,27 @@
-import { runIfMain, suite, test } from '#tests';
+import { defineCompositeAssertion } from '#tests/assert';
+import { type TestNode, type TestScope, suite, test } from '#tests';
+
 import { P } from 'ts-pattern';
 import { createFactory } from '@enormora/objectory';
+import { requirePublishedCompositeReference } from '../../test-support/assertion-reference-boundary.ts';
 import type * as EnginePackage from '../../packages/engine/engine.entry-point.ts';
 import type * as DoublesPackage from '../../packages/doubles/doubles.entry-point.ts';
+import type * as TestPackage from '../../packages/test/test.entry-point.ts';
 import type * as AssertionPackage from '../../packages/assert/assert.entry-point.ts';
 import type {
     Engine,
     RunResult,
     SourceLocation,
     TestCase,
-    TestNode,
-    TestRoot,
-    TestScope
+    TestNode as SubjectTestNode,
+    TestRoot
 } from '../../packages/engine/engine.entry-point.ts';
-import { resolvePackagedExport } from './packaged-module.test.ts';
 
-const { defineCompositeAssertion } = await import(
+import { resolvePackagedExport } from './support/packaged-module.ts';
+
+const { runIfMain } = await import(await resolvePackagedExport('@overkill-dev/test')) as typeof TestPackage;
+
+const { defineCompositeAssertion: defineSubjectCompositeAssertion } = await import(
     await resolvePackagedExport('@overkill-dev/assert')
 ) as typeof AssertionPackage;
 const doublesPackage = await import(
@@ -56,7 +62,7 @@ type ResultOk = {
     readonly ok: boolean;
 };
 
-const resultOk = defineCompositeAssertion({
+const resultOk = defineSubjectCompositeAssertion({
     assert(check, result: ResultOk) {
         return check.true(result.ok);
     },
@@ -123,10 +129,7 @@ const smokeResult = defineCompositeAssertion({
             check.equal(result.summary.passed, 1),
             check.equal(result.summary.failed, 1),
             check.equal(rootCounts, null),
-            check.match(
-                packagedFile,
-                /target\/build\/source\/integration-tests\/package-smoke\/engine-direct-execution\.test\.js$/u
-            ),
+            check.equal(packagedFile, import.meta.filename.replaceAll('\\', '/')),
             check.equal(locationLineType(location), 'number'),
             check.equal(locationColumnType(location), 'number'),
             check.deepEqual(
@@ -181,7 +184,7 @@ const smokeCaseDefinitionFactory = createFactory<SmokeCaseDefinition>(function c
 function createSmokeCase(engine: Engine, definition: SmokeCaseDefinition): TestCase {
     return engine.createTestCase({
         definitionLocations: [ { kind: 'unknown' } ],
-        body(testScope: TestScope) {
+        body(testScope) {
             if (definition.expectedVerdict === 'pass') {
                 testScope.assert.true(true, { message: definition.assertionSummary });
                 return testScope.assert.collect();
@@ -196,7 +199,7 @@ function createSmokeCase(engine: Engine, definition: SmokeCaseDefinition): TestC
     });
 }
 
-function createSmokeRoot(children: readonly TestNode[]): TestRoot {
+function createSmokeRoot(children: readonly SubjectTestNode[]): TestRoot {
     return createRoot({
         children,
         annotations: {},
@@ -252,7 +255,19 @@ const smokeRuntimeFamily = defineTestFamily({
     }
 });
 
-export const testNode = suite('package smoke', [
+function assertPatternedDouble(scope: TestScope): void {
+    const patterned = doublesPackage.testDouble<(id: string) => string>({
+        rules: [ doublesPackage.rule.when(matches(P.string)).returns('matched') ]
+    });
+    scope.assert.equal(patterned('id'), 'matched');
+    const { calledOnceWith } = doublesPackage.doubleUsage;
+    requirePublishedCompositeReference(calledOnceWith);
+    scope.assert(calledOnceWith, patterned, [
+        matches(P.string)
+    ]);
+}
+
+export const testNode: TestNode = suite('package smoke', [
     test('packaged engine prepares and executes a family through top-level exports', async function (scope) {
         const testPlan = createTestPlan(createSmokeRoot([ createSkippedTestCase({
             title: 'planned skip',
@@ -301,7 +316,7 @@ export const testNode = suite('package smoke', [
     }),
     test(
         'consumer imports top-level @overkill-dev/engine exports and executes a TestPlan',
-        async function (scope: TestScope) {
+        async function (scope) {
             const topLevelEngine: Engine = {
                 createPropertyTestCase,
                 createBenchmarkTestCase,
@@ -320,16 +335,25 @@ export const testNode = suite('package smoke', [
                 prepareFamily
             };
 
-            const definedBefore = createTestPlan(createSmokeRoot([ testNode ])).defined;
+            const baseline = createTestCase({
+                definitionLocations: [ { kind: 'unknown' } ],
+                annotations: {},
+                controls: {},
+                title: 'definition count baseline',
+                body() {
+                    throw new Error('The definition count baseline must not execute.');
+                }
+            });
+            const definedBefore = createTestPlan(createSmokeRoot([ baseline ])).defined;
             scope.assert(smokeResult, await executeSmokePlan(topLevelEngine), definedBefore + 2);
 
             return scope.assert.collect();
         }
     ),
-    test('integration launcher returns for imported metadata', async function (scope: TestScope) {
+    test('integration launcher returns for imported metadata', async function (scope) {
         const testCase = createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            body(testContext: TestScope) {
+            body(testContext) {
                 testContext.assert.true(true, { message: 'passes' });
                 return testContext.assert.collect();
             },
@@ -343,17 +367,17 @@ export const testNode = suite('package smoke', [
 
         return scope.assert.collect();
     }),
-    test('consumer imports createEngine() and executes a TestPlan', async function (scope: TestScope) {
+    test('consumer imports createEngine() and executes a TestPlan', async function (scope) {
         scope.assert(smokeResult, await executeSmokePlan(createEngine()), 2);
 
         return scope.assert.collect();
     }),
     test(
         'consumer imports @overkill-dev/assert reference and executes it through @overkill-dev/engine',
-        async function (scope: TestScope) {
+        async function (scope) {
             const testCase = createTestCase({
                 definitionLocations: [ { kind: 'unknown' } ],
-                body(testScope: TestScope) {
+                body(testScope) {
                     testScope.assert(resultOk, { ok: true });
                     return testScope.assert.collect();
                 },
@@ -369,7 +393,7 @@ export const testNode = suite('package smoke', [
             return scope.assert.collect();
         }
     ),
-    test('consumer imports top-level @overkill-dev/doubles facade', async function (scope: TestScope) {
+    test('consumer imports top-level @overkill-dev/doubles facade', async function (scope) {
         scope.assert.deepEqual(Object.keys(doublesPackage), [
             'doubleUsage',
             'matches',
@@ -382,13 +406,7 @@ export const testNode = suite('package smoke', [
             'testIterable',
             'testIterator'
         ]);
-        const patterned = doublesPackage.testDouble<(id: string) => string>({
-            rules: [ doublesPackage.rule.when(matches(P.string)).returns('matched') ]
-        });
-        scope.assert.equal(patterned('id'), 'matched');
-        scope.assert(doublesPackage.doubleUsage.calledOnceWith, patterned, [
-            matches(P.string)
-        ]);
+        assertPatternedDouble(scope);
         const loadValue = doublesPackage.testDouble.returns('value');
 
         scope.assert.deepEqual(
@@ -410,7 +428,7 @@ export const testNode = suite('package smoke', [
 
         const testCase = createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            body(testScope: TestScope) {
+            body(testScope) {
                 const saveValue = doublesPackage.testDouble.returns('saved');
 
                 saveValue('id');

@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defaultIntegrationProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import type { WorkerLifecycle } from '../config/types.ts';
@@ -64,8 +64,8 @@ function workerCount(
         .resolved;
 }
 
-export const testNode = suite('source/run/worker-pool-capacity.test.ts', [
-    test('worker count resolves defaults and caps in precedence order', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Worker pool capacity', [
+    test('worker count resolves defaults and caps in precedence order', function (scope) {
         const units = Array.from({ length: 16 }, function toUnit(_value, index) {
             return workUnit(`reuse-${index + 1}`, 'reuse');
         });
@@ -77,7 +77,7 @@ export const testNode = suite('source/run/worker-pool-capacity.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('placement ceilings cap requests without replacing configured worker facts', function (scope: OverkillScope) {
+    test('placement ceilings cap requests without replacing configured worker facts', function (scope) {
         const units = Array.from({ length: 6 }, function reusableUnit(_value, index) {
             return workUnit(`reuse-${index}`, 'reuse');
         });
@@ -94,7 +94,7 @@ export const testNode = suite('source/run/worker-pool-capacity.test.ts', [
         );
         return scope.assert.collect();
     }),
-    test('shared hard constraints cap worker count at one', function (scope: OverkillScope) {
+    test('shared hard constraints cap worker count at one', function (scope) {
         const singleWorkerUnits = [
             constrainedWorkUnit('first', 'reuse', 'runtime:benchmark', 'single-worker'),
             constrainedWorkUnit('second', 'reuse', 'runtime:benchmark', 'single-worker')
@@ -114,7 +114,7 @@ export const testNode = suite('source/run/worker-pool-capacity.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('shared hard constraints reject incompatible worker lifecycles', function (scope: OverkillScope) {
+    test('shared hard constraints reject incompatible worker lifecycles', function (scope) {
         scope.assert.throws(function resolveSharedConstraintAcrossLifecycles() {
             workerCount(
                 [
@@ -134,7 +134,7 @@ export const testNode = suite('source/run/worker-pool-capacity.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker count records its resolution inputs', function (scope: OverkillScope) {
+    test('worker count records its resolution inputs', function (scope) {
         const units = [ workUnit('reuse-1', 'reuse'), workUnit('reuse-2', 'reuse') ];
 
         scope.assert.deepEqual(
@@ -156,7 +156,7 @@ export const testNode = suite('source/run/worker-pool-capacity.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker-pool facts require a resolved worker count', function (scope: OverkillScope) {
+    test('worker-pool facts require a resolved worker count', function (scope) {
         const profile = defaultIntegrationProfile({ execution: { maxWorkers: null } });
 
         scope.assert.throws(function createFactsWithoutWorkerCount() {
@@ -191,7 +191,7 @@ export const testNode = suite('source/run/worker-pool-capacity.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker count rejects mixed lifecycles without enough workers', function (scope: OverkillScope) {
+    test('worker count rejects mixed lifecycles without enough workers', function (scope) {
         scope.assert.throws(function resolveOneWorkerForMixedLifecycles() {
             workerCount(
                 [
@@ -206,7 +206,7 @@ export const testNode = suite('source/run/worker-pool-capacity.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker-pool lanes use capacity weight for mixed lifecycle allocation', function (scope: OverkillScope) {
+    test('use capacity weight for mixed lifecycle allocation', function (scope) {
         const units = [
             workUnit('fresh-1', 'fresh-worker-per-unit'),
             workUnit('fresh-2', 'fresh-worker-per-unit'),

@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -58,8 +58,8 @@ async function captureMeasuredFailure(
     return null;
 }
 
-export const testNode = suite('source/run/worker-pool-worker-timing.test.ts', [
-    test('postWorkerTimingSpan() records worker identity and clamps durations', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Worker pool worker timing', [
+    test('postWorkerTimingSpan() records worker identity and clamps durations', function (scope) {
         const fixture = createTimingTaskFixture('run');
 
         postWorkerTimingSpan({
@@ -92,7 +92,7 @@ export const testNode = suite('source/run/worker-pool-worker-timing.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('measureWorkerSpan() records successful work', async function (scope: OverkillScope) {
+    test('measureWorkerSpan() records successful work', async function (scope) {
         const fixture = createTimingTaskFixture('collect');
         const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
         const value = await measureWorkerSpan(
@@ -113,7 +113,7 @@ export const testNode = suite('source/run/worker-pool-worker-timing.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('measureWorkerSpan() records failed work before rethrowing', async function (scope: OverkillScope) {
+    test('measureWorkerSpan() records failed work before rethrowing', async function (scope) {
         const fixture = createTimingTaskFixture('run');
         const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
         const error = new Error('worker failed');
@@ -125,7 +125,7 @@ export const testNode = suite('source/run/worker-pool-worker-timing.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker resource timing records resource and worker identity', async function (scope: OverkillScope) {
+    test('worker resource timing records resource and worker identity', async function (scope: TestScope) {
         const fixture = createTimingTaskFixture('run');
         const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
         const timing = createWorkerResourceLifecycleTiming(fixture.task, clock);
@@ -156,7 +156,7 @@ export const testNode = suite('source/run/worker-pool-worker-timing.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker resource timing omits worker identity during collection', async function (scope: OverkillScope) {
+    test('worker resource timing omits worker identity during collection', async function (scope) {
         const fixture = createTimingTaskFixture('collect');
         const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
         const timing = createWorkerResourceLifecycleTiming(fixture.task, clock);

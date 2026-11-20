@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { DiffPathSegment } from '../diff/diff-shape.ts';
 
@@ -42,8 +42,8 @@ function ledger(): ResourceCheckLedger {
         publish
     );
 }
-export const testNode = authoredSuite('resource observation ledger', [
-    test('opens each observation interval once', function (scope: TestScope) {
+export const testNode: TestNode = suite('resource observation ledger', [
+    test('opens each observation interval once', function (scope) {
         const checks = ledger();
         checks.open(lifetime);
         checks.open(lifetime);
@@ -59,7 +59,7 @@ export const testNode = authoredSuite('resource observation ledger', [
         } ]);
         return scope.assert.collect();
     }),
-    test('counts passing findings separately for lifetime and attempt intervals', function (scope: TestScope) {
+    test('counts passing findings separately for lifetime and attempt intervals', function (scope) {
         const checks = ledger();
         checks.writer.record(lifetime, null, { kind: 'pass' });
         checks.writer.record(attempt, 'consumer', { kind: 'pass' });
@@ -87,7 +87,7 @@ export const testNode = authoredSuite('resource observation ledger', [
         } ]);
         return scope.assert.collect();
     }),
-    test('returns snapshots isolated from subsequent observations', function (scope: TestScope) {
+    test('returns snapshots isolated from subsequent observations', function (scope) {
         const checks = ledger();
         checks.open(lifetime);
         const before = checks.snapshots();
@@ -98,7 +98,7 @@ export const testNode = authoredSuite('resource observation ledger', [
         scope.assert.true(Object.isFrozen(before[0]));
         return scope.assert.collect();
     }),
-    test('marks a completed interval incomplete when observation errors were recorded', function (scope: TestScope) {
+    test('marks a completed interval incomplete when observation errors were recorded', function (scope) {
         const checks = ledger();
         const failure = new Error('Observation failed.');
         checks.writer.error(attempt, 'consumer', failure);
@@ -134,7 +134,7 @@ export const testNode = authoredSuite('resource observation ledger', [
         scope.assert.includes(String(error.cause), 'Resource check arrived after finalization.');
         return scope.assert.collect();
     }),
-    test('marks closed lifetime evidence incomplete when late errors arrive', function (scope: TestScope) {
+    test('marks closed lifetime evidence incomplete when late errors arrive', function (scope) {
         const checks = ledger();
         checks.finalize(lifetime, { kind: 'complete' });
         checks.writer.error(lifetime, null, new Error('Late observation.'));
@@ -144,7 +144,7 @@ export const testNode = authoredSuite('resource observation ledger', [
         });
         return scope.assert.collect();
     }),
-    test('records stop findings before notifying the owner', function (scope: TestScope) {
+    test('records stop findings before notifying the owner', function (scope) {
         const stopped: { readonly cause: unknown; readonly interval: ResourceCheckInterval; }[] = [];
         const checks = createResourceCheckLedger(
             'service',

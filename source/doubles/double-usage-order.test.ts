@@ -1,9 +1,10 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
 import type { FailedCheck, FailedCompositeCheck } from '../assertion-protocol/assertion-node-shape.ts';
-import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+
 import type { AssertionTestFailure, FailOutcome, RunResult } from '../engine/run-result.ts';
-import type { TestBody, TestScope } from '../engine/test-scope.ts';
+
 import { doubleUsage } from './double-usage.ts';
 import { rule } from './double-rule.ts';
 import { createTestDoubleScope, testDouble } from './test-double.ts';
@@ -27,7 +28,7 @@ type ClientOptions = {
 };
 type ClientConstructor = new (url: string, options: ClientOptions) => Client;
 
-async function executeSingleBody(body: TestBody): Promise<RunResult> {
+async function executeSingleBody(body: EngineCaseBody): Promise<RunResult> {
     const engine = createEngine();
 
     return await engine.execute(
@@ -103,14 +104,14 @@ function failureSummaries(result: RunResult): readonly string[] | null {
     });
 }
 
-export const testNode = suite('source/doubles/double-usage-order.test.ts', [
+export const testNode: TestNode = suite('Double usage order', [
     test(
         'doubleUsage construction argument assertions use construction history',
-        async function body(scope: OverkillScope) {
+        async function body(scope) {
             const Client = testDouble<ClientConstructor>({
                 fallback: rule.constructs({ id: 'client' })
             });
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 const client = new Client('https://api.example.test', { timeout: 500, token: 'primary' });
 
                 testScope.assert.equal(client.id, 'client');
@@ -134,9 +135,9 @@ export const testNode = suite('source/doubles/double-usage-order.test.ts', [
     ),
     test(
         'doubleUsage indexed argument assertions validate index and event presence',
-        async function body(scope: OverkillScope) {
+        async function body(scope: TestScope) {
             const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 loadUser('first', { role: 'reader', trace: 'one' });
 
                 testScope.assert(doubleUsage.nthCallWith, loadUser, -1, [ 'first' ]);
@@ -164,11 +165,11 @@ export const testNode = suite('source/doubles/double-usage-order.test.ts', [
     ),
     test(
         'doubleUsage order assertions compare events across doubles from one scope',
-        async function body(scope: OverkillScope) {
+        async function body(scope) {
             const { testDouble: scopedDouble } = createTestDoubleScope();
             const first = scopedDouble.returns<Ping>('first');
             const second = scopedDouble.returns<Ping>('second');
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 first();
                 second();
 
@@ -183,11 +184,11 @@ export const testNode = suite('source/doubles/double-usage-order.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('doubleUsage construction order compares constructor events', async function body(scope: OverkillScope) {
+    test('doubleUsage construction order compares constructor events', async function body(scope) {
         const { testDouble: scopedDouble } = createTestDoubleScope();
         const First = scopedDouble.constructs<ClientConstructor>({ id: 'first' });
         const Second = scopedDouble.constructs<ClientConstructor>({ id: 'second' });
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        const result = await executeSingleBody(function testBody(testScope) {
             const first = new First('https://first.example.test', { timeout: 500, token: 'first' });
             const second = new Second('https://second.example.test', { timeout: 500, token: 'second' });
 
@@ -204,11 +205,11 @@ export const testNode = suite('source/doubles/double-usage-order.test.ts', [
     }),
     test(
         'doubleUsage order assertions require all previous events before the next double',
-        async function body(scope: OverkillScope) {
+        async function body(scope: TestScope) {
             const { testDouble: scopedDouble } = createTestDoubleScope();
             const first = scopedDouble.returns<Ping>('first');
             const second = scopedDouble.returns<Ping>('second');
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 first();
                 second();
                 first();
@@ -227,11 +228,11 @@ export const testNode = suite('source/doubles/double-usage-order.test.ts', [
     ),
     test(
         'doubleUsage order assertions reject invalid and unused order inputs',
-        async function body(scope: OverkillScope) {
+        async function body(scope: TestScope) {
             const { testDouble: scopedDouble } = createTestDoubleScope();
             const first = scopedDouble.returns<Ping>('first');
             const second = scopedDouble.returns<Ping>('second');
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 first();
 
                 testScope.assert(doubleUsage.callOrder as unknown as typeof doubleUsage.called, [ first ]);
@@ -254,11 +255,11 @@ export const testNode = suite('source/doubles/double-usage-order.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('doubleUsage order assertions reject mixed double scopes', async function body(scope: OverkillScope) {
+    test('doubleUsage order assertions reject mixed double scopes', async function body(scope: TestScope) {
         const [ firstScope, secondScope ] = [ createTestDoubleScope(), createTestDoubleScope() ];
         const first = firstScope.testDouble.returns<Ping>('first');
         const second = secondScope.testDouble.returns<Ping>('second');
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        const result = await executeSingleBody(function testBody(testScope) {
             first();
             second();
 
@@ -287,8 +288,8 @@ export const testNode = suite('source/doubles/double-usage-order.test.ts', [
     }),
     test(
         'doubleUsage count and argument assertions reject non-doubles independently',
-        async function body(scope: OverkillScope) {
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        async function body(scope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 testScope.assert(doubleUsage.callCount, function notADouble() {
                     return undefined;
                 }, 0);
@@ -315,8 +316,8 @@ export const testNode = suite('source/doubles/double-usage-order.test.ts', [
     ),
     test(
         'doubleUsage assertions reject non-doubles with assertion diagnostics',
-        async function body(scope: OverkillScope) {
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        async function body(scope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 testScope.assert(doubleUsage.called, function notADouble() {
                     return undefined;
                 });

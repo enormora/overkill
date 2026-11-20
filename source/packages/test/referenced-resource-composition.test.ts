@@ -1,4 +1,4 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { defineResource, defineRuntime, defineRuntimeMatrix } from '../resources/resources.entry-point.ts';
 import { referencedTestBody } from '../../test-support/referenced-test-body.ts';
@@ -8,16 +8,15 @@ import {
     readTestBodyResourceAttachments,
     hasAttachedResourceDescriptors
 } from '../../engine/test-body-resource-attachment.ts';
-import { testNode as runtimes } from './runtime-scope-policy.test.ts';
+
 import {
     attachComposedResourceActions,
     attachComposedResourceBody,
     mapComposedResourceBody
 } from './resource-wrapper-composition.ts';
-import type { TestScope } from './test.entry-point.ts';
 
-export const testNode = suite('referenced resource composition', [
-    test('attaches resource metadata before binding a referenced body', function (scope: TestScope) {
+export const testNode: TestNode = suite('referenced resource composition', [
+    test('attaches resource metadata before binding a referenced body', function (scope) {
         const fixture = referencedTestBody();
         const resource = defineResource({
             name: 'value',
@@ -39,7 +38,7 @@ export const testNode = suite('referenced resource composition', [
         });
         return scope.assert.collect();
     }),
-    test('prepares resource implementation metadata for every referenced runtime variant', function (scope: TestScope) {
+    test('prepares resource implementation metadata for every referenced runtime variant', function (scope) {
         const fixture = referencedTestBody();
         const resource = defineResource({
             name: 'value',
@@ -73,8 +72,7 @@ export const testNode = suite('referenced resource composition', [
         });
         return scope.assert.collect();
     }),
-    runtimes,
-    test('binds scope mappings after resolving a referenced implementation', async function (scope: TestScope) {
+    test('binds scope mappings after resolving a referenced implementation', async function (scope) {
         const fixture = referencedTestBody();
         const body = attachComposedResourceActions<TestScope>(
             [ {
@@ -101,7 +99,7 @@ export const testNode = suite('referenced resource composition', [
         scope.assert.equal(result, 'mapped');
         return scope.assert.collect();
     }),
-    test('retains deferred scope mappings when binding workload identity', async function (scope: TestScope) {
+    test('retains deferred scope mappings when binding workload identity', async function (scope) {
         const fixture = referencedTestBody();
         const body = attachComposedResourceActions<TestScope>(
             [ {
@@ -131,7 +129,7 @@ export const testNode = suite('referenced resource composition', [
         );
         return scope.assert.collect();
     }),
-    test('maps referenced execution after binding its implementation', async function (scope: TestScope) {
+    test('maps referenced execution after binding its implementation', async function (scope) {
         const fixture = referencedTestBody();
         const observed: unknown[] = [];
         const body = mapComposedResourceBody(
@@ -159,7 +157,7 @@ export const testNode = suite('referenced resource composition', [
         scope.assert.equal(observed.length, 1);
         return scope.assert.collect();
     }),
-    test('attaches frozen resource metadata to referenced bodies', function (scope: TestScope) {
+    test('attaches frozen resource metadata to referenced bodies', function (scope) {
         const fixture = referencedTestBody();
         const metadata = {
             directResources: [ { key: 'service', resourceName: 'service' } ],
@@ -173,7 +171,7 @@ export const testNode = suite('referenced resource composition', [
         scope.assert.equal(body.reference, fixture.body.reference);
         return scope.assert.collect();
     }),
-    test('recognizes resources inside runtime matrix variants', function (scope: TestScope) {
+    test('recognizes resources inside runtime matrix variants', function (scope) {
         const empty = { dimensions: {}, name: 'runtime', requirements: [], resources: [], scenarioBindings: [] };
         scope.assert.false(
             hasAttachedResourceDescriptors({

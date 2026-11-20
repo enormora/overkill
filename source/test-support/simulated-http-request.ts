@@ -1,8 +1,8 @@
 import { IncomingMessage } from 'node:http';
 import { Socket } from 'node:net';
+import type { TestScope } from '@overkill-dev/test';
 import { createStoredValue } from '../stored-value.ts';
 import { type HttpTranscript, createHttpTranscriptRecorder } from '../transcript/http-transcript.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
 import { currentTranscriptScope } from '../transcript/transcript-store.ts';
 
 import type { SimulatedHttpServerDefinition, SimulationScenarioCatalog } from '../simulation/simulation.ts';

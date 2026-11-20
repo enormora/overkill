@@ -1,6 +1,4 @@
-import { suite } from '@overkill-dev/test';
-
-import { type TestNode, type TestScope, createTestCase } from '../packages/engine/engine.entry-point.ts';
+import { type TestNode, defineMacro, test, suite, type TestScope } from '@overkill-dev/test';
 
 import {
     type AnyResourceDefinition,
@@ -231,24 +229,20 @@ async function assertDependencyReadFailure(scope: TestScope): Promise<void> {
     ]);
 }
 
-function disposalTestCase(
-    title: string,
-    assertion: (scope: TestScope) => Promise<void>
-): TestNode {
-    return createTestCase({
-        definitionLocations: [ { kind: 'unknown' } ],
+const disposalTestCase = defineMacro(function (title: string, assertion: (scope: TestScope) => Promise<void>) {
+    return test({
         title,
         annotations: {},
         controls: {},
-        async body(scope: TestScope) {
+        async body(scope) {
             await assertion(scope);
 
             return scope.assert.collect();
         }
     });
-}
+});
 
-export const testNode = suite('source/resources/resource-lifecycle-disposal.test.ts', [
+export const testNode: TestNode = suite('Resource lifecycle disposal', [
     disposalTestCase('runtime session supports async disposal', assertAsyncDispose),
     disposalTestCase('runtime session skips resources without dispose callbacks', assertNullDispose),
     disposalTestCase('startRuntime rejects malformed descriptors', assertInvalidDescriptors),

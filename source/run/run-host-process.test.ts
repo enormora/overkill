@@ -1,16 +1,16 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { validateHostProcess } from '../config/host-process.ts';
 
 import { hostProcessFacts } from './run-host-process.ts';
 
-export const testNode = suite('source/run/run-host-process.test.ts', [
-    test('hostProcessFacts() records direct execution without a host child', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Run host process', [
+    test('hostProcessFacts() records direct execution without a host child', function (scope) {
         scope.assert.deepEqual(hostProcessFacts({ kind: 'direct' }), { kind: 'direct' });
 
         return scope.assert.collect();
     }),
-    test('hostProcessFacts() derives child host reasons from Node arguments', function (scope: OverkillScope) {
+    test('hostProcessFacts() derives child host reasons from Node arguments', function (scope) {
         scope.assert.deepEqual(
             hostProcessFacts({
                 kind: 'child',
@@ -36,7 +36,7 @@ export const testNode = suite('source/run/run-host-process.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('validateHostProcess() rejects unsupported Node argument shapes', function (scope: OverkillScope) {
+    test('validateHostProcess() rejects unsupported Node argument shapes', function (scope) {
         scope.assert.throws(function rejectShortArgument() {
             validateHostProcess({ kind: 'child', nodeArguments: [ '-r' ] });
         }, {

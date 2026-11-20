@@ -1,6 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
-
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { propertyEvidenceSchema } from '../run/property-evidence-schema.ts';
@@ -8,7 +6,7 @@ import { formatPropertyDiagnostics } from '../reporters/failure-summary.ts';
 import { property } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
-export const testNode = authoredSuite('property reporting', [
+export const testNode: TestNode = suite('property reporting', [
     test('reports passing exploration without manufacturing a failure', async function (scope: TestScope) {
         const result = await executePropertyNode(
             property({

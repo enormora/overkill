@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type {
     BenchmarkNormalizationEvidence,
@@ -63,8 +63,8 @@ function normalizedEvidence(
         }
     };
 }
-export const testNode = authoredSuite('performance baseline change planning', [
-    test('creates missing expectations only for explicit update modes', function (scope: TestScope) {
+export const testNode: TestNode = suite('performance baseline change planning', [
+    test('creates missing expectations only for explicit update modes', function (scope) {
         scope.assert.equal(proposePerformanceBaseline({ ...input, mode: 'none' }), null);
         for (const mode of [ 'update', 'apply', 'bootstrap', 'diff' ] as const) {
             scope.assert.equal(proposePerformanceBaseline({ ...input, mode })?.kind, 'create');
@@ -124,7 +124,7 @@ export const testNode = authoredSuite('performance baseline change planning', [
         );
         return scope.assert.collect();
     }),
-    test('rejects invalid or oversized proposals', function (scope: TestScope) {
+    test('rejects invalid or oversized proposals', function (scope) {
         scope.assert.throws(function rejectOversizedProposal() {
             proposePerformanceBaseline({ ...input, maxBytes: 1 });
         }, { message: 'Performance baseline proposal exceeds the configured artifact byte limit.' });

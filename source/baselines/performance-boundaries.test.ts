@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test, testDouble } from '@overkill-dev/test';
 
 import type { RunResult } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -9,7 +9,7 @@ import type {
     PerformanceBaselineAdapter,
     StoredPerformanceBaseline
 } from '../packages/baselines/baselines.entry-point.ts';
-import { testDouble } from '../doubles/test-double.ts';
+
 import type { BenchmarkCaseEnd } from './performance-check.ts';
 import { evaluatePerformanceBaseline, performanceBaselineError } from './performance-evaluation.ts';
 import {
@@ -114,8 +114,8 @@ function completedRun(): RunResult {
     });
 }
 
-export const testNode = authoredSuite('performance baseline boundaries', [
-    authoredTest('does not observe intermediate attempts', async function (scope: TestScope) {
+export const testNode: TestNode = suite('performance baseline boundaries', [
+    test('does not observe intermediate attempts', async function (scope) {
         const workflow = await presentationWorkflow({
             ...adapter,
             observe: testDouble.throws(new Error('Unexpected observation.'))
@@ -127,7 +127,7 @@ export const testNode = authoredSuite('performance baseline boundaries', [
         scope.assert.deepEqual(workflow.present(), { comparisons: [], errors: [] });
         return scope.assert.collect();
     }),
-    authoredTest('retains non-Error observation diagnostics', async function (scope: TestScope) {
+    test('retains non-Error observation diagnostics', async function (scope) {
         const workflow = await presentationWorkflow({
             ...adapter,
             observe: testDouble.throws('Observation unavailable.')
@@ -141,7 +141,7 @@ export const testNode = authoredSuite('performance baseline boundaries', [
         });
         return scope.assert.collect();
     }),
-    authoredTest('retains proposals when chart extraction fails', async function (scope: TestScope) {
+    test('retains proposals when chart extraction fails', async function (scope) {
         const workflow = await presentationWorkflow({
             ...adapter,
             describeMetrics: testDouble.throws(new Error('Invalid chart.'))
@@ -154,7 +154,7 @@ export const testNode = authoredSuite('performance baseline boundaries', [
         scope.assert.equal(workflow.changes[0]?.kind, 'create');
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'excludes inapplicable observations and attributes errors without an explicit work identity',
         function (scope: TestScope) {
             const result = evaluatePerformanceBaseline({
@@ -181,13 +181,13 @@ export const testNode = authoredSuite('performance baseline boundaries', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('rejects observations that exceed the byte limit', function (scope: TestScope) {
+    test('rejects observations that exceed the byte limit', function (scope) {
         scope.assert.throws(function oversizedObservation() {
             evaluatePerformanceBaseline({ ...input, maxBytes: 0 });
         }, { message: 'Performance observation exceeds the configured artifact byte limit.' });
         return scope.assert.collect();
     }),
-    authoredTest('rejects adapter mismatches without diagnostics', function (scope: TestScope) {
+    test('rejects adapter mismatches without diagnostics', function (scope) {
         const invalidAdapter = { ...adapter };
         Reflect.set(invalidAdapter, 'compare', function missingDiagnostics() {
             return { diagnostics: [], kind: 'mismatch' };
@@ -197,7 +197,7 @@ export const testNode = authoredSuite('performance baseline boundaries', [
         }, { message: 'Performance comparison mismatch requires diagnostics.' });
         return scope.assert.collect();
     }),
-    authoredTest('deduplicates final events and proposes the default work identity', async function (scope: TestScope) {
+    test('deduplicates final events and proposes the default work identity', async function (scope) {
         let observations = 0;
         const workflow = await createPerformanceWorkflow({
             adapters: [ {
@@ -219,7 +219,7 @@ export const testNode = authoredSuite('performance baseline boundaries', [
         await assertPendingProposal(scope, workflow);
         return scope.assert.collect();
     }),
-    authoredTest('applies comparison failures to the final result and its attempt', async function (scope: TestScope) {
+    test('applies comparison failures to the final result and its attempt', async function (scope) {
         const workflow = await storedWorkflow('none', []);
         const evaluated = workflow.evaluate(event);
         const finished = workflow.finish(completedRun(), true);
@@ -230,8 +230,15 @@ export const testNode = authoredSuite('performance baseline boundaries', [
         scope.assert.deepEqual(finished.errors, []);
         return scope.assert.collect();
     }),
-    ...[ 'apply', 'diff' ].map(function reconciliationMode(mode) {
-        return authoredTest(`removes stale baselines in ${mode} mode`, async function (scope: TestScope) {
+    table({
+        title: 'removes stale baselines across maintenance modes',
+        cases: [ 'apply', 'diff' ],
+        caseTitle(mode) {
+            return mode;
+        },
+        async test(scope) {
+            const mode = scope.parameters;
+
             const stale = { ...baseline, work: createDefaultWorkId({ ...event.case, title: 'removed' }) };
             const workflow = await storedWorkflow(mode === 'apply' ? 'apply' : 'diff', [ baseline, stale ]);
             workflow.evaluate(event);
@@ -239,9 +246,9 @@ export const testNode = authoredSuite('performance baseline boundaries', [
             scope.assert.deepEqual(finished.errors, []);
             scope.assert.deepEqual(workflow.changes, [ { kind: 'remove', baseline: stale } ]);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('reports stale inventory when pruning is not requested', async function (scope: TestScope) {
+    test('reports stale inventory when pruning is not requested', async function (scope) {
         const stale = { ...baseline, work: createDefaultWorkId({ ...event.case, title: 'removed' }) };
         const workflow = await storedWorkflow('none', [ baseline, stale ]);
         workflow.evaluate(event);
@@ -253,14 +260,14 @@ export const testNode = authoredSuite('performance baseline boundaries', [
         scope.assert.deepEqual(workflow.changes, []);
         return scope.assert.collect();
     }),
-    authoredTest('keeps pending baselines when the run inventory is incomplete', async function (scope: TestScope) {
+    test('keeps pending baselines when the run inventory is incomplete', async function (scope) {
         const workflow = await storedWorkflow('apply', [ baseline ]);
         const finished = workflow.finish(completedRun(), false);
         scope.assert.deepEqual(finished.errors, []);
         scope.assert.deepEqual(workflow.changes, []);
         return scope.assert.collect();
     }),
-    authoredTest('does not observe cases that already failed during execution', async function (scope: TestScope) {
+    test('does not observe cases that already failed during execution', async function (scope) {
         const workflow = await storedWorkflow('update', []);
         const failed = {
             ...event,
@@ -272,9 +279,9 @@ export const testNode = authoredSuite('performance baseline boundaries', [
         scope.assert.deepEqual(workflow.changes, []);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'ignores stored expectations from other profiles and machine classes',
-        async function (scope: TestScope) {
+        async function (scope) {
             const foreignProfile = { ...baseline, profile: 'other' };
             const foreignMachine = {
                 ...baseline,

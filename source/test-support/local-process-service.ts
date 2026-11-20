@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
+import type { TestScope } from '@overkill-dev/test';
 import { createStoredValue } from '../stored-value.ts';
 import { resourceAttachments } from '../attachments/attachment-context.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
 import type { EmptyResourceDependencies } from '../resources/resources.ts';
 import type { LocalServiceCreationContext } from '../resources/local-service-resource.ts';
 import {

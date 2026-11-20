@@ -1,13 +1,12 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
-
+import { type TestNode, suite, test } from '@overkill-dev/test';
 import { createDeterministicClock } from '@enormora/clock';
+import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
 
 import { createInMemoryRealTimeReporter, type InMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { createEngine, type Engine } from './engine.ts';
 import { createExecute } from './execution.ts';
 import { createReporterDispatcher } from './reporter-dispatcher.ts';
 import type { RunResult } from './run-result.ts';
-import type { TestBody, TestScope } from './test-scope.ts';
 
 function ignoreOutputLine(): void {
     return undefined;
@@ -38,7 +37,7 @@ function createAsyncControlEngine(): Engine {
     });
 }
 
-async function executeSingleBody(body: TestBody): Promise<RunResult> {
+async function executeSingleBody(body: EngineCaseBody): Promise<RunResult> {
     const engine = createAsyncControlEngine();
     const testPlan = engine.createTestPlan(
         engine.createRoot({
@@ -84,9 +83,9 @@ function recordedRunnerErrorMessages(reporter: InMemoryRealTimeReporter): readon
     });
 }
 
-export const testNode = suite('async scope control policy', [
-    test('scope.drainMicrotasks() waits for already queued promise work', async function (scope: OverkillScope) {
-        const result = await executeSingleBody(async function testBody(testScope: TestScope) {
+export const testNode: TestNode = suite('async scope control policy', [
+    test('scope.drainMicrotasks() waits for already queued promise work', async function (scope) {
+        const result = await executeSingleBody(async function testBody(testScope) {
             let finished = false;
 
             queueMicrotask(function finishMicrotask() {
@@ -106,9 +105,9 @@ export const testNode = suite('async scope control policy', [
     }),
     test(
         'scope.cleanup() runs after signal abort in reverse registration order',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const events: string[] = [];
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 testScope.cleanup(function firstCleanup() {
                     events.push(`first:${String(testScope.signal.aborted)}`);
                 });
@@ -127,8 +126,8 @@ export const testNode = suite('async scope control policy', [
             return scope.assert.collect();
         }
     ),
-    test('scope.cleanup() failures fail the owning test', async function (scope: OverkillScope) {
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+    test('scope.cleanup() failures fail the owning test', async function (scope) {
+        const result = await executeSingleBody(function testBody(testScope) {
             testScope.cleanup(function failCleanup() {
                 throw new Error('cannot clean');
             });
@@ -142,8 +141,8 @@ export const testNode = suite('async scope control policy', [
 
         return scope.assert.collect();
     }),
-    test('scope.startInFlight() asserts later rejections', async function (scope: OverkillScope) {
-        const result = await executeSingleBody(async function testBody(testScope: TestScope) {
+    test('scope.startInFlight() asserts later rejections', async function (scope) {
+        const result = await executeSingleBody(async function testBody(testScope) {
             const task = testScope.startInFlight(async function rejectLater() {
                 await Promise.resolve();
                 throw new Error('expected rejection');
@@ -158,8 +157,8 @@ export const testNode = suite('async scope control policy', [
 
         return scope.assert.collect();
     }),
-    test('scope.startInFlight() rejects unobserved settled tasks', async function (scope: OverkillScope) {
-        const result = await executeSingleBody(async function testBody(testScope: TestScope) {
+    test('scope.startInFlight() rejects unobserved settled tasks', async function (scope) {
+        const result = await executeSingleBody(async function testBody(testScope) {
             testScope.startInFlight(async function startTask() {
                 return 'done';
             });
@@ -174,7 +173,7 @@ export const testNode = suite('async scope control policy', [
 
         return scope.assert.collect();
     }),
-    test('execute() reports serial active-resource leaks against the case', async function (scope: OverkillScope) {
+    test('execute() reports serial active-resource leaks against the case', async function (scope) {
         let leaking = false;
         const engine = createEngineWithActiveResources(function readActiveResourceTypes() {
             return leaking ? [ 'UnitResource' ] : [];
@@ -217,7 +216,7 @@ export const testNode = suite('async scope control policy', [
 
         return scope.assert.collect();
     }),
-    test('execute() reports concurrent active-resource leaks at run scope', async function (scope: OverkillScope) {
+    test('execute() reports concurrent active-resource leaks at run scope', async function (scope) {
         let leaking = false;
         const engine = createEngineWithActiveResources(function readActiveResourceTypes() {
             return leaking ? [ 'UnitResource' ] : [];

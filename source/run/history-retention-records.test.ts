@@ -1,10 +1,10 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { withReplay } from './replay-context.ts';
-import { testNode as reconstruction } from './retention-catalog-policy.test.ts';
+
 import { selectHistoryRemovals } from './history-retention-records.ts';
 
 const now = '2026-10-30T00:00:00.000Z';
@@ -31,61 +31,61 @@ const catalog = {
         return [ value.id, value ];
     }))
 };
-export const testNode = authoredSuite('record and artifact retention', [
-    ...([ null, 'old-pass' ] as const).map(function (sourceRunId) {
-        return authoredTest(
-            `protects retained replay source ${String(sourceRunId)} during pruning`,
-            async function (scope: TestScope) {
-                await withReplay(
-                    { kind: 'witness', witness: propertyCorpusEntry, sourceRunId, moduleGraph: 'current' },
-                    null,
-                    async function () {
-                        const result = selectHistoryRemovals(catalog, '/state/runs', {
-                            ...defaultHistoryPolicy,
-                            detailedRunLimit: 0,
-                            runSummaryRetentionDays: 1,
-                            successfulArtifactRunLimit: 0
-                        }, now);
-                        scope.assert.deepEqual(
-                            result
-                                .removedRecords
-                                .toSorted(function alphabetical(left, right) {
-                                    return left.localeCompare(right);
-                                }),
-                            sourceRunId === null
-                                ? [
-                                    '/state/runs/boundary-fail.json',
-                                    '/state/runs/expired-error.json',
-                                    '/state/runs/old-pass.json'
-                                ]
-                                : [
-                                    '/state/runs/boundary-fail.json',
-                                    '/state/runs/expired-error.json'
-                                ]
-                        );
-                        scope.assert.deepEqual(
-                            result.removedArtifacts.toSorted(function alphabetical(left, right) {
+export const testNode: TestNode = suite('record and artifact retention', [
+    table({
+        title: 'protects retained replay sources during pruning',
+        cases: [ null, 'old-pass' ] as const,
+        caseTitle: String,
+        async test(scope) {
+            const sourceRunId = scope.parameters;
+
+            await withReplay(
+                { kind: 'witness', witness: propertyCorpusEntry, sourceRunId, moduleGraph: 'current' },
+                null,
+                async function () {
+                    const result = selectHistoryRemovals(catalog, '/state/runs', {
+                        ...defaultHistoryPolicy,
+                        detailedRunLimit: 0,
+                        runSummaryRetentionDays: 1,
+                        successfulArtifactRunLimit: 0
+                    }, now);
+                    scope.assert.deepEqual(
+                        result
+                            .removedRecords
+                            .toSorted(function alphabetical(left, right) {
                                 return left.localeCompare(right);
                             }),
-                            sourceRunId === null
-                                ? [ '/state/runs/expired-error', '/state/runs/new-pass', '/state/runs/old-pass' ]
-                                : [ '/state/runs/expired-error', '/state/runs/new-pass' ]
-                        );
-                    }
-                );
-                return scope.assert.collect();
-            }
-        );
+                        sourceRunId === null
+                            ? [
+                                '/state/runs/boundary-fail.json',
+                                '/state/runs/expired-error.json',
+                                '/state/runs/old-pass.json'
+                            ]
+                            : [
+                                '/state/runs/boundary-fail.json',
+                                '/state/runs/expired-error.json'
+                            ]
+                    );
+                    scope.assert.deepEqual(
+                        result.removedArtifacts.toSorted(function alphabetical(left, right) {
+                            return left.localeCompare(right);
+                        }),
+                        sourceRunId === null
+                            ? [ '/state/runs/expired-error', '/state/runs/new-pass', '/state/runs/old-pass' ]
+                            : [ '/state/runs/expired-error', '/state/runs/new-pass' ]
+                    );
+                }
+            );
+            return scope.assert.collect();
+        }
     }),
-
-    reconstruction,
-    authoredTest('unclassified artifact directories cannot be selected for deletion', function (scope: TestScope) {
+    test('unclassified artifact directories cannot be selected for deletion', function (scope) {
         scope.assert.throws(function () {
             return selectHistoryRemovals({ ...catalog, metadata: new Map() }, '/state/runs', defaultHistoryPolicy, now);
         }, { message: /Missing metadata/u });
         return scope.assert.collect();
     }),
-    authoredTest('record count and artifact count and age policies apply independently', function (scope: TestScope) {
+    test('record count and artifact count and age policies apply independently', function (scope) {
         const result = selectHistoryRemovals(catalog, '/state/runs', {
             ...defaultHistoryPolicy,
             detailedRunLimit: 1,
@@ -105,9 +105,9 @@ export const testNode = authoredSuite('record and artifact retention', [
         );
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'zero detail limits retain compact records and preserve recent failure artifacts',
-        function (scope: TestScope) {
+        function (scope) {
             const result = selectHistoryRemovals(catalog, '/state/runs', {
                 ...defaultHistoryPolicy,
                 detailedRunLimit: 0,

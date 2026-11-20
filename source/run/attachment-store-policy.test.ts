@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { inlineAttachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
@@ -15,26 +15,41 @@ const open: Extract<AttachmentOperation, { readonly kind: 'open'; }> = {
     metadata: { name: 'evidence', mediaType: 'text/plain' },
     branch: null
 };
-export const testNode = authoredSuite('inline attachment store protocol boundaries', [
-    ...([ '', 'bad\u{0}name', 'bad\u{7F}name', 'x'.repeat(257) ] as const).flatMap(function (value, index) {
-        return ([ 'name', 'mediaType' ] as const).map(function (field) {
-            return authoredTest(`rejects invalid metadata ${field} ${index}`, async function (scope: TestScope) {
-                const { store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
-                const reply = await store.exchange('channel', {
-                    ...open,
-                    metadata: { ...open.metadata, [field]: value }
+export const testNode: TestNode = suite('inline attachment store protocol boundaries', [
+    table({
+        title: 'rejects invalid metadata',
+        cases: [
+            { description: 'empty', value: '' },
+            { description: 'null character', value: 'bad\u{0}name' },
+            { description: 'delete character', value: 'bad\u{7F}name' },
+            { description: 'excessive length', value: 'x'.repeat(257) }
+        ]
+            .flatMap(function ({ value, description }) {
+                return ([ 'name', 'mediaType' ] as const).map(function (field) {
+                    return { value, description, field };
                 });
-                scope.assert.deepEqual(reply, {
-                    kind: 'error',
-                    reason: 'operation-error',
-                    message: 'Attachment names and media types require 1 to 256 bytes without control characters.'
-                });
-                scope.assert.deepEqual(store.artifacts(), []);
-                return scope.assert.collect();
+            }),
+        caseTitle({ description, field }) {
+            return [ field, description ].join(': ');
+        },
+        async test(scope) {
+            const { value, field } = scope.parameters;
+
+            const { store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
+            const reply = await store.exchange('channel', {
+                ...open,
+                metadata: { ...open.metadata, [field]: value }
             });
-        });
+            scope.assert.deepEqual(reply, {
+                kind: 'error',
+                reason: 'operation-error',
+                message: 'Attachment names and media types require 1 to 256 bytes without control characters.'
+            });
+            scope.assert.deepEqual(store.artifacts(), []);
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('rejects unknown branches before reserving a writer', async function (scope: TestScope) {
+    test('rejects unknown branches before reserving a writer', async function (scope) {
         const { store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
         scope.assert.deepEqual(await store.exchange('channel', { ...open, branch: 'unknown' }), {
             kind: 'error',
@@ -44,7 +59,7 @@ export const testNode = authoredSuite('inline attachment store protocol boundari
         scope.assert.deepEqual(store.artifacts(), []);
         return scope.assert.collect();
     }),
-    authoredTest('rejects owners and resource consumers outside selected work', async function (scope: TestScope) {
+    test('rejects owners and resource consumers outside selected work', async function (scope) {
         const { store } = inlineAttachmentFixture(defaultAttachmentLimits, []);
         scope.assert.partialDeepEqual(await store.exchange('channel', open), {
             kind: 'error',
@@ -57,9 +72,9 @@ export const testNode = authoredSuite('inline attachment store protocol boundari
         scope.assert.deepEqual(store.artifacts(), []);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'rejects writes from a different channel and preserves the original writer',
-        async function (scope: TestScope) {
+        async function (scope) {
             const { store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
             const writer = await openAttachmentWriter(store, 'owner', open);
             scope.assert.partialDeepEqual(
@@ -78,9 +93,9 @@ export const testNode = authoredSuite('inline attachment store protocol boundari
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'finishes an unclosed opt-in writer and returns its owner exactly once',
-        async function (scope: TestScope) {
+        async function (scope) {
             const { store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
             await openAttachmentWriter(store, 'owner', open);
             scope.assert.deepEqual(await store.finish(null), [ owner ]);
@@ -91,9 +106,9 @@ export const testNode = authoredSuite('inline attachment store protocol boundari
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'finishes only the selected channel and marks interrupted shutdown',
-        async function (scope: TestScope) {
+        async function (scope) {
             const { store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
             await openAttachmentWriter(store, 'first', open);
             await openAttachmentWriter(store, 'second', open);
@@ -106,7 +121,7 @@ export const testNode = authoredSuite('inline attachment store protocol boundari
             return scope.assert.collect();
         }
     ),
-    authoredTest('discards owners and artifacts from rejected speculative branches', async function (scope: TestScope) {
+    test('discards owners and artifacts from rejected speculative branches', async function (scope) {
         const { store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
         store.registerBranch('discarded', function () {
             return false;
@@ -117,9 +132,9 @@ export const testNode = authoredSuite('inline attachment store protocol boundari
         scope.assert.equal(store.conflictArtifacts('discarded').length, 1);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'marks run interruption and prunes discarded inline evidence without filesystem access',
-        async function (scope: TestScope) {
+        async function (scope) {
             const { store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
             await openAttachmentWriter(store, 'owner', open);
             store.settleResult(

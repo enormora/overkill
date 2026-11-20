@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 import {
     defineBaselineAdapter,
     normalizeConfig,
@@ -12,7 +12,7 @@ import { createOrdinaryBaselineStore, type OrdinaryBaselineStore } from '../run/
 import type { OrdinaryBaselineEntry } from '../run/baseline-record.ts';
 import { defaultRunRequest } from './run-command-factory.ts';
 
-export const ordinaryBaselineFixtureFile = 'source/integration-tests/run/fixtures/ordinary-baselines.test.ts';
+export const ordinaryBaselineFixtureFile = 'source/integration-tests/integration/fixtures/ordinary-baselines.test.ts';
 type ObservationProposal = { readonly actual: number; };
 type ObservationComparison = { readonly actual: number; readonly expected: number; };
 type Execution = 'in-process' | 'supervised-process' | 'worker-pool';
@@ -92,16 +92,11 @@ export function createObservationAdapter(payloadKind: 'binary' | 'text'): Observ
         }
     };
 }
-export async function createOrdinaryBaselineFixture(
-    scope: TestScope,
+export async function ordinaryBaselineProject(
+    directory: string,
     execution: Execution,
     payloadKind: 'binary' | 'text'
 ): Promise<OrdinaryBaselineFixture> {
-    await mkdir('target', { recursive: true });
-    const directory = await mkdtemp('target/ordinary-baselines-');
-    scope.cleanup(async function () {
-        await rm(directory, { recursive: true, force: true });
-    });
     const control = createObservationAdapter(payloadKind);
     const baselines = { directory, adapters: [ control.adapter ] };
     const files: ProjectProfileFiles = { include: [ ordinaryBaselineFixtureFile ] };
@@ -142,4 +137,17 @@ export async function createOrdinaryBaselineFixture(
             return await createOrdinaryBaselineStore({ directory, projectRoot: process.cwd(), maxBytes: 1_048_576 });
         }
     };
+}
+
+export async function createOrdinaryBaselineFixture(
+    scope: TestScope,
+    execution: Execution,
+    payloadKind: 'binary' | 'text'
+): Promise<OrdinaryBaselineFixture> {
+    await mkdir('target', { recursive: true });
+    const directory = await mkdtemp('target/ordinary-baselines-');
+    scope.cleanup(async function () {
+        await rm(directory, { recursive: true, force: true });
+    });
+    return await ordinaryBaselineProject(directory, execution, payloadKind);
 }

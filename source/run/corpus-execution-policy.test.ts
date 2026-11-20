@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { corpusExecution, corpusDiagnostics } from '../test-support/corpus-execution.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
@@ -7,8 +7,8 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { emptyPropertyCorpus } from '../engine/property-corpus.ts';
 import { withReplay } from './replay-context.ts';
 
-export const testNode = authoredSuite('corpus execution storage policy', [
-    authoredTest('loads configured corpus snapshots only for property profiles', async function (scope: TestScope) {
+export const testNode: TestNode = suite('corpus execution storage policy', [
+    test('loads configured corpus snapshots only for property profiles', async function (scope) {
         const fixture = await corpusExecution('pass', true);
         scope.assert.deepEqual(await fixture.execution.resolve(fixture.run), {
             checkedIn: [ propertyCorpusEntry ],
@@ -18,7 +18,7 @@ export const testNode = authoredSuite('corpus execution storage policy', [
         scope.assert.equal(fixture.events.length, 1);
         return scope.assert.collect();
     }),
-    authoredTest('skips corpus access for other families', async function (scope: TestScope) {
+    test('skips corpus access for other families', async function (scope) {
         const fixture = await corpusExecution('pass', false);
         const result = runResultFactory.build();
         scope.assert.equal(await fixture.execution.resolve(fixture.run), emptyPropertyCorpus);
@@ -26,7 +26,7 @@ export const testNode = authoredSuite('corpus execution storage policy', [
         scope.assert.deepEqual(fixture.events, []);
         return scope.assert.collect();
     }),
-    authoredTest('skips reading and writing corpus during selected witness replay', async function (scope: TestScope) {
+    test('skips reading and writing corpus during selected witness replay', async function (scope) {
         const fixture = await corpusExecution('pass', true);
         const result = confirmedWitnessResult(true);
         await withReplay(
@@ -40,7 +40,7 @@ export const testNode = authoredSuite('corpus execution storage policy', [
         scope.assert.deepEqual(fixture.events, []);
         return scope.assert.collect();
     }),
-    authoredTest('honors witness context frozen into run facts', async function (scope: TestScope) {
+    test('honors witness context frozen into run facts', async function (scope) {
         const fixture = await corpusExecution('pass', true);
         scope.assert.equal(
             await fixture.execution.resolve({
@@ -57,21 +57,23 @@ export const testNode = authoredSuite('corpus execution storage policy', [
         scope.assert.deepEqual(fixture.events, []);
         return scope.assert.collect();
     }),
-    ...[ false, true ].map(function (confirmed) {
-        return authoredTest(
-            `persists only confirmed witnesses with confirmation ${confirmed}`,
-            async function (scope: TestScope) {
-                const fixture = await corpusExecution('pass', true);
-                const result = confirmedWitnessResult(confirmed);
-                scope.assert.equal(await fixture.execution.persist(fixture.run, result), result);
-                scope.assert.deepEqual(fixture.saved, [ confirmed ? [ propertyCorpusEntry ] : [] ]);
-                return scope.assert.collect();
-            }
-        );
+    table({
+        title: 'persists only confirmed witnesses',
+        cases: [ false, true ],
+        caseTitle: String,
+        async test(scope) {
+            const confirmed = scope.parameters;
+
+            const fixture = await corpusExecution('pass', true);
+            const result = confirmedWitnessResult(confirmed);
+            scope.assert.equal(await fixture.execution.persist(fixture.run, result), result);
+            scope.assert.deepEqual(fixture.saved, [ confirmed ? [ propertyCorpusEntry ] : [] ]);
+            return scope.assert.collect();
+        }
     }),
-    authoredTest(
+    test(
         'skips cases without property evidence while retaining cache diagnostics on invocations',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = await corpusExecution('diagnostics', true);
             const ordinary = runResultFactory
                 .build({ perTest: [ { id: { file: null, suite: [], title: 'ordinary', params: null } } ] })
@@ -88,14 +90,14 @@ export const testNode = authoredSuite('corpus execution storage policy', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('preserves corpus read failures for collection diagnostics', async function (scope: TestScope) {
+    test('preserves corpus read failures for collection diagnostics', async function (scope) {
         const fixture = await corpusExecution('read-error', true);
         await scope.assert.rejects(async function () {
             await fixture.execution.resolve(fixture.run);
         }, { exact: fixture.failure });
         return scope.assert.collect();
     }),
-    authoredTest('records corpus write failures without losing the completed cases', async function (scope: TestScope) {
+    test('records corpus write failures without losing the completed cases', async function (scope) {
         const fixture = await corpusExecution('write-error', true);
         const result = confirmedWitnessResult(true);
         const saved = await fixture.execution.persist(fixture.run, result);

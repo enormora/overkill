@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { ProcessUsageSnapshot } from '../packages/engine/engine.entry-point.ts';
 import type { WorkerLifecycle } from '../config/types.ts';
@@ -147,8 +147,8 @@ async function routedProcessUsage(): Promise<{
     };
 }
 
-export const testNode = suite('source/run/worker-pool-lifecycle-process-usage.test.ts', [
-    test('worker-pool runtime combines mixed lifecycle process usage tracking', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Worker pool lifecycle process usage', [
+    test('worker-pool runtime combines mixed lifecycle process usage tracking', async function (scope) {
         const usage = await routedProcessUsage();
 
         scope.assert.equal(usage.sampleCount, 3);

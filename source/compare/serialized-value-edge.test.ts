@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { serializeValue, serializeValueWithBudget } from './serialized-value.ts';
 
@@ -10,10 +10,10 @@ function inaccessibleProperties(cause: unknown): Record<string, unknown> {
     });
 }
 
-export const testNode = suite('source/compare/serialized-value-edge.test.ts', [
+export const testNode: TestNode = suite('Serialized value edge cases', [
     test(
-        'serializeValue() retains diagnostics when property introspection throws a non-Error value',
-        function (scope: OverkillScope) {
+        'retains diagnostics when property introspection throws a non-Error value',
+        function (scope) {
             scope.assert.deepEqual(serializeValue(inaccessibleProperties(null)), {
                 constructorName: 'Object',
                 entries: [ {
@@ -27,8 +27,8 @@ export const testNode = suite('source/compare/serialized-value-edge.test.ts', [
         }
     ),
     test(
-        'serializeValue() preserves repeated function references when function names are absent',
-        function (scope: OverkillScope) {
+        'preserves repeated function references when function names are absent',
+        function (scope) {
             const callable = function (): null {
                 return null;
             };
@@ -46,7 +46,7 @@ export const testNode = suite('source/compare/serialized-value-edge.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('serializeValue() identifies instances of unnamed constructors', function (scope: OverkillScope) {
+    test('identifies instances of unnamed constructors', function (scope) {
         const unnamedConstructor = function (): null {
             return null;
         };
@@ -59,7 +59,7 @@ export const testNode = suite('source/compare/serialized-value-edge.test.ts', [
         });
         return scope.assert.collect();
     }),
-    test('serializeValue() handles invalid dates and anonymous functions', function (scope: OverkillScope) {
+    test('handles invalid dates and anonymous functions', function (scope) {
         const anonymousInstance = { value: 1 };
 
         Object.setPrototypeOf(anonymousInstance, { constructor: { name: '' } });
@@ -82,8 +82,8 @@ export const testNode = suite('source/compare/serialized-value-edge.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'serializeValue() reports unavailable constructor names when prototypes cannot be read',
-        function (scope: OverkillScope) {
+        'reports unavailable constructor names when prototypes cannot be read',
+        function (scope) {
             const proxy = new Proxy({}, {
                 getPrototypeOf() {
                     throw new Error('prototype unavailable');
@@ -100,7 +100,7 @@ export const testNode = suite('source/compare/serialized-value-edge.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('serializeValue() reports descriptor failures', function (scope: OverkillScope) {
+    test('reports descriptor failures', function (scope) {
         const proxy = new Proxy({}, {
             ownKeys() {
                 throw new Error('keys unavailable');
@@ -123,7 +123,7 @@ export const testNode = suite('source/compare/serialized-value-edge.test.ts', [
     }),
     test(
         'serializeValueWithBudget() truncates maps, sets, binary bytes, and arrays independently',
-        function (scope: OverkillScope) {
+        function (scope) {
             const budget = {
                 arrayEntries: 1,
                 depth: 8,
@@ -177,7 +177,7 @@ export const testNode = suite('source/compare/serialized-value-edge.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('serializeValue() reports Map and Set impostors as unavailable', function (scope: OverkillScope) {
+    test('reports Map and Set impostors as unavailable', function (scope) {
         const mapImpostor = Object.create(Map.prototype) as Readonly<Record<string, unknown>>;
         const setImpostor = Object.create(Set.prototype) as Readonly<Record<string, unknown>>;
 

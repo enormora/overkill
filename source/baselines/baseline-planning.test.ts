@@ -1,8 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
-
-import { testNode as recordedPolicy } from '../run/recorded-baseline-policy.test.ts';
-import { testNode as ordinaryExecution } from '../run/ordinary-baseline-suite.test.ts';
-import { testNode as ordinaryAdapters } from '../run/baseline-adapter.test.ts';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import {
@@ -21,11 +17,8 @@ const identity: BaselineIdentity = {
     comparisonContext: {},
     work: createDefaultWorkId(createCaseId('output.test.ts', [], 'output', null))
 };
-export const testNode = authoredSuite('baseline contracts', [
-    ordinaryAdapters,
-    recordedPolicy,
-    ordinaryExecution,
-    test('preserves expectations without calling proposal callbacks', function (scope: TestScope) {
+export const testNode: TestNode = suite('baseline contracts', [
+    test('preserves expectations without calling proposal callbacks', function (scope) {
         for (const mode of [ 'none', 'bootstrap' ] as const) {
             scope.assert.equal(
                 planBaselineChange({
@@ -41,7 +34,7 @@ export const testNode = authoredSuite('baseline contracts', [
         }
         return scope.assert.collect();
     }),
-    test('creates missing records and preserves equal expectations', function (scope: TestScope) {
+    test('creates missing records and preserves equal expectations', function (scope) {
         const modes: readonly BaselineUpdateMode[] = [ 'apply', 'bootstrap', 'diff', 'update' ];
         for (const mode of modes) {
             const creation = planBaselineChange({
@@ -68,7 +61,7 @@ export const testNode = authoredSuite('baseline contracts', [
         );
         return scope.assert.collect();
     }),
-    test('updates existing records only in replacement modes', function (scope: TestScope) {
+    test('updates existing records only in replacement modes', function (scope) {
         const modes: readonly BaselineUpdateMode[] = [ 'apply', 'bootstrap', 'diff', 'update' ];
         for (const mode of modes) {
             const change = planBaselineChange({
@@ -90,7 +83,7 @@ export const testNode = authoredSuite('baseline contracts', [
         }
         return scope.assert.collect();
     }),
-    test('canonicalizes contexts and distinguishes identity dimensions', function (scope: TestScope) {
+    test('canonicalizes contexts and distinguishes identity dimensions', function (scope) {
         scope.assert.equal(
             baselineIdentityKey({ ...identity, comparisonContext: { a: 'é', b: '2' } }),
             baselineIdentityKey({ ...identity, comparisonContext: { b: '2', a: 'é' } })
@@ -108,7 +101,7 @@ export const testNode = authoredSuite('baseline contracts', [
         }
         return scope.assert.collect();
     }),
-    test('requires complete inventory and preserves participating and skipped cases', function (scope: TestScope) {
+    test('requires complete inventory and preserves participating and skipped cases', function (scope) {
         const stale = { ...identity, adapter: 'retired' };
         const identify = function (baseline: BaselineIdentity): BaselineIdentity {
             return baseline;
@@ -132,7 +125,7 @@ export const testNode = authoredSuite('baseline contracts', [
         );
         return scope.assert.collect();
     }),
-    test('supports asynchronous binary adapters with domain comparison', async function (scope: TestScope) {
+    test('supports asynchronous binary adapters with domain comparison', async function (scope) {
         const adapter: BaselineAdapter<Uint8Array, Uint8Array, Uint8Array, Uint8Array, string> = {
             id: 'bytes',
             async observe(value) {

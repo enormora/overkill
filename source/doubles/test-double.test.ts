@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     answerFromBehavior,
@@ -63,16 +63,14 @@ function behaviorRuntime(entries: readonly unknown[]): BehaviorRuntime {
     };
 }
 
-const emptyTestData = { annotations: {}, controls: {} } as const;
+export const testNode: TestNode = suite({
+    title: 'Function test doubles',
 
-export const testNode = suite({
-    title: 'source/doubles/test-double.test.ts',
-    ...emptyTestData,
     children: [
         test({
-            title: 'testDouble() creates an untyped callable double',
-            ...emptyTestData,
-            body: function body(scope: OverkillScope) {
+            title: 'creates an untyped callable double',
+
+            body: function body(scope) {
                 const anyValue = testDouble();
 
                 scope.assert.equal(anyValue('ignored'), undefined);
@@ -82,8 +80,8 @@ export const testNode = suite({
         }),
         test({
             title: 'testDouble.returns() creates a fixed-return double',
-            ...emptyTestData,
-            body: function body(scope: OverkillScope) {
+
+            body: function body(scope) {
                 const loadValue = testDouble.returns(42);
 
                 scope.assert.equal(loadValue('ignored'), 42);
@@ -93,8 +91,8 @@ export const testNode = suite({
         }),
         test({
             title: 'testDouble.resolves() creates a fixed-resolution double',
-            ...emptyTestData,
-            body: async function body(scope: OverkillScope) {
+
+            body: async function body(scope) {
                 const loadValue = testDouble.resolves('value');
 
                 scope.assert.equal(await loadValue('ignored'), 'value');
@@ -104,8 +102,10 @@ export const testNode = suite({
         }),
         test({
             title: 'testDouble.rejects() creates a fixed-rejection double',
-            ...emptyTestData,
-            body: async function body(scope: OverkillScope) {
+
+            body: async function body(
+                scope
+            ) {
                 const error = new Error('expected');
                 const loadValue = testDouble.rejects(error);
 
@@ -118,8 +118,8 @@ export const testNode = suite({
         }),
         test({
             title: 'testDouble.throws() creates a fixed-throw double',
-            ...emptyTestData,
-            body: function body(scope: OverkillScope) {
+
+            body: function body(scope) {
                 const error = new Error('expected');
                 const loadValue = testDouble.throws(error);
 
@@ -132,8 +132,8 @@ export const testNode = suite({
         }),
         test({
             title: 'testDouble.constructs() creates a fixed-construction double',
-            ...emptyTestData,
-            body: function body(scope: OverkillScope) {
+
+            body: function body(scope) {
                 type ClientInstance = {
                     readonly id: string;
                 };
@@ -148,8 +148,8 @@ export const testNode = suite({
         }),
         test({
             title: 'answerFromBehavior() handles modes and sequence fallthrough',
-            ...emptyTestData,
-            body(scope: OverkillScope) {
+
+            body(scope) {
                 const call = callInvocation([ 'match' ], 0);
                 const construction = constructionInvocation([], 0);
                 const callBehavior = rule.returns('value');
@@ -176,8 +176,8 @@ export const testNode = suite({
         }),
         test({
             title: 'ruleMatches() handles invocation kind, argument, and index criteria',
-            ...emptyTestData,
-            body(scope: OverkillScope) {
+
+            body(scope) {
                 const argumentRule = rule.when({ id: 'expected' }).returns('value');
                 const indexRule = rule.onCall(1).returns('value');
 
@@ -195,8 +195,8 @@ export const testNode = suite({
         }),
         test({
             title: 'fallbackForInvocation() selects direct and invocation-specific fallbacks',
-            ...emptyTestData,
-            body(scope: OverkillScope) {
+
+            body(scope) {
                 const directFallback = rule.returns('direct');
                 const callFallback = rule.returns('call');
 
@@ -209,8 +209,10 @@ export const testNode = suite({
         }),
         test({
             title: 'rule fixed behavior markers expose direct results',
-            ...emptyTestData,
-            async body(scope: OverkillScope) {
+
+            async body(
+                scope
+            ) {
                 const error = new Error('expected');
                 const client = { id: 'client' };
 
@@ -229,8 +231,8 @@ export const testNode = suite({
         }),
         test({
             title: 'rule generator markers expose result iterators and guarded markers',
-            ...emptyTestData,
-            async body(scope: OverkillScope) {
+
+            async body(scope) {
                 const values = rule.yields([ 'a', 'b' ], 'done').result();
                 const asyncValues = rule.yieldsAsync([ 'c', 'd' ], 'done').result();
 
@@ -266,8 +268,10 @@ export const testNode = suite({
         }),
         test({
             title: 'created doubles reject wrong invocation modes',
-            ...emptyTestData,
-            body: function body(scope: OverkillScope) {
+
+            body: function body(
+                scope
+            ) {
                 const loadValue = testDouble.returns('value');
                 const Client = testDouble.constructs({ id: 'client' });
                 const LoadValue = loadValue as unknown as new () => unknown;
@@ -284,8 +288,8 @@ export const testNode = suite({
         }),
         test({
             title: 'testDouble.constructs() rejects primitive instances at runtime',
-            ...emptyTestData,
-            body: function body(scope: OverkillScope) {
+
+            body: function body(scope) {
                 const createConstructorDouble = testDouble.constructs as unknown as PrimitiveConstructionFactory;
 
                 scope.assert.throws(function constructPrimitive() {
@@ -297,8 +301,8 @@ export const testNode = suite({
         }),
         test({
             title: 'rule.when() matches partial-deep argument prefixes',
-            ...emptyTestData,
-            body: function body(scope: OverkillScope) {
+
+            body: function body(scope) {
                 type LoadUser = (query: UserQuery, scope: string) => User;
 
                 const adminUser = { id: 'admin' };
@@ -318,8 +322,8 @@ export const testNode = suite({
         }),
         test({
             title: 'rule.whenConstructedWith() matches partial-deep constructor argument prefixes',
-            ...emptyTestData,
-            body: function body(scope: OverkillScope) {
+
+            body: function body(scope) {
                 type ClientConstructor = new (options: ClientOptions, retries: number) => ClientWithId;
 
                 const client = { id: 'primary' };
@@ -339,8 +343,8 @@ export const testNode = suite({
         }),
         test({
             title: 'ordered call rules use zero-based indexes',
-            ...emptyTestData,
-            body(scope: OverkillScope) {
+
+            body(scope) {
                 type LoadValue = () => string;
 
                 const loadValue = testDouble<LoadValue>({
@@ -358,8 +362,8 @@ export const testNode = suite({
         }),
         test({
             title: 'ordered construction rules use zero-based indexes',
-            ...emptyTestData,
-            body: function body(scope: OverkillScope) {
+
+            body: function body(scope) {
                 type ClientConstructor = new () => ClientWithId;
 
                 const firstClient = { id: 'first' };
@@ -379,8 +383,8 @@ export const testNode = suite({
         }),
         test({
             title: 'rules are evaluated in order and exhausted sequences fall through',
-            ...emptyTestData,
-            body: function body(scope: OverkillScope) {
+
+            body: function body(scope) {
                 type LoadValue = (id: string) => string;
 
                 const loadValue = testDouble<LoadValue>({
@@ -402,8 +406,8 @@ export const testNode = suite({
         }),
         test({
             title: 'rule.sequence() treats raw array values as returns entries',
-            ...emptyTestData,
-            body: function body(scope: OverkillScope) {
+
+            body: function body(scope) {
                 type LoadValue = () => string;
 
                 const loadValue = testDouble<LoadValue>({
@@ -418,8 +422,8 @@ export const testNode = suite({
         }),
         test({
             title: 'rule.sequence() supports async behavior entries',
-            ...emptyTestData,
-            body: async function body(scope: OverkillScope) {
+
+            body: async function body(scope) {
                 type LoadValue = () => Promise<string>;
 
                 const loadValue = testDouble<LoadValue>({
@@ -437,8 +441,8 @@ export const testNode = suite({
         }),
         test({
             title: 'fallback can configure call and construction defaults together',
-            ...emptyTestData,
-            body: function body(scope: OverkillScope) {
+
+            body: function body(scope) {
                 type ClientFactory = {
                     (baseUrl: string): ClientWithId;
                     new (baseUrl: string): ClientWithId;
@@ -461,8 +465,10 @@ export const testNode = suite({
         }),
         test({
             title: 'answer receives invocation arguments, index, and kind',
-            ...emptyTestData,
-            body: function body(scope: OverkillScope) {
+
+            body: function body(
+                scope
+            ) {
                 type ClientFactory = {
                     (id: string): string;
                     new (id: string): ClientWithId;
@@ -494,8 +500,8 @@ export const testNode = suite({
         }),
         test({
             title: 'ordered rules reject invalid indexes at runtime',
-            ...emptyTestData,
-            body: function body(scope: OverkillScope) {
+
+            body: function body(scope) {
                 scope.assert.throws(function createNegativeCallRule() {
                     rule.onCall(-1);
                 }, { message: /non-negative integer/u });
@@ -508,8 +514,8 @@ export const testNode = suite({
         }),
         test({
             title: 'configured doubles throw TypeError when no behavior can answer',
-            ...emptyTestData,
-            body: function body(scope: OverkillScope) {
+
+            body: function body(scope) {
                 type LoadValue = (id: string) => string;
 
                 const loadValue = testDouble<LoadValue>({

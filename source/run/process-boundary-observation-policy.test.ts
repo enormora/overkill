@@ -1,11 +1,9 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { processPolicyObservation } from '../test-support/process-policy-observation.ts';
-import { testNode as injectedObservation } from './capability-observation-policy.test.ts';
 
-export const testNode = authoredSuite('process boundary policy observation', [
-    injectedObservation,
-    authoredTest('reports foreign IPC listeners and releases only its own observation', function (scope: TestScope) {
+export const testNode: TestNode = suite('process boundary policy observation', [
+    test('reports foreign IPC listeners and releases only its own observation', function (scope) {
         const fixture = processPolicyObservation(null, false);
         fixture.events.on('message', fixture.owned);
         fixture.events.on('unrelated', fixture.owned);
@@ -27,23 +25,32 @@ export const testNode = authoredSuite('process boundary policy observation', [
         fixture.stopExit();
         return scope.assert.collect();
     }),
-    ...([ 0, 1 ] as const).flatMap(function (code) {
-        return [ false, true ].map(function (attributed) {
-            return authoredTest(`reports exit ${code} with attribution ${attributed}`, function (scope: TestScope) {
-                const fixture = processPolicyObservation(null, attributed);
-                fixture.events.emit('exit', code);
-                scope.assert.equal(fixture.failed(), code === 0);
-                scope.assert.deepEqual(fixture.writes, [
-                    `Observed failure.${attributed ? ' Case: active case. Attempt: 2.' : ''}\n`
-                ]);
-                fixture.stopExit();
-                scope.assert.equal(fixture.events.listenerCount('exit'), 0);
-                fixture.stopIpc();
-                return scope.assert.collect();
+    table({
+        title: 'attributes process exits',
+        cases: ([ 0, 1 ] as const).flatMap(function (code) {
+            return [ false, true ].map(function (attributed) {
+                return { code, attributed };
             });
-        });
+        }),
+        caseTitle({ code, attributed }) {
+            return [ code, attributed ].map(String).join(', ');
+        },
+        test(scope) {
+            const { code, attributed } = scope.parameters;
+
+            const fixture = processPolicyObservation(null, attributed);
+            fixture.events.emit('exit', code);
+            scope.assert.equal(fixture.failed(), code === 0);
+            scope.assert.deepEqual(fixture.writes, [
+                `Observed failure.${attributed ? ' Case: active case. Attempt: 2.' : ''}\n`
+            ]);
+            fixture.stopExit();
+            scope.assert.equal(fixture.events.listenerCount('exit'), 0);
+            fixture.stopIpc();
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('contains observer failures during IPC registration and process exit', function (scope: TestScope) {
+    test('contains observer failures during IPC registration and process exit', function (scope) {
         const fixture = processPolicyObservation(new Error('Reporter failed.'), false);
         fixture.events.on('message', fixture.owned);
         fixture.events.on('message', function () {

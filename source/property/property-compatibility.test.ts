@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import historicalState from './fixtures/property-graph-state-v1.json' with { type: 'json' };
@@ -84,7 +84,7 @@ function expectedGraph(): Record<string, unknown> {
     return Object.assign(expected, { self: expected });
 }
 
-export const testNode = authoredSuite('property decoder compatibility', [
+export const testNode: TestNode = suite('property decoder compatibility', [
     test('historical custom reads select exactly one decoder without encoding', async function (scope) {
         const input = await fixture('property-custom-v1');
         const before = JSON.stringify(input);
@@ -187,16 +187,19 @@ export const testNode = authoredSuite('property decoder compatibility', [
         }, { name: 'AbortError' });
         return scope.assert.collect();
     }),
-    test('fixed transport fixture preserves graph state independently of the writer', async function (scope) {
-        const input = await fixture('property-graph-state-v1');
-        const before = JSON.stringify(input);
-        const value = decodePropertyInput(input, null, consume);
-        const graph = expectedGraph();
-        scope.assert.true(isDeepStrictEqual(value, graph));
-        scope.assert.true(hasGraphLinks(value));
-        const migrated = migratePropertyInput(input, null, consume);
-        scope.assert.true(isDeepStrictEqual(decodePropertyInput(migrated, null, consume), graph));
-        scope.assert.equal(JSON.stringify(input), before);
-        return scope.assert.collect();
-    })
+    test(
+        'fixed transport fixture preserves graph state independently of the writer',
+        async function (scope) {
+            const input = await fixture('property-graph-state-v1');
+            const before = JSON.stringify(input);
+            const value = decodePropertyInput(input, null, consume);
+            const graph = expectedGraph();
+            scope.assert.true(isDeepStrictEqual(value, graph));
+            scope.assert.true(hasGraphLinks(value));
+            const migrated = migratePropertyInput(input, null, consume);
+            scope.assert.true(isDeepStrictEqual(decodePropertyInput(migrated, null, consume), graph));
+            scope.assert.equal(JSON.stringify(input), before);
+            return scope.assert.collect();
+        }
+    )
 ]);

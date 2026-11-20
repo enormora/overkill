@@ -1,14 +1,11 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { processMeasurement, processMeasurementScenario } from '../test-support/process-measurement.ts';
-import { testNode as processOwnership } from './process-helper-ownership.test.ts';
-import { testNode as invocation } from './process-invocation-policy.test.ts';
+
 import { measureProcessCommand } from './process-execution.ts';
 
-export const testNode = authoredSuite('process measurement ownership', [
-    processOwnership,
-    invocation,
-    test('measures command output and releases the child once', async (scope: TestScope) => {
+export const testNode: TestNode = suite('process measurement ownership', [
+    test('measures command output and releases the child once', async (scope) => {
         const fixture = processMeasurement(processMeasurementScenario);
         const result = await measureProcessCommand(fixture.request, fixture.runtime);
         scope.assert.equal(result.status, 'measured');
@@ -30,7 +27,7 @@ export const testNode = authoredSuite('process measurement ownership', [
         );
         return scope.assert.collect();
     }),
-    test('instruments node children and retains final probe evidence', async (scope: TestScope) => {
+    test('instruments node children and retains final probe evidence', async (scope) => {
         const fixture = processMeasurement(processMeasurementScenario);
         const result = await measureProcessCommand({ ...fixture.request, instrumentation: 'node' }, fixture.runtime);
         scope.assert.equal(result.status, 'measured');
@@ -54,7 +51,7 @@ export const testNode = authoredSuite('process measurement ownership', [
         );
         return scope.assert.collect();
     }),
-    test('uses checkpoint evidence for a live ready process', async function (scope: TestScope) {
+    test('uses checkpoint evidence for a live ready process', async function (scope) {
         const fixture = processMeasurement({ ...processMeasurementScenario, active: true });
         const request = {
             ...fixture.request,
@@ -70,7 +67,7 @@ export const testNode = authoredSuite('process measurement ownership', [
         scope.assert.true(fixture.events.includes('probe-dispose'));
         return scope.assert.collect();
     }),
-    test('does not initialize launchers for cancelled commands', async function (scope: TestScope) {
+    test('does not initialize launchers for cancelled commands', async function (scope) {
         const fixture = processMeasurement(processMeasurementScenario);
         fixture.controller.abort(new Error('Cancelled command.'));
         const result = await measureProcessCommand(fixture.request, fixture.runtime);
@@ -81,7 +78,7 @@ export const testNode = authoredSuite('process measurement ownership', [
         scope.assert.deepEqual(fixture.events, []);
         return scope.assert.collect();
     }),
-    test('reports unexpected exit codes and still releases output', async function (scope: TestScope) {
+    test('reports unexpected exit codes and still releases output', async function (scope) {
         const fixture = processMeasurement({ ...processMeasurementScenario, exitCode: 3 });
         const result = await measureProcessCommand(fixture.request, fixture.runtime);
         scope.assert.equal(result.status, 'failed');
@@ -91,7 +88,7 @@ export const testNode = authoredSuite('process measurement ownership', [
         scope.assert.true(fixture.events.includes('dispose'));
         return scope.assert.collect();
     }),
-    test('retains launch failures and releases an already prepared probe', async function (scope: TestScope) {
+    test('retains launch failures and releases an already prepared probe', async function (scope) {
         const fixture = processMeasurement({ ...processMeasurementScenario, launchError: new Error('Launch failed.') });
         const result = await measureProcessCommand({ ...fixture.request, instrumentation: 'node' }, fixture.runtime);
         scope.assert.equal(result.status, 'failed');
@@ -101,7 +98,7 @@ export const testNode = authoredSuite('process measurement ownership', [
         scope.assert.deepEqual(fixture.events, [ 'prepare', 'probe', 'probe-dispose' ]);
         return scope.assert.collect();
     }),
-    test('reports probe preparation failure without launching children', async function (scope: TestScope) {
+    test('reports probe preparation failure without launching children', async function (scope) {
         const fixture = processMeasurement({ ...processMeasurementScenario, probeError: new Error('Probe failed.') });
         const result = await measureProcessCommand({ ...fixture.request, instrumentation: 'node' }, fixture.runtime);
         scope.assert.equal(result.status, 'failed');
@@ -111,7 +108,7 @@ export const testNode = authoredSuite('process measurement ownership', [
         scope.assert.deepEqual(fixture.launched, []);
         return scope.assert.collect();
     }),
-    test('combines child and probe cleanup failures with a successful measurement', async function (scope: TestScope) {
+    test('combines child and probe cleanup failures with a successful measurement', async function (scope) {
         const fixture = processMeasurement({
             ...processMeasurementScenario,
             disposeError: new Error('Child cleanup.'),
@@ -122,7 +119,7 @@ export const testNode = authoredSuite('process measurement ownership', [
         scope.assert.equal(result.cleanupFailure, 'Child cleanup.; Probe cleanup.');
         return scope.assert.collect();
     }),
-    test('handles rejected exits and absent child identifiers', async function (scope: TestScope) {
+    test('handles rejected exits and absent child identifiers', async function (scope) {
         const fixture = processMeasurement({
             ...processMeasurementScenario,
             exitError: new Error('Child error.'),

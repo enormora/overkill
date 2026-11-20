@@ -1,6 +1,6 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
-import { test } from '../packages/test/test.entry-point.ts';
 import { ConfigError, normalizeConfig, type NormalizedConfig } from '../packages/run/config.entry-point.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { unexpectedBenchmarkOrchestrator, defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -17,10 +17,10 @@ async function rejectUnexpectedInvocation(): Promise<never> {
     throw new Error('Benchmark profiles must be rejected before collection or reporter loading.');
 }
 
-export const testNode = authoredSuite('benchmark profile command boundaries', [
-    authoredTest(
+export const testNode: TestNode = suite('benchmark profile command boundaries', [
+    test(
         'snapshots mixed profiles without losing retry, work-group or coverage policies',
-        function (scope: TestScope) {
+        function (scope) {
             const config = normalizeConfig({
                 profiles: {
                     startup: benchmark,
@@ -50,45 +50,49 @@ export const testNode = authoredSuite('benchmark profile command boundaries', [
             return scope.assert.collect();
         }
     ),
-    ...([ 'run', 'list' ] as const).map(function (command) {
-        return authoredTest(
-            `ordinary ${command} rejects benchmark profiles before collection and reporter loading`,
-            async function (scope: TestScope) {
-                const config = normalizeConfig({ profiles: { startup: benchmark } });
-                const runner = createCommandLineRunner({
-                    createDefaultReporter: rejectUnexpectedInvocation,
-                    async loadReplayCommands() {
-                        throw new Error('Replay commands are not configured.');
-                    },
-                    loadBaselineCommands: rejectUnexpectedInvocation,
-                    loadBenchmarkCommands: rejectUnexpectedInvocation,
-                    async loadConfig() {
-                        return { ...config, configPath: null };
-                    },
-                    orchestrator: {
-                        bench: unexpectedBenchmarkOrchestrator,
-                        resolve: rejectUnexpectedInvocation,
-                        run: rejectUnexpectedInvocation,
-                        runWithReporterDelivery: rejectUnexpectedInvocation
-                    }
+    table({
+        title: 'rejects benchmark profiles before ordinary command collection',
+        cases: [ 'run', 'list' ] as const,
+        caseTitle(command) {
+            return command;
+        },
+        async test(scope) {
+            const command = scope.parameters;
+
+            const config = normalizeConfig({ profiles: { startup: benchmark } });
+            const runner = createCommandLineRunner({
+                createDefaultReporter: rejectUnexpectedInvocation,
+                async loadReplayCommands() {
+                    throw new Error('Replay commands are not configured.');
+                },
+                loadBaselineCommands: rejectUnexpectedInvocation,
+                loadBenchmarkCommands: rejectUnexpectedInvocation,
+                async loadConfig() {
+                    return { ...config, configPath: null };
+                },
+                orchestrator: {
+                    bench: unexpectedBenchmarkOrchestrator,
+                    resolve: rejectUnexpectedInvocation,
+                    run: rejectUnexpectedInvocation,
+                    runWithReporterDelivery: rejectUnexpectedInvocation
+                }
+            });
+            const request = defaultRunRequest({ profile: 'startup', paths: [ 'missing.bench.ts' ] });
+            const result = command === 'run'
+                ? await runner.runTests({ configPath: null, cwd: process.cwd(), runRequest: request })
+                : await runner.listTests({
+                    configPath: null,
+                    cwd: process.cwd(),
+                    listRequest: { ...request, order: 'seeded', withLocations: false, withOrphans: false }
                 });
-                const request = defaultRunRequest({ profile: 'startup', paths: [ 'missing.bench.ts' ] });
-                const result = command === 'run'
-                    ? await runner.runTests({ configPath: null, cwd: process.cwd(), runRequest: request })
-                    : await runner.listTests({
-                        configPath: null,
-                        cwd: process.cwd(),
-                        listRequest: { ...request, order: 'seeded', withLocations: false, withOrphans: false }
-                    });
-                scope.assert.equal(result.exitCode, 3);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill argument error: Profile "startup" has testFamily "benchmark". Use "overkill bench run" or "overkill bench list".'
-                ]);
-                return scope.assert.collect();
-            }
-        );
+            scope.assert.equal(result.exitCode, 3);
+            scope.assert.deepEqual(result.fallbackDiagnostics, [
+                'Overkill argument error: Profile "startup" has testFamily "benchmark". Use "overkill bench run" or "overkill bench list".'
+            ]);
+            return scope.assert.collect();
+        }
     }),
-    authoredTest(
+    test(
         'resolves a microtest named benchmark while preserving unrelated benchmark profiles',
         async function (scope: TestScope) {
             const config = normalizeConfig({
@@ -104,7 +108,7 @@ export const testNode = authoredSuite('benchmark profile command boundaries', [
                 engine: { kind: 'default' },
                 request: defaultRunRequest({
                     profile: 'benchmark',
-                    paths: [ 'source/integration-tests/run/fixtures/passing.test.ts' ]
+                    paths: [ 'source/integration-tests/integration/fixtures/passing.test.ts' ]
                 })
             });
             scope.assert.equal(resolved.facts.execution.testFamily, 'microtest');
@@ -119,9 +123,9 @@ export const testNode = authoredSuite('benchmark profile command boundaries', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'rejects ordinary benchmark execution before discovering its missing files',
-        async function (scope: TestScope) {
+        async function (scope) {
             const config = normalizeConfig({ profiles: { startup: benchmark } });
             await scope.assert.rejects(async function () {
                 await createDeterministicRunOrchestrator().resolve({
@@ -138,9 +142,9 @@ export const testNode = authoredSuite('benchmark profile command boundaries', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'rejects malformed unselected benchmark policy before ordinary file discovery',
-        async function (scope: TestScope) {
+        async function (scope) {
             const normalized = normalizeConfig({ profiles: { startup: benchmark } });
             const config = {
                 ...normalized,
@@ -164,22 +168,22 @@ export const testNode = authoredSuite('benchmark profile command boundaries', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('maps benchmark family guidance to argument exit code three', function (scope: TestScope) {
+    test('maps benchmark family guidance to argument exit code three', function (scope) {
         const error = new RunResolutionError('Use "overkill bench run".', undefined, 'unsupported-request');
         const result = createCommandLineErrorResultFromUnknown(error);
         scope.assert.equal(result.exitCode, 3);
         scope.assert.deepEqual(result.fallbackDiagnostics, [ 'Overkill argument error: Use "overkill bench run".' ]);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'rejects a sole direct benchmark match instead of falling back to microtest',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = createDirectRunFixture({
                 config: { profiles: { startup: benchmark } },
                 fileName: benchmarkFile,
                 files: [ benchmarkFile ]
             });
-            const node = test('benchmark body', function (directScope) {
+            const node = subjectTest('benchmark body', function (directScope) {
                 directScope.assert.fail({ message: 'Benchmark body must not execute through runIfMain.' });
                 return directScope.assert.collect();
             });
@@ -189,9 +193,9 @@ export const testNode = authoredSuite('benchmark profile command boundaries', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'preserves ambiguity errors when ordinary and benchmark profiles match a direct file',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = createDirectRunFixture({
                 config: {
                     profiles: {
@@ -202,7 +206,7 @@ export const testNode = authoredSuite('benchmark profile command boundaries', [
                 fileName: benchmarkFile,
                 files: [ benchmarkFile ]
             });
-            const node = test('body', function (directScope) {
+            const node = subjectTest('body', function (directScope) {
                 directScope.assert.fail({ message: 'An ambiguous profile must not execute.' });
                 return directScope.assert.collect();
             });

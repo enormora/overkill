@@ -1,19 +1,13 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
-import { testNode as callRules } from './call-rule-selection.test.ts';
-import { testNode as argumentRules } from './generator-rule-selection.test.ts';
-import { testNode as fallback } from './iterator-fallback.test.ts';
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
 
 type LoadNumbers = (prefix: string) => Generator<string, string, number>;
 type LoadAsyncNumbers = (prefix: string) => AsyncGenerator<string, string, number>;
 
-export const testNode = suite('source/doubles/test-double-generator.test.ts', [
-    callRules,
-    argumentRules,
-    fallback,
-    test('testDouble.yields() returns fresh tracked iterators', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Test double generator', [
+    test('testDouble.yields() returns fresh tracked iterators', function (scope) {
         const loadNumbers = testDouble.yields<LoadNumbers>([ 'a', 'b' ], 'done');
         const first = loadNumbers('first');
         const second = loadNumbers('second');
@@ -55,7 +49,7 @@ export const testNode = suite('source/doubles/test-double-generator.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('rule.yieldsFrom() delegates lazily with invocation arguments', function (scope: OverkillScope) {
+    test('rule.yieldsFrom() delegates lazily with invocation arguments', function (scope) {
         type LoadValues = (prefix: string) => Generator<string, string, unknown>;
 
         const seen: string[] = [];
@@ -77,7 +71,7 @@ export const testNode = suite('source/doubles/test-double-generator.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('tracked iterators record return protocol events', function (scope: OverkillScope) {
+    test('tracked iterators record return protocol events', function (scope) {
         const returned = testDouble.yields<() => Generator<string, string, unknown>>([ 'a', 'b' ], 'done');
 
         scope.assert.deepEqual(returned().return('early'), { done: true, value: 'early' });
@@ -90,7 +84,7 @@ export const testNode = suite('source/doubles/test-double-generator.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('tracked iterators record throw protocol events', function (scope: OverkillScope) {
+    test('tracked iterators record throw protocol events', function (scope) {
         const expected = new Error('expected');
         const thrown = testDouble.yieldsFrom(function* values() {
             yield 'a';
@@ -110,7 +104,7 @@ export const testNode = suite('source/doubles/test-double-generator.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('tracked iterators record calls after completion', function (scope: OverkillScope) {
+    test('tracked iterators record calls after completion', function (scope) {
         const loadValue = testDouble.yields([ 'a' ]);
         const values = loadValue();
 
@@ -127,7 +121,7 @@ export const testNode = suite('source/doubles/test-double-generator.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('reset detaches existing tracked iterators from history', function (scope: OverkillScope) {
+    test('reset detaches existing tracked iterators from history', function (scope) {
         const loadValue = testDouble.yields([ 'a', 'b' ]);
         const values = loadValue();
 
@@ -142,7 +136,7 @@ export const testNode = suite('source/doubles/test-double-generator.test.ts', [
     }),
     test(
         'testDouble.yieldsAsync() records async iterator events after settlement',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const loadValues = testDouble.yieldsAsync<LoadAsyncNumbers>([ 'a', 'b' ], 'done');
             const values = loadValues('scope');
             const pending = values.next(1);
@@ -171,7 +165,7 @@ export const testNode = suite('source/doubles/test-double-generator.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('rule.yieldsAsyncFrom() delegates to sync and async sources', async function (scope: OverkillScope) {
+    test('rule.yieldsAsyncFrom() delegates to sync and async sources', async function (scope) {
         type LoadValues = (label: string) => AsyncGenerator<string, string, unknown>;
 
         const loadSyncValues = testDouble<LoadValues>({

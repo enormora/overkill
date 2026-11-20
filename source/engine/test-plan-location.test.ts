@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     attachTestBodyFamily,
@@ -11,6 +11,8 @@ import {
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { Engine } from './engine.ts';
 import type { DefinitionLocations } from './test-node.ts';
+
+type TestPlanLocationAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
 
 type TestCase = ReturnType<Engine['createTestCase']>;
 type SourceLocation = DefinitionLocations[number];
@@ -85,8 +87,10 @@ function createPlanWithOrphans(
     }));
 }
 
-export const testNode = suite('source/engine/test-plan-location.test.ts', [
-    test('createTestPlan() preserves supplied definition locations', function (scope: OverkillScope) {
+type FamilyConflictAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
+
+export const testNode: TestNode = suite('Test plan location', [
+    test('preserves supplied definition locations', function (scope) {
         const engine = createEngine();
         const suiteLocation = { column: 5, file: 'source/suite.test.ts', kind: 'known' as const, line: 10 };
         const testLocation = { column: 9, file: 'source/suite.test.ts', kind: 'known' as const, line: 12 };
@@ -100,8 +104,8 @@ export const testNode = suite('source/engine/test-plan-location.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'createTestPlan() reports constructed nodes that do not reach the root as orphans',
-        function (scope: OverkillScope) {
+        'reports constructed nodes that do not reach the root as orphans',
+        function (scope) {
             const engine = createEngine();
             const unusedSuiteLocation = {
                 column: 3,
@@ -126,7 +130,7 @@ export const testNode = suite('source/engine/test-plan-location.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('preserves ownership when the same origin is attached again', function (scope: OverkillScope) {
+    test('preserves ownership when the same origin is attached again', function (scope) {
         const body = function (): null {
             return null;
         };
@@ -138,7 +142,7 @@ export const testNode = suite('source/engine/test-plan-location.test.ts', [
         scope.assert.equal(captureTestBodyOrigin(body), origin);
         return scope.assert.collect();
     }),
-    test('rejects replacing the authored body or source location', function (scope: OverkillScope) {
+    test('rejects replacing the authored body or source location', function (scope) {
         const body = function (): null {
             return null;
         };
@@ -159,7 +163,7 @@ export const testNode = suite('source/engine/test-plan-location.test.ts', [
         scope.assert.equal(readTestBodyOrigin(body), origin);
         return scope.assert.collect();
     }),
-    test('leaves ownership unchanged when forwarding to itself or from a nonfunction', function (scope: OverkillScope) {
+    test('leaves ownership unchanged when forwarding to itself or from a nonfunction', function (scope) {
         const body = function (): null {
             return null;
         };
@@ -175,12 +179,15 @@ export const testNode = suite('source/engine/test-plan-location.test.ts', [
         scope.assert.equal(readTestBodyOrigin(unowned), null);
         return scope.assert.collect();
     }),
-    test('rejects a property body carrying a conflicting test family', function (scope: OverkillScope) {
+    test('rejects a property body carrying a conflicting test family', function (scope) {
         const engine = createEngine();
-        const body = attachTestBodyFamily(function (sample: OverkillScope) {
-            sample.assert.true(true);
-            return sample.assert.collect();
-        }, { family: 'microtest', definition: null });
+        const body = attachTestBodyFamily(
+            function (sample: FamilyConflictAssertions) {
+                sample.assert.true(true);
+                return sample.assert.collect();
+            },
+            { family: 'microtest', definition: null }
+        );
 
         scope.assert.throws(function planConflictingFamily() {
             const node = engine.createPropertyTestCase({
@@ -200,7 +207,7 @@ export const testNode = suite('source/engine/test-plan-location.test.ts', [
         }, { message: 'Test body family "microtest" conflicts with test family "property".' });
         return scope.assert.collect();
     }),
-    test('uses the table definition location when a row has no body origin', function (scope: OverkillScope) {
+    test('uses the table definition location when a row has no body origin', function (scope: TestScope) {
         const engine = createEngine();
         const location = { kind: 'known' as const, file: 'source/table.test.ts', line: 10, column: 1 };
         const table = engine.createTable({
@@ -214,7 +221,7 @@ export const testNode = suite('source/engine/test-plan-location.test.ts', [
                     controls: {},
                     title,
                     parameters: title,
-                    body(sample: OverkillScope) {
+                    body(sample: TestPlanLocationAssertions) {
                         sample.assert.true(true);
                         return sample.assert.collect();
                     }

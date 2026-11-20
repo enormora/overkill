@@ -2,10 +2,11 @@ import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { suite, test, test as authoredTest, type TestScope } from '#tests';
+import { table, type TestNode, suite, test, type TestScope } from '#tests';
+
 import { z } from 'zod/v4';
 
-import { normalizedBenchConfigScript, normalizedBenchFixtureScript } from './normalization-scripts.test.ts';
+import { normalizedBenchConfigScript, normalizedBenchFixtureScript } from './support/normalization-scripts.ts';
 import {
     benchAuthoringScript,
     benchMacroScript,
@@ -13,7 +14,7 @@ import {
     benchmarkCommandsScript,
     standardBenchConsumerConfigScript,
     standardBenchConsumerScript
-} from './bench-scripts.test.ts';
+} from './support/bench-scripts.ts';
 
 type ScriptOutput = {
     readonly exitCode: number;
@@ -107,25 +108,28 @@ async function assertUncapturedCommands(scope: TestScope, binary: string, consum
     scope.assert.includes(uncaptured.stdout, '(1 pass, 0 fail');
 }
 
-export const testNode = suite('source/integration-tests/package-smoke/bench.test.ts', [
-    test('standard-only installation captures and normalizes declared calibration resources', async function (scope) {
-        const consumerFolder = await createStandardBenchConsumer(scope);
-        await writeFile(path.join(consumerFolder, 'overkill.config.js'), normalizedBenchConfigScript);
-        await writeFile(path.join(consumerFolder, 'normalization.bench.mjs'), normalizedBenchFixtureScript);
-        const binary = path.join(
-            consumerFolder,
-            'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
-        );
-        await assertUncapturedCommands(scope, binary, consumerFolder);
-        await captureFixedCalibration(scope, binary, consumerFolder);
-        const measured = await executeNode(
-            [ binary, 'bench', 'run', '--profile', 'normalized' ],
-            consumerFolder
-        );
-        assertSuccessfulCommand(scope, measured);
-        scope.assert.includes(measured.stdout, '(1 pass, 0 fail');
-        return scope.assert.collect();
-    }),
+export const testNode: TestNode = suite('Bench', [
+    test(
+        'standard-only installation captures and normalizes declared calibration resources',
+        async function (scope) {
+            const consumerFolder = await createStandardBenchConsumer(scope);
+            await writeFile(path.join(consumerFolder, 'overkill.config.js'), normalizedBenchConfigScript);
+            await writeFile(path.join(consumerFolder, 'normalization.bench.mjs'), normalizedBenchFixtureScript);
+            const binary = path.join(
+                consumerFolder,
+                'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
+            );
+            await assertUncapturedCommands(scope, binary, consumerFolder);
+            await captureFixedCalibration(scope, binary, consumerFolder);
+            const measured = await executeNode(
+                [ binary, 'bench', 'run', '--profile', 'normalized' ],
+                consumerFolder
+            );
+            assertSuccessfulCommand(scope, measured);
+            scope.assert.includes(measured.stdout, '(1 pass, 0 fail');
+            return scope.assert.collect();
+        }
+    ),
     test(
         'standard-only installation runs real calibration through benchmark baseline commands',
         async function (scope) {
@@ -168,21 +172,24 @@ export const testNode = suite('source/integration-tests/package-smoke/bench.test
         scope.assert.equal(result.stderr, '');
         return scope.assert.collect();
     }),
-    test('standard-only installation runs benchmark authoring through the packaged binary', async function (scope) {
-        const consumerFolder = await createStandardBenchConsumer(scope);
-        const result = await executeNode([
-            path.join(consumerFolder, 'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'),
-            'run',
-            '--config',
-            'overkill.config.mjs',
-            'bench.test.mjs'
-        ], consumerFolder);
+    test(
+        'standard-only installation runs benchmark authoring through the packaged binary',
+        async function (scope) {
+            const consumerFolder = await createStandardBenchConsumer(scope);
+            const result = await executeNode([
+                path.join(consumerFolder, 'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'),
+                'run',
+                '--config',
+                'overkill.config.mjs',
+                'bench.test.mjs'
+            ], consumerFolder);
 
-        scope.assert.equal(result.exitCode, 0);
-        scope.assert.equal(result.stderr, '');
-        scope.assert.includes(result.stdout, '(4 pass, 0 fail, 1 skip)');
-        return scope.assert.collect();
-    }),
+            scope.assert.equal(result.exitCode, 0);
+            scope.assert.equal(result.stderr, '');
+            scope.assert.includes(result.stdout, '(4 pass, 0 fail, 1 skip)');
+            return scope.assert.collect();
+        }
+    ),
     test('packaged singleton and constructed runners share benchmark profile selection', async function (scope) {
         const consumerFolder = await createStandardBenchConsumer(scope);
         await writeFile(path.join(consumerFolder, 'overkill.config.js'), benchmarkSelectionConfigScript);
@@ -207,67 +214,75 @@ export const testNode = suite('source/integration-tests/package-smoke/bench.test
         scope.assert.equal(result.stderr, '');
         return scope.assert.collect();
     }),
-    ...[ 'run', 'list' ].flatMap(function createPackagedBenchmarkCommandTests(verb) {
-        return [
-            authoredTest({
-                annotations: {},
-                async body(scope) {
-                    const consumerFolder = await createStandardBenchConsumer(scope);
-                    await writeFile(
-                        path.join(consumerFolder, 'overkill.config.js'),
-                        benchmarkSelectionConfigScript
-                    );
-                    await writeFile(
-                        path.join(consumerFolder, 'startup.bench.mjs'),
-                        standardBenchConsumerScript
-                    );
-                    for (const selection of [ [], [ '--profile=startup', '--config', 'overkill.config.js' ] ]) {
-                        const result = await executeNode([
-                            path.join(
-                                consumerFolder,
-                                'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
-                            ),
-                            'bench',
-                            verb,
-                            ...selection,
-                            'startup.bench.mjs'
-                        ], consumerFolder);
+    table({
+        title: 'standard-only installation selects bench profiles and executes the shared runner flow',
+        cases: [ 'run', 'list' ].flatMap(function createPackagedBenchmarkCommandTests(verb) {
+            return { verb };
+        }),
+        caseTitle({ verb }) {
+            return [ verb ].map(String).join(', ');
+        },
+        async test(scope) {
+            const { verb } = scope.parameters;
 
-                        scope.assert.equal(result.exitCode, 0);
-                        scope.assert.equal(result.stderr, '');
-                        scope.assert.includes(result.stdout, 'parameterized');
-                    }
+            const consumerFolder = await createStandardBenchConsumer(scope);
+            await writeFile(
+                path.join(consumerFolder, 'overkill.config.js'),
+                benchmarkSelectionConfigScript
+            );
+            await writeFile(
+                path.join(consumerFolder, 'startup.bench.mjs'),
+                standardBenchConsumerScript
+            );
+            for (const selection of [ [], [ '--profile=startup', '--config', 'overkill.config.js' ] ]) {
+                const result = await executeNode([
+                    path.join(
+                        consumerFolder,
+                        'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
+                    ),
+                    'bench',
+                    verb,
+                    ...selection,
+                    'startup.bench.mjs'
+                ], consumerFolder);
 
-                    return scope.assert.collect();
-                },
-                controls: {},
-                title: `standard-only installation selects bench ${verb} profiles and executes the shared runner flow`
-            }),
-            authoredTest({
-                annotations: {},
-                async body(scope) {
-                    const consumerFolder = await createStandardBenchConsumer(scope);
-                    const result = await executeNode([
-                        path.join(
-                            consumerFolder,
-                            'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
-                        ),
-                        'bench',
-                        verb,
-                        '--help'
-                    ], consumerFolder);
+                scope.assert.equal(result.exitCode, 0);
+                scope.assert.equal(result.stderr, '');
+                scope.assert.includes(result.stdout, 'parameterized');
+            }
 
-                    scope.assert.equal(result.exitCode, 0);
-                    scope.assert.equal(result.stderr, '');
-                    scope.assert.includes(result.stdout, `overkill bench ${verb}`);
-                    scope.assert.includes(result.stdout, '--config');
-                    scope.assert.includes(result.stdout, '--profile');
+            return scope.assert.collect();
+        }
+    }),
+    table({
+        title: 'standard-only installation exposes bench help',
+        cases: [ 'run', 'list' ].flatMap(function createPackagedBenchmarkCommandTests(verb) {
+            return { verb };
+        }),
+        caseTitle({ verb }) {
+            return [ verb ].map(String).join(', ');
+        },
+        async test(scope) {
+            const { verb } = scope.parameters;
 
-                    return scope.assert.collect();
-                },
-                controls: {},
-                title: `standard-only installation exposes bench ${verb} help`
-            })
-        ];
+            const consumerFolder = await createStandardBenchConsumer(scope);
+            const result = await executeNode([
+                path.join(
+                    consumerFolder,
+                    'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
+                ),
+                'bench',
+                verb,
+                '--help'
+            ], consumerFolder);
+
+            scope.assert.equal(result.exitCode, 0);
+            scope.assert.equal(result.stderr, '');
+            scope.assert.includes(result.stdout, `overkill bench ${verb}`);
+            scope.assert.includes(result.stdout, '--config');
+            scope.assert.includes(result.stdout, '--profile');
+
+            return scope.assert.collect();
+        }
     })
 ]);

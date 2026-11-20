@@ -17,7 +17,7 @@ export type IsolatedWorkerFixture = {
     readonly dependencies: RunOrchestratorDependencies;
     readonly events: readonly string[];
 };
-const source = 'source/integration-tests/run/fixtures/passing.test.ts';
+const source = 'source/integration-tests/integration/fixtures/passing.test.ts';
 export function isolatedWorkerRun(
     faults: WorkerOrchestrationFaults,
     timed: boolean,

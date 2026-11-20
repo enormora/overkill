@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -131,7 +131,7 @@ const ignoreStartOptions: (options: WorkerPoolHostProcessStartOptions) => void =
     return undefined;
 };
 
-function closePoolAfterTest(scope: OverkillScope, fixture: HostedPoolFixture): void {
+function closePoolAfterTest(scope: TestScope, fixture: HostedPoolFixture): void {
     scope.cleanup(async function closeHostedPool() {
         await fixture.pool.destroy();
         fixture.child.emitExit();
@@ -139,7 +139,7 @@ function closePoolAfterTest(scope: OverkillScope, fixture: HostedPoolFixture): v
 }
 
 function createPoolFixture(
-    scope: OverkillScope,
+    scope: TestScope,
     options: WorkerPoolCreationOptions,
     onStart: (options: WorkerPoolHostProcessStartOptions) => void
 ): HostedPoolFixture {
@@ -229,7 +229,7 @@ async function startRunTask(fixture: HostedPoolFixture): Promise<RunningTaskFixt
     return { ...fixture, result };
 }
 
-function createForwardingFixture(scope: OverkillScope): ForwardingFixture {
+function createForwardingFixture(scope: TestScope): ForwardingFixture {
     const child = createFakeHostChild();
     const output: string[] = [];
     const pool = createHostedWorkerPool({
@@ -283,7 +283,7 @@ function resolveTask(
     });
 }
 
-async function assertForwardingResult(scope: OverkillScope, fixture: ForwardingFixture): Promise<void> {
+async function assertForwardingResult(scope: TestScope, fixture: ForwardingFixture): Promise<void> {
     scope.assert.deepEqual(await fixture.result, { ok: true });
     scope.assert.deepEqual(fixture.output, [ 'stdout:host stdout', 'stderr:host stderr' ]);
     scope.assert.deepEqual(fixture.port.messages(), [ {
@@ -296,7 +296,7 @@ async function assertForwardingResult(scope: OverkillScope, fixture: ForwardingF
     scope.assert.equal(fixture.pool.options.maxThreads, 2);
 }
 
-function createTrackingFixture(scope: OverkillScope): ProcessUsageTrackingFixture {
+function createTrackingFixture(scope: TestScope): ProcessUsageTrackingFixture {
     const fixture = createPoolFixture(
         scope,
         workerPoolOptions({ workerLifecycle: 'fresh-worker-per-unit' }),
@@ -340,8 +340,8 @@ async function startTrackingWithOneSample(
     await start;
 }
 
-export const testNode = suite('source/run/worker-pool-host-process.test.ts', [
-    test('createHostedWorkerPool() reports a missing host process usage sample', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Hosted worker pools', [
+    test('reports a missing host process usage sample', function (scope: TestScope) {
         const { pool } = createPoolFixture(scope, workerPoolOptions(), ignoreStartOptions);
         const tracker = pool.createProcessUsageTracker?.({ samplingIntervalMilliseconds: 25 });
 
@@ -354,7 +354,7 @@ export const testNode = suite('source/run/worker-pool-host-process.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createHostedWorkerPool() rejects task errors from the child host', async function (scope: OverkillScope) {
+    test('rejects task errors from the child host', async function (scope) {
         const fixture = await startRunTask(createPoolFixture(
             scope,
             workerPoolOptions({ hostProcess: { kind: 'direct' } }),
@@ -380,8 +380,8 @@ export const testNode = suite('source/run/worker-pool-host-process.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'createHostedWorkerPool() forwards tasks, output, messages, and aborts',
-        async function (scope: OverkillScope) {
+        'forwards tasks, output, messages, and aborts',
+        async function (scope) {
             const fixture = createForwardingFixture(scope);
             const runTaskCommand = await waitForRunTaskCommand(fixture.child);
 
@@ -394,7 +394,7 @@ export const testNode = suite('source/run/worker-pool-host-process.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('createHostedWorkerPool() exposes host process usage samples', async function (scope: OverkillScope) {
+    test('exposes host process usage samples', async function (scope) {
         const fixture = createTrackingFixture(scope);
         const usage = await collectTwoProcessUsageSamples(fixture);
 
@@ -409,7 +409,7 @@ export const testNode = suite('source/run/worker-pool-host-process.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createHostedWorkerPool() rejects pending tasks when the host errors', async function (scope: OverkillScope) {
+    test('rejects pending tasks when the host errors', async function (scope) {
         const fixture = await startRunTask(createPoolFixture(scope, workerPoolOptions(), ignoreStartOptions));
 
         fixture.child.emitError(new Error('host failed'));
@@ -421,8 +421,8 @@ export const testNode = suite('source/run/worker-pool-host-process.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'createHostedWorkerPool() destroys an active host and ignores idle destroy',
-        async function (scope: OverkillScope) {
+        'destroys an active host and ignores idle destroy',
+        async function (scope: TestScope) {
             const fixture = createPoolFixture(scope, workerPoolOptions(), ignoreStartOptions);
             const tracker = fixture.pool.createProcessUsageTracker?.({ samplingIntervalMilliseconds: 25 });
 

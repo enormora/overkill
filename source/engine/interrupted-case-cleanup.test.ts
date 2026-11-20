@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { createInterruptedCase, type InterruptedCase } from '../test-support/interrupted-case.ts';
 import { createPermissionDenialRuntimePolicy } from '../run/capability-policy.ts';
@@ -12,17 +13,17 @@ type CleanupState = {
     readonly cleanup: PromiseWithResolvers<undefined>;
     readonly started: PromiseWithResolvers<undefined>;
     readonly events: readonly string[];
-    readonly scopes: readonly TestScope[];
+    readonly scopes: readonly Pick<TestScope, 'cleanup' | 'startInFlight'>[];
     readonly returned: StoredValue<boolean>;
     readonly recordEvent: (event: string) => void;
-    readonly captureScope: (scope: TestScope) => void;
+    readonly captureScope: (scope: Pick<TestScope, 'cleanup' | 'startInFlight'>) => void;
 };
 
 type CleanupProbe = CleanupState & { readonly fixture: InterruptedCase; };
 
 function createCleanupProbe(scope: TestScope): CleanupProbe {
     const events: string[] = [];
-    const scopes: TestScope[] = [];
+    const scopes: Pick<TestScope, 'cleanup' | 'startInFlight'>[] = [];
     const state: CleanupState = {
         body: Promise.withResolvers<undefined>(),
         cleanup: Promise.withResolvers<undefined>(),
@@ -109,21 +110,26 @@ function assertCleanupFailures(result: ConcurrentCase, scope: TestScope): void {
     );
 }
 
-export const testNode = authoredSuite('interrupted case cleanup', [
-    authoredTest('awaits reverse cleanup before returning while the body remains pending', async function (scope) {
+export const testNode: TestNode = suite('interrupted case cleanup', [
+    test('awaits reverse cleanup before returning while the body remains pending', async function (scope) {
         const probe = createCleanupProbe(scope);
         const result = await finishInterruptedCleanup(probe, scope);
         await verifyLateBody(probe, result, scope);
         return scope.assert.collect();
     }),
-    ...([ 'unhandledRejection', 'uncaughtException' ] as const).map(function fatalHook(hook) {
-        return authoredTest(`${hook} closes a pending body's scope before returning`, async function (scope) {
+    table({
+        title: 'closes pending body scopes after fatal hooks',
+        cases: [ 'unhandledRejection', 'uncaughtException' ] as const,
+        caseTitle(hook) {
+            return hook;
+        },
+        async test(scope) {
             const state = { gate: Promise.withResolvers<undefined>(), cleanups: createStoredValue(0) };
             const fixture = createInterruptedCase(async function fatalBody(testScope) {
                 testScope.cleanup(function recordCleanup() {
                     state.cleanups.write(state.cleanups.read() + 1);
                 });
-                process.emit(hook, new Error('fatal sentinel'), Promise.resolve());
+                process.emit(scope.parameters, new Error('fatal sentinel'), Promise.resolve());
                 await state.gate.promise;
                 return testScope.assert.collect();
             }, null);
@@ -135,9 +141,9 @@ export const testNode = authoredSuite('interrupted case cleanup', [
             await scope.yieldToNextTurn();
             scope.assert.equal(state.cleanups.read(), 1);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('preserves preparation and cleanup failures after interruption', async function (scope) {
+    test('preserves preparation and cleanup failures after interruption', async function (scope) {
         const state = { gate: Promise.withResolvers<undefined>(), policy: createPermissionDenialRuntimePolicy() };
         scope.cleanup(function stopPolicy() {
             state.policy.takeRunErrors();
@@ -161,7 +167,7 @@ export const testNode = authoredSuite('interrupted case cleanup', [
         state.gate.resolve(undefined);
         return scope.assert.collect();
     }),
-    authoredTest('retains a soft timeout when fatal-error cleanup exceeds the case limit', async function (scope) {
+    test('retains a soft timeout when fatal-error cleanup exceeds the case limit', async function (scope) {
         const gate = Promise.withResolvers<undefined>();
         const fixture = createInterruptedCase(async function fatalBody(testScope) {
             testScope.cleanup(function slowCleanup() {
@@ -183,7 +189,7 @@ export const testNode = authoredSuite('interrupted case cleanup', [
         gate.resolve(undefined);
         return scope.assert.collect();
     }),
-    authoredTest('retains an interruption that arrives while cleanup is pending', async function (scope) {
+    test('retains an interruption that arrives while cleanup is pending', async function (scope) {
         const state = { gate: Promise.withResolvers<undefined>(), started: Promise.withResolvers<undefined>() };
         const fixture = createInterruptedCase(function passingBody(testScope) {
             testScope.cleanup(async function pendingCleanup() {
@@ -202,30 +208,33 @@ export const testNode = authoredSuite('interrupted case cleanup', [
         scope.assert.equal(result.result.verdict, 'crashed');
         return scope.assert.collect();
     }),
-    authoredTest('concurrent finalization waits for the same cleanup and retains its failures', async function (scope) {
-        const state = { gate: Promise.withResolvers<undefined>(), controller: new AbortController(), cleanups: 0 };
-        const lifecycle = createTestScopeLifecycle(createAssertionRecorder(), {
-            seed: 0n,
-            work: {
-                familyVariant: null,
-                case: { file: null, suite: [], title: 'case', params: null },
-                runtimes: [],
-                workload: null
-            }
-        });
-        lifecycle.createScope(state.controller.signal).cleanup(async function pendingCleanup() {
-            state.cleanups += 1;
-            await state.gate.promise;
-            throw new Error('single cleanup sentinel');
-        });
-        const first = lifecycle.finish(state.controller);
-        const second = lifecycle.finish(state.controller);
-        state.gate.resolve(undefined);
-        const results = await Promise.all([ first, second, lifecycle.finish(state.controller) ]);
-        scope.assert.equal(state.cleanups, 1);
-        scope.assert.true(results.every(function sameFinalization(result) {
-            return result === results[0] && result.cleanupErrors.length === 1;
-        }));
-        return scope.assert.collect();
-    })
+    test(
+        'concurrent finalization waits for the same cleanup and retains its failures',
+        async function (scope) {
+            const state = { gate: Promise.withResolvers<undefined>(), controller: new AbortController(), cleanups: 0 };
+            const lifecycle = createTestScopeLifecycle(createAssertionRecorder(), {
+                seed: 0n,
+                work: {
+                    familyVariant: null,
+                    case: { file: null, suite: [], title: 'case', params: null },
+                    runtimes: [],
+                    workload: null
+                }
+            });
+            lifecycle.createScope(state.controller.signal).cleanup(async function pendingCleanup() {
+                state.cleanups += 1;
+                await state.gate.promise;
+                throw new Error('single cleanup sentinel');
+            });
+            const first = lifecycle.finish(state.controller);
+            const second = lifecycle.finish(state.controller);
+            state.gate.resolve(undefined);
+            const results = await Promise.all([ first, second, lifecycle.finish(state.controller) ]);
+            scope.assert.equal(state.cleanups, 1);
+            scope.assert.true(results.every(function sameFinalization(result) {
+                return result === results[0] && result.cleanupErrors.length === 1;
+            }));
+            return scope.assert.collect();
+        }
+    )
 ]);

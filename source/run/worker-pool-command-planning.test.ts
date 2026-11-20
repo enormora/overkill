@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     defaultIntegrationProfile,
@@ -6,15 +6,14 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import { testNode as transport } from './isolated-command-policy.test.ts';
-import { testNode as hostPlans } from './host-plan-policy.test.ts';
+
 import { defaultRunEngine } from './default-run-engine.ts';
 import type { RunCommand } from './run-types.ts';
 import { configuredFilesRunCollectionSource } from './run-collection-source.ts';
 import { createSupervisedCollectCommand, createWorkerPoolCommand } from './run-isolated-command.ts';
 
-const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
-const secondIntegrationPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
+const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const secondIntegrationPath = 'source/integration-tests/integration/fixtures/delayed-pass.test.ts';
 
 type ProfileConfig = RunCommand['config']['profiles'][string];
 type DiscoveredFile = {
@@ -58,10 +57,8 @@ function discoveredFiles(): DiscoveredFiles {
     ];
 }
 
-export const testNode = suite('source/run/worker-pool-command-planning.test.ts', [
-    hostPlans,
-    transport,
-    test('isolated command builders map integration profiles to worker commands', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Worker pool command planning', [
+    test('isolated command builders map integration profiles to worker commands', function (scope) {
         const profile = defaultIntegrationProfile({
             execution: { processModel: 'worker-pool', scheduling: 'serial' },
             files: { exclude: [], include: [ integrationPath ] },
@@ -99,7 +96,7 @@ export const testNode = suite('source/run/worker-pool-command-planning.test.ts',
     }),
     test(
         'worker pool command builders preserve non-worker-pool integration execution',
-        function (scope: OverkillScope) {
+        function (scope) {
             const profile = defaultIntegrationProfile({
                 execution: { processModel: 'supervised-process', scheduling: 'serial' },
                 files: { exclude: [], include: [ integrationPath ] },
@@ -123,7 +120,7 @@ export const testNode = suite('source/run/worker-pool-command-planning.test.ts',
             return scope.assert.collect();
         }
     ),
-    test('isolated command builders reject in-process engine instances', function (scope: OverkillScope) {
+    test('isolated command builders reject in-process engine instances', function (scope) {
         const profile = defaultIntegrationProfile({
             execution: { processModel: 'worker-pool', scheduling: 'serial' },
             files: { exclude: [], include: [ integrationPath ] }

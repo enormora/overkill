@@ -1,10 +1,9 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { DryRunStatus, MutantRunStatus, TestStatus, type MutantRunResult } from '@stryker-mutator/api/test-runner';
 
 import { memoryMutationDiagnostics } from '../../test-support/memory-mutation-diagnostics.ts';
-import { testNode as storage } from './mutation-diagnostic-storage-policy.test.ts';
-import { testNode as evidence } from './mutation-diagnostic-evidence-policy.test.ts';
+
 import { recordMutationInvocation } from './mutation-diagnostic-persistence.ts';
 
 const dry = { kind: 'dry' } as const;
@@ -15,36 +14,36 @@ const killed: MutantRunResult = {
     failureMessage: 'Killed.',
     nrOfTests: 1
 };
-export const testNode = authoredSuite('mutation diagnostic retention policy', [
-    storage,
-    evidence,
-    ...[ false, true ].map(function (withReason) {
-        return authoredTest(
-            `retains timeout diagnostics with an explicit reason ${withReason}`,
-            async function (scope: TestScope) {
-                const fixture = memoryMutationDiagnostics(scope, 'failures', null);
-                const result = withReason
-                    ? { status: DryRunStatus.Timeout, reason: 'deadline detail' } as const
-                    : { status: DryRunStatus.Timeout } as const;
-                await recordMutationInvocation({
-                    ...fixture,
-                    execution: dry,
-                    async run() {
-                        return result;
-                    }
-                }, fixture.runtime);
-                scope.assert.includes(
-                    JSON.stringify(fixture.documents[0]?.failure),
-                    withReason ? 'deadline detail' : 'Mutation invocation timed out.'
-                );
-                return scope.assert.collect();
-            }
-        );
+export const testNode: TestNode = suite('mutation diagnostic retention policy', [
+    table({
+        title: 'retains timeout diagnostics with or without an explicit reason',
+        cases: [ false, true ],
+        caseTitle: String,
+        async test(scope) {
+            const withReason = scope.parameters;
+
+            const fixture = memoryMutationDiagnostics('failures', null);
+            const result = withReason
+                ? { status: DryRunStatus.Timeout, reason: 'deadline detail' } as const
+                : { status: DryRunStatus.Timeout } as const;
+            await recordMutationInvocation({
+                ...fixture,
+                execution: dry,
+                async run() {
+                    return result;
+                }
+            }, fixture.runtime);
+            scope.assert.includes(
+                JSON.stringify(fixture.documents[0]?.failure),
+                withReason ? 'deadline detail' : 'Mutation invocation timed out.'
+            );
+            return scope.assert.collect();
+        }
     }),
-    authoredTest(
+    test(
         'retains an execution failure reply even when the adapter returns survival',
-        async function (scope: TestScope) {
-            const fixture = memoryMutationDiagnostics(scope, 'all', null);
+        async function (scope) {
+            const fixture = memoryMutationDiagnostics('all', null);
             const failure = {
                 kind: 'error',
                 name: 'Error',
@@ -64,10 +63,10 @@ export const testNode = authoredSuite('mutation diagnostic retention policy', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'reports persistence failures while retaining the prior adapter diagnostic',
-        async function (scope: TestScope) {
-            const fixture = memoryMutationDiagnostics(scope, 'all', new Error('Storage failed.'));
+        async function (scope) {
+            const fixture = memoryMutationDiagnostics('all', new Error('Storage failed.'));
             await scope.assert.rejects(async function () {
                 await recordMutationInvocation({
                     ...fixture,
@@ -82,46 +81,53 @@ export const testNode = authoredSuite('mutation diagnostic retention policy', [
             return scope.assert.collect();
         }
     ),
+    table({
+        title: 'retains successful evidence according to policy',
+        cases: [ 'off', 'failures', 'all' ] as const,
+        caseTitle(mode) {
+            return mode;
+        },
+        async test(scope) {
+            const mode = scope.parameters;
 
-    ...([ 'off', 'failures', 'all' ] as const).map(function (mode) {
-        return authoredTest(
-            `${mode} retains successful evidence according to policy`,
-            async function (scope: TestScope) {
-                const fixture = memoryMutationDiagnostics(scope, mode, null);
-                const result = await recordMutationInvocation({
-                    ...fixture,
-                    execution: dry,
-                    async run(diagnostics) {
-                        diagnostics.record(fixture.reply);
-                        return survived;
-                    }
-                }, fixture.runtime);
-                scope.assert.equal(result, survived);
-                scope.assert.equal(fixture.documents.length, mode === 'all' ? 1 : 0);
-                return scope.assert.collect();
-            }
-        );
+            const fixture = memoryMutationDiagnostics(mode, null);
+            const result = await recordMutationInvocation({
+                ...fixture,
+                execution: dry,
+                async run(diagnostics) {
+                    diagnostics.record(fixture.reply);
+                    return survived;
+                }
+            }, fixture.runtime);
+            scope.assert.equal(result, survived);
+            scope.assert.equal(fixture.documents.length, mode === 'all' ? 1 : 0);
+            return scope.assert.collect();
+        }
     }),
-    ...([ 'off', 'failures', 'all' ] as const).map(function (mode) {
-        return authoredTest(
-            `${mode} retains killed mutant evidence according to policy`,
-            async function (scope: TestScope) {
-                const fixture = memoryMutationDiagnostics(scope, mode, null);
-                await recordMutationInvocation({
-                    ...fixture,
-                    execution: { kind: 'mutant', mutant: 'mutant' },
-                    async run(diagnostics) {
-                        diagnostics.record(fixture.reply);
-                        return killed;
-                    }
-                }, fixture.runtime);
-                scope.assert.equal(fixture.documents.length, mode === 'off' ? 0 : 1);
-                return scope.assert.collect();
-            }
-        );
+    table({
+        title: 'retains killed mutant evidence according to policy',
+        cases: [ 'off', 'failures', 'all' ] as const,
+        caseTitle(mode) {
+            return mode;
+        },
+        async test(scope) {
+            const mode = scope.parameters;
+
+            const fixture = memoryMutationDiagnostics(mode, null);
+            await recordMutationInvocation({
+                ...fixture,
+                execution: { kind: 'mutant', mutant: 'mutant' },
+                async run(diagnostics) {
+                    diagnostics.record(fixture.reply);
+                    return killed;
+                }
+            }, fixture.runtime);
+            scope.assert.equal(fixture.documents.length, mode === 'off' ? 0 : 1);
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('records the exact invocation identity and checkpoint evidence', async function (scope: TestScope) {
-        const fixture = memoryMutationDiagnostics(scope, 'all', null);
+    test('records the exact invocation identity and checkpoint evidence', async function (scope: TestScope) {
+        const fixture = memoryMutationDiagnostics('all', null);
         await recordMutationInvocation({
             ...fixture,
             execution: dry,
@@ -151,10 +157,10 @@ export const testNode = authoredSuite('mutation diagnostic retention policy', [
         scope.assert.equal(document.diagnostics.artifacts.length, 1);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'deduplicates explicit completion and final completion for the same result',
-        async function (scope: TestScope) {
-            const fixture = memoryMutationDiagnostics(scope, 'all', null);
+        async function (scope) {
+            const fixture = memoryMutationDiagnostics('all', null);
             await recordMutationInvocation({
                 ...fixture,
                 execution: dry,
@@ -169,8 +175,8 @@ export const testNode = authoredSuite('mutation diagnostic retention policy', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('retains failed tests within a complete dry run', async function (scope: TestScope) {
-        const fixture = memoryMutationDiagnostics(scope, 'failures', null);
+    test('retains failed tests within a complete dry run', async function (scope) {
+        const fixture = memoryMutationDiagnostics('failures', null);
         await recordMutationInvocation({
             ...fixture,
             execution: dry,
@@ -191,8 +197,8 @@ export const testNode = authoredSuite('mutation diagnostic retention policy', [
         scope.assert.equal(fixture.documents.length, 1);
         return scope.assert.collect();
     }),
-    authoredTest('retains error results even before an execution reply arrives', async function (scope: TestScope) {
-        const fixture = memoryMutationDiagnostics(scope, 'failures', null);
+    test('retains error results even before an execution reply arrives', async function (scope) {
+        const fixture = memoryMutationDiagnostics('failures', null);
         await recordMutationInvocation({
             ...fixture,
             execution: dry,
@@ -204,8 +210,8 @@ export const testNode = authoredSuite('mutation diagnostic retention policy', [
         scope.assert.includes(JSON.stringify(fixture.documents[0]?.failure), 'Initialization failed.');
         return scope.assert.collect();
     }),
-    authoredTest('retains timeout reasons without an execution reply', async function (scope: TestScope) {
-        const fixture = memoryMutationDiagnostics(scope, 'failures', null);
+    test('retains timeout reasons without an execution reply', async function (scope) {
+        const fixture = memoryMutationDiagnostics('failures', null);
         await recordMutationInvocation({
             ...fixture,
             execution: dry,
@@ -217,8 +223,8 @@ export const testNode = authoredSuite('mutation diagnostic retention policy', [
         scope.assert.includes(JSON.stringify(fixture.documents[0]?.failure), 'Deadline expired.');
         return scope.assert.collect();
     }),
-    authoredTest('retains deadline evidence after an otherwise successful result', async function (scope: TestScope) {
-        const fixture = memoryMutationDiagnostics(scope, 'failures', null);
+    test('retains deadline evidence after an otherwise successful result', async function (scope) {
+        const fixture = memoryMutationDiagnostics('failures', null);
         await recordMutationInvocation({
             ...fixture,
             execution: dry,
@@ -232,8 +238,8 @@ export const testNode = authoredSuite('mutation diagnostic retention policy', [
         scope.assert.includes(JSON.stringify(fixture.documents[0]?.failure), 'InvocationDeadlineExceededError');
         return scope.assert.collect();
     }),
-    authoredTest('does not write empty successful evidence', async function (scope: TestScope) {
-        const fixture = memoryMutationDiagnostics(scope, 'all', null);
+    test('does not write empty successful evidence', async function (scope) {
+        const fixture = memoryMutationDiagnostics('all', null);
         await recordMutationInvocation({
             ...fixture,
             execution: dry,
@@ -244,8 +250,8 @@ export const testNode = authoredSuite('mutation diagnostic retention policy', [
         scope.assert.deepEqual(fixture.documents, []);
         return scope.assert.collect();
     }),
-    authoredTest('preserves execution errors after retaining failure evidence', async function (scope: TestScope) {
-        const fixture = memoryMutationDiagnostics(scope, 'failures', null);
+    test('preserves execution errors after retaining failure evidence', async function (scope) {
+        const fixture = memoryMutationDiagnostics('failures', null);
         const error = new Error('Execution failed.');
         let failure: unknown = null;
         try {
@@ -263,9 +269,9 @@ export const testNode = authoredSuite('mutation diagnostic retention policy', [
         scope.assert.equal(fixture.documents.length, 1);
         return scope.assert.collect();
     }),
-    authoredTest('reports execution and persistence failures together', async function (scope: TestScope) {
+    test('reports execution and persistence failures together', async function (scope: TestScope) {
         const failures = { storage: new Error('Storage failed.'), execution: new Error('Execution failed.') };
-        const fixture = memoryMutationDiagnostics(scope, 'failures', failures.storage);
+        const fixture = memoryMutationDiagnostics('failures', failures.storage);
         let failure: unknown = null;
         try {
             await recordMutationInvocation({

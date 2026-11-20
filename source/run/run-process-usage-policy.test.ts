@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineOutputRenderer } from '../packages/engine/engine.entry-point.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -6,7 +6,7 @@ import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '..
 import type { NormalizedConfig } from '../config/types.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
 
-const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 
 const defaultConfig: NormalizedConfig = defaultRunConfig({
     outputRenderer: defineOutputRenderer(function createEmptyOutputRenderer() {
@@ -40,10 +40,10 @@ function createRunCommand(config: NormalizedConfig, request: RunRequest): RunCom
     };
 }
 
-export const testNode = suite('source/run/run-process-usage-policy.test.ts', [
+export const testNode: TestNode = suite('Process usage policy resolution', [
     test(
-        'orchestrator.resolve() records process usage policy from config and request overrides',
-        async function (scope: OverkillScope) {
+        'records process usage policy from config and request overrides',
+        async function (scope) {
             const runOrchestrator = createDeterministicRunOrchestrator();
             const resolvedRun = await runOrchestrator.resolve(createRunCommand(
                 {
@@ -94,7 +94,7 @@ export const testNode = suite('source/run/run-process-usage-policy.test.ts', [
     ),
     test(
         'orchestrator.run() records run-level process usage when measurement is enabled',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const runOrchestrator = createDeterministicRunOrchestrator();
             const result = await runOrchestrator.run(createRunCommand(
                 defaultConfig,
@@ -132,7 +132,7 @@ export const testNode = suite('source/run/run-process-usage-policy.test.ts', [
     ),
     test(
         'orchestrator.run() accepts budgeted execution when measurement is enabled',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const runOrchestrator = createDeterministicRunOrchestrator();
 
             const result = await runOrchestrator.run(createRunCommand(
@@ -162,7 +162,7 @@ export const testNode = suite('source/run/run-process-usage-policy.test.ts', [
     ),
     test(
         'orchestrator.run() reports final process budget breaches for in-process microtests',
-        async function (scope: OverkillScope) {
+        async function (scope: TestScope) {
             const runOrchestrator = createDeterministicRunOrchestrator();
 
             const result = await runOrchestrator.run(createRunCommand(
@@ -210,8 +210,8 @@ export const testNode = suite('source/run/run-process-usage-policy.test.ts', [
         }
     ),
     test(
-        'orchestrator.resolve() rejects process budget overrides without measurement',
-        async function (scope: OverkillScope) {
+        'rejects process budget overrides without measurement',
+        async function (scope) {
             const runOrchestrator = createDeterministicRunOrchestrator();
 
             await scope.assert.rejects(async function resolveUnmeasuredBudgetOverride() {
@@ -235,8 +235,8 @@ export const testNode = suite('source/run/run-process-usage-policy.test.ts', [
         }
     ),
     test(
-        'orchestrator.resolve() accepts disabled measurement with empty process budget overrides',
-        async function (scope: OverkillScope) {
+        'accepts disabled measurement with empty process budget overrides',
+        async function (scope) {
             const runOrchestrator = createDeterministicRunOrchestrator();
             const resolvedRun = await runOrchestrator.resolve(createRunCommand(
                 defaultConfig,
@@ -266,7 +266,7 @@ export const testNode = suite('source/run/run-process-usage-policy.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('orchestrator.resolve() rejects invalid process usage request values', async function (scope: OverkillScope) {
+    test('rejects invalid process usage request values', async function (scope) {
         const runOrchestrator = createDeterministicRunOrchestrator();
 
         await scope.assert.rejects(async function resolveInvalidSamplingInterval() {
@@ -301,8 +301,8 @@ export const testNode = suite('source/run/run-process-usage-policy.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'orchestrator.resolve() rejects timeout policies where soft exceeds hard timeout',
-        async function (scope: OverkillScope) {
+        'rejects timeout policies where soft exceeds hard timeout',
+        async function (scope) {
             const runOrchestrator = createDeterministicRunOrchestrator();
 
             await scope.assert.rejects(async function resolveInvalidTimeoutPolicy() {
@@ -331,7 +331,7 @@ export const testNode = suite('source/run/run-process-usage-policy.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('orchestrator.resolve() rejects config budgets without measurement', async function (scope: OverkillScope) {
+    test('rejects config budgets without measurement', async function (scope) {
         const runOrchestrator = createDeterministicRunOrchestrator();
 
         await scope.assert.rejects(async function resolveDisabledConfigBudget() {

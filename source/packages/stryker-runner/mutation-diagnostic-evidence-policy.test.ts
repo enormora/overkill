@@ -1,18 +1,17 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { runResultFactory } from '../../test-support/run-result-factory.ts';
 import { exchangedAttachment } from '../../test-support/attachment-exchange.ts';
 import { serializeRunDiagnostics } from '../run/run.entry-point.ts';
-import { testNode as guards } from './mutation-hit-limit-policy.test.ts';
+
 import { mutationDiagnosticEvidence } from './mutation-diagnostic-evidence.ts';
 import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
 
 const project = '/sandbox/project';
 const caseId = { file: '/sandbox/project/source/failure.test.ts', suite: [], title: 'failure', params: null };
 const workId = { familyVariant: null, case: caseId, runtimes: [], workload: null };
-export const testNode = authoredSuite('mutation diagnostic evidence identity', [
-    guards,
-    authoredTest('canonicalizes failed case and attributed runner-error identities', function (scope: TestScope) {
+export const testNode: TestNode = suite('mutation diagnostic evidence identity', [
+    test('canonicalizes failed case and attributed runner-error identities', function (scope) {
         const result = runResultFactory.build({
             perTest: [ { id: caseId, workId, verdict: 'fail' } ],
             runnerErrors: [ { attributedTo: caseId, attributedToWork: workId, message: 'failed' } ]
@@ -33,7 +32,7 @@ export const testNode = authoredSuite('mutation diagnostic evidence identity', [
         } ]);
         return scope.assert.collect();
     }),
-    authoredTest('preserves null error attribution and omits passing and skipped cases', function (scope: TestScope) {
+    test('preserves null error attribution and omits passing and skipped cases', function (scope) {
         const result = runResultFactory.build({
             perTest: [ { id: caseId, workId, verdict: 'pass' }, { id: { ...caseId, title: 'skip' }, verdict: 'skip' } ],
             runnerErrors: [ { attributedTo: null, attributedToWork: null, message: 'run failure' } ]
@@ -52,7 +51,7 @@ export const testNode = authoredSuite('mutation diagnostic evidence identity', [
         } ]);
         return scope.assert.collect();
     }),
-    authoredTest('canonicalizes case-scoped artifact identities and their active cases', function (scope: TestScope) {
+    test('canonicalizes case-scoped artifact identities and their active cases', function (scope) {
         const artifact = {
             ...exchangedAttachment,
             id: {
@@ -84,7 +83,7 @@ export const testNode = authoredSuite('mutation diagnostic evidence identity', [
         }, { id: { scope: { kind: 'run' } } } ]);
         return scope.assert.collect();
     }),
-    authoredTest('uses checkpoint diagnostics when a result is unavailable', function (scope: TestScope) {
+    test('uses checkpoint diagnostics when a result is unavailable', function (scope) {
         const result = runResultFactory.build({ perTest: [ { id: caseId, workId, verdict: 'fail' } ] });
         const diagnostics = mutationDiagnosticEvidence(project, {
             kind: 'timeout',
@@ -104,20 +103,32 @@ export const testNode = authoredSuite('mutation diagnostic evidence identity', [
         scope.assert.partialDeepEqual(diagnostics.perTest, [ { id: { file: 'source/failure.test.ts' } } ]);
         return scope.assert.collect();
     }),
-    ...([ null, { kind: 'timeout', artifacts: [], data: null }, {
-        kind: 'timeout',
-        artifacts: [],
-        data: { invalid: true }
-    } ] as const)
-        .map(function (reply, index) {
-            return authoredTest(`handles missing checkpoint evidence ${index}`, function (scope: TestScope) {
-                scope.assert.deepEqual(mutationDiagnosticEvidence(project, reply), {
-                    artifacts: [],
-                    resourceChecks: [],
-                    perTest: [],
-                    runnerErrors: []
-                });
-                return scope.assert.collect();
+    table({
+        title: 'handles missing checkpoint evidence',
+        cases: [ { description: 'missing outcome', input: null }, {
+            description: 'missing checkpoint data',
+            input: { kind: 'timeout', artifacts: [], data: null }
+        }, {
+            description: 'unrecognized checkpoint data',
+            input: {
+                kind: 'timeout',
+                artifacts: [],
+                data: { invalid: true }
+            }
+        } ] as const,
+        caseTitle({ description }) {
+            return description;
+        },
+        test(scope) {
+            const reply = scope.parameters.input;
+
+            scope.assert.deepEqual(mutationDiagnosticEvidence(project, reply), {
+                artifacts: [],
+                resourceChecks: [],
+                perTest: [],
+                runnerErrors: []
             });
-        })
+            return scope.assert.collect();
+        }
+    })
 ]);

@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -143,8 +143,8 @@ function createFailureDetailResult(): RunResult {
     });
 }
 
-export const testNode = suite('source/reporters/dot-reporter.test.ts', [
-    test('dot reporter declares raw stdout', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Dot reporter', [
+    test('declares raw stdout', function (scope) {
         const terminal = createFakeTerminal(80);
         const reporter = createDotRuntimeReporter({
             interactive: false,
@@ -155,7 +155,7 @@ export const testNode = suite('source/reporters/dot-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('dot reporter maps outcomes and runner errors to compact marks', async function (scope: OverkillScope) {
+    test('maps outcomes and runner errors to compact marks', async function (scope) {
         const terminal = createFakeTerminal(80);
         const reporter = createDotRuntimeReporter({
             interactive: false,
@@ -216,7 +216,7 @@ export const testNode = suite('source/reporters/dot-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('dot reporter wraps progress marks by terminal width', async function (scope: OverkillScope) {
+    test('wraps progress marks by terminal width', async function (scope) {
         const terminal = createFakeTerminal(2);
         const reporter = createDotRuntimeReporter({
             interactive: false,
@@ -234,7 +234,7 @@ export const testNode = suite('source/reporters/dot-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('dot reporter prints summary and short details on finish', async function (scope: OverkillScope) {
+    test('prints summary and short details on finish', async function (scope) {
         const terminal = createFakeTerminal(80);
         const reporter = createDotRuntimeReporter({
             interactive: false,
@@ -308,7 +308,7 @@ export const testNode = suite('source/reporters/dot-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('dot reporter prints assertion failure source locations on finish', async function (scope: OverkillScope) {
+    test('prints assertion failure source locations on finish', async function (scope) {
         const terminal = createFakeTerminal(80);
         const reporter = createDotReporter({
             interactive: false,
@@ -402,7 +402,7 @@ export const testNode = suite('source/reporters/dot-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('dot reporter prints body-error and contract failure details', async function (scope: OverkillScope) {
+    test('prints body-error and contract failure details', async function (scope) {
         const terminal = createFakeTerminal(80);
         const reporter = createDotRuntimeReporter({
             interactive: false,
@@ -448,7 +448,7 @@ export const testNode = suite('source/reporters/dot-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('dot reporter prints post-finish runner errors below the summary', async function (scope: OverkillScope) {
+    test('prints post-finish runner errors below the summary', async function (scope) {
         const terminal = createFakeTerminal(80);
         const reporter = createDotRuntimeReporter({
             interactive: false,

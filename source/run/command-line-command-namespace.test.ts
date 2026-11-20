@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test, doubleUsage, testDouble } from '@overkill-dev/test';
+import { type TestNode, suite, test, doubleUsage, testDouble } from '@overkill-dev/test';
 
 import { createFactory } from '@enormora/objectory';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -80,8 +80,8 @@ const benchmarkCommandsFactory = createFactory<CommandLineBenchmarkCommands>(fun
     };
 });
 
-export const testNode = suite('source/run/command-line-command-namespace.test.ts', [
-    test('command namespace loads only selected command families', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Command namespace', [
+    test('loads only selected command families', async function (scope) {
         const loaders = {
             async loadConfig() {
                 throw new Error('Unexpected history config loading.');
@@ -120,7 +120,7 @@ export const testNode = suite('source/run/command-line-command-namespace.test.ts
 
         return scope.assert.collect();
     }),
-    test('command namespace routes every lazy command method', async function (scope: OverkillScope) {
+    test('routes every lazy command method', async function (scope) {
         const loaders = {
             async loadConfig() {
                 throw new Error('Unexpected history config loading.');

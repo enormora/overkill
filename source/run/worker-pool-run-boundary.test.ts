@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -49,7 +49,7 @@ function workerPoolCommand(hostProcess: WorkerPoolCommand['hostProcess']): Worke
         hardTimeoutMilliseconds: 1000,
         maxConcurrency: 5,
         hostProcess,
-        paths: [ 'source/integration-tests/run/fixtures/passing.test.ts' ],
+        paths: [ 'source/integration-tests/integration/fixtures/passing.test.ts' ],
         processBudgets: {
             activeResourceCount: null,
             javaScriptEngineHeapBytes: null,
@@ -118,10 +118,10 @@ function createRecordedPoolDependencies(): RecordedPoolDependencies {
     };
 }
 
-export const testNode = suite('source/run/worker-pool-run-boundary.test.ts', [
+export const testNode: TestNode = suite('Worker pool run boundaries', [
     test(
         'executeWorkerPoolRun() creates empty results with default execution state',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const result = await executeWorkerPoolRun(
                 workerPoolResolvedRun({ ...createCollectedPlan(), files: [] }),
                 fakeWorkerPoolRuntimeDependencies(),
@@ -141,7 +141,7 @@ export const testNode = suite('source/run/worker-pool-run-boundary.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('runWorkerPoolCommand() creates collection pools for direct hosts', async function (scope: OverkillScope) {
+    test('creates collection pools for direct hosts', async function (scope) {
         const fixture = createRecordedPoolDependencies();
         const result = await runWorkerPoolCommand(
             workerPoolCommand({ kind: 'direct' }),
@@ -169,8 +169,8 @@ export const testNode = suite('source/run/worker-pool-run-boundary.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'runWorkerPoolCommand() owns child-host pools without timing collection',
-        async function (scope: OverkillScope) {
+        'owns child-host pools without timing collection',
+        async function (scope) {
             let destroyed = false;
             const baseDependencies = fakeWorkerPoolRuntimeDependencies();
             const result = await runWorkerPoolCommand(
@@ -208,8 +208,8 @@ export const testNode = suite('source/run/worker-pool-run-boundary.test.ts', [
         }
     ),
     test(
-        'runWorkerPoolCommand() records child-host pool startup and shutdown timing',
-        async function (scope: OverkillScope) {
+        'records child-host pool startup and shutdown timing',
+        async function (scope) {
             const timing = createRunTimingMeasurement(
                 createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
             );

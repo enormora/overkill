@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { canonicalJson } from '../canonical-identity.ts';
 import type { MeasurementEvidence } from '../engine/measurement-evidence.ts';
@@ -47,8 +47,8 @@ function assertInvocationOrder(scope: TestScope, evidence: MeasurementEvidence):
         return entry.target.name === 'target' && entry.status === 'complete';
     }));
 }
-export const testNode = authoredSuite('measurement targets and attribution', [
-    test('allocates distinct measurement IDs under microtest policy', function (scope: TestScope) {
+export const testNode: TestNode = suite('measurement targets and attribution', [
+    test('allocates distinct measurement IDs under microtest policy', function (scope) {
         const executionIds = new Set<string>();
         for (let invocation = 0; invocation < 129; invocation += 1) {
             executionIds.add(currentMeasurementContext().invocation.execution);
@@ -72,7 +72,7 @@ export const testNode = authoredSuite('measurement targets and attribution', [
         }
         return scope.assert.collect();
     }),
-    test('requires explicit target names and clock domains', function (scope: TestScope) {
+    test('requires explicit target names and clock domains', function (scope) {
         const target = defaultMeasurementTarget();
         for (const identity of [ { ...target.identity, name: '' }, { ...target.identity, clock: '' } ]) {
             scope.assert.throws(function () {
@@ -81,7 +81,7 @@ export const testNode = authoredSuite('measurement targets and attribution', [
         }
         return scope.assert.collect();
     }),
-    test('rejects host CPU metrics for another runtime or target instance', function (scope: TestScope) {
+    test('rejects host CPU metrics for another runtime or target instance', function (scope) {
         const target = defaultMeasurementTarget();
         for (const identity of [ { ...target.identity, scope: 'remote' }, { ...target.identity, instance: 'other' } ]) {
             let operations = 0;
@@ -98,7 +98,7 @@ export const testNode = authoredSuite('measurement targets and attribution', [
         }
         return scope.assert.collect();
     }),
-    test('uses the selected clock without adding a promise to synchronous work', function (scope: TestScope) {
+    test('uses the selected clock without adding a promise to synchronous work', function (scope) {
         let clock = 0;
         const target = targetWithClock(function readTargetClock() {
             clock += 25;
@@ -114,7 +114,7 @@ export const testNode = authoredSuite('measurement targets and attribution', [
         scope.assert.partialDeepEqual(measured.metrics.durationMicroseconds, { availability: 'available', value: 25 });
         return scope.assert.collect();
     }),
-    test('preserves explicit targets through raw normalization resolution', function (scope: TestScope) {
+    test('preserves explicit targets through raw normalization resolution', function (scope) {
         const target = targetWithClock(function readTargetClock() {
             return 0;
         });
@@ -126,7 +126,7 @@ export const testNode = authoredSuite('measurement targets and attribution', [
         scope.assert.deepEqual(resolved.normalization, {});
         return scope.assert.collect();
     }),
-    test('does not apply CPU normalization to an unrelated target', function (scope: TestScope) {
+    test('does not apply CPU normalization to an unrelated target', function (scope) {
         const target = targetWithClock(function readTargetClock() {
             return 0;
         });
@@ -201,7 +201,7 @@ export const testNode = authoredSuite('measurement targets and attribution', [
         assertInvocationOrder(scope, evidence);
         return scope.assert.collect();
     }),
-    test('rejects unavailable target capabilities before warmup', async function (scope: TestScope) {
+    test('rejects unavailable target capabilities before warmup', async function (scope) {
         let operations = 0;
         const initial = targetWithClock(function readTargetClock() {
             return 0;

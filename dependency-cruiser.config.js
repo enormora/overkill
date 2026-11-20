@@ -1,7 +1,7 @@
 const configFiles = [
     '^dependency-cruiser\\.config\\.js$',
     '^eslint\\.config\\.js$',
-    '^overkill\\.config\\.js$',
+    '^overkill\\.config\\.ts$',
     '^packtory\\.config\\.js$'
 ];
 
@@ -10,10 +10,9 @@ const entryPointFiles = [
     '^source/reporters/',
     '^source/run/supervised-child\\.entry-point\\.ts$'
 ];
-const testSupportFiles = [ '^source/test-support/' ];
+const testSupportFiles = [ '^source/test-support/', '^source/integration-tests/[^/]+/support/' ];
 const testFiles = [ '\\.(test|type-test)\\.ts$' ];
-const testAggregatorFiles = [ '^source/test-support/unit-suite-groups/' ];
-const testFixtureFiles = [ '^source/integration-tests/run/fixtures/' ];
+const testFixtureFiles = [ '^source/integration-tests/integration/fixtures/' ];
 const excludedFiles = [ '^(\\./)?target/', ...testFixtureFiles ];
 const commandLineLazyModuleBoundaries = [
     '^source/packages/reporter-(dot|line)/',
@@ -67,6 +66,12 @@ const ignoreFromOrphans = [ ...configFiles, ...entryPointFiles, ...testFiles, ..
 /** @type {import('dependency-cruiser').IConfiguration} */
 export default {
     forbidden: [
+        {
+            name: 'production-does-not-import-test-support',
+            severity: 'error',
+            from: { path: '^source/', pathNot: [ ...testFiles, ...testSupportFiles ] },
+            to: { path: testSupportFiles }
+        },
         {
             name: 'eslint-testing-stays-optional',
             severity: 'error',
@@ -157,17 +162,6 @@ export default {
             }
         },
         {
-            name: 'no-unaggregated-unit-tests',
-            severity: 'error',
-            from: {
-                pathNot: []
-            },
-            module: {
-                numberOfDependentsLessThan: 1,
-                path: '^source/(?!overkill\\.test\\.ts$)(?!integration-tests/).+\\.test\\.ts$'
-            }
-        },
-        {
             name: 'no-deprecated-npm',
             severity: 'error',
             from: {},
@@ -190,7 +184,7 @@ export default {
             severity: 'error',
             from: {
                 path: '^source/',
-                pathNot: testFiles
+                pathNot: [ ...testFiles, ...testSupportFiles ]
             },
             to: {
                 dependencyTypes: [ 'npm-dev' ],
@@ -210,7 +204,7 @@ export default {
             name: 'not-test-file-import',
             severity: 'error',
             from: {
-                pathNot: [ ...testFiles, ...testAggregatorFiles ]
+                pathNot: [ ...testFiles, ...testSupportFiles ]
             },
             to: {
                 path: testFiles

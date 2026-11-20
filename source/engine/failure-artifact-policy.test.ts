@@ -1,18 +1,17 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     defaultFailureArtifactPolicy,
     serializeValue,
     type FailureArtifactPolicy,
     type RunResult,
-    type TestFailure,
-    type TestScope
+    type TestFailure
 } from '../packages/engine/engine.entry-point.ts';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { microtestProfileSchema } from '../config/schema.ts';
 import { formatFailure } from '../reporters/line-failure-rendering.ts';
-import { testNode as debugDiagnostics } from './test-debug.test.ts';
-import { testNode as debugRecording } from './test-debug-recording.test.ts';
+
 import { createReportingContext } from './reporting-context.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
@@ -67,10 +66,8 @@ function firstAssertionFailure(result: RunResult): Extract<TestFailure, { readon
     return failure;
 }
 
-export const testNode = suite('failure artifact policy', [
-    debugDiagnostics,
-    debugRecording,
-    test('legacy reporter contexts retain default failure rendering', async function (scope: TestScope) {
+export const testNode: TestNode = suite('failure artifact policy', [
+    test('legacy reporter contexts retain default failure rendering', async function (scope) {
         const result = await failedComparison(defaultFailureArtifactPolicy, null);
         const failure = firstAssertionFailure(result);
         const context = createReportingContext({ projectRoot: null });
@@ -80,7 +77,7 @@ export const testNode = suite('failure artifact policy', [
         scope.assert.includes(rendered.join('\n'), text);
         return scope.assert.collect();
     }),
-    test('profile limits default independently and reject unbounded values', function (scope: TestScope) {
+    test('profile limits default independently and reject unbounded values', function (scope) {
         const profile = microtestProfileSchema.parse({
             testFamily: 'microtest',
             failureArtifacts: { capturedOutputBytes: 16, rendering: { diffLines: 2 } }
@@ -113,7 +110,7 @@ export const testNode = suite('failure artifact policy', [
     }),
     test(
         'concurrent executions isolate serialization limits and restore their caller',
-        async function (scope: TestScope) {
+        async function (scope) {
             const [ short, full ] = await Promise.all([
                 failedComparison(limitedPolicy, null),
                 failedComparison(defaultFailureArtifactPolicy, null)
@@ -127,7 +124,7 @@ export const testNode = suite('failure artifact policy', [
             return scope.assert.collect();
         }
     ),
-    test('nested execution restores the surrounding serialization budget', async function (scope: TestScope) {
+    test('nested execution restores the surrounding serialization budget', async function (scope) {
         const result = await failedComparison(limitedPolicy, async function executeNestedComparison() {
             await failedComparison(defaultFailureArtifactPolicy, null);
         });
@@ -137,7 +134,7 @@ export const testNode = suite('failure artifact policy', [
         });
         return scope.assert.collect();
     }),
-    test('human diff limits do not change structured assertion evidence', async function (scope: TestScope) {
+    test('human diff limits do not change structured assertion evidence', async function (scope) {
         const result = await failedComparison(defaultFailureArtifactPolicy, null);
         const failure = firstAssertionFailure(result);
         const context = createReportingContext({

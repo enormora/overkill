@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { normalizeConfig } from '../config/config.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -20,7 +20,7 @@ function serialCommand(): RunCommand {
     };
 }
 
-export const testNode = authoredSuite('serial request validation', [
+export const testNode: TestNode = suite('serial request validation', [
     test('rejects unknown execution modes before discovery', async function (scope) {
         const command = serialCommand();
         Object.defineProperty(command.request.execution, 'mode', { value: 'concurrent' });
@@ -30,23 +30,26 @@ export const testNode = authoredSuite('serial request validation', [
         }, { type: RunResolutionError, message: 'Execution mode must be "profile-default" or "serial".' });
         return scope.assert.collect();
     }),
-    test('rejects serial overrides for integration and benchmark profiles before discovery', async function (scope) {
-        const orchestrator = createDeterministicRunOrchestrator();
-        const command = serialCommand();
+    test(
+        'rejects serial overrides for integration and benchmark profiles before discovery',
+        async function (scope) {
+            const orchestrator = createDeterministicRunOrchestrator();
+            const command = serialCommand();
 
-        for (const profile of [ 'integration', 'benchmark' ]) {
-            const selected = { ...command, request: { ...command.request, profile } };
+            for (const profile of [ 'integration', 'benchmark' ]) {
+                const selected = { ...command, request: { ...command.request, profile } };
 
-            await scope.assert.rejects(async function resolveUnsupportedSerialRequest() {
-                return profile === 'benchmark'
-                    ? await orchestrator.bench.list(selected, { timing: null })
-                    : await orchestrator.resolve(selected);
-            }, {
-                type: RunResolutionError,
-                message: 'Serial execution overrides require a microtest or property profile.'
-            });
+                await scope.assert.rejects(async function resolveUnsupportedSerialRequest() {
+                    return profile === 'benchmark'
+                        ? await orchestrator.bench.list(selected, { timing: null })
+                        : await orchestrator.resolve(selected);
+                }, {
+                    type: RunResolutionError,
+                    message: 'Serial execution overrides require a microtest or property profile.'
+                });
+            }
+
+            return scope.assert.collect();
         }
-
-        return scope.assert.collect();
-    })
+    )
 ]);

@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { CaseId } from '../engine/identity.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
@@ -191,7 +191,7 @@ function collectionRuntime(
     } as unknown as SupervisedCollectionRuntime<CollectedRunPlan | null>;
 }
 
-function timeoutCallback(scope: OverkillScope, callbacks: readonly (() => void)[]): () => void {
+function timeoutCallback(scope: TestScope, callbacks: readonly (() => void)[]): () => void {
     const callback = callbacks.at(-1);
     scope.require.defined(callback);
 
@@ -222,7 +222,7 @@ function scheduleOverlappingCases(
 }
 
 function assertTimedOutChild(
-    scope: OverkillScope,
+    scope: TestScope,
     record: TimeoutRuntimeRecord,
     child: ChildRecord
 ): void {
@@ -231,8 +231,8 @@ function assertTimedOutChild(
     scope.assert.deepEqual(child.signals(), [ 'SIGKILL' ]);
 }
 
-export const testNode = suite('source/run/supervised-run-runtime.test.ts', [
-    test('supervisedCollectedPlan() accepts only supervised plans', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Supervised run runtime', [
+    test('supervisedCollectedPlan() accepts only supervised plans', function (scope) {
         const supervisedPlan = { collectedPlan, kind: 'supervised' as const };
         const localPlan = { kind: 'local' as const, testPlan: {} };
 
@@ -249,7 +249,7 @@ export const testNode = suite('source/run/supervised-run-runtime.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('kill() only signals a live spawned child', function (scope: OverkillScope) {
+    test('kill() only signals a live spawned child', function (scope) {
         const live = childProcess({ exitCode: null, pid: 1, signalCode: null });
         const exited = childProcess({ exitCode: 0, pid: 2, signalCode: null });
         const notStarted = childProcess({ exitCode: null, pid: undefined, signalCode: null });
@@ -269,7 +269,7 @@ export const testNode = suite('source/run/supervised-run-runtime.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createHardTimeout() reschedules for the oldest active case', function (scope: OverkillScope) {
+    test('createHardTimeout() reschedules for the oldest active case', function (scope) {
         const live = childProcess({ exitCode: null, pid: 1, signalCode: null });
         const record = timeoutRuntime(live.child);
         const timeout = createHardTimeout(record.runtime);
@@ -283,7 +283,7 @@ export const testNode = suite('source/run/supervised-run-runtime.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('handleCollectionSample() skips terminal runs and records clean samples', function (scope: OverkillScope) {
+    test('handleCollectionSample() skips terminal runs and records clean samples', function (scope: TestScope) {
         const terminal = collectionRuntime(
             childProcess({ exitCode: null, pid: 1, signalCode: null }).child,
             true,
@@ -305,7 +305,7 @@ export const testNode = suite('source/run/supervised-run-runtime.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('handleCollectionSample() reports collection process budget breaches', function (scope: OverkillScope) {
+    test('handleCollectionSample() reports collection process budget breaches', function (scope) {
         const live = childProcess({ exitCode: null, pid: 1, signalCode: null });
         const runtime = collectionRuntime(live.child, false, -1);
 
@@ -317,7 +317,7 @@ export const testNode = suite('source/run/supervised-run-runtime.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('handleChildMessage() records supervised process usage samples', function (scope: OverkillScope) {
+    test('handleChildMessage() records supervised process usage samples', function (scope: TestScope) {
         const runtime = runRuntime(
             timeoutRuntime(childProcess({ exitCode: null, pid: 1, signalCode: null }).child).runtime
         );

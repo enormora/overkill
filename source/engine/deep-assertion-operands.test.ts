@@ -1,11 +1,15 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
-
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { defineCompositeAssertion, defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    requireEngineNarrowingReference,
+    requireEngineCompositeReference
+} from '../test-support/assertion-reference-boundary.ts';
+import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
-import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+
 import type { InvalidDeepAssertionOperand } from '../assertion-protocol/evaluation.ts';
 import type { FailOutcome, RunResult, TestOutcome } from './run-result.ts';
-import type { TestBody, TestScope } from './test-scope.ts';
 
 const failOutcome = defineNarrowingCompositeAssertion<TestOutcome, FailOutcome, readonly []>({
     name: 'fail outcome',
@@ -13,12 +17,13 @@ const failOutcome = defineNarrowingCompositeAssertion<TestOutcome, FailOutcome, 
         return actual.kind === 'fail';
     }
 });
+requireEngineNarrowingReference(failOutcome);
 
 function firstOutcome(result: RunResult): TestOutcome | undefined {
     return result.perTest.at(0)?.outcome ?? undefined;
 }
 
-async function executeSingleBody(body: TestBody): Promise<RunResult> {
+async function executeSingleBody(body: EngineCaseBody): Promise<RunResult> {
     const engine = createEngine();
 
     return await engine.execute(
@@ -55,11 +60,11 @@ function expectedInvalidDeepAssertionOperand(
     ];
 }
 
-export const testNode = suite('source/engine/deep-assertion-operands.test.ts', [
+export const testNode: TestNode = suite('Deep assertion operands', [
     test(
-        'execute() rejects primitive facade deep assertion operands at runtime',
-        async function (scope: OverkillScope) {
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        'rejects primitive facade deep assertion operands at runtime',
+        async function (scope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 const actual: unknown = 1;
 
                 testScope.assert.deepEqual(actual, { id: 1 });
@@ -82,7 +87,7 @@ export const testNode = suite('source/engine/deep-assertion-operands.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('execute() rejects primitive raw deep assertion operands at runtime', async function (scope: OverkillScope) {
+    test('rejects primitive raw deep assertion operands at runtime', async function (scope: TestScope) {
         const result = await executeSingleBody(function body() {
             return {
                 actual: { id: 1 },
@@ -110,8 +115,8 @@ export const testNode = suite('source/engine/deep-assertion-operands.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'execute() rejects primitive composite deep assertion members at runtime',
-        async function (scope: OverkillScope) {
+        'rejects primitive composite deep assertion members at runtime',
+        async function (scope: TestScope) {
             const primitiveMember = defineCompositeAssertion({
                 assert(check) {
                     const actual: readonly unknown[] = [ 1 ];
@@ -120,7 +125,8 @@ export const testNode = suite('source/engine/deep-assertion-operands.test.ts', [
                 },
                 name: 'primitiveMember'
             });
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            requireEngineCompositeReference(primitiveMember);
+            const result = await executeSingleBody(function testBody(testScope) {
                 testScope.assert(primitiveMember);
                 return testScope.assert.collect();
             });
@@ -142,8 +148,8 @@ export const testNode = suite('source/engine/deep-assertion-operands.test.ts', [
         }
     ),
     test(
-        'execute() rejects primitive async composite deep assertion members at runtime',
-        async function (scope: OverkillScope) {
+        'rejects primitive async composite deep assertion members at runtime',
+        async function (scope: TestScope) {
             const primitiveExpectedMember = defineCompositeAssertion({
                 async assert(check) {
                     const expected: readonly unknown[] = [ 1 ];
@@ -153,7 +159,8 @@ export const testNode = suite('source/engine/deep-assertion-operands.test.ts', [
                 },
                 name: 'primitiveExpectedMember'
             });
-            const result = await executeSingleBody(async function testBody(testScope: TestScope) {
+            requireEngineCompositeReference(primitiveExpectedMember);
+            const result = await executeSingleBody(async function testBody(testScope) {
                 await testScope.assert(primitiveExpectedMember);
                 return testScope.assert.collect();
             });

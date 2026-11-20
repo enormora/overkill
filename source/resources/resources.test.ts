@@ -1,8 +1,7 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import { testNode as jsonFramesTestNode } from '../bounded-json-frames.test.ts';
 import { resourceAttachments } from '../attachments/attachment-context.ts';
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
+
 import {
     createResourcesModule,
     isDefinedResource,
@@ -12,7 +11,6 @@ import {
     type TemporaryDirectoryHandle,
     type ResourcesModuleDependencies
 } from './resources.ts';
-import { testNode as resourceScenarioValidationTestNode } from './resource-scenario-validation.test.ts';
 
 type Database = {
     readonly query: (sql: string) => readonly string[];
@@ -492,10 +490,8 @@ async function assertTemporaryDirectoryAcquireAbort(
     });
 }
 
-export const testNode = suite('source/resources/resources.test.ts', [
-    jsonFramesTestNode,
-    resourceScenarioValidationTestNode,
-    test('defineResource returns an inert frozen descriptor', async function (scope: TestScope) {
+export const testNode: TestNode = suite('Resources', [
+    test('defineResource returns an inert frozen descriptor', async function (scope) {
         assertDatabaseResourceDescriptor(scope);
         assertDescriptorPredicates(scope);
         await assertDatabaseResourceCallbacks(scope);
@@ -503,7 +499,7 @@ export const testNode = suite('source/resources/resources.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('defineRuntime preserves resource keys and freezes runtime identity', function (scope: TestScope) {
+    test('defineRuntime preserves resource keys and freezes runtime identity', function (scope) {
         assertRuntimeDescriptor(scope);
         assertRuntimeContextComposition(scope);
         assertRuntimeContextCompositionMergesRuntimeScopes(scope);
@@ -512,7 +508,7 @@ export const testNode = suite('source/resources/resources.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('defineRuntimeMatrix preserves variants and validates shapes', function (scope: TestScope) {
+    test('defineRuntimeMatrix preserves variants and validates shapes', function (scope) {
         assertRuntimeMatrixDescriptor(scope);
         assertRuntimeMatrixSharedFactories(scope);
         assertRuntimeMatrixShapeChecks(scope);
@@ -520,7 +516,7 @@ export const testNode = suite('source/resources/resources.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createTemporaryDirectoryResource uses host operations', async function (scope: TestScope) {
+    test('createTemporaryDirectoryResource uses host operations', async function (scope) {
         assertTemporaryDirectoryDescriptor(scope, temporaryDirectoryResource);
         await assertTemporaryDirectoryLifecycle(scope, temporaryDirectoryResource);
         await assertTemporaryDirectoryAcquireAbort(scope, temporaryDirectoryResource);

@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     generatedCandidate,
@@ -6,7 +6,7 @@ import {
     generatorContext,
     shrinkCandidates
 } from '../test-support/generator-execution.ts';
-import { testNode as domainPolicy } from './generator-domain-policy.test.ts';
+
 import { gen } from './generators.ts';
 import {
     prepareGenerator,
@@ -42,8 +42,7 @@ function malformedComposition(method: 'filter' | 'flatMap', callback: () => unkn
     return result;
 }
 
-export const testNode = authoredSuite('generator lifecycle', [
-    domainPolicy,
+export const testNode: TestNode = suite('generator lifecycle', [
     test('validates predicate results while selecting automatic edges', function (scope) {
         const generator = malformedComposition('filter', function () {
             return null;

@@ -1,12 +1,11 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { globalErrorObservation } from '../test-support/global-error-observation.ts';
-import { testNode as attributionPolicy } from './global-error-attribution-policy.test.ts';
+
 import { createOwnedGlobalErrorObserver } from './execution-global-error-observer.ts';
 
-export const testNode = authoredSuite('global execution error ownership', [
-    attributionPolicy,
-    authoredTest(
+export const testNode: TestNode = suite('global execution error ownership', [
+    test(
         'publishes current and newly active work until the subscription stops',
         async function (scope: TestScope) {
             const fixture = globalErrorObservation();
@@ -32,7 +31,7 @@ export const testNode = authoredSuite('global execution error ownership', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('ignores errors retained by a stopped boundary', async function (scope: TestScope) {
+    test('ignores errors retained by a stopped boundary', async function (scope: TestScope) {
         const fixture = globalErrorObservation();
         await fixture.observer.runBoundary(async function () {
             const boundary = fixture.ownership.runScopeStorage.getStore();
@@ -46,8 +45,7 @@ export const testNode = authoredSuite('global execution error ownership', [
         scope.assert.deepEqual(fixture.observer.takeErrors(), []);
         return scope.assert.collect();
     }),
-
-    authoredTest('installs hooks only while its boundary runs', async function (scope: TestScope) {
+    test('installs hooks only while its boundary runs', async function (scope) {
         const fixture = globalErrorObservation();
         const result = await fixture.observer.runBoundary(async function () {
             scope.assert.equal(fixture.events.listenerCount('uncaughtException'), 1);
@@ -60,25 +58,34 @@ export const testNode = authoredSuite('global execution error ownership', [
         scope.assert.deepEqual(fixture.observer.takeErrors(), []);
         return scope.assert.collect();
     }),
-    ...([ 'uncaughtException', 'unhandledRejection' ] as const).map(function (hook) {
-        return authoredTest(`attributes ${hook} to the active case and attempt`, async function (scope: TestScope) {
+    table({
+        title: 'attributes global errors to the active case and attempt',
+        cases: [ 'uncaughtException', 'unhandledRejection' ] as const,
+        caseTitle(hook) {
+            return hook;
+        },
+        async test(scope) {
+            const require: typeof scope.require = scope.require;
+
             const fixture = globalErrorObservation();
             await fixture.observer.runBoundary(async function () {
                 await fixture.observer.runCase(fixture.testCase, { index: 2 }, async function () {
-                    fixture.events.emit(hook, new Error('Body failed.'));
+                    fixture.events.emit(scope.parameters, new Error('Body failed.'));
                 });
             });
             const error = fixture.observer.takeErrors()[0];
-            scope.require.defined(error);
-            scope.assert.deepEqual<unknown, unknown>(error.attributedTo, fixture.testCase.id);
-            scope.assert.deepEqual<unknown, unknown>(error.attributedToWork, fixture.testCase.workId);
-            scope.assert.deepEqual<unknown, unknown>(error.attributedToAttempt, { index: 2 });
+            require.defined(error);
+            scope.assert.partialDeepEqual(error, {
+                attributedTo: fixture.testCase.id,
+                attributedToWork: fixture.testCase.workId,
+                attributedToAttempt: { index: 2 }
+            });
             scope.assert.includes(error.message, 'Body failed.');
             scope.assert.true(fixture.observer.hasFatalError());
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('retains run-level collection failures without assigning a case', async function (scope: TestScope) {
+    test('retains run-level collection failures without assigning a case', async function (scope: TestScope) {
         const fixture = globalErrorObservation();
         await fixture.observer.runBoundary(async function () {
             await fixture.observer.runPhase('collection', async function () {
@@ -101,7 +108,7 @@ export const testNode = authoredSuite('global execution error ownership', [
         });
         return scope.assert.collect();
     }),
-    authoredTest('resolves fatal signals and removes unsubscribed handlers', async function (scope: TestScope) {
+    test('resolves fatal signals and removes unsubscribed handlers', async function (scope) {
         const fixture = globalErrorObservation();
         const received: string[] = [];
         const remove = fixture.observer.onFatalError(function (error) {
@@ -121,7 +128,7 @@ export const testNode = authoredSuite('global execution error ownership', [
         scope.assert.deepEqual(received, [ 'Uncaught exception: First failure.' ]);
         return scope.assert.collect();
     }),
-    authoredTest('drains recorded errors without clearing fatal state', async function (scope: TestScope) {
+    test('drains recorded errors without clearing fatal state', async function (scope) {
         const fixture = globalErrorObservation();
         await fixture.observer.runBoundary(async function () {
             fixture.events.emit('unhandledRejection', new Error('Failure.'));
@@ -131,7 +138,7 @@ export const testNode = authoredSuite('global execution error ownership', [
         scope.assert.true(fixture.observer.hasFatalError());
         return scope.assert.collect();
     }),
-    authoredTest('removes hooks and ignores events after an explicit stop', async function (scope: TestScope) {
+    test('removes hooks and ignores events after an explicit stop', async function (scope) {
         const fixture = globalErrorObservation();
         await fixture.observer.runBoundary(async function () {
             fixture.observer.stop();
@@ -142,7 +149,7 @@ export const testNode = authoredSuite('global execution error ownership', [
         scope.assert.equal(fixture.events.listenerCount('uncaughtException'), 0);
         return scope.assert.collect();
     }),
-    authoredTest('preserves attribution ambiguity when multiple boundaries overlap', async function (scope: TestScope) {
+    test('preserves attribution ambiguity when multiple boundaries overlap', async function (scope) {
         const fixture = globalErrorObservation();
         const sibling = createOwnedGlobalErrorObserver('worker-pool-host', fixture.ownership);
         const completed = Promise.withResolvers<undefined>();
@@ -161,7 +168,7 @@ export const testNode = authoredSuite('global execution error ownership', [
         ]);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'retains drift evidence for events delivered after their attempt ended',
         async function (scope: TestScope) {
             const fixture = globalErrorObservation();

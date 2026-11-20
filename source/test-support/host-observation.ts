@@ -1,5 +1,5 @@
 import type { PerformanceEntry as RuntimeEntry } from 'node:perf_hooks';
-import { testDouble } from '../packages/test/test.entry-point.ts';
+import { testDouble } from '@overkill-dev/test';
 import type { BenchmarkHostObservationRuntime } from '../run/benchmark-host-observer.ts';
 import { unavailableHostReading } from '../run/benchmark-host-reading.ts';
 import { createStoredValue } from '../stored-value.ts';

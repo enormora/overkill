@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { PlacementPlan, PlacementLane } from './run-types.ts';
 import type { WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
@@ -43,7 +43,7 @@ function recordedDispatcher(): DispatchFixture {
         work: unit.work
     };
 }
-export const testNode = authoredSuite('recorded scheduling replay', [
+export const testNode: TestNode = suite('recorded scheduling replay', [
     test('dispatches the recorded lane and waits for actual completion', function (scope: TestScope) {
         const { dispatcher, lane, work } = recordedDispatcher();
         const lease = dispatcher.pull(lane);
@@ -54,7 +54,7 @@ export const testNode = authoredSuite('recorded scheduling replay', [
         scope.assert.false(dispatcher.blocked(lane));
         return scope.assert.collect();
     }),
-    test('continues an interrupted prefix in saved lane order', function (scope: TestScope) {
+    test('continues an interrupted prefix in saved lane order', function (scope) {
         const plan = placementPlan();
         const trace = compileReplayTrace(plan, { status: 'interrupted', placementTrace: { entries: [] } });
         scope.assert.deepEqual(
@@ -74,7 +74,7 @@ export const testNode = authoredSuite('recorded scheduling replay', [
         scope.assert.equal(trace.assignments.get('attempt-1')?.lane, plan.assignments[0]?.lane);
         return scope.assert.collect();
     }),
-    test('rejects unknown trace attempts and placement references', function (scope: TestScope) {
+    test('rejects unknown trace attempts and placement references', function (scope) {
         const plan = placementPlan();
         scope.assert.throws(function unknownAttempt() {
             compileReplayTrace(plan, {

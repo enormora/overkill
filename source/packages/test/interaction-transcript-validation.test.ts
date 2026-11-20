@@ -1,11 +1,14 @@
-import { suite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import type { EngineCaseBody } from '../../test-support/create-test-engine.ts';
 
-import type { TestScope as EngineScope } from '../engine/engine.entry-point.ts';
 import { transcriptAssertion } from '../../test-support/transcript-assertion.ts';
-import type { TestScope } from './test.entry-point.ts';
+
 import { recordAsyncSink, transcriptUsage, createTranscript } from './interaction-transcript.ts';
 
-type InvalidTranscriptCase = { readonly name: string; readonly check: (scope: EngineScope) => void; };
+type InvalidTranscriptCase = {
+    readonly name: string;
+    readonly check: (...parameters: Parameters<EngineCaseBody>) => void;
+};
 const invalidCases: readonly InvalidTranscriptCase[] = [ {
     name: 'contains',
     check(scope) {
@@ -32,29 +35,33 @@ const invalidCases: readonly InvalidTranscriptCase[] = [ {
         scope.assert(transcriptUsage.startsWith, null, [ [ 'state' ] ]);
     }
 } ];
-export const testNode = suite('transcript assertion validation', [
-    ...invalidCases.map(function (scenario) {
-        return authoredTest(
-            `reports an assertion failure for invalid ${scenario.name} subjects`,
-            async function (scope: TestScope) {
-                const result = await transcriptAssertion(scenario.check);
-                scope.assert.equal(result.summary.failed, 1);
-                scope.assert.deepEqual(result.runnerErrors, []);
-                scope.assert.partialDeepEqual<unknown, unknown>(result.perTest[0]?.outcome, {
-                    kind: 'fail',
-                    failures: [ { kind: 'assertion' } ]
-                });
-                return scope.assert.collect();
-            }
-        );
+export const testNode: TestNode = suite('transcript assertion validation', [
+    table({
+        title: 'reports invalid transcript subjects as assertion failures',
+        cases: invalidCases,
+        caseTitle(scenario) {
+            return scenario.name;
+        },
+        async test(scope) {
+            const scenario = scope.parameters;
+
+            const result = await transcriptAssertion(scenario.check);
+            scope.assert.equal(result.summary.failed, 1);
+            scope.assert.deepEqual(result.runnerErrors, []);
+            scope.assert.partialDeepEqual<unknown, unknown>(result.perTest[0]?.outcome, {
+                kind: 'fail',
+                failures: [ { kind: 'assertion' } ]
+            });
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('rejects non-callable asynchronous subscription factories', function (scope: TestScope) {
+    test('rejects non-callable asynchronous subscription factories', function (scope) {
         scope.assert.throws(function () {
             Reflect.apply(recordAsyncSink, undefined, [ null ]);
         }, { message: 'recordAsyncSink() requires a subscription factory function.' });
         return scope.assert.collect();
     }),
-    authoredTest('rejects asynchronous subscriptions without a cleanup function', function (scope: TestScope) {
+    test('rejects asynchronous subscriptions without a cleanup function', function (scope) {
         scope.assert.throws(function () {
             Reflect.apply(recordAsyncSink, undefined, [ function () {
                 return null;
@@ -62,7 +69,7 @@ export const testNode = suite('transcript assertion validation', [
         }, { message: 'recordAsyncSink() subscription factory must return a cleanup function.' });
         return scope.assert.collect();
     }),
-    authoredTest('rejects empty ordered transcript sequences as assertion failures', async function (scope: TestScope) {
+    test('rejects empty ordered transcript sequences as assertion failures', async function (scope) {
         const result = await transcriptAssertion(function (inner) {
             const assert: unknown = inner.assert;
             if (typeof assert !== 'function') {

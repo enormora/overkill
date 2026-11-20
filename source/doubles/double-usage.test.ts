@@ -1,12 +1,12 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
-
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { P } from 'ts-pattern';
+import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
 import type { FailedCheck, FailedCompositeCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
-import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+
 import type { AssertionTestFailure, FailOutcome, RunResult } from '../engine/run-result.ts';
-import type { TestBody, TestScope } from '../engine/test-scope.ts';
+
 import { matches, testDouble } from '../packages/doubles/doubles.entry-point.ts';
 import { doubleUsage } from './double-usage.ts';
 
@@ -29,7 +29,7 @@ type ClientOptions = {
 };
 type ClientConstructor = new (url: string, options: ClientOptions) => Client;
 
-async function executeSingleBody(body: TestBody): Promise<RunResult> {
+async function executeSingleBody(body: EngineCaseBody): Promise<RunResult> {
     const engine = createEngine();
 
     return await engine.execute(
@@ -105,12 +105,12 @@ function failureSummaries(result: RunResult): readonly string[] | null {
     });
 }
 
-export const testNode = suite('source/doubles/double-usage.test.ts', [
+export const testNode: TestNode = suite('Double usage', [
     test(
         'negated ordinary argument assertions reject matching calls and accept different calls',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             for (const value of [ 'matching', 'different' ]) {
-                const result = await executeSingleBody(function (inner: TestScope) {
+                const result = await executeSingleBody(function (inner) {
                     const call = testDouble.returns('done');
                     call(value);
                     inner.assert(doubleUsage.notCalledWith, call, [ 'matching' ]);
@@ -124,8 +124,8 @@ export const testNode = suite('source/doubles/double-usage.test.ts', [
     ),
     test(
         'once-with assertions report an absent call without inventing argument evidence',
-        async function (scope: OverkillScope) {
-            const result = await executeSingleBody(function (inner: TestScope) {
+        async function (scope: TestScope) {
+            const result = await executeSingleBody(function (inner) {
                 const call = testDouble.returns('done');
                 inner.assert(doubleUsage.calledOnceWith, call, [ 'missing' ]);
                 return inner.assert.collect();
@@ -137,8 +137,8 @@ export const testNode = suite('source/doubles/double-usage.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('indexed argument assertions reject subjects without double history', async function (scope: OverkillScope) {
-        const result = await executeSingleBody(function (inner: TestScope) {
+    test('indexed argument assertions reject subjects without double history', async function (scope) {
+        const result = await executeSingleBody(function (inner) {
             inner.assert(doubleUsage.nthCallWith, {}, 0, []);
             return inner.assert.collect();
         });
@@ -148,7 +148,7 @@ export const testNode = suite('source/doubles/double-usage.test.ts', [
     }),
     test(
         'pattern mismatches and predicate errors remain failures under negation',
-        async function (scope: OverkillScope) {
+        async function (scope: TestScope) {
             const scenarios = [
                 { value: 1, negative: false, throwing: false, failed: 1 },
                 { value: 1, negative: true, throwing: false, failed: 0 },
@@ -159,7 +159,7 @@ export const testNode = suite('source/doubles/double-usage.test.ts', [
             ];
 
             for (const scenario of scenarios) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                const result = await executeSingleBody(function testBody(testScope) {
                     testScope.plan(1);
                     const save = testDouble.returns('saved');
                     save(scenario.value, { id: 1 });
@@ -190,9 +190,9 @@ export const testNode = suite('source/doubles/double-usage.test.ts', [
     ),
     test(
         'doubleUsage call count and mode assertions pass through scope.assert()',
-        async function body(scope: OverkillScope) {
+        async function body(scope) {
             const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 loadUser('42', { role: 'admin', trace: 'trace-id' });
 
                 testScope.assert(doubleUsage.called, loadUser);
@@ -212,9 +212,9 @@ export const testNode = suite('source/doubles/double-usage.test.ts', [
     ),
     test(
         'doubleUsage construction count and mode assertions pass through scope.assert()',
-        async function body(scope: OverkillScope) {
+        async function body(scope) {
             const Client = testDouble.constructs<ClientConstructor>({ id: 'client' });
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 const client = new Client('https://api.example.test', { timeout: 500, token: 'primary' });
 
                 testScope.assert.equal(client.id, 'client');
@@ -233,9 +233,9 @@ export const testNode = suite('source/doubles/double-usage.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('doubleUsage negative mode assertions produce domain summaries', async function body(scope: OverkillScope) {
+    test('doubleUsage negative mode assertions produce domain summaries', async function body(scope: TestScope) {
         const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        const result = await executeSingleBody(function testBody(testScope) {
             loadUser('42', { role: 'admin', trace: 'trace-id' });
 
             testScope.assert(doubleUsage.notInteracted, loadUser);
@@ -265,11 +265,11 @@ export const testNode = suite('source/doubles/double-usage.test.ts', [
     }),
     test(
         'doubleUsage argument assertions support partial, prefix, and exact matching',
-        async function body(scope: OverkillScope) {
+        async function body(scope) {
             const user = { id: '42', name: 'Ada' };
             const loadUser = testDouble.returns<LoadUser>(user);
             const ping = testDouble.returns<Ping>('pong');
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 loadUser('42', { role: 'admin', trace: 'trace-id' });
                 ping();
 
@@ -290,9 +290,9 @@ export const testNode = suite('source/doubles/double-usage.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('doubleUsage iterator assertions pass through scope.assert()', async function body(scope: OverkillScope) {
+    test('doubleUsage iterator assertions pass through scope.assert()', async function body(scope) {
         const loadEvents = testDouble.yields([ 'created', 'updated' ]);
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        const result = await executeSingleBody(function testBody(testScope) {
             const events = loadEvents();
 
             events.next();
@@ -310,9 +310,9 @@ export const testNode = suite('source/doubles/double-usage.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('doubleUsage iterator assertions report protocol history failures', async function body(scope: OverkillScope) {
+    test('doubleUsage iterator assertions report protocol history failures', async function body(scope: TestScope) {
         const loadEvents = testDouble.yields([ 'created' ]);
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        const result = await executeSingleBody(function testBody(testScope) {
             loadEvents().next();
 
             testScope.assert(doubleUsage.notIterated, loadEvents);
@@ -334,9 +334,9 @@ export const testNode = suite('source/doubles/double-usage.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('doubleUsage prefix assertions reject empty prefixes', async function body(scope: OverkillScope) {
+    test('doubleUsage prefix assertions reject empty prefixes', async function body(scope: TestScope) {
         const ping = testDouble.returns<Ping>('pong');
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        const result = await executeSingleBody(function testBody(testScope) {
             ping();
 
             testScope.assert(
@@ -362,9 +362,9 @@ export const testNode = suite('source/doubles/double-usage.test.ts', [
     }),
     test(
         'doubleUsage argument assertions distinguish exact arity from prefix arity',
-        async function body(scope: OverkillScope) {
+        async function body(scope: TestScope) {
             const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 loadUser('42', { role: 'admin', trace: 'trace-id' });
 
                 testScope.assert(doubleUsage.calledWith, loadUser, [ '42' ]);
@@ -381,9 +381,9 @@ export const testNode = suite('source/doubles/double-usage.test.ts', [
     ),
     test(
         'doubleUsage once, last, and nth argument assertions use the relevant mode history',
-        async function body(scope: OverkillScope) {
+        async function body(scope) {
             const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 loadUser('first', { role: 'reader', trace: 'one' });
                 loadUser('second', { role: 'admin', trace: 'two' });
 
@@ -400,10 +400,10 @@ export const testNode = suite('source/doubles/double-usage.test.ts', [
     ),
     test(
         'doubleUsage argument assertion failures explain the matched position',
-        async function body(scope: OverkillScope) {
+        async function body(scope: TestScope) {
             const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
             const ping = testDouble.returns<Ping>('pong');
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 loadUser('42', { role: 'admin', trace: 'trace-id' });
 
                 testScope.assert(doubleUsage.calledWithPrefix, loadUser, [ 'missing' ]);
@@ -436,9 +436,9 @@ export const testNode = suite('source/doubles/double-usage.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('doubleUsage calledOnceWith requires one total call in that mode', async function body(scope: OverkillScope) {
+    test('doubleUsage calledOnceWith requires one total call in that mode', async function body(scope: TestScope) {
         const loadUser = testDouble.returns<LoadUser>({ id: '42', name: 'Ada' });
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        const result = await executeSingleBody(function testBody(testScope) {
             loadUser('first', { role: 'reader', trace: 'one' });
             loadUser('second', { role: 'admin', trace: 'two' });
 

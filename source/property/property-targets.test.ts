@@ -1,11 +1,12 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { suite, test, type TestNode } from '@overkill-dev/test';
 
 import { Random } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
-import type { TestNode } from '../packages/test/test.entry-point.ts';
+
 import { generatorContext } from '../test-support/generator-execution.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property, gen } from '../packages/test/property.entry-point.ts';
+import type { TestCase as SubjectTestCase } from '../engine/test-node.ts';
 import { trialTargets, propertyLabels } from './property-targets.ts';
 import { propertySearch } from './property-search.ts';
 
@@ -24,9 +25,9 @@ function searchSequence(direction: number): number[] {
     });
 }
 
-export const testNode = authoredSuite('property targeting', [
+export const testNode: TestNode = suite('property targeting', [
     test('score stagnation completes and coverage remains independent', async function (scope) {
-        const make = function (minimumPercent: number): TestNode {
+        const make = function (minimumPercent: number): SubjectTestCase {
             return property({
                 title: 'targeted coverage',
                 generator: gen.integer({ min: 0, max: 1000 }),

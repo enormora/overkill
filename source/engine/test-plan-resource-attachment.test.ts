@@ -1,10 +1,10 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
+import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+
 import {
     attachTestBodyResourceAttachments,
-    type TestBody,
     type TestBodyResourceAttachments
 } from '../packages/engine/engine.entry-point.ts';
-import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
 function plainDataShape(value: unknown): unknown {
     const { parse } = JSON;
@@ -31,7 +31,7 @@ function resourceAttachments(): TestBodyResourceAttachments {
     };
 }
 
-function attachedBody(attachments: TestBodyResourceAttachments): TestBody {
+function attachedBody(attachments: TestBodyResourceAttachments): EngineCaseBody {
     return attachTestBodyResourceAttachments(function resourceAttachedBody(testScope) {
         testScope.assert.true(true);
 
@@ -39,8 +39,8 @@ function attachedBody(attachments: TestBodyResourceAttachments): TestBody {
     }, attachments);
 }
 
-export const testNode = suite('source/engine/test-plan-resource-attachment.test.ts', [
-    test('createTestPlan() reads resource attachments from cases and table rows', function (scope) {
+export const testNode: TestNode = suite('Test plan resource attachment', [
+    test('reads resource attachments from cases and table rows', function (scope) {
         const engine = createEngine();
         const attachments = resourceAttachments();
         const root = engine.createRoot({

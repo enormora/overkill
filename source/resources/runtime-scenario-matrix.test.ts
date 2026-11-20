@@ -1,6 +1,5 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     defineResource,
     defineRuntime,
@@ -76,8 +75,8 @@ function assertRuntimeMatrixScenarios(scope: TestScope): void {
     );
 }
 
-export const testNode = suite('source/resources/runtime-scenario-matrix.test.ts', [
-    test('runtime matrices bind scenarios and require matching slots', function (scope: TestScope) {
+export const testNode: TestNode = suite('Runtime scenario matrix', [
+    test('runtime matrices bind scenarios and require matching slots', function (scope) {
         assertRuntimeMatrixScenarios(scope);
 
         return scope.assert.collect();

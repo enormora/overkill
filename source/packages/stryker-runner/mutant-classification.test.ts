@@ -1,10 +1,10 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { MutantRunStatus, type MutantRunResult } from '@stryker-mutator/api/test-runner';
 
 import { workIdentityKey, type PerTestResult, type RunnerError } from '../run/run.entry-point.ts';
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
-import { testNode as protocol } from './mutation-interruption-policy.test.ts';
+
 import { mutantExecutionResult } from './mutation-results.ts';
 import { classifyMutationCase } from './mutation-case-classification.ts';
 import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
@@ -55,43 +55,44 @@ function translate(result: PerTestResult, errors: readonly RunnerError[]): Mutan
     });
 }
 
-export const testNode = authoredSuite('mutant case classification', [
-    protocol,
-    ...([ 'runtime-policy', 'permission', 'uncaught-exception', 'unhandled-rejection' ] as const).map(
-        function policy(subtype) {
-            return authoredTest(
-                `kills safely attributed ${subtype} failures with structured diagnostics`,
-                function (scope) {
-                    const verdict = subtype === 'runtime-policy' || subtype === 'permission'
-                        ? 'runtime-policy'
-                        : 'crashed';
-                    const result = caseResult(null, verdict);
-                    const mutant = translate(result, [ policyError(result, subtype) ]);
-                    if (mutant.status !== MutantRunStatus.Killed) {
-                        throw new Error('Expected a safely attributed policy kill.');
-                    }
-                    scope.assert.deepEqual(mutant.killedBy, [ workIdentityKey(result.workId) ]);
-                    scope.assert.equal(mutant.nrOfTests, 3);
-                    scope.assert.true(mutant.failureMessage.includes('policy sentinel'));
-                    scope.assert.true(mutant.failureMessage.includes(workIdentityKey(result.workId)));
-                    return scope.assert.collect();
-                }
-            );
+export const testNode: TestNode = suite('mutant case classification', [
+    table({
+        title: 'kills safely attributed failures with structured diagnostics',
+        cases: [ 'runtime-policy', 'permission', 'uncaught-exception', 'unhandled-rejection' ] as const,
+        caseTitle(subtype) {
+            return subtype;
+        },
+        test(scope) {
+            const verdict = scope.parameters === 'runtime-policy' || scope.parameters === 'permission'
+                ? 'runtime-policy'
+                : 'crashed';
+            const result = caseResult(null, verdict);
+            const mutant = translate(result, [ policyError(result, scope.parameters) ]);
+            if (mutant.status !== MutantRunStatus.Killed) {
+                throw new Error('Expected a safely attributed policy kill.');
+            }
+            scope.assert.deepEqual(mutant.killedBy, [ workIdentityKey(result.workId) ]);
+            scope.assert.equal(mutant.nrOfTests, 3);
+            scope.assert.true(mutant.failureMessage.includes('policy sentinel'));
+            scope.assert.true(mutant.failureMessage.includes(workIdentityKey(result.workId)));
+            return scope.assert.collect();
         }
-    ),
-    ...([ 'artifact', 'reporter', 'loader', 'crash', 'process-exhaustion', 'attribution-drift' ] as const).map(
-        function infrastructure(subtype) {
-            return authoredTest(
-                `keeps attributed ${subtype} failures as errors alongside a body failure`,
-                function (scope) {
-                    const result = caseResult({ kind: 'fail', failures: [ bodyFailure ] }, 'fail');
-                    scope.assert.equal(translate(result, [ policyError(result, subtype) ]).status, 'error');
-                    return scope.assert.collect();
-                }
-            );
+    }),
+    table({
+        title: 'retains attributed errors alongside body failures',
+        cases: [ 'artifact', 'reporter', 'loader', 'crash', 'process-exhaustion', 'attribution-drift' ] as const,
+        caseTitle(subtype) {
+            return subtype;
+        },
+        test(scope) {
+            const subtype = scope.parameters;
+
+            const result = caseResult({ kind: 'fail', failures: [ bodyFailure ] }, 'fail');
+            scope.assert.equal(translate(result, [ policyError(result, subtype) ]).status, 'error');
+            return scope.assert.collect();
         }
-    ),
-    authoredTest('rejects missing, stale, and conflicting policy attribution', function (scope) {
+    }),
+    test('rejects missing, stale, and conflicting policy attribution', function (scope) {
         const result = caseResult(null, 'runtime-policy');
         const error = policyError(result, 'permission');
         const invalid: readonly RunnerError[] = [
@@ -110,7 +111,7 @@ export const testNode = authoredSuite('mutant case classification', [
         }
         return scope.assert.collect();
     }),
-    authoredTest('matches canonical aliases in policy case and work attribution', function (scope) {
+    test('matches canonical aliases in policy case and work attribution', function (scope) {
         const result = caseResult(null, 'runtime-policy');
         const error = policyError(result, 'permission');
         const id = { ...result.id, file: '/project/nested/../first.test.ts' };
@@ -125,7 +126,7 @@ export const testNode = authoredSuite('mutant case classification', [
         );
         return scope.assert.collect();
     }),
-    authoredTest('rejects policy errors for eligible cases that did not execute', function (scope) {
+    test('rejects policy errors for eligible cases that did not execute', function (scope) {
         const { reply, baseline } = mutationCoverageFixture('off');
         const [ first, second ] = reply.result.perTest;
         if (first === undefined || second === undefined) {
@@ -150,7 +151,7 @@ export const testNode = authoredSuite('mutant case classification', [
         scope.assert.equal(mutant.status, 'error');
         return scope.assert.collect();
     }),
-    authoredTest('retains body and test-contract failures as kills', function (scope) {
+    test('retains body and test-contract failures as kills', function (scope) {
         const outcomes: readonly Outcome[] = [
             { kind: 'fail', failures: [ bodyFailure ] },
             {
@@ -169,31 +170,41 @@ export const testNode = authoredSuite('mutant case classification', [
         }
         return scope.assert.collect();
     }),
-    authoredTest('rejects hidden cleanup failures and inconclusive outcomes despite policy evidence', function (scope) {
-        for (
-            const outcome of [ { kind: 'fail', failures: [ bodyFailure, cleanupFailure ] }, {
-                kind: 'inconclusive',
-                reason: 'inconclusive sentinel'
-            } ] as const
-        ) {
-            const result = caseResult(null, 'runtime-policy');
-            const retained = { ...result, attempts: [ { ...result.attempts[0], outcome } ] } as const;
-            const mutant = translate(retained, [ policyError(result, 'permission') ]);
-            scope.assert.equal(mutant.status, 'error');
-            if (mutant.status === MutantRunStatus.Error) {
-                scope.assert.true(mutant.errorMessage.includes('sentinel'));
+    test(
+        'rejects hidden cleanup failures and inconclusive outcomes despite policy evidence',
+        function (scope) {
+            for (
+                const outcome of [ { kind: 'fail', failures: [ bodyFailure, cleanupFailure ] }, {
+                    kind: 'inconclusive',
+                    reason: 'inconclusive sentinel'
+                } ] as const
+            ) {
+                const result = caseResult(null, 'runtime-policy');
+                const retained = { ...result, attempts: [ { ...result.attempts[0], outcome } ] } as const;
+                const mutant = translate(retained, [ policyError(result, 'permission') ]);
+                scope.assert.equal(mutant.status, 'error');
+                if (mutant.status === MutantRunStatus.Error) {
+                    scope.assert.true(mutant.errorMessage.includes('sentinel'));
+                }
             }
+            return scope.assert.collect();
         }
-        return scope.assert.collect();
-    }),
-    authoredTest('requires global hook evidence for a crashed verdict', function (scope) {
+    ),
+    test('requires global hook evidence for a crashed verdict', function (scope) {
         const result = caseResult(null, 'crashed');
         scope.assert.equal(translate(result, []).status, 'error');
         scope.assert.equal(translate(result, [ policyError(result, 'permission') ]).status, 'error');
         return scope.assert.collect();
     }),
-    ...([ 'crashed', 'runtime-policy' ] as const).map(function terminalVerdict(verdict) {
-        return authoredTest(`keeps missing ${verdict} attribution ahead of retained timeouts`, function (scope) {
+    table({
+        title: 'prioritizes missing attribution over retained timeouts',
+        cases: [ 'crashed', 'runtime-policy' ] as const,
+        caseTitle(verdict) {
+            return verdict;
+        },
+        test(scope) {
+            const verdict = scope.parameters;
+
             const original = caseResult(null, verdict);
             const outcome = {
                 kind: 'fail',
@@ -208,9 +219,9 @@ export const testNode = authoredSuite('mutant case classification', [
             scope.assert.equal(translate(result, []).status, 'error');
             scope.assert.equal(translate(result, [ policyError(result, subtype) ]).status, 'timeout');
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('rejects retry histories, conflicting identities, and contradictory verdicts', function (scope) {
+    test('rejects retry histories, conflicting identities, and contradictory verdicts', function (scope) {
         const result = caseResult({ kind: 'fail', failures: [ bodyFailure ] }, 'fail');
         const invalid: readonly PerTestResult[] = [
             { ...result, attempts: [ { ...result.attempts[0], attempt: { index: 1 } } ] },
@@ -225,7 +236,7 @@ export const testNode = authoredSuite('mutant case classification', [
         }
         return scope.assert.collect();
     }),
-    authoredTest('never treats a skipped case as a policy kill', function (scope) {
+    test('never treats a skipped case as a policy kill', function (scope) {
         const result = caseResult({ kind: 'skip', reason: 'intentional' }, 'skip');
         scope.assert.equal(
             classifyMutationCase(root, result, [ policyError(result, 'permission') ], false).kind,

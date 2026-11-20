@@ -1,5 +1,5 @@
 import { AsyncResource } from 'node:async_hooks';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 import { activeResourceLeakError, createAsyncLeakMonitor } from '../engine/async-leak-diagnostics.ts';
 import { settleAsyncWork } from '../engine/async-control.ts';
 import { withRunnerInfrastructure } from '../execution-ownership.ts';

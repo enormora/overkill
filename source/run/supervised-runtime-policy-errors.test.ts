@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { CaseId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
@@ -33,10 +33,10 @@ function reporterError(): RunnerError {
     };
 }
 
-export const testNode = suite('source/run/supervised-runtime-policy-errors.test.ts', [
+export const testNode: TestNode = suite('Supervised runtime policy diagnostics', [
     test(
-        'deduplicatedChildRuntimePolicyErrors() drops child process.env errors already observed by the supervisor',
-        function (scope: OverkillScope) {
+        'drops child process.env errors already observed by the supervisor',
+        function (scope) {
             const childError = runtimePolicyError(
                 'Runtime policy violation: process.env changed.',
                 caseId,
@@ -57,8 +57,8 @@ export const testNode = suite('source/run/supervised-runtime-policy-errors.test.
         }
     ),
     test(
-        'deduplicatedChildRuntimePolicyErrors() preserves process.env errors for another boundary',
-        function (scope: OverkillScope) {
+        'preserves process.env errors for another boundary',
+        function (scope) {
             const childError = runtimePolicyError(
                 'Runtime policy violation: process.env changed.',
                 caseId,
@@ -78,7 +78,7 @@ export const testNode = suite('source/run/supervised-runtime-policy-errors.test.
             return scope.assert.collect();
         }
     ),
-    test('deduplicatedChildRuntimePolicyErrors() preserves non-env errors', function (scope: OverkillScope) {
+    test('preserves non-env errors', function (scope) {
         const childError = runtimePolicyError('Runtime policy violation: timer.', caseId, 'timer');
         const childReporterError = reporterError();
 
@@ -89,7 +89,7 @@ export const testNode = suite('source/run/supervised-runtime-policy-errors.test.
 
         return scope.assert.collect();
     }),
-    test('deduplicatedRuntimePolicyErrors() keeps one process.env error per boundary', function (scope: OverkillScope) {
+    test('deduplicatedRuntimePolicyErrors() keeps one process.env error per boundary', function (scope) {
         const traceError = runtimePolicyError(
             'Runtime policy violation: process.env value was set: EXAMPLE.',
             caseId,

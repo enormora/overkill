@@ -1,6 +1,5 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
-import { testNode as metadata } from './disposable-metadata-policy.test.ts';
 import { rule } from './double-rule.ts';
 import {
     testAsyncDisposable,
@@ -15,9 +14,8 @@ async function asyncIterableValues(source: AsyncIterable<string>): Promise<reado
     return await Array.fromAsync(source);
 }
 
-export const testNode = suite('source/doubles/protocol-double.test.ts', [
-    metadata,
-    test('testIterator.yields() creates a well-formed consumable iterator', function body(scope: OverkillScope) {
+export const testNode: TestNode = suite('Protocol double', [
+    test('testIterator.yields() creates a well-formed consumable iterator', function body(scope) {
         const values = testIterator.yields([ 'a', 'b' ], 'done');
 
         scope.assert.equal(values[Symbol.iterator](), values);
@@ -28,7 +26,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testIterator.yields() preserves tracked return values', function body(scope: OverkillScope) {
+    test('testIterator.yields() preserves tracked return values', function body(scope) {
         const values = testIterator.yields([ 'a', 'b' ], 'done');
 
         scope.assert.deepEqual(values.return('early'), { done: true, value: 'early' });
@@ -37,7 +35,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testIterable.yields() creates fresh well-formed iterators', function body(scope: OverkillScope) {
+    test('testIterable.yields() creates fresh well-formed iterators', function body(scope) {
         const source = testIterable.yields([ 'a', 'b' ]);
 
         scope.assert.deepEqual(Array.from(source), [ 'a', 'b' ]);
@@ -46,7 +44,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testIterator() exposes programmable protocol methods', function body(scope: OverkillScope) {
+    test('testIterator() exposes programmable protocol methods', function body(scope) {
         const expected = new Error('expected');
         const values = testIterator<string, string>({
             next: { fallback: rule.returns({ done: false, value: 'configured' }) },
@@ -65,7 +63,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testIterator() creates default completed protocol methods', function body(scope: OverkillScope) {
+    test('testIterator() creates default completed protocol methods', function body(scope) {
         const values = testIterator();
 
         scope.assert.deepEqual(values.next(), { done: true, value: undefined });
@@ -76,7 +74,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testAsyncIterator.yields() creates an async iterable iterator', async function body(scope: OverkillScope) {
+    test('testAsyncIterator.yields() creates an async iterable iterator', async function body(scope) {
         const values = testAsyncIterator.yields([ 'a', 'b' ], 'done');
         const seen: string[] = [];
 
@@ -91,7 +89,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testAsyncIterator() creates default completed protocol methods', async function body(scope: OverkillScope) {
+    test('testAsyncIterator() creates default completed protocol methods', async function body(scope) {
         const values = testAsyncIterator();
 
         scope.assert.deepEqual(await values.next(), { done: true, value: undefined });
@@ -102,7 +100,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testAsyncIterable.yields() creates fresh async iterators', async function body(scope: OverkillScope) {
+    test('testAsyncIterable.yields() creates fresh async iterators', async function body(scope) {
         const source = testAsyncIterable.yields([ 'a', 'b' ]);
         const first = await asyncIterableValues(source);
         const second = await asyncIterableValues(source);
@@ -113,7 +111,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testIterable() creates default fresh iterators', function body(scope: OverkillScope) {
+    test('testIterable() creates default fresh iterators', function body(scope) {
         const source = testIterable();
 
         scope.assert.deepEqual(source[Symbol.iterator]().next(), { done: true, value: undefined });
@@ -122,7 +120,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testAsyncIterable() creates default fresh async iterators', async function body(scope: OverkillScope) {
+    test('testAsyncIterable() creates default fresh async iterators', async function body(scope) {
         const source = testAsyncIterable();
 
         scope.assert.deepEqual(await source[Symbol.asyncIterator]().next(), { done: true, value: undefined });
@@ -131,7 +129,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testIterable() exposes configured iterator factory', function body(scope: OverkillScope) {
+    test('testIterable() exposes configured iterator factory', function body(scope) {
         const iterator = testIterator.yields([ 'configured' ]);
         const source = testIterable({
             iterator: { fallback: rule.returns(iterator) }
@@ -142,7 +140,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testAsyncIterable() exposes configured async iterator factory', async function body(scope: OverkillScope) {
+    test('testAsyncIterable() exposes configured async iterator factory', async function body(scope) {
         const iterator = testAsyncIterator.yields([ 'configured' ]);
         const source = testAsyncIterable({
             asyncIterator: { fallback: rule.returns(iterator) }
@@ -154,7 +152,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testIterable.yieldsFrom() creates fresh delegated iterators', function body(scope: OverkillScope) {
+    test('testIterable.yieldsFrom() creates fresh delegated iterators', function body(scope) {
         const source = testIterable.yieldsFrom(function values() {
             return [ 'a' ][Symbol.iterator]();
         });
@@ -166,7 +164,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
     }),
     test(
         'testAsyncIterable.yieldsFrom() creates fresh delegated async iterators',
-        async function body(scope: OverkillScope) {
+        async function body(scope) {
             const source = testAsyncIterable.yieldsFrom(async function* values() {
                 yield 'a';
             });
@@ -177,7 +175,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('testDisposable() records using disposal', function (scope: OverkillScope) {
+    test('testDisposable() records using disposal', function (scope) {
         const resource = testDisposable();
 
         {
@@ -190,7 +188,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testAsyncDisposable() records await using disposal', async function body(scope: OverkillScope) {
+    test('testAsyncDisposable() records await using disposal', async function body(scope) {
         const resource = testAsyncDisposable();
 
         {
@@ -203,7 +201,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testDisposable() exposes programmable disposal', function body(scope: OverkillScope) {
+    test('testDisposable() exposes programmable disposal', function body(scope) {
         const expected = new Error('expected');
         const resource = testDisposable({
             dispose: { fallback: rule.throws(expected) }
@@ -216,7 +214,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testAsyncDisposable() exposes programmable async disposal', async function body(scope: OverkillScope) {
+    test('testAsyncDisposable() exposes programmable async disposal', async function body(scope) {
         const expected = new Error('expected');
         const resource = testAsyncDisposable({
             asyncDispose: { fallback: rule.rejects(expected) }
@@ -229,7 +227,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testIterator.yieldsFrom() delegates return and throw fallbacks', function body(scope: OverkillScope) {
+    test('testIterator.yieldsFrom() delegates return and throw fallbacks', function body(scope) {
         const values = testIterator.yieldsFrom(function source() {
             return [ 'a', 'b' ][Symbol.iterator]();
         });
@@ -242,7 +240,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testIterator.yieldsFrom() delegates generator return and throw methods', function body(scope: OverkillScope) {
+    test('testIterator.yieldsFrom() delegates generator return and throw methods', function body(scope) {
         const expected = new Error('expected');
         const values = testIterator.yieldsFrom(function* source() {
             yield 'a';
@@ -257,7 +255,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testAsyncIterator.yieldsFrom() delegates sync sources', async function body(scope: OverkillScope) {
+    test('testAsyncIterator.yieldsFrom() delegates sync sources', async function body(scope) {
         const values = testAsyncIterator.yieldsFrom(function source() {
             return [ 'a' ][Symbol.iterator]();
         });
@@ -270,7 +268,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('testAsyncIterator.yieldsFrom() delegates async return fallback', async function body(scope: OverkillScope) {
+    test('testAsyncIterator.yieldsFrom() delegates async return fallback', async function body(scope) {
         const values = testAsyncIterator.yieldsFrom(function source() {
             return {
                 async next() {
@@ -285,7 +283,7 @@ export const testNode = suite('source/doubles/protocol-double.test.ts', [
     }),
     test(
         'testAsyncIterator.yieldsFrom() delegates async generator return and throw methods',
-        async function body(scope: OverkillScope) {
+        async function body(scope) {
             const expected = new Error('expected');
             const values = testAsyncIterator.yieldsFrom(async function* source() {
                 yield 'a';

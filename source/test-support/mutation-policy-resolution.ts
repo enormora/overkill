@@ -1,3 +1,4 @@
+import { testDouble } from '@overkill-dev/test';
 import {
     normalizeConfig,
     type FreezePolicyInput,
@@ -7,7 +8,6 @@ import {
 import type { ConfigLoadRequest, LoadedConfig } from '../config/config-loader.ts';
 import type { MutationPolicyRuntime } from '../packages/stryker-runner/mutation-policy-resolver.ts';
 import type { MutationPolicyRequest } from '../packages/stryker-runner/mutation-policy-protocol.ts';
-import { testDouble } from '../packages/test/test.entry-point.ts';
 import { frozenMicrotestPolicy } from './frozen-microtest-policy.ts';
 
 type ExcludedPolicyFiles = { readonly paths: readonly string[]; readonly role: string; };

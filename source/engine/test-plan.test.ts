@@ -1,8 +1,8 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
-import { testNode as admission } from './test-plan-admission-policy.test.ts';
+
 import type { TestCaseOptions } from './test-node.ts';
 import type { TestPlanFromTestFilesOptions } from './test-plan.ts';
 
@@ -24,9 +24,8 @@ function parameterIdentity(parameters: Readonly<Record<string, unknown>>): strin
     return JSON.stringify(serializeValue(parameters));
 }
 
-export const testNode = suite('source/engine/test-plan.test.ts', [
-    admission,
-    test('createTestPlan() expands suites and tables into executable cases', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Test plan construction', [
+    test('expands suites and tables into executable cases', function (scope) {
         const engine = createEngine();
         const root = engine.createRoot({
             children: [
@@ -135,7 +134,7 @@ export const testNode = suite('source/engine/test-plan.test.ts', [
     }),
     test(
         'createTestPlanFromTestFiles() assigns file identity and resolves test data without file nesting',
-        function (scope: OverkillScope) {
+        function (scope: TestScope) {
             const engine = createEngine();
             const usersSuite = engine.createSuite({
                 definitionLocations: [ { kind: 'unknown' as const } ],
@@ -194,7 +193,7 @@ export const testNode = suite('source/engine/test-plan.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('createTestPlanFromTestFiles() rejects file metadata fields', function (scope: OverkillScope) {
+    test('createTestPlanFromTestFiles() rejects file metadata fields', function (scope) {
         const engine = createEngine();
         const caseNode = engine.createTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
@@ -270,7 +269,7 @@ export const testNode = suite('source/engine/test-plan.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createTestCase() rejects invalid test data field values', function (scope: OverkillScope) {
+    test('createTestCase() rejects invalid test data field values', function (scope) {
         const engine = createEngine();
         const invalidTestDataCases = [
             {
@@ -312,7 +311,7 @@ export const testNode = suite('source/engine/test-plan.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createTestCase() rejects unknown test data fields', function (scope: OverkillScope) {
+    test('createTestCase() rejects unknown test data fields', function (scope) {
         const engine = createEngine();
         const invalidOptions: TestCaseOptions = {
             body(testScope) {
@@ -331,7 +330,7 @@ export const testNode = suite('source/engine/test-plan.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createTestPlan() rejects reachable empty suites', function (scope: OverkillScope) {
+    test('rejects reachable empty suites', function (scope) {
         const engine = createEngine();
         const root = engine.createRoot({
             children: [],
@@ -346,7 +345,7 @@ export const testNode = suite('source/engine/test-plan.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createTestPlan() rejects reachable empty nested suites', function (scope: OverkillScope) {
+    test('rejects reachable empty nested suites', function (scope) {
         const engine = createEngine();
         const root = engine.createRoot({
             children: [
@@ -377,7 +376,7 @@ export const testNode = suite('source/engine/test-plan.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createTestPlan() rejects non-root test nodes', function (scope: OverkillScope) {
+    test('rejects non-root test nodes', function (scope) {
         const engine = createEngine();
         const testCase = engine.createTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
@@ -396,7 +395,7 @@ export const testNode = suite('source/engine/test-plan.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createTestPlan() rejects roots from another engine instance', function (scope: OverkillScope) {
+    test('rejects roots from another engine instance', function (scope) {
         const firstEngine = createEngine();
         const secondEngine = createEngine();
         const root = firstEngine.createRoot({

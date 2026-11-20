@@ -1,6 +1,5 @@
-import { suite, test } from '@overkill-dev/test';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { inlineAttachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -13,7 +12,6 @@ import {
 } from './attachment-failure.ts';
 import { resultWithRuntimeAttachments } from './attachment-results.ts';
 
-const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const metadata = { kind: 'text', name: 'log', mediaType: 'text/plain' } as const;
 async function assertReportedError(scope: TestScope): Promise<void> {
     const { execution } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
@@ -152,40 +150,41 @@ function assertFailureIdentity(scope: TestScope): void {
     scope.assert.equal(result.runnerErrors.length, 1);
 }
 
-export const testNode = suite('source/run/runtime-attachment-failure.test.ts', [
-    test('reported operation errors are consumed before final collection', async function (scope: TestScope) {
+export const testNode: TestNode = suite('Runtime attachment failure', [
+    test('reported operation errors are consumed before final collection', async function (scope) {
         await assertReportedError(scope);
         return scope.assert.collect();
     }),
-    test('closing a run invalidates its active attempt capability', async function (scope: TestScope) {
+    test('closing a run invalidates its active attempt capability', async function (scope) {
         await assertClosedActiveAttempt(scope);
         return scope.assert.collect();
     }),
-    test('JSON reflection failures become attributed attachment errors', async function (scope: TestScope) {
+    test('JSON reflection failures become attributed attachment errors', async function (scope) {
         await assertHostileJson(scope);
         return scope.assert.collect();
     }),
-    test('invalid protocol replies fail instead of accepting missing artifacts', async function (scope: TestScope) {
+    test('invalid protocol replies fail instead of accepting missing artifacts', async function (scope) {
         await assertInvalidReplies(scope);
         return scope.assert.collect();
     }),
-    ...([ [ new Error('disconnected'), 'disconnected' ], [ null, 'Attachment transport failed.' ] ] as const).map(
-        function transportCase([ cause, message ]) {
-            return test({
-                ...definition,
-                title: `transport failure: ${message}`,
-                async body(scope: TestScope) {
-                    await assertTransportFailure(scope, cause, message);
-                    return scope.assert.collect();
-                }
-            });
+    table({
+        title: 'preserves attachment transport failures',
+        cases: [ [ new Error('disconnected'), 'disconnected' ], [ null, 'Attachment transport failed.' ] ] as const,
+        caseTitle([ , message ]) {
+            return message;
+        },
+        async test(scope) {
+            const [ cause, message ] = scope.parameters;
+
+            await assertTransportFailure(scope, cause, message);
+            return scope.assert.collect();
         }
-    ),
-    test('consumed errors preserve attempt attribution and drift remains run owned', async function (scope: TestScope) {
+    }),
+    test('consumed errors preserve attempt attribution and drift remains run owned', async function (scope) {
         await assertConsumedError(scope);
         return scope.assert.collect();
     }),
-    test('failure identity rejects malformed causes and deduplicates retained errors', function (scope: TestScope) {
+    test('failure identity rejects malformed causes and deduplicates retained errors', function (scope) {
         assertFailureIdentity(scope);
         return scope.assert.collect();
     })

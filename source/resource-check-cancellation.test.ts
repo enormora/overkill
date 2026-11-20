@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { observationCase } from './test-support/observation-lifetime.ts';
 import { withExecutionOwner } from './execution-ownership.ts';
@@ -9,8 +9,8 @@ import {
     stopResourceCheckWork
 } from './resource-check-cancellation.ts';
 
-export const testNode = authoredSuite('resource check cancellation ownership', [
-    test('stops only matching work and preserves outer attempt registrations', async function (scope: TestScope) {
+export const testNode: TestNode = suite('resource check cancellation ownership', [
+    test('stops only matching work and preserves outer attempt registrations', async function (scope) {
         const work = observationCase().workId;
         const peer = { ...work, case: { ...work.case, title: 'peer' } };
         const calls: string[] = [];
@@ -36,7 +36,7 @@ export const testNode = authoredSuite('resource check cancellation ownership', [
         scope.assert.deepEqual(calls, [ 'outer', 'inner', 'outer' ]);
         return scope.assert.collect();
     }),
-    test('uses a stable unowned identity outside a run observation', function (scope: TestScope) {
+    test('uses a stable unowned identity outside a run observation', function (scope) {
         const active = resourceCheckRunIdentity();
         const unowned = withExecutionOwner({ kind: 'infrastructure', run: null }, resourceCheckRunIdentity);
         scope.assert.notEqual(unowned, active);

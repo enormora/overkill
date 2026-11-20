@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
@@ -33,10 +33,10 @@ const scenarios = [
         source: 'canonical'
     }
 ] as const;
-export const testNode = authoredSuite(
+export const testNode: TestNode = suite(
     'calibration reference selection',
     [
-        authoredTest('reads historical saved calibration references', function (scope: TestScope) {
+        test('reads historical saved calibration references', function (scope: TestScope) {
             const restored = benchmarkNormalizationContextSchema.parse({
                 mode: 'compare',
                 profile: 'bench',
@@ -50,8 +50,15 @@ export const testNode = authoredSuite(
             scope.assert.false(Object.hasOwn(saved, 'actual'));
             return scope.assert.collect();
         }),
-        ...scenarios.map(function scenario(input) {
-            return authoredTest(input.title, function (scope: TestScope) {
+        table({
+            title: 'selects calibration references',
+            cases: scenarios,
+            caseTitle(input) {
+                return input.title;
+            },
+            test(scope) {
+                const input = scope.parameters;
+
                 const selected = selectCalibrationReference({
                     actual,
                     metric: 'value',
@@ -71,7 +78,7 @@ export const testNode = authoredSuite(
                 scope.assert.equal(selected.budgetReference.machineClass, 'reference-workload');
                 scope.assert.equal(selected.budgetFactor, 0.01);
                 return scope.assert.collect();
-            });
+            }
         })
     ]
 );

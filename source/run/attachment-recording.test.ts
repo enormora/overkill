@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { attachmentRecording } from '../test-support/attachment-recording.ts';
 import { exchangedAttachment } from '../test-support/attachment-exchange.ts';
@@ -8,7 +8,7 @@ import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { inspectDetailedRecordState } from './history-state-access.ts';
 import { historyRecordSchema } from './history-record.ts';
 
-export const testNode = authoredSuite('attachment run recording', [
+export const testNode: TestNode = suite('attachment run recording', [
     test('classifies persisted attachment records by their replay completeness', async function (scope: TestScope) {
         const fixture = await attachmentRecording(null);
         const record = await createAttachmentRecord(fixture.resolved, fixture.dependencies, null);
@@ -37,7 +37,7 @@ export const testNode = authoredSuite('attachment run recording', [
         );
         return scope.assert.collect();
     }),
-    test('uses an existing record session without starting another run', async function (scope: TestScope) {
+    test('uses an existing record session without starting another run', async function (scope) {
         const fixture = await attachmentRecording(null);
         const record = await createAttachmentRecord(fixture.resolved, fixture.dependencies, fixture.session);
         scope.assert.equal(record.session, fixture.session);
@@ -46,7 +46,7 @@ export const testNode = authoredSuite('attachment run recording', [
         scope.assert.equal(record.captureTime(), 1000);
         return scope.assert.collect();
     }),
-    test('serializes artifact checkpoints with current capture timings', async function (scope: TestScope) {
+    test('serializes artifact checkpoints with current capture timings', async function (scope) {
         const fixture = await attachmentRecording(null);
         const record = await createAttachmentRecord(fixture.resolved, fixture.dependencies, fixture.session);
         fixture.clock.advanceByMilliseconds(1);
@@ -56,7 +56,7 @@ export const testNode = authoredSuite('attachment run recording', [
         scope.assert.equal(fixture.checkpoints[0]?.timings.summary.totalWallTimeMicroseconds, 1000);
         return scope.assert.collect();
     }),
-    test('reports persistence failures from artifact checkpoints', async function (scope: TestScope) {
+    test('reports persistence failures from artifact checkpoints', async function (scope) {
         const fixture = await attachmentRecording(new Error('Checkpoint failed.'));
         const record = await createAttachmentRecord(fixture.resolved, fixture.dependencies, fixture.session);
         await scope.assert.rejects(async function () {
@@ -64,7 +64,7 @@ export const testNode = authoredSuite('attachment run recording', [
         }, { message: 'Checkpoint failed.' });
         return scope.assert.collect();
     }),
-    test('records already collected supervised plans without local test bodies', async function (scope: TestScope) {
+    test('records already collected supervised plans without local test bodies', async function (scope) {
         const fixture = await attachmentRecording(null);
         const { plan } = fixture.resolved;
         if (plan.kind !== 'local') {
@@ -79,7 +79,7 @@ export const testNode = authoredSuite('attachment run recording', [
         scope.assert.equal(fixture.checkpoints[0]?.summary.planned, plan.testPlan.cases.length);
         return scope.assert.collect();
     }),
-    test('creates an on-demand record when attachment retention owns persistence', async function (scope: TestScope) {
+    test('creates an on-demand record when attachment retention owns persistence', async function (scope) {
         const fixture = await attachmentRecording(null);
         const record = await createAttachmentRecord(fixture.resolved, fixture.dependencies, null);
         await record.checkpoint([ exchangedAttachment ]);

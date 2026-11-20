@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createVirtualRunDiscovery } from '../test-support/virtual-run-discovery.ts';
 import type { ProfileFiles } from '../config/types.ts';
@@ -33,8 +33,8 @@ function profileFiles(files: ProfileFiles): ProfileFiles {
     return files;
 }
 
-export const testNode = suite('source/run/run-profile-file-sets.test.ts', [
-    test('discoverRunFiles() discovers profile file sets', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Profile file discovery', [
+    test('discovers profile file sets', async function (scope) {
         const discovery = createDiscovery([
             'source/unit/a.test.ts',
             'source/integration/b.test.ts',
@@ -64,7 +64,7 @@ export const testNode = suite('source/run/run-profile-file-sets.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('discoverRunFiles() rejects empty and overlapping profile file sets', async function (scope: OverkillScope) {
+    test('rejects empty and overlapping profile file sets', async function (scope) {
         const discovery = createDiscovery([ 'source/unit/a.test.ts' ]);
 
         await scope.assert.rejects(async function discoverEmptySet() {
@@ -104,7 +104,7 @@ export const testNode = suite('source/run/run-profile-file-sets.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('discoverRunFiles() filters profile file sets by directory operands', async function (scope: OverkillScope) {
+    test('filters profile file sets by directory operands', async function (scope) {
         const discovery = createDiscovery([
             'source/unit/a.test.ts',
             'source/integration/b.test.ts'
@@ -131,8 +131,8 @@ export const testNode = suite('source/run/run-profile-file-sets.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'discoverRunFiles() validates explicit files against profile file sets',
-        async function (scope: OverkillScope) {
+        'validates explicit files against profile file sets',
+        async function (scope) {
             const discovery = createDiscovery([
                 'source/unit/a.test.ts',
                 'source/other/b.test.ts'

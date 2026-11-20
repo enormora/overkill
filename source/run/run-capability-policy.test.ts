@@ -1,5 +1,6 @@
 import diagnosticsChannel from 'node:diagnostics_channel';
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+
 import type { NormalizedConfig, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
 import { defineReporter, type RunnerError } from '../packages/engine/engine.entry-point.ts';
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -24,8 +25,8 @@ type ExpectedPermissionDiagnosticError = {
 };
 type PermissionDiagnosticChannel = { readonly publish: (message: unknown) => void; };
 
-const loadEnvPolicyFixturePath = 'source/integration-tests/run/fixtures/load-env-policy.test.ts';
-const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const loadEnvPolicyFixturePath = 'source/integration-tests/integration/fixtures/load-env-policy.test.ts';
+const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 const policyAnnotations: PolicyTestCase['annotations'] = {
     ownership: [],
     tags: []
@@ -144,7 +145,7 @@ function errorCapabilityAndStrictness(error: RunnerError): readonly [string | nu
 }
 
 function assertPermissionDiagnosticError(
-    scope: OverkillScope,
+    scope: TestScope,
     error: RunnerError,
     expected: ExpectedPermissionDiagnosticError
 ): void {
@@ -202,10 +203,10 @@ function createSparseStorage(): WebStorageLike {
     };
 }
 
-export const testNode = suite('source/run/run-capability-policy.test.ts', [
+export const testNode: TestNode = suite('Run capability policy', [
     test(
         'orchestrator.run() reports load-time capability restrictions outside a test case',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const runOrchestrator = createUnitRunOrchestrator();
             const result = await runOrchestrator.run(createRunCommand({
                 config: defaultRunConfig({
@@ -233,7 +234,7 @@ export const testNode = suite('source/run/run-capability-policy.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('orchestrator.resolve() preserves profile-level reporter lists', async function (scope: OverkillScope) {
+    test('orchestrator.resolve() preserves profile-level reporter lists', async function (scope) {
         const runOrchestrator = createUnitRunOrchestrator();
         const profileReporter: NonNullable<NormalizedConfig['reporters']>[number] = defineReporter(
             function profileMemoryReporter() {
@@ -267,7 +268,7 @@ export const testNode = suite('source/run/run-capability-policy.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('runtime capability policy attributes observed case side effects', async function (scope: OverkillScope) {
+    test('runtime capability policy attributes observed case side effects', async function (scope) {
         const environment: Record<string, string | undefined> = { BEFORE: 'yes' };
         const sessionStorageValues = new Map([ [ 'before', 'yes' ] ]);
         const localStorageValues = new Map([ [ 'before', 'yes' ] ]);
@@ -316,7 +317,7 @@ export const testNode = suite('source/run/run-capability-policy.test.ts', [
     }),
     test(
         'permission denial runtime policy attributes Node permission diagnostics',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const policy = createPermissionDenialRuntimePolicy({ auditDiagnostics: 'ignore', auditEnabled: false });
             const channel = await readPermissionDiagnosticChannel();
 
@@ -340,7 +341,7 @@ export const testNode = suite('source/run/run-capability-policy.test.ts', [
     ),
     test(
         'runtime capability policy reports Node permission diagnostics as permission errors',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const environment: RuntimeCapabilityPolicyEnvironment = {};
             const channel = await readPermissionDiagnosticChannel();
             const policy = createRuntimeCapabilityPolicy({
@@ -379,7 +380,7 @@ export const testNode = suite('source/run/run-capability-policy.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('runtime capability policy accepts sparse unchanged storage snapshots', async function (scope: OverkillScope) {
+    test('runtime capability policy accepts sparse unchanged storage snapshots', async function (scope) {
         const environment: RuntimeCapabilityPolicyEnvironment = {};
         const sparseStorage = createSparseStorage();
         const policy = createRuntimeCapabilityPolicy({
@@ -408,7 +409,7 @@ export const testNode = suite('source/run/run-capability-policy.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('runtime capability policy reports process.env identity drift', async function (scope: OverkillScope) {
+    test('runtime capability policy reports process.env identity drift', async function (scope) {
         let environment: RuntimeCapabilityPolicyEnvironment = {};
         const policy = createRuntimeCapabilityPolicy({
             dependencies: {
@@ -435,7 +436,7 @@ export const testNode = suite('source/run/run-capability-policy.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('runtime capability policy records injected strictness and raw output', async function (scope: OverkillScope) {
+    test('runtime capability policy records injected strictness and raw output', async function (scope) {
         const environment: RuntimeCapabilityPolicyEnvironment = {};
         const policy = createRuntimeCapabilityPolicy({
             dependencies: {

@@ -1,7 +1,7 @@
 import { createDeterministicClock } from '@enormora/clock';
+import type { TestScope } from '@overkill-dev/test';
 import {
     type RunResult,
-    type TestScope,
     type TestCase,
     type BenchmarkExecutionEnvironment,
     createRoot,

@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock, type Clock } from '@enormora/clock';
 
@@ -101,11 +101,11 @@ async function failureObservations(
     return { cancellation, caughtCancellation, caughtFailure, failure };
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
     title: 'resource lifecycle timing policy',
     children: [
-        test('supervised resource timing emits duration-only child spans', async function (scope: OverkillScope) {
+        test('supervised resource timing emits duration-only child spans', async function (scope) {
             const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
             const messages: unknown[] = [];
             const timing = createSupervisedResourceLifecycleTiming(clock, function recordMessage(message) {
@@ -141,7 +141,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'resource lifecycle timing records parent-relative resource spans',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const measurement = createRunTimingMeasurement(clock);
                 const timing = createResourceLifecycleTiming({
@@ -182,7 +182,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'resource lifecycle timing records local failures and cancellations',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const fixture = localTiming(clock);
                 const observed = await failureObservations(clock, fixture.timing);
@@ -223,7 +223,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'resource lifecycle timing cannot change resource behavior',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const timing = createResourceLifecycleTiming({
                     clock,
@@ -256,7 +256,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'resource lifecycle timing tolerates unavailable clocks',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const spans: RunTimingSpan[] = [];
                 const timing = createResourceLifecycleTiming({
                     clock: unavailableTimingClock(),

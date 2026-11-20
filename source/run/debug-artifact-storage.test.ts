@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+
 import type { TestDebugArtifact } from '../packages/engine/engine.entry-point.ts';
 import { debugArtifactFixture } from '../test-support/debug-artifact-fixture.ts';
 import { runRecordPolicyFixture } from '../test-support/run-record-policy-fixture.ts';
@@ -21,8 +22,8 @@ function assertStoredArtifact(
     scope.assert.equal(JSON.stringify(savedValue), JSON.stringify(artifact));
 }
 
-export const testNode = authoredSuite('debug artifact persistence', [
-    test('exhaustion finalizes a checkpoint while preserving completed evidence', async function (scope: TestScope) {
+export const testNode: TestNode = suite('debug artifact persistence', [
+    test('exhaustion finalizes a checkpoint while preserving completed evidence', async function (scope) {
         const { artifact } = await debugArtifactFixture('exhausted');
         const checkpoint: TestDebugArtifact = {
             ...artifact,
@@ -49,7 +50,7 @@ export const testNode = authoredSuite('debug artifact persistence', [
         } ]);
         return scope.assert.collect();
     }),
-    test('storage uses identity-derived names and skips unchanged snapshots', async function (scope: TestScope) {
+    test('storage uses identity-derived names and skips unchanged snapshots', async function (scope) {
         const { artifact } = await debugArtifactFixture('../../outside');
         const writes: { readonly path: string; readonly content: string; }[] = [];
         const directory = '/state/runs/run/debug';
@@ -64,7 +65,7 @@ export const testNode = authoredSuite('debug artifact persistence', [
         assertStoredArtifact(scope, writes[0], directory, artifact);
         return scope.assert.collect();
     }),
-    test('placement attempts get separate files for the same work and retry', async function (scope: TestScope) {
+    test('placement attempts get separate files for the same work and retry', async function (scope) {
         const { artifact } = await debugArtifactFixture('placement');
         const paths: string[] = [];
         const store = createDebugArtifactStore('/state/debug', {
@@ -78,7 +79,7 @@ export const testNode = authoredSuite('debug artifact persistence', [
         scope.assert.equal(uniquePaths.size, 2);
         return scope.assert.collect();
     }),
-    test('family variants retain separate debug files and results', async function (scope: TestScope) {
+    test('family variants retain separate debug files and results', async function (scope) {
         const { artifact } = await debugArtifactFixture('family');
         const paths: string[] = [];
         const store = createDebugArtifactStore('/state/debug', {
@@ -103,7 +104,7 @@ export const testNode = authoredSuite('debug artifact persistence', [
         ]);
         return scope.assert.collect();
     }),
-    test('completed native evidence wins over a late checkpoint', async function (scope: TestScope) {
+    test('completed native evidence wins over a late checkpoint', async function (scope) {
         const { artifact } = await debugArtifactFixture('complete');
         const checkpoint: TestDebugArtifact = {
             ...artifact,
@@ -120,7 +121,7 @@ export const testNode = authoredSuite('debug artifact persistence', [
     }),
     test(
         'debug write failures fail the run while preserving the case verdict and run record',
-        async function (scope: TestScope) {
+        async function (scope) {
             const { result } = await debugArtifactFixture('passing');
             const fixture = runRecordPolicyFixture('on-demand', true);
             const dependencies = {

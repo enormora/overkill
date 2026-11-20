@@ -1,9 +1,9 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createCollectedPlan } from '../test-support/worker-pool-execution-state.ts';
 
 import {
-    type TestNode,
+    type TestNode as SubjectTestNode,
     type TestPlan,
     createRoot,
     createTestPlan,
@@ -25,18 +25,18 @@ const metadata = {
 function unexpectedBody(): never {
     throw new Error('Collection must not execute bodies.');
 }
-function planFor(node: TestNode): TestPlan {
+function planFor(node: SubjectTestNode): TestPlan {
     return createTestPlan(createRoot({ title: 'root', annotations: {}, controls: {}, children: [ node ] }));
 }
-export const testNode = authoredSuite('collection policy admission', [
-    test('rejects collected plans without selected cases', function (scope: TestScope) {
+export const testNode: TestNode = suite('collection policy admission', [
+    test('rejects collected plans without selected cases', function (scope) {
         const plan = { ...createCollectedPlan(), files: [] };
         scope.assert.throws(function () {
             assertCollectedRunPlanHasCases(plan);
         }, { message: 'Run selection matched no test cases.' });
         return scope.assert.collect();
     }),
-    test('preserves a recorded plan before current family admission', function (scope: TestScope) {
+    test('preserves a recorded plan before current family admission', function (scope) {
         const plan = planFor(createTestCase({ ...metadata, body: unexpectedBody }));
         const recorded = {
             ...policy,
@@ -46,12 +46,12 @@ export const testNode = authoredSuite('collection policy admission', [
         scope.assert.equal(resolveTestPlanCollectionPolicy(plan, recorded), plan);
         return scope.assert.collect();
     }),
-    test('checks ordinary admission when replay is absent', function (scope: TestScope) {
+    test('checks ordinary admission when replay is absent', function (scope) {
         const plan = planFor(createTestCase({ ...metadata, body: unexpectedBody }));
         scope.assert.equal(resolveTestPlanCollectionPolicy(plan, policy), plan);
         return scope.assert.collect();
     }),
-    test('requires a profile policy for collected integration property declarations', function (scope: TestScope) {
+    test('requires a profile policy for collected integration property declarations', function (scope) {
         const plan = planFor(
             property({
                 title: 'declaration',
@@ -65,12 +65,12 @@ export const testNode = authoredSuite('collection policy admission', [
         }, { message: 'Property collection requires profile policy.' });
         return scope.assert.collect();
     }),
-    test('preserves ordinary integration cases when no property policy applies', function (scope: TestScope) {
+    test('preserves ordinary integration cases when no property policy applies', function (scope) {
         const plan = planFor(createTestCase({ ...metadata, body: unexpectedBody }));
         scope.assert.equal(resolveTestPlanCollectionPolicy(plan, policy), plan);
         return scope.assert.collect();
     }),
-    test('does not require property policy for intentionally skipped cases', function (scope: TestScope) {
+    test('does not require property policy for intentionally skipped cases', function (scope) {
         const plan = planFor(createSkippedTestCase({ ...metadata, reason: 'intentional' }));
         scope.assert.equal(resolveTestPlanCollectionPolicy(plan, policy), plan);
         return scope.assert.collect();

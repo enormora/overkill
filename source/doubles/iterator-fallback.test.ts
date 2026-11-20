@@ -1,11 +1,11 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createHistoryStore } from './double-history-store.ts';
 import { createSyncTrackedIterator, createAsyncTrackedIterator } from './double-iterator-tracking.ts';
 
 const invocation = { kind: 'call', index: 0, arguments: [] } as const;
-export const testNode = authoredSuite('iterator protocol fallbacks', [
-    test('provides return and throw for synchronous sources without those methods', function (scope: TestScope) {
+export const testNode: TestNode = suite('iterator protocol fallbacks', [
+    test('provides return and throw for synchronous sources without those methods', function (scope) {
         const store = createHistoryStore(function () {
             return undefined;
         });
@@ -35,7 +35,7 @@ export const testNode = authoredSuite('iterator protocol fallbacks', [
         );
         return scope.assert.collect();
     }),
-    test('provides return and throw for asynchronous sources without those methods', async function (scope: TestScope) {
+    test('provides return and throw for asynchronous sources without those methods', async function (scope) {
         const store = createHistoryStore(function () {
             return undefined;
         });
@@ -65,7 +65,7 @@ export const testNode = authoredSuite('iterator protocol fallbacks', [
         );
         return scope.assert.collect();
     }),
-    test('keeps old synchronous iterators functional after recording resets', function (scope: TestScope) {
+    test('keeps old synchronous iterators functional after recording resets', function (scope) {
         const store = createHistoryStore(function () {
             return undefined;
         });
@@ -84,7 +84,7 @@ export const testNode = authoredSuite('iterator protocol fallbacks', [
         scope.assert.deepEqual<unknown, unknown>(store.iteratorEvents, []);
         return scope.assert.collect();
     }),
-    test('keeps old asynchronous iterators functional after recording resets', async function (scope: TestScope) {
+    test('keeps old asynchronous iterators functional after recording resets', async function (scope) {
         const store = createHistoryStore(function () {
             return undefined;
         });

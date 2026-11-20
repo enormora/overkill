@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { inlineAttachmentFixture, attachmentWork, type AttachmentFixture } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
@@ -49,7 +49,7 @@ function retainedEvidence(fixture: AttachmentFixture): ReturnType<typeof process
     return processEvidenceSchema.parse(content.value);
 }
 
-export const testNode = authoredSuite('module import evidence', [
+export const testNode: TestNode = suite('module import evidence', [
     test('keeps zero-duration imports explicit without infinite throughput', function (scope) {
         const result = moduleImportResult(observation, processOutput('pipes', 0).snapshot(), {
             availability: 'available',
@@ -64,7 +64,7 @@ export const testNode = authoredSuite('module import evidence', [
         });
         return scope.assert.collect();
     }),
-    test('retains process evidence when module metadata exceeds its byte budget', async function (scope: TestScope) {
+    test('retains process evidence when module metadata exceeds its byte budget', async function (scope) {
         const fixture = await retainModuleEvidence(1024, oversizedModuleUrl);
         const evidence = retainedEvidence(fixture);
         scope.assert.equal(evidence.entries.length, 1);
@@ -76,7 +76,7 @@ export const testNode = authoredSuite('module import evidence', [
     }),
     test(
         'counts omitted module metadata when its process entry could not be retained',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = await retainModuleEvidence(128, oversizedModuleUrl);
             scope.assert.partialDeepEqual(retainedEvidence(fixture), { entries: [], omitted: 2 });
             scope.assert.equal(fixture.store.artifacts().length, 1);

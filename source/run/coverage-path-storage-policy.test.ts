@@ -1,18 +1,32 @@
-import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+import { type TestNode, table, suite } from '@overkill-dev/test';
 
 import { coveragePathStorage, coveragePaths } from '../test-support/coverage-path-storage.ts';
 
-export const testNode = authoredSuite('coverage directory ownership', [
-    ...([ 'ancestor', 'pass' ] as const).map(function (scenario) {
-        return test(`creates coverage inside the project using ${scenario} paths`, async function (scope: TestScope) {
+export const testNode: TestNode = suite('coverage directory ownership', [
+    table({
+        title: 'creates coverage within the project',
+        cases: [ 'ancestor', 'pass' ] as const,
+        caseTitle(scenario) {
+            return scenario;
+        },
+        async test(scope) {
+            const scenario = scope.parameters;
+
             const fixture = coveragePathStorage(scenario);
             scope.assert.deepEqual(await fixture.create(), coveragePaths);
             scope.assert.includes(fixture.calls.join(','), 'create:/project/coverage/raw');
             return scope.assert.collect();
-        });
+        }
     }),
-    ...([ 'escape', 'linked-ancestor', 'linked-created' ] as const).map(function (scenario) {
-        return test(`rejects ${scenario} output directories`, async function (scope: TestScope) {
+    table({
+        title: 'rejects invalid coverage output directories',
+        cases: [ 'escape', 'linked-ancestor', 'linked-created' ] as const,
+        caseTitle(scenario) {
+            return scenario;
+        },
+        async test(scope) {
+            const scenario = scope.parameters;
+
             const fixture = coveragePathStorage(scenario);
             await scope.assert.rejects(fixture.create, {
                 message: scenario === 'linked-created'
@@ -26,13 +40,20 @@ export const testNode = authoredSuite('coverage directory ownership', [
                 scenario === 'linked-created'
             );
             return scope.assert.collect();
-        });
+        }
     }),
-    ...([ 'creation-error', 'root-error' ] as const).map(function (scenario) {
-        return test(`preserves ${scenario} failures`, async function (scope: TestScope) {
+    table({
+        title: 'preserves coverage storage failures',
+        cases: [ 'creation-error', 'root-error' ] as const,
+        caseTitle(scenario) {
+            return scenario;
+        },
+        async test(scope) {
+            const scenario = scope.parameters;
+
             const fixture = coveragePathStorage(scenario);
             await scope.assert.rejects(fixture.create, { exact: fixture.failure });
             return scope.assert.collect();
-        });
+        }
     })
 ]);

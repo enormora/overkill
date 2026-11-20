@@ -1,4 +1,4 @@
-import type { TestScope } from '../engine/test-scope.ts';
+import type { TestScope } from '@overkill-dev/test';
 import type { AssertionResult } from '../assertion-protocol/assertion-node.ts';
 
 export const body = {

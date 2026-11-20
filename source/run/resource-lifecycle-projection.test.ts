@@ -1,9 +1,9 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 
 import { defineResource } from '../resources/resources.ts';
-import { testNode as sessions } from './projected-resource-lifecycle-policy.test.ts';
+
 import {
     deserializeProjectedHandle,
     projectedHandle,
@@ -26,15 +26,14 @@ const databaseResource = defineResource({
     dispose: null
 });
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/resource-lifecycle-projection.test.ts',
+    title: 'Resource lifecycle projection',
     children: [
-        sessions,
         test({
             ...testCaseMetadata,
-            title: 'resource lifecycle projection preserves null payloads',
-            body(scope: OverkillScope) {
+            title: 'preserves null payloads',
+            body(scope) {
                 const projected = defineResource({
                     name: 'null-projection',
                     scope: 'per-run',
@@ -60,8 +59,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'resource lifecycle projection preserves local resources',
-            body(scope: OverkillScope) {
+            title: 'preserves local resources',
+            body(scope) {
                 scope.assert.equal(serializeProjectedHandle(databaseResource, 'handle', {}), null);
                 scope.assert.equal(projectedHandle(databaseResource, 'handle', {}), 'handle');
                 scope.assert.throws(function deserializeLocalResource() {

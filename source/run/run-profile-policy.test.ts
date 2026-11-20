@@ -1,4 +1,5 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { subjectTestNode } from '../test-support/create-test-engine.ts';
 
 import {
     type TestCase,
@@ -22,15 +23,15 @@ const fractionalTimeoutError =
     'Run profile "microtest" cannot run test case timeoutMilliseconds 1.5; expected positive safe integer <= 50.';
 
 function testCaseWithControls(caseTitle: string, controls: TestControlsInput): TestCase {
-    return test({
-        body(scope: OverkillScope) {
+    return subjectTestNode(test({
+        body(scope) {
             scope.assert.true(true);
 
             return scope.assert.collect();
         },
         controls,
         title: caseTitle
-    });
+    }));
 }
 
 function testPlanForChildren(children: readonly TestCase[]): TestPlan {
@@ -46,10 +47,10 @@ function testPlanForCase(testCase: TestCase): TestPlan {
     return testPlanForChildren([ testCase ]);
 }
 
-export const testNode = suite('source/run/run-profile-policy.test.ts', [
+export const testNode: TestNode = suite('Run profile policy', [
     test(
         'assertTestPlanCasesMatchProfilePolicy() rejects selected microtest capture controls',
-        function (scope: OverkillScope) {
+        function (scope) {
             const testPlan = testPlanForCase(testCaseWithControls('captures', { capture: 'live' }));
 
             scope.assert.throws(function assertCaptureControls() {
@@ -64,7 +65,7 @@ export const testNode = suite('source/run/run-profile-policy.test.ts', [
     ),
     test(
         'assertTestPlanCasesMatchProfilePolicy() validates selected timeout controls',
-        function (scope: OverkillScope) {
+        function (scope) {
             const profile = defaultMicrotestProfile({
                 timeouts: { hardMilliseconds: 100, softMilliseconds: 50 }
             });
@@ -91,7 +92,7 @@ export const testNode = suite('source/run/run-profile-policy.test.ts', [
     ),
     test(
         'assertCollectedRunPlanCasesMatchProfilePolicy() validates selected cases only',
-        function (scope: OverkillScope) {
+        function (scope: TestScope) {
             const validCase = testCaseWithControls('valid', {});
             const invalidCase = testCaseWithControls('invalid', { capture: 'live' });
             const allCasesPlan = testPlanForChildren([ validCase, invalidCase ]);

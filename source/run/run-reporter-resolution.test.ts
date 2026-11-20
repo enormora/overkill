@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { DefinedReporter } from '../engine/reporter.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -14,7 +14,7 @@ type RunCommandParts = {
     readonly request: RunRequest;
 };
 
-const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 const defaultRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
 
 function createRunCommand(overrides: RunCommandParts): RunCommand {
@@ -54,8 +54,8 @@ function runConfigWithReporters(
     });
 }
 
-export const testNode = suite('source/run/run-reporter-resolution.test.ts', [
-    test('orchestrator.resolve() uses profile reporters over global fallback', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Run reporter resolution', [
+    test('orchestrator.resolve() uses profile reporters over global fallback', async function (scope) {
         const globalReporter = createTerminalReporter('global');
         const profileReporter = createTerminalReporter('profile');
         const runOrchestrator = createDeterministicRunOrchestrator();
@@ -72,7 +72,7 @@ export const testNode = suite('source/run/run-reporter-resolution.test.ts', [
     }),
     test(
         'orchestrator.resolve() uses global reporters when profile reporters are absent',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const globalReporter = createTerminalReporter('global');
             const runOrchestrator = createDeterministicRunOrchestrator();
             const resolvedRun = await runOrchestrator.resolve(createRunCommand({
@@ -87,7 +87,7 @@ export const testNode = suite('source/run/run-reporter-resolution.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('orchestrator.run() ignores inactive global reporter sink conflicts', async function (scope: OverkillScope) {
+    test('orchestrator.run() ignores inactive global reporter sink conflicts', async function (scope) {
         const globalReporter = createTerminalReporter('global');
         const profileReporter = createTerminalReporter('profile');
         const runOrchestrator = createDeterministicRunOrchestrator();

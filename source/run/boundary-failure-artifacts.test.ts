@@ -1,7 +1,8 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
-import { defaultFailureArtifactPolicy, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
+
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import { createBoundaryFailureArtifact, type BoundaryFailure, type BoundaryMetadata } from '../engine/run-artifact.ts';
 import { recordedReplayProfile } from './run-record-input.ts';
@@ -100,8 +101,8 @@ function assertNativeEvidenceRetention(
     scope.assert.deepEqual(state.artifacts(), [ native ]);
 }
 
-export const testNode = suite('boundary failure artifacts', [
-    test('native completion evidence survives repeated delivery and parent exits', function (scope: TestScope) {
+export const testNode: TestNode = suite('boundary failure artifacts', [
+    test('native completion evidence survives repeated delivery and parent exits', function (scope) {
         const failures: readonly BoundaryFailure[] = [
             {
                 kind: 'worker-crash',
@@ -172,7 +173,7 @@ export const testNode = suite('boundary failure artifacts', [
         });
         return scope.assert.collect();
     }),
-    test('replay restores saved diagnostic limits and defaults legacy records', function (scope: TestScope) {
+    test('replay restores saved diagnostic limits and defaults legacy records', function (scope) {
         const current = defaultMicrotestProfile();
         const policy = {
             ...defaultFailureArtifactPolicy,
@@ -233,7 +234,7 @@ export const testNode = suite('boundary failure artifacts', [
     }),
     test(
         'configured output caps preserve split UTF-8 and stay shared across streams and retries',
-        function (scope: TestScope) {
+        function (scope) {
             const artifacts = capturedRetryOutput().artifacts();
             const output = artifacts.flatMap(function captured(artifact) {
                 return artifact.payload.kind === 'captured-output' ? [ artifact.payload ] : [];

@@ -1,50 +1,45 @@
 import { runInNewContext } from 'node:vm';
-import { suite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createChildTransportFixture } from '../test-support/child-transport-fixture.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import { childProcessEnvelope } from './child-process-protocol.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+const metadata = { definitionLocations: [ { kind: 'unknown' } ] } as const;
 const caseId = { file: 'fixture.test.ts', params: null, suite: [], title: 'active case' } as const;
-const invalidMessages: readonly unknown[] = [
-    { userMessage: 'unexpected' },
-    childProcessEnvelope('supervised-run', { kind: 'event', event: { kind: 'test-start', attempt: 'invalid' } }),
-    childProcessEnvelope('supervised-run', { kind: 'result', result: { status: 'passed' } })
-];
 function createForeignDeliveryError(): Error {
     return runInNewContext('new Error("Delivery failed.")') as Error;
 }
-export const testNode = suite('supervised child transport', [
-    ...[ new Error('Delivery failed.'), createForeignDeliveryError() ].map(function deliveryFailure(failure) {
-        return authoredTest({
-            title: `delivery failure from ${
-                failure instanceof Error ? 'native' : 'foreign'
-            } errors settles the child transport`,
-            ...metadata,
-            body(scope) {
-                const fixture = createChildTransportFixture(true);
-                fixture.deliveryFailure.write(failure);
-                fixture.emit(
-                    'message',
-                    childProcessEnvelope('supervised-run', { kind: 'result', result: runResultFactory.build() })
-                );
-                fixture.emit('close', undefined);
-                scope.assert.equal(fixture.state.runnerErrors()[0]?.subtype, 'runtime-policy');
-                scope.assert.equal(
-                    fixture.state.runnerErrors()[0]?.message,
-                    failure instanceof Error ? failure.message : 'Invalid supervised child IPC payload.'
-                );
-                scope.assert.deepEqual(fixture.messages, []);
-                scope.assert.equal(fixture.outcome().finished, 1);
-                return scope.assert.collect();
-            }
-        });
+export const testNode: TestNode = suite('supervised child transport', [
+    table({
+        title: 'delivery failure from errors settles the child transport',
+        cases: [ new Error('Delivery failed.'), createForeignDeliveryError() ],
+        caseTitle(failure) {
+            return failure instanceof Error ? 'native' : 'foreign';
+        },
+        test(scope) {
+            const failure = scope.parameters;
+
+            const fixture = createChildTransportFixture(true);
+            fixture.deliveryFailure.write(failure);
+            fixture.emit(
+                'message',
+                childProcessEnvelope('supervised-run', { kind: 'result', result: runResultFactory.build() })
+            );
+            fixture.emit('close', undefined);
+            scope.assert.equal(fixture.state.runnerErrors()[0]?.subtype, 'runtime-policy');
+            scope.assert.equal(
+                fixture.state.runnerErrors()[0]?.message,
+                failure instanceof Error ? failure.message : 'Invalid supervised child IPC payload.'
+            );
+            scope.assert.deepEqual(fixture.messages, []);
+            scope.assert.equal(fixture.outcome().finished, 1);
+            return scope.assert.collect();
+        }
     }),
-    authoredTest(
+    test(
         'output draining retains the final completed attempt without reviving execution',
         function (scope: TestScope) {
             const state = createSupervisedRunState('first-failure-and-final');
@@ -85,7 +80,7 @@ export const testNode = suite('supervised child transport', [
         }
     ),
 
-    authoredTest('completed policy-violating cases remain completed after a later child crash', function (scope) {
+    test('completed policy-violating cases remain completed after a later child crash', function (scope) {
         const fixture = createChildTransportFixture(true);
         fixture.state.addActiveCase(
             'completed',
@@ -115,7 +110,7 @@ export const testNode = suite('supervised child transport', [
         return scope.assert.collect();
     }),
 
-    authoredTest('a terminal IPC violation ignores subsequent transport messages and errors', function (scope) {
+    test('a terminal IPC violation ignores subsequent transport messages and errors', function (scope) {
         const fixture = createChildTransportFixture(true);
         fixture.emit('message', { foreign: true });
         fixture.emit(
@@ -129,7 +124,7 @@ export const testNode = suite('supervised child transport', [
         scope.assert.equal(fixture.outcome().finished, 1);
         return scope.assert.collect();
     }),
-    authoredTest('parent-observed policy violations retain validated final child diagnostics', function (scope) {
+    test('parent-observed policy violations retain validated final child diagnostics', function (scope) {
         const fixture = createChildTransportFixture(true);
         const result = { kind: 'result', result: runResultFactory.build() } as const;
         fixture.terminalFailure.write(true);
@@ -147,20 +142,23 @@ export const testNode = suite('supervised child transport', [
         return scope.assert.collect();
     }),
 
-    authoredTest('disconnect without completion records a crash and observes the shutdown deadline', function (scope) {
-        const fixture = createChildTransportFixture(true);
-        fixture.emit('disconnect', undefined);
-        fixture.clock.advanceByMilliseconds(1000);
-        fixture.clock.advanceByMilliseconds(1000);
-        scope.assert.equal(fixture.state.runnerErrors()[0]?.subtype, 'crash');
-        scope.assert.deepEqual(fixture.outcome(), {
-            closed: 1,
-            finished: 1,
-            signals: [ 'SIGKILL', 'SIGKILL' ]
-        });
-        return scope.assert.collect();
-    }),
-    authoredTest('a completed child that never closes fails and bounds termination waiting', function (scope) {
+    test(
+        'disconnect without completion records a crash and observes the shutdown deadline',
+        function (scope) {
+            const fixture = createChildTransportFixture(true);
+            fixture.emit('disconnect', undefined);
+            fixture.clock.advanceByMilliseconds(1000);
+            fixture.clock.advanceByMilliseconds(1000);
+            scope.assert.equal(fixture.state.runnerErrors()[0]?.subtype, 'crash');
+            scope.assert.deepEqual(fixture.outcome(), {
+                closed: 1,
+                finished: 1,
+                signals: [ 'SIGKILL', 'SIGKILL' ]
+            });
+            return scope.assert.collect();
+        }
+    ),
+    test('a completed child that never closes fails and bounds termination waiting', function (scope) {
         const fixture = createChildTransportFixture(true);
         fixture.emit(
             'message',
@@ -177,47 +175,57 @@ export const testNode = suite('supervised child transport', [
         return scope.assert.collect();
     }),
 
-    ...invalidMessages.map(function invalidMessage(message, index) {
-        return authoredTest({
-            title: `invalid IPC ${index} fails the run and crashes active attempts without sender attribution`,
-            ...metadata,
-            body(scope: TestScope) {
-                const fixture = createChildTransportFixture(true);
-                fixture.state.addActiveCase(
-                    'active',
-                    {
-                        id: caseId,
-                        workId: createDefaultWorkId(caseId),
-                        definitionLocations: metadata.definitionLocations,
-                        capture: null
-                    },
-                    0,
-                    { index: 2 }
-                );
-                fixture.emit('message', message);
-                const error = fixture.state.runnerErrors()[0];
-                scope.require.defined(error);
-                scope.assert.deepEqual({
-                    error: [ error.subtype, error.attributedTo, error.attributedToAttempt, error.attributedToWork ],
-                    cases: fixture.state.perTestResults().map(function result(test) {
-                        return { verdict: test.verdict, attempt: test.attempts[0].attempt.index };
-                    })
-                }, {
-                    error: [ 'runtime-policy', null, null, null ],
-                    cases: [ { verdict: 'crashed', attempt: 2 } ]
-                });
-                fixture.clock.advanceByMilliseconds(1000);
-                fixture.clock.advanceByMilliseconds(1000);
-                scope.assert.deepEqual(fixture.outcome(), {
-                    closed: 1,
-                    finished: 1,
-                    signals: [ 'SIGKILL', 'SIGKILL' ]
-                });
-                return scope.assert.collect();
-            }
-        });
+    table({
+        title: 'invalid IPC fails the run and crashes active attempts without sender attribution',
+        cases: [ { description: 'foreign payload', input: { userMessage: 'unexpected' } }, {
+            description: 'malformed test start',
+            input: childProcessEnvelope('supervised-run', {
+                kind: 'event',
+                event: { kind: 'test-start', attempt: 'invalid' }
+            })
+        }, {
+            description: 'incomplete run result',
+            input: childProcessEnvelope('supervised-run', { kind: 'result', result: { status: 'passed' } })
+        } ],
+        caseTitle({ description }) {
+            return description;
+        },
+        test(scope) {
+            const fixture = createChildTransportFixture(true);
+            fixture.state.addActiveCase(
+                'active',
+                {
+                    id: caseId,
+                    workId: createDefaultWorkId(caseId),
+                    definitionLocations: metadata.definitionLocations,
+                    capture: null
+                },
+                0,
+                { index: 2 }
+            );
+            fixture.emit('message', scope.parameters.input);
+            scope.assert.deepEqual({
+                errors: fixture.state.runnerErrors().map(function details(error) {
+                    return [ error.subtype, error.attributedTo, error.attributedToAttempt, error.attributedToWork ];
+                }),
+                cases: fixture.state.perTestResults().map(function result(testResult) {
+                    return { verdict: testResult.verdict, attempt: testResult.attempts[0].attempt.index };
+                })
+            }, {
+                errors: [ [ 'runtime-policy', null, null, null ] ],
+                cases: [ { verdict: 'crashed', attempt: 2 } ]
+            });
+            fixture.clock.advanceByMilliseconds(1000);
+            fixture.clock.advanceByMilliseconds(1000);
+            scope.assert.deepEqual(fixture.outcome(), {
+                closed: 1,
+                finished: 1,
+                signals: [ 'SIGKILL', 'SIGKILL' ]
+            });
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('an unrestricted foreign message remains ignorable', function (scope) {
+    test('an unrestricted foreign message remains ignorable', function (scope) {
         const fixture = createChildTransportFixture(false);
         fixture.emit('message', { foreign: true });
         fixture.clock.advanceByMilliseconds(1000);
@@ -230,7 +238,7 @@ export const testNode = suite('supervised child transport', [
         scope.assert.deepEqual(fixture.state.runnerErrors(), []);
         return scope.assert.collect();
     }),
-    authoredTest('exit zero without protocol completion is a crash and waits for close', function (scope) {
+    test('exit zero without protocol completion is a crash and waits for close', function (scope) {
         const fixture = createChildTransportFixture(true);
         fixture.emit('exit', undefined);
         scope.assert.equal(fixture.outcome().finished, 0);
@@ -240,7 +248,7 @@ export const testNode = suite('supervised child transport', [
         scope.assert.deepEqual(fixture.outcome(), { closed: 0, finished: 1, signals: [] });
         return scope.assert.collect();
     }),
-    authoredTest('valid completion drains until close and cancels the deadline', function (scope) {
+    test('valid completion drains until close and cancels the deadline', function (scope) {
         const fixture = createChildTransportFixture(true);
         fixture.emit(
             'message',
@@ -254,7 +262,7 @@ export const testNode = suite('supervised child transport', [
         scope.assert.deepEqual(fixture.outcome(), { closed: 0, finished: 1, signals: [] });
         return scope.assert.collect();
     }),
-    authoredTest('IPC buffered before exit is drained before deciding completion', function (scope) {
+    test('IPC buffered before exit is drained before deciding completion', function (scope) {
         const fixture = createChildTransportFixture(true);
         fixture.emit('exit', undefined);
         fixture.emit(
@@ -266,7 +274,7 @@ export const testNode = suite('supervised child transport', [
         scope.assert.equal(fixture.outcome().finished, 1);
         return scope.assert.collect();
     }),
-    authoredTest('late IPC after completion fails before transport closure', function (scope) {
+    test('late IPC after completion fails before transport closure', function (scope) {
         const fixture = createChildTransportFixture(true);
         fixture.emit(
             'message',
@@ -281,7 +289,7 @@ export const testNode = suite('supervised child transport', [
         fixture.emit('close', undefined);
         return scope.assert.collect();
     }),
-    authoredTest('native transport errors are crashes rather than policy violations', function (scope) {
+    test('native transport errors are crashes rather than policy violations', function (scope) {
         const fixture = createChildTransportFixture(true);
         fixture.emit('error', new Error('transport failed'));
         scope.assert.equal(fixture.state.runnerErrors()[0]?.subtype, 'crash');

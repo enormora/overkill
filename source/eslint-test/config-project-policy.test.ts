@@ -1,10 +1,10 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { emptyConfigProject } from '../test-support/eslint-config.ts';
 import { inConfigProject, configLayers, generatedProject, projectPath, validateProject } from './config-project.ts';
 
-export const testNode = authoredSuite('configuration project and layer policy', [
-    test('runs an existing project callback without creating a temporary project', async function (scope: TestScope) {
+export const testNode: TestNode = suite('configuration project and layer policy', [
+    test('runs an existing project callback without creating a temporary project', async function (scope) {
         const context = await inConfigProject(
             { kind: 'existing', root: '/project' },
             scope.signal,
@@ -16,7 +16,7 @@ export const testNode = authoredSuite('configuration project and layer policy', 
         scope.assert.equal(context.signal, scope.signal);
         return scope.assert.collect();
     }),
-    test('preserves existing project callback failures', async function (scope: TestScope) {
+    test('preserves existing project callback failures', async function (scope) {
         const error = new Error('callback failed');
         await scope.assert.rejects(async function () {
             await inConfigProject({ kind: 'existing', root: '/project' }, scope.signal, async function () {
@@ -25,7 +25,7 @@ export const testNode = authoredSuite('configuration project and layer policy', 
         }, { exact: error });
         return scope.assert.collect();
     }),
-    test('preserves array layers and awaits factories with their exact context', async function (scope: TestScope) {
+    test('preserves array layers and awaits factories with their exact context', async function (scope) {
         const context = { root: '/project', signal: scope.signal };
         const configs = [ { rules: { 'no-debugger': 'error' } } ] as const;
         scope.assert.equal(await configLayers(configs, context), configs);
@@ -36,7 +36,7 @@ export const testNode = authoredSuite('configuration project and layer policy', 
         scope.assert.equal(layers, configs);
         return scope.assert.collect();
     }),
-    test('rejects cancelled projects and layer factories before invoking callbacks', async function (scope: TestScope) {
+    test('rejects cancelled projects and layer factories before invoking callbacks', async function (scope) {
         const controller = new AbortController();
         const error = new Error('cancelled');
         controller.abort(error);
@@ -54,7 +54,7 @@ export const testNode = authoredSuite('configuration project and layer policy', 
     }),
     test(
         'merges generated support files and replaces the selected source without changing the template',
-        function (scope: TestScope) {
+        function (scope) {
             const project = { ...emptyConfigProject, files: { 'input.js': 'old', 'support.js': 'preserved' } };
             const generated = generatedProject(project, {
                 filename: 'input.js',
@@ -70,7 +70,7 @@ export const testNode = authoredSuite('configuration project and layer policy', 
             return scope.assert.collect();
         }
     ),
-    test('rejects generated file and directory conflicts', function (scope: TestScope) {
+    test('rejects generated file and directory conflicts', function (scope) {
         scope.assert.throws(function () {
             generatedProject({ ...emptyConfigProject, files: { nested: 'file' } }, {
                 filename: 'nested/input.js',
@@ -83,7 +83,7 @@ export const testNode = authoredSuite('configuration project and layer policy', 
         }, { message: 'Project file paths must be unique and must not declare node_modules.' });
         return scope.assert.collect();
     }),
-    test('requires absolute dependency roots for virtual projects', function (scope: TestScope) {
+    test('requires absolute dependency roots for virtual projects', function (scope) {
         scope.assert.throws(function () {
             validateProject({ ...emptyConfigProject, dependencies: { kind: 'from-project', root: 'relative' } });
         }, { message: 'Dependency project roots must be absolute.' });

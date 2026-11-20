@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { PlacementPlan } from './run-types.ts';
 import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
@@ -92,7 +92,7 @@ function pullRequiredLease(
     return lease;
 }
 
-async function assertStaticRequeue(scope: OverkillScope): Promise<void> {
+async function assertStaticRequeue(scope: TestScope): Promise<void> {
     const unit = firstUnit(placementPlan());
     const plan = twoLanePlan(unit);
     const dispatcher = createWorkDispatcher(runtimeWithStaticDispatch(plan), plan);
@@ -109,7 +109,7 @@ async function assertStaticRequeue(scope: OverkillScope): Promise<void> {
     await dispatcher.waitForChange();
 }
 
-function assertStaticDispatcherRejectsUnknownUnits(scope: OverkillScope): void {
+function assertStaticDispatcherRejectsUnknownUnits(scope: TestScope): void {
     const unit = firstUnit(placementPlan());
     const plan = twoLanePlan(unit);
 
@@ -132,14 +132,14 @@ function assertStaticDispatcherRejectsUnknownUnits(scope: OverkillScope): void {
     }, { message: 'Static worker-pool dispatch cannot requeue an unassigned work unit.' });
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-static-dispatcher.test.ts',
+    title: 'Worker pool static dispatcher',
     children: [
         test({
             ...testCaseMetadata,
-            title: 'worker-pool static dispatcher requeues assigned units',
-            async body(scope: OverkillScope) {
+            title: 'requeues assigned units',
+            async body(scope) {
                 await assertStaticRequeue(scope);
 
                 return scope.assert.collect();
@@ -147,8 +147,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool static dispatcher rejects unknown units',
-            body(scope: OverkillScope) {
+            title: 'rejects unknown units',
+            body(scope) {
                 assertStaticDispatcherRejectsUnknownUnits(scope);
 
                 return scope.assert.collect();

@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -106,7 +106,7 @@ function resultRunnerErrorMessages(result: RunResult): readonly string[] {
     });
 }
 
-function assertEmptyRunnerErrors(scope: OverkillScope, result: RunResult | null): void {
+function assertEmptyRunnerErrors(scope: TestScope, result: RunResult | null): void {
     scope.require.defined(result);
     scope.assert.deepEqual(result.runnerErrors, []);
 }
@@ -159,7 +159,7 @@ function createFinalPhaseReporterFixture(): FinalPhaseReporterFixture {
 }
 
 function assertFinalPhaseCallbackInputsUnchanged(
-    scope: OverkillScope,
+    scope: TestScope,
     fixture: FinalPhaseReporterFixture
 ): void {
     assertEmptyRunnerErrors(scope, firstRecordedResult(fixture.finalObserver));
@@ -169,7 +169,7 @@ function assertFinalPhaseCallbackInputsUnchanged(
 }
 
 function assertFinalPhaseErrorsReturnedAndNotified(
-    scope: OverkillScope,
+    scope: TestScope,
     fixture: FinalPhaseReporterFixture,
     result: RunResult
 ): void {
@@ -211,10 +211,10 @@ function createDefaultReporterDeliveryEngine(): Engine {
     return createReporterDeliveryEngine(createDeterministicClock({ initialUnixEpochMicroseconds: 0n }));
 }
 
-export const testNode = suite('source/engine/reporter-delivery.test.ts', [
+export const testNode: TestNode = suite('Reporter delivery', [
     test(
-        'execute() records reporter callback failures and notifies other real-time reporters',
-        async function body(scope: OverkillScope) {
+        'records reporter callback failures and notifies other real-time reporters',
+        async function body(scope) {
             const engine = createDefaultReporterDeliveryEngine();
             const observer = createInMemoryRealTimeReporter();
             const failingReporter: RealTimeReporter = {
@@ -251,8 +251,8 @@ export const testNode = suite('source/engine/reporter-delivery.test.ts', [
         }
     ),
     test(
-        'execute() does not recurse when a reporter fails while handling runner-error',
-        async function body(scope: OverkillScope) {
+        'does not recurse when a reporter fails while handling runner-error',
+        async function body(scope) {
             const engine = createDefaultReporterDeliveryEngine();
             const observer = createInMemoryRealTimeReporter();
             const failingReporter: RealTimeReporter = {
@@ -308,7 +308,7 @@ export const testNode = suite('source/engine/reporter-delivery.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('execute() isolates reporter callback timeouts', async function body(scope: OverkillScope) {
+    test('isolates reporter callback timeouts', async function body(scope) {
         const testStartSignal = createReporterSignal();
         const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
         const engine = createReporterDeliveryEngine(wallClock);
@@ -348,8 +348,8 @@ export const testNode = suite('source/engine/reporter-delivery.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'execute() records final reporter errors and emits them after real-time finish',
-        async function body(scope: OverkillScope) {
+        'records final reporter errors and emits them after real-time finish',
+        async function body(scope) {
             const engine = createDefaultReporterDeliveryEngine();
             const observer = createInMemoryRealTimeReporter();
             const failingFinalReporter: FinalResultReporter = {
@@ -383,8 +383,8 @@ export const testNode = suite('source/engine/reporter-delivery.test.ts', [
         }
     ),
     test(
-        'execute() returns final-phase reporter errors without changing sibling callback input',
-        async function body(scope: OverkillScope) {
+        'returns final-phase reporter errors without changing sibling callback input',
+        async function body(scope) {
             const engine = createDefaultReporterDeliveryEngine();
             const fixture = createFinalPhaseReporterFixture();
 
@@ -402,7 +402,7 @@ export const testNode = suite('source/engine/reporter-delivery.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('execute() disposes reporters once after final reporting', async function body(scope: OverkillScope) {
+    test('disposes reporters once after final reporting', async function body(scope) {
         const engine = createDefaultReporterDeliveryEngine();
         const calls: string[] = [];
         const reporter: RealTimeReporter = {
@@ -437,7 +437,7 @@ export const testNode = suite('source/engine/reporter-delivery.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() records dispose failures in the returned result', async function body(scope: OverkillScope) {
+    test('records dispose failures in the returned result', async function body(scope) {
         const engine = createDefaultReporterDeliveryEngine();
         const failingReporter: RealTimeReporter = {
             dispose() {

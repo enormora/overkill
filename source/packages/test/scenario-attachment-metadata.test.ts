@@ -1,6 +1,7 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import { readTestBodyResourceAttachments, type TestScope } from '../engine/engine.entry-point.ts';
+import { readTestBodyResourceAttachments } from '../engine/engine.entry-point.ts';
+
 import * as resources from './resources.entry-point.ts';
 
 function assertScenarioAttachmentMetadata(scope: TestScope): void {
@@ -56,8 +57,8 @@ function assertScenarioAttachmentMetadata(scope: TestScope): void {
     });
 }
 
-export const testNode = suite('source/packages/test/scenario-attachment-metadata.test.ts', [
-    test('runtime scenario metadata records owners and selected values', function (scope: TestScope) {
+export const testNode: TestNode = suite('Scenario attachment metadata', [
+    test('runtime scenario metadata records owners and selected values', function (scope) {
         assertScenarioAttachmentMetadata(scope);
 
         return scope.assert.collect();

@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     crashLimitMessage,
@@ -12,8 +12,6 @@ import {
     fakeWorkerRuntime,
     createTaskRun
 } from '../test-support/worker-pool-execution-state.ts';
-
-import { testNode as failurePolicy } from './worker-execution-failure-policy.test.ts';
 
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import { executeWorkerPoolUnits } from './worker-pool-execution.ts';
@@ -115,7 +113,7 @@ function hedgedBudgetRuntime(): HedgedBudgetRun {
     return { activeTask, hedge, runtime };
 }
 
-function assertSharedExhaustion(scope: OverkillScope, runtime: WorkerPoolRunRuntime): void {
+function assertSharedExhaustion(scope: TestScope, runtime: WorkerPoolRunRuntime): void {
     const artifacts = runtime.runState.artifacts();
     scope.assert.equal(artifacts.length, 1);
     const artifact = artifacts[0];
@@ -133,15 +131,14 @@ function assertSharedExhaustion(scope: OverkillScope, runtime: WorkerPoolRunRunt
     );
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-execution-state.test.ts',
+    title: 'Worker pool execution state',
     children: [
-        failurePolicy,
         test({
             ...testCaseMetadata,
-            title: 'worker-pool execution stops after repeated invalid worker outputs',
-            async body(scope: OverkillScope) {
+            title: 'stops after repeated invalid worker outputs',
+            async body(scope) {
                 let poolRuns = 0;
                 const runtime = invalidOutputRuntime(function recordRun() {
                     poolRuns += 1;
@@ -159,7 +156,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool process usage tracking stops active tasks on pool budget breach',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const { activeTask, hedge, runtime } = hedgedBudgetRuntime();
                 await reportRunStart({ ...runtime, collectedPlan: { ...runtime.collectedPlan, files: [] } }, 0);
                 await startPoolProcessUsageTracking(runtime);

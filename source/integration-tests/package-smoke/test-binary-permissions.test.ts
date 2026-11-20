@@ -3,7 +3,7 @@ import { chmod, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises
 import path from 'node:path';
 import { text } from 'node:stream/consumers';
 import { fileURLToPath } from 'node:url';
-import { suite, test, type TestScope } from '#tests';
+import { table, type TestNode, suite, type TestScope } from '#tests';
 
 import { readProcessEnvironment } from '../../run/node-host-readers.ts';
 
@@ -160,41 +160,47 @@ async function assertPermissionOutcome(
     scope.assert.equal(consumerFiles.includes(outputFile), profile !== 'microtest');
 }
 
-export const testNode = suite('shipped CLI permission policies', [
-    ...[ 'microtest', 'observed' ].map(function pureMicrotest(profile) {
-        return test({
-            title: `${profile}: pure microtests pass through the executable shebang`,
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const result = await runBinary(profile, 'pure.test.mjs');
-                scope.assert.equal(result.code, 0);
-                scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
-                scope.assert.equal(result.stderr, '');
-                return scope.assert.collect();
-            }
-        });
+export const testNode: TestNode = suite('shipped CLI permission policies', [
+    table({
+        title: 'pure microtests pass through the executable shebang',
+        cases: [ 'microtest', 'observed' ],
+        caseTitle(profile) {
+            return profile;
+        },
+        async test(scope) {
+            const profile = scope.parameters;
+
+            const result = await runBinary(profile, 'pure.test.mjs');
+            scope.assert.equal(result.code, 0);
+            scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
+            scope.assert.equal(result.stderr, '');
+            return scope.assert.collect();
+        }
     }),
-    ...[ 'integration', 'microtest', 'observed' ].flatMap(function profileTests(profile) {
-        return [
-            { file: 'filesystem.test.mjs', permission: 'FileSystemWrite' },
-            { file: 'subprocess.test.mjs', permission: 'ChildProcess' }
-        ]
-            .map(function operationTest({ file, permission }) {
-                return test({
-                    title: `${profile}: ${permission} through the executable shebang`,
-                    annotations: {},
-                    controls: {},
-                    async body(scope: TestScope) {
-                        const binarySource = await readFile(binaryPath, 'utf8');
-                        scope.assert.equal(
-                            binarySource.split('\n', 1)[0],
-                            '#!/usr/bin/env -S node --permission-audit'
-                        );
-                        await assertPermissionOutcome(scope, profile, file, permission);
-                        return scope.assert.collect();
-                    }
+    table({
+        title: 'enforces permissions through the executable shebang',
+        cases: [ 'integration', 'microtest', 'observed' ].flatMap(function profileTests(profile) {
+            return [
+                { file: 'filesystem.test.mjs', permission: 'FileSystemWrite' },
+                { file: 'subprocess.test.mjs', permission: 'ChildProcess' }
+            ]
+                .map(function operationTest({ file, permission }) {
+                    return { profile, file, permission };
                 });
-            });
+        }),
+        caseTitle({ profile, permission }) {
+            return [ profile, permission ].map(String).join(', ');
+        },
+        async test(scope) {
+            const { profile, file, permission } = scope.parameters;
+
+            const binarySource = await readFile(binaryPath, 'utf8');
+            scope.assert.equal(
+                binarySource.split('\n', 1)[0],
+                '#!/usr/bin/env -S node --permission-audit --allow-inspector --disable-warning=PERM0004'
+            );
+            await assertPermissionOutcome(scope, profile, file, permission);
+            return scope.assert.collect();
+        }
     })
 ]);

@@ -1,11 +1,11 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { benchmarkCommandRouting } from '../test-support/benchmark-command-routing.ts';
 import { commandLineExitCodes } from './command-line-command.ts';
 import { runBenchmarkBaselineCommand, listBenchmarkBaselineCommand } from './benchmark-baseline-commands.ts';
 
-export const testNode = authoredSuite('benchmark command routing', [
-    authoredTest('routes benchmark execution with the selected profile', async function (scope: TestScope) {
+export const testNode: TestNode = suite('benchmark command routing', [
+    test('routes benchmark execution with the selected profile', async function (scope) {
         const fixture = benchmarkCommandRouting(null);
         const result = await fixture.commands.runBenchmarks(fixture.request);
         scope.assert.equal(result.exitCode, 0);
@@ -18,7 +18,7 @@ export const testNode = authoredSuite('benchmark command routing', [
         scope.assert.equal(result.runResult?.status, 'passed');
         return scope.assert.collect();
     }),
-    authoredTest('prints captured reference paths after calibration', async function (scope: TestScope) {
+    test('prints captured reference paths after calibration', async function (scope) {
         const fixture = benchmarkCommandRouting(null);
         const result = await fixture.commands.calibrate(fixture.request);
         scope.assert.equal(result.exitCode, 0);
@@ -31,8 +31,15 @@ export const testNode = authoredSuite('benchmark command routing', [
         );
         return scope.assert.collect();
     }),
-    ...([ 'runBenchmarks', 'listBenchmarks', 'calibrate' ] as const).map(function (verb) {
-        return authoredTest(`${verb} reports loader failures before dispatch`, async function (scope: TestScope) {
+    table({
+        title: 'reports loader failures before dispatch',
+        cases: [ 'runBenchmarks', 'listBenchmarks', 'calibrate' ] as const,
+        caseTitle(verb) {
+            return verb;
+        },
+        async test(scope) {
+            const verb = scope.parameters;
+
             const fixture = benchmarkCommandRouting(new Error('Cannot load policy.'));
             const result = verb === 'listBenchmarks'
                 ? await fixture.commands.listBenchmarks({
@@ -55,10 +62,17 @@ export const testNode = authoredSuite('benchmark command routing', [
             scope.assert.includes(result.fallbackDiagnostics.join('\n'), 'Cannot load policy.');
             scope.assert.deepEqual(fixture.calls, []);
             return scope.assert.collect();
-        });
+        }
     }),
-    ...([ 'apply', 'bootstrap', 'diff', 'update' ] as const).map(function (verb) {
-        return authoredTest(`routes baseline ${verb} and renders changes`, async function (scope: TestScope) {
+    table({
+        title: 'routes baseline commands and renders changes',
+        cases: [ 'apply', 'bootstrap', 'diff', 'update' ] as const,
+        caseTitle(verb) {
+            return verb;
+        },
+        async test(scope) {
+            const verb = scope.parameters;
+
             const fixture = benchmarkCommandRouting(null);
             const result = await runBenchmarkBaselineCommand({
                 dependencies: fixture.dependencies,
@@ -75,9 +89,9 @@ export const testNode = authoredSuite('benchmark command routing', [
                 [ { verb, profile: 'bench' } ]
             );
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('lists stored benchmark baseline identities', async function (scope: TestScope) {
+    test('lists stored benchmark baseline identities', async function (scope) {
         const fixture = benchmarkCommandRouting(null);
         const result = await listBenchmarkBaselineCommand({
             dependencies: fixture.dependencies,
@@ -88,9 +102,9 @@ export const testNode = authoredSuite('benchmark command routing', [
         scope.assert.includes(result.stdoutLines.join('\n'), 'startup; duration; unit-host');
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'reports baseline execution and listing failures through command diagnostics',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = benchmarkCommandRouting(new Error('Cannot load baseline policy.'));
             const run = await runBenchmarkBaselineCommand({
                 dependencies: fixture.dependencies,

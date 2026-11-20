@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { parseRunFilterExpression } from './run-filter-grammar.ts';
 
@@ -12,8 +12,8 @@ function parseErrorMessage(expression: string): string | null {
     }
 }
 
-export const testNode = suite('source/run/run-filter-grammar.test.ts', [
-    test('parseRunFilterExpression() parses field operators', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Run filter grammar', [
+    test('parses field operators', function (scope) {
         scope.assert.deepEqual(
             parseRunFilterExpression('tag=fast title~"should " file:source/**/*.test.ts'),
             {
@@ -28,7 +28,7 @@ export const testNode = suite('source/run/run-filter-grammar.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('parseRunFilterExpression() keeps OR lower precedence than whitespace AND', function (scope: OverkillScope) {
+    test('keeps OR lower precedence than whitespace AND', function (scope) {
         scope.assert.deepEqual(
             parseRunFilterExpression('tag=fast | tag=slow owner=@runtime'),
             {
@@ -48,7 +48,7 @@ export const testNode = suite('source/run/run-filter-grammar.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('parseRunFilterExpression() parses negated groups', function (scope: OverkillScope) {
+    test('parses negated groups', function (scope) {
         scope.assert.deepEqual(
             parseRunFilterExpression('!(tag=flaky | owner=@old) tag=stable'),
             {
@@ -71,7 +71,7 @@ export const testNode = suite('source/run/run-filter-grammar.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('parseRunFilterExpression() unescapes quoted values', function (scope: OverkillScope) {
+    test('unescapes quoted values', function (scope) {
         scope.assert.deepEqual(parseRunFilterExpression('title~"should \\"quote\\""'), {
             field: 'title',
             kind: 'contains',
@@ -90,7 +90,7 @@ export const testNode = suite('source/run/run-filter-grammar.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('parseRunFilterExpression() accepts supported string dimensions', function (scope: OverkillScope) {
+    test('accepts supported string dimensions', function (scope) {
         scope.assert.deepEqual(
             parseRunFilterExpression(
                 'file:source/**/*.test.ts title~smoke owner=@payments params~EUR suite~checkout tag:critical-*'
@@ -110,7 +110,7 @@ export const testNode = suite('source/run/run-filter-grammar.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('parseRunFilterExpression() rejects malformed expressions', function (scope: OverkillScope) {
+    test('rejects malformed expressions', function (scope) {
         const malformedExpressions: readonly (readonly [string, string])[] = [
             [ ' ', 'Run filter expression must not be empty.' ],
             [ '=fast', 'Expected a run filter dimension.' ],

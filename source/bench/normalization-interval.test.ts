@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { CalibrationSnapshot } from '../engine/benchmark-result.ts';
 
@@ -13,8 +13,8 @@ function constantCalibration(value: number): CalibrationSnapshot {
         return value;
     }));
 }
-export const testNode = authoredSuite('benchmark normalization intervals', [
-    test('scales duration and throughput in opposite directions', function (scope: TestScope) {
+export const testNode: TestNode = suite('benchmark normalization intervals', [
+    test('scales duration and throughput in opposite directions', function (scope) {
         const actual = constantCalibration(200);
         const reference = constantCalibration(100);
         const raw = { estimate: 40, lower: 30, upper: 50 };
@@ -36,7 +36,7 @@ export const testNode = authoredSuite('benchmark normalization intervals', [
         );
         return scope.assert.collect();
     }),
-    test('propagates calibration uncertainty instead of passing on the median ratio', function (scope: TestScope) {
+    test('propagates calibration uncertainty instead of passing on the median ratio', function (scope) {
         const actual = calibrationSnapshot(Array.from({ length: 128 }, function noisySample(_value, index) {
             return index % 2 === 0 ? 100 : 400;
         }));
@@ -53,7 +53,7 @@ export const testNode = authoredSuite('benchmark normalization intervals', [
         scope.assert.false(result.precise);
         return scope.assert.collect();
     }),
-    test('retains negative and unbounded observation intervals', function (scope: TestScope) {
+    test('retains negative and unbounded observation intervals', function (scope) {
         const actual = constantCalibration(200);
         const reference = constantCalibration(100);
         scope.assert.deepEqual(
@@ -74,7 +74,7 @@ export const testNode = authoredSuite('benchmark normalization intervals', [
         scope.assert.equal(interval.upper, null);
         return scope.assert.collect();
     }),
-    test('spends confidence across stopped calibration checkpoints', function (scope: TestScope) {
+    test('spends confidence across stopped calibration checkpoints', function (scope) {
         const first = calibrationSnapshot(Array.from({ length: 128 }, function increasingSample(_value, index) {
             return index + 1;
         }));
@@ -92,7 +92,7 @@ export const testNode = authoredSuite('benchmark normalization intervals', [
         scope.assert.notDeepEqual(lateInterval, earlyInterval);
         return scope.assert.collect();
     }),
-    test('preserves uncertainty when the actual and reference snapshots are identical', function (scope: TestScope) {
+    test('preserves uncertainty when the actual and reference snapshots are identical', function (scope) {
         const snapshot = constantCalibration(200);
         scope.assert.deepEqual(
             normalizeStatisticalInterval({ estimate: 40, lower: 30, upper: 50 }, {
@@ -104,7 +104,7 @@ export const testNode = authoredSuite('benchmark normalization intervals', [
         );
         return scope.assert.collect();
     }),
-    test('retains zero and absent bounds and makes overflowing bounds unbounded', function (scope: TestScope) {
+    test('retains zero and absent bounds and makes overflowing bounds unbounded', function (scope) {
         const scale = {
             actual: constantCalibration(100),
             reference: constantCalibration(200),
@@ -125,7 +125,7 @@ export const testNode = authoredSuite('benchmark normalization intervals', [
         );
         return scope.assert.collect();
     }),
-    test('rejects ratios outside the finite positive number range', function (scope: TestScope) {
+    test('rejects ratios outside the finite positive number range', function (scope) {
         const actual = constantCalibration(1e200);
         const reference = constantCalibration(1e-200);
         for (const scaling of [ 'proportional', 'inverse' ] as const) {
@@ -137,7 +137,7 @@ export const testNode = authoredSuite('benchmark normalization intervals', [
         }
         return scope.assert.collect();
     }),
-    test('rejects changed calibration identities and execution arguments', function (scope: TestScope) {
+    test('rejects changed calibration identities and execution arguments', function (scope) {
         const actual = constantCalibration(200);
         const references = [
             { ...actual, identity: { ...actual.identity, version: 'other' } },
@@ -152,7 +152,7 @@ export const testNode = authoredSuite('benchmark normalization intervals', [
         }
         return scope.assert.collect();
     }),
-    test('keeps inverse scaling unbounded when the calibration numerator is uncertain', function (scope: TestScope) {
+    test('keeps inverse scaling unbounded when the calibration numerator is uncertain', function (scope) {
         scope.assert.deepEqual(
             normalizeStatisticalInterval({ estimate: 40, lower: 30, upper: 50 }, {
                 actual: calibrationSnapshot([ 128, 384 ]),
@@ -163,7 +163,7 @@ export const testNode = authoredSuite('benchmark normalization intervals', [
         );
         return scope.assert.collect();
     }),
-    test('rejects overflow and normalizes across machine classes', function (scope: TestScope) {
+    test('rejects overflow and normalizes across machine classes', function (scope) {
         const actual = constantCalibration(200);
         const reference = constantCalibration(100);
         scope.assert.throws(function overflow() {

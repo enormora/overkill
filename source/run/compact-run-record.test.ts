@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { completedHistoryRecord, historyWork } from '../test-support/history-record-fixture.ts';
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
@@ -100,7 +100,7 @@ function benchmarkEvidence(scope: TestScope): BenchmarkExecutionResult {
     };
 }
 
-export const testNode = authoredSuite('compact run evidence', [
+export const testNode: TestNode = suite('compact run evidence', [
     test('preserves lifecycle summaries when measurement evidence is absent', function (scope: TestScope) {
         const original = completedHistoryRecord('unmeasured');
         const benchmark = benchmarkEvidence(scope);
@@ -244,7 +244,7 @@ export const testNode = authoredSuite('compact run evidence', [
         scope.assert.equal(JSON.stringify(record).includes('private diagnostic payload'), false);
         return scope.assert.collect();
     }),
-    test('retains interrupted records without inventing results', function (scope: TestScope) {
+    test('retains interrupted records without inventing results', function (scope) {
         const record = compactRunRecord({
             ...completedHistoryRecord('interrupted'),
             status: 'interrupted',

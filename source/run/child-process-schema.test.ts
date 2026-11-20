@@ -1,6 +1,5 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import { reporterEventSchema } from './reporter-event-schema.ts';
@@ -17,7 +16,7 @@ function decode(
 ): SupervisedChildMessage | null {
     return envelopeMessage(childProcessEnvelope('run', message), 'run', supervisedChildMessageSchema);
 }
-export const testNode = suite('child process payload schemas', [
+export const testNode: TestNode = suite('child process payload schemas', [
     test('known envelopes reject unrecognized fields before payload validation', function (scope) {
         scope.assert.throws(function invalidEnvelope() {
             envelopeMessage(
@@ -143,30 +142,33 @@ export const testNode = suite('child process payload schemas', [
         }, { message: 'Invalid child-process IPC payload.' });
         return scope.assert.collect();
     }),
-    test('validates serialized assertion results and rejects malformed nested case identities', function (scope) {
-        const result = runResultFactory.build({
-            perTest: [ {
-                outcome: { kind: 'fail', checks: [ { actual: { child: [ 1 ] }, expected: { child: [ 2 ] } } ] },
-                verdict: 'fail'
-            } ]
-        });
-        const serialized = JSON.stringify({ kind: 'result', result });
-        const received: unknown = JSON.parse(serialized);
-        scope.assert.equal(decode(received)?.kind, 'result');
-        scope.assert.throws(function () {
-            return decode({
-                kind: 'result',
-                result: {
-                    ...result,
-                    perTest: [ {
-                        ...result.perTest[0],
-                        id: { file: null, params: null, suite: 'invalid', title: 'case' }
-                    } ]
-                }
+    test(
+        'validates serialized assertion results and rejects malformed nested case identities',
+        function (scope) {
+            const result = runResultFactory.build({
+                perTest: [ {
+                    outcome: { kind: 'fail', checks: [ { actual: { child: [ 1 ] }, expected: { child: [ 2 ] } } ] },
+                    verdict: 'fail'
+                } ]
             });
-        }, { message: 'Invalid child-process IPC payload.' });
-        return scope.assert.collect();
-    }),
+            const serialized = JSON.stringify({ kind: 'result', result });
+            const received: unknown = JSON.parse(serialized);
+            scope.assert.equal(decode(received)?.kind, 'result');
+            scope.assert.throws(function () {
+                return decode({
+                    kind: 'result',
+                    result: {
+                        ...result,
+                        perTest: [ {
+                            ...result.perTest[0],
+                            id: { file: null, params: null, suite: 'invalid', title: 'case' }
+                        } ]
+                    }
+                });
+            }, { message: 'Invalid child-process IPC payload.' });
+            return scope.assert.collect();
+        }
+    ),
     test('host task payloads cannot claim an unchecked work identity', function (scope) {
         const parsed = workerPoolHostCommandSchema.safeParse({
             kind: 'run-task',

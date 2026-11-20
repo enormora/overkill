@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { RunResult } from '../engine/run-result.ts';
 
@@ -35,7 +35,7 @@ function preparedBenchmark(scope: TestScope): RunResult {
         checks: []
     });
 }
-export const testNode = authoredSuite('benchmark host reporting', [
+export const testNode: TestNode = suite('benchmark host reporting', [
     test('preserves host evidence through fallback preparation', function (scope: TestScope) {
         const result = preparedBenchmark(scope);
         const fallback = withBenchmarkErrorMetadata(result, benchmarkCommand(), null);
@@ -46,7 +46,7 @@ export const testNode = authoredSuite('benchmark host reporting', [
         scope.assert.includes(JSON.stringify(metadata.host.snapshot.capacity.cpuModels), 'fixture-cpu');
         return scope.assert.collect();
     }),
-    test('HTML reporting reads host evidence from the report context', function (scope: TestScope) {
+    test('HTML reporting reads host evidence from the report context', function (scope) {
         const result = preparedBenchmark(scope);
         scope.assert.includes(
             createBenchmarkHtmlReport({

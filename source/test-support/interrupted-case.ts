@@ -1,9 +1,9 @@
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
-import type { TestBody } from '../packages/test/test.entry-point.ts';
+
 import { createExecutionSupervision, executeCaseBody, type ConcurrentCase } from '../engine/execution-supervision.ts';
 import { createExecutionGlobalErrorObserver } from '../engine/execution-global-error-observer.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution-context.ts';
-import { createTestEngine } from './create-test-engine.ts';
+import { type EngineCaseBody, createTestEngine } from './create-test-engine.ts';
 
 export type InterruptedCase = {
     readonly clock: DeterministicClock;
@@ -15,7 +15,7 @@ async function ignoreBenchmarkUpdate(): Promise<void> {
     return undefined;
 }
 
-export function createInterruptedCase(body: TestBody, policy: TestRuntimePolicy | null): InterruptedCase {
+export function createInterruptedCase(body: EngineCaseBody, policy: TestRuntimePolicy | null): InterruptedCase {
     const engine = createTestEngine();
     const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
     const observer = createExecutionGlobalErrorObserver('in-process');

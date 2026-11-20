@@ -455,7 +455,7 @@ function recordStderrLine(
         recordRawStderr(runtime);
     }
 
-    return false;
+    return readingTraceEnvStack;
 }
 
 function observeChildStderr(runtime: SupervisedChildOutputRuntime): void {

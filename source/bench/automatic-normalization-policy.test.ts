@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     measurementStrategy,
@@ -12,8 +12,8 @@ import {
 import { referenceResource } from '../test-support/normalized-machine.ts';
 import { normalizationDefinition as definition } from '../test-support/automatic-normalization.ts';
 
-export const testNode = authoredSuite('automatic normalization policy', [
-    test('adds CPU references to built-in timing and collector metrics without a wrapper', function (scope: TestScope) {
+export const testNode: TestNode = suite('automatic normalization policy', [
+    test('adds CPU references to built-in timing and collector metrics without a wrapper', function (scope) {
         const resolved = definition(measurementStrategy([ processCpuCollector() ]));
         scope.assert.deepEqual(
             Object.keys(resolved.normalization).toSorted(function alphabetically(left, right) {
@@ -26,7 +26,7 @@ export const testNode = authoredSuite('automatic normalization policy', [
         scope.assert.false(Object.hasOwn(resolved.normalization, 'bytes'));
         return scope.assert.collect();
     }),
-    test('does not treat custom units as CPU time merely because the metric name matches', function (scope: TestScope) {
+    test('does not treat custom units as CPU time merely because the metric name matches', function (scope) {
         const collector = processCpuCollector();
         const measurement = measurementStrategy([ {
             ...collector,
@@ -41,7 +41,7 @@ export const testNode = authoredSuite('automatic normalization policy', [
     }),
     test(
         'adds CPU references to process strategies and supports explicit raw measurements',
-        function (scope: TestScope) {
+        function (scope) {
             const normalized = definition(processMeasurement({ instrumentation: 'node' }));
             const raw = definition(rawMeasurement(wallClockMeasurement()));
             scope.assert.equal(normalized.normalization.processCpuTotalMicroseconds?.scaling, 'proportional');
@@ -49,7 +49,7 @@ export const testNode = authoredSuite('automatic normalization policy', [
             return scope.assert.collect();
         }
     ),
-    test('keeps custom strategy domains instead of overriding them with CPU calibration', function (scope: TestScope) {
+    test('keeps custom strategy domains instead of overriding them with CPU calibration', function (scope) {
         const calibration = referenceResource(100, function () {
             return undefined;
         });

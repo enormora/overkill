@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import {
@@ -28,7 +28,7 @@ type RecordedPoolDependencies = {
     readonly measuredSamplingInterval: () => number;
 };
 
-const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 
@@ -411,10 +411,10 @@ async function workerPoolRuntimeCreation(): Promise<{
     };
 }
 
-export const testNode = suite('source/run/worker-pool-runtime.test.ts', [
+export const testNode: TestNode = suite('Worker pool runtime', [
     test(
         'worker-pool runtime creation sizes pools and installs process usage tracking',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const result = await workerPoolRuntimeCreation();
 
             scope.assert.equal(result.unmeasuredThreads, 0);
@@ -449,7 +449,7 @@ export const testNode = suite('source/run/worker-pool-runtime.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('one reusable lane owns per-run resources without another worker', async function (scope: OverkillScope) {
+    test('one reusable lane owns per-run resources without another worker', async function (scope) {
         const fixture = createRecordedPoolDependencies();
         const runtime = await createRuntime(
             fixture.dependencies,
@@ -470,7 +470,7 @@ export const testNode = suite('source/run/worker-pool-runtime.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker-pool runtime creation rejects non-worker-pool facts', async function (scope: OverkillScope) {
+    test('worker-pool runtime creation rejects non-worker-pool facts', async function (scope) {
         await scope.assert.rejects(async function createMismatchedRuntime() {
             await createWorkerPoolRuntime({
                 attachments: null,
@@ -492,7 +492,7 @@ export const testNode = suite('source/run/worker-pool-runtime.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker-pool runtime rejects missing placement plans', function (scope: OverkillScope) {
+    test('worker-pool runtime rejects missing placement plans', function (scope) {
         scope.assert.throws(function readMissingPlacementPlan() {
             workerPoolPlacementPlan(workerPoolRunWithoutPlacementPlan());
         }, { message: 'Worker-pool execution requires a placement plan.' });

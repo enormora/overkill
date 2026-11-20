@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
 import { createBenchmarkHtmlReport } from './benchmark-html-model.ts';
@@ -30,8 +30,8 @@ function budgetHtml(scope: TestScope): string {
         ''
     );
 }
-export const testNode = authoredSuite('benchmark budget deltas', [
-    test('renders both bound deltas beside the recorded decision', function (scope: TestScope) {
+export const testNode: TestNode = suite('benchmark budget deltas', [
+    test('renders both bound deltas beside the recorded decision', function (scope) {
         const html = budgetHtml(scope);
         scope.assert.includes(html, '<td>2</td><td>10</td><td>3</td><td>150</td><td>-5</td><td>-50</td>');
         scope.assert.includes(html, 'Delta from minimum %');

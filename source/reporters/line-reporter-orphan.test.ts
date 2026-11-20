@@ -1,5 +1,6 @@
 import {
-    type TestScope as OverkillScope,
+    type TestNode,
+    type TestScope,
     suite,
     test,
     doubleUsage,
@@ -32,7 +33,7 @@ function lineReporterWithLog(log: Log): RealTimeReporter {
     return createLineReporter(fakeDependencies)(createReportingContext({ projectRoot: null }));
 }
 
-function assertOrphanOutput(scope: OverkillScope, log: Log): void {
+function assertOrphanOutput(scope: TestScope, log: Log): void {
     scope.assert(doubleUsage.callCount, log, 4);
     scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
         errorSymbol,
@@ -52,8 +53,8 @@ function assertOrphanOutput(scope: OverkillScope, log: Log): void {
     ]);
 }
 
-export const testNode = suite('source/reporters/line-reporter-orphan.test.ts', [
-    test('line reporter prints orphan details once the run finishes', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Line reporter orphan', [
+    test('prints orphan details once the run finishes', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
         const { onFinish } = reporter;

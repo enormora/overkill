@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 import type { RunResult, ProcessUsageSnapshot, RunProcessUsageTracker } from '../packages/engine/engine.entry-point.ts';
@@ -197,7 +197,7 @@ async function executeSampledProcessExhaustion(): Promise<SampledProcessExhausti
     return { reporter, result };
 }
 
-function assertNativeExhaustionArtifacts(scope: OverkillScope, fixture: SampledProcessExhaustionFixture): void {
+function assertNativeExhaustionArtifacts(scope: TestScope, fixture: SampledProcessExhaustionFixture): void {
     const artifact = fixture.result.artifacts[0];
     scope.require.defined(artifact);
     scope.assert.partialDeepEqual(artifact, {
@@ -218,10 +218,10 @@ function assertNativeExhaustionArtifacts(scope: OverkillScope, fixture: SampledP
     scope.assert.deepEqual(completedEvent.artifacts, fixture.result.artifacts);
 }
 
-export const testNode = suite('source/engine/execution-process-usage.test.ts', [
+export const testNode: TestNode = suite('Execution process usage', [
     test(
         'execute() includes process usage in the returned result and final reporter result',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const engine = createEngine();
             const reporter = createInMemoryFinalResultReporter();
             const testPlan = engine.createTestPlan(
@@ -284,7 +284,7 @@ export const testNode = suite('source/engine/execution-process-usage.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('execute() records sampled process exhaustion against the active case', async function (scope: OverkillScope) {
+    test('execute() records sampled process exhaustion against the active case', async function (scope) {
         const { reporter, result } = await executeSampledProcessExhaustion();
         assertNativeExhaustionArtifacts(scope, { reporter, result });
 
@@ -319,7 +319,7 @@ export const testNode = suite('source/engine/execution-process-usage.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() applies valid timeout controls before the default timeout', async function (scope: OverkillScope) {
+    test('execute() applies valid timeout controls before the default timeout', async function (scope) {
         const engine = createEngine();
         const testPlan = engine.createTestPlan(
             engine.createRoot({
@@ -357,7 +357,7 @@ export const testNode = suite('source/engine/execution-process-usage.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() rejects timeout controls beyond the soft timeout', async function (scope: OverkillScope) {
+    test('execute() rejects timeout controls beyond the soft timeout', async function (scope) {
         const engine = createEngine();
         const testPlan = engine.createTestPlan(
             engine.createRoot({
@@ -396,7 +396,7 @@ export const testNode = suite('source/engine/execution-process-usage.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('recordProcessUsageSample() reports post-test process usage diagnostics', function (scope: OverkillScope) {
+    test('recordProcessUsageSample() reports post-test process usage diagnostics', function (scope: TestScope) {
         const supervision = createExecutionSupervision();
         const breached = recordProcessUsageSample({
             budgets: {
@@ -429,7 +429,7 @@ export const testNode = suite('source/engine/execution-process-usage.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('recordProcessUsageSample() ignores omitted budgets', function (scope: OverkillScope) {
+    test('recordProcessUsageSample() ignores omitted budgets', function (scope) {
         const supervision = createExecutionSupervision();
         const dependencies = executionDependencies(
             createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
@@ -457,7 +457,7 @@ export const testNode = suite('source/engine/execution-process-usage.test.ts', [
     }),
     test(
         'executeCasesAndMeasureProcessUsage() stops tracking after execution throws',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             let finishCount = 0;
 
             await scope.assert.rejects(async function executeThrowingCases() {

@@ -1,11 +1,11 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { memoryProcessHelper, helperCommand, failedProcessExecution } from '../test-support/memory-process-helper.ts';
 import { reliableProcessHelper } from '../test-support/process-helper-channel.ts';
 
-export const testNode = authoredSuite('process helper invocation ownership', [
-    test('forwards commands and correlates completed invocation replies', async function (scope: TestScope) {
-        const fixture = memoryProcessHelper(scope, true, reliableProcessHelper);
+export const testNode: TestNode = suite('process helper invocation ownership', [
+    test('forwards commands and correlates completed invocation replies', async function (scope) {
+        const fixture = memoryProcessHelper(true, reliableProcessHelper);
         const running = fixture.helper.run(helperCommand, scope.signal);
         await Promise.resolve();
         fixture.events.emit('message', { kind: 'complete', id: 0, execution: failedProcessExecution });
@@ -22,15 +22,15 @@ export const testNode = authoredSuite('process helper invocation ownership', [
         scope.assert.deepEqual(fixture.deadlines, [ 1000 ]);
         return scope.assert.collect();
     }),
-    test('cancels the startup timer when the helper becomes ready', async function (scope: TestScope) {
-        const fixture = memoryProcessHelper(scope, true, reliableProcessHelper);
+    test('cancels the startup timer when the helper becomes ready', async function (scope) {
+        const fixture = memoryProcessHelper(true, reliableProcessHelper);
         fixture.clock.advanceByMilliseconds(5000);
         await fixture.helper.close();
         scope.assert.deepEqual(fixture.killed, []);
         return scope.assert.collect();
     }),
-    test('rejects work when the helper startup budget expires', async function (scope: TestScope) {
-        const fixture = memoryProcessHelper(scope, false, reliableProcessHelper);
+    test('rejects work when the helper startup budget expires', async function (scope) {
+        const fixture = memoryProcessHelper(false, reliableProcessHelper);
         const running = fixture.helper.run(helperCommand, scope.signal);
         fixture.clock.advanceByMilliseconds(5000);
         await scope.assert.rejects(async function () {
@@ -39,8 +39,8 @@ export const testNode = authoredSuite('process helper invocation ownership', [
         scope.assert.deepEqual(fixture.killed, [ 'SIGKILL' ]);
         return scope.assert.collect();
     }),
-    test('cancels active invocations through the helper protocol', async function (scope: TestScope) {
-        const fixture = memoryProcessHelper(scope, true, reliableProcessHelper);
+    test('cancels active invocations through the helper protocol', async function (scope) {
+        const fixture = memoryProcessHelper(true, reliableProcessHelper);
         const running = fixture.helper.run(helperCommand, scope.signal);
         await Promise.resolve();
         fixture.helper.cancel();
@@ -55,8 +55,8 @@ export const testNode = authoredSuite('process helper invocation ownership', [
         );
         return scope.assert.collect();
     }),
-    test('ignores cancellation when no invocation is active', async function (scope: TestScope) {
-        const fixture = memoryProcessHelper(scope, true, reliableProcessHelper);
+    test('ignores cancellation when no invocation is active', async function (scope) {
+        const fixture = memoryProcessHelper(true, reliableProcessHelper);
         fixture.helper.cancel();
         await fixture.helper.close();
         scope.assert.deepEqual(
@@ -67,8 +67,8 @@ export const testNode = authoredSuite('process helper invocation ownership', [
         );
         return scope.assert.collect();
     }),
-    test('rejects cancelled work without sending an invocation', async function (scope: TestScope) {
-        const fixture = memoryProcessHelper(scope, true, reliableProcessHelper);
+    test('rejects cancelled work without sending an invocation', async function (scope) {
+        const fixture = memoryProcessHelper(true, reliableProcessHelper);
         await scope.assert.rejects(async function () {
             await fixture.helper.run(helperCommand, AbortSignal.abort(new Error('Cancelled.')));
         }, { message: 'Cancelled.' });
@@ -81,8 +81,8 @@ export const testNode = authoredSuite('process helper invocation ownership', [
         );
         return scope.assert.collect();
     }),
-    test('rejects overlapping invocations without replacing the active command', async function (scope: TestScope) {
-        const fixture = memoryProcessHelper(scope, true, reliableProcessHelper);
+    test('rejects overlapping invocations without replacing the active command', async function (scope) {
+        const fixture = memoryProcessHelper(true, reliableProcessHelper);
         const running = fixture.helper.run(helperCommand, scope.signal);
         await Promise.resolve();
         await scope.assert.rejects(async function () {
@@ -102,8 +102,8 @@ export const testNode = authoredSuite('process helper invocation ownership', [
         );
         return scope.assert.collect();
     }),
-    test('kills a helper that replies to an unknown invocation', async function (scope: TestScope) {
-        const fixture = memoryProcessHelper(scope, true, reliableProcessHelper);
+    test('kills a helper that replies to an unknown invocation', async function (scope) {
+        const fixture = memoryProcessHelper(true, reliableProcessHelper);
         const running = fixture.helper.run(helperCommand, scope.signal);
         await Promise.resolve();
         fixture.events.emit('message', { kind: 'complete', id: 99, execution: failedProcessExecution });
@@ -113,8 +113,8 @@ export const testNode = authoredSuite('process helper invocation ownership', [
         scope.assert.deepEqual(fixture.killed, [ 'SIGKILL' ]);
         return scope.assert.collect();
     }),
-    test('retains diagnostics and terminates the owned target group on disconnect', async function (scope: TestScope) {
-        const fixture = memoryProcessHelper(scope, true, reliableProcessHelper);
+    test('retains diagnostics and terminates the owned target group on disconnect', async function (scope) {
+        const fixture = memoryProcessHelper(true, reliableProcessHelper);
         const running = fixture.helper.run(helperCommand, scope.signal);
         await Promise.resolve();
         fixture.events.emit('message', { kind: 'started', id: 0, pid: 4321 });
@@ -126,15 +126,18 @@ export const testNode = authoredSuite('process helper invocation ownership', [
         scope.assert.deepEqual(fixture.groups, [ { pid: 4321, signal: 'SIGKILL' } ]);
         return scope.assert.collect();
     }),
-    test('retains send failures as invocation errors', async function (scope: TestScope) {
-        const fixture = memoryProcessHelper(scope, true, { ...reliableProcessHelper, send: new Error('Send failed.') });
+    test('preserves send failures when the connection subsequently closes', async function (scope) {
+        const fixture = memoryProcessHelper(true, { ...reliableProcessHelper, send: new Error('Send failed.') });
+        const running = fixture.helper.run(helperCommand, scope.signal);
+        await Promise.resolve();
+        fixture.close(1, null);
         await scope.assert.rejects(async function () {
-            await fixture.helper.run(helperCommand, scope.signal);
+            await running;
         }, { message: 'Send failed.' });
         return scope.assert.collect();
     }),
-    test('forces helper termination when shutdown exceeds its budget', async function (scope: TestScope) {
-        const fixture = memoryProcessHelper(scope, true, {
+    test('forces helper termination when shutdown exceeds its budget', async function (scope) {
+        const fixture = memoryProcessHelper(true, {
             ...reliableProcessHelper,
             shutdown: new Error('Shutdown expired.')
         });
