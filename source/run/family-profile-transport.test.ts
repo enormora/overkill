@@ -143,7 +143,7 @@ export const testNode: TestNode = suite('family transport provenance', [
             { name: 'settings', change: { settings: { changed: true } } }
         ],
         caseTitle(scenario) {
-            return `${scenario.name}`;
+            return scenario.name;
         },
         test(scope) {
             const scenario = scope.parameters;

@@ -13,14 +13,12 @@ export const testNode: TestNode = suite('managed resource cleanup policy', [
         title: 'releases owners after disposal failures',
         cases: [ false, true ].flatMap(function (observed) {
             return [ false, true ].map(function (fails) {
-                return ({
-                    caseDescription: `${observed}, ${fails}`,
-                    observed,
-                    fails
-                });
+                return { observed, fails };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ observed, fails }) {
+            return [ observed, fails ].map(String).join(', ');
+        },
         async test(scope) {
             const { observed, fails } = scope.parameters;
 
@@ -46,7 +44,7 @@ export const testNode: TestNode = suite('managed resource cleanup policy', [
         title: 'attributes disposal observations to the owning attempt',
         cases: [ 'clean', 'prepare-error', 'finalize-error' ] as const,
         caseTitle(scenario) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
             const scenario = scope.parameters;

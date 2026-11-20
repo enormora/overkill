@@ -6,9 +6,7 @@ export const testNode: TestNode = suite('idle worker runtime ownership', [
     table({
         title: 'isolates per-run resource ownership',
         cases: [ false, true ],
-        caseTitle(timed) {
-            return `${timed}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const timed = scope.parameters;
 
@@ -23,9 +21,7 @@ export const testNode: TestNode = suite('idle worker runtime ownership', [
     table({
         title: 'creates idle worker pools',
         cases: [ false, true ],
-        caseTitle(timed) {
-            return `${timed}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const timed = scope.parameters;
 

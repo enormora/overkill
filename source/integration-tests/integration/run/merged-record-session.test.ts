@@ -1,7 +1,7 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { readFile, mkdtempDisposable, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { defineReporter } from '../../../packages/engine/engine.entry-point.ts';
 

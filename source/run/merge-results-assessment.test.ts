@@ -11,10 +11,10 @@ export const testNode: TestNode = suite('merge assessment', [
     test('retains duplicate logical outcomes', function (scope) {
         const result = recordedRunResult({
             ...observed,
-            perTest: observed.perTest.map(function retry(test) {
+            perTest: observed.perTest.map(function retry(testResult) {
                 return {
-                    ...test,
-                    attempts: [ test.attempts[0], { ...test.attempts[0], attempt: { index: 1 } } ]
+                    ...testResult,
+                    attempts: [ testResult.attempts[0], { ...testResult.attempts[0], attempt: { index: 1 } } ]
                 };
             })
         });

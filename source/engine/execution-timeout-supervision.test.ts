@@ -162,20 +162,18 @@ export const testNode: TestNode = suite('Case timeout supervision', [
         title: 'retains hard timeout after the soft limit',
         cases: [ { hardTimeoutMilliseconds: 10, timeoutMilliseconds: 100 }, softTimeoutPolicy ],
         caseTitle(timeoutPolicy) {
-            return `${timeoutPolicy.timeoutMilliseconds}`;
+            return String(timeoutPolicy.timeoutMilliseconds);
         },
         async test(scope) {
-            const timeoutPolicy = scope.parameters;
-
             const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
             const supervision = createExecutionSupervision();
             const bodyGate = Promise.withResolvers<undefined>();
             scope.cleanup(function releaseTimedOutBody() {
                 bodyGate.resolve(undefined);
             });
-            const execution = executeHardTimedCase(wallClock, supervision, timeoutPolicy, bodyGate.promise);
+            const execution = executeHardTimedCase(wallClock, supervision, scope.parameters, bodyGate.promise);
 
-            wallClock.advanceByMilliseconds(timeoutPolicy.hardTimeoutMilliseconds);
+            wallClock.advanceByMilliseconds(scope.parameters.hardTimeoutMilliseconds);
             const executedCase = await execution;
             const [ error ] = supervision.runnerErrors;
 

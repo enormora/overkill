@@ -1,7 +1,7 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { createServer, type Server, type Socket } from 'node:net';
 import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDefaultWorkId } from '../../../engine/identity.ts';
 import { withResourceCheckDelivery } from '../../../resource-check-delivery.ts';

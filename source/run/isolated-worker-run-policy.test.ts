@@ -9,15 +9,11 @@ export const testNode: TestNode = suite('isolated worker run planning and execut
     table({
         title: 'resolves worker plans from in-memory collection',
         cases: [ false, true ] as const,
-        caseTitle(timed) {
-            return `${timed}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const require: typeof scope.require = scope.require;
 
-            const timed = scope.parameters;
-
-            const fixture = passingIsolatedWorkerRun(timed, false);
+            const fixture = passingIsolatedWorkerRun(scope.parameters, false);
             const pending = createIsolatedResolvedRun(
                 fixture.command,
                 fixture.dependencies,
@@ -37,28 +33,26 @@ export const testNode: TestNode = suite('isolated worker run planning and execut
         title: 'executes isolated workers across timing and history policies',
         cases: ([ false, true ] as const).flatMap(function (timed) {
             return [ false, true ].map(function (history) {
-                return ({
-                    caseDescription: `${timed}, ${history}`,
-                    timed,
-                    history
-                });
+                return { timed, history };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ timed, history }) {
+            return [ timed, history ].map(String).join(', ');
+        },
         async test(scope) {
-            const { timed, history } = scope.parameters;
-
             const require: typeof scope.require = scope.require;
 
-            const fixture = passingIsolatedWorkerRun(timed, history);
+            const fixture = passingIsolatedWorkerRun(scope.parameters.timed, scope.parameters.history);
             const pending = runIsolatedProcessCommand(fixture.command, fixture.dependencies, {
                 ...fixture.options,
                 signal: null
             }, fixture.input);
             require.defined(pending);
             const result = await pending;
-            scope.assert.equal(result.status, 'passed');
-            scope.assert.equal(result.perTest.length, 1);
+            scope.assert.deepEqual({ status: result.status, cases: result.perTest.length }, {
+                status: 'passed',
+                cases: 1
+            });
             scope.assert.equal(
                 result.perTest[0]?.id.file,
                 'source/integration-tests/integration/fixtures/passing.test.ts'

@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
 import { Worker } from 'node:worker_threads';
 import { fork } from 'node:child_process';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 const pollMilliseconds = 25;
 const maximumPolls = 200;

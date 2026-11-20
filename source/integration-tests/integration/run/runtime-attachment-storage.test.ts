@@ -1,5 +1,5 @@
-import { type TestNode, suite, test, table, type TestScope } from '@overkill-dev/test';
 import { glob } from 'node:fs/promises';
+import { type TestNode, suite, test, table, type TestScope } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
 import { attachmentRunFixture } from '../../../test-support/attachment-run-fixture.ts';
@@ -215,36 +215,40 @@ export const testNode: TestNode = suite('Runtime attachment storage', [
             { kind: 'text', closed: false },
             { kind: 'text', closed: true }
         ] as const,
-        caseTitle: ({ kind, closed }) => kind + (closed ? ', completed' : ', interrupted'),
+        caseTitle({ kind, closed }) {
+            return kind + (closed ? ', completed' : ', interrupted');
+        },
         async test(scope) {
             await assertUnknownAttemptPrefix(scope, scope.parameters.kind, scope.parameters.closed);
             return scope.assert.collect();
         }
     }),
-    test('unknown consumers discard shared evidence unless their resource fails', async (scope) => {
+    test('unknown consumers discard shared evidence unless their resource fails', async function (scope) {
         await assertUnknownLifetime(scope);
         return scope.assert.collect();
     }),
-    test('refuses missing integration limits', async (scope) => {
+    test('refuses missing integration limits', async function (scope) {
         await assertMissingLimits(scope);
         return scope.assert.collect();
     }),
-    test('checkpoint failures reject attachment persistence', async (scope) => {
+    test('checkpoint failures reject attachment persistence', async function (scope) {
         await assertCheckpointFailure(scope);
         return scope.assert.collect();
     }),
-    test('finalization remains idempotent with the default retry policy', async (scope) => {
+    test('finalization remains idempotent with the default retry policy', async function (scope) {
         await assertFinalization(scope);
         return scope.assert.collect();
     }),
-    test('capture clock failures remove newly allocated attachment files', async (scope) => {
+    test('capture clock failures remove newly allocated attachment files', async function (scope) {
         await assertClockFailure(scope);
         return scope.assert.collect();
     }),
     table({
         title: 'completed witness evidence survives interruption',
         cases: [ 'attempt', 'lifetime' ] as const,
-        caseTitle: (capture) => capture,
+        caseTitle(capture) {
+            return capture;
+        },
         async test(scope) {
             await assertInterruptedPreparation(scope, scope.parameters);
             return scope.assert.collect();

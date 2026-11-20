@@ -1,7 +1,7 @@
 import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion as definePublishedCompositeAssertion } from '@overkill-dev/test/assert';
 import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
-import { defineCompositeAssertion as definePublishedCompositeAssertion } from '@overkill-dev/test/assert';
 import type { AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
 import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';

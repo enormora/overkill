@@ -1,5 +1,5 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { runInNewContext } from 'node:vm';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { createChildTransportFixture } from '../test-support/child-transport-fixture.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -7,25 +7,17 @@ import { createDefaultWorkId } from '../engine/identity.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import { childProcessEnvelope } from './child-process-protocol.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+const metadata = { definitionLocations: [ { kind: 'unknown' } ] } as const;
 const caseId = { file: 'fixture.test.ts', params: null, suite: [], title: 'active case' } as const;
-const invalidMessages: readonly unknown[] = [
-    { userMessage: 'unexpected' },
-    childProcessEnvelope('supervised-run', { kind: 'event', event: { kind: 'test-start', attempt: 'invalid' } }),
-    childProcessEnvelope('supervised-run', { kind: 'result', result: { status: 'passed' } })
-];
 function createForeignDeliveryError(): Error {
     return runInNewContext('new Error("Delivery failed.")') as Error;
 }
 export const testNode: TestNode = suite('supervised child transport', [
     table({
-        ...metadata,
         title: 'delivery failure from errors settles the child transport',
         cases: [ new Error('Delivery failed.'), createForeignDeliveryError() ],
         caseTitle(failure) {
-            return `delivery failure from ${
-                failure instanceof Error ? 'native' : 'foreign'
-            } errors settles the child transport`;
+            return failure instanceof Error ? 'native' : 'foreign';
         },
         test(scope) {
             const failure = scope.parameters;
@@ -184,17 +176,21 @@ export const testNode: TestNode = suite('supervised child transport', [
     }),
 
     table({
-        ...metadata,
         title: 'invalid IPC fails the run and crashes active attempts without sender attribution',
-        cases: invalidMessages,
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [ { description: 'foreign payload', input: { userMessage: 'unexpected' } }, {
+            description: 'malformed test start',
+            input: childProcessEnvelope('supervised-run', {
+                kind: 'event',
+                event: { kind: 'test-start', attempt: 'invalid' }
+            })
+        }, {
+            description: 'incomplete run result',
+            input: childProcessEnvelope('supervised-run', { kind: 'result', result: { status: 'passed' } })
+        } ],
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const message = scope.parameters;
-
-            const require: typeof scope.require = scope.require;
-
             const fixture = createChildTransportFixture(true);
             fixture.state.addActiveCase(
                 'active',
@@ -207,16 +203,16 @@ export const testNode: TestNode = suite('supervised child transport', [
                 0,
                 { index: 2 }
             );
-            fixture.emit('message', message);
-            const error = fixture.state.runnerErrors()[0];
-            require.defined(error);
+            fixture.emit('message', scope.parameters.input);
             scope.assert.deepEqual({
-                error: [ error.subtype, error.attributedTo, error.attributedToAttempt, error.attributedToWork ],
-                cases: fixture.state.perTestResults().map(function result(test) {
-                    return { verdict: test.verdict, attempt: test.attempts[0].attempt.index };
+                errors: fixture.state.runnerErrors().map(function details(error) {
+                    return [ error.subtype, error.attributedTo, error.attributedToAttempt, error.attributedToWork ];
+                }),
+                cases: fixture.state.perTestResults().map(function result(testResult) {
+                    return { verdict: testResult.verdict, attempt: testResult.attempts[0].attempt.index };
                 })
             }, {
-                error: [ 'runtime-policy', null, null, null ],
+                errors: [ [ 'runtime-policy', null, null, null ] ],
                 cases: [ { verdict: 'crashed', attempt: 2 } ]
             });
             fixture.clock.advanceByMilliseconds(1000);

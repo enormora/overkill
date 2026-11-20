@@ -1,6 +1,6 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { extname } from 'node:path';
 import { execFile } from 'node:child_process';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { guardOwnershipTestNode, nativeGuardProbeUrl } from '../../../test-support/native-guard-probe.ts';
 

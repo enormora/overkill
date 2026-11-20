@@ -1,9 +1,9 @@
 import { defineCompositeAssertion } from '#tests/assert';
-import { requirePublishedCompositeReference } from '../../test-support/assertion-reference-boundary.ts';
-import { type TestNode, suite, test, type TestScope } from '#tests';
+import { type TestNode, type TestScope, suite, test } from '#tests';
 
 import { P } from 'ts-pattern';
 import { createFactory } from '@enormora/objectory';
+import { requirePublishedCompositeReference } from '../../test-support/assertion-reference-boundary.ts';
 import type * as EnginePackage from '../../packages/engine/engine.entry-point.ts';
 import type * as DoublesPackage from '../../packages/doubles/doubles.entry-point.ts';
 import type * as TestPackage from '../../packages/test/test.entry-point.ts';
@@ -187,7 +187,7 @@ const smokeCaseDefinitionFactory = createFactory<SmokeCaseDefinition>(function c
 function createSmokeCase(engine: Engine, definition: SmokeCaseDefinition): TestCase {
     return engine.createTestCase({
         definitionLocations: [ { kind: 'unknown' } ],
-        body(testScope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect' | 'equal'>; }) {
+        body(testScope) {
             if (definition.expectedVerdict === 'pass') {
                 testScope.assert.true(true, { message: definition.assertionSummary });
                 return testScope.assert.collect();
@@ -257,6 +257,18 @@ const smokeRuntimeFamily = defineTestFamily({
         };
     }
 });
+
+function assertPatternedDouble(scope: TestScope): void {
+    const patterned = doublesPackage.testDouble<(id: string) => string>({
+        rules: [ doublesPackage.rule.when(matches(P.string)).returns('matched') ]
+    });
+    scope.assert.equal(patterned('id'), 'matched');
+    const { calledOnceWith } = doublesPackage.doubleUsage;
+    requirePublishedCompositeReference(calledOnceWith);
+    scope.assert(calledOnceWith, patterned, [
+        matches(P.string)
+    ]);
+}
 
 export const testNode: TestNode = suite('package smoke', [
     test('packaged engine prepares and executes a family through top-level exports', async function (scope) {
@@ -344,7 +356,7 @@ export const testNode: TestNode = suite('package smoke', [
     test('integration launcher returns for imported metadata', async function (scope) {
         const testCase = createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            body(testContext: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }) {
+            body(testContext) {
                 testContext.assert.true(true, { message: 'passes' });
                 return testContext.assert.collect();
             },
@@ -397,15 +409,7 @@ export const testNode: TestNode = suite('package smoke', [
             'testIterable',
             'testIterator'
         ]);
-        const patterned = doublesPackage.testDouble<(id: string) => string>({
-            rules: [ doublesPackage.rule.when(matches(P.string)).returns('matched') ]
-        });
-        scope.assert.equal(patterned('id'), 'matched');
-        const calledOnceWith = doublesPackage.doubleUsage.calledOnceWith;
-        requirePublishedCompositeReference(calledOnceWith);
-        scope.assert(calledOnceWith, patterned, [
-            matches(P.string)
-        ]);
+        assertPatternedDouble(scope);
         const loadValue = doublesPackage.testDouble.returns('value');
 
         scope.assert.deepEqual(

@@ -7,34 +7,24 @@ import {
     createAuthoringControls
 } from './authoring-test-data.ts';
 
-const invalidAnnotations: readonly unknown[] = [
-    null,
-    [],
-    'tags',
-    { tags: 'tag' },
-    { ownership: 42 },
-    { tags: [ '' ] },
-    { ownership: [ null ] },
-    { tags: [ 'valid', ' ' ] }
-];
-const invalidControls: readonly unknown[] = [
-    null,
-    [],
-    { capture: 'unknown' },
-    { capture: 42 },
-    { timeoutMilliseconds: Number.POSITIVE_INFINITY },
-    { timeoutMilliseconds: '100' },
-    { duplicateExecution: 'unknown' }
-];
 export const testNode: TestNode = suite('authoring data validation', [
     table({
         title: 'rejects invalid annotation input',
-        cases: invalidAnnotations,
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [
+            { description: 'null', input: null },
+            { description: 'array', input: [] },
+            { description: 'string', input: 'tags' },
+            { description: 'string tags', input: { tags: 'tag' } },
+            { description: 'numeric ownership', input: { ownership: 42 } },
+            { description: 'empty tag', input: { tags: [ '' ] } },
+            { description: 'null owner', input: { ownership: [ null ] } },
+            { description: 'blank tag', input: { tags: [ 'valid', ' ' ] } }
+        ],
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const value = scope.parameters;
+            const value = scope.parameters.input;
 
             scope.assert.throws(function () {
                 readAuthoringAnnotations(value);
@@ -44,12 +34,20 @@ export const testNode: TestNode = suite('authoring data validation', [
     }),
     table({
         title: 'rejects invalid control input',
-        cases: invalidControls,
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [
+            { description: 'null', input: null },
+            { description: 'array', input: [] },
+            { description: 'unknown capture mode', input: { capture: 'unknown' } },
+            { description: 'numeric capture mode', input: { capture: 42 } },
+            { description: 'infinite timeout', input: { timeoutMilliseconds: Number.POSITIVE_INFINITY } },
+            { description: 'string timeout', input: { timeoutMilliseconds: '100' } },
+            { description: 'unknown duplicate policy', input: { duplicateExecution: 'unknown' } }
+        ],
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const value = scope.parameters;
+            const value = scope.parameters.input;
 
             scope.assert.throws(function () {
                 readAuthoringControls(value);
@@ -59,12 +57,18 @@ export const testNode: TestNode = suite('authoring data validation', [
     }),
     table({
         title: 'rejects invalid facade input',
-        cases: [ null, [], { mapScope: 42 }, { annotations: null }, { controls: null } ],
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [
+            { description: 'null', input: null },
+            { description: 'array', input: [] },
+            { description: 'non-callable scope mapper', input: { mapScope: 42 } },
+            { description: 'null annotations', input: { annotations: null } },
+            { description: 'null controls', input: { controls: null } }
+        ],
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const value = scope.parameters;
+            const value = scope.parameters.input;
 
             scope.assert.throws(function () {
                 Reflect.apply(readTestFacadeDefinition, undefined, [ value ]);
@@ -76,7 +80,7 @@ export const testNode: TestNode = suite('authoring data validation', [
         title: 'retains duplicate execution controls',
         cases: [ 'forbidden', 'idempotent' ] as const,
         caseTitle(duplicateExecution) {
-            return `${duplicateExecution}`;
+            return duplicateExecution;
         },
         test(scope) {
             const duplicateExecution = scope.parameters;

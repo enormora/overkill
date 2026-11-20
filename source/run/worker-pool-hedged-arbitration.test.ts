@@ -523,10 +523,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'worker-pool hedged arbitration buffers only safe single-work units',
             body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const runtime = runtimeWithHedging();
                 const taskRun = taskRunWithLane('worker-1', runtime);

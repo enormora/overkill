@@ -29,7 +29,6 @@ type TimeoutOwnership = Pick<RunnerError, 'attributedTo' | 'attributedToAttempt'
     readonly activeWork: readonly ActiveBoundaryWork[];
 };
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const work = createDefaultWorkId({ file: 'example.test.ts', suite: [], title: 'owned', params: null });
 const peer = createDefaultWorkId({ ...work.case, title: 'peer' });
 const attempt = { index: 0 };
@@ -99,11 +98,10 @@ async function rejectedExecution(error: Error, cleanupErrors: readonly unknown[]
 
 export const testNode: TestNode = suite('failure artifact contexts', [
     table({
-        ...metadata,
         title: 'attributes hard timeouts to active attempts',
         cases: timeoutOwners,
         caseTitle({ activeWork }) {
-            return `${activeWork.length}`;
+            return String(activeWork.length);
         },
         test(scope) {
             const { activeWork, ...attribution } = scope.parameters;

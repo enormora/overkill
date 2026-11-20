@@ -1,5 +1,5 @@
-import { type TestNode, type TestScope, suite, test, table } from '@overkill-dev/test';
 import { setTimeout as delay } from 'node:timers/promises';
+import { type TestNode, type TestScope, suite, test, table } from '@overkill-dev/test';
 
 import { createRoot, createTestPlan, execute } from '../../../packages/engine/engine.entry-point.ts';
 import {

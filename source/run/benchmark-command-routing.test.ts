@@ -35,7 +35,7 @@ export const testNode: TestNode = suite('benchmark command routing', [
         title: 'reports loader failures before dispatch',
         cases: [ 'runBenchmarks', 'listBenchmarks', 'calibrate' ] as const,
         caseTitle(verb) {
-            return `${verb}`;
+            return verb;
         },
         async test(scope) {
             const verb = scope.parameters;
@@ -68,7 +68,7 @@ export const testNode: TestNode = suite('benchmark command routing', [
         title: 'routes baseline commands and renders changes',
         cases: [ 'apply', 'bootstrap', 'diff', 'update' ] as const,
         caseTitle(verb) {
-            return `${verb}`;
+            return verb;
         },
         async test(scope) {
             const verb = scope.parameters;

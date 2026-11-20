@@ -14,7 +14,7 @@ export const testNode: TestNode = suite('ordinary baseline session policy', [
         title: 'validates proposals and returns a read-only report',
         cases: [ 'none', 'diff' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;
@@ -37,7 +37,7 @@ export const testNode: TestNode = suite('ordinary baseline session policy', [
         title: 'publishes successful proposals and retains their report',
         cases: [ 'update', 'apply' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;

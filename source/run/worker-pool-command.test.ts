@@ -92,10 +92,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'batch commands collect files needed by the complete resource lifecycle',
             body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'deepEqual' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const collectedPlan = createCollectedPlan();
                 const file = collectedPlan.files[0];

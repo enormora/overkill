@@ -226,11 +226,11 @@ async function runTests(dependencies: CommandLineRunnerDependencies): Promise<Co
 
 export const testNode: TestNode = suite({
     title: 'Command line runner',
-    ...emptyTestData,
+
     children: [
         test({
             title: 'commandLineRunner.runTests() accepts empty last-failed selections',
-            ...emptyTestData,
+
             async body(scope) {
                 const dependencies = createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(async function emptyRun() {
@@ -252,12 +252,9 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'commandLineRunner.runTests() injects the default reporter when config omits reporters',
-            ...emptyTestData,
+
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined' | 'notNull'>;
-                }
+                scope: TestScope
             ) {
                 const receivedCommands: RunCommand[] = [];
                 const dependencies = createRunnerDependencies({
@@ -283,12 +280,9 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'commandLineRunner.runTests() preserves configured reporters',
-            ...emptyTestData,
+
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined' | 'notNull'>;
-                }
+                scope: TestScope
             ) {
                 const receivedCommands: RunCommand[] = [];
                 let defaultReporterLoadCount = 0;
@@ -323,7 +317,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'commandLineRunner.runTests() maps test failures to exit code 1',
-            ...emptyTestData,
+
             async body(scope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
@@ -343,7 +337,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'commandLineRunner.runTests() maps all-skipped runs to exit code 0',
-            ...emptyTestData,
+
             async body(scope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
@@ -363,7 +357,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'commandLineRunner.runTests() maps no planned tests to exit code 4',
-            ...emptyTestData,
+
             async body(scope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
@@ -383,7 +377,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'commandLineRunner.runTests() maps runner errors to exit code 2 with fallback diagnostics',
-            ...emptyTestData,
+
             async body(scope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
@@ -404,7 +398,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'commandLineRunner.runTests() maps config errors to exit code 3',
-            ...emptyTestData,
+
             async body(scope) {
                 const result = await runTests(createRunnerDependencies({
                     async loadConfig() {
@@ -422,7 +416,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'commandLineRunner.runTests() maps internal config load errors',
-            ...emptyTestData,
+
             async body(scope) {
                 const result = await runTests(createRunnerDependencies({
                     async loadConfig() {
@@ -441,7 +435,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'commandLineRunner.runTests() maps reporter sink conflicts to exit code 3',
-            ...emptyTestData,
+
             async body(
                 scope
             ) {
@@ -466,7 +460,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'commandLineRunner.runTests() maps aggregate sink conflicts to exit code 3',
-            ...emptyTestData,
+
             async body(
                 scope
             ) {
@@ -505,7 +499,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'commandLineRunner.runTests() maps request errors to exit code 3',
-            ...emptyTestData,
+
             async body(scope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(

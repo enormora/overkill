@@ -1,6 +1,6 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { mkdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { StoredCalibration } from '../../baselines/calibration-reference.ts';
 import { readCalibrationReferenceReport } from '../../packages/bench/bench.entry-point.ts';

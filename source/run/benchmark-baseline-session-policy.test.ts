@@ -88,7 +88,7 @@ export const testNode: TestNode = suite('benchmark baseline session ownership', 
         title: 'requires complete inventory admission before pruning stale baselines',
         cases: [ 'complete', 'paths', 'selection', 'shard' ] as const,
         caseTitle(selection) {
-            return `${selection}`;
+            return selection;
         },
         async test(scope) {
             const selection = scope.parameters;

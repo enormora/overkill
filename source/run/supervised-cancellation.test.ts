@@ -10,7 +10,7 @@ import { createSupervisedRunCommand } from './run-isolated-command.ts';
 import { runSupervisedCommand } from './supervised-run.ts';
 import { SupervisedCollectionError, supervisedCancellationMessage } from './run-errors.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+const metadata = { definitionLocations: [ { kind: 'unknown' } ] } as const;
 const file = 'source/integration-tests/integration/fixtures/passing.test.ts';
 const command = {
     config: defaultRunConfig(),
@@ -106,12 +106,9 @@ async function cancelAt(phase: Phase): Promise<EngineRunResult> {
 export const testNode: TestNode = suite(
     'supervised invocation cancellation',
     [ table({
-        ...metadata,
         title: 'cancellation during respects child completion',
         cases: phases,
-        caseTitle(phase) {
-            return `cancellation during ${phase} respects child completion`;
-        },
+        caseTitle: String,
         async test(scope) {
             const phase = scope.parameters;
 

@@ -1,5 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { setImmediate as scheduleCancellation, clearImmediate as cancelScheduledCancellation } from 'node:timers';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     checkLinearizability,

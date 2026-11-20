@@ -1,5 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { channel } from 'node:diagnostics_channel';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defineReporter } from '../../../packages/engine/engine.entry-point.ts';
 import { collectedRunCommand, collectLifecycleRun } from '../../../test-support/collected-run-fixtures.ts';

@@ -1,5 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { setImmediate as scheduleImmediate } from 'node:timers';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { CaseId, TestPlan } from '../../../packages/engine/engine.entry-point.ts';
 import { defaultRunEngine } from '../../../run/default-run-engine.ts';

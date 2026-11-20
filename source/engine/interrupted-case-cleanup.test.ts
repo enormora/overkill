@@ -1,5 +1,5 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import assert from 'node:assert/strict';
+import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { createInterruptedCase, type InterruptedCase } from '../test-support/interrupted-case.ts';
@@ -121,17 +121,15 @@ export const testNode: TestNode = suite('interrupted case cleanup', [
         title: 'closes pending body scopes after fatal hooks',
         cases: [ 'unhandledRejection', 'uncaughtException' ] as const,
         caseTitle(hook) {
-            return `${hook}`;
+            return hook;
         },
         async test(scope) {
-            const hook = scope.parameters;
-
             const state = { gate: Promise.withResolvers<undefined>(), cleanups: createStoredValue(0) };
             const fixture = createInterruptedCase(async function fatalBody(testScope) {
                 testScope.cleanup(function recordCleanup() {
                     state.cleanups.write(state.cleanups.read() + 1);
                 });
-                process.emit(hook, new Error('fatal sentinel'), Promise.resolve());
+                process.emit(scope.parameters, new Error('fatal sentinel'), Promise.resolve());
                 await state.gate.promise;
                 return testScope.assert.collect();
             }, null);

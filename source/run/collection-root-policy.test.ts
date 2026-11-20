@@ -19,9 +19,7 @@ export const testNode: TestNode = suite('collection root and empty selection tra
     table({
         title: 'classifies absent selection with last-failed policy',
         cases: [ false, true ],
-        caseTitle(lastFailed) {
-            return `${lastFailed}`;
-        },
+        caseTitle: String,
         test(scope) {
             const lastFailed = scope.parameters;
 

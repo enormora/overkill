@@ -1,8 +1,7 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
-import type { EngineCaseBody } from '../../../test-support/create-test-engine.ts';
 import { setImmediate as scheduleImmediate } from 'node:timers';
-
+import { type TestNode, suite, test } from '@overkill-dev/test';
 import { createDeterministicClock } from '@enormora/clock';
+import type { EngineCaseBody } from '../../../test-support/create-test-engine.ts';
 
 import { createEngine, type Engine } from '../../../engine/engine.ts';
 import { createExecute } from '../../../engine/execution.ts';

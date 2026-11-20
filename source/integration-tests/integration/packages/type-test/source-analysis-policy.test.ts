@@ -85,7 +85,7 @@ export const testNode: TestNode = suite('source analysis evidence', [
         title: 'allows non-mutating function references',
         cases: [ 'compare', 'type' ] as const,
         caseTitle(use) {
-            return `${use}`;
+            return use;
         },
         async test(scope) {
             const use = scope.parameters;

@@ -31,7 +31,7 @@ export const testNode: TestNode = suite('linearizability supervision', [
         title: 'drains cooperative lanes on interruption',
         cases: [ 'cancellation', 'permission', 'control' ],
         caseTitle(reason) {
-            return `${reason}`;
+            return reason;
         },
         async test(scope) {
             const reason = scope.parameters;
@@ -85,7 +85,7 @@ export const testNode: TestNode = suite('linearizability supervision', [
         title: 'supervises unfinished lane operations',
         cases: [ false, true ],
         caseTitle(blocking) {
-            return `${blocking ? 'blocking' : 'unsettled'}`;
+            return blocking ? 'blocking' : 'unsettled';
         },
         async test(scope) {
             const blocking = scope.parameters;

@@ -1,11 +1,9 @@
-import { type TestNode, suite, test, table, type ParameterizedTestScope, type TestScope } from '@overkill-dev/test';
-import type { EngineCaseBody } from '../../../test-support/create-test-engine.ts';
-import { table as subjectTable, test as subjectTest } from '../../../packages/test/test.entry-point.ts';
-import { mkdtempDisposable, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { type TestNode, suite, test, table, type ParameterizedTestScope, type TestScope } from '@overkill-dev/test';
 
+import type { ThrowingTestScope } from '@overkill-dev/test/compatibility';
+import { table as subjectTable, test as subjectTest } from '../../../packages/test/test.entry-point.ts';
 import {
     defineBodyReference,
     type BodyReference,
@@ -13,9 +11,7 @@ import {
     createWorkloadTestCase
 } from '../../../packages/engine/engine.entry-point.ts';
 
-import type { ThrowingTestScope } from '@overkill-dev/test/compatibility';
-
-import { executeReferenceFamily } from '../../../test-support/execute-reference-family.ts';
+import { executeReferenceFamily, withReferenceFamilyProject } from '../../../test-support/execute-reference-family.ts';
 import {
     property,
     withProperties,
@@ -44,39 +40,17 @@ function reference<Scope, Result>(directory: string, name: string): BodyReferenc
         }
     });
 }
-async function fixture(use: (directory: string) => Promise<void>): Promise<void> {
-    await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-reference-family-'));
-    await writeFile(
-        join(directory.path, 'bodies.mjs'),
-        [
-            "export const rows={version:'1',implementation(scope){scope.assert.equal(scope.parameters,42);",
-            'return scope.assert.collect();}};',
-            "export const throwing={version:'1',implementation(scope){scope.assert.equal(42,42);return undefined;}};",
-            "export const work={version:'1',implementation(scope,input){scope.assert.equal(input,42);",
-            'return scope.assert.collect();}};',
-            "export const sample={version:'1',implementation({value,sample}){sample.assert.equal(value,42);",
-            'return sample.assert.collect();}};',
-            "export const nested={version:'1',implementation(scope){scope.assert.equal(typeof scope.forall,'function');",
-            'return scope.assert.collect();}};',
-            "export const measurement={version:'1',implementation(context){",
-            'const measured=context.sample.measure(function operation(){return context.workload.parameters.size;});',
-            'return {size:measured.value};}};'
-        ]
-            .join('\n')
-    );
-    await use(directory.path);
-}
 export const testNode: TestNode = suite('referenced body family composition', [
     test('preserves table parameters and throwing scope contracts', async function (scope) {
-        await fixture(async function execute(directory) {
+        await withReferenceFamilyProject(async function execute(directory) {
             const rows = subjectTable({
                 title: 'rows',
                 cases: [ 42, 42 ],
                 test: reference<
                     Pick<ParameterizedTestScope<number>, 'parameters'> & {
-                        readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>;
+                        readonly assert: Pick<TestScope['assert'], 'collect' | 'equal'>;
                     },
-                    ReturnType<EngineCaseBody>
+                    ReturnType<TestScope['assert']['collect']>
                 >(directory, 'rows')
             });
             const throwing = createThrowingTestCase({
@@ -96,9 +70,9 @@ export const testNode: TestNode = suite('referenced body family composition', [
         return scope.assert.collect();
     }),
     test('preserves workload parameters through reference admission', async function (scope) {
-        await fixture(async function execute(directory) {
+        await withReferenceFamilyProject(async function execute(directory) {
             const body = defineBodyReference({
-                ...reference<TestScope, ReturnType<EngineCaseBody>>(directory, 'work').reference,
+                ...reference<TestScope, ReturnType<TestScope['assert']['collect']>>(directory, 'work').reference,
                 input: 42,
                 parseInput(value) {
                     if (value !== 42) {
@@ -125,15 +99,15 @@ export const testNode: TestNode = suite('referenced body family composition', [
         title: 'resolves implementations before generated trials',
         cases: [ 'property', 'integration' ] as const,
         caseTitle(family) {
-            return `${family}`;
+            return family;
         },
         async test(scope) {
             const family = scope.parameters;
 
-            await fixture(async function execute(directory) {
+            await withReferenceFamilyProject(async function execute(directory) {
                 const body = reference<
                     { readonly value: 42; readonly sample: PropertySampleScope<42>; },
-                    ReturnType<EngineCaseBody>
+                    ReturnType<TestScope['assert']['collect']>
                 >(directory, 'sample');
                 const definition = { title: 'property', generator: gen.constant(42), test: body };
                 const node = property(family === 'integration' ? { ...definition, testFamily: family } : definition);
@@ -145,8 +119,10 @@ export const testNode: TestNode = suite('referenced body family composition', [
         }
     }),
     test('retains property family metadata on referenced wrappers', async function (scope) {
-        await fixture(async function execute(directory) {
-            const body = withProperties(reference<PropertyCaseScope, ReturnType<EngineCaseBody>>(directory, 'nested'));
+        await withReferenceFamilyProject(async function execute(directory) {
+            const body = withProperties(
+                reference<PropertyCaseScope, ReturnType<TestScope['assert']['collect']>>(directory, 'nested')
+            );
             const result = await executeReferenceFamily(directory, 'property', [ subjectTest('nested', body) ]);
             scope.assert.deepEqual(
                 result.perTest.map(function outcome(entry) {
@@ -160,7 +136,7 @@ export const testNode: TestNode = suite('referenced body family composition', [
         return scope.assert.collect();
     }),
     test('resolves measurement implementations before benchmark sampling', async function (scope) {
-        await fixture(async function execute(directory) {
+        await withReferenceFamilyProject(async function execute(directory) {
             const body = reference<BenchmarkMeasureContext<{ readonly size: 42; }>, BenchmarkMetrics>(
                 directory,
                 'measurement'

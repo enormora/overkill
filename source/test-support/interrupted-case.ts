@@ -1,9 +1,9 @@
-import { type EngineCaseBody, createTestEngine } from './create-test-engine.ts';
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
 import { createExecutionSupervision, executeCaseBody, type ConcurrentCase } from '../engine/execution-supervision.ts';
 import { createExecutionGlobalErrorObserver } from '../engine/execution-global-error-observer.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution-context.ts';
+import { type EngineCaseBody, createTestEngine } from './create-test-engine.ts';
 
 export type InterruptedCase = {
     readonly clock: DeterministicClock;

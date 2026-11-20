@@ -44,7 +44,7 @@ export const testNode: TestNode = suite('debug requests', [
             [ 'run', '--debug-scope' ]
         ],
         caseTitle(args) {
-            return `${JSON.stringify(args)}`;
+            return JSON.stringify(args);
         },
         async test(scope) {
             const args = scope.parameters;

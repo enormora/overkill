@@ -120,7 +120,7 @@ export const testNode: TestNode = suite('recorded hedge result authority', [
         }
     ),
     table({
-        title: 'replay hedging scenarios',
+        title: 'preserves recorded hedge authority',
         cases: [ true, false ],
         caseTitle(matching) {
             return matching

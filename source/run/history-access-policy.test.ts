@@ -93,7 +93,7 @@ export const testNode: TestNode = suite('history access ownership policy', [
         title: 'rejects unsafe history state locations',
         cases: [ '.', '/' ],
         caseTitle(stateDirectory) {
-            return `${stateDirectory}`;
+            return stateDirectory;
         },
         async test(scope) {
             const stateDirectory = scope.parameters;

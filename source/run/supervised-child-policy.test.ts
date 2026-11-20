@@ -22,18 +22,13 @@ export const testNode: TestNode = suite(
                     ? { status: null, planned: null }
                     : { status: expectedStatus, planned: Number(selected) };
                 return [ false, true ].map(function (restricted) {
-                    return ({
-                        caseDescription: `handles ${mode} with selection ${selected} and restrictions ${restricted}`,
-                        mode,
-                        selected,
-                        expectedStatus,
-                        expected,
-                        restricted
-                    });
+                    return { mode, selected, expected, restricted };
                 });
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ mode, selected, restricted }) {
+            return [ mode, selected, restricted ].map(String).join(', ');
+        },
         async test(scope) {
             const { mode, selected, expected, restricted } = scope.parameters;
 

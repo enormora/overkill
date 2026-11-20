@@ -1,5 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import assert from 'node:assert/strict';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     type TestCase,

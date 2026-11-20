@@ -1,5 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { pathToFileURL } from 'node:url';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';

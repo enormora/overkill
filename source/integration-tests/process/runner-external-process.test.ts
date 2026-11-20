@@ -1,7 +1,7 @@
-import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 
 import { normalizeConfig, orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';

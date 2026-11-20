@@ -29,9 +29,7 @@ export const testNode: TestNode = suite('collection error observation', [
     table({
         title: 'rejects process hook failures after draining diagnostics',
         cases: [ false, true ],
-        caseTitle(drained) {
-            return `${drained}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const drained = scope.parameters;
 

@@ -1,5 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { createServer } from 'node:net';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createAsyncLeakMonitor } from '../../../engine/async-leak-diagnostics.ts';
 

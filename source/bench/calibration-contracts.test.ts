@@ -94,7 +94,7 @@ export const testNode: TestNode = suite('calibration contracts', [
         title: 'rejects invalid samples without retaining them',
         cases: invalidObservations,
         caseTitle(input) {
-            return `${input.name}`;
+            return input.name;
         },
         test(scope) {
             const input = scope.parameters;
@@ -159,9 +159,7 @@ export const testNode: TestNode = suite('calibration contracts', [
     table({
         title: 'uses absolute reference precision',
         cases: [ 149, 150 ],
-        caseTitle(tolerance) {
-            return `${tolerance}`;
-        },
+        caseTitle: String,
         test(scope) {
             const tolerance = scope.parameters;
 
@@ -183,7 +181,7 @@ export const testNode: TestNode = suite('calibration contracts', [
         title: 'rejects a blank calibration',
         cases: [ [ '', 'ticks' ], [ '1', '' ] ],
         caseTitle([ version ]) {
-            return `rejects a blank calibration ${version === '' ? 'version' : 'unit'}`;
+            return version === '' ? 'version' : 'unit';
         },
         test(scope) {
             const require: typeof scope.require = scope.require;

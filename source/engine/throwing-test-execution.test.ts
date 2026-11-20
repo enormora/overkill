@@ -1,18 +1,17 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { AssertionError } from 'node:assert';
 import assert from 'node:assert/strict';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createPermissionDenialRuntimePolicy } from '../run/capability-policy.ts';
 
-import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+import { createTestEngine as createEngine, type EngineThrowingCaseBody } from '../test-support/create-test-engine.ts';
 import type { TestRuntimePolicy } from './case-execution-context.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult } from './run-result.ts';
-import type { ThrowingTestBody } from './test-scope.ts';
 
 import { isNodeAssertionError, nodeAssertionErrorFailure } from './node-assertion-error.ts';
 
 async function executeSingleThrowingBody(
-    body: ThrowingTestBody,
+    body: EngineThrowingCaseBody,
     runtimePolicy: TestRuntimePolicy | null
 ): Promise<RunResult> {
     const engine = createEngine();

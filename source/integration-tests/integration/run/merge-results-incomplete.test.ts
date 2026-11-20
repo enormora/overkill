@@ -1,7 +1,7 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { mkdtempDisposable, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { mergeResults } from '../../../packages/run/run.entry-point.ts';
 import { defaultRunConfig } from '../../../test-support/run-command-factory.ts';

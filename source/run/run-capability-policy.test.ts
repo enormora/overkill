@@ -1,5 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import diagnosticsChannel from 'node:diagnostics_channel';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { NormalizedConfig, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
 import { defineReporter, type RunnerError } from '../packages/engine/engine.entry-point.ts';

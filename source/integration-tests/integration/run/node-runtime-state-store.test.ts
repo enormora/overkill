@@ -1,7 +1,7 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { chmod, mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { createNodeFileStore } from '../../../file-store.ts';
 

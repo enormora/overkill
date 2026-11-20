@@ -1,6 +1,6 @@
-import { type TestNode, doubleUsage, rule, suite, test, testDouble, type TestScope } from '@overkill-dev/test';
 import { randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
+import { type TestNode, doubleUsage, rule, suite, test, testDouble, type TestScope } from '@overkill-dev/test';
 
 import { withExecutionObservation } from '../engine/execution-observation.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';

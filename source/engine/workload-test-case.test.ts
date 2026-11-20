@@ -14,6 +14,10 @@ import { matchesRunFilter } from '../run/run-selection-filters.ts';
 import { selectedAssignedWork } from '../run/worker-pool-worker-plan.ts';
 import { workIdentityKey } from './identity.ts';
 
+type PassingBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
+
+type WorkloadBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'greaterThan'>; };
+
 const metadata: TestCaseDefinition = {
     annotations: { tags: [ 'workload' ] },
     controls: { timeoutMilliseconds: 100 },
@@ -27,7 +31,7 @@ type WorkloadFixture = {
 };
 
 function passingBody(
-    scope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }
+    scope: PassingBodyAssertions
 ): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
     return scope.assert.collect();
@@ -39,7 +43,7 @@ function workloadBody(
 ): WorkloadTestCaseVariant {
     return {
         id: input.id,
-        body(scope: { readonly assert: Pick<TestScope['assert'], 'greaterThan' | 'collect'>; }) {
+        body(scope: WorkloadBodyAssertions) {
             observe(input.parameters.packages);
             scope.assert.greaterThan(input.parameters.packages, 0);
             return scope.assert.collect();

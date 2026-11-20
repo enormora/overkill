@@ -228,7 +228,7 @@ export const testNode: TestNode = suite('performance baseline boundaries', [
         title: 'removes stale baselines across maintenance modes',
         cases: [ 'apply', 'diff' ],
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;

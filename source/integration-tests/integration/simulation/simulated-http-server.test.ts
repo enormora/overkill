@@ -8,6 +8,8 @@ import {
 } from '../../../simulation/simulation.ts';
 import { startSimulatedHttpServer } from '../../../simulation/simulated-http-server.ts';
 
+type AssertPostRequestBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'deepEqual'>; };
+
 type CompletionOrderScenarios = {
     readonly default: { readonly title: 'standard responses'; };
 };
@@ -97,7 +99,7 @@ async function assertScenarioRouting(scope: TestScope): Promise<void> {
 }
 
 async function assertPostRequestBody(
-    scope: { readonly assert: Pick<TestScope['assert'], 'deepEqual'>; }
+    scope: AssertPostRequestBodyAssertions
 ): Promise<void> {
     const simulation = defineSimulatedHttpServer({
         name: 'api',

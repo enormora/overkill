@@ -1,5 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { isDeepStrictEqual } from 'node:util';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import historicalState from './fixtures/property-graph-state-v1.json' with { type: 'json' };

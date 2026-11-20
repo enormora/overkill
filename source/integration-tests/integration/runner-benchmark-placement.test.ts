@@ -1,5 +1,5 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import {
@@ -108,9 +108,11 @@ export const testNode: TestNode = suite('adaptive benchmark worker execution', [
         title: 'overlaps benchmark size measurements',
         cases: parallelExecutions.map(function parallelExecution(execution) {
             const shape = `${execution.workerLifecycle}/${execution.dispatchPolicy}/${execution.hostProcess.kind}`;
-            return ({ caseDescription: `${shape}`, execution, shape });
+            return { execution, shape };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ shape }) {
+            return [ shape ].map(String).join(', ');
+        },
         async test(scope) {
             const { execution } = scope.parameters;
 

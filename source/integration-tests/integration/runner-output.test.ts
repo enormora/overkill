@@ -1,8 +1,8 @@
-import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 import { execFile } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 
 import type { Config } from '../../config/config.ts';
 
@@ -76,8 +76,14 @@ async function runOutputProbe(
 export const testNode: TestNode = suite('Runner output capture', [
     table({
         title: 'forwards output according to capture mode and execution boundary',
-        cases: executions.flatMap((execution) => captureModes.map((capture) => ({ execution, capture }))),
-        caseTitle: ({ execution, capture }) => JSON.stringify(execution) + ', ' + capture,
+        cases: executions.flatMap(function (execution) {
+            return captureModes.map(function (capture) {
+                return { execution, capture };
+            });
+        }),
+        caseTitle({ execution, capture }) {
+            return `${JSON.stringify(execution)}, ${capture}`;
+        },
         async test(scope) {
             const { execution, capture } = scope.parameters;
             await runOutputProbe(scope, execution, capture);

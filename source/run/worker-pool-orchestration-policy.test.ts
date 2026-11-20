@@ -8,9 +8,7 @@ export const testNode: TestNode = suite('memory worker-pool orchestration', [
     table({
         title: 'executes and releases newly owned pools',
         cases: [ false, true ] as const,
-        caseTitle(timed) {
-            return `${timed}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const timed = scope.parameters;
 
@@ -27,9 +25,7 @@ export const testNode: TestNode = suite('memory worker-pool orchestration', [
     table({
         title: 'collects and releases separate collection pools',
         cases: [ false, true ] as const,
-        caseTitle(timed) {
-            return `${timed}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const timed = scope.parameters;
 
@@ -50,14 +46,12 @@ export const testNode: TestNode = suite('memory worker-pool orchestration', [
         title: 'owns collection and execution pools across host modes',
         cases: ([ false, true ] as const).flatMap(function (timed) {
             return ([ 'direct', 'child' ] as const).map(function (host) {
-                return ({
-                    caseDescription: `${host}, ${timed}`,
-                    timed,
-                    host
-                });
+                return { timed, host };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ timed, host }) {
+            return [ host, timed ].map(String).join(', ');
+        },
         async test(scope) {
             const { timed, host } = scope.parameters;
 

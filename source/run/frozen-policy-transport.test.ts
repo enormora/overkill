@@ -1,5 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { resolve } from 'node:path';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 

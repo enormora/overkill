@@ -1,5 +1,5 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
 import { AsyncResource } from 'node:async_hooks';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { evaluateSnapshot, type SnapshotInput } from '../baselines/snapshot-context.ts';
 import { executeSnapshot, storedSnapshot, snapshotWire as wire } from '../test-support/snapshot-fixture.ts';
@@ -21,8 +21,8 @@ export const testNode: TestNode = suite('snapshot comparison and proposals', [
     table({
         title: 'compares matching inputs as one assertion',
         cases: matchingInputs,
-        caseTitle(input, index) {
-            return `${input.kind}, ${index}`;
+        caseTitle(input) {
+            return input.kind === 'value' ? `value: ${JSON.stringify(input.actual)}` : input.kind;
         },
         async test(scope) {
             const input = scope.parameters;
@@ -36,16 +36,16 @@ export const testNode: TestNode = suite('snapshot comparison and proposals', [
     table({
         title: 'rejects changed JSON content',
         cases: [
-            { actual: { active: true }, expected: { active: false } },
-            { actual: [ 1, 2 ], expected: [ 2, 1 ] },
-            { actual: true, expected: { active: true } },
-            { actual: { active: true }, expected: true }
+            { description: 'changed property', input: { actual: { active: true }, expected: { active: false } } },
+            { description: 'reordered array', input: { actual: [ 1, 2 ], expected: [ 2, 1 ] } },
+            { description: 'object replaced by boolean', input: { actual: true, expected: { active: true } } },
+            { description: 'boolean replaced by object', input: { actual: { active: true }, expected: true } }
         ] as const,
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        caseTitle({ description }) {
+            return description;
         },
         async test(scope) {
-            const input = scope.parameters;
+            const { input } = scope.parameters;
 
             const actual: SnapshotInput = { kind: 'value', name: 'value', actual: input.actual };
             const expected = storedSnapshot({ ...actual, actual: input.expected });
@@ -65,7 +65,7 @@ export const testNode: TestNode = suite('snapshot comparison and proposals', [
         title: 'handles missing and changed snapshot expectations',
         cases: [ 'none', 'bootstrap', 'update', 'apply', 'diff' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;

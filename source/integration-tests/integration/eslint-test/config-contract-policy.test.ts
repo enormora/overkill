@@ -51,9 +51,9 @@ function execution(scope: TestScope): ConfigExecution {
 export const testNode: TestNode = suite('ESLint config contract policy', [
     table({
         title: 'evaluates contracts through the lint backend',
-        cases: cases,
+        cases,
         caseTitle(entry) {
-            return `${entry.contract.kind}`;
+            return entry.contract.kind;
         },
         async test(scope) {
             const entry = scope.parameters;

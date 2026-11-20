@@ -1,12 +1,12 @@
 import { Writable } from 'node:stream';
 import { type DeterministicClock, createDeterministicClock } from '@enormora/clock';
 
+import type { TestScope } from '@overkill-dev/test';
 import {
     type WorkerOutputCapture,
     type WorkerOutputTask,
     createWorkerOutputCapture
 } from '../run/worker-pool-output.ts';
-import type { TestScope } from '@overkill-dev/test';
 
 function nativeOutput(record: (text: string) => void): Writable {
     return new Writable({

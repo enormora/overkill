@@ -1,7 +1,7 @@
-import { type TestNode, suite, test } from '#tests';
 import { execFile } from 'node:child_process';
 import { rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { type TestNode, suite, test } from '#tests';
 
 import { createProgram, getPreEmitDiagnostics, ModuleKind, ScriptTarget } from 'typescript';
 

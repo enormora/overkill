@@ -1,8 +1,8 @@
-import { type TestNode, suite, test, type TestScope } from '#tests';
 import { execFile, type ExecException } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { type TestNode, suite, test, type TestScope } from '#tests';
 
 import { z } from 'zod/v4';
 

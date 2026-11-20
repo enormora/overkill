@@ -187,7 +187,7 @@ export const testNode: TestNode = suite('structured dry-run results', [
             } ]
         } ] as const,
         caseTitle(outcome) {
-            return `${outcome.failures[0].kind}`;
+            return outcome.failures[0].kind;
         },
         test(scope) {
             const outcome = scope.parameters;
@@ -208,25 +208,21 @@ export const testNode: TestNode = suite('structured dry-run results', [
             cleanupFailure
         ] ] as const,
         caseTitle(failures) {
-            return `${
-                failures
-                    .map(function (failure) {
-                        return failure.kind;
-                    })
-                    .join(' and ')
-            }`;
+            return failures
+                .map(function (failure) {
+                    return failure.kind;
+                })
+                .join(' and ');
         },
         test(scope) {
-            const failures = scope.parameters;
-
             const { reply } = mutationCoverageFixture('perTest');
             const result = dryMutationResult(
                 '/project',
                 {
-                    ...withOutcome(reply, { kind: 'fail', failures }),
+                    ...withOutcome(reply, { kind: 'fail', failures: scope.parameters }),
                     deadlineExceeded: true,
                     result: {
-                        ...withOutcome(reply, { kind: 'fail', failures }).result,
+                        ...withOutcome(reply, { kind: 'fail', failures: scope.parameters }).result,
                         runnerErrors: runResultFactory
                             .build({
                                 runnerErrors: [ { message: 'delivery sentinel' } ]
@@ -242,7 +238,7 @@ export const testNode: TestNode = suite('structured dry-run results', [
             }
             scope.assert.match(result.errorMessage, /delivery sentinel[\s\S]*cleanup sentinel/u);
             scope.assert.match(result.errorMessage, /\["first.test.ts",\[\],"first",null\]/u);
-            for (const failure of failures) {
+            for (const failure of scope.parameters) {
                 scope.assert.match(result.errorMessage, new RegExp(failure.kind, 'u'));
             }
             scope.assert.deepEqual(result, { status: DryRunStatus.Error, errorMessage: result.errorMessage });

@@ -3,8 +3,6 @@ import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { passingResult, runCommandLine } from '../../../../test-support/command-line-test-driver.ts';
 import { parseRuntimeSelector } from '../../../../packages/test/run-runtime-selector.ts';
 
-const emptyTestData = { annotations: {}, controls: {} } as const;
-
 function assertRunRuntimeSelection(scope: TestScope, selection: unknown): void {
     scope.assert.deepEqual(selection, {
         filter: {
@@ -31,11 +29,11 @@ function assertRunRuntimeSelection(scope: TestScope, selection: unknown): void {
 
 export const testNode: TestNode = suite({
     title: 'Overkill CLI runtime selection',
-    ...emptyTestData,
+
     children: [
         test({
             title: 'runtime selector parser lowers names, variants, and dimensions',
-            ...emptyTestData,
+
             body(scope) {
                 scope.assert.deepEqual(parseRuntimeSelector('browser'), {
                     kind: 'runtime',
@@ -58,7 +56,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'combines repeated runtime selectors with filter expressions',
-            ...emptyTestData,
+
             async body(scope: TestScope) {
                 const result = await runCommandLine([
                     'run',
@@ -82,12 +80,9 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'overkill list accepts repeated duplicate runtime selectors',
-            ...emptyTestData,
+
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'deepEqual' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const result = await runCommandLine([
                     'list',
@@ -114,7 +109,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'rejects malformed runtime selectors before runner loading',
-            ...emptyTestData,
+
             async body(
                 scope
             ) {

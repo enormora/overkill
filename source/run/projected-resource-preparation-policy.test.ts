@@ -18,12 +18,10 @@ export const testNode: TestNode = suite('remote resource failure preparation', [
         title: 'matches replies and drains preparation evidence once',
         cases: [ 'success', 'error' ] as const,
         caseTitle(scenario) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
-            const scenario = scope.parameters;
-
-            const fixture = projectedPreparation(scenario);
+            const fixture = projectedPreparation(scope.parameters);
             scope.cleanup(fixture.dispose);
             await fixture.policy.prepareAttempt(fixture.testCase, { index: 2 });
             scope.assert.partialDeepEqual(fixture.sent, [ {
@@ -37,7 +35,7 @@ export const testNode: TestNode = suite('remote resource failure preparation', [
                 errors.map(function (error) {
                     return error.message;
                 }),
-                scenario === 'error' ? [ 'owner failed' ] : []
+                scope.parameters === 'error' ? [ 'owner failed' ] : []
             );
             scope.assert.deepEqual(fixture.policy.takeAttemptErrors(fixture.testCase, { index: 2 }), []);
             scope.assert.equal(fixture.listeners(), 0);
@@ -48,7 +46,7 @@ export const testNode: TestNode = suite('remote resource failure preparation', [
         title: 'attributes transport failures and releases listeners',
         cases: [ 'closed', 'throw' ] as const,
         caseTitle(scenario) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
             const scenario = scope.parameters;

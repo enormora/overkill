@@ -1,6 +1,7 @@
-import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
+import { executionTitle } from '../../test-support/execution-profile-title.ts';
 
 import { workIdentityKey, type RunResult } from '../../packages/engine/engine.entry-point.ts';
 import {
@@ -166,11 +167,9 @@ async function assertWorkloadExecution(scope: TestScope, command: RunCommand): P
 export const testNode: TestNode = suite(
     'workload runner integration',
     [ table({
-        title: 'runner workloads scenarios',
+        title: 'executes declared workloads across execution boundaries',
         cases: executions,
-        caseTitle(_parameters, index) {
-            return `execution ${index + 1}`;
-        },
+        caseTitle: executionTitle,
         async test(scope) {
             const execution = scope.parameters;
 

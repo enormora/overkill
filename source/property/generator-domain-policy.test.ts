@@ -8,12 +8,15 @@ import { enumerateDomain, doubleDomain } from './generator-enumeration.ts';
 export const testNode: TestNode = suite('fixed generator domain admission', [
     table({
         title: 'rejects unbranded generator domain',
-        cases: [ readGeneratorCodec, readGeneratorEnumeration ],
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [ { description: 'codec reader', input: readGeneratorCodec }, {
+            description: 'enumeration reader',
+            input: readGeneratorEnumeration
+        } ],
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const read = scope.parameters;
+            const read = scope.parameters.input;
 
             scope.assert.throws(function () {
                 Reflect.apply(read, undefined, [ {} ]);

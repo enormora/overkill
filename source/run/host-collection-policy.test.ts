@@ -11,7 +11,7 @@ export const testNode: TestNode = suite('host collection policy forwarding', [
         title: 'forwards collection policy without executing cases',
         cases: [ 'integration', 'property' ] as const,
         caseTitle(testFamily) {
-            return `${testFamily}`;
+            return testFamily;
         },
         async test(scope) {
             const testFamily = scope.parameters;

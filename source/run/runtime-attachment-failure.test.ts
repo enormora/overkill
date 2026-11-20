@@ -12,7 +12,6 @@ import {
 } from './attachment-failure.ts';
 import { resultWithRuntimeAttachments } from './attachment-results.ts';
 
-const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const metadata = { kind: 'text', name: 'log', mediaType: 'text/plain' } as const;
 async function assertReportedError(scope: TestScope): Promise<void> {
     const { execution } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
@@ -169,11 +168,10 @@ export const testNode: TestNode = suite('Runtime attachment failure', [
         return scope.assert.collect();
     }),
     table({
-        ...definition,
         title: 'preserves attachment transport failures',
         cases: [ [ new Error('disconnected'), 'disconnected' ], [ null, 'Attachment transport failed.' ] ] as const,
         caseTitle([ , message ]) {
-            return `${message}`;
+            return message;
         },
         async test(scope) {
             const [ cause, message ] = scope.parameters;

@@ -51,7 +51,7 @@ export const testNode: TestNode = suite('implementation graph preparation policy
             'file:///project/source.ts#fragment'
         ] as const,
         caseTitle(url) {
-            return `${url}`;
+            return url;
         },
         async test(scope) {
             const url = scope.parameters;

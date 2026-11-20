@@ -1,15 +1,15 @@
 import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import {
+    defineCompositeAssertion,
+    defineCompositeAssertion as definePublishedCompositeAssertion,
+    defineNarrowingCompositeAssertion
+} from '@overkill-dev/test/assert';
+import {
     requireEngineNarrowingReference,
     requireEngineCompositeReference
 } from '../test-support/assertion-reference-boundary.ts';
 import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
-import {
-    defineCompositeAssertion,
-    defineCompositeAssertion as definePublishedCompositeAssertion,
-    defineNarrowingCompositeAssertion
-} from '@overkill-dev/test/assert';
 import type {
     FailedCheck,
     FailedCompositeCheck,
@@ -211,11 +211,12 @@ export const testNode: TestNode = suite('Composite assertion execution', [
             name: 'resultOk'
         });
         requireEngineCompositeReference(resultOk);
-        const result = await executeSingleBody(function testBody(testScope) {
-            testScope.assert(resultOk, { ok: false, value: { count: 1 } }, { count: 2 });
-            return testScope.assert.collect();
-        });
-        const outcome = firstFailOutcome(result);
+        const outcome = firstFailOutcome(
+            await executeSingleBody(function testBody(testScope) {
+                testScope.assert(resultOk, { ok: false, value: { count: 1 } }, { count: 2 });
+                return testScope.assert.collect();
+            })
+        );
         scope.require.notNull(outcome);
         const composite = firstCompositeCheck(outcome);
         scope.require.notNull(composite);

@@ -26,7 +26,7 @@ export const testNode: TestNode = suite('benchmark host configuration', [
         title: 'copies integration placement policy',
         cases: [ 'supervised-process', 'worker-pool' ] as const,
         caseTitle(processModel) {
-            return `${processModel}`;
+            return processModel;
         },
         test(scope) {
             const processModel = scope.parameters;

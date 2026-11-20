@@ -49,9 +49,7 @@ export const testNode: TestNode = suite('last-failed resolution', [
     table({
         title: 'unavailable history requires explicit repair',
         cases: [ null, '{' ] as const,
-        caseTitle(content) {
-            return `${String(content)}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const content = scope.parameters;
 

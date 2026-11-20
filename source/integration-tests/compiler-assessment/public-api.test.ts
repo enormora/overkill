@@ -1,6 +1,6 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { join } from 'node:path';
 import { readdir, readFile } from 'node:fs/promises';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { frozenTypeProject } from '../../test-support/frozen-type-project.ts';
 import { assessCompilerApi, type CapabilityEvidence } from '../../test-support/type-test-api-assessment.ts';

@@ -60,9 +60,7 @@ export const testNode: TestNode = suite('corpus execution storage policy', [
     table({
         title: 'persists only confirmed witnesses',
         cases: [ false, true ],
-        caseTitle(confirmed) {
-            return `${confirmed}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const confirmed = scope.parameters;
 

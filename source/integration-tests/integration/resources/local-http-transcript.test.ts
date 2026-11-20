@@ -1,7 +1,7 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import diagnosticsChannel from 'node:diagnostics_channel';
 import { createServer, request as createRequest, type ServerResponse } from 'node:http';
 import { connect } from 'node:net';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import {
     httpTranscriptBodyByteLimit,

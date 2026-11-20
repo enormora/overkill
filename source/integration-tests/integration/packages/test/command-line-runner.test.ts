@@ -2,15 +2,13 @@ import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { passingResult, runCommandLine, testExitCodes } from '../../../../test-support/command-line-test-driver.ts';
 
-const emptyTestData = { annotations: {}, controls: {} } as const;
-
 export const testNode: TestNode = suite({
     title: 'Overkill CLI',
-    ...emptyTestData,
+
     children: [
         test({
             title: 'parses explicit run paths',
-            ...emptyTestData,
+
             async body(scope) {
                 const result = await runCommandLine(
                     [ 'run', 'source/a.test.ts', 'source/b.test.ts' ],
@@ -58,7 +56,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'parses explicit list paths',
-            ...emptyTestData,
+
             async body(scope) {
                 const result = await runCommandLine(
                     [
@@ -99,7 +97,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'writes list stdout lines',
-            ...emptyTestData,
+
             async body(scope) {
                 const result = await runCommandLine([ 'list', 'source/a.test.ts' ], {
                     exitCode: 0,
@@ -117,7 +115,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'maps unsupported list flags to argument errors',
-            ...emptyTestData,
+
             async body(
                 scope
             ) {
@@ -137,12 +135,9 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'parses config and profile flags',
-            ...emptyTestData,
+
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'equal' | 'deepEqual' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const result = await runCommandLine(
                     [ '--config', 'overkill.config.ts', 'run', '--profile=backend-http', 'source/a.test.ts' ],
@@ -160,7 +155,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'rejects malformed config arguments before runner loading',
-            ...emptyTestData,
+
             async body(
                 scope
             ) {
@@ -186,7 +181,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'rejects process usage flags before loading the runner',
-            ...emptyTestData,
+
             async body(
                 scope
             ) {
@@ -217,12 +212,9 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'preserves path operands after delimiter',
-            ...emptyTestData,
+
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'deepEqual' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const result = await runCommandLine([ 'run', '--', '--seed' ], passingResult());
                 const [ commandLineRequest ] = result.runRequests;
@@ -235,7 +227,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'writes fallback diagnostics and applies run exit code',
-            ...emptyTestData,
+
             async body(scope) {
                 const result = await runCommandLine([ 'run', 'source/a.test.ts' ], {
                     exitCode: testExitCodes.runnerError,
@@ -255,12 +247,9 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'parses run selectors',
-            ...emptyTestData,
+
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'deepEqual' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const result = await runCommandLine(
                     [
@@ -304,12 +293,9 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'parses list selectors',
-            ...emptyTestData,
+
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'deepEqual' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const result = await runCommandLine(
                     [ 'list', '--filter', 'tag=fast | tag=slow', '--title', 'Login' ],
@@ -341,7 +327,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'rejects malformed run filters',
-            ...emptyTestData,
+
             async body(
                 scope
             ) {

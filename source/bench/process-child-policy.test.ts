@@ -45,21 +45,19 @@ export const testNode: TestNode = suite('process transport ownership', [
         title: 'propagates child-process failures',
         cases: [ 'child', 'input', 'write' ] as const,
         caseTitle(failure) {
-            return `${failure}`;
+            return failure;
         },
         async test(scope) {
-            const failure = scope.parameters;
-
-            const error = new Error(failure);
-            const fixture = pipeProcess(failure === 'write' ? error : null, 42);
+            const error = new Error(scope.parameters);
+            const fixture = pipeProcess(scope.parameters === 'write' ? error : null, 42);
             const exit = scope.assert.rejects(async function () {
                 return await fixture.child.exit;
             }, { exact: error });
-            if (failure === 'write') {
+            if (scope.parameters === 'write') {
                 await scope.assert.rejects(async function () {
                     await fixture.child.write('input');
                 }, { exact: error });
-            } else if (failure === 'input') {
+            } else if (scope.parameters === 'input') {
                 fixture.stdin.emit('error', error);
             } else {
                 fixture.events.emit('error', error);
@@ -99,20 +97,16 @@ export const testNode: TestNode = suite('process transport ownership', [
     table({
         title: 'captures terminal output and exit signals',
         cases: [ undefined, 0, 15 ] as const,
-        caseTitle(signal) {
-            return `${String(signal)}`;
-        },
+        caseTitle: String,
         async test(scope) {
-            const signal = scope.parameters;
-
             const fixture = terminalProcess();
             fixture.data('ready');
             await fixture.child.write('answer');
             fixture.child.resize(90, 30);
-            fixture.exit(7, signal);
+            fixture.exit(7, scope.parameters);
             scope.assert.deepEqual(await fixture.child.exit, {
-                code: signal === 15 ? null : 7,
-                signal: signal === 15 ? '15' : null,
+                code: scope.parameters === 15 ? null : 7,
+                signal: scope.parameters === 15 ? '15' : null,
                 time: 1234n
             });
             await fixture.child.closed;
@@ -155,9 +149,7 @@ export const testNode: TestNode = suite('process transport ownership', [
     table({
         title: 'preserves signal failures',
         cases: [ new Error('permission'), 'invalid' ] as const,
-        caseTitle(error) {
-            return `${String(error)}`;
-        },
+        caseTitle: String,
         test(scope) {
             const error = scope.parameters;
 
@@ -173,11 +165,9 @@ export const testNode: TestNode = suite('process transport ownership', [
         title: 'owns process shutdown',
         cases: [ 'graceful', 'deadline', 'error', 'close-error' ] as const,
         caseTitle(kind) {
-            return `${kind}`;
+            return kind;
         },
         async test(scope) {
-            const kind = scope.parameters;
-
             const calls: string[] = [];
             const error = new Error('shutdown failure');
             let deadlines = 0;
@@ -188,23 +178,23 @@ export const testNode: TestNode = suite('process transport ownership', [
                 async deadline(value, milliseconds, message) {
                     deadlines += 1;
                     calls.push(`deadline:${milliseconds}:${message}`);
-                    if (kind === 'deadline' && deadlines === 1) {
+                    if (scope.parameters === 'deadline' && deadlines === 1) {
                         throw new ProcessDeadlineError('late', {});
                     }
-                    if (deadlines === { graceful: 0, deadline: 0, error: 1, 'close-error': 2 }[kind]) {
+                    if (deadlines === { graceful: 0, deadline: 0, error: 1, 'close-error': 2 }[scope.parameters]) {
                         throw error;
                     }
                     return await value;
                 }
             });
-            if (kind === 'error' || kind === 'close-error') {
+            if (scope.parameters === 'error' || scope.parameters === 'close-error') {
                 await scope.assert.rejects(async function () {
                     await pending;
                 }, { exact: error });
             } else {
                 await pending;
             }
-            scope.assert.equal(deadlines, kind === 'error' ? 1 : 2);
+            scope.assert.equal(deadlines, scope.parameters === 'error' ? 1 : 2);
             scope.assert.deepEqual(
                 calls.filter(function (value) {
                     return !value.startsWith('deadline');

@@ -19,9 +19,7 @@ export const testNode: TestNode = suite('coverage startup and completion policy'
     table({
         title: 'wraps factory setup failures',
         cases: [ new Error('setup failed'), 'non-error' ] as const,
-        caseTitle(failure) {
-            return `${String(failure)}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const failure = scope.parameters;
 
@@ -39,9 +37,7 @@ export const testNode: TestNode = suite('coverage startup and completion policy'
     table({
         title: 'retains startup causes when disposal also fails',
         cases: [ null, new Error('cleanup failed') ] as const,
-        caseTitle(disposeFailure) {
-            return `${String(disposeFailure)}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const disposeFailure = scope.parameters;
 
@@ -57,7 +53,7 @@ export const testNode: TestNode = suite('coverage startup and completion policy'
         title: 'classifies coverage completeness from runner errors',
         cases: [ 'crash', 'loader', 'process-exhaustion', 'reporter', 'coverage' ] as const,
         caseTitle(subtype) {
-            return `${subtype}`;
+            return subtype;
         },
         test(scope) {
             const subtype = scope.parameters;

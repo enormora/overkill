@@ -1,6 +1,6 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 
@@ -20,7 +20,7 @@ const recordSchema = z.object({
 });
 
 const fixture = 'source/integration-tests/integration/fixtures/attachment-retention.test.ts';
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
 async function retentionRun(title: string, policy: RetryArtifactPolicy, stateDirectory: string): Promise<RunResult> {
     return await orchestrator.run({
         config: defaultRunConfig({
@@ -98,7 +98,6 @@ async function assertRetryFiles(
 }
 export const testNode: TestNode = suite('Runner attachment retention', [
     table({
-        ...metadata,
         title: 'retains files according to attachment policy',
         cases: [ [ 'first-failure-and-final', [ 0, 2 ] ], [ 'last-failure-and-final', [ 1, 2 ] ], [ 'all', [
             0,
@@ -106,7 +105,7 @@ export const testNode: TestNode = suite('Runner attachment retention', [
             2
         ] ] ] as const,
         caseTitle([ policy ]) {
-            return `${policy}`;
+            return policy;
         },
         async test(scope) {
             const [ policy, indexes ] = scope.parameters;

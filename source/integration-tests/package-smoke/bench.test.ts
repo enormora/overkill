@@ -1,8 +1,8 @@
-import { table, type TestNode, suite, test, type TestScope } from '#tests';
 import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { table, type TestNode, suite, test, type TestScope } from '#tests';
 
 import { z } from 'zod/v4';
 
@@ -215,13 +215,13 @@ export const testNode: TestNode = suite('Bench', [
         return scope.assert.collect();
     }),
     table({
-        annotations: {},
-        controls: {},
         title: 'standard-only installation selects bench profiles and executes the shared runner flow',
         cases: [ 'run', 'list' ].flatMap(function createPackagedBenchmarkCommandTests(verb) {
-            return ({ caseDescription: `${verb}`, verb });
+            return { verb };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ verb }) {
+            return [ verb ].map(String).join(', ');
+        },
         async test(scope) {
             const { verb } = scope.parameters;
 
@@ -255,13 +255,13 @@ export const testNode: TestNode = suite('Bench', [
         }
     }),
     table({
-        annotations: {},
-        controls: {},
         title: 'standard-only installation exposes bench help',
         cases: [ 'run', 'list' ].flatMap(function createPackagedBenchmarkCommandTests(verb) {
-            return ({ caseDescription: `${verb}`, verb });
+            return { verb };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ verb }) {
+            return [ verb ].map(String).join(', ');
+        },
         async test(scope) {
             const { verb } = scope.parameters;
 

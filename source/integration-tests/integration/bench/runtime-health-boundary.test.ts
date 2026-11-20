@@ -1,5 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { setImmediate as nextTurn } from 'node:timers/promises';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { prepareAsyncTestCollector, prepareTestCollector } from '../../../test-support/collector-session.ts';
 

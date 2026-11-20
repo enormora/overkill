@@ -121,14 +121,12 @@ export const testNode: TestNode = suite('host family catalogs', [
         title: 'admits selected family work to the host driver',
         cases: [ runtimeFamily, analysisFamily ],
         caseTitle(family) {
-            return `${family.features.execution}`;
+            return family.features.execution;
         },
         async test(scope) {
             const require: typeof scope.require = scope.require;
 
-            const family = scope.parameters;
-
-            const context = await prepareHost(family);
+            const context = await prepareHost(scope.parameters);
             const first = context.catalog.cases[0];
             require.defined(first);
             const selected = { ...context.catalog, cases: [ first ] as const };
@@ -140,26 +138,28 @@ export const testNode: TestNode = suite('host family catalogs', [
                 testExecutionWallTimeMicroseconds: 0
             });
             const admitted: unknown[] = [];
-            const result = await executeHostFamily(context.catalog, selected, async function (input, options) {
-                admitted.push(input);
-                const fields = [
-                    'runtimePolicy',
-                    'timeoutPolicy',
-                    'processBudgets',
-                    'processUsageTracker',
-                    'propertyRun'
-                ];
-                scope.assert.deepEqual(
-                    fields.map(function present(field) {
-                        return Object.hasOwn(options ?? {}, field);
-                    }),
-                    fields.map(function () {
-                        return family.features.execution === 'runtime';
-                    })
-                );
-                return expected;
-            }, executionOptions);
-            scope.assert.equal(result, expected);
+            scope.assert.equal(
+                await executeHostFamily(context.catalog, selected, async function (input, options) {
+                    admitted.push(input);
+                    const fields = [
+                        'runtimePolicy',
+                        'timeoutPolicy',
+                        'processBudgets',
+                        'processUsageTracker',
+                        'propertyRun'
+                    ];
+                    scope.assert.deepEqual(
+                        fields.map(function present(field) {
+                            return Object.hasOwn(options ?? {}, field);
+                        }),
+                        fields.map(function () {
+                            return scope.parameters.features.execution === 'runtime';
+                        })
+                    );
+                    return expected;
+                }, executionOptions),
+                expected
+            );
             scope.assert.equal(admitted.length, 1);
             return scope.assert.collect();
         }
@@ -175,7 +175,7 @@ export const testNode: TestNode = suite('host family catalogs', [
         title: 'collects selected family facts without invoking bodies',
         cases: [ runtimeFamily, analysisFamily ],
         caseTitle(family) {
-            return `${family.id}`;
+            return family.id;
         },
         async test(scope) {
             const family = scope.parameters;
@@ -200,11 +200,9 @@ export const testNode: TestNode = suite('host family catalogs', [
         title: 'rejects changed frozen facts before collecting selected work',
         cases: [ 'preparation', 'catalog' ] as const,
         caseTitle(field) {
-            return `${field}`;
+            return field;
         },
         async test(scope) {
-            const field = scope.parameters;
-
             const events: string[] = [];
             const context = await prepareHost(observedRuntimeCollection(function recordCollection(event) {
                 events.push(event);
@@ -214,7 +212,7 @@ export const testNode: TestNode = suite('host family catalogs', [
             if (checkpoint === null) {
                 throw new Error('Missing frozen checkpoint.');
             }
-            const changed = field === 'preparation'
+            const changed = scope.parameters === 'preparation'
                 ? { ...checkpoint, preparation: { ...checkpoint.preparation, preparation: 'changed' } }
                 : { ...checkpoint, catalog: 'changed' };
             await scope.assert.rejects(async function collectChangedFamily() {
@@ -223,7 +221,7 @@ export const testNode: TestNode = suite('host family catalogs', [
                     checkpoint: changed,
                     selection: [ context.catalog.cases[0].workId ]
                 });
-            }, { message: `Frozen family ${field} changed; collect a new run.` });
+            }, { message: `Frozen family ${scope.parameters} changed; collect a new run.` });
             scope.assert.deepEqual(events, []);
             return scope.assert.collect();
         }

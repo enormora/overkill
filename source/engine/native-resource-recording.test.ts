@@ -88,7 +88,7 @@ export const testNode: TestNode = suite('native resource observation records', [
         title: 'ignores unreferenced native-resource records',
         cases: [ 'PROMISE', 'TickObject', 'Microtask' ] as const,
         caseTitle(type) {
-            return `${type}`;
+            return type;
         },
         test(scope) {
             const type = scope.parameters;

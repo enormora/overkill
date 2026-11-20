@@ -95,12 +95,15 @@ export const testNode: TestNode = suite('mutation policy resolution', [
     }),
     table({
         title: 'serializes unexpected backend failure',
-        cases: [ new Error('Backend failed.'), 'Backend failed.' ],
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [ { description: 'exception', input: new Error('Backend failed.') }, {
+            description: 'string rejection',
+            input: 'Backend failed.'
+        } ],
+        caseTitle({ description }) {
+            return description;
         },
         async test(scope) {
-            const failure = scope.parameters;
+            const failure = scope.parameters.input;
 
             const fixture = await mutationPolicyResolution(null, failure);
             scope.assert.deepEqual(await resolveMutationPolicyRequest(fixture.request, fixture.runtime), {

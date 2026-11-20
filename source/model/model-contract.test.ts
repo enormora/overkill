@@ -181,7 +181,7 @@ export const testNode: TestNode = suite('model contracts', [
         title: 'orders model callbacks and cleanup after execution',
         cases: [ 'success', 'require', 'throw' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;
@@ -381,7 +381,7 @@ export const testNode: TestNode = suite('model contracts', [
         title: 'rejects invalid reconstruction before creating a system',
         cases: [ 'longer', 'shorter' ] as const,
         caseTitle(direction) {
-            return `${direction}`;
+            return direction;
         },
         async test(scope) {
             const direction = scope.parameters;

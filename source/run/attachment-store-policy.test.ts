@@ -18,12 +18,20 @@ const open: Extract<AttachmentOperation, { readonly kind: 'open'; }> = {
 export const testNode: TestNode = suite('inline attachment store protocol boundaries', [
     table({
         title: 'rejects invalid metadata',
-        cases: ([ '', 'bad\u{0}name', 'bad\u{7F}name', 'x'.repeat(257) ] as const).flatMap(function (value, index) {
-            return ([ 'name', 'mediaType' ] as const).map(function (field) {
-                return ({ caseDescription: `${field}, ${index}`, value, index, field });
-            });
-        }),
-        caseTitle: (row) => row.caseDescription,
+        cases: [
+            { description: 'empty', value: '' },
+            { description: 'null character', value: 'bad\u{0}name' },
+            { description: 'delete character', value: 'bad\u{7F}name' },
+            { description: 'excessive length', value: 'x'.repeat(257) }
+        ]
+            .flatMap(function ({ value, description }) {
+                return ([ 'name', 'mediaType' ] as const).map(function (field) {
+                    return { value, description, field };
+                });
+            }),
+        caseTitle({ description, field }) {
+            return [ field, description ].join(': ');
+        },
         async test(scope) {
             const { value, field } = scope.parameters;
 

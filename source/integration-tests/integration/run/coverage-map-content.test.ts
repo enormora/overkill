@@ -1,6 +1,6 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { fromObject } from 'convert-source-map';
 import { encodedMap, presortedDecodedMap } from '@jridgewell/trace-mapping';
@@ -16,12 +16,10 @@ const typeOnlySource = '/** Domain type. */\nexport type Value = number;\n';
 
 export const testNode: TestNode = suite('Coverage map content', [
     table({
-        annotations: {},
-        controls: {},
         title: 'resolves original coverage without counting generated containers',
         cases: [ 'missing-content', 'virtual-source', 'type-only' ],
         caseTitle(scenario) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
             const scenario = scope.parameters;
@@ -68,12 +66,10 @@ export const testNode: TestNode = suite('Coverage map content', [
         }
     }),
     table({
-        annotations: {},
-        controls: {},
         title: 'rejects source-map coordinates outside the original',
         cases: [ 'source-index', 'name-index' ],
         caseTitle(scenario) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
             const scenario = scope.parameters;

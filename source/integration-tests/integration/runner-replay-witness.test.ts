@@ -1,6 +1,6 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import {
@@ -126,10 +126,12 @@ export const testNode: TestNode = suite('witness replay through public surfaces'
         title: 'rejects nested witness targets',
         cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function invalidTargets(mode) {
             return ([ 'missing', 'duplicate', 'unreached' ] as const).map(function targetFailure(kind) {
-                return ({ caseDescription: `${mode}, ${kind}`, mode, kind });
+                return { mode, kind };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ mode, kind }) {
+            return [ mode, kind ].map(String).join(', ');
+        },
         async test(scope) {
             const { mode, kind } = scope.parameters;
 
@@ -175,16 +177,12 @@ export const testNode = test('retained property', withProperties(async parent =>
         title: 'replays property input without generating',
         cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function boundary(mode) {
             return [ false, true ].map(function target(nested) {
-                return ({
-                    caseDescription: `${mode} replays ${
-                        nested ? 'nested' : 'direct'
-                    } property input without generating`,
-                    mode,
-                    nested
-                });
+                return { mode, nested };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ mode, nested }) {
+            return [ mode, nested ? 'nested' : 'direct' ].map(String).join(', ');
+        },
         async test(scope) {
             const { mode, nested } = scope.parameters;
 

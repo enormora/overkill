@@ -1,5 +1,6 @@
-import { subjectTestNode } from '../test-support/create-test-engine.ts';
 import { type TestBody, type TestNode, type TestScope, suite, test, createTestFacade } from '@overkill-dev/test';
+import { defineResource, withResources, type ResourceDefinition } from '@overkill-dev/test/resources';
+import { subjectTestNode } from '../test-support/create-test-engine.ts';
 
 import {
     defaultFailureArtifactPolicy,
@@ -10,7 +11,6 @@ import {
     createTestPlan
 } from '../packages/engine/engine.entry-point.ts';
 
-import { defineResource, withResources, type ResourceDefinition } from '@overkill-dev/test/resources';
 import type { EmptyResourceDependencies } from '../resources/resources.ts';
 import { createWorkerProcessUsageTracker } from './worker-execution-engine.ts';
 import type { WorkerPoolCommand, WorkerPoolLifecycleIdentity, WorkerPoolTask } from './worker-pool-protocol.ts';
@@ -158,7 +158,7 @@ function laneScratchResource(events: EventLog): ScratchResource {
     });
 }
 
-function collectedWorkerPlanFromNode(testNode: TestNode | SubjectTestNode): CollectedWorkerPlan {
+function collectedWorkerPlanFromNode(testNode: SubjectTestNode | TestNode): CollectedWorkerPlan {
     const testPlan = createTestPlan(createRoot({
         ...testCaseMetadata,
         children: [

@@ -1,14 +1,13 @@
-import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
+import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 
 import { createPlainOutputRenderer } from '../../engine/reporter-output.ts';
 import type { Config, ProjectMicrotestProfileConfig } from '../../packages/run/config.entry-point.ts';
 import { orchestrator, type FrozenMicrotestPolicy, type FrozenRunCommand } from '../../packages/run/run.entry-point.ts';
 import { initializeMutationPolicy } from '../../packages/stryker-runner/mutation-policy-process.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const engineModule = new URL(`../../packages/engine/engine.entry-point${extname(import.meta.url)}`, import.meta.url);
 const engineUrl = engineModule.href;
 type ProcessModel = 'in-process' | 'supervised-process';
@@ -153,15 +152,13 @@ export const testNode: TestNode = suite(
     'frozen campaign policy',
     [
         table({
-            ...metadata,
             title: 'accepts effective policy and reaps its resolver',
             cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function processModelTests(processModel) {
-                return ({
-                    caseDescription: `${processModel} accepts effective policy and reaps its resolver`,
-                    processModel
-                });
+                return { processModel };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ processModel }) {
+                return [ processModel ].map(String).join(', ');
+            },
             async test(scope) {
                 const { processModel } = scope.parameters;
 
@@ -170,18 +167,15 @@ export const testNode: TestNode = suite(
             }
         }),
         table({
-            ...metadata,
             title: 'rejects changed before test imports',
             cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function processModelTests(processModel) {
                 return changes.map(function changedPolicyTest(change) {
-                    return ({
-                        caseDescription: `${processModel} rejects changed ${change.domain} before test imports`,
-                        processModel,
-                        change
-                    });
+                    return { processModel, change };
                 });
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ processModel, change }) {
+                return [ processModel, change.domain ].map(String).join(', ');
+            },
             async test(scope) {
                 const { processModel, change } = scope.parameters;
 

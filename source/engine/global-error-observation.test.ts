@@ -62,24 +62,24 @@ export const testNode: TestNode = suite('global execution error ownership', [
         title: 'attributes global errors to the active case and attempt',
         cases: [ 'uncaughtException', 'unhandledRejection' ] as const,
         caseTitle(hook) {
-            return `${hook}`;
+            return hook;
         },
         async test(scope) {
             const require: typeof scope.require = scope.require;
 
-            const hook = scope.parameters;
-
             const fixture = globalErrorObservation();
             await fixture.observer.runBoundary(async function () {
                 await fixture.observer.runCase(fixture.testCase, { index: 2 }, async function () {
-                    fixture.events.emit(hook, new Error('Body failed.'));
+                    fixture.events.emit(scope.parameters, new Error('Body failed.'));
                 });
             });
             const error = fixture.observer.takeErrors()[0];
             require.defined(error);
-            scope.assert.deepEqual<unknown, unknown>(error.attributedTo, fixture.testCase.id);
-            scope.assert.deepEqual<unknown, unknown>(error.attributedToWork, fixture.testCase.workId);
-            scope.assert.deepEqual<unknown, unknown>(error.attributedToAttempt, { index: 2 });
+            scope.assert.partialDeepEqual(error, {
+                attributedTo: fixture.testCase.id,
+                attributedToWork: fixture.testCase.workId,
+                attributedToAttempt: { index: 2 }
+            });
             scope.assert.includes(error.message, 'Body failed.');
             scope.assert.true(fixture.observer.hasFatalError());
             return scope.assert.collect();

@@ -15,12 +15,15 @@ function mappedSource(segment: Readonly<SourceMapSegment>): TraceMap {
 export const testNode: TestNode = suite('source map coordinate validation', [
     table({
         title: 'rejects invalid mapping coordinate',
-        cases: [ [ -1, 0, 0, 0 ], [ 0, 1, 0, 0 ], [ 0, 0, 0, 0, 1 ] ] as const,
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [ { description: 'negative generated column', input: [ -1, 0, 0, 0 ] }, {
+            description: 'unknown source index',
+            input: [ 0, 1, 0, 0 ]
+        }, { description: 'unknown name index', input: [ 0, 0, 0, 0, 1 ] } ] as const,
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const segment = scope.parameters;
+            const segment = scope.parameters.input;
 
             scope.assert.throws(function () {
                 validateSourceMapMappings(mappedSource(segment), true);

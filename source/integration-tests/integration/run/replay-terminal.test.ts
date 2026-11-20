@@ -1,6 +1,6 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import * as timers from 'node:timers';
 import { fileURLToPath } from 'node:url';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { spawn } from 'node-pty';
 import { readProcessEnvironment } from '../../../run/node-host-readers.ts';

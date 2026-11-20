@@ -1,7 +1,6 @@
 import { type TestNode, suite, test } from '@overkill-dev/test';
-import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
-
 import { createDeterministicClock } from '@enormora/clock';
+import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
 
 import { createInMemoryRealTimeReporter, type InMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { createEngine, type Engine } from './engine.ts';

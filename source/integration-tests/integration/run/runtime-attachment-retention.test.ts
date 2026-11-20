@@ -1,6 +1,6 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
 import { attachmentFixture, attachmentPeerWork, attachmentWork } from '../../../test-support/attachment-fixture.ts';

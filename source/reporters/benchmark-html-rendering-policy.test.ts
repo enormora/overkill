@@ -105,7 +105,7 @@ export const testNode: TestNode = suite('benchmark HTML rendering', [
         title: 'renders garbage collection evidence',
         cases: [ null, { mode: 'off' as const } ],
         caseTitle(garbageCollection) {
-            return `renders garbage collection evidence ${garbageCollection?.mode ?? 'unavailable'}`;
+            return garbageCollection?.mode ?? 'unavailable';
         },
         test(scope) {
             const require: typeof scope.require = scope.require;

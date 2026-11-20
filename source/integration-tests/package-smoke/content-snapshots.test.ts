@@ -1,7 +1,7 @@
-import { type TestNode, test } from '#tests';
 import { execFile } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { type TestNode, test } from '#tests';
 
 import { uneval } from 'devalue';
 

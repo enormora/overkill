@@ -122,7 +122,7 @@ export const testNode: TestNode = suite('linearizability authoring contracts', [
         title: 'rejects invalid contracts before system creation',
         cases: malformedPrograms,
         caseTitle({ title }) {
-            return `${title}`;
+            return title;
         },
         async test(scope) {
             const { title, input } = scope.parameters;
@@ -158,14 +158,17 @@ export const testNode: TestNode = suite('linearizability authoring contracts', [
     }),
     table({
         title: 'preserves synchronous output',
-        cases: [ null, undefined, function returnedFunction() {
-            return 1;
+        cases: [ { description: 'null', input: null }, { description: 'undefined', input: undefined }, {
+            description: 'returned function',
+            input: function returnedFunction() {
+                return 1;
+            }
         } ],
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        caseTitle({ description }) {
+            return description;
         },
         async test(scope) {
-            const expected = scope.parameters;
+            const expected = scope.parameters.input;
 
             const result = await executePropertyNode(
                 property({

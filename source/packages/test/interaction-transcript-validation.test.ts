@@ -40,7 +40,7 @@ export const testNode: TestNode = suite('transcript assertion validation', [
         title: 'reports invalid transcript subjects as assertion failures',
         cases: invalidCases,
         caseTitle(scenario) {
-            return `${scenario.name}`;
+            return scenario.name;
         },
         async test(scope) {
             const scenario = scope.parameters;

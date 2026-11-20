@@ -153,7 +153,7 @@ export const testNode: TestNode = suite('local HTTP transcript observations', [
             { response: { statusCode: 200, statusText: 'Custom', headers: [] }, expected: 'Custom' }
         ],
         caseTitle(expected) {
-            return `preserves status text ${JSON.stringify(expected.expected)}`;
+            return JSON.stringify(expected.expected);
         },
         test(scope) {
             const expected = scope.parameters;
@@ -172,7 +172,7 @@ export const testNode: TestNode = suite('local HTTP transcript observations', [
         title: 'reports invalid response',
         cases: invalidResponses,
         caseTitle(expected) {
-            return `reports invalid response ${JSON.stringify(expected.response)}`;
+            return JSON.stringify(expected.response);
         },
         test(scope) {
             const expected = scope.parameters;
@@ -227,7 +227,7 @@ export const testNode: TestNode = suite('local HTTP transcript observations', [
             request: { origin: 'https://other.test', path: '/value', method: 'GET' }
         } ],
         caseTitle(message) {
-            return `ignores unrelated diagnostics ${JSON.stringify(message)}`;
+            return JSON.stringify(message);
         },
         test(scope) {
             const message = scope.parameters;

@@ -27,12 +27,15 @@ export const testNode: TestNode = suite('run request validation boundaries', [
     }),
     table({
         title: 'classifies reporter requirement failure as an invalid request',
-        cases: [ new Error('Reporter requirements failed.'), 'Reporter requirements failed.' ],
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [ { description: 'exception', input: new Error('Reporter requirements failed.') }, {
+            description: 'string rejection',
+            input: 'Reporter requirements failed.'
+        } ],
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const failure = scope.parameters;
+            const failure = scope.parameters.input;
 
             const reporter = createInMemoryFinalResultReporter();
             const required = defineReporter({
@@ -68,7 +71,7 @@ export const testNode: TestNode = suite('run request validation boundaries', [
         title: 'rejects baseline updates in unsupported namespaces',
         cases: [ 'test', 'bench-calibrate' ] as const,
         caseTitle(namespace) {
-            return `${namespace}`;
+            return namespace;
         },
         test(scope) {
             const namespace = scope.parameters;

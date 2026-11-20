@@ -104,9 +104,7 @@ export const testNode: TestNode = suite('mutation result precedence', [
     table({
         title: 'native case timeout preserves independent cancellation',
         cases: [ false, true ],
-        caseTitle(cancelled) {
-            return `${String(cancelled)}`;
-        },
+        caseTitle: String,
         test(scope) {
             const cancelled = scope.parameters;
 
@@ -138,27 +136,23 @@ export const testNode: TestNode = suite('mutation result precedence', [
     table({
         title: 'retains earlier kills alongside timeout and cleanup errors',
         cases: [ false, true ],
-        caseTitle(withCleanupError) {
-            return `${String(withCleanupError)}`;
-        },
+        caseTitle: String,
         test(scope) {
-            const withCleanupError = scope.parameters;
-
             const { reply, expectation } = mutationInvocation([
                 { kind: 'fail', failures: [ bodyFailure ] },
                 {
                     kind: 'fail',
-                    failures: withCleanupError ? [ timeoutFailure, cleanupFailure ] : [ timeoutFailure ]
+                    failures: scope.parameters ? [ timeoutFailure, cleanupFailure ] : [ timeoutFailure ]
                 }
             ]);
             const result = mutantExecutionResult(root, reply, expectation);
-            scope.assert.equal(result.status, withCleanupError ? 'error' : 'timeout');
+            scope.assert.equal(result.status, scope.parameters ? 'error' : 'timeout');
             const message = diagnostic(result);
             scope.assert.match(message, /earlier body sentinel[\s\S]*timeout/u);
             for (const testCase of reply.result.perTest.slice(0, 2)) {
                 scope.assert.true(message.includes(workIdentityKey(testCase.workId)));
             }
-            if (withCleanupError) {
+            if (scope.parameters) {
                 scope.assert.true(message.includes('cleanup sentinel'));
             }
             return scope.assert.collect();
@@ -224,9 +218,7 @@ export const testNode: TestNode = suite('mutation result precedence', [
     table({
         title: 'retains killing diagnostics when invocation expires',
         cases: [ false, true ],
-        caseTitle(exceeded) {
-            return `${String(exceeded)}`;
-        },
+        caseTitle: String,
         test(scope) {
             const exceeded = scope.parameters;
 

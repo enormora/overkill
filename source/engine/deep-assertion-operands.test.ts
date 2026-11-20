@@ -1,11 +1,11 @@
 import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion, defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 import {
     requireEngineNarrowingReference,
     requireEngineCompositeReference
 } from '../test-support/assertion-reference-boundary.ts';
 import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
-import { defineCompositeAssertion, defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 
 import type { InvalidDeepAssertionOperand } from '../assertion-protocol/evaluation.ts';

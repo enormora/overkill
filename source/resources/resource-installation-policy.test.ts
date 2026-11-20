@@ -57,7 +57,7 @@ export const testNode: TestNode = suite('resource observation installation admis
         title: 'rejects malformed observer callbacks',
         cases: [ 'prepare', 'finalize' ],
         caseTitle(method) {
-            return `${method}`;
+            return method;
         },
         async test(scope) {
             const method = scope.parameters;

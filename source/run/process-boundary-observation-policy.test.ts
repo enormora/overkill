@@ -29,10 +29,12 @@ export const testNode: TestNode = suite('process boundary policy observation', [
         title: 'attributes process exits',
         cases: ([ 0, 1 ] as const).flatMap(function (code) {
             return [ false, true ].map(function (attributed) {
-                return ({ caseDescription: `${code}, ${attributed}`, code, attributed });
+                return { code, attributed };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ code, attributed }) {
+            return [ code, attributed ].map(String).join(', ');
+        },
         test(scope) {
             const { code, attributed } = scope.parameters;
 

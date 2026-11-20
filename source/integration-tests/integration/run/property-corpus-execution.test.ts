@@ -1,8 +1,8 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     defineReporter,
@@ -168,12 +168,10 @@ export const testNode: TestNode = suite(
             title: 'saves and replays confirmed failures',
             cases: [ 'in-process', 'supervised-process' ] as const,
             caseTitle(processModel) {
-                return `${processModel}`;
+                return processModel;
             },
             async test(scope) {
-                const processModel = scope.parameters;
-
-                const command = await corpusCommand(scope, processModel);
+                const command = await corpusCommand(scope, scope.parameters);
                 const first = await orchestrator.run(command);
                 const replay = await orchestrator.run(command);
                 scope.assert.deepEqual(first.runnerErrors, []);
@@ -189,7 +187,7 @@ export const testNode: TestNode = suite(
             title: 'directly replays a witness through normal execution',
             cases: [ 'in-process', 'supervised-process' ] as const,
             caseTitle(processModel) {
-                return `${processModel}`;
+                return processModel;
             },
             async test(scope) {
                 const processModel = scope.parameters;
@@ -220,7 +218,7 @@ export const testNode: TestNode = suite(
             title: 'rejects a witness whose case is missing',
             cases: [ 'in-process', 'supervised-process' ] as const,
             caseTitle(processModel) {
-                return `${processModel}`;
+                return processModel;
             },
             async test(scope) {
                 const processModel = scope.parameters;
@@ -252,7 +250,7 @@ export const testNode: TestNode = suite(
             title: 'enforces corpus compatibility policies',
             cases: [ 'in-process', 'supervised-process' ] as const,
             caseTitle(processModel) {
-                return `${processModel}`;
+                return processModel;
             },
             async test(scope) {
                 const processModel = scope.parameters;

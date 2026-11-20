@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test, type TestScope as DirectScope } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
 
 import {
@@ -13,13 +13,17 @@ import { createDirectRunFixture, type DirectRunFixture } from '../test-support/d
 import { defineFixedReporter } from '../test-support/reporter-definition.ts';
 import type { RunFacts } from './run-types.ts';
 
+type PassingBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
+
+type ResourceBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'equal'>; };
+
 type CapturedRun = {
     readonly facts: RunFacts;
     readonly rootTitle: string;
 };
 
 function passingBody(
-    scope: { readonly assert: Pick<DirectScope['assert'], 'true' | 'collect'>; }
+    scope: PassingBodyAssertions
 ): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
 
@@ -27,7 +31,7 @@ function passingBody(
 }
 
 function resourceBody(
-    scope: { readonly assert: Pick<DirectScope['assert'], 'equal' | 'collect'>; }
+    scope: ResourceBodyAssertions
 ): ReturnType<EngineCaseBody> {
     scope.assert.equal('ready', 'ready');
 

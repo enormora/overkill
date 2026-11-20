@@ -1,8 +1,8 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
 import { execFile } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import convertSourceMap from 'convert-source-map';
 import { createTemporaryDirectoryResource, startResources } from '../../packages/resources/resources.entry-point.ts';
@@ -114,18 +114,16 @@ export const testNode: TestNode = suite('immutable source-map delivery', [
         title: 'freezes inline maps with original source contents',
         cases: [ 'base64', 'percent-encoded' ] as const,
         caseTitle(encoding) {
-            return `${encoding}`;
+            return encoding;
         },
         async test(scope) {
             const require: typeof scope.require = scope.require;
-
-            const encoding = scope.parameters;
 
             await using session = await startResources({
                 resources: { directory: createTemporaryDirectoryResource('directory') },
                 signal: scope.signal
             });
-            const reference = inlineMapUrl(encoding);
+            const reference = inlineMapUrl(scope.parameters);
             const prepared = await prepareInlineImplementation(
                 session.context.directory.path,
                 reference,
@@ -135,8 +133,7 @@ export const testNode: TestNode = suite('immutable source-map delivery', [
             require.defined(module);
             require.notNull(module.sourceMap);
             scope.assert.deepEqual(module.sourceMap, { url: reference, source: inlineMapContent });
-            const delivered: unknown = convertSourceMap.fromSource(module.source)?.toObject();
-            scope.assert.deepEqual(delivered, {
+            scope.assert.deepEqual<unknown, unknown>(convertSourceMap.fromSource(module.source)?.toObject(), {
                 ...inlineMap,
                 ignoreList: [],
                 sourceRoot: '',

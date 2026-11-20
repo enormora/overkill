@@ -8,7 +8,7 @@ export const testNode: TestNode = suite('iterator method failure ownership', [
         title: 'records synchronous iterator failures',
         cases: [ 'next', 'return' ] as const,
         caseTitle(method) {
-            return `${method}`;
+            return method;
         },
         test(scope) {
             const method = scope.parameters;

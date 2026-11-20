@@ -1,7 +1,7 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { cp, mkdir, symlink, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { frozenTypeProject } from '../../../../test-support/frozen-type-project.ts';
 import { createEngine } from '../../../../packages/engine/engine.entry-point.ts';

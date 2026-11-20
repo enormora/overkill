@@ -8,7 +8,7 @@ export const testNode: TestNode = suite(
         title: 'readmits bodies without losing execution mode',
         cases: [ 'builder', 'throwing' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;

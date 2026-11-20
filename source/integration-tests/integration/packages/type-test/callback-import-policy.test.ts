@@ -43,12 +43,8 @@ export const testNode: TestNode = suite(
     [ table({
         title: 'retains constant ownership beside imports',
         cases: [ 'default', 'equals', 'named', 'namespace', 'side-effect' ] as const,
-        caseTitle(form) {
-            return `retains constant ownership beside ${form} imports`;
-        },
+        caseTitle: String,
         async test(scope) {
-            const form = scope.parameters;
-
             const fixture = sourceFixture();
             const binding = sourceConstant('options', ast.factory.createObjectLiteralExpression([]), false);
             const reference = ast.factory.createIdentifier('options');
@@ -57,7 +53,7 @@ export const testNode: TestNode = suite(
             ]);
             fixture.addFile(
                 sourceFile([
-                    importStatement(form),
+                    importStatement(scope.parameters),
                     binding,
                     ast.factory.createExpressionStatement(call)
                 ], '/project/case.ts')

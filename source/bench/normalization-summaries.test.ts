@@ -80,17 +80,15 @@ export const testNode: TestNode = suite('normalization summaries', [
         title: 'keeps raw charts when normalization is unavailable',
         cases: [ 'summary', 'factor' ] as const,
         caseTitle(missing) {
-            return `${missing}`;
+            return missing;
         },
         test(scope) {
             const require: typeof scope.require = scope.require;
 
-            const missing = scope.parameters;
-
             const fixture = benchmarkHtmlFixture('incomplete normalization');
             const measured = fixture.perTest[0];
             require.defined(measured);
-            const benchmark = incompleteDisplay(missing);
+            const benchmark = incompleteDisplay(scope.parameters);
             const groups = benchmarkMetricGroups({ ...fixture, perTest: [ { ...measured, benchmark } ] });
             scope.assert.equal(groups.length, 1);
             scope.assert.equal(groups[0]?.rows[0]?.summary, benchmark.metrics.latency);

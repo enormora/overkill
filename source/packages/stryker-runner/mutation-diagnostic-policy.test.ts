@@ -18,9 +18,7 @@ export const testNode: TestNode = suite('mutation diagnostic retention policy', 
     table({
         title: 'retains timeout diagnostics with or without an explicit reason',
         cases: [ false, true ],
-        caseTitle(withReason) {
-            return `${withReason}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const withReason = scope.parameters;
 
@@ -87,7 +85,7 @@ export const testNode: TestNode = suite('mutation diagnostic retention policy', 
         title: 'retains successful evidence according to policy',
         cases: [ 'off', 'failures', 'all' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;
@@ -110,7 +108,7 @@ export const testNode: TestNode = suite('mutation diagnostic retention policy', 
         title: 'retains killed mutant evidence according to policy',
         cases: [ 'off', 'failures', 'all' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;

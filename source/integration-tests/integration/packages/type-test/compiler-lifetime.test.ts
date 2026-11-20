@@ -1,5 +1,5 @@
-import { type TestNode, test } from '@overkill-dev/test';
 import { spawn } from 'node:child_process';
+import { type TestNode, test } from '@overkill-dev/test';
 
 import { createCompilerLifetime } from '../../../../packages/type-test/compiler-lifetime.ts';
 

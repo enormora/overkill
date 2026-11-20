@@ -1,6 +1,6 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { withCoverageSources } from '../../../test-support/coverage-source-fixture.ts';
 import { generateCoverageReports } from '../../../run/coverage-reporting.ts';
@@ -17,13 +17,9 @@ const typeOnlySources = [
 export const testNode: TestNode = suite(
     'Coverage type only',
     [ table({
-        annotations: {},
-        controls: {},
         title: 'coverage ignores commented type-only sources and preserves executable imports',
         cases: [ 'all', 'loaded' ],
-        caseTitle(mode) {
-            return `${mode} coverage ignores commented type-only sources and preserves executable imports`;
-        },
+        caseTitle: String,
         async test(scope) {
             const mode = scope.parameters;
 

@@ -1,6 +1,6 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 
@@ -74,13 +74,9 @@ async function coverageSnapshot(header: string, extension: string): Promise<{
 export const testNode: TestNode = suite(
     'Coverage conformance',
     [ table({
-        annotations: {},
-        controls: {},
         title: 'native preserves JavaScript coverage for nested branches and control flow',
         cases: [ 'ts', 'mts', 'cts' ],
-        caseTitle(extension) {
-            return `native ${extension} preserves JavaScript coverage for nested branches and control flow`;
-        },
+        caseTitle: String,
         async test(scope) {
             const extension = scope.parameters;
 

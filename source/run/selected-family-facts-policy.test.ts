@@ -14,14 +14,12 @@ export const testNode: TestNode = suite('selected family fact recollection', [
         title: 'recollects selected facts across host boundaries',
         cases: ([ 'worker-pool', 'supervised' ] as const).flatMap(function (model) {
             return sources.map(function (source) {
-                return ({
-                    caseDescription: `${source.kind}, ${model}`,
-                    model,
-                    source
-                });
+                return { model, source };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ model, source }) {
+            return [ source.kind, model ].map(String).join(', ');
+        },
         async test(scope) {
             const { model, source } = scope.parameters;
 
@@ -46,7 +44,7 @@ export const testNode: TestNode = suite('selected family fact recollection', [
         title: 'rejects recollection changes',
         cases: [ 'missing', 'preparation', 'checkpoint', 'error' ] as const,
         caseTitle(scenario) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
             const require: typeof scope.require = scope.require;

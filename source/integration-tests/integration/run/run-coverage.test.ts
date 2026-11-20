@@ -1,5 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { runInNewContext } from 'node:vm';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { runResultFactory } from '../../../test-support/run-result-factory.ts';
 import { withCoverageRecordFixture } from '../../../test-support/coverage-record-fixture.ts';

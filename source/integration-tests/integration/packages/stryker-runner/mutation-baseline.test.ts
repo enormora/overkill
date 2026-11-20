@@ -1,5 +1,5 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { realpath } from 'node:fs/promises';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 
@@ -93,15 +93,13 @@ export const testNode: TestNode = suite('mutation baseline evidence', [
         title: 'retains raw counters across replacement workers',
         cases: [ 'all', 'off', 'perTest' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
-            const mode = scope.parameters;
-
-            const { baseline, reply } = mutationCoverageFixture(mode);
+            const { baseline, reply } = mutationCoverageFixture(scope.parameters);
             const { client, replacement, signal } = await registeredCampaign(scope);
             await createMutationBaseline().publish(client, reply, {
-                coverageAnalysis: mode,
+                coverageAnalysis: scope.parameters,
                 testFiles: null,
                 budget: null
             });
@@ -116,7 +114,7 @@ export const testNode: TestNode = suite('mutation baseline evidence', [
             scope.assert.deepEqual(fetched, baseline);
             await scope.assert.rejects(async function conflictingMode() {
                 await createMutationBaseline().publish(client, reply, {
-                    coverageAnalysis: mode === 'off' ? 'perTest' : 'off',
+                    coverageAnalysis: scope.parameters === 'off' ? 'perTest' : 'off',
                     testFiles: null,
                     budget: null
                 });

@@ -10,8 +10,10 @@ import {
     type TestBodyResourceAttachments
 } from './test-body-resource-attachment.ts';
 
+type PassingBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
+
 function passingBody(
-    scope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }
+    scope: PassingBodyAssertions
 ): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
 

@@ -2,11 +2,8 @@ import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { normalizeCoverageMethodRanges } from './coverage-method-ranges.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
-
 export const testNode: TestNode = suite('Coverage method ranges', [
     table({
-        ...metadata,
         title: 'preserves unmatched source ranges',
         cases: [
             { source: 'const box = { [name', start: 14, end: 18 },
@@ -32,7 +29,6 @@ export const testNode: TestNode = suite('Coverage method ranges', [
         }
     }),
     table({
-        ...metadata,
         title: 'preserves method coverage counts',
         cases: [
             { header: 'replace', prefix: 'const box = { ', changed: true },
@@ -61,12 +57,10 @@ export const testNode: TestNode = suite('Coverage method ranges', [
             return `${scenario.prefix}, ${scenario.header}`;
         },
         test(scope) {
-            const scenario = scope.parameters;
-
             const parameters = '(value = call("(", /[()]/, () => [1, 2]))';
-            const suffix = scenario.header === '' ? ' => { return value; }' : ' { return value; }';
-            const source = scenario.prefix + scenario.header + parameters + suffix;
-            const root = { count: 3, startOffset: scenario.prefix.length, endOffset: source.length };
+            const suffix = scope.parameters.header === '' ? ' => { return value; }' : ' { return value; }';
+            const source = scope.parameters.prefix + scope.parameters.header + parameters + suffix;
+            const root = { count: 3, startOffset: scope.parameters.prefix.length, endOffset: source.length };
             const branch = {
                 count: 1,
                 startOffset: source.indexOf('return'),
@@ -83,10 +77,10 @@ export const testNode: TestNode = suite('Coverage method ranges', [
                 ...functions[0],
                 ranges: [ {
                     ...root,
-                    startOffset: scenario.changed ? source.indexOf(parameters) : root.startOffset
+                    startOffset: scope.parameters.changed ? source.indexOf(parameters) : root.startOffset
                 }, branch ]
             } ]);
-            scope.assert.equal(root.startOffset, scenario.prefix.length);
+            scope.assert.equal(root.startOffset, scope.parameters.prefix.length);
             return scope.assert.collect();
         }
     }),

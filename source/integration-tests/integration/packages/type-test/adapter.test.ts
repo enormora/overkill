@@ -1,5 +1,5 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
 import { fileURLToPath } from 'node:url';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import {
     runNativeProject,
@@ -284,7 +284,7 @@ const nodes=[engine.createTestCase(options)];`;
         title: 'rejects changes after collection',
         cases: [ 'source', 'config' ] as const,
         caseTitle(change) {
-            return `${change}`;
+            return change;
         },
         async test(scope) {
             const change = scope.parameters;

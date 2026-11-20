@@ -56,7 +56,7 @@ export const testNode: TestNode = suite('execution reply policy', [
         title: 'rejects replies arriving after final lifecycle data',
         cases: [ 'execution-data', 'execution-checkpoint' ] as const,
         caseTitle(kind) {
-            return `${kind}`;
+            return kind;
         },
         test(scope) {
             const kind = scope.parameters;
@@ -102,9 +102,7 @@ export const testNode: TestNode = suite('execution reply policy', [
     table({
         title: 'classifies missing lifecycle data after termination',
         cases: [ 'cancelled', 'hard-timeout', null ] as const,
-        caseTitle(termination) {
-            return `${termination}`;
-        },
+        caseTitle: String,
         test(scope) {
             const termination = scope.parameters;
 

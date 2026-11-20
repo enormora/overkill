@@ -1,5 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { writeFile } from 'node:fs/promises';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     runWithAttachmentContext,

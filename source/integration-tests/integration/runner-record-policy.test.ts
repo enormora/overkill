@@ -1,9 +1,9 @@
-import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 
 import { z } from 'zod';
 import { currentRunRecordVersion } from '../../run/run-record-format.ts';
@@ -298,13 +298,15 @@ export const testNode: TestNode = suite(
     'run recording across execution boundaries',
     [
         table({
-            title: 'runner record policy scenarios',
+            title: 'records run outcomes and last-failed selections',
             cases: ([ 'in-process', 'supervised-process', 'worker-pool' ] as const).flatMap(
                 function executionMode(mode) {
-                    return ({ caseDescription: mode, mode });
+                    return { caseDescription: mode, mode };
                 }
             ),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle(row) {
+                return row.caseDescription;
+            },
             async test(scope) {
                 const { mode } = scope.parameters;
 
@@ -317,13 +319,12 @@ export const testNode: TestNode = suite(
             title: 'persists merge inputs without publishing shard history',
             cases: ([ 'in-process', 'supervised-process', 'worker-pool' ] as const).flatMap(
                 function executionMode(mode) {
-                    return ({
-                        caseDescription: `${mode} persists merge inputs without publishing shard history`,
-                        mode
-                    });
+                    return { mode };
                 }
             ),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ mode }) {
+                return [ mode ].map(String).join(', ');
+            },
             async test(scope) {
                 const { mode } = scope.parameters;
 

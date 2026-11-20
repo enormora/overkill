@@ -11,10 +11,10 @@ import { recordReporterConsoleDiagnostic } from './reporter-output-scope.ts';
 export const testNode: TestNode = suite(
     'reporter output violation classification',
     [ table({
-        title: 'classifies undeclared reporter output during disposal',
+        title: 'rejects undeclared console output',
         cases: [ false, true ],
         caseTitle(disposing) {
-            return `classifies undeclared reporter output during disposal ${disposing}`;
+            return disposing ? 'disposal' : 'event delivery';
         },
         async test(scope) {
             const disposing = scope.parameters;

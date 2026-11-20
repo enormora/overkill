@@ -105,7 +105,7 @@ export const testNode: TestNode = suite('recording requirements and failures', [
         title: 'normalizes required recording',
         cases: [ 'microtest', 'integration', 'benchmark', 'property' ] as const,
         caseTitle(testFamily) {
-            return `${testFamily}`;
+            return testFamily;
         },
         test(scope) {
             const testFamily = scope.parameters;

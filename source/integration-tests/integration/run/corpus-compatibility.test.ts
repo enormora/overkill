@@ -1,7 +1,7 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { writeCorpusIndex } from '../../../test-support/corpus-index.ts';
 import { propertyCorpusEntry } from '../../../test-support/property-corpus.ts';

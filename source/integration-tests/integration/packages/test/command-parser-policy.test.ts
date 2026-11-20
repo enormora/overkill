@@ -12,7 +12,7 @@ export const testNode: TestNode = suite('command parser dispatch policy', [
             { verb: 'clear', flags: [ '--yes' ], dryRun: false, yes: true }
         ] as const,
         caseTitle(entry) {
-            return `${entry.verb}`;
+            return entry.verb;
         },
         async test(scope) {
             const entry = scope.parameters;
@@ -41,7 +41,7 @@ export const testNode: TestNode = suite('command parser dispatch policy', [
         title: 'routes corpus commands with built-in codec defaults',
         cases: [ 'inspect', 'promote', 'migrate' ] as const,
         caseTitle(verb) {
-            return `${verb}`;
+            return verb;
         },
         async test(scope) {
             const verb = scope.parameters;

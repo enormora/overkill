@@ -22,9 +22,7 @@ export const testNode: TestNode = suite('replay cancellation lifecycle', [
     table({
         title: 'stops pending placement on cancellation',
         cases: [ false, true ],
-        caseTitle(early) {
-            return `${early}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const early = scope.parameters;
 

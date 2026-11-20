@@ -1,12 +1,16 @@
 import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
-import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
-
 import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
+import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import type { KnownSourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import type { Engine } from './engine.ts';
 import type { FailOutcome, RunResult, RunnerError, TestOutcome } from './run-result.ts';
+
+type RequirementCaseAssertions = {
+    readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>;
+    readonly require: Pick<TestScope['require'], 'defined' | 'string'>;
+};
 
 type SourceLocation = KnownSourceLocation;
 
@@ -109,7 +113,7 @@ export const testNode: TestNode = suite('Test case execution', [
                 children: [
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
-                        body(testScope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }) {
+                        body(testScope) {
                             testScope.assert.true(true, { message: 'passes' });
                             return testScope.assert.collect();
                         },
@@ -119,7 +123,7 @@ export const testNode: TestNode = suite('Test case execution', [
                     }),
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
-                        body(testScope: { readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>; }) {
+                        body(testScope) {
                             testScope.assert.equal(1, 2, { message: 'numbers differ' });
                             return testScope.assert.collect();
                         },
@@ -191,7 +195,7 @@ export const testNode: TestNode = suite('Test case execution', [
                 children: [
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
-                        body(testScope: { readonly assert: Pick<TestScope['assert'], 'collect'>; }) {
+                        body(testScope) {
                             return testScope.assert.collect();
                         },
                         annotations: {},
@@ -334,10 +338,7 @@ export const testNode: TestNode = suite('Test case execution', [
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
                         body(
-                            testScope: {
-                                readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>;
-                                readonly require: Pick<TestScope['require'], 'string' | 'defined'>;
-                            }
+                            testScope: RequirementCaseAssertions
                         ) {
                             testScope.assert.true(true, { message: 'one' });
                             testScope.require.string('value', { message: 'string' });
@@ -370,10 +371,7 @@ export const testNode: TestNode = suite('Test case execution', [
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
                         body(
-                            testScope: {
-                                readonly assert: Pick<TestScope['assert'], 'collect'>;
-                                readonly require: Pick<TestScope['require'], 'string'>;
-                            }
+                            testScope: RequirementCaseAssertions
                         ) {
                             testScope.require.string(1, { message: 'required string' });
                             return testScope.assert.collect();
@@ -385,10 +383,7 @@ export const testNode: TestNode = suite('Test case execution', [
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
                         body(
-                            testScope: {
-                                readonly assert: Pick<TestScope['assert'], 'collect'>;
-                                readonly require: Pick<TestScope['require'], 'defined'>;
-                            }
+                            testScope: RequirementCaseAssertions
                         ) {
                             testScope.require.defined(null, { message: 'required defined' });
                             return testScope.assert.collect();

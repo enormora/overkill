@@ -7,9 +7,7 @@ export const testNode: TestNode = suite('human debug evidence rendering', [
     table({
         title: 'formats heap growth',
         cases: [ null, 0, 42, -42 ] as const,
-        caseTitle(growth) {
-            return `${String(growth)}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const growth = scope.parameters;
 

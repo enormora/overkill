@@ -15,7 +15,7 @@ export const testNode: TestNode = suite('lazy command namespace routes', [
         title: 'loads and forwards history commands',
         cases: [ 'list', 'prune', 'compact', 'clear' ] as const,
         caseTitle(verb) {
-            return `${verb}`;
+            return verb;
         },
         async test(scope) {
             const verb = scope.parameters;
@@ -33,7 +33,7 @@ export const testNode: TestNode = suite('lazy command namespace routes', [
         title: 'loads and forwards corpus commands',
         cases: [ 'inspect', 'promote', 'migrate' ] as const,
         caseTitle(verb) {
-            return `${verb}`;
+            return verb;
         },
         async test(scope) {
             const verb = scope.parameters;
@@ -67,7 +67,7 @@ export const testNode: TestNode = suite('lazy command namespace routes', [
         title: 'routes commands through their own lazy dependencies',
         cases: [ 'replayRun', 'replayWitness' ] as const,
         caseTitle(verb) {
-            return `${verb}`;
+            return verb;
         },
         async test(scope) {
             const verb = scope.parameters;

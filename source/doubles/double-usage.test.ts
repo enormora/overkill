@@ -1,7 +1,6 @@
 import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
-import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
-
 import { P } from 'ts-pattern';
+import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
 import type { FailedCheck, FailedCompositeCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';

@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { join, relative } from 'node:path';
-import { createNullReporter } from '../reporters/null-reporter.ts';
 import type { TestScope } from '@overkill-dev/test';
+import { createNullReporter } from '../reporters/null-reporter.ts';
 import { normalizeConfig, type RunCommand } from '../packages/run/run.entry-point.ts';
 import { createCalibrationReferenceStore, type CalibrationReferenceStore } from '../baselines/calibration-store.ts';
 import { defaultRunRequest } from './run-command-factory.ts';

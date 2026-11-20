@@ -1,5 +1,5 @@
-import { type TestNode, test, type TestScope } from '@overkill-dev/test';
 import { isDeepStrictEqual } from 'node:util';
+import { type TestNode, test, type TestScope } from '@overkill-dev/test';
 
 import {
     createChildRun,

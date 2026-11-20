@@ -1,6 +1,6 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     defineReporter,
@@ -147,7 +147,7 @@ export const testNode: TestNode = suite('property witness storage', [
         title: 'retains replayable witnesses and records without an explicit request',
         cases: [ 'in-process', 'supervised-process' ] as const,
         caseTitle(processModel) {
-            return `${processModel}`;
+            return processModel;
         },
         async test(scope) {
             const processModel = scope.parameters;

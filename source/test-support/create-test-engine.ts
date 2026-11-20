@@ -1,10 +1,10 @@
 import { createDeterministicClock, type Clock } from '@enormora/clock';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { createEngine, type Engine } from '../engine/engine.ts';
 import { createExecute, type ExecutionDriver } from '../engine/execution.ts';
 import { createReporterDispatcher, type ReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { isTestNode, type TestNode } from '../engine/test-node.ts';
 import type { RunResult } from '../engine/run-result.ts';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 
 export const engineCasePassed = defineCompositeAssertion({
     name: 'engine case passes',
@@ -20,7 +20,12 @@ export const engineCasePassed = defineCompositeAssertion({
 
 export type EngineCaseBody = Extract<
     Parameters<Engine['createTestCase']>[0]['body'],
-    (...arguments_: never[]) => unknown
+    (...arguments_: readonly never[]) => unknown
+>;
+
+export type EngineThrowingCaseBody = Extract<
+    Parameters<Engine['createThrowingTestCase']>[0]['body'],
+    (...arguments_: readonly never[]) => unknown
 >;
 
 export function subjectTestNode<Node>(node: Node): Node & TestNode {

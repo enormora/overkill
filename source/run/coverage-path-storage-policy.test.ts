@@ -7,7 +7,7 @@ export const testNode: TestNode = suite('coverage directory ownership', [
         title: 'creates coverage within the project',
         cases: [ 'ancestor', 'pass' ] as const,
         caseTitle(scenario) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
             const scenario = scope.parameters;
@@ -22,7 +22,7 @@ export const testNode: TestNode = suite('coverage directory ownership', [
         title: 'rejects invalid coverage output directories',
         cases: [ 'escape', 'linked-ancestor', 'linked-created' ] as const,
         caseTitle(scenario) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
             const scenario = scope.parameters;
@@ -46,7 +46,7 @@ export const testNode: TestNode = suite('coverage directory ownership', [
         title: 'preserves coverage storage failures',
         cases: [ 'creation-error', 'root-error' ] as const,
         caseTitle(scenario) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
             const scenario = scope.parameters;

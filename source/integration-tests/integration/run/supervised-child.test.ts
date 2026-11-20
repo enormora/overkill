@@ -1,5 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { setImmediate as scheduleImmediate } from 'node:timers';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     createChildRun,

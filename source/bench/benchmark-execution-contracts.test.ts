@@ -1,5 +1,5 @@
-import { executeEngineCase } from '../test-support/create-test-engine.ts';
 import { type TestNode, suite, test } from '@overkill-dev/test';
+import { executeEngineCase } from '../test-support/create-test-engine.ts';
 
 import { processMeasurement } from '../packages/bench/bench.entry-point.ts';
 import { benchmarkDefinitionSchema } from '../run/benchmark-definition-schema.ts';

@@ -52,7 +52,7 @@ export const testNode: TestNode = suite('frozen family resolution', [
         title: 'resolves built-in family definitions',
         cases: [ 'builtin', 'config-file' ] as const,
         caseTitle(kind) {
-            return `${kind}`;
+            return kind;
         },
         async test(scope) {
             const kind = scope.parameters;
@@ -205,7 +205,7 @@ export const testNode: TestNode = suite('frozen family resolution', [
             { name: 'unsupported placement', exported: definition('1'), processModel: 'worker-pool' }
         ],
         caseTitle(scenario) {
-            return `${scenario.name}`;
+            return scenario.name;
         },
         async test(scope) {
             const scenario = scope.parameters;
@@ -261,7 +261,7 @@ export const testNode: TestNode = suite('frozen family resolution', [
             { name: 'a missing named export', value: {} }
         ],
         caseTitle(scenario) {
-            return `${scenario.name}`;
+            return scenario.name;
         },
         async test(scope) {
             const scenario = scope.parameters;

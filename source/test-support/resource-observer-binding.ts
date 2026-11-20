@@ -1,3 +1,4 @@
+import type { TestScope } from '@overkill-dev/test';
 import { defineResourceCheckObserverReference } from '../resources/resource-check-reference.ts';
 import { readImplementationParticipants, type ImplementationParticipant } from '../implementation-participant.ts';
 import type { AnyResourceDefinition, ReferenceAdmission } from '../resources/resource-definition-shape.ts';
@@ -6,7 +7,6 @@ import type {
     ResourceCheckObserverReference,
     ResourceCheckInstallationContext
 } from '../resources/resource-checks.ts';
-import type { TestScope } from '@overkill-dev/test';
 import { resourceImplementationBinding } from './resource-implementation-binding.ts';
 import { resourceCheckSession, completeObservation } from './resource-check-session.ts';
 

@@ -21,7 +21,7 @@ export const testNode: TestNode = suite('bounded process probe reports', [
         title: 'rejects invalid probe reports and closes the file',
         cases: [ 'invalid-json', 'invalid-report', 'oversized', 'read-error' ] as const,
         caseTitle(scenario) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
             const scenario = scope.parameters;

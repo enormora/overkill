@@ -41,16 +41,12 @@ export const testNode: TestNode = suite('final result reporter preparation', [
                     ? []
                     : [ kind === 'final' ? 'in-memory-final-result' : 'in-memory-real-time' ];
                 const expected = final ? [ 'in-memory-final-result' ] : ordinary;
-                return ({
-                    caseDescription: `${kind}, ${final}`,
-                    final,
-                    kind,
-                    ordinary,
-                    expected
-                });
+                return { final, kind, expected };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ final, kind }) {
+            return [ kind, final ].map(String).join(', ');
+        },
         test(scope) {
             const { final, kind, expected } = scope.parameters;
 

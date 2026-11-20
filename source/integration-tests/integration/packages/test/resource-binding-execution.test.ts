@@ -1,9 +1,9 @@
+import { type TestNode, defineMacro, test, suite, type TestScope } from '@overkill-dev/test';
 import {
     executeEngineCase,
     engineCasePassed,
     type EngineCaseBody
 } from '../../../../test-support/create-test-engine.ts';
-import { type TestNode, defineMacro, test, suite, type TestScope } from '@overkill-dev/test';
 
 import {
     defineReporter,

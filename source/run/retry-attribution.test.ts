@@ -7,7 +7,7 @@ import { createSupervisedRunState, type SupervisedRunState } from './supervised-
 import { capturedOutputLimitBytes } from './supervised-output-capture.ts';
 import { crashError } from './supervised-run-process-policy.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+const metadata = { definitionLocations: [ { kind: 'unknown' } ] } as const;
 const work = createDefaultWorkId({ file: 'retry.test.ts', params: null, suite: [], title: 'retry' });
 const policies: readonly RetryArtifactPolicy[] = [ 'first-failure-and-final', 'last-failure-and-final', 'all' ];
 const expectedArtifactAttempts: Readonly<Record<RetryArtifactPolicy, readonly (number | null)[]>> = {
@@ -122,11 +122,10 @@ export const testNode: TestNode = suite('Retry attribution', [
         return scope.assert.collect();
     }),
     table({
-        ...metadata,
         title: 'retains capture policy and attempt history',
         cases: policies,
         caseTitle(policy) {
-            return `${policy}`;
+            return policy;
         },
         test(scope) {
             const policy = scope.parameters;

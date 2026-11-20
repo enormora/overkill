@@ -1,6 +1,6 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createVirtualRunDiscovery } from '../test-support/virtual-run-discovery.ts';
 import type { ProfileFiles } from '../config/types.ts';

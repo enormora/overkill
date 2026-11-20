@@ -1,6 +1,6 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { mkdir, readFile, symlink, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { IntegrationProfileConfig } from '../../../config/types.ts';
 import {

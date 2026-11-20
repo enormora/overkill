@@ -15,8 +15,10 @@ import {
 
 import * as bench from './bench.entry-point.ts';
 
+type FailingBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'equal'>; };
+
 function failingBody(
-    scope: { readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>; }
+    scope: FailingBodyAssertions
 ): ReturnType<EngineCaseBody> {
     scope.assert.equal('actual', 'expected');
     return scope.assert.collect();

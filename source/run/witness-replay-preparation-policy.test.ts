@@ -50,9 +50,7 @@ export const testNode: TestNode = suite('fixed witness replay preparation', [
     table({
         title: 'rejects invalid witness sources',
         cases: [ null, '/outside.ts', '../escape.ts', 'sub/../escape.ts', 'sub\\..\\escape.ts' ] as const,
-        caseTitle(file) {
-            return `${String(file)}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const file = scope.parameters;
 
@@ -97,7 +95,7 @@ export const testNode: TestNode = suite('fixed witness replay preparation', [
             id: null
         }, { path: '.overkill/runs/invalid.id/witness.json', id: null } ] as const,
         caseTitle(entry) {
-            return `${entry.path}`;
+            return entry.path;
         },
         async test(scope) {
             const entry = scope.parameters;
@@ -116,9 +114,7 @@ export const testNode: TestNode = suite('fixed witness replay preparation', [
     table({
         title: 'resolves requested replay policies',
         cases: [ null, 'integration' ] as const,
-        caseTitle(profile) {
-            return `${String(profile)}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const profile = scope.parameters;
 

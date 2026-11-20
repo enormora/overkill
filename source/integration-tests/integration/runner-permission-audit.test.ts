@@ -1,6 +1,6 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { readProcessEnvironment } from '../../run/node-host-readers.ts';
 
@@ -36,9 +36,7 @@ export const testNode: TestNode = suite(
     [ table({
         title: 'audit permits unrestricted reads and retains repeated restricted read diagnostics',
         cases: [ 'argv', 'environment' ] as const,
-        caseTitle(mode) {
-            return `${mode} audit permits unrestricted reads and retains repeated restricted read diagnostics`;
-        },
+        caseTitle: String,
         async test(scope) {
             const mode = scope.parameters;
 

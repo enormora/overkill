@@ -1,11 +1,9 @@
-import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 import { readFile } from 'node:fs/promises';
+import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
 import { attachmentFixture } from '../../../test-support/attachment-fixture.ts';
 import { createAttachmentRetention, type AttachmentRetention } from '../../../run/attachment-retention.ts';
-
-const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
 async function assertRepeatedTextFinish(scope: TestScope): Promise<void> {
     const { directory } = await attachmentFixture(scope, defaultAttachmentLimits);
@@ -62,8 +60,7 @@ async function assertFileClosure(scope: TestScope): Promise<void> {
 export const testNode: TestNode = suite(
     'Runtime attachment content',
     [ table({
-        ...definition,
-        title: 'runtime attachment content scenarios',
+        title: 'finalizes retained content',
         cases: [ [ 'text completion remains stable when finalization repeats', assertRepeatedTextFinish ], [
             'incomplete JSON and canonical expansion respect inline limits',
             assertJsonCompletion

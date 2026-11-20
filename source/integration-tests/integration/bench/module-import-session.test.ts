@@ -1,6 +1,6 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { once } from 'node:events';
 import { connect, type Socket } from 'node:net';
+import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createTestEngine } from '../../../test-support/create-test-engine.ts';
 import { createModuleImportSession, type ModuleImportSession } from '../../../bench/module-import-session.ts';

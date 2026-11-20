@@ -278,7 +278,7 @@ export const testNode: TestNode = suite('engine family runs', [
         title: 'rejects invalid work IDs before backend collection',
         cases: [ 'duplicate', 'unknown' ],
         caseTitle(kind) {
-            return `${kind}`;
+            return kind;
         },
         async test(scope) {
             const kind = scope.parameters;

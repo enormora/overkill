@@ -1,5 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import path from 'node:path';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { TestDebugArtifact } from '../packages/engine/engine.entry-point.ts';
 import { debugArtifactFixture } from '../test-support/debug-artifact-fixture.ts';

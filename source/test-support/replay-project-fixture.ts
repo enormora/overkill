@@ -3,9 +3,9 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { TestScope } from '@overkill-dev/test';
 import type { ReplayRunRecord } from '../run/replay-record-types.ts';
 import { normalizeConfig, type ProjectProfileConfig, type RunCommand } from '../packages/run/run.entry-point.ts';
-import type { TestScope } from '@overkill-dev/test';
 import { replayRecordSchema } from '../run/replay-record-schema.ts';
 import { defaultRunRequest } from './run-command-factory.ts';
 

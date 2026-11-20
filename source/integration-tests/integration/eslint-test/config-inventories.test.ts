@@ -67,7 +67,7 @@ export const testNode: TestNode = suite('config inventories', [
     }),
     table({
         title: 'checks configured rule inventories',
-        cases: cases,
+        cases,
         caseTitle(entry) {
             return entry.title;
         },

@@ -22,7 +22,7 @@ export const testNode: TestNode = suite('input recipe confirmation', [
         title: 'confirms fresh inputs without shrink state',
         cases: [ 'examples', 'automatic-edges', 'exhaustive' ] as const,
         caseTitle(phase) {
-            return `${phase}`;
+            return phase;
         },
         async test(scope) {
             const phase = scope.parameters;

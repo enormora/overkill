@@ -1,4 +1,5 @@
 import { table, type TestNode, suite } from '@overkill-dev/test';
+import { executionTitle } from '../../test-support/execution-profile-title.ts';
 
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import type { IntegrationExecution } from '../../config/types.ts';
@@ -32,9 +33,7 @@ export const testNode: TestNode = suite(
     [ table({
         title: 'retains projected owner checks and live evidence under execution',
         cases: executions,
-        caseTitle(_parameters, index) {
-            return `retains projected owner checks and live evidence under execution ${index}`;
-        },
+        caseTitle: executionTitle,
         async test(scope) {
             const execution = scope.parameters;
 

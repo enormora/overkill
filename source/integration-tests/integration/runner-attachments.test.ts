@@ -1,6 +1,7 @@
-import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
+import { executionTitle } from '../../test-support/execution-profile-title.ts';
 
 import {
     defineReporter,
@@ -19,7 +20,7 @@ import {
 
 const fixture = 'source/integration-tests/integration/fixtures/runtime-attachments.test.ts';
 const failureFixture = 'source/integration-tests/integration/fixtures/integration-failure-artifacts.test.ts';
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
 const workerExecution: IntegrationExecution = {
     assignmentPolicy: 'case-count-balanced',
     dispatchPolicy: 'dynamic-lease',
@@ -172,12 +173,13 @@ async function assertCrashEvidence(scope: TestScope, execution: IntegrationExecu
 
 export const testNode: TestNode = suite('Runner attachments', [
     table({
-        ...metadata,
         title: 'retains attachments across execution boundaries',
         cases: executions.map(function executionTest(execution, index) {
-            return ({ caseDescription: `${index}`, execution, index });
+            return { execution, index };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ execution }) {
+            return executionTitle(execution);
+        },
         async test(scope) {
             const { execution, index } = scope.parameters;
 
@@ -194,16 +196,13 @@ export const testNode: TestNode = suite('Runner attachments', [
         }
     }),
     table({
-        ...metadata,
         title: 'captures failed resource evidence across execution boundaries',
         cases: executions.map(function failureExecutionTest(execution, index) {
-            return ({
-                caseDescription: `${index}`,
-                execution,
-                index
-            });
+            return { execution, index };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ execution }) {
+            return executionTitle(execution);
+        },
         async test(scope) {
             const { execution, index } = scope.parameters;
 
@@ -223,16 +222,13 @@ export const testNode: TestNode = suite('Runner attachments', [
         }
     }),
     table({
-        ...metadata,
         title: 'retains checkpointed HTTP prefixes after owner crashes',
         cases: executions.map(function crashExecutionTest(execution, index) {
-            return ({
-                caseDescription: `${index}`,
-                execution,
-                index
-            });
+            return { execution, index };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ execution }) {
+            return executionTitle(execution);
+        },
         async test(scope) {
             const { execution, index } = scope.parameters;
 

@@ -6,15 +6,27 @@ import { isResourceStartupTimeoutError } from './resource-lifecycle-startup-budg
 export const testNode: TestNode = suite('resource startup clock policy', [
     table({
         title: 'does not schedule invalid or absent budget',
-        cases: [ [], [ { kind: 'serial' } ], [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: -1 } ], [ {
-            kind: 'startup-budget-milliseconds',
-            minimumMilliseconds: Number.NaN
-        } ], [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: Number.POSITIVE_INFINITY } ] ] as const,
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [ { description: 'no requirements', input: [] }, {
+            description: 'unrelated requirement',
+            input: [ { kind: 'serial' } ]
+        }, {
+            description: 'negative budget',
+            input: [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: -1 } ]
+        }, {
+            description: 'non-number budget',
+            input: [ {
+                kind: 'startup-budget-milliseconds',
+                minimumMilliseconds: Number.NaN
+            } ]
+        }, {
+            description: 'infinite budget',
+            input: [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: Number.POSITIVE_INFINITY } ]
+        } ] as const,
+        caseTitle({ description }) {
+            return description;
         },
         async test(scope) {
-            const requirements = scope.parameters;
+            const requirements = scope.parameters.input;
 
             const clock = startupClock();
             const fixture = startupResource(requirements, 'success');
@@ -86,12 +98,19 @@ export const testNode: TestNode = suite('resource startup clock policy', [
     }),
     table({
         title: 'does not recognize unrelated timeout value',
-        cases: [ null, undefined, 42, 'failure', {}, new Error('ordinary') ] as const,
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [
+            { description: 'null', input: null },
+            { description: 'undefined', input: undefined },
+            { description: 'number', input: 42 },
+            { description: 'string', input: 'failure' },
+            { description: 'empty record', input: {} },
+            { description: 'ordinary exception', input: new Error('ordinary') }
+        ] as const,
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const error = scope.parameters;
+            const error = scope.parameters.input;
 
             scope.assert.false(isResourceStartupTimeoutError(error));
             return scope.assert.collect();

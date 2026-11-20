@@ -11,7 +11,6 @@ import type { TimeoutPolicy } from '../../config/types.ts';
 
 const endlessLoopFixturePath = 'source/integration-tests/integration/fixtures/endless-loop.test.ts';
 const staggeredTimeoutFixturePath = 'source/integration-tests/integration/fixtures/staggered-timeout.test.ts';
-const emptyTestData = { annotations: {}, controls: {} } as const;
 
 function supervisedRunCommand(
     paths: readonly string[],
@@ -48,11 +47,11 @@ function plainData(value: unknown): unknown {
 
 export const testNode: TestNode = suite({
     title: 'Runner supervised timeouts',
-    ...emptyTestData,
+
     children: [
         test({
             title: 'runner gives each admitted supervised microtest its full hard timeout',
-            ...emptyTestData,
+
             async body(scope) {
                 const result = await orchestrator.run(supervisedRunCommand(
                     [ staggeredTimeoutFixturePath ],
@@ -75,12 +74,9 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'runner kills a supervised microtest that blocks past hard timeout',
-            ...emptyTestData,
+
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'equal' | 'deepEqual' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const result = await orchestrator.run(supervisedRunCommand(
                     [ endlessLoopFixturePath ],

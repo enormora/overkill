@@ -54,7 +54,7 @@ export const testNode: TestNode = suite('benchmark profile command boundaries', 
         title: 'rejects benchmark profiles before ordinary command collection',
         cases: [ 'run', 'list' ] as const,
         caseTitle(command) {
-            return `${command}`;
+            return command;
         },
         async test(scope) {
             const command = scope.parameters;

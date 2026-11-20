@@ -24,7 +24,7 @@ export const testNode: TestNode = suite('history retention catalog reconstructio
         title: 'retains records without a current completion receipt',
         cases: [ 'interrupted', 'merge', 'stale' ] as const,
         caseTitle(record) {
-            return `${record}`;
+            return record;
         },
         async test(scope) {
             const record = scope.parameters;
@@ -43,7 +43,7 @@ export const testNode: TestNode = suite('history retention catalog reconstructio
         title: 'omits invalid artifact entries',
         cases: [ 'file', 'none' ] as const,
         caseTitle(artifact) {
-            return `${artifact}`;
+            return artifact;
         },
         async test(scope) {
             const artifact = scope.parameters;
@@ -90,7 +90,7 @@ export const testNode: TestNode = suite('history retention catalog reconstructio
             }
         } ] as const,
         caseTitle({ record }) {
-            return `${record}`;
+            return record;
         },
         async test(scope) {
             const { record, matcher } = scope.parameters;
@@ -110,7 +110,7 @@ export const testNode: TestNode = suite('history retention catalog reconstructio
             message: 'Missing artifact retention metadata: /project/state/runs/orphan'
         } ] as const,
         caseTitle({ artifact }) {
-            return `${artifact}`;
+            return artifact;
         },
         async test(scope) {
             const { artifact, message } = scope.parameters;

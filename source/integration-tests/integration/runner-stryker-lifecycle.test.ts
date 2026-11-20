@@ -12,7 +12,6 @@ import {
 } from './support/stryker-lifecycle-fixture.ts';
 import { executeMutationScript } from './support/stryker-script.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const processModels = [ 'in-process', 'supervised-process' ] as const;
 type CampaignMode = {
     readonly processModel: typeof processModels[number];
@@ -50,14 +49,15 @@ export const testNode: TestNode = suite('Stryker execution lifecycle', [
         return scope.assert.collect();
     }),
     table({
-        ...metadata,
         title: 'freshState preserves mutation identities across sandboxes',
         cases: processModels.flatMap(function executionModes(processModel) {
             return [ false, true ].flatMap(function stateModes(freshState) {
-                return ({ caseDescription: `${processModel}, ${String(freshState)}`, processModel, freshState });
+                return { processModel, freshState };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel, freshState }) {
+            return [ processModel, String(freshState) ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel, freshState } = scope.parameters;
 
@@ -80,14 +80,15 @@ export const testNode: TestNode = suite('Stryker execution lifecycle', [
         }
     }),
     table({
-        ...metadata,
         title: 'freshState executes mutants and reports reload support',
         cases: processModels.flatMap(function executionModes(processModel) {
             return [ false, true ].flatMap(function stateModes(freshState) {
-                return ({ caseDescription: `${processModel}, ${String(freshState)}`, processModel, freshState });
+                return { processModel, freshState };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel, freshState }) {
+            return [ processModel, String(freshState) ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel, freshState } = scope.parameters;
 
@@ -96,21 +97,17 @@ export const testNode: TestNode = suite('Stryker execution lifecycle', [
         }
     }),
     table({
-        ...metadata,
         title: 'freshState coverage',
         cases: processModels.flatMap(function executionModes(processModel) {
             return [ false, true ].flatMap(function stateModes(freshState) {
                 return ([ 'perTest', 'all', 'off' ] as const).map(function coverageModes(coverageAnalysis) {
-                    return ({
-                        caseDescription: `${processModel}, ${String(freshState)}, ${coverageAnalysis}`,
-                        processModel,
-                        freshState,
-                        coverageAnalysis
-                    });
+                    return { processModel, freshState, coverageAnalysis };
                 });
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel, freshState, coverageAnalysis }) {
+            return [ processModel, String(freshState), coverageAnalysis ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel, freshState, coverageAnalysis } = scope.parameters;
 
@@ -135,14 +132,15 @@ export const testNode: TestNode = suite('Stryker execution lifecycle', [
         }
     }),
     table({
-        ...metadata,
         title: 'freshState reaps synchronous loops',
         cases: processModels.flatMap(function executionModes(processModel) {
             return [ false, true ].flatMap(function stateModes(freshState) {
-                return ({ caseDescription: `${processModel}, ${String(freshState)}`, processModel, freshState });
+                return { processModel, freshState };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel, freshState }) {
+            return [ processModel, String(freshState) ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel, freshState } = scope.parameters;
 

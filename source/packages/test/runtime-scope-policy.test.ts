@@ -41,12 +41,15 @@ export const testNode: TestNode = suite('runtime wrapper scope composition', [
     }),
     table({
         title: 'rejects invalid runtime scope map',
-        cases: [ null, [], 'invalid' ],
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [ { description: 'null', input: null }, { description: 'array', input: [] }, {
+            description: 'string',
+            input: 'invalid'
+        } ],
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const runtimes = scope.parameters;
+            const runtimes = scope.parameters.input;
 
             scope.assert.throws(function () {
                 Reflect.apply(composeRuntimeScope, undefined, [ { ...scope, runtimes }, api, { value: 'api' } ]);

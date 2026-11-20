@@ -1,7 +1,7 @@
-import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 
 import { defineReporter, type ReporterEvent } from '../../packages/engine/engine.entry-point.ts';
 
@@ -16,7 +16,7 @@ import { artifactReferenceKey } from '../../engine/run-artifact.ts';
 
 const fixture = 'source/integration-tests/integration/fixtures/measurement.bench.test.ts';
 const lifecycleFile = 'target/measurement-lifecycle.txt';
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
 const executions: readonly BenchmarkExecution[] = [
     { processModel: 'supervised-process', maxConcurrency: 1, scheduling: 'serial' },
     {
@@ -175,18 +175,15 @@ async function assertMeasurements(
 export const testNode: TestNode = suite(
     'measurement runner integration',
     [ table({
-        ...metadata,
-        title: 'runner measurements scenarios',
+        title: 'retains measurements across execution boundaries',
         cases: executions,
         caseTitle(execution) {
             return execution.processModel;
         },
         async test(scope) {
-            const execution = scope.parameters;
-
             const directory = await mkdtemp(join(tmpdir(), 'overkill-measurement-'));
             const events: ReporterEvent[] = [];
-            const command = measurementCommand(execution, directory, function (event) {
+            const command = measurementCommand(scope.parameters, directory, function (event) {
                 events.push(event);
             });
             await mkdir('target', { recursive: true });

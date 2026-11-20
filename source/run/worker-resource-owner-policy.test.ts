@@ -11,9 +11,14 @@ export const testNode: TestNode = suite('worker resource owner acknowledgements'
     table({
         title: 'settles owner completion response exactly once',
         cases: [ { runnerErrors: [] }, null, new Error('owner disconnected') ].map(function (output, index) {
-            return ({ caseDescription: `${index}`, output, index });
+            return { output, index };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ output }) {
+            if (output instanceof Error) {
+                return 'disconnected owner';
+            }
+            return output === null ? 'missing response' : 'successful response';
+        },
         async test(scope) {
             const { output, index } = scope.parameters;
 

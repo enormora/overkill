@@ -27,9 +27,7 @@ export const testNode: TestNode = suite('test plan admission and deferred bodies
     table({
         title: 'recovers callable origins when node metadata is absent',
         cases: [ false, true ],
-        caseTitle(wrapped) {
-            return `${wrapped}`;
-        },
+        caseTitle: String,
         test(scope) {
             const wrapped = scope.parameters;
 
@@ -89,7 +87,7 @@ export const testNode: TestNode = suite('test plan admission and deferred bodies
         title: 'requires resolved family declarations for resource descriptors',
         cases: [ 'property', 'integration' ] as const,
         caseTitle(testFamily) {
-            return `${testFamily}`;
+            return testFamily;
         },
         test(scope) {
             const testFamily = scope.parameters;
@@ -156,7 +154,7 @@ export const testNode: TestNode = suite('test plan admission and deferred bodies
         function (scope) {
             const engine = createTestEngine();
             const { body } = referencedTestBody();
-            const table = engine.createTable({
+            const subjectTable = engine.createTable({
                 ...metadata,
                 title: 'table',
                 cases: [ 'first', 'second' ].map(function (title) {
@@ -164,7 +162,7 @@ export const testNode: TestNode = suite('test plan admission and deferred bodies
                 })
             });
             const plan = engine.createTestPlan(
-                engine.createRoot({ title: 'root', annotations: {}, controls: {}, children: [ table ] })
+                engine.createRoot({ title: 'root', annotations: {}, controls: {}, children: [ subjectTable ] })
             );
             scope.assert.deepEqual(
                 plan.cases.map(function (entry) {

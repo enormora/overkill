@@ -1,10 +1,10 @@
-import { type EngineCaseBody, createTestEngine } from './create-test-engine.ts';
 import type { TestScope } from '@overkill-dev/test';
 
 import type { RunResult, WorkId } from '../packages/engine/engine.entry-point.ts';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createResourceLifecycleRuntimePolicy } from '../run/resource-lifecycle.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
+import { type EngineCaseBody, createTestEngine } from './create-test-engine.ts';
 
 import { attachmentFixtureForWork, inlineAttachmentFixture, type AttachmentFixture } from './attachment-fixture.ts';
 

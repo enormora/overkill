@@ -1,5 +1,5 @@
-import { type TestNode, suite, test } from '#tests';
 import { execFile } from 'node:child_process';
+import { type TestNode, suite, test } from '#tests';
 
 async function execute(script: string): Promise<string> {
     return new Promise(function executeConsumer(resolve, reject) {

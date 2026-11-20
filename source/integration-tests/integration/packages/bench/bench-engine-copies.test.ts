@@ -1,6 +1,6 @@
+import { extname } from 'node:path';
 import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import type { EngineCaseBody } from '../../../../test-support/create-test-engine.ts';
-import { extname } from 'node:path';
 
 import {
     createEngine,
@@ -11,6 +11,8 @@ import {
 
 import { test as subjectTest } from '../../../../packages/test/test.entry-point.ts';
 import { benchmark, wallClockMeasurement, workload } from '../../../../packages/bench/bench.entry-point.ts';
+
+type PassingBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
 
 type NodeAuthoringEngine = Pick<Engine, 'createRoot' | 'createTestCase' | 'createTestPlan'>;
 const nodeAuthoringMethods = [ 'createRoot', 'createTestCase', 'createTestPlan' ];
@@ -38,7 +40,7 @@ async function anotherDefaultEngineCopy(): Promise<NodeAuthoringEngine> {
 }
 
 function passingBody(
-    scope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }
+    scope: PassingBodyAssertions
 ): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
     return scope.assert.collect();

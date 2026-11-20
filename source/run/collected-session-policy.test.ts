@@ -39,7 +39,7 @@ export const testNode: TestNode = suite('reused collected session policy', [
         title: 'returns session failures through the reply protocol',
         cases: [ 'collect', 'execute', 'checkpoint', 'dispose' ] as const,
         caseTitle(phase) {
-            return `${phase}`;
+            return phase;
         },
         async test(scope) {
             const phase = scope.parameters;

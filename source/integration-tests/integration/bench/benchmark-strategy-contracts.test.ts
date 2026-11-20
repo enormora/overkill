@@ -1,8 +1,8 @@
-import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 
 import { runWithAttachmentContext } from '../../../attachments/attachment-context.ts';
 import {
@@ -163,7 +163,7 @@ function assertInterrupted(scope: TestScope, result: RunResult, lifecycle: reado
 export const testNode: TestNode = suite(
     'public module strategy contracts',
     [ table({
-        title: 'benchmark strategy contracts scenarios',
+        title: 'preserves lifecycle and budget outcomes',
         cases: modes,
         caseTitle(mode) {
             return mode;

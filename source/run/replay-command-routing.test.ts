@@ -33,7 +33,7 @@ export const testNode: TestNode = suite('replay command operands and delivery', 
         title: 'rejects invalid replay operand counts before execution',
         cases: [ 'replayRun', 'replayWitness' ] as const,
         caseTitle(verb) {
-            return `${verb}`;
+            return verb;
         },
         async test(scope) {
             const verb = scope.parameters;
@@ -49,7 +49,7 @@ export const testNode: TestNode = suite('replay command operands and delivery', 
         title: 'reports replay failures',
         cases: [ 'load', 'execute' ] as const,
         caseTitle(failure) {
-            return `${failure}`;
+            return failure;
         },
         async test(scope) {
             const failure = scope.parameters;

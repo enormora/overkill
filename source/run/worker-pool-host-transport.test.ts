@@ -1,6 +1,6 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
 import { EventEmitter } from 'node:events';
 import { runInNewContext } from 'node:vm';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -9,7 +9,6 @@ import type { SupervisedChildProcess } from './supervised-child-process.ts';
 import { childProcessEnvelope } from './child-process-protocol.ts';
 import type { WorkerPoolHostMessage } from './worker-pool-host-protocol.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 type HostFixture = {
     readonly errors: readonly Error[];
     readonly messages: readonly WorkerPoolHostMessage[];
@@ -74,27 +73,15 @@ function hostFixture(deliveryFailure: Error | null): HostFixture {
         }
     };
 }
-const invalidMessages: readonly unknown[] = [
-    childProcessEnvelope('worker-pool-host', { kind: 'task-result', taskId: 'known', result: null }),
-    childProcessEnvelope('worker-pool-host', {
-        kind: 'task-message',
-        taskId: 'known',
-        message: { kind: 'output', stream: 'stdout', capturedAtMicroseconds: 0, chunkBase64: '%' }
-    }),
-    childProcessEnvelope('worker-pool-host', { kind: 'runner-error', error: { message: 'incomplete' } })
-];
 function createForeignDeliveryError(): Error {
     return runInNewContext('new Error("Delivery failed.")') as Error;
 }
 export const testNode: TestNode = suite('worker pool host transport', [
     table({
-        ...metadata,
         title: 'delivery failure from errors settles the host transport',
         cases: [ new Error('Delivery failed.'), createForeignDeliveryError() ],
         caseTitle(failure) {
-            return `delivery failure from ${
-                failure instanceof Error ? 'native' : 'foreign'
-            } errors settles the host transport`;
+            return failure instanceof Error ? 'native' : 'foreign';
         },
         test(scope) {
             const failure = scope.parameters;
@@ -117,14 +104,26 @@ export const testNode: TestNode = suite('worker pool host transport', [
         }
     }),
     table({
-        ...metadata,
         title: 'invalid host message fails before forwarding',
-        cases: invalidMessages,
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [ {
+            description: 'missing task result',
+            input: childProcessEnvelope('worker-pool-host', { kind: 'task-result', taskId: 'known', result: null })
+        }, {
+            description: 'invalid output encoding',
+            input: childProcessEnvelope('worker-pool-host', {
+                kind: 'task-message',
+                taskId: 'known',
+                message: { kind: 'output', stream: 'stdout', capturedAtMicroseconds: 0, chunkBase64: '%' }
+            })
+        }, {
+            description: 'incomplete runner error',
+            input: childProcessEnvelope('worker-pool-host', { kind: 'runner-error', error: { message: 'incomplete' } })
+        } ],
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const message = scope.parameters;
+            const message = scope.parameters.input;
 
             const fixture = hostFixture(null);
             fixture.emit('message', message);

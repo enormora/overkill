@@ -1,7 +1,7 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { CalibrationSnapshot } from '../../../engine/benchmark-result.ts';
 import { calibrationSnapshot } from '../../../test-support/calibration-fixture.ts';

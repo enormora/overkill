@@ -1,8 +1,10 @@
 import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { type EngineCaseBody, createTestEngine } from '../test-support/create-test-engine.ts';
 
+type PassingBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
+
 function passingBody(
-    scope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }
+    scope: PassingBodyAssertions
 ): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
 

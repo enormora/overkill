@@ -161,9 +161,11 @@ export const testNode: TestNode = suite('resource observation session policy', [
     table({
         title: 'retains owner finalization failure',
         cases: [ new Error('finalization failed'), 42 ].map(function (failure, index) {
-            return ({ caseDescription: `${index}`, failure, index });
+            return { failure, index };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ failure }) {
+            return failure instanceof Error ? 'exception' : 'numeric rejection';
+        },
         async test(scope) {
             const { failure, index } = scope.parameters;
 

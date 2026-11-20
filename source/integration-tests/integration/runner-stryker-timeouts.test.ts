@@ -1,7 +1,7 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { adapterUrl, engineUrl, configUrl } from './support/stryker-lifecycle-fixture.ts';
 import { executeMutationScript } from './support/stryker-script.ts';
@@ -27,18 +27,20 @@ const scenarios = [
 export const testNode: TestNode = suite(
     'Stryker timeout enforcement',
     [ table({
-        title: 'runner stryker timeouts scenarios',
+        title: 'classifies timeouts across execution boundaries',
         cases: [ 'in-process', 'supervised-process' ].flatMap(
             function executionBoundary(processModel) {
                 const cases = processModel === 'supervised-process'
                     ? [ ...scenarios, 'hard' ]
                     : [ ...scenarios, 'soft-reused' ];
                 return cases.map(function timeoutScenario(scenario) {
-                    return ({ caseDescription: `${processModel} ${scenario}`, processModel, cases, scenario });
+                    return { processModel, scenario };
                 });
             }
         ),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel, scenario }) {
+            return [ processModel, scenario ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel, scenario } = scope.parameters;
 

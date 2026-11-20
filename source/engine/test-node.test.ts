@@ -1,7 +1,9 @@
 import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
-import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+import { createTestEngine as createEngine, type EngineCaseBody } from '../test-support/create-test-engine.ts';
 import { isTestNode, isTestRoot, stampTestNodeFamily } from './test-node.ts';
+
+type TestNodeAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
 
 export const testNode: TestNode = suite('Test node construction', [
     test('createRoot() creates a branded test root', function (scope) {
@@ -211,8 +213,8 @@ export const testNode: TestNode = suite('Test node construction', [
     test('createTestCase() rejects invalid title and definition location values', function (scope) {
         const engine = createEngine();
         const validBody = function (
-            testScope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }
-        ) {
+            testScope: TestNodeAssertions
+        ): ReturnType<EngineCaseBody> {
             testScope.assert.true(true, { message: 'passes' });
             return testScope.assert.collect();
         };

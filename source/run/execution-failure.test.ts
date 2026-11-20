@@ -1,5 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { deserialize, serialize } from 'node:v8';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     ConfigError,

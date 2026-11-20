@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, type TestScope as DirectScope } from '@overkill-dev/test';
+import { type TestScope, type TestNode, suite, test } from '@overkill-dev/test';
 import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
 
 import {
@@ -8,8 +8,10 @@ import {
 
 import { createDirectRunFixture } from '../test-support/direct-run-fixture.ts';
 
+type PassingBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
+
 function passingBody(
-    scope: { readonly assert: Pick<DirectScope['assert'], 'true' | 'collect'>; }
+    scope: PassingBodyAssertions
 ): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
 

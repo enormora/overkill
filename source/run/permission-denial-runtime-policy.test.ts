@@ -1,5 +1,5 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
 import diagnosticsChannel from 'node:diagnostics_channel';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { createExecutionObservation, withExecutionObservation } from '../engine/execution-observation.ts';
 import type { RunnerError } from '../packages/engine/engine.entry-point.ts';

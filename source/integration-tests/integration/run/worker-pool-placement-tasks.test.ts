@@ -1,5 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { PlacementPlan } from '../../../run/run-types.ts';
 import { executeWorkerPoolUnits } from '../../../run/worker-pool-execution.ts';
@@ -384,10 +384,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'accepts group units',
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'equal' | 'deepEqual' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const acceptingPool = createAcceptingPool();
                 const runtime = {
@@ -413,10 +410,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'applies unit scheduling and lifecycle',
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const acceptingPool = createAcceptingPool();
                 const runtime = {

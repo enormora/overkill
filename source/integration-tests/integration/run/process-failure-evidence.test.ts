@@ -1,12 +1,11 @@
-import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 import { setTimeout as wait } from 'node:timers/promises';
+import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 
 import { createLocalProcessServiceResource, withResources } from '../../../packages/test/resources.entry-point.ts';
 import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
 import { executeEvidence } from '../../../test-support/failure-evidence-fixture.ts';
 import type { AttachmentFixture } from '../../../test-support/attachment-fixture.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 function assertProcessOutput(scope: TestScope, fixture: AttachmentFixture, name: string, expected: string): void {
     const artifact = fixture.store.selectedArtifacts().find(function matchingOutput(entry) {
         return entry.payload.name === name;
@@ -64,12 +63,9 @@ async function assertProcessBoundary(scope: TestScope, readinessFails: boolean):
 export const testNode: TestNode = suite(
     'Process failure evidence',
     [ table({
-        ...metadata,
         title: 'process evidence survives forced shutdown and readiness failure',
         cases: [ false, true ],
-        caseTitle(readinessFails) {
-            return `process evidence survives forced shutdown and readiness failure: ${readinessFails}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const readinessFails = scope.parameters;
 

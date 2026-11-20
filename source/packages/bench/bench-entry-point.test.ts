@@ -14,8 +14,10 @@ import {
 import { suite as subjectSuite, test as subjectTest } from '../test/test.entry-point.ts';
 import * as bench from './bench.entry-point.ts';
 
+type PassingBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
+
 function passingBody(
-    scope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }
+    scope: PassingBodyAssertions
 ): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
     return scope.assert.collect();

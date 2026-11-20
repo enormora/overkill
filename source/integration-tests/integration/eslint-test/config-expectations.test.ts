@@ -1,7 +1,6 @@
 import { table, type TestNode, suite, test } from '@overkill-dev/test';
-import { requirePublishedCompositeReference } from '../../../test-support/assertion-reference-boundary.ts';
-
 import type { Linter } from 'eslint';
+import { requirePublishedCompositeReference } from '../../../test-support/assertion-reference-boundary.ts';
 
 import { observeRule, ruleCheck } from '../../../eslint-test/rule-observation.ts';
 import {
@@ -28,21 +27,19 @@ const expectation: Extract<ConfigFileExpectation, { readonly kind: 'included'; }
     settings: {}
 };
 const actual: ResolvedConfig = { rules: { eqeqeq: [ 2 ] }, languageOptions: {}, settings: {} };
-type RuleSeverityCase = { readonly input: unknown; readonly expected: readonly unknown[]; };
-const severities: readonly RuleSeverityCase[] = [
-    { input: 'off', expected: [ 0 ] },
-    { input: 'warn', expected: [ 1 ] },
-    { input: 'error', expected: [ 2 ] },
-    { input: 1, expected: [ 1 ] },
-    { input: [ 'error', 'always' ], expected: [ 2, 'always' ] },
-    { input: [], expected: [ undefined ] }
-];
 export const testNode: TestNode = suite('ESLint config expectation evaluation', [
     table({
         title: 'normalizes rule severity',
-        cases: severities,
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [
+            { description: 'disabled string', input: 'off', expected: [ 0 ] },
+            { description: 'warning string', input: 'warn', expected: [ 1 ] },
+            { description: 'error string', input: 'error', expected: [ 2 ] },
+            { description: 'numeric warning', input: 1, expected: [ 1 ] },
+            { description: 'error with options', input: [ 'error', 'always' ], expected: [ 2, 'always' ] },
+            { description: 'empty setting', input: [], expected: [ undefined ] }
+        ],
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
             const entry = scope.parameters;

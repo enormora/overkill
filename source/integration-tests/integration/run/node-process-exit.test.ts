@@ -1,7 +1,6 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
 import { execFile } from 'node:child_process';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 type ExitResult = { readonly code: number | string; readonly stderr: string; };
 const deadlineMilliseconds = 5000;
 async function runExitProbe(operation: string): Promise<ExitResult> {
@@ -32,11 +31,10 @@ export const testNode: TestNode = suite('native process exit observation', [
     }),
 
     table({
-        ...metadata,
         title: 'process exit reports unfinished restricted execution',
         cases: observedExits,
         caseTitle(scenario) {
-            return `${scenario.operation}`;
+            return scenario.operation;
         },
         async test(scope) {
             const scenario = scope.parameters;
@@ -52,11 +50,10 @@ export const testNode: TestNode = suite('native process exit observation', [
         return scope.assert.collect();
     }),
     table({
-        ...metadata,
         title: 'premature zero exit remains unsuccessful',
         cases: [ 'record-failure', 'stderr-failure' ],
         caseTitle(operation) {
-            return `${operation}`;
+            return operation;
         },
         async test(scope) {
             const operation = scope.parameters;

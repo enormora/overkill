@@ -35,9 +35,7 @@ export const testNode: TestNode = suite('record and artifact retention', [
     table({
         title: 'protects retained replay sources during pruning',
         cases: [ null, 'old-pass' ] as const,
-        caseTitle(sourceRunId) {
-            return `${String(sourceRunId)}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const sourceRunId = scope.parameters;
 

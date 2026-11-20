@@ -26,18 +26,16 @@ export const testNode: TestNode = suite('mutation failure evidence', [
         title: 'retains completed case failures across reply kinds',
         cases: [ 'failure', 'timeout' ],
         caseTitle(kind) {
-            return `${kind}`;
+            return kind;
         },
         async test(scope) {
-            const kind = scope.parameters;
-
             const fixture = await createMutationEvidenceFixture(scope, false);
             await fixture.record(fixture.failed, []);
             const data = fixture.lifecycle.snapshot();
             await fixture.lifecycle.dispose();
             const translated = mutantExecutionResult(
                 root,
-                kind === 'timeout' ? { kind, data, artifacts: [] } : {
+                scope.parameters === 'timeout' ? { kind: scope.parameters, data, artifacts: [] } : {
                     artifacts: [],
                     kind: 'failure',
                     data,
@@ -51,12 +49,12 @@ export const testNode: TestNode = suite('mutation failure evidence', [
                 },
                 fixture.expectation
             );
-            scope.assert.equal(translated.status, kind === 'timeout' ? 'timeout' : 'error');
+            scope.assert.equal(translated.status, scope.parameters === 'timeout' ? 'timeout' : 'error');
             scope.assert.true(diagnostic(translated).includes(workIdentityKey(fixture.first.workId)));
             scope.assert.match(diagnostic(translated), /body-error sentinel/u);
             scope.assert.match(
                 diagnostic(translated),
-                kind === 'failure' ? /^disposal sentinel/u : /^Mutant invocation/u
+                scope.parameters === 'failure' ? /^disposal sentinel/u : /^Mutant invocation/u
             );
             return scope.assert.collect();
         }
@@ -107,7 +105,7 @@ export const testNode: TestNode = suite('mutation failure evidence', [
         title: 'prioritizes recorded errors over interrupted timeouts',
         cases: [ 'cleanup', 'infrastructure' ],
         caseTitle(kind) {
-            return `${kind}`;
+            return kind;
         },
         async test(scope) {
             const kind = scope.parameters;

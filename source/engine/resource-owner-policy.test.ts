@@ -1,5 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { AsyncResource } from 'node:async_hooks';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     observeCaseResourceOwners,

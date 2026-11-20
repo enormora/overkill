@@ -1,5 +1,5 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { AsyncResource } from 'node:async_hooks';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import {
     createFailureArtifactStream,
@@ -16,7 +16,6 @@ import {
 import { attachmentsForProducer, preparedResourceAttachments } from '../attachments/attachment-context.ts';
 import { runWithAttachmentExecution } from './resource-lifecycle-state.ts';
 
-const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const metadata = { mediaType: 'application/json', name: 'evidence' };
 
 async function assertExpiredAttempt(scope: TestScope): Promise<void> {
@@ -232,12 +231,9 @@ export const testNode: TestNode = suite('inline attachment ownership', [
         }
     ),
     table({
-        ...definition,
         title: 'rejects malformed UTF-8 byte without exceeding the text limit',
         cases: [ 255, 195 ],
-        caseTitle(byte) {
-            return `${byte}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const byte = scope.parameters;
 

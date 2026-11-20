@@ -10,10 +10,12 @@ export const testNode: TestNode = suite('worker task output and batch boundaries
         title: 'delivers captured process output',
         cases: ([ 'stdout', 'stderr' ] as const).flatMap(function (stream) {
             return ([ 'buffered', 'live' ] as const).map(function (capture) {
-                return ({ caseDescription: `${capture}, ${stream}`, stream, capture });
+                return { stream, capture };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ stream, capture }) {
+            return [ capture, stream ].map(String).join(', ');
+        },
         test(scope) {
             const { stream, capture } = scope.parameters;
 

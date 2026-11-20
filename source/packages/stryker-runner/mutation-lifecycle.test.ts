@@ -71,22 +71,18 @@ export const testNode: TestNode = suite('mutation case admission', [
         title: 'classifies failed adapter results across bail policies',
         cases: [ 'dry', 'runtime', 'static' ].flatMap(function (mode) {
             return [ false, true ].map(function (disableBail) {
-                return ({
-                    caseDescription: `${mode}, ${disableBail}`,
-                    mode,
-                    disableBail
-                });
+                return { mode, disableBail };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ mode, disableBail }) {
+            return [ mode, disableBail ].map(String).join(', ');
+        },
         async test(scope) {
-            const { mode, disableBail } = scope.parameters;
-
             const result = failedMutationCase();
             const lifecycle = await createMutationLifecycle({
                 ...input,
-                mode,
-                disableBail,
+                mode: scope.parameters.mode,
+                disableBail: scope.parameters.disableBail,
                 activeMutant: '1',
                 hitLimit: 1
             });
@@ -95,7 +91,10 @@ export const testNode: TestNode = suite('mutation case admission', [
             await lifecycle.beforeCases();
             await lifecycle.enterCase(result.workId);
             const stopped = await lifecycle.completeCase(result, []);
-            scope.assert.equal(stopped, mode !== 'dry' && !disableBail ? 'stop' : 'continue');
+            scope.assert.equal(
+                stopped,
+                scope.parameters.mode !== 'dry' && !scope.parameters.disableBail ? 'stop' : 'continue'
+            );
             scope.assert.partialDeepEqual<unknown, unknown>(lifecycle.snapshot(), {
                 completed: [ workIdentityKey(result.workId) ],
                 bailed: stopped === 'stop'

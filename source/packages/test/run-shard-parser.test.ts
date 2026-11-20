@@ -7,7 +7,7 @@ export const testNode: TestNode = suite('shard argument validation', [
         title: 'rejects malformed shard arguments',
         cases: [ '', '1', '1/', '/2', '0/2', '1/0', '-1/2', '1/2/3', '1.5/2', '01/2', '1/2 ' ],
         caseTitle(value) {
-            return `${JSON.stringify(value)}`;
+            return JSON.stringify(value);
         },
         test(scope) {
             const value = scope.parameters;
@@ -22,7 +22,7 @@ export const testNode: TestNode = suite('shard argument validation', [
         title: 'rejects unsafe shard integers',
         cases: [ '9007199254740992/9007199254740992', '1/9007199254740992' ],
         caseTitle(value) {
-            return `${value}`;
+            return value;
         },
         test(scope) {
             const value = scope.parameters;

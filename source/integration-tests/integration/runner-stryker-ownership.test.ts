@@ -1,7 +1,7 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { adapterUrl, engineUrl, configUrl } from './support/stryker-lifecycle-fixture.ts';
 import { executeMutationScript } from './support/stryker-script.ts';
@@ -17,15 +17,17 @@ const scenarios = [
 export const testNode: TestNode = suite(
     'Stryker invocation ownership',
     [ table({
-        title: 'runner stryker ownership scenarios',
+        title: 'preserves invocation ownership across cancellation and disposal',
         cases: [ 'in-process', 'supervised-process' ].flatMap(
             function processBoundary(processModel) {
                 return scenarios.map(function ownershipScenario({ title, script }) {
-                    return ({ caseDescription: `${processModel} ${title}`, processModel, title, script });
+                    return { processModel, title, script };
                 });
             }
         ),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel, title }) {
+            return [ processModel, title ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel, script } = scope.parameters;
 

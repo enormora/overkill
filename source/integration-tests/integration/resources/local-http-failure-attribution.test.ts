@@ -1,6 +1,6 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { createLocalHttpServiceResource, startResources } from '../../../packages/resources/resources.entry-point.ts';
 import { observeTranscriptEntries } from '../../../packages/simulation/transcript.entry-point.ts';
@@ -25,7 +25,7 @@ async function fetchFromExternalProcess(baseUrl: string): Promise<void> {
         );
     });
 }
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
 async function assertUncorrelatedScope(scope: TestScope, lifetime: 'per-case' | 'shared-per-worker'): Promise<void> {
     const controller = new AbortController();
     const acquisition = Object.freeze({ phase: 'acquisition' });
@@ -104,11 +104,10 @@ export const testNode: TestNode = suite('Local HTTP failure attribution', [
         return scope.assert.collect();
     }),
     table({
-        ...metadata,
         title: 'unmatched requests keep their resource lifetime attribution',
         cases: [ 'per-case', 'shared-per-worker' ],
         caseTitle(lifetime) {
-            return `${lifetime}`;
+            return lifetime;
         },
         async test(scope) {
             const lifetime = scope.parameters;

@@ -1,5 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { fileURLToPath } from 'node:url';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createClock, createDeterministicClock } from '@enormora/clock';
 

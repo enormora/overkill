@@ -110,9 +110,7 @@ export const testNode: TestNode = suite('replay target selection', [
     table({
         title: 'requires a witness to select exactly one case',
         cases: [ 0, 2 ],
-        caseTitle(count) {
-            return `${count}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const count = scope.parameters;
 
@@ -135,9 +133,7 @@ export const testNode: TestNode = suite('replay target selection', [
     table({
         title: 'requires exactly one matching simulation resource',
         cases: [ 0, 2 ],
-        caseTitle(count) {
-            return `${count}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const count = scope.parameters;
 

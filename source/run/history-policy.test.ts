@@ -26,7 +26,7 @@ export const testNode: TestNode = suite('history operations and replay availabil
         title: 'preserves detailed-record availability',
         cases: [ 'pruned', 'unavailable' ] as const,
         caseTitle(availability) {
-            return `${availability}`;
+            return availability;
         },
         async test(scope) {
             const availability = scope.parameters;
@@ -89,9 +89,7 @@ export const testNode: TestNode = suite('history operations and replay availabil
     table({
         title: 'forwards pruning previews and publication',
         cases: [ true, false ] as const,
-        caseTitle(dryRun) {
-            return `${String(dryRun)}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const dryRun = scope.parameters;
 

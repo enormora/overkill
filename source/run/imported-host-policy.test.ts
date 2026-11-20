@@ -23,14 +23,12 @@ export const testNode: TestNode = suite(
         title: 'rejects incompatible imported families',
         cases: ([ 'supervised-process', 'worker-pool' ] as const).flatMap(function (processModel) {
             return [ false, true ].map(function (matches) {
-                return ({
-                    caseDescription: `${processModel}, ${matches}`,
-                    processModel,
-                    matches
-                });
+                return { processModel, matches };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel, matches }) {
+            return [ processModel, matches ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel, matches } = scope.parameters;
 

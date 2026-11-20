@@ -1,5 +1,5 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 import { isDeepStrictEqual } from 'node:util';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { RunResult } from '../../engine/run-result.ts';
 import { normalizationCommand, normalizationReferences } from '../../test-support/benchmark-normalization-fixture.ts';
@@ -116,7 +116,7 @@ export const testNode: TestNode = suite('benchmark normalization process boundar
         title: 'captures and normalizes across execution boundaries',
         cases: [ 'supervised-process', 'reuse', 'fresh-worker-per-unit' ] as const,
         caseTitle(boundary) {
-            return `${boundary}`;
+            return boundary;
         },
         async test(scope) {
             const boundary = scope.parameters;

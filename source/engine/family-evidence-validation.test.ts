@@ -231,7 +231,7 @@ export const testNode: TestNode = suite('family evidence validation', [
             'contradiction'
         ],
         caseTitle(scenario) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
             const scenario = scope.parameters;
@@ -302,7 +302,7 @@ export const testNode: TestNode = suite('family evidence validation', [
         title: 'retains analysis evidence after reporter failures',
         cases: [ 'run-end', 'finish', 'result', 'dispose' ],
         caseTitle(phase) {
-            return `${phase}`;
+            return phase;
         },
         async test(scope) {
             const phase = scope.parameters;

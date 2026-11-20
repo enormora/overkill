@@ -25,15 +25,21 @@ export const testNode: TestNode = suite('async leak diagnostic policy', [
     }),
     table({
         title: 'ignores unchanged and released resources',
-        cases: [ { before: [ 'Timeout', 'Timeout' ], after: [ 'Timeout' ] }, { before: [], after: [ 'PipeWrap' ] }, {
-            before: [ 'TCPWRAP' ],
-            after: [ 'TCPWRAP' ]
+        cases: [ { description: 'released timer', input: { before: [ 'Timeout', 'Timeout' ], after: [ 'Timeout' ] } }, {
+            description: 'ignored pipe',
+            input: { before: [], after: [ 'PipeWrap' ] }
+        }, {
+            description: 'unchanged socket',
+            input: {
+                before: [ 'TCPWRAP' ],
+                after: [ 'TCPWRAP' ]
+            }
         } ] as const,
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const input = scope.parameters;
+            const { input } = scope.parameters;
 
             scope.assert.equal(
                 activeResourceLeakError({ ...input, attributedTo: null, attributedToWork: null, phase: 'run' }),

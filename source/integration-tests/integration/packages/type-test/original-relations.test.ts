@@ -1,6 +1,6 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { mkdir, mkdtemp, writeFile, rm, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { Type } from 'typescript-beta/async';
 import { runNativeProject } from '../../../../test-support/native-type-project.ts';

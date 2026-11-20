@@ -1,7 +1,7 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { adapterUrl, engineUrl, configUrl } from './support/stryker-lifecycle-fixture.ts';
 import { executeMutationScript } from './support/stryker-script.ts';
@@ -21,7 +21,7 @@ export const testNode: TestNode = suite(
         title: 'freshState freezes the catalog',
         cases: modes,
         caseTitle({ processModel, freshState, restriction }) {
-            return `${processModel} freshState ${String(freshState)} ${restriction} freezes the catalog`;
+            return [ processModel, String(freshState), restriction ].map(String).join(', ');
         },
         async test(scope) {
             const { processModel, freshState, restriction } = scope.parameters;

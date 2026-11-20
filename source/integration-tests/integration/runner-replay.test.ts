@@ -1,6 +1,6 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { readFile, writeFile, unlink } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { ReplayRunRecord } from '../../run/replay-record-types.ts';
 import { orchestrator, type ReplayRunCommand } from '../../packages/run/run.entry-point.ts';
@@ -89,7 +89,7 @@ export const testNode: TestNode = suite('replay public execution boundaries', [
         title: 'reruns current bodies and preserves the source record',
         cases: [ 'in-process', 'supervised-process', 'worker-pool' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;

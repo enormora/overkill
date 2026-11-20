@@ -284,12 +284,15 @@ export const testNode: TestNode = suite({
         table({
             ...testCaseMetadata,
             title: 'resource preparation replies preserve request identity',
-            cases: [ { runnerErrors: [] }, null, new Error('owner disconnected') ],
-            caseTitle(_parameters, index) {
-                return `${index}`;
+            cases: [ { description: 'successful response', input: { runnerErrors: [] } }, {
+                description: 'missing response',
+                input: null
+            }, { description: 'disconnected owner', input: new Error('owner disconnected') } ],
+            caseTitle({ description }) {
+                return description;
             },
             async test(scope) {
-                const output = scope.parameters;
+                const output = scope.parameters.input;
 
                 await assertPreparationReply(scope, output, true);
                 return scope.assert.collect();

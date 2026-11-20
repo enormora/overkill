@@ -1,6 +1,6 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 import { writeFile, mkdir, symlink, unlink, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { frozenTypeProject } from '../../../../test-support/frozen-type-project.ts';
 import { verifyProjectInputs } from '../../../../packages/type-test/frozen-inputs.ts';
@@ -58,7 +58,7 @@ export const testNode: TestNode = suite('frozen compiler inputs', [
         title: 'detects changes to frozen inputs',
         cases: [ 'value.d.ts', 'base.json' ] as const,
         caseTitle(file) {
-            return `${file}`;
+            return file;
         },
         async test(scope) {
             const file = scope.parameters;

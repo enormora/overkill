@@ -12,18 +12,28 @@ import {
     type NarrowingCompositeAssertionReference as EngineNarrowingReference
 } from '../assertion-protocol/assertion-reference.ts';
 
-type PublishedResult = PublishedCompositeReturn<'assert'> | Promise<PublishedCompositeReturn<'assert'>>;
+type PublishedResult = Promise<PublishedCompositeReturn<'assert'>> | PublishedCompositeReturn<'assert'>;
 type EngineResult = EngineCompositeReturn<'assert'> | Promise<EngineCompositeReturn<'assert'>>;
 type ResultForEngine<Result> = Result extends PromiseLike<unknown> ? Promise<EngineCompositeReturn<'assert'>>
     : EngineCompositeReturn<'assert'>;
 type ResultForPublished<Result> = Result extends PromiseLike<unknown> ? Promise<PublishedCompositeReturn<'assert'>>
     : PublishedCompositeReturn<'assert'>;
 
+type CompatibleCompositeReference<
+    Arguments extends readonly unknown[],
+    EngineReturn extends EngineResult,
+    PublishedReturn extends PublishedResult
+> = EngineCompositeReference<Arguments, EngineReturn> & PublishedCompositeReference<Arguments, PublishedReturn>;
+
+type CompatibleNarrowingReference<
+    Actual,
+    Narrowed extends Actual,
+    Arguments extends readonly unknown[]
+> = EngineNarrowingReference<Actual, Narrowed, Arguments> & PublishedNarrowingReference<Actual, Narrowed, Arguments>;
+
 export function requireEngineCompositeReference<Arguments extends readonly unknown[], Result extends PublishedResult>(
     reference: PublishedCompositeReference<Arguments, Result>
-): asserts reference is
-    & PublishedCompositeReference<Arguments, Result>
-    & EngineCompositeReference<Arguments, ResultForEngine<Result>> {
+): asserts reference is CompatibleCompositeReference<Arguments, ResultForEngine<Result>, Result> {
     if (!isAssertionReference(reference) || isNarrowingAssertionReference(reference)) {
         throw new TypeError('Expected a composite reference accepted by the engine under test.');
     }
@@ -35,9 +45,7 @@ export function requireEngineCompositeReference<Arguments extends readonly unkno
 
 export function requirePublishedCompositeReference<Arguments extends readonly unknown[], Result extends EngineResult>(
     reference: EngineCompositeReference<Arguments, Result>
-): asserts reference is
-    & EngineCompositeReference<Arguments, Result>
-    & PublishedCompositeReference<Arguments, ResultForPublished<Result>> {
+): asserts reference is CompatibleCompositeReference<Arguments, Result, ResultForPublished<Result>> {
     if (!isAssertionReference(reference) || isNarrowingAssertionReference(reference)) {
         throw new TypeError('Expected a composite reference returned by the subject.');
     }
@@ -49,9 +57,7 @@ export function requirePublishedCompositeReference<Arguments extends readonly un
 
 export function requireEngineNarrowingReference<Actual, Narrowed extends Actual, Arguments extends readonly unknown[]>(
     reference: PublishedNarrowingReference<Actual, Narrowed, Arguments>
-): asserts reference is
-    & PublishedNarrowingReference<Actual, Narrowed, Arguments>
-    & EngineNarrowingReference<Actual, Narrowed, Arguments> {
+): asserts reference is CompatibleNarrowingReference<Actual, Narrowed, Arguments> {
     if (!isNarrowingAssertionReference(reference)) {
         throw new TypeError('Expected a narrowing reference accepted by the engine under test.');
     }

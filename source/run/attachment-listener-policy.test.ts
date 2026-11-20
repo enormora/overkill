@@ -32,16 +32,14 @@ export const testNode: TestNode = suite('attachment listener protocol and shutdo
         title: 'closes requests without calling storage',
         cases: [ 'invalid-token', 'malformed-json', 'invalid-schema' ] as const,
         caseTitle(kind) {
-            return `${kind}`;
+            return kind;
         },
         async test(scope) {
-            const kind = scope.parameters;
-
             const fixture = attachmentListener(scope, attachmentListenerScenario);
             const server = await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
             const channel = fixture.connect();
             const lines = { 'invalid-token': request('wrong', 1), 'malformed-json': '{', 'invalid-schema': '{}' };
-            const line = lines[kind];
+            const line = lines[scope.parameters];
             channel.deliver(line);
             await channel.closed();
             scope.assert.deepEqual(fixture.operations, []);
@@ -53,7 +51,7 @@ export const testNode: TestNode = suite('attachment listener protocol and shutdo
         title: 'closes channels after listener failures',
         cases: [ 'exchange', 'write' ] as const,
         caseTitle(stage) {
-            return `${stage}`;
+            return stage;
         },
         async test(scope) {
             const stage = scope.parameters;
@@ -96,7 +94,7 @@ export const testNode: TestNode = suite('attachment listener protocol and shutdo
         title: 'rejects invalid execution addresses',
         cases: [ 'missing', 'path' ] as const,
         caseTitle(address) {
-            return `${address}`;
+            return address;
         },
         async test(scope) {
             const address = scope.parameters;

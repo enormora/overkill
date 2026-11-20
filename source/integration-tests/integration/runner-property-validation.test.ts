@@ -63,15 +63,11 @@ export const testNode: TestNode = suite(
     [ table({
         title: 'preserves exploration streams across scheduling',
         cases: [ 'in-process', 'supervised-process' ] as const,
-        caseTitle(processModel) {
-            return `${processModel} preserves exploration streams across scheduling`;
-        },
+        caseTitle: String,
         async test(scope) {
-            const processModel = scope.parameters;
-
-            const command = await streamCommand(scope, processModel);
+            const command = await streamCommand(scope, scope.parameters);
             const first = await orchestrator.run(command);
-            const second = await concurrentStream(command, processModel);
+            const second = await concurrentStream(command, scope.parameters);
             scope.assert.deepEqual([ first.runnerErrors, second.runnerErrors ], [ [], [] ]);
             scope.assert.deepEqual([ first.summary.failed, second.summary.failed ], [ 1, 1 ]);
             scope.assert.equal(

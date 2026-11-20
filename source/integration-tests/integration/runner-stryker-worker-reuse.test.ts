@@ -1,7 +1,7 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { adapterUrl, engineUrl, configUrl } from './support/stryker-lifecycle-fixture.ts';
 import { executeMutationScript } from './support/stryker-script.ts';
@@ -10,7 +10,7 @@ import { strykerWorkerReuseScript, strykerHungCleanupScript } from './support/st
 export const testNode: TestNode = suite(
     'Stryker surviving worker reuse',
     [ table({
-        title: 'runner stryker worker reuse scenarios',
+        title: 'retains session state across sequential mutant invocations',
         cases: [
             {
                 title: 'reuses the worker after unsafe invocations without blaming the next case',

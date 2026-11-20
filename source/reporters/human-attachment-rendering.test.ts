@@ -8,7 +8,6 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { problemLines } from './human-reporter-rendering.ts';
 import { witnessReplayLines } from './witness-replay-lines.ts';
 
-const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const contents: readonly { readonly content: AttachmentContent; readonly expected: string; }[] = [
     {
         content: { kind: 'text', text: 'ready', byteLength: 5, completion: { kind: 'complete' } },
@@ -123,12 +122,9 @@ function assertVariantEvidence(scope: TestScope): void {
 }
 export const testNode: TestNode = suite('Human attachment rendering', [
     table({
-        ...definition,
         title: 'identifies automatic resource attachment producers',
         cases: [ false, true ],
-        caseTitle(resourceProducer) {
-            return `${resourceProducer}`;
-        },
+        caseTitle: String,
         test(scope) {
             const resourceProducer = scope.parameters;
 
@@ -191,11 +187,10 @@ export const testNode: TestNode = suite('Human attachment rendering', [
         return scope.assert.collect();
     }),
     table({
-        ...definition,
         title: 'shows retained evidence with case results',
         cases: [ 'missing', 'crash', 'inconclusive' ] as const,
         caseTitle(outcome) {
-            return `${outcome}`;
+            return outcome;
         },
         test(scope) {
             const outcome = scope.parameters;
@@ -264,7 +259,6 @@ export const testNode: TestNode = suite('Human attachment rendering', [
         return scope.assert.collect();
     }),
     table({
-        ...definition,
         title: 'renders automatic attachment metadata',
         cases: contents,
         caseTitle({ expected }) {

@@ -66,11 +66,9 @@ export const testNode: TestNode = suite('differential contract', [
         title: 'comparison errors remain body errors',
         cases: [ 'sync', 'async' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
-            const mode = scope.parameters;
-
             const require: typeof scope.require = scope.require;
 
             function fail(): never {
@@ -85,7 +83,7 @@ export const testNode: TestNode = suite('differential contract', [
                             { name: 'one', run: Number },
                             { name: 'two', run: Number }
                         ],
-                        check: mode === 'sync' ? fail : async function failAsynchronously() {
+                        check: scope.parameters === 'sync' ? fail : async function failAsynchronously() {
                             await Promise.resolve();
                             return fail();
                         }
@@ -109,17 +107,15 @@ export const testNode: TestNode = suite('differential contract', [
         title: 'cancellation stops callbacks',
         cases: [ 'before', 'reconstruction', 'settlement', 'comparison' ] as const,
         caseTitle(phase) {
-            return `${phase}`;
+            return phase;
         },
         async test(scope) {
-            const phase = scope.parameters;
-
             const events: string[] = [];
             const controller = new AbortController();
             function cancel(): void {
                 controller.abort(new Error('cancel differential'));
             }
-            if (phase === 'before') {
+            if (scope.parameters === 'before') {
                 cancel();
             }
             const result = await executePropertyNode(
@@ -137,7 +133,7 @@ export const testNode: TestNode = suite('differential contract', [
                                     async run(input) {
                                         events.push('first');
                                         await Promise.resolve();
-                                        if (phase === 'settlement') {
+                                        if (scope.parameters === 'settlement') {
                                             cancel();
                                         }
                                         return input;
@@ -164,7 +160,7 @@ export const testNode: TestNode = suite('differential contract', [
                             reconstructInput() {
                                 events.push('reconstruct');
                                 const input = sample.reconstructInput();
-                                if (phase === 'reconstruction') {
+                                if (scope.parameters === 'reconstruction') {
                                     cancel();
                                 }
                                 return input;
@@ -182,7 +178,7 @@ export const testNode: TestNode = suite('differential contract', [
                 reconstruction: [ 'reconstruct', 'cleanup' ],
                 settlement: [ 'reconstruct', 'first', 'cleanup' ],
                 comparison: [ 'reconstruct', 'first', 'reconstruct', 'second', 'check', 'cleanup' ]
-            }[phase];
+            }[scope.parameters];
             scope.assert.deepEqual(events, expected);
             scope.assert.equal(result.summary.failed, 1);
             return scope.assert.collect();

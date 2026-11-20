@@ -1,5 +1,5 @@
-import { subjectTestNode } from '../test-support/create-test-engine.ts';
 import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { subjectTestNode } from '../test-support/create-test-engine.ts';
 
 import {
     type TestCase,

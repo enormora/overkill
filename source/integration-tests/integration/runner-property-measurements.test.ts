@@ -1,6 +1,6 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 
@@ -53,18 +53,27 @@ async function measured(
 export const testNode: TestNode = suite(
     'property workload measurements',
     [ table({
-        title: 'runner property measurements scenarios',
+        title: 'retains property workload measurements across execution boundaries',
         cases: propertyWorkloads.flatMap(function workloadCases(workload) {
             return [ { size: 8, depth: 2 }, { size: 64, depth: 5 } ].map(function workloadSize({ size, depth }) {
-                return ({ caseDescription: `${workload} size ${size} depth ${depth}`, workload, size, depth });
+                return { workload, size, depth };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ workload, size, depth }) {
+            return [ workload, size, depth ].map(String).join(', ');
+        },
         async test(scope) {
             const { workload, size, depth } = scope.parameters;
-
-            const first = await measured(workload, size, depth);
-            const second = await measured(workload, size, depth);
+            const first = await measured(
+                workload,
+                size,
+                depth
+            );
+            const second = await measured(
+                workload,
+                size,
+                depth
+            );
             await mkdir('target/property-measurements', { recursive: true });
             await writeFile(
                 `target/property-measurements/${workload}-${size}-${depth}.json`,
@@ -96,8 +105,10 @@ export const testNode: TestNode = suite(
                 first.maximumCheckpointHeapDeltaBytes,
                 first.maximumCheckpointHeapBytes - first.baselineHeapBytes
             );
-            scope.assert.true(first.workConsumed > 0);
-            scope.assert.equal(first.bodyEvaluations === 0, workload === 'impossible');
+            scope.assert.deepEqual({ workConsumed: first.workConsumed > 0, skippedBody: first.bodyEvaluations === 0 }, {
+                workConsumed: true,
+                skippedBody: workload === 'impossible'
+            });
             return scope.assert.collect();
         }
     }) ]

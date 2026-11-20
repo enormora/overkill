@@ -60,7 +60,7 @@ export const testNode: TestNode = suite('config definition validation', [
         title: 'rejects invalid configuration selection',
         cases: [ [], [ 'missing' ], [ 'basic', 'basic' ] ],
         caseTitle(configs) {
-            return `${JSON.stringify(configs)}`;
+            return JSON.stringify(configs);
         },
         test(scope) {
             const configs = scope.parameters;

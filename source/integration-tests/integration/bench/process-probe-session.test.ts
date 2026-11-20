@@ -1,7 +1,7 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { once } from 'node:events';
 import { connect, type Socket } from 'node:net';
 import { writeFile } from 'node:fs/promises';
+import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createProcessProbe, type ProcessProbe } from '../../../bench/process-probe-session.ts';
 import {

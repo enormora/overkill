@@ -15,7 +15,7 @@ export const testNode: TestNode = suite('last-failed selection', [
         title: 'intersects title selection with historical identities',
         cases: [ 'example', 'unrelated' ] as const,
         caseTitle(value) {
-            return `${value}`;
+            return value;
         },
         test(scope) {
             const value = scope.parameters;
@@ -42,11 +42,9 @@ export const testNode: TestNode = suite('last-failed selection', [
         title: 'uses the latest verdict for selection',
         cases: [ 'pass', 'skip', 'inconclusive', 'fail', 'crashed', 'process-exhausted', 'runtime-policy' ] as const,
         caseTitle(verdict) {
-            return `${verdict}`;
+            return verdict;
         },
         async test(scope) {
-            const verdict = scope.parameters;
-
             const store = createMemoryHistoryStorage();
             const config = normalizeConfig({});
             const directory = '/project/.overkill';
@@ -75,7 +73,7 @@ export const testNode: TestNode = suite('last-failed selection', [
                         benchmark: null,
                         workId: historyWork,
                         durationMicroseconds: 10,
-                        verdict
+                        verdict: scope.parameters
                     } ]
                 }
             }, context);
@@ -89,7 +87,9 @@ export const testNode: TestNode = suite('last-failed selection', [
             });
             scope.assert.equal(
                 selection.kind,
-                [ 'fail', 'crashed', 'process-exhausted', 'runtime-policy' ].includes(verdict) ? 'filter' : 'none'
+                [ 'fail', 'crashed', 'process-exhausted', 'runtime-policy' ].includes(scope.parameters)
+                    ? 'filter'
+                    : 'none'
             );
             return scope.assert.collect();
         }

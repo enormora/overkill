@@ -93,15 +93,13 @@ export const testNode: TestNode = suite('loaded coverage source selection', [
         title: 'resolves cached originals with embedded or missing content',
         cases: [ source, null ],
         caseTitle(content) {
-            return `${content === null ? 'missing' : 'embedded'}`;
+            return content === null ? 'missing' : 'embedded';
         },
         async test(scope) {
             const require: typeof scope.require = scope.require;
 
-            const content = scope.parameters;
-
             const memory = memoryCoverageSources({ '/project/compiled.js': source, [sourcePath]: source });
-            const map = coverageSourceMap([ 'source/value.ts' ], [ content ]);
+            const map = coverageSourceMap([ 'source/value.ts' ], [ scope.parameters ]);
             const result = await prepareLoadedCoverageSources({
                 cache: memory.cache,
                 projectRoot: '/project',
@@ -117,7 +115,7 @@ export const testNode: TestNode = suite('loaded coverage source selection', [
                 sources: [ 'file:///project/source/value.ts' ],
                 sourcesContent: [ source ]
             });
-            scope.assert.equal(memory.reads.includes(sourcePath), content === null);
+            scope.assert.equal(memory.reads.includes(sourcePath), scope.parameters === null);
             return scope.assert.collect();
         }
     }),
@@ -174,7 +172,7 @@ export const testNode: TestNode = suite('loaded coverage source selection', [
         title: 'excludes non-executable originals',
         cases: [ 'webpack://virtual/value.ts', 'file:///project/source/types.ts', 'file:///project/source/value.txt' ],
         caseTitle(url) {
-            return `${url}`;
+            return url;
         },
         async test(scope) {
             const url = scope.parameters;

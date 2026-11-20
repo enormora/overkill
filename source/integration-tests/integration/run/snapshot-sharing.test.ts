@@ -1,5 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import path from 'node:path';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { evaluateSnapshot } from '../../../baselines/snapshot-context.ts';
 import { recordSnapshotAttempt, snapshotWire } from '../../../test-support/snapshot-fixture.ts';

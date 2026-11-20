@@ -223,7 +223,7 @@ export const testNode: TestNode = suite('attachment execution ownership', [
             { response: { kind: 'error', reason: 'denied', message: 'rejected' }, message: 'rejected' }
         ],
         caseTitle(expected) {
-            return `${expected.response.kind}`;
+            return expected.response.kind;
         },
         async test(scope) {
             const expected = scope.parameters;

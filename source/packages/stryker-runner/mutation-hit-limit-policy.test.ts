@@ -10,32 +10,27 @@ const configuration = {
     kind: 'configuration-loading',
     failure: { kind: 'config-error', name: 'ConfigError', cause: guard }
 };
-const accepted: readonly unknown[] = [
-    guard,
-    configuration,
-    new Error('Frozen policy revalidation failed: changed', { cause: configuration }),
-    new ConfigError('configuration', { cause: guard }),
-    new RunResolutionError('resolution', { cause: guard }, 'invalid-request')
-];
-const rejected: readonly unknown[] = [
-    null,
-    guard.message,
-    new Error('unrelated'),
-    new TypeError(guard.message),
-    new Error(guard.message, { cause: new Error('cause') }),
-    new Error('Frozen policy revalidation failed: changed', { cause: guard }),
-    new Error('unrelated', { cause: guard }),
-    { ...configuration, failure: { ...configuration.failure, cause: new Error('unrelated') } }
-];
 export const testNode: TestNode = suite('mutation hit limit guard recognition', [
     table({
         title: 'recognizes supported guard envelope',
-        cases: accepted,
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [
+            { description: 'direct guard', input: guard },
+            { description: 'configuration failure', input: configuration },
+            {
+                description: 'frozen configuration failure',
+                input: new Error('Frozen policy revalidation failed: changed', { cause: configuration })
+            },
+            { description: 'configuration error cause', input: new ConfigError('configuration', { cause: guard }) },
+            {
+                description: 'resolution error cause',
+                input: new RunResolutionError('resolution', { cause: guard }, 'invalid-request')
+            }
+        ],
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const error = scope.parameters;
+            const error = scope.parameters.input;
 
             scope.assert.true(isWrappedHitLimitGuard(error));
             scope.assert.equal(isHitLimitGuard(error), error === guard);
@@ -44,12 +39,27 @@ export const testNode: TestNode = suite('mutation hit limit guard recognition', 
     }),
     table({
         title: 'rejects unrelated guard envelope',
-        cases: rejected,
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [
+            { description: 'null', input: null },
+            { description: 'message string', input: guard.message },
+            { description: 'unrelated exception', input: new Error('unrelated') },
+            { description: 'wrong error type', input: new TypeError(guard.message) },
+            { description: 'unexpected nested cause', input: new Error(guard.message, { cause: new Error('cause') }) },
+            {
+                description: 'bare frozen guard',
+                input: new Error('Frozen policy revalidation failed: changed', { cause: guard })
+            },
+            { description: 'unrelated outer error', input: new Error('unrelated', { cause: guard }) },
+            {
+                description: 'unrelated configuration cause',
+                input: { ...configuration, failure: { ...configuration.failure, cause: new Error('unrelated') } }
+            }
+        ],
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const error = scope.parameters;
+            const error = scope.parameters.input;
 
             scope.assert.false(isWrappedHitLimitGuard(error));
             scope.assert.false(isHitLimitGuard(error));

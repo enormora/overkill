@@ -1,7 +1,8 @@
-import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
+import { executionTitle } from '../../test-support/execution-profile-title.ts';
 
 import {
     canonicalIdentityJson,
@@ -23,7 +24,7 @@ import { createBenchmarkCommands } from '../../run/benchmark-commands.ts';
 import { readBenchmarkRunMetadata } from '../../bench/benchmark-run-report.ts';
 
 const lifecycleFile = 'target/benchmark-lifecycle.txt';
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
 const fixture = 'source/integration-tests/integration/fixtures/benchmark.bench.test.ts';
 const workerExecution: BenchmarkExecution = {
     assignmentPolicy: 'case-count-balanced',
@@ -57,12 +58,6 @@ function assertWorkerPlacement(scope: TestScope, execution: RunExecutionFacts): 
         scope.assert.equal(execution.workerCount.requested, 4);
         scope.assert.equal(execution.workerCount.profileMaximum, 4);
     }
-}
-
-function executionTitle(execution: BenchmarkExecution): string {
-    return execution.processModel === 'worker-pool'
-        ? `${execution.processModel} ${execution.workerLifecycle} ${execution.hostProcess.kind}`
-        : 'supervised-process serial';
 }
 
 type BenchmarkObserver = {
@@ -272,12 +267,9 @@ async function assertBenchmarkScenario(
 export const testNode: TestNode = suite(
     'benchmark runner integration',
     [ table({
-        ...metadata,
-        title: 'runner benchmarks scenarios',
+        title: 'executes benchmark strategies across process boundaries',
         cases: executions,
-        caseTitle(execution) {
-            return executionTitle(execution);
-        },
+        caseTitle: executionTitle,
         async test(scope) {
             const execution = scope.parameters;
 

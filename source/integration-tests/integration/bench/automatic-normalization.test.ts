@@ -1,8 +1,8 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { runWithAttachmentContext } from '../../../attachments/attachment-context.ts';
 import {

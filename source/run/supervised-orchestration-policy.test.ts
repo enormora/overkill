@@ -15,7 +15,7 @@ export const testNode: TestNode = suite('memory supervised run orchestration', [
         title: 'rejects malformed child protocols',
         cases: [ 'empty-result', 'duplicate-result', 'forbidden-event' ] as const,
         caseTitle(scenario) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
             const scenario = scope.parameters;
@@ -36,14 +36,12 @@ export const testNode: TestNode = suite('memory supervised run orchestration', [
         title: 'executes supervised children across timing and capture modes',
         cases: ([ false, true ] as const).flatMap(function (timed) {
             return ([ 'buffered', 'live' ] as const).map(function (capture) {
-                return ({
-                    caseDescription: `${timed}, ${capture}`,
-                    timed,
-                    capture
-                });
+                return { timed, capture };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ timed, capture }) {
+            return [ timed, capture ].map(String).join(', ');
+        },
         async test(scope) {
             const { timed, capture } = scope.parameters;
 
@@ -65,7 +63,7 @@ export const testNode: TestNode = suite('memory supervised run orchestration', [
         title: 'retains orchestration failures as failed runs',
         cases: [ 'collection-failure', 'run-failure' ] as const,
         caseTitle(scenario) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
             const scenario = scope.parameters;

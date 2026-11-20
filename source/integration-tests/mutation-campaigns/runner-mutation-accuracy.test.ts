@@ -6,7 +6,6 @@ import {
     mutationModes,
     sourceMutationModules
 } from '../integration/fixtures/mutation-evidence/mutation-project.test.ts';
-import { captureMutationCampaign, verifyMutationAccuracy } from './support/mutation-accuracy-driver.ts';
 import {
     compareMutationCampaigns,
     mutationCoverageModes,
@@ -14,6 +13,7 @@ import {
 } from '../integration/fixtures/mutation-evidence/mutation-accuracy.test.ts';
 import { mutationCacheScript } from '../integration/fixtures/mutation-evidence/mutation-cache.test.ts';
 import { executeMutationScript } from '../integration/support/stryker-script.ts';
+import { captureMutationCampaign, verifyMutationAccuracy } from './support/mutation-accuracy-driver.ts';
 
 const projectUrl = new URL(
     '../integration/fixtures/mutation-evidence/mutation-project.test.ts',
@@ -108,13 +108,23 @@ export const testNode: TestNode = suite('mutation campaign accuracy', [
     table({
         title: 'preserves mutation accuracy across execution modes, seeds, and repetitions',
         cases: campaignRequests,
-        caseTitle: ({ mode, seed, repetition }) =>
-            `${mode.processModel}, fresh state ${String(mode.freshState)}, seed ${seed}, repetition ${repetition}`,
+        caseTitle({ mode, seed, repetition }) {
+            return `${mode.processModel}, fresh state ${
+                String(mode.freshState)
+            }, seed ${seed}, repetition ${repetition}`;
+        },
         async test(scope) {
             const { mode, seed } = scope.parameters;
             const evidence = await verifyMutationAccuracy(sourceMutationModules, mode, seed, mutationCoverageModes);
             scope.assert.equal(
-                evidence.flatMap((campaign) => campaign.mutants).filter((mutant) => mutant.status === 'Killed').length,
+                evidence
+                    .flatMap(function (campaign) {
+                        return campaign.mutants;
+                    })
+                    .filter(function (mutant) {
+                        return mutant.status === 'Killed';
+                    })
+                    .length,
                 18
             );
             return scope.assert.collect();
@@ -123,7 +133,9 @@ export const testNode: TestNode = suite('mutation campaign accuracy', [
     evidenceCases.table({
         title: 'rejects corrupted campaign evidence',
         cases: mutations,
-        caseTitle: ({ title }) => title,
+        caseTitle({ title }) {
+            return title;
+        },
         test(scope) {
             const { baseline } = scope.resources;
             const changed = structuredClone(baseline);

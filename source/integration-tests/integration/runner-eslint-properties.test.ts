@@ -1,6 +1,6 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { parseWitnessFile, type RunResult } from '../../packages/engine/engine.entry-point.ts';
 import { orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
@@ -120,7 +120,7 @@ export const testNode: TestNode = suite('project-backed ESLint properties', [
         title: 'retains and replays generated config failures',
         cases: [ 'supervised-process', 'worker-pool' ] as const,
         caseTitle(processModel) {
-            return `${processModel}`;
+            return processModel;
         },
         async test(scope) {
             const processModel = scope.parameters;
@@ -133,7 +133,7 @@ export const testNode: TestNode = suite('project-backed ESLint properties', [
         title: 'runs generated projects with profile budgets',
         cases: [ 'supervised-process', 'worker-pool' ] as const,
         caseTitle(processModel) {
-            return `${processModel}`;
+            return processModel;
         },
         async test(scope) {
             const processModel = scope.parameters;

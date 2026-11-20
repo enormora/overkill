@@ -16,9 +16,7 @@ export const testNode: TestNode = suite('coverage collection lifecycle', [
     table({
         title: 'accepts covered thresholds for empty reports',
         cases: [ false, true ],
-        caseTitle(empty) {
-            return `${empty}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const empty = scope.parameters;
 
@@ -253,7 +251,7 @@ export const testNode: TestNode = suite('coverage collection lifecycle', [
         title: 'preserves coverage startup errors',
         cases: [ 'connect', 'enable', 'start' ],
         caseTitle(command) {
-            return `${command}`;
+            return command;
         },
         async test(scope) {
             const command = scope.parameters;
@@ -272,18 +270,16 @@ export const testNode: TestNode = suite('coverage collection lifecycle', [
         title: 'reports collection errors and restores the environment',
         cases: [ 'take', 'write', 'stop', 'disable' ],
         caseTitle(command) {
-            return `${command}`;
+            return command;
         },
         async test(scope) {
-            const command = scope.parameters;
-
-            const fixture = coverageCollectionFixture([ command ], 'previous');
+            const fixture = coverageCollectionFixture([ scope.parameters ], 'previous');
             const session = await createCoverageCollection(request, fixture.runtime);
             await session.start();
             const result = await session.finalize(runResultFactory.build(), true);
             scope.assert.equal(result.status, 'failed');
             scope.assert.equal(result.runnerErrors[0]?.subtype, 'coverage');
-            scope.assert.equal(result.runnerErrors[0]?.message, `Coverage failed: ${command} failed`);
+            scope.assert.equal(result.runnerErrors[0]?.message, `Coverage failed: ${scope.parameters} failed`);
             scope.assert.equal(fixture.environment.NODE_V8_COVERAGE, 'previous');
             scope.assert.deepEqual(fixture.reports, []);
             return scope.assert.collect();

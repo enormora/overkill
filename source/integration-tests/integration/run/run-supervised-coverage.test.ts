@@ -120,9 +120,7 @@ async function assertSupervisedAttempt(
 export const testNode: TestNode = suite(
     'Run supervised coverage',
     [ table({
-        annotations: {},
-        controls: {},
-        title: 'run supervised coverage scenarios',
+        title: 'records supervised coverage across selection and restriction policies',
         cases: [ false, true ],
         caseTitle(failFacts) {
             return failFacts

@@ -19,9 +19,7 @@ export const testNode: TestNode = suite('config test assembly and declared inven
     table({
         title: 'retains fixture results with custom assertions',
         cases: [ false, true ] as const,
-        caseTitle(custom) {
-            return `${custom}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const custom = scope.parameters;
 
@@ -81,7 +79,7 @@ export const testNode: TestNode = suite('config test assembly and declared inven
         title: 'accepts compatible deprecated rule settings',
         cases: [ 'absent', 'allow', 'off' ] as const,
         caseTitle(policy) {
-            return `${policy}`;
+            return policy;
         },
         test(scope) {
             const policy = scope.parameters;
@@ -105,7 +103,7 @@ export const testNode: TestNode = suite('config test assembly and declared inven
             rules: { 'plugin/active': 'error', 'plugin/unknown': 'off' }
         }, { name: 'deprecated', rules: { 'plugin/active': 'error', 'plugin/old': 'off' } } ] as const,
         caseTitle(entry) {
-            return `${entry.name}`;
+            return entry.name;
         },
         test(scope) {
             const entry = scope.parameters;

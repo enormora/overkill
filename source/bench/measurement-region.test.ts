@@ -1,7 +1,7 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { mock } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { types as runtimeTypes } from 'node:util';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createAsyncMeasurementSample, createMeasurementSample } from './measurement-region.ts';
 import { asyncMeasurementStrategy, measurementStrategy, wallClockMeasurement } from './measurement-strategy.ts';

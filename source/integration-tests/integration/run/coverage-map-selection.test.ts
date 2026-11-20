@@ -1,6 +1,6 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { fromObject } from 'convert-source-map';
 import * as typescript from 'typescript';
@@ -71,8 +71,6 @@ export const testNode: TestNode = suite('Coverage map selection', [
         }
     ),
     table({
-        annotations: {},
-        controls: {},
         title: 'excludes selected originals without losing unrelated JavaScript',
         cases: [
             { name: 'known-test', source: '../src/application.ts' },
@@ -80,7 +78,7 @@ export const testNode: TestNode = suite('Coverage map selection', [
             { name: 'dependency', source: '../node_modules/dependency/application.ts' }
         ],
         caseTitle(scenario) {
-            return `${scenario.name}`;
+            return scenario.name;
         },
         async test(scope) {
             const scenario = scope.parameters;

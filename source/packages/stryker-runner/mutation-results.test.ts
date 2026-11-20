@@ -133,12 +133,12 @@ function originAliasReply(): ResultReply {
 export const testNode: TestNode = suite('Stryker result ownership', [
     table({
         title: 'rejects malformed completed mutation lifecycle',
-        cases: [ null, {} ],
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [ { description: 'null', input: null }, { description: 'empty record', input: {} } ],
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const data = scope.parameters;
+            const data = scope.parameters.input;
 
             const original = failedReply([], false, false);
             const result = mutantExecutionResult(root, { ...original, data }, mutantExpectation(original));

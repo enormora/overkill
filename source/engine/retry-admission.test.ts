@@ -97,12 +97,9 @@ function failRetryStart(event: ReporterEvent): void {
 
 export const testNode: TestNode = suite('Retry admission', [
     table({
-        ...metadata,
         title: 'rejects invalid total attempt limits',
         cases: [ 0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY ],
-        caseTitle(maxAttempts) {
-            return `${String(maxAttempts)}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const maxAttempts = scope.parameters;
 
@@ -137,11 +134,10 @@ export const testNode: TestNode = suite('Retry admission', [
         }
     }),
     table({
-        ...metadata,
         title: 'reporting failures prevent retry body execution',
         cases: schedulingCases,
         caseTitle(execution) {
-            return `${execution.mode}`;
+            return execution.mode;
         },
         async test(scope) {
             const execution = scope.parameters;
@@ -190,25 +186,20 @@ export const testNode: TestNode = suite('Retry admission', [
         }
     }),
     table({
-        ...metadata,
         title: 'process exhaustion stops retries',
         cases: schedulingCases.flatMap(function processExecutionMode(execution) {
             return [ 'tracking-start', 'initial-start', 'retry-start', 'retry-end' ].map(
                 function processTrigger(trigger) {
-                    return ({
-                        caseDescription: `${trigger}, ${execution.mode}`,
-                        execution,
-                        trigger
-                    });
+                    return { execution, trigger };
                 }
             );
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ execution, trigger }) {
+            return [ trigger, execution.mode ].map(String).join(', ');
+        },
         async test(scope) {
-            const { execution, trigger } = scope.parameters;
-
             const engine = createTestEngine();
-            const probe = processLimitProbe(trigger === 'tracking-start');
+            const probe = processLimitProbe(scope.parameters.trigger === 'tracking-start');
             let runs = 0;
             const plan = engine.createTestPlan(engine.createRoot({
                 annotations: {},
@@ -226,8 +217,8 @@ export const testNode: TestNode = suite('Retry admission', [
             }));
             const result = await engine.execute(plan, {
                 debug: { mode: 'off' },
-                execution,
-                reporters: [ processLimitReporter(probe, trigger) ],
+                execution: scope.parameters.execution,
+                reporters: [ processLimitReporter(probe, scope.parameters.trigger) ],
                 retryPolicy: { maxAttempts: 3 },
                 runFacts: {},
                 startedAt: '1970-01-01T00:00:00.000Z',
@@ -239,7 +230,10 @@ export const testNode: TestNode = suite('Retry admission', [
                     residentSetGrowthBytesPerSecond: null
                 }
             });
-            scope.assert.equal(runs, [ 'initial-start', 'tracking-start' ].includes(trigger) ? 0 : 1);
+            scope.assert.equal(
+                runs,
+                [ 'initial-start', 'tracking-start' ].includes(scope.parameters.trigger) ? 0 : 1
+            );
             scope.assert.equal(result.status, 'failed');
             scope.assert.equal(result.runnerErrors[0]?.subtype, 'process-exhaustion');
             scope.assert.equal(
@@ -249,7 +243,12 @@ export const testNode: TestNode = suite('Retry admission', [
                         return test.attempts;
                     })
                     .length,
-                { 'tracking-start': 0, 'initial-start': 1, 'retry-start': 2, 'retry-end': 1 }[trigger]
+                {
+                    'tracking-start': 0,
+                    'initial-start': 1,
+                    'retry-start': 2,
+                    'retry-end': 1
+                }[scope.parameters.trigger]
             );
             return scope.assert.collect();
         }

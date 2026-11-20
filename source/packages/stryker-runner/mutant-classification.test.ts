@@ -60,16 +60,14 @@ export const testNode: TestNode = suite('mutant case classification', [
         title: 'kills safely attributed failures with structured diagnostics',
         cases: [ 'runtime-policy', 'permission', 'uncaught-exception', 'unhandled-rejection' ] as const,
         caseTitle(subtype) {
-            return `${subtype}`;
+            return subtype;
         },
         test(scope) {
-            const subtype = scope.parameters;
-
-            const verdict = subtype === 'runtime-policy' || subtype === 'permission'
+            const verdict = scope.parameters === 'runtime-policy' || scope.parameters === 'permission'
                 ? 'runtime-policy'
                 : 'crashed';
             const result = caseResult(null, verdict);
-            const mutant = translate(result, [ policyError(result, subtype) ]);
+            const mutant = translate(result, [ policyError(result, scope.parameters) ]);
             if (mutant.status !== MutantRunStatus.Killed) {
                 throw new Error('Expected a safely attributed policy kill.');
             }
@@ -84,7 +82,7 @@ export const testNode: TestNode = suite('mutant case classification', [
         title: 'retains attributed errors alongside body failures',
         cases: [ 'artifact', 'reporter', 'loader', 'crash', 'process-exhaustion', 'attribution-drift' ] as const,
         caseTitle(subtype) {
-            return `${subtype}`;
+            return subtype;
         },
         test(scope) {
             const subtype = scope.parameters;
@@ -202,7 +200,7 @@ export const testNode: TestNode = suite('mutant case classification', [
         title: 'prioritizes missing attribution over retained timeouts',
         cases: [ 'crashed', 'runtime-policy' ] as const,
         caseTitle(verdict) {
-            return `${verdict}`;
+            return verdict;
         },
         test(scope) {
             const verdict = scope.parameters;

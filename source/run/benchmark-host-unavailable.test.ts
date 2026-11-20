@@ -1,6 +1,6 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import os from 'node:os';
 import { mock } from 'node:test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { HostReading } from '../bench/benchmark-host-snapshot.ts';
 import { benchmarkHostSnapshot } from '../test-support/benchmark-host-snapshot.ts';

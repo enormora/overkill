@@ -1,7 +1,7 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { mkdir, mkdtemp, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { createPlainOutputRenderer, type RunResult } from '../../packages/engine/engine.entry-point.ts';
 
@@ -289,9 +289,11 @@ export const testNode: TestNode = suite('mutation boundaries through the public 
     table({
         title: 'executes sandbox copies through the frozen public runner',
         cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function processModelTests(processModel) {
-            return ({ caseDescription: `${processModel}`, processModel });
+            return { processModel };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel }) {
+            return [ processModel ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel } = scope.parameters;
 
@@ -319,10 +321,12 @@ definitionLocations:[{kind:'unknown'}],body(scope){scope.assert.equal(value,2);r
         title: 'rejects original dependencies',
         cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function processModelTests(processModel) {
             return [ 'policy.mjs', 'case.test.mjs' ].map(function escapingModule(file) {
-                return ({ caseDescription: `${processModel}, ${file}`, processModel, file });
+                return { processModel, file };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel, file }) {
+            return [ processModel, file ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel, file } = scope.parameters;
 

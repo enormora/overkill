@@ -12,6 +12,8 @@ import { createTestEngine as createEngine } from '../test-support/create-test-en
 import type { Engine } from './engine.ts';
 import type { DefinitionLocations } from './test-node.ts';
 
+type TestPlanLocationAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
+
 type TestCase = ReturnType<Engine['createTestCase']>;
 type SourceLocation = DefinitionLocations[number];
 
@@ -84,6 +86,8 @@ function createPlanWithOrphans(
         title: 'root'
     }));
 }
+
+type FamilyConflictAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
 
 export const testNode: TestNode = suite('Test plan location', [
     test('preserves supplied definition locations', function (scope) {
@@ -178,7 +182,7 @@ export const testNode: TestNode = suite('Test plan location', [
     test('rejects a property body carrying a conflicting test family', function (scope) {
         const engine = createEngine();
         const body = attachTestBodyFamily(
-            function (sample: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }) {
+            function (sample: FamilyConflictAssertions) {
                 sample.assert.true(true);
                 return sample.assert.collect();
             },
@@ -217,7 +221,7 @@ export const testNode: TestNode = suite('Test plan location', [
                     controls: {},
                     title,
                     parameters: title,
-                    body(sample: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }) {
+                    body(sample: TestPlanLocationAssertions) {
                         sample.assert.true(true);
                         return sample.assert.collect();
                     }

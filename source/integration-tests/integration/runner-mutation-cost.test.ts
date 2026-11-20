@@ -1,6 +1,6 @@
-import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 
 import { normalizeConfig, orchestrator, type PerTestResult } from '../../packages/run/run.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
@@ -72,7 +72,7 @@ function assertCostEvidence(scope: TestScope, entry: PerTestResult, mode: Mutati
 export const testNode: TestNode = suite(
     'mutation cost measurement completeness',
     [ table({
-        title: 'runner mutation cost scenarios',
+        title: 'records mutation work and duration across execution boundaries',
         cases: mutationModes,
         caseTitle(mode) {
             return `${mode.processModel} freshState ${String(mode.freshState)}`;

@@ -1,6 +1,6 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { CoverageReport } from 'monocart-coverage-reports';
 
@@ -39,12 +39,10 @@ export const testNode: TestNode = suite('Coverage unloaded sources', [
         }
     ),
     table({
-        annotations: {},
-        controls: {},
         title: 'coverage rejects empty executable scope',
         cases: [ 'types.ts', 'missing.ts' ],
         caseTitle(include) {
-            return `${include}`;
+            return include;
         },
         async test(scope) {
             const include = scope.parameters;

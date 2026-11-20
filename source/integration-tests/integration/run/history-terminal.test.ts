@@ -1,8 +1,8 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { spawn } from 'node-pty';
 import { createHistory, normalizeConfig } from '../../../packages/run/run.entry-point.ts';

@@ -25,42 +25,35 @@ export const testNode: TestNode = suite('case leak attribution policy', [
                 return [ false, true ].map(function (ambiguous) {
                     const leaked = outcome !== null && includeActiveResourceLeaks;
                     const caseOwned = leaked && !ambiguous;
-                    return ({
-                        caseDescription: `handles ${
-                            outcome?.kind ?? 'terminal'
-                        } with resource checks ${includeActiveResourceLeaks} and ambiguous ownership ${ambiguous}`,
-                        outcome,
-                        includeActiveResourceLeaks,
-                        ambiguous,
-                        leaked,
-                        caseOwned
-                    });
+                    return { outcome, includeActiveResourceLeaks, ambiguous, leaked, caseOwned };
                 });
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ outcome, includeActiveResourceLeaks, ambiguous }) {
+            return [ outcome?.kind ?? 'terminal', includeActiveResourceLeaks, ambiguous ]
+                .map(String)
+                .join(', ');
+        },
         async test(scope) {
-            const { outcome, includeActiveResourceLeaks, ambiguous, leaked, caseOwned } = scope.parameters;
-
             const require: typeof scope.require = scope.require;
 
             const testCase = observationCase();
             const original = runResultFactory.build({ perTest: [ {} ] }).perTest[0];
             require.defined(original);
             const executedCase = {
-                result: { ...original, outcome },
+                result: { ...original, outcome: scope.parameters.outcome },
                 runnerErrors: [],
                 durationMicroseconds: 1
             };
             const result = await caseWithAsyncLeakPolicy({
                 testCase,
                 executedCase,
-                includeActiveResourceLeaks,
+                includeActiveResourceLeaks: scope.parameters.includeActiveResourceLeaks,
                 readResourceBaseline() {
                     return [];
                 },
                 ambiguousResources() {
-                    return ambiguous ? [ 'UnitResource' ] : [];
+                    return scope.parameters.ambiguous ? [ 'UnitResource' ] : [];
                 },
                 dependencies: {
                     asyncLeakMonitor: createDisabledAsyncLeakMonitor(),
@@ -69,13 +62,13 @@ export const testNode: TestNode = suite('case leak attribution policy', [
                     }
                 }
             });
-            scope.assert.equal(result.runnerErrors.length, leaked ? 1 : 0);
+            scope.assert.equal(result.runnerErrors.length, scope.parameters.leaked ? 1 : 0);
             scope.assert.equal(
                 result.executedCase.result.verdict,
-                caseOwned ? 'runtime-policy' : original.verdict
+                scope.parameters.caseOwned ? 'runtime-policy' : original.verdict
             );
             scope.assert.deepEqual({ owner: result.runnerErrors[0]?.attributedTo ?? null }, {
-                owner: caseOwned ? testCase.id : null
+                owner: scope.parameters.caseOwned ? testCase.id : null
             });
             return scope.assert.collect();
         }
@@ -84,14 +77,12 @@ export const testNode: TestNode = suite('case leak attribution policy', [
         title: 'runs resource checks according to policy',
         cases: [ false, true ].flatMap(function (includeActiveResourceLeaks) {
             return [ false, true ].map(function (leak) {
-                return ({
-                    caseDescription: `${includeActiveResourceLeaks}, ${leak}`,
-                    includeActiveResourceLeaks,
-                    leak
-                });
+                return { includeActiveResourceLeaks, leak };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ includeActiveResourceLeaks, leak }) {
+            return [ includeActiveResourceLeaks, leak ].map(String).join(', ');
+        },
         async test(scope) {
             const { includeActiveResourceLeaks, leak } = scope.parameters;
 

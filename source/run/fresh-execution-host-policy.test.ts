@@ -50,7 +50,7 @@ export const testNode: TestNode = suite('fresh execution host transport and clea
         title: 'preserves failures while closing the child',
         cases: [ 'error', 'send' ] as const,
         caseTitle(fault) {
-            return `${fault}`;
+            return fault;
         },
         async test(scope) {
             const fault = scope.parameters;

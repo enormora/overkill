@@ -136,9 +136,7 @@ export const testNode: TestNode = suite('history repair failures', [
     table({
         title: 'explicit repair reports malformed schema metadata',
         cases: [ 'null', '42', '{"version":"invalid"}' ],
-        caseTitle(source) {
-            return `explicit repair reports malformed schema metadata ${source}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const source = scope.parameters;
 

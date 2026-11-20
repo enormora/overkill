@@ -1,6 +1,6 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { execFile } from 'node:child_process';
 import { extname } from 'node:path';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createTestEngine } from '../../../test-support/create-test-engine.ts';
 import { withRunnerInfrastructure } from '../../../execution-ownership.ts';

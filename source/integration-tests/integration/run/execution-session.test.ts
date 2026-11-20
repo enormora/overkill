@@ -1,127 +1,21 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 import assert from 'node:assert/strict';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import {
+    sessionOptions,
+    createNativeSessionChild,
+    createScheduledSession,
+    passingFiles
+} from '../support/execution-session.ts';
 
 import {
     orchestrator,
-    type RunExecutionSessionOptions,
     type RunExecutionSession,
     type RunExecutionReply
 } from '../../../packages/run/run.entry-point.ts';
-import { collectedRunCommand } from '../../../test-support/collected-run-fixtures.ts';
-import {
-    createChildRun,
-    nativeChildDependencies,
-    readNativeEnvironment,
-    type ChildRunFixture
-} from '../../../test-support/supervised-child-fixture.ts';
-import { loadRunTestModules } from '../../../run/node-run-dependencies.entry-point.ts';
+import { nativeChildDependencies } from '../../../test-support/supervised-child-fixture.ts';
 import { runSupervisedChild } from '../../../run/supervised-child.ts';
-import { createSupervisedRunCommand } from '../../../run/run-isolated-command.ts';
-import { policyBaselineCommand } from '../../../run/frozen-run-policy.ts';
 
-const lifecycleModule = new URL(
-    '../fixtures/execution-session-lifecycle.test.ts',
-    import.meta.url
-);
-
-const passingFiles = [ 'source/integration-tests/integration/fixtures/passing.test.ts' ] as const;
 const lifecycleCases = [ 'source/integration-tests/integration/fixtures/execution-session-lifecycle.test.ts' ] as const;
-
-async function sessionOptions(
-    processModel: 'in-process' | 'supervised-process',
-    files: readonly string[]
-): Promise<RunExecutionSessionOptions> {
-    const command = collectedRunCommand();
-    const profile = command.config.profiles.microtest;
-    if (profile?.testFamily !== 'microtest') {
-        throw new Error('Missing microtest fixture profile.');
-    }
-    const policy = await orchestrator.freezePolicy({
-        moduleBoundary: null,
-        source: { kind: 'memory' },
-        command: {
-            ...command,
-            config: {
-                ...command.config,
-                profiles: {
-                    microtest: {
-                        ...profile,
-                        execution: { processModel, scheduling: 'serial', maxConcurrency: 1 },
-                        timeouts: { collectionMilliseconds: 30_000, hardMilliseconds: 30_000, softMilliseconds: 30_000 }
-                    }
-                }
-            },
-            request: { ...command.request, paths: files }
-        }
-    });
-    return {
-        command: {
-            kind: 'frozen-policy',
-            policy,
-            invocation: { seed: { value: 42n }, selection: { kind: 'all' } },
-            reporting: { outputRenderer: command.config.outputRenderer, reporters: [] }
-        },
-        lifecycle: {
-            moduleUrl: lifecycleModule.href,
-            exportName: 'createSessionLifecycle'
-        },
-        environment: 'profile-default'
-    };
-}
-
-async function createNativeSessionChild(data: string): Promise<ChildRunFixture> {
-    const options = await sessionOptions('supervised-process', passingFiles);
-    const { policy } = options.command;
-    const command = createSupervisedRunCommand(
-        policyBaselineCommand(policy),
-        {
-            ...policy.profile,
-            reporters: null,
-            baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' }
-        },
-        policy.files,
-        { projectRoot: process.cwd(), source: { kind: 'frozen-policy', policy }, normalization: null }
-    );
-    return createChildRun({
-        command: { ...command, kind: 'run-session', policy, session: { lifecycle: options.lifecycle, data } },
-        assignment: {
-            implementations: null,
-
-            kind: 'assign',
-            attachmentEndpoint: null,
-            assignedCases: [ {
-                file: passingFiles[0],
-                suite: [ 'fixture' ],
-                title: 'passes',
-                params: null
-            } ]
-        },
-        async discoverRunFiles() {
-            return policy.files;
-        },
-        loadRunTestModules,
-        readEnvironment: readNativeEnvironment
-    });
-}
-
-function createScheduledSession(
-    options: RunExecutionSessionOptions,
-    scheduling: 'concurrent' | 'serial',
-    maxConcurrency: number
-): RunExecutionSession {
-    const { policy } = options.command;
-    return orchestrator.createExecutionSession({
-        ...options,
-        command: {
-            ...options.command,
-            policy: {
-                ...policy,
-                profile: { ...policy.profile, execution: { ...policy.profile.execution, scheduling, maxConcurrency } },
-                request: { ...policy.request, execution: { mode: 'profile-default' } }
-            }
-        }
-    });
-}
 
 function requirePassedExecution(reply: RunExecutionReply): void {
     assert.ok(reply.kind === 'result', JSON.stringify(reply));
@@ -181,7 +75,7 @@ export const testNode: TestNode = suite('public execution session boundaries', [
         title: 'reports the plan selected by its lifecycle',
         cases: [ 'in-process', 'supervised-process' ] as const,
         caseTitle(processModel) {
-            return `${processModel}`;
+            return processModel;
         },
         async test(scope) {
             const processModel = scope.parameters;
@@ -206,12 +100,10 @@ export const testNode: TestNode = suite('public execution session boundaries', [
         title: 'finalizes child execution before reporting',
         cases: [ 'pass', 'before' ],
         caseTitle(data) {
-            return `${data}`;
+            return data;
         },
         async test(scope) {
-            const data = scope.parameters;
-
-            const child = await createNativeSessionChild(data);
+            const child = await createNativeSessionChild(scope.parameters);
             await runSupervisedChild(child.host, nativeChildDependencies());
             const messages = child.messages();
             const snapshot = messages.find(function lifecycleData(message) {
@@ -220,18 +112,20 @@ export const testNode: TestNode = suite('public execution session boundaries', [
             assert.ok(snapshot !== undefined, JSON.stringify(messages));
             assert.deepEqual(
                 snapshot.data,
-                data === 'pass'
+                scope.parameters === 'pass'
                     ? [ 'select', 'snapshot', 'before', 'enter', 'complete', 'snapshot' ]
                     : [ 'select', 'snapshot', 'before', 'snapshot' ],
                 JSON.stringify(messages)
             );
-            scope.assert.equal(child.exitCode(), data === 'pass' ? 0 : 1, { message: JSON.stringify(messages) });
+            scope.assert.equal(child.exitCode(), scope.parameters === 'pass' ? 0 : 1, {
+                message: JSON.stringify(messages)
+            });
             scope.assert.equal(child.disconnected(), true);
             scope.assert.equal(
                 messages.some(function passedResult(message) {
                     return message.kind === 'result' && message.result.summary.passed === 1;
                 }),
-                data === 'pass',
+                scope.parameters === 'pass',
                 { message: JSON.stringify(messages) }
             );
             return scope.assert.collect();
@@ -244,7 +138,7 @@ export const testNode: TestNode = suite('public execution session boundaries', [
             { data: 'malformed-data', message: 'Invalid child-process IPC payload.' }
         ],
         caseTitle({ data }) {
-            return `${data}`;
+            return data;
         },
         async test(scope) {
             const { data, message } = scope.parameters;
@@ -289,7 +183,7 @@ export const testNode: TestNode = suite('public execution session boundaries', [
         title: 'stops admission after lifecycle completion',
         cases: [ 'serial', 'concurrent' ],
         caseTitle(scheduling) {
-            return `${scheduling}`;
+            return scheduling;
         },
         async test(scope) {
             const scheduling = scope.parameters;
@@ -410,7 +304,7 @@ export const testNode: TestNode = suite('public execution session boundaries', [
         title: 'rejects invalid lifecycle exports',
         cases: [ 'missingFactory', 'notALifecycleFactory', 'emptyLifecycleFactory', 'incompleteLifecycleFactory' ],
         caseTitle(exportName) {
-            return `${exportName}`;
+            return exportName;
         },
         async test(scope) {
             const exportName = scope.parameters;
@@ -431,25 +325,25 @@ export const testNode: TestNode = suite('public execution session boundaries', [
         title: 'preserves case hook errors during execution',
         cases: ([ 'serial', 'concurrent' ] as const).flatMap(function schedulingMode(scheduling) {
             return [ 'enter', 'complete' ].map(function failedCaseHook(data) {
-                return ({
-                    caseDescription: `${data}, ${scheduling}`,
-                    scheduling,
-                    data
-                });
+                return { scheduling, data };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ scheduling, data }) {
+            return [ data, scheduling ].map(String).join(', ');
+        },
         async test(scope) {
-            const { scheduling, data } = scope.parameters;
-
             const session = createScheduledSession(
                 await sessionOptions('in-process', passingFiles),
-                scheduling,
+                scope.parameters.scheduling,
                 1
             );
             scope.cleanup(session.dispose);
-            const failed = await session.run({ data, timeoutMilliseconds: 30_000, signal: null });
-            scope.assert.equal(JSON.stringify(failed).includes(`Lifecycle ${data} failed.`), true);
+            const failed = await session.run({
+                data: scope.parameters.data,
+                timeoutMilliseconds: 30_000,
+                signal: null
+            });
+            scope.assert.equal(JSON.stringify(failed).includes(`Lifecycle ${scope.parameters.data} failed.`), true);
             if (failed.kind === 'result') {
                 scope.assert.equal(failed.result.status, 'failed');
             } else {
@@ -473,7 +367,7 @@ export const testNode: TestNode = suite('public execution session boundaries', [
         title: 'preserves failures and releases invocation admission',
         cases: [ 'select', 'before', 'snapshot', 'dispose' ],
         caseTitle(data) {
-            return `${data}`;
+            return data;
         },
         async test(scope) {
             const data = scope.parameters;
@@ -492,7 +386,7 @@ export const testNode: TestNode = suite('public execution session boundaries', [
         title: 'retains execution and disposal errors',
         cases: [ 'profile-default', 'fresh-invocation', 'supervised-process' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;

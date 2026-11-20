@@ -1,7 +1,7 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     normalizeConfig,

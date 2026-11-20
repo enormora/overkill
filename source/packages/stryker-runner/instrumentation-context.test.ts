@@ -1,5 +1,5 @@
-import { type TestNode, table, suite, test, type TestScope } from '@overkill-dev/test';
 import assert from 'node:assert/strict';
+import { type TestNode, table, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { INSTRUMENTER_CONSTANTS, type InstrumenterContext, type MutantCoverage } from '@stryker-mutator/api/core';
 
@@ -157,19 +157,15 @@ export const testNode: TestNode = suite('invocation instrumentation ownership', 
     table({
         title: 'initializes explicit hit policies',
         cases: [ null, 0, 3 ],
-        caseTitle(hitLimit) {
-            return `${String(hitLimit)}`;
-        },
+        caseTitle: String,
         test(scope) {
-            const hitLimit = scope.parameters;
-
             installContext(scope, undefined);
             const invocation = createInvocationInstrumentation();
-            invocation.activate('mutant', hitLimit);
+            invocation.activate('mutant', scope.parameters);
             scope.assert.deepEqual(structuredClone(invocation.context), {
                 mutantCoverage: { static: {}, perTest: {} },
                 activeMutant: 'mutant',
-                ...hitLimit === null ? {} : { hitCount: 0, hitLimit }
+                ...scope.parameters === null ? {} : { hitCount: 0, hitLimit: scope.parameters }
             });
             invocation.dispose();
             const next = createInvocationInstrumentation();
@@ -276,7 +272,7 @@ export const testNode: TestNode = suite('invocation instrumentation ownership', 
         title: 'rolls back failed lifecycle activation',
         cases: [ 'static', 'runtime' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;

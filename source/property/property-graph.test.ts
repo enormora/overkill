@@ -1,5 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { isDeepStrictEqual } from 'node:util';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import standardValues from './fixtures/property-values-v1.json' with { type: 'json' };
 import versionOneGraph from './fixtures/property-graph-v1.json' with { type: 'json' };

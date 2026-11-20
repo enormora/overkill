@@ -1,5 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { once } from 'node:events';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { campaignReceiverChannel, receiverWorker } from '../../test-support/campaign-receiver.ts';
 import { campaignProtocolVersion } from './campaign-protocol.ts';

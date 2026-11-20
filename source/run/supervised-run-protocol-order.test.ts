@@ -10,7 +10,7 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createSupervisedRunCommand } from './run-isolated-command.ts';
 import { runSupervisedCommand } from './supervised-run.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+const metadata = { definitionLocations: [ { kind: 'unknown' } ] } as const;
 const file = 'source/integration-tests/integration/fixtures/passing.test.ts';
 const profile = defaultMicrotestProfile();
 const command = {
@@ -139,11 +139,10 @@ async function assertProtocolOrder(scope: TestScope, phase: Phase): Promise<void
 
 export const testNode: TestNode = suite('supervised child protocol order', [
     table({
-        ...metadata,
         title: 'validates messages during each protocol phase',
         cases: phases,
         caseTitle(phase) {
-            return `${phase}`;
+            return phase;
         },
         async test(scope) {
             const phase = scope.parameters;

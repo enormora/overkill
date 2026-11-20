@@ -1,7 +1,6 @@
 import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
-import { test as subjectTest } from '../packages/test/test.entry-point.ts';
-
 import { z } from 'zod/v4';
+import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
 import type { PropertyWitnessFile } from '../packages/engine/engine.entry-point.ts';
 

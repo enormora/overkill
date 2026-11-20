@@ -6,29 +6,36 @@ import { normalizeExecutionSessionOptions } from './execution-session-schema.ts'
 export const testNode: TestNode = suite('memory execution session admission', [
     table({
         title: 'rejects persisted session policy',
-        cases: [
-            {
+        cases: [ {
+            description: 'last-failed selection',
+            input: {
                 change: { lastFailed: true },
                 message: 'Memory execution sessions do not support last-failed recording.'
-            },
-            {
+            }
+        }, {
+            description: 'recorded coverage',
+            input: {
                 change: { coverage: true },
                 message: 'Memory execution sessions do not support recorded coverage or baseline updates.'
-            },
-            {
+            }
+        }, {
+            description: 'baseline updates',
+            input: {
                 change: { baselineUpdateMode: 'update' as const },
                 message: 'Memory execution sessions do not support recorded coverage or baseline updates.'
-            },
-            {
+            }
+        }, {
+            description: 'persisted debugging',
+            input: {
                 change: { debug: { mode: 'all' as const, selectors: [] as const } },
                 message: 'Memory execution sessions do not support persisted debug recording.'
             }
-        ],
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        } ],
+        caseTitle({ description }) {
+            return description;
         },
         async test(scope) {
-            const scenario = scope.parameters;
+            const scenario = scope.parameters.input;
 
             const fixture = await executionSessionRuntime();
             const { command } = fixture.options;

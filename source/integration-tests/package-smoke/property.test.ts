@@ -1,8 +1,8 @@
-import { type TestNode, suite, test, type TestScope } from '#tests';
 import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { type TestNode, suite, test, type TestScope } from '#tests';
 
 import { createProgram, getPreEmitDiagnostics, ModuleKind, ScriptTarget } from 'typescript';
 

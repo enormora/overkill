@@ -56,15 +56,15 @@ function opaqueFailure(): TestOutcome {
 
 function resultWithOpaqueEvidence(): RunResult {
     const result = runResultFactory.build({ perTest: [ { outcome: { kind: 'pass' } } ] });
-    const [ test ] = result.perTest;
-    if (test === undefined) {
+    const [ testResult ] = result.perTest;
+    if (testResult === undefined) {
         throw new Error('Evidence fixture requires one test.');
     }
     const outcome = opaqueFailure();
     return {
         ...result,
         perTest: [ {
-            ...test,
+            ...testResult,
             definitionLocations: [ function () {
                 return { kind: 'known', file: 'case.test.ts', line: 1, column: 1 };
             } ],
@@ -77,7 +77,7 @@ function resultWithOpaqueEvidence(): RunResult {
                 verdict: 'fail'
             } ],
             outcome
-        }, { ...test, outcome: null } ],
+        }, { ...testResult, outcome: null } ],
         runnerErrors: [ {
             attributedToAttempt: null,
             attributedTo: null,
@@ -124,7 +124,7 @@ function resultWithOpaqueEvidence(): RunResult {
                     verdict: 'crashed'
                 },
                 kind: 'hedged-conflict',
-                work: test.workId
+                work: testResult.workId
             },
             source: 'native'
         }, {

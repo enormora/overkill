@@ -9,14 +9,12 @@ export const testNode: TestNode = suite('supervised result finalization', [
         title: 'finalizes according to available collection and result evidence',
         cases: [ false, true ].flatMap(function (collected) {
             return [ false, true ].map(function (completed) {
-                return ({
-                    caseDescription: `${collected}, ${completed}`,
-                    collected,
-                    completed
-                });
+                return { collected, completed };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ collected, completed }) {
+            return [ collected, completed ].map(String).join(', ');
+        },
         async test(scope) {
             const { collected, completed } = scope.parameters;
 
@@ -42,14 +40,12 @@ export const testNode: TestNode = suite('supervised result finalization', [
         title: 'retains child exits according to terminal policy',
         cases: [ false, true ].flatMap(function (completed) {
             return [ false, true ].map(function (terminal) {
-                return ({
-                    caseDescription: `${completed}, ${terminal}`,
-                    completed,
-                    terminal
-                });
+                return { completed, terminal };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ completed, terminal }) {
+            return [ completed, terminal ].map(String).join(', ');
+        },
         async test(scope) {
             const { completed, terminal } = scope.parameters;
 

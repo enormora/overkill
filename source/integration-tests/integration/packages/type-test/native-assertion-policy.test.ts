@@ -144,7 +144,7 @@ export const testNode: TestNode = suite('native assertion boundary validation', 
         title: 'rejects uncalled reference factories',
         cases: [ '', 'withActual', 'withExpected' ],
         caseTitle(member) {
-            return `${member.length === 0 ? 'typed' : member}`;
+            return member.length === 0 ? 'typed' : member;
         },
         async test(scope) {
             const member = scope.parameters;
@@ -213,15 +213,18 @@ export const testNode: TestNode = suite('native assertion boundary validation', 
     }),
     table({
         title: 'rejects annotation arity',
-        cases: [ [], [
-            ast.factory.createStringLiteral('one', ast.TokenFlags.None),
-            ast.factory.createStringLiteral('two', ast.TokenFlags.None)
-        ] ],
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [ { description: 'missing annotation', input: [] }, {
+            description: 'multiple annotations',
+            input: [
+                ast.factory.createStringLiteral('one', ast.TokenFlags.None),
+                ast.factory.createStringLiteral('two', ast.TokenFlags.None)
+            ]
+        } ],
+        caseTitle({ description }) {
+            return description;
         },
         async test(scope) {
-            const messages = scope.parameters;
+            const messages = scope.parameters.input;
 
             const fixture = sourceFixture();
             await scope.assert.rejects(async function () {

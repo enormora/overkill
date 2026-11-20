@@ -1,6 +1,6 @@
-import { table, type TestNode, test, suite, type TestScope } from '@overkill-dev/test';
 import { connect, createServer, type Server, type Socket } from 'node:net';
 import { once } from 'node:events';
+import { table, type TestNode, test, suite, type TestScope } from '@overkill-dev/test';
 
 import { createDefaultWorkId } from '../../../engine/identity.ts';
 import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
@@ -14,7 +14,6 @@ import {
     type AttachmentOperation
 } from '../../../run/attachment-protocol.ts';
 
-const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const open: Extract<AttachmentOperation, { readonly kind: 'open'; }> = {
     kind: 'open',
     branch: null,
@@ -293,8 +292,7 @@ export const testNode: TestNode = suite(
     'Runtime attachment protocol',
     [
         table({
-            ...definition,
-            title: 'runtime attachment protocol scenarios',
+            title: 'validates ownership and message bounds',
             cases: [
                 [ 'server request floods disconnect and keep allocation bounded', assertServerQueueLimit ],
                 [ 'oversized request frames disconnect without creating artifacts', assertOversizedRequest ],
@@ -315,7 +313,6 @@ export const testNode: TestNode = suite(
         }),
 
         test({
-            ...definition,
             title: 'invalid reply JSON fails pending attachment operations',
             async body(scope) {
                 await assertInvalidReply(
@@ -327,7 +324,6 @@ export const testNode: TestNode = suite(
             }
         }),
         test({
-            ...definition,
             title: 'oversized reply frames fail pending attachment operations',
             async body(scope) {
                 await assertInvalidReply(

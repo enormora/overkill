@@ -284,10 +284,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'worker completion replaces its checkpoint and retains placement identity',
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'equal' | 'deepEqual' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const { completed, retained, end } = await workerCheckpointCompletion(true);
                 scope.require.defined(retained);
@@ -304,10 +301,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'worker completion retains its checkpoint when native evidence is missing',
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'deepEqual' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const { retained, end } = await workerCheckpointCompletion(false);
                 scope.require.defined(retained);
@@ -419,10 +413,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'worker-pool task events attribute permission task failures to the active case',
             body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'equal' | 'deepEqual' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const runtime = hedgedRuntime();
                 const taskRun = taskRunWithLane('worker-1', runtime);

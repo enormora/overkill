@@ -31,20 +31,20 @@ const scenarios = collectionScenarios.flatMap(function baselineCases(scenario) {
 export const testNode: TestNode = suite(
     'Run local coverage',
     [ table({
-        annotations: {},
-        controls: {},
-        title: 'run local coverage scenarios',
+        title: 'checkpoints coverage across source and restriction policies',
         cases: scenarios.map(function localCoverageTest(scenario) {
             const { file } = scenario;
-            return ({
+            return {
                 caseDescription: `local coverage checkpoints ${file} with ${scenario.mode} restrictions, ` +
                     `selection ${scenario.missingSelection}, shard ${scenario.shard.index}/${scenario.shard.total}, ` +
                     `baselines ${scenario.baseline}`,
                 scenario,
                 file
-            });
+            };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle(row) {
+            return row.caseDescription;
+        },
         async test(scope) {
             const { scenario, file } = scope.parameters;
 

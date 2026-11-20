@@ -4,6 +4,30 @@ import { nodeConfig, nodeConfigFileConfig, nodeEntryPointFileConfig } from '@eno
 import { testSupportConfig } from '@enormora/eslint-config-test-base';
 import { typescriptConfig } from '@enormora/eslint-config-typescript';
 
+const frameworkScopeNames = [
+    'TestScope',
+    'ParameterizedTestScope',
+    'TestScopeAssertContext',
+    'TestRandom',
+    'TestBody',
+    'ThrowingTestScope',
+    'ThrowingTestBody'
+]
+    .join('|');
+
+const publishedAuthors = [ '@overkill-dev/test', '#tests' ].flatMap(function authorModule(moduleName) {
+    return [ 'suite', 'test' ].map(function authorName(name) {
+        return {
+            selector: [
+                `ImportDeclaration[source.value="${moduleName}"]`,
+                `ImportSpecifier[imported.name="${name}"]:not([local.name="${name}"])`
+            ]
+                .join(' > '),
+            message: `Use the published ${name} author without an alias.`
+        };
+    });
+});
+
 export default [
     {
         ignores: [ 'source/integration-tests/integration/fixtures/**/*.test.ts', 'target/**/*' ]
@@ -42,38 +66,17 @@ export default [
         files: [ 'source/**/*.test.ts', 'source/test-support/**/*.ts', 'source/integration-tests/*/support/**/*.ts' ],
         ignores: [ '**/*.type-test.ts' ],
         rules: {
-            '@typescript-eslint/no-restricted-imports': [ 'error', {
-                patterns: [ {
-                    group: [ './**', '../**' ],
-                    importNames: [
-                        'TestScope',
-                        'ParameterizedTestScope',
-                        'TestScopeAssertContext',
-                        'TestRandom',
-                        'TestBody',
-                        'ThrowingTestScope',
-                        'ThrowingTestBody'
-                    ],
-                    message: 'Import test framework types from @overkill-dev/test or its compatibility subpath.'
-                } ]
-            } ],
             'no-restricted-syntax': [ 'error', {
-                selector:
-                    'ImportDeclaration[source.value="@overkill-dev/test"] > ImportSpecifier[imported.name="suite"]:not([local.name="suite"])',
-                message: 'Use the published suite author without an alias.'
+                selector: [
+                    'ImportDeclaration[source.value=/^[.]/]',
+                    `ImportSpecifier[imported.name=/^(${frameworkScopeNames})$/]`
+                ]
+                    .join(' > '),
+                message: 'Import test framework types from @overkill-dev/test or its compatibility subpath.'
             }, {
-                selector:
-                    'ImportDeclaration[source.value="@overkill-dev/test"] > ImportSpecifier[imported.name="test"]:not([local.name="test"])',
-                message: 'Use the published test author without an alias.'
-            }, {
-                selector:
-                    'ImportDeclaration[source.value="#tests"] > ImportSpecifier[imported.name="suite"]:not([local.name="suite"])',
-                message: 'Use the published suite author without an alias.'
-            }, {
-                selector:
-                    'ImportDeclaration[source.value="#tests"] > ImportSpecifier[imported.name="test"]:not([local.name="test"])',
-                message: 'Use the published test author without an alias.'
-            } ]
+                selector: `TSQualifiedName[right.name=/^(${frameworkScopeNames})$/]`,
+                message: 'Use named test framework type imports from @overkill-dev/test.'
+            }, ...publishedAuthors ]
         }
     },
     {

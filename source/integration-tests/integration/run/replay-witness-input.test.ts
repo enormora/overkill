@@ -1,6 +1,6 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 import { mkdir, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { propertyCorpusEntry } from '../../../test-support/property-corpus.ts';
 import { replayProject, type ReplayProject } from '../../../test-support/replay-project-fixture.ts';
@@ -51,9 +51,7 @@ export const testNode: TestNode = suite('witness input preparation', [
     table({
         title: 'rejects invalid replay sources',
         cases: [ null, '/absolute.ts', '../outside.ts' ],
-        caseTitle(file) {
-            return `${String(file)}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const file = scope.parameters;
 
@@ -77,7 +75,7 @@ export const testNode: TestNode = suite('witness input preparation', [
         return scope.assert.collect();
     }),
     table({
-        title: 'replay witness input scenarios',
+        title: 'retains witness input validation outcomes',
         cases: [ true, false ],
         caseTitle(parentDirectory) {
             return parentDirectory
@@ -132,20 +130,14 @@ export const testNode: TestNode = suite('witness input preparation', [
             { file: 'input.json', source: null }
         ],
         caseTitle(entry) {
-            return `${entry.file}`;
+            return entry.file;
         },
         async test(scope) {
-            const require: typeof scope.require = scope.require;
-
-            const entry = scope.parameters;
-
             const project = await witnessProject(scope);
             await writeFile(path.join(project.cwd, 'laws.ts'), 'throw new Error("must not import");');
-            await writeWitness(project, entry.file, propertyCorpusEntry);
-            const prepared = await prepareInput(project, entry.file);
-            const witness = prepared.replay.kind === 'witness' ? prepared.replay : undefined;
-            require.defined(witness);
-            scope.assert.equal(witness.sourceRunId, entry.source);
+            await writeWitness(project, scope.parameters.file, propertyCorpusEntry);
+            const prepared = await prepareInput(project, scope.parameters.file);
+            scope.assert.partialDeepEqual(prepared.replay, { kind: 'witness', sourceRunId: scope.parameters.source });
             scope.assert.deepEqual(prepared.command.request.paths, [ 'laws.ts' ]);
             scope.assert.equal(prepared.command.request.seed.value, 42n);
             return scope.assert.collect();

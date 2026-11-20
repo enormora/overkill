@@ -1,9 +1,9 @@
+import { once } from 'node:events';
 import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { requireEngineCompositeReference } from '../test-support/assertion-reference-boundary.ts';
 import { test as subjectTest, suite as subjectSuite } from '../packages/test/test.entry-point.ts';
-import { once } from 'node:events';
 
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import type { AssertionResult } from '../packages/engine/engine.entry-point.ts';
 
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';

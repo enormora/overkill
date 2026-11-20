@@ -15,15 +15,12 @@ export const testNode: TestNode = suite('run diagnostic selection', [
             return debugModes.map(function (debug) {
                 const selected = debug.mode === 'all' ||
                     debug.mode === 'selected' && debug.selectors[0] !== 'title=missing';
-                return ({
-                    caseDescription: `${local}, ${JSON.stringify(debug)}`,
-                    local,
-                    debug,
-                    selected
-                });
+                return { local, debug, selected };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ local, debug }) {
+            return [ local, JSON.stringify(debug) ].map(String).join(', ');
+        },
         test(scope) {
             const { local, debug, selected } = scope.parameters;
 
@@ -46,7 +43,7 @@ export const testNode: TestNode = suite('run diagnostic selection', [
         title: 'detects attachment requirements without executing measurements',
         cases: [ 'plain', 'process', 'module' ] as const,
         caseTitle(shape) {
-            return `${shape}`;
+            return shape;
         },
         test(scope) {
             const shape = scope.parameters;

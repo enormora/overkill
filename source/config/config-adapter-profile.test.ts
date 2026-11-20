@@ -139,9 +139,11 @@ export const testNode: TestNode = suite('imported analysis profile configuration
     table({
         title: 'normalizes configured families without loading',
         cases: scenarios.flatMap(function (scenario) {
-            return ({ caseDescription: `${scenario.name}`, scenario });
+            return { scenario };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ scenario }) {
+            return [ scenario.name ].map(String).join(', ');
+        },
         test(scope) {
             const { scenario } = scope.parameters;
 
@@ -167,9 +169,11 @@ export const testNode: TestNode = suite('imported analysis profile configuration
     table({
         title: 'snapshots configured families without replacing definitions',
         cases: scenarios.flatMap(function (scenario) {
-            return ({ caseDescription: `${scenario.name}`, scenario });
+            return { scenario };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ scenario }) {
+            return [ scenario.name ].map(String).join(', ');
+        },
         test(scope) {
             const { scenario } = scope.parameters;
 

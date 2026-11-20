@@ -1,6 +1,6 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
 import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import * as parser from '@typescript-eslint/parser';
 import { ESLintUtils } from '@typescript-eslint/utils';
@@ -121,7 +121,7 @@ export const testNode: TestNode = suite('config project contexts', [
         title: 'rejects unsafe project filenames',
         cases: [ '/absolute.js', '../escape.js', 'a/../../escape.js', 'a\\b.js', '' ],
         caseTitle(value) {
-            return `${JSON.stringify(value)}`;
+            return JSON.stringify(value);
         },
         test(scope) {
             const value = scope.parameters;
@@ -141,7 +141,7 @@ export const testNode: TestNode = suite('config project contexts', [
             'NODE_MODULES/file.js': ''
         } ],
         caseTitle(value) {
-            return `rejects conflicting project files ${JSON.stringify(value)}`;
+            return JSON.stringify(value);
         },
         test(scope) {
             const value = scope.parameters;

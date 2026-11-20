@@ -12,9 +12,7 @@ export const testNode: TestNode = suite('interrupted mutation adapter replies', 
     table({
         title: 'requires eligible killing evidence for interrupted bail',
         cases: [ false, true ],
-        caseTitle(confirmedKill) {
-            return `${confirmedKill}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const confirmedKill = scope.parameters;
 
@@ -41,7 +39,7 @@ export const testNode: TestNode = suite('interrupted mutation adapter replies', 
         title: 'converts only empty loader hit-limit failures to timeouts',
         cases: [ 'loader', 'runtime' ],
         caseTitle(kind) {
-            return `${kind}`;
+            return kind;
         },
         test(scope) {
             const kind = scope.parameters;

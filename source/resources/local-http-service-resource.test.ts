@@ -107,7 +107,7 @@ export const testNode: TestNode = suite('local HTTP resource ownership', [
         title: 'requires callbacks for projected HTTP services',
         cases: [ 'serializeHandle', 'deserializeHandle' ] as const,
         caseTitle(missing) {
-            return `${missing}`;
+            return missing;
         },
         test(scope) {
             const missing = scope.parameters;
@@ -136,14 +136,12 @@ export const testNode: TestNode = suite('local HTTP resource ownership', [
         title: 'starts and disposes transcript services',
         cases: transcriptPolicies,
         caseTitle(policy) {
-            return `${policy?.kind ?? 'default'}`;
+            return policy?.kind ?? 'default';
         },
         async test(scope) {
             const require: typeof scope.require = scope.require;
 
-            const policy = scope.parameters;
-
-            const fixture = httpService(policy, noFaults);
+            const fixture = httpService(scope.parameters, noFaults);
             const handle = await fixture.service.acquire(fixture.context);
             scope.assert.deepEqual({ baseUrl: handle.baseUrl, entries: handle.transcript.entryCount }, {
                 baseUrl: 'http://127.0.0.1:4321',
@@ -191,7 +189,7 @@ export const testNode: TestNode = suite('local HTTP resource ownership', [
         title: 'cleans up servers with invalid addresses',
         cases: [ 'string', 'none' ],
         caseTitle(address) {
-            return `${address}`;
+            return address;
         },
         async test(scope) {
             const address = scope.parameters;

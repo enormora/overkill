@@ -1,6 +1,6 @@
-import { type TestNode, suite, test, type TestScope } from '#tests';
 import { readFile, mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { type TestNode, suite, test, type TestScope } from '#tests';
 
 import type * as BenchmarkHtmlPackage from '../../packages/reporter-benchmark-html/reporter-benchmark-html.entry-point.ts';
 import { defaultFailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';

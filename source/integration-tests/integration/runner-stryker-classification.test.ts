@@ -1,7 +1,7 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { adapterUrl, engineUrl, configUrl } from './support/stryker-lifecycle-fixture.ts';
 import { executeMutationScript } from './support/stryker-script.ts';
@@ -37,21 +37,18 @@ const modes = [
 export const testNode: TestNode = suite(
     'Stryker mutant classification',
     [ table({
-        title: 'runner stryker classification scenarios',
+        title: 'classifies mutant outcomes across execution boundaries',
         cases: modes.flatMap(function executionMode(mode) {
             const cases = mode.freshState || mode.processModel === 'supervised-process'
                 ? [ ...scenarios, 'pre-case' ]
                 : scenarios;
             return cases.map(function classificationScenario(scenario) {
-                return ({
-                    caseDescription: `${mode.processModel} freshState ${String(mode.freshState)} ${scenario}`,
-                    mode,
-                    cases,
-                    scenario
-                });
+                return { mode, scenario };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ mode, scenario }) {
+            return [ mode.processModel, String(mode.freshState), scenario ].map(String).join(', ');
+        },
         async test(scope) {
             const { mode, scenario } = scope.parameters;
 

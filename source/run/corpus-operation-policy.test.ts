@@ -33,7 +33,7 @@ export const testNode: TestNode = suite('fixed corpus operation policy', [
         title: 'previews corpus changes before publication',
         cases: [ 'promote', 'migrate' ] as const,
         caseTitle(verb) {
-            return `${verb}`;
+            return verb;
         },
         async test(scope) {
             const verb = scope.parameters;
@@ -74,7 +74,7 @@ export const testNode: TestNode = suite('fixed corpus operation policy', [
         title: 'preserves corpus failures and prevents later work',
         cases: [ 'read', 'inspect', 'preview', 'create' ] as const,
         caseTitle(phase) {
-            return `${phase}`;
+            return phase;
         },
         async test(scope) {
             const phase = scope.parameters;
@@ -122,7 +122,7 @@ export const testNode: TestNode = suite('fixed corpus operation policy', [
         title: 'requires explicit selection when publishing cached entries',
         cases: [ [], [ first ], [ first, second ] ] as const,
         caseTitle(ids) {
-            return `${ids.length}`;
+            return String(ids.length);
         },
         async test(scope) {
             const ids = scope.parameters;
@@ -170,7 +170,7 @@ export const testNode: TestNode = suite('fixed corpus operation policy', [
         title: 'rejects invalid cache selection',
         cases: [ 'missing', 'duplicate' ] as const,
         caseTitle(kind) {
-            return `${kind}`;
+            return kind;
         },
         async test(scope) {
             const kind = scope.parameters;
@@ -188,7 +188,7 @@ export const testNode: TestNode = suite('fixed corpus operation policy', [
         title: 'rejects invalid corpus envelopes',
         cases: [ '{', '{}', 'null', '[]' ] as const,
         caseTitle(content) {
-            return `${content}`;
+            return content;
         },
         async test(scope) {
             const content = scope.parameters;

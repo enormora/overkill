@@ -7,7 +7,7 @@ export const testNode: TestNode = suite('history system access adaptation', [
         title: 'classifies history paths',
         cases: [ 'file', 'other', 'symbolic-link', 'missing' ] as const,
         caseTitle(status) {
-            return `${status}`;
+            return status;
         },
         async test(scope) {
             const status = scope.parameters;
@@ -29,7 +29,7 @@ export const testNode: TestNode = suite('history system access adaptation', [
         title: 'enumerates history directories',
         cases: [ 'available', 'missing' ] as const,
         caseTitle(names) {
-            return `${names}`;
+            return names;
         },
         async test(scope) {
             const names = scope.parameters;
@@ -50,7 +50,7 @@ export const testNode: TestNode = suite('history system access adaptation', [
         title: 'checks owners without sending a signal',
         cases: [ 'alive', 'missing' ] as const,
         caseTitle(owner) {
-            return `${owner}`;
+            return owner;
         },
         test(scope) {
             const owner = scope.parameters;
@@ -83,9 +83,7 @@ export const testNode: TestNode = suite('history system access adaptation', [
     table({
         title: 'checks lease ownership',
         cases: [ false, true ] as const,
-        caseTitle(lease) {
-            return `${lease}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const lease = scope.parameters;
 

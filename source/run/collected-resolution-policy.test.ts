@@ -81,7 +81,7 @@ export const testNode: TestNode = suite(
             title: 'rejects witness replay with incompatible selection',
             cases: [ 'empty', 'multiple', 'ordinary', 'skipped' ] as const,
             caseTitle(selection) {
-                return `${selection}`;
+                return selection;
             },
             async test(scope) {
                 const selection = scope.parameters;
@@ -96,7 +96,7 @@ export const testNode: TestNode = suite(
             title: 'retains normalization context across collection purposes',
             cases: [ 'capture', 'compare' ] as const,
             caseTitle(purpose) {
-                return `${purpose}`;
+                return purpose;
             },
             async test(scope) {
                 const purpose = scope.parameters;
@@ -113,9 +113,7 @@ export const testNode: TestNode = suite(
         table({
             title: 'preserves supervised collection facts for empty and populated plans',
             cases: [ false, true ],
-            caseTitle(empty) {
-                return `${empty}`;
-            },
+            caseTitle: String,
             async test(scope) {
                 const empty = scope.parameters;
 

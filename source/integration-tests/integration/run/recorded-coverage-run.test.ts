@@ -1,6 +1,6 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import type { RunResult, RunArtifactId } from '../../../packages/engine/engine.entry-point.ts';
 import {
@@ -121,13 +121,9 @@ async function assertCoverageArtifacts(
 
 export const testNode: TestNode = suite('Recorded coverage run', [
     table({
-        annotations: {},
-        controls: {},
         title: 'coverage artifacts persist after finalization with threshold',
         cases: [ 0, 100 ],
-        caseTitle(threshold) {
-            return `${threshold}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const threshold = scope.parameters;
 

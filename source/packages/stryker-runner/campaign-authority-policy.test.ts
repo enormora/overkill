@@ -44,9 +44,7 @@ export const testNode: TestNode = suite(
     [ table({
         title: 'rejects changed campaign',
         cases: [ 'authority', 'budget', 'root', 'seed' ] as const,
-        caseTitle(mode) {
-            return `rejects changed campaign ${mode}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const mode = scope.parameters;
 

@@ -1,7 +1,7 @@
-import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 import { mkdtempDisposable, readFile, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 
 import type { IntegrationProfileConfig } from '../../../config/types.ts';
 import { placementRunner } from '../../../test-support/benchmark-placement-fixture.ts';
@@ -86,16 +86,14 @@ export const testNode: TestNode = suite(
         cases: placements.flatMap(function placement(value) {
             const scopes: readonly ProjectedResourceScope[] = [ 'per-file', 'per-run', 'per-suite' ];
             return scopes.map(function resourcePlacement(resourceScope) {
-                return ({
-                    caseDescription:
-                        `${value.processModel} ${value.workerLifecycle} ${resourceScope} keeps one native owner`,
-                    value,
-                    scopes,
-                    resourceScope
-                });
+                return { value, resourceScope };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ value, resourceScope }) {
+            return [ value.processModel, value.workerLifecycle, resourceScope ].map(String).join(
+                ', '
+            );
+        },
         async test(scope) {
             const { value, resourceScope } = scope.parameters;
 

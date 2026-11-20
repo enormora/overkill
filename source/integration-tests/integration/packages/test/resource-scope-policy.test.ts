@@ -1,5 +1,5 @@
-import type { EngineCaseBody } from '../../../../test-support/create-test-engine.ts';
 import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import type { EngineCaseBody } from '../../../../test-support/create-test-engine.ts';
 
 import {
     attachTestBodyResourceAttachments,
@@ -18,16 +18,21 @@ const resource = defineResource({
     },
     dispose: null
 });
-const body: EngineCaseBody = (scope) => scope.assert.collect();
+const body: EngineCaseBody = function (scope) {
+    return scope.assert.collect();
+};
 export const testNode: TestNode = suite('resource wrapper scope validation', [
     table({
         title: 'rejects malformed resource maps',
-        cases: [ null, [], 'invalid' ],
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [ { description: 'null', input: null }, { description: 'array', input: [] }, {
+            description: 'string',
+            input: 'invalid'
+        } ],
+        caseTitle({ description }) {
+            return description;
         },
         async test(scope) {
-            const resources = scope.parameters;
+            const resources = scope.parameters.input;
 
             const wrapped = withResource(resource, body);
             const supplied = { ...scope, resources };
@@ -74,16 +79,22 @@ export const testNode: TestNode = suite('resource wrapper scope validation', [
     ),
     table({
         title: 'rejects invalid mapped scope results',
-        cases: [ null, [], 'invalid', {
-            then() {
-                return undefined;
+        cases: [ { description: 'null', input: null }, { description: 'array', input: [] }, {
+            description: 'string',
+            input: 'invalid'
+        }, {
+            description: 'thenable',
+            input: {
+                then() {
+                    return undefined;
+                }
             }
         } ],
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        caseTitle({ description }) {
+            return description;
         },
         async test(scope) {
-            const value = scope.parameters;
+            const value = scope.parameters.input;
 
             await scope.assert.rejects(async function () {
                 await mappedResourceScope(value, scope);

@@ -1,6 +1,6 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { frozenMicrotestPolicy } from '../test-support/frozen-microtest-policy.ts';
 
@@ -117,9 +117,7 @@ export const testNode: TestNode = suite('frozen policy origin boundaries', [
     table({
         title: 'rejects invalid frozen file-set ownership',
         cases: [ null, 'missing' ] as const,
-        caseTitle(fileSet) {
-            return `rejects invalid frozen file-set ownership ${fileSet}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const fileSet = scope.parameters;
 

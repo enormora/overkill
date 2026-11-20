@@ -8,7 +8,7 @@ export const testNode: TestNode = suite('ordinary baseline command routing', [
         title: 'routes ordinary commands and reports baseline changes',
         cases: [ 'apply', 'bootstrap', 'diff', 'update' ] as const,
         caseTitle(verb) {
-            return `${verb}`;
+            return verb;
         },
         async test(scope) {
             const verb = scope.parameters;
@@ -36,7 +36,7 @@ export const testNode: TestNode = suite('ordinary baseline command routing', [
         title: 'reports failures through the command result',
         cases: [ 'load', 'execute' ] as const,
         caseTitle(failure) {
-            return `${failure}`;
+            return failure;
         },
         async test(scope) {
             const failure = scope.parameters;

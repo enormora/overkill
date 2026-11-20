@@ -1,5 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { execFile } from 'node:child_process';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../../../packages/engine/engine.entry-point.ts';
 import { childProcessEnvelope } from '../../../run/child-process-protocol.ts';

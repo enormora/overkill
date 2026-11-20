@@ -1,5 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { setImmediate as waitForCleanup } from 'node:timers/promises';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { FailedCheck } from '../../../assertion-protocol/assertion-node-shape.ts';
 import type { WorkId } from '../../../engine/identity.ts';

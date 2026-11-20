@@ -1,8 +1,8 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { V8CoverageEntry } from 'monocart-coverage-reports';
 

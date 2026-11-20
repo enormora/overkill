@@ -1,13 +1,12 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { normalizeConfig, orchestrator } from '../../packages/run/run.entry-point.ts';
 import { createMutationRunCommand } from '../../packages/stryker-runner/mutation-execution-policy.ts';
 import { createMutationExecution, type MutationExecution } from './support/mutation-execution.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const engineModule = new URL(`../../packages/engine/engine.entry-point${extname(import.meta.url)}`, import.meta.url);
 const engineUrl = engineModule.href;
 const all = { kind: 'all' } as const;
@@ -98,7 +97,6 @@ export const testNode = createSuite({ ...metadata, title: 'serial cases', childr
 
 export const testNode: TestNode = suite('configured mutation process models', [
     table({
-        ...metadata,
         title: 'preserves isolation, serial cases, and selection',
         cases: executionModes,
         caseTitle({ processModel, freshState }) {
@@ -198,12 +196,9 @@ export const testNode: TestNode = suite('configured mutation process models', [
         return scope.assert.collect();
     }),
     table({
-        ...metadata,
         title: 'exposes documented cache behavior after source changes',
         cases: [ false, true ],
-        caseTitle(freshState) {
-            return `${freshState}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const freshState = scope.parameters;
 

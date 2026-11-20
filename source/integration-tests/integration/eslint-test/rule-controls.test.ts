@@ -1,7 +1,7 @@
 import { type TestNode, suite, test } from '@overkill-dev/test';
+import type { Rule } from 'eslint';
 import { test as subjectTest } from '../../../packages/test/test.entry-point.ts';
 
-import type { Rule } from 'eslint';
 import { createRoot, createTestPlan, execute } from '../../../packages/engine/engine.entry-point.ts';
 
 import { gen } from '../../../packages/property/property.entry-point.ts';

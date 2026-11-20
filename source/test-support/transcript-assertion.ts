@@ -1,5 +1,5 @@
-import { type EngineCaseBody, createTestEngine } from './create-test-engine.ts';
 import type { RunResult } from '../packages/engine/engine.entry-point.ts';
+import { type EngineCaseBody, createTestEngine } from './create-test-engine.ts';
 
 export async function transcriptAssertion(
     operation: (...parameters: Parameters<EngineCaseBody>) => void

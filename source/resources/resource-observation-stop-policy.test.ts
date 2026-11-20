@@ -31,7 +31,7 @@ export const testNode: TestNode = suite('resource observation stop policy', [
         title: 'standalone stops close admission exactly once',
         cases: [ 'per-case', 'per-run' ] as const,
         caseTitle(resourceScope) {
-            return `${resourceScope}`;
+            return resourceScope;
         },
         async test(scope) {
             const resourceScope = scope.parameters;
@@ -55,7 +55,7 @@ export const testNode: TestNode = suite('resource observation stop policy', [
         title: 'managed shared stops cancel consumers',
         cases: [ 'lifetime', 'attempt' ] as const,
         caseTitle(kind) {
-            return `${kind}`;
+            return kind;
         },
         async test(scope) {
             const kind = scope.parameters;

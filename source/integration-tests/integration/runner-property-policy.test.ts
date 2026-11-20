@@ -1,8 +1,8 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 import { randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { normalizeConfig, orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
@@ -45,9 +45,11 @@ export const testNode: TestNode = suite('property runner policy', [
     table({
         title: 'executes targeted exploration',
         cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function processPolicy(processModel) {
-            return ({ caseDescription: `${processModel}`, processModel });
+            return { processModel };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel }) {
+            return [ processModel ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel } = scope.parameters;
 
@@ -59,9 +61,11 @@ export const testNode: TestNode = suite('property runner policy', [
     table({
         title: 'transports invalid target contract failures',
         cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function processPolicy(processModel) {
-            return ({ caseDescription: `${processModel}`, processModel });
+            return { processModel };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel }) {
+            return [ processModel ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel } = scope.parameters;
 
@@ -73,9 +77,11 @@ export const testNode: TestNode = suite('property runner policy', [
     table({
         title: 'collects policy and executes property trials',
         cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function processPolicy(processModel) {
-            return ({ caseDescription: `${processModel}`, processModel });
+            return { processModel };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel }) {
+            return [ processModel ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel } = scope.parameters;
 
@@ -93,9 +99,11 @@ export const testNode: TestNode = suite('property runner policy', [
     table({
         title: 'rejects invalid property settings before execution',
         cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function processPolicy(processModel) {
-            return ({ caseDescription: `${processModel}`, processModel });
+            return { processModel };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel }) {
+            return [ processModel ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel } = scope.parameters;
 
@@ -108,9 +116,11 @@ export const testNode: TestNode = suite('property runner policy', [
     table({
         title: 'applies restricted policy to ordinary cases',
         cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function processPolicy(processModel) {
-            return ({ caseDescription: `${processModel}`, processModel });
+            return { processModel };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel }) {
+            return [ processModel ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel } = scope.parameters;
 
@@ -125,9 +135,11 @@ export const testNode: TestNode = suite('property runner policy', [
     table({
         title: 'rejects live capture before importing test files',
         cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function processPolicy(processModel) {
-            return ({ caseDescription: `${processModel}`, processModel });
+            return { processModel };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel }) {
+            return [ processModel ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel } = scope.parameters;
 
@@ -141,9 +153,11 @@ export const testNode: TestNode = suite('property runner policy', [
     table({
         title: 'rejects coverage before importing test files',
         cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function processPolicy(processModel) {
-            return ({ caseDescription: `${processModel}`, processModel });
+            return { processModel };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel }) {
+            return [ processModel ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel } = scope.parameters;
 
@@ -253,7 +267,7 @@ export const testNode: TestNode = suite('property runner policy', [
         title: 'supervision terminates uncooperative properties',
         cases: [ 'property-generator-hang', 'property-codec-hang' ],
         caseTitle(fixture) {
-            return `${fixture}`;
+            return fixture;
         },
         async test(scope) {
             const fixture = scope.parameters;

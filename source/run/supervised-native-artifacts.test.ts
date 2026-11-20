@@ -84,13 +84,9 @@ export const testNode: TestNode = suite('supervised native completion evidence',
         title: 'retains completion evidence after active ownership clears',
         cases: failures,
         caseTitle(failure) {
-            return `${failure.kind}`;
+            return failure.kind;
         },
         test(scope) {
-            const require: typeof scope.require = scope.require;
-
-            const failure = scope.parameters;
-
             const runtime = runningSupervisedRuntime();
             runtime.state.addActiveCase(
                 workIdentityKey(work),
@@ -98,13 +94,11 @@ export const testNode: TestNode = suite('supervised native completion evidence',
                 0,
                 { index: 0 }
             );
-            const result = nativeCompletion(failure);
+            const result = nativeCompletion(scope.parameters);
             runtime.state.removeActiveCase(workIdentityKey(work));
             handleChildMessage({ kind: 'result', result }, runtime);
             scope.assert.deepEqual(runtime.state.artifacts(), [ result.artifacts[0] ]);
-            const completed = runtime.completedResult.read();
-            require.notNull(completed);
-            scope.assert.deepEqual(completed, result);
+            scope.assert.deepEqual<unknown, unknown>(runtime.completedResult.read(), result);
             return scope.assert.collect();
         }
     }),

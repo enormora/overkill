@@ -7,7 +7,7 @@ export const testNode: TestNode = suite('process sampling helper ownership', [
         title: 'creates a lazy shared helper on supported platforms',
         cases: [ 'linux', 'darwin' ] as const,
         caseTitle(platform) {
-            return `${platform}`;
+            return platform;
         },
         async test(scope) {
             const platform = scope.parameters;
@@ -81,7 +81,7 @@ export const testNode: TestNode = suite('process sampling helper ownership', [
         title: 'rejects unsupported sampling platforms',
         cases: [ 'win32', 'unsupported' ] as const,
         caseTitle(platform) {
-            return `${platform}`;
+            return platform;
         },
         test(scope) {
             const platform = scope.parameters;

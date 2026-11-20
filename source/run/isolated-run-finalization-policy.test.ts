@@ -27,17 +27,13 @@ export const testNode: TestNode = suite(
         title: 'finalizes worker results with recording and baselines',
         cases: [ false, true ].flatMap(function (record) {
             return [ false, true ].map(function (baseline) {
-                return ({
-                    caseDescription: `finalizes worker results with recording ${record} and baselines ${baseline}`,
-                    record,
-                    baseline
-                });
+                return { record, baseline };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ record, baseline }) {
+            return [ record, baseline ].map(String).join(', ');
+        },
         async test(scope) {
-            const { record, baseline } = scope.parameters;
-
             const require: typeof scope.require = scope.require;
 
             const fixture = passingIsolatedWorkerRun(false, false);
@@ -48,8 +44,8 @@ export const testNode: TestNode = suite(
             }, fixture.dependencies.reporterDispatcher);
             const pending = runIsolatedProcessCommand(fixture.command, fixture.dependencies, {
                 ...fixture.options,
-                record: record ? recording.session : null,
-                baseline: baseline ? session : null,
+                record: scope.parameters.record ? recording.session : null,
+                baseline: scope.parameters.baseline ? session : null,
                 signal: null
             }, fixture.input);
             require.defined(pending);
@@ -63,9 +59,9 @@ export const testNode: TestNode = suite(
             }, {
                 status: 'passed',
                 cases: 1,
-                events: baseline ? [ 'prepare', 'finalize' ] : [],
-                recording: record ? [ 'resolved', 'placement', 'placement' ] : [],
-                checkpoints: record ? 1 : 0
+                events: scope.parameters.baseline ? [ 'prepare', 'finalize' ] : [],
+                recording: scope.parameters.record ? [ 'resolved', 'placement', 'placement' ] : [],
+                checkpoints: scope.parameters.record ? 1 : 0
             });
             return scope.assert.collect();
         }

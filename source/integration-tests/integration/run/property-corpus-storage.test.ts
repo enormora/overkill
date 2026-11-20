@@ -1,7 +1,7 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 import { mkdtemp, readFile, writeFile, rm, mkdir, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { propertyCorpusPolicySchema } from '../../../config/property-corpus.ts';
 import { propertyCorpusEntry as entry } from '../../../test-support/property-corpus.ts';
@@ -64,7 +64,7 @@ export const testNode: TestNode = suite('property corpus storage', [
             reason: 'identity differs'
         } ],
         caseTitle(input) {
-            return `${input.name}`;
+            return input.name;
         },
         async test(scope) {
             const input = scope.parameters;

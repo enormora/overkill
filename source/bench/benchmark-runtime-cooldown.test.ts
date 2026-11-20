@@ -1,5 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { mock, type Mock } from 'node:test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type Clock, type DeterministicClock } from '@enormora/clock';
 import { defaultRuntimeCooldownPolicy } from '../packages/bench/bench.entry-point.ts';

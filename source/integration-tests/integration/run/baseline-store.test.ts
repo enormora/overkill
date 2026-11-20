@@ -1,5 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import properLockfile from 'proper-lockfile';
 import { createCaseId, createDefaultWorkId } from '../../../engine/identity.ts';

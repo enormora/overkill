@@ -10,7 +10,7 @@ export const testNode: TestNode = suite('delegated collection placement defaults
         title: 'uses default pool assignment policies',
         cases: [ 'in-process', 'supervised-process' ] as const,
         caseTitle(processModel) {
-            return `${processModel}`;
+            return processModel;
         },
         async test(scope) {
             const require: typeof scope.require = scope.require;
@@ -46,7 +46,7 @@ export const testNode: TestNode = suite('delegated collection placement defaults
         title: 'uses the selected workload budget for placement',
         cases: [ 'small', 'missing' ],
         caseTitle(workload) {
-            return `${workload}`;
+            return workload;
         },
         async test(scope) {
             const require: typeof scope.require = scope.require;

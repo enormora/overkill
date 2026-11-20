@@ -35,7 +35,7 @@ export const testNode: TestNode = suite('mutation execution environment ownershi
         title: 'admits lifecycle activation in a fresh worker',
         cases: activationModes,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;

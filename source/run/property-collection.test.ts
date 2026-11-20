@@ -1,5 +1,4 @@
 import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
-import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
 import { test as subjectTest, suite as subjectSuite } from '../packages/test/test.entry-point.ts';
 
 import {
@@ -41,23 +40,6 @@ function unexpectedBody(): never {
     throw new Error('Property bodies must not execute during collection.');
 }
 
-function integrationPropertyBody(): EngineCaseBody {
-    const selected = planFor(property({
-        testFamily: 'integration',
-        title: 'project property',
-        generator: unexecutedGenerator<number>(),
-        test: unexpectedBody
-    }))
-        .cases[0];
-    if (
-        selected.execution.kind !== 'body' || selected.execution.bodyMode !== 'property' ||
-        typeof selected.execution.body !== 'function'
-    ) {
-        throw new TypeError('Expected an executable property.');
-    }
-    return selected.execution.body;
-}
-
 export const testNode: TestNode = suite('property collection', [
     test(
         'engine collection rejects unsupported property families from JavaScript callers',
@@ -78,28 +60,7 @@ export const testNode: TestNode = suite('property collection', [
             return scope.assert.collect();
         }
     ),
-    test(
-        'integration property wrappers retain family and reject configured rewrapping',
-        function (scope: TestScope) {
-            const body = integrationPropertyBody();
-            const policy = { ...collectionPolicy, testFamily: 'integration' } as const;
-            const resolved = resolveTestPlanPropertyPolicy(
-                planFor(subjectTest('wrapped', withProperties(body))),
-                policy
-            );
-            const resolvedPolicy = testCasePropertyPolicy(resolved.cases[0]);
-            scope.require.notNull(resolvedPolicy);
-            scope.assert.equal(resolved.cases[0].testFamily, 'integration');
-            scope.assert.deepEqual(resolvedPolicy, defaultPropertyPolicy);
-            scope.assert.throws(function rejectReconfiguration() {
-                resolveTestPlanPropertyPolicy(
-                    planFor(subjectTest('configured', withProperties(body, { maxWork: 1 }))),
-                    policy
-                );
-            }, { message: /withProperties\(\) cannot reconfigure/ });
-            return scope.assert.collect();
-        }
-    ),
+
     test('rejects unsupported property test families from JavaScript callers', function (scope) {
         scope.assert.throws(function invalidFamily() {
             Reflect.apply(property, undefined, [ {

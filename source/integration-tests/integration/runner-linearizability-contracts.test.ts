@@ -1,6 +1,6 @@
-import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 import { readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
@@ -139,16 +139,12 @@ export const testNode: TestNode = suite(
             title: 'replays linearizability inputs',
             cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function executionMode(processModel) {
                 return [ false, true ].map(function composition(nested) {
-                    return ({
-                        caseDescription: `${processModel} replays ${
-                            nested ? 'nested' : 'direct'
-                        } linearizability inputs`,
-                        processModel,
-                        nested
-                    });
+                    return { processModel, nested };
                 });
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ processModel, nested }) {
+                return [ processModel, nested ? 'nested' : 'direct' ].map(String).join(', ');
+            },
             async test(scope) {
                 const { processModel, nested } = scope.parameters;
 
@@ -176,7 +172,7 @@ export const testNode: TestNode = suite(
             title: 'does not persist unconfirmed inputs',
             cases: [ 'in-process', 'supervised-process' ] as const,
             caseTitle(processModel) {
-                return `${processModel}`;
+                return processModel;
             },
             async test(scope) {
                 const processModel = scope.parameters;

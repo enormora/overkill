@@ -21,21 +21,21 @@ export const testNode: TestNode = suite('reporting context policy ownership', [
     table({
         title: 'uses safe defaults for incomplete run facts',
         cases: [
-            null,
-            42,
-            [],
-            { environment: null },
-            { environment: { projectRoot: 42 } },
-            { environment: { projectRoot: '' } },
-            { environment: { projectRoot: ' ' } },
-            { execution: null },
-            { execution: {} }
+            { description: 'null', input: null },
+            { description: 'number', input: 42 },
+            { description: 'array', input: [] },
+            { description: 'null environment', input: { environment: null } },
+            { description: 'numeric project root', input: { environment: { projectRoot: 42 } } },
+            { description: 'empty project root', input: { environment: { projectRoot: '' } } },
+            { description: 'blank project root', input: { environment: { projectRoot: ' ' } } },
+            { description: 'null execution', input: { execution: null } },
+            { description: 'empty execution', input: { execution: {} } }
         ],
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const facts = scope.parameters;
+            const facts = scope.parameters.input;
 
             const reporting = createRunReportingContext();
             reporting.observeFacts(facts);

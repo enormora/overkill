@@ -145,7 +145,7 @@ export const testNode: TestNode = suite('isolated native syntax analysis', [
         title: 'rejects runtime scope operations',
         cases: [ 'cleanup', 'require' ],
         caseTitle(operation) {
-            return `${operation}`;
+            return operation;
         },
         async test(scope) {
             const operation = scope.parameters;

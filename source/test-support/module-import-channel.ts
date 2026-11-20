@@ -1,7 +1,7 @@
 import { Duplex } from 'node:stream';
 import { EventEmitter } from 'node:events';
-import { openModuleImportSession, type ModuleImportRuntime } from '../bench/module-import-session.ts';
 import type { TestScope } from '@overkill-dev/test';
+import { openModuleImportSession, type ModuleImportRuntime } from '../bench/module-import-session.ts';
 
 export type ImportChannelScenario = {
     readonly address: string | { readonly port: number; } | null;

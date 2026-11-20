@@ -1,8 +1,8 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 import { execFile } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
 import {
@@ -166,7 +166,7 @@ export const testNode: TestNode = suite('benchmark GC process boundaries', [
         title: 'collects only requested invocations across execution boundaries',
         cases: [ 'supervised-process', 'reuse', 'fresh-worker-per-unit' ] as const,
         caseTitle(boundary) {
-            return `${boundary}`;
+            return boundary;
         },
         async test(scope) {
             const boundary = scope.parameters;

@@ -325,19 +325,30 @@ export const testNode: TestNode = suite('Supervised child processes', [
             return scope.assert.collect();
         }
     ),
-    test('keeps environment trace frames separate from interleaved warnings', (scope) => {
+    test('keeps environment trace frames separate from interleaved warnings', function (scope) {
         const stdout = createOutputRecord();
         const stderr = createOutputRecord();
         const state = createSupervisedRunState('first-failure-and-final');
         const terminalFailure = createStoredRunValue(false);
         observeRestrictedOutput(stdout, stderr, state, terminalFailure);
-        stderr.emit('[--trace-env] get "EXAMPLE"\n');
-        stderr.emit('Runtime warning.\n');
-        stderr.emit('----- JavaScript stack trace -----\n1: readEnvironment (runtime.js:1:1)\n');
+        for (
+            const chunk of [
+                '[--trace-env] get "EXAMPLE"\n',
+                'Runtime warning.\n',
+                '----- JavaScript stack trace -----\n1: readEnvironment (runtime.js:1:1)\n'
+            ]
+        ) {
+            stderr.emit(chunk);
+        }
         scope.assert.true(terminalFailure.read());
-        scope.assert.deepEqual(state.runnerErrors().map((error) => error.message), [
-            'Runtime policy violation: supervised child wrote to stderr.'
-        ]);
+        scope.assert.deepEqual(
+            state.runnerErrors().map(function (error) {
+                return error.message;
+            }),
+            [
+                'Runtime policy violation: supervised child wrote to stderr.'
+            ]
+        );
         return scope.assert.collect();
     }),
     test(

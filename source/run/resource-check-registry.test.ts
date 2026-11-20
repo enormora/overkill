@@ -172,7 +172,7 @@ export const testNode: TestNode = suite('resource check owner registry', [
         title: 'routes stops to eligible connected consumers',
         cases: [ 'per-case', 'per-run' ] as const,
         caseTitle(resourceScope) {
-            return `${resourceScope}`;
+            return resourceScope;
         },
         async test(scope) {
             const resourceScope = scope.parameters;

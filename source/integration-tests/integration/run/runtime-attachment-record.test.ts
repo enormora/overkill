@@ -1,6 +1,6 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 

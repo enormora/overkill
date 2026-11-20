@@ -5,12 +5,15 @@ import { ensureResourceDescriptor, ensureRuntimeGraph, readResourceMap } from '.
 export const testNode: TestNode = suite('resource wrapper input admission', [
     table({
         title: 'rejects incomplete resource descriptor',
-        cases: [ null, 42, {}, { name: 'resource', scope: 'run' } ],
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [ { description: 'null', input: null }, { description: 'number', input: 42 }, {
+            description: 'empty descriptor',
+            input: {}
+        }, { description: 'unsupported lifetime', input: { name: 'resource', scope: 'run' } } ],
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const value = scope.parameters;
+            const value = scope.parameters.input;
 
             scope.assert.throws(function () {
                 ensureResourceDescriptor(value, 'invalid resource');
@@ -26,12 +29,15 @@ export const testNode: TestNode = suite('resource wrapper input admission', [
     }),
     table({
         title: 'rejects invalid resource map',
-        cases: [ null, {}, { invalid: 42 } ],
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [ { description: 'null', input: null }, { description: 'empty map', input: {} }, {
+            description: 'numeric descriptor',
+            input: { invalid: 42 }
+        } ],
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const value = scope.parameters;
+            const value = scope.parameters.input;
 
             scope.assert.throws(function () {
                 readResourceMap(value, 'invalid map');

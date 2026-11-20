@@ -1,5 +1,5 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { AsyncResource } from 'node:async_hooks';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -130,7 +130,7 @@ export const testNode: TestNode = suite('resource owner completion', [
         title: 'uncertain resource growth fails the run without changing case verdicts',
         cases: [ 'uncertain-body', 'uncertain-cleanup' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;

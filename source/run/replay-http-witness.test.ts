@@ -47,7 +47,7 @@ export const testNode: TestNode = suite('HTTP witness compatibility', [
             { title: 'a random seed', value: { ...witness, seed: '42' } }
         ],
         caseTitle(entry) {
-            return `${entry.title}`;
+            return entry.title;
         },
         async test(scope) {
             const entry = scope.parameters;
@@ -62,7 +62,7 @@ export const testNode: TestNode = suite('HTTP witness compatibility', [
         title: 'rejects incompatible replay payloads',
         cases: [ null, { version: 2, scenarios: {}, interactions: [] } ],
         caseTitle(payload) {
-            return `${JSON.stringify(payload)}`;
+            return JSON.stringify(payload);
         },
         async test(scope) {
             const payload = scope.parameters;
@@ -90,7 +90,7 @@ export const testNode: TestNode = suite('HTTP witness compatibility', [
             simulation: { ...witness.simulation, payload: { version: 1, scenarios: {}, interactions: [] } }
         } ],
         caseTitle(value) {
-            return `${value.scenario}`;
+            return String(value.scenario);
         },
         async test(scope) {
             const value = scope.parameters;

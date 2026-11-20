@@ -1,9 +1,9 @@
-import { type TestNode, suite, test, type TestScope } from '#tests';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
+import { type TestNode, suite, test, type TestScope } from '#tests';
 
 import type * as LineReporterPackage from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { resolvePackagedExport } from './support/packaged-module.ts';

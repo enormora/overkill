@@ -1,7 +1,7 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { adapterUrl, engineUrl, configUrl } from './support/stryker-lifecycle-fixture.ts';
 import { executeMutationScript } from './support/stryker-script.ts';
@@ -39,20 +39,16 @@ const scenarios = [
 export const testNode: TestNode = suite(
     'Stryker native termination',
     [ table({
-        title: 'runner stryker termination scenarios',
+        title: 'terminates active work across campaign lifecycle phases',
         cases: scenarios.map(function terminationScenario(scenario) {
             const { processModel, freshState, operation, phase, invocation } = scenario;
-            return ({
-                caseDescription: `${processModel} freshState ${String(freshState)} ${operation} ${phase} ${invocation}`,
-                scenario,
-                processModel,
-                freshState,
-                operation,
-                phase,
-                invocation
-            });
+            return { processModel, freshState, operation, phase, invocation };
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel, freshState, operation, phase, invocation }) {
+            return [ processModel, String(freshState), operation, phase, invocation ]
+                .map(String)
+                .join(', ');
+        },
         async test(scope) {
             const { processModel, freshState, operation, phase, invocation } = scope.parameters;
 

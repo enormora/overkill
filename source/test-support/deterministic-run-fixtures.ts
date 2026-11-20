@@ -5,9 +5,9 @@ import type {
     ProcessUsageSnapshot,
     RunProcessUsageTracker,
     RunResult,
-    TestNode
+    TestNode,
+    TestCaseOptions
 } from '../packages/engine/engine.entry-point.ts';
-import type { TestScope } from '@overkill-dev/test';
 import { collectedRunPlanFromTestPlan, createRunResultFromCollectedPlan } from '../run/collected-run-plan.ts';
 import { defaultRunEngine } from '../run/default-run-engine.ts';
 import { RunCollectionError } from '../run/run-errors.ts';
@@ -15,6 +15,11 @@ import { createRunTestModuleLoader, type RunTestModuleLoader } from '../run/run-
 import type { DiscoveredRunFile, CollectedRunPlan, RunCollectionRoot, WorkId } from '../run/run-types.ts';
 import type { SupervisedChildCommand } from '../run/supervised-protocol.ts';
 import { createMemoryHistoryStorage } from './memory-history-storage.ts';
+
+type FixtureCaseBody = Extract<
+    TestCaseOptions['body'],
+    (...arguments_: readonly never[]) => unknown
+>;
 
 const deterministicRunFixturePaths = {
     emptySuite: 'source/integration-tests/integration/fixtures/empty-suite.test.ts',
@@ -92,13 +97,10 @@ function assertValidDeterministicModuleCollection(input: DeterministicRunCollect
     }
 }
 
-function pass(
-    scope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }
-): ReturnType<TestScope['assert']['collect']> {
+const pass: FixtureCaseBody = function (scope) {
     scope.assert.true(true, { message: 'passes' });
-
     return scope.assert.collect();
-}
+};
 
 function passingFixtureTestNode(): TestNode {
     return defaultRunEngine.createSuite({

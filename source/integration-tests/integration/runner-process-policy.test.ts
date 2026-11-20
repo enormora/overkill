@@ -1,11 +1,10 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
 import { execFile } from 'node:child_process';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 
 import { parseRunnerResult } from '../../packages/run/run.entry-point.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const processTimeoutMilliseconds = 15_000;
 type ProcessResult = {
     readonly code: number | string | null;
@@ -36,11 +35,10 @@ const fatalOperations = [ 'exit', 'exit-nonzero', 'abort', 'signal' ];
 const ipcOperations = [ 'send', 'forged-result', 'load-send' ];
 export const testNode: TestNode = suite('process policy without monkey patches', [
     table({
-        ...metadata,
         title: 'survives native process termination and crashes interrupted work',
         cases: fatalOperations,
         caseTitle(operation) {
-            return `${operation}`;
+            return operation;
         },
         async test(scope) {
             const operation = scope.parameters;
@@ -57,11 +55,10 @@ export const testNode: TestNode = suite('process policy without monkey patches',
         }
     }),
     table({
-        ...metadata,
         title: 'survives native process termination before collection',
         cases: [ 'load-exit', 'load-abort' ],
         caseTitle(operation) {
-            return `${operation}`;
+            return operation;
         },
         async test(scope) {
             const operation = scope.parameters;
@@ -77,18 +74,15 @@ export const testNode: TestNode = suite('process policy without monkey patches',
         }
     }),
     table({
-        ...metadata,
         title: 'rejects malformed child operations without sender attribution',
         cases: ipcOperations,
         caseTitle(operation) {
-            return `${operation}`;
+            return operation;
         },
         async test(scope) {
-            const operation = scope.parameters;
-
             const require: typeof scope.require = scope.require;
 
-            const processResult = await runProcess(operation, 'supervised-process');
+            const processResult = await runProcess(scope.parameters, 'supervised-process');
             scope.assert.equal(processResult.code, 0, { message: processResult.stderr });
             const result = parseRunnerResult(JSON.parse(processResult.stdout));
             const error = result.runnerErrors.find(function reportsPolicy(candidate) {
@@ -126,7 +120,6 @@ export const testNode: TestNode = suite('process policy without monkey patches',
         }
     ),
     table({
-        ...metadata,
         title: 'writes a diagnostic before terminating in-process execution',
         cases: [ { operation: 'exit', code: 1 }, { operation: 'exit-nonzero', code: 7 }, {
             operation: 'load-exit',

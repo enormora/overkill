@@ -102,7 +102,7 @@ export const testNode: TestNode = suite('imported family profiles', [
         title: 'rejects untyped settings before loading',
         cases: [ {}, { count: 'three' }, { project: './tsconfig.json' } ],
         caseTitle(settings) {
-            return `${JSON.stringify(settings)}`;
+            return JSON.stringify(settings);
         },
         test(scope) {
             const settings = scope.parameters;

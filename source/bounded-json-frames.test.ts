@@ -1,6 +1,6 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { Transform } from 'node:stream';
 import { buffer } from 'node:stream/consumers';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { boundedJsonFrames } from './packages/resources/attachment-context.entry-point.ts';
 import { createJsonFrameLimiter } from './json-frame-limiter.ts';

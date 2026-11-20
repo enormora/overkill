@@ -1,8 +1,8 @@
-import { type TestNode, table, suite, test, testDouble } from '@overkill-dev/test';
 import { mkdir, mkdtempDisposable, readFile, realpath, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { type TestNode, table, suite, test, testDouble } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 
@@ -98,7 +98,7 @@ export const testNode: TestNode = suite('native implementation admission boundar
         title: 'rejects remapped URLs before evaluating implementations',
         cases: [ 'entry', 'dependency' ] as const,
         caseTitle(kind) {
-            return `${kind}`;
+            return kind;
         },
         async test(scope) {
             const kind = scope.parameters;
@@ -163,7 +163,7 @@ export const testNode: TestNode = suite('native implementation admission boundar
             'file:///project/body.mjs#version'
         ] as const,
         caseTitle(moduleUrl) {
-            return `${moduleUrl}`;
+            return moduleUrl;
         },
         async test(scope) {
             const moduleUrl = scope.parameters;
@@ -183,7 +183,7 @@ export const testNode: TestNode = suite('native implementation admission boundar
         title: 'rejects changed inputs before evaluating implementations',
         cases: [ 'reference', 'parser' ] as const,
         caseTitle(kind) {
-            return `${kind}`;
+            return kind;
         },
         async test(scope) {
             const kind = scope.parameters;

@@ -24,16 +24,14 @@ export const testNode: TestNode = suite(
         title: 'rejects baseline',
         cases: [ false, true ].flatMap(function (publish) {
             return [ false, true ].map(function (timeout) {
-                return ({
-                    caseDescription: `rejects baseline ${publish ? 'publication' : 'fetch'} with ${
-                        timeout ? 'timeout' : 'unexpected acknowledgement'
-                    }`,
-                    publish,
-                    timeout
-                });
+                return { publish, timeout };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ publish, timeout }) {
+            return [ publish ? 'publication' : 'fetch', timeout ? 'timeout' : 'unexpected acknowledgement' ]
+                .map(String)
+                .join(', ');
+        },
         async test(scope) {
             const { publish, timeout } = scope.parameters;
 

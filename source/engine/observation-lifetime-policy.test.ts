@@ -1,5 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { AsyncResource } from 'node:async_hooks';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { observationCase, observationError } from '../test-support/observation-lifetime.ts';
 import { registerExecutionDisposal } from '../execution-ownership.ts';

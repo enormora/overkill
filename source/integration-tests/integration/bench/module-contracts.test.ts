@@ -1,9 +1,9 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { setTimeout as startTimer, clearTimeout as clearTimer } from 'node:timers';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     processMeasurement,

@@ -1,7 +1,7 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { mkdtemp, mkdtempDisposable, writeFile, mkdir, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { mergeRecordFixture } from '../../../test-support/merge-record-fixture.ts';
 

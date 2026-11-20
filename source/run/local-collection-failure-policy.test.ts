@@ -14,17 +14,13 @@ export const testNode: TestNode = suite(
         title: 'reports loader failures with recording and restrictions',
         cases: [ false, true ].flatMap(function (record) {
             return [ false, true ].map(function (restricted) {
-                return ({
-                    caseDescription: `reports loader failures with recording ${record} and restrictions ${restricted}`,
-                    record,
-                    restricted
-                });
+                return { record, restricted };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ record, restricted }) {
+            return [ record, restricted ].map(String).join(', ');
+        },
         async test(scope) {
-            const { record, restricted } = scope.parameters;
-
             const fixture = passingIsolatedWorkerRun(false, false);
             const recording = await attachmentRecording(null);
             const environment = {};
@@ -33,7 +29,9 @@ export const testNode: TestNode = suite(
             });
             const request = {
                 ...recording.resolved.request,
-                capabilityRestrictions: { mode: restricted ? 'enabled' as const : 'disabled' as const }
+                capabilityRestrictions: {
+                    mode: scope.parameters.restricted ? 'enabled' as const : 'disabled' as const
+                }
             };
             const command: RunCommand = {
                 cwd: '/project',
@@ -42,7 +40,7 @@ export const testNode: TestNode = suite(
                 request
             };
             const options = {
-                record: record ? recording.session : null,
+                record: scope.parameters.record ? recording.session : null,
                 baseline: null,
                 input: { ...fixture.input, config: command.config, request, profile },
                 source: { kind: 'configured-files' as const },
@@ -68,7 +66,7 @@ export const testNode: TestNode = suite(
                     return error.subtype;
                 }),
                 checkpoints: recording.checkpoints.length
-            }, { status: 'failed', errors: [ 'loader' ], checkpoints: record ? 1 : 0 });
+            }, { status: 'failed', errors: [ 'loader' ], checkpoints: scope.parameters.record ? 1 : 0 });
             return scope.assert.collect();
         }
     }) ]

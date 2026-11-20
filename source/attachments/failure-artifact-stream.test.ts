@@ -10,7 +10,6 @@ import {
     type FailureArtifactStream
 } from './failure-artifact-stream.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 function attemptStream(): FailureArtifactStream {
     const stream = createFailureArtifactStream(
         { name: 'service', condition: { kind: 'attempt', work, attempt: { index: 0 } } },
@@ -158,18 +157,15 @@ export const testNode: TestNode = suite('Failure artifact stream', [
         return scope.assert.collect();
     }),
     table({
-        ...metadata,
         title: 'preserves capture errors after transport failures',
         cases: ([ 'prepare', 'write', 'close' ] as const).flatMap(function failedOperation(operation) {
             return [ new Error('disconnected'), null ].map(function failedCause(cause) {
-                return ({
-                    caseDescription: `${operation}, ${String(cause)}`,
-                    operation,
-                    cause
-                });
+                return { operation, cause };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ operation, cause }) {
+            return [ operation, String(cause) ].map(String).join(', ');
+        },
         async test(scope) {
             const { operation, cause } = scope.parameters;
 

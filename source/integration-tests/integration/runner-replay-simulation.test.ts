@@ -1,6 +1,6 @@
-import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import {
@@ -69,7 +69,7 @@ async function verifySimulationReplay(scope: TestScope, shared: boolean): Promis
 export const testNode: TestNode = suite(
     'simulation witness restoration',
     [ table({
-        title: 'runner replay simulation scenarios',
+        title: 'reproduces saved simulation outcomes',
         cases: [ false, true ],
         caseTitle(shared) {
             return shared ? 'restores projected worker resource owners' : 'restores and disposes a fresh resource';

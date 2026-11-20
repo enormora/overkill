@@ -105,16 +105,22 @@ export const testNode: TestNode = suite('mutation diagnostic evidence identity',
     }),
     table({
         title: 'handles missing checkpoint evidence',
-        cases: [ null, { kind: 'timeout', artifacts: [], data: null }, {
-            kind: 'timeout',
-            artifacts: [],
-            data: { invalid: true }
+        cases: [ { description: 'missing outcome', input: null }, {
+            description: 'missing checkpoint data',
+            input: { kind: 'timeout', artifacts: [], data: null }
+        }, {
+            description: 'unrecognized checkpoint data',
+            input: {
+                kind: 'timeout',
+                artifacts: [],
+                data: { invalid: true }
+            }
         } ] as const,
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
-            const reply = scope.parameters;
+            const reply = scope.parameters.input;
 
             scope.assert.deepEqual(mutationDiagnosticEvidence(project, reply), {
                 artifacts: [],

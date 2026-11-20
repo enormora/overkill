@@ -81,7 +81,7 @@ export const testNode: TestNode = suite('family profile execution', [
         title: 'rejects invalid backend evidence',
         cases: [ 'missing', 'duplicate' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;

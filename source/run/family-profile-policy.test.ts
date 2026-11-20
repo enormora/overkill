@@ -104,7 +104,7 @@ export const testNode: TestNode = suite('family runner failure policy', [
         title: 'rejects invalid analysis policies before backend loading',
         cases: unsupportedAnalysisRequests,
         caseTitle(scenario) {
-            return `${scenario.name}`;
+            return scenario.name;
         },
         test(scope) {
             const scenario = scope.parameters;

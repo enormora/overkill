@@ -2,15 +2,13 @@ import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { passingResult, runCommandLine } from '../../../../test-support/command-line-test-driver.ts';
 
-const emptyTestData = { annotations: {}, controls: {} } as const;
-
 export const testNode: TestNode = suite({
     title: 'Overkill CLI help',
-    ...emptyTestData,
+
     children: [
         test({
             title: 'prints help without running tests',
-            ...emptyTestData,
+
             async body(
                 scope
             ) {

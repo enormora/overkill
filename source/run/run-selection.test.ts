@@ -1,7 +1,13 @@
-import { subjectTestNode } from '../test-support/create-test-engine.ts';
 import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { subjectTestNode } from '../test-support/create-test-engine.ts';
 
-import type { NormalizedConfig, ResolvedRun, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
+import type {
+    NormalizedConfig,
+    ResolvedRun,
+    RunCommand,
+    RunRequest,
+    RunFilter
+} from '../packages/run/run.entry-point.ts';
 import {
     attachTestBodyResourceAttachments,
     stampTestNodeFamily,
@@ -16,7 +22,6 @@ import { createUnitRunOrchestrator } from '../test-support/create-deterministic-
 import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 
 import { expandRuntimeMatrices } from '../engine/runtime-matrix-expansion.ts';
-import type { RunFilter } from './run-request-types.ts';
 
 import {
     caseId,

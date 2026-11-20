@@ -49,12 +49,9 @@ async function assertPromiseWindows(
 export const testNode: TestNode = suite(
     'Retry promise attribution',
     [ table({
-        ...metadata,
         title: 'promise leak evidence does not move into a later window',
         cases: [ 'retry', 'runtime-variant' ],
-        caseTitle(kind) {
-            return `promise leak evidence does not move into a later ${kind} window`;
-        },
+        caseTitle: String,
         async test(scope) {
             const kind = scope.parameters;
 

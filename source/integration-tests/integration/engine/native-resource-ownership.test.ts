@@ -1,6 +1,6 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
 import { setTimeout as scheduleTimer, clearTimeout as cancelTimer } from 'node:timers';
 import { AsyncResource } from 'node:async_hooks';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { withRunnerInfrastructure } from '../../../execution-ownership.ts';
 import { activeResourceLeakError, createAsyncLeakMonitor } from '../../../engine/async-leak-diagnostics.ts';
@@ -16,11 +16,9 @@ export const testNode: TestNode = suite('native infrastructure resources', [
         title: 'infrastructure timers cannot mask test timer leaks',
         cases: [ 'live', 'unref', 'closed' ] as const,
         caseTitle(lifetime) {
-            return `${lifetime}`;
+            return lifetime;
         },
         async test(scope) {
-            const lifetime = scope.parameters;
-
             const monitor = createAsyncLeakMonitor();
             scope.cleanup(monitor.stop);
             const background = withRunnerInfrastructure(function createBackgroundContext() {
@@ -40,9 +38,9 @@ export const testNode: TestNode = suite('native infrastructure resources', [
                         cancelTimer(infrastructure);
                         cancelTimer(owned);
                     });
-                    if (lifetime === 'unref') {
+                    if (scope.parameters === 'unref') {
                         infrastructure.unref();
-                    } else if (lifetime === 'closed') {
+                    } else if (scope.parameters === 'closed') {
                         cancelTimer(infrastructure);
                     }
                 }

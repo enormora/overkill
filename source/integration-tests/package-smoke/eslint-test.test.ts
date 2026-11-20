@@ -1,5 +1,5 @@
-import { type TestNode, test } from '#tests';
 import { execFile } from 'node:child_process';
+import { type TestNode, test } from '#tests';
 
 const script = `
 import { defineRuleTests, defineConfigTests } from '@overkill-dev/eslint-test';

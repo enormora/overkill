@@ -147,12 +147,12 @@ export const testNode: TestNode = suite(
         table({
             title: 'selects explicit and sole benchmark profiles',
             cases: verbs.flatMap(function commandTests(verb) {
-                return ({ caseDescription: `${verb} selects explicit and sole benchmark profiles`, verb });
+                return { verb };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ verb }) {
+                return [ verb ].map(String).join(', ');
+            },
             async test(scope) {
-                const { verb } = scope.parameters;
-
                 const scenarios: readonly SelectedProfileScenario[] = [
                     { profiles: { startup: benchmark, benchmark: ordinary }, profile: null, selected: 'startup' },
                     { profiles: { startup: benchmark, benchmark: ordinary }, profile: 'startup', selected: 'startup' },
@@ -166,7 +166,12 @@ export const testNode: TestNode = suite(
                         'overkill.config.ts',
                         { config: { profiles: scenario.profiles } }
                     ));
-                    const result = await invokeBenchmark(fixture.benchmark, verb, scenario.profile, null);
+                    const result = await invokeBenchmark(
+                        fixture.benchmark,
+                        scope.parameters.verb,
+                        scenario.profile,
+                        null
+                    );
                     scope.assert.equal(result.exitCode, 0);
                     scope.assert.deepEqual(result.fallbackDiagnostics, []);
                     scope.assert.deepEqual(
@@ -175,8 +180,8 @@ export const testNode: TestNode = suite(
                         }),
                         [ scenario.selected ]
                     );
-                    scope.assert.equal(result.runResult === null, verb === 'listBenchmarks');
-                    scope.assert.equal(result.stdoutLines.length > 0, verb === 'listBenchmarks');
+                    scope.assert.equal(result.runResult === null, scope.parameters.verb === 'listBenchmarks');
+                    scope.assert.equal(result.stdoutLines.length > 0, scope.parameters.verb === 'listBenchmarks');
                 }
                 return scope.assert.collect();
             }
@@ -184,12 +189,12 @@ export const testNode: TestNode = suite(
         table({
             title: 'loads config once and preserves complete policy',
             cases: verbs.flatMap(function commandTests(verb) {
-                return ({ caseDescription: `${verb} loads config once and preserves complete policy`, verb });
+                return { verb };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ verb }) {
+                return [ verb ].map(String).join(', ');
+            },
             async test(scope) {
-                const { verb } = scope.parameters;
-
                 const config = {
                     ...normalizeConfig({ profiles: { startup: benchmark, benchmark: ordinary } }),
                     configPath: null
@@ -203,7 +208,12 @@ export const testNode: TestNode = suite(
                     loads.push({ configPath: request.configPath, cwd: request.cwd });
                     return config;
                 });
-                const result = await invokeBenchmark(fixture.benchmark, verb, null, 'custom.config.ts');
+                const result = await invokeBenchmark(
+                    fixture.benchmark,
+                    scope.parameters.verb,
+                    null,
+                    'custom.config.ts'
+                );
                 scope.assert.equal(result.exitCode, 0);
                 scope.assert.deepEqual(loads, [ { configPath: 'custom.config.ts', cwd: configFixtureCwd } ]);
                 scope.assert.deepEqual(config, { ...snapshot, configPath: null });
@@ -214,9 +224,11 @@ export const testNode: TestNode = suite(
         table({
             title: 'rejects invalid selections before planning',
             cases: verbs.flatMap(function commandTests(verb) {
-                return ({ caseDescription: `${verb} rejects invalid selections before planning`, verb });
+                return { verb };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ verb }) {
+                return [ verb ].map(String).join(', ');
+            },
             async test(scope) {
                 const { verb } = scope.parameters;
 
@@ -240,9 +252,11 @@ export const testNode: TestNode = suite(
         table({
             title: 'discovers and loads explicit config paths',
             cases: verbs.flatMap(function commandTests(verb) {
-                return ({ caseDescription: `${verb} discovers and loads explicit config paths`, verb });
+                return { verb };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ verb }) {
+                return [ verb ].map(String).join(', ');
+            },
             async test(scope) {
                 const { verb } = scope.parameters;
 
@@ -261,9 +275,11 @@ export const testNode: TestNode = suite(
         table({
             title: 'reports malformed policy before profile selection',
             cases: verbs.flatMap(function commandTests(verb) {
-                return ({ caseDescription: `${verb} reports malformed policy before profile selection`, verb });
+                return { verb };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ verb }) {
+                return [ verb ].map(String).join(', ');
+            },
             async test(scope) {
                 const { verb } = scope.parameters;
 

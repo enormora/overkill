@@ -34,9 +34,7 @@ export const testNode: TestNode = suite(
     [ table({
         title: 'records preparation facts for an empty selection',
         cases: [ 'supervised-process', 'worker-pool' ] as const,
-        caseTitle(processModel) {
-            return `records preparation facts for an empty ${processModel} selection`;
-        },
+        caseTitle: String,
         async test(scope) {
             const processModel = scope.parameters;
 

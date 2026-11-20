@@ -13,13 +13,9 @@ const caseCount = 32;
 export const testNode: TestNode = suite(
     'Runner IPC results',
     [ table({
-        annotations: {},
-        controls: {},
         title: 'supervised runs preserve large IPC plans and results with coverage',
         cases: [ false, true ],
-        caseTitle(coverage) {
-            return `supervised runs preserve large IPC plans and results with coverage ${coverage}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const coverage = scope.parameters;
 

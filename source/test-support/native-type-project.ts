@@ -3,8 +3,8 @@ import { mkdtemp, writeFile, rm, mkdir, chmod } from 'node:fs/promises';
 import { join, resolve as resolvePath } from 'node:path';
 import TypeScript from 'typescript';
 import { z } from 'zod';
-import type { TypeTestSettings } from '../packages/type-test/profile-settings.ts';
 import type { TestScope } from '@overkill-dev/test';
+import type { TypeTestSettings } from '../packages/type-test/profile-settings.ts';
 
 const readOnlyProjectMode = 0o555;
 const writableProjectMode = 0o755;

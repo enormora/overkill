@@ -1,7 +1,7 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { INSTRUMENTER_CONSTANTS } from '@stryker-mutator/api/core';
 

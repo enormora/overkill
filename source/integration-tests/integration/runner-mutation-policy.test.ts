@@ -13,7 +13,6 @@ import {
 import { createMutationRunCommand } from '../../packages/stryker-runner/mutation-execution-policy.ts';
 
 const fixture = 'source/integration-tests/integration/fixtures/mutation-policy.test.ts';
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
 function mutationCommand(processModel: MicrotestProfileConfig['execution']['processModel']): RunCommand {
     const config = normalizeConfig({
@@ -83,20 +82,15 @@ async function mutationInput(command: RunCommand, frozen: boolean): Promise<Froz
 export const testNode: TestNode = suite(
     'mutation execution policy through the public runner',
     [ table({
-        ...metadata,
         title: 'serial cases and cleanup preserve execution',
         cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function mutationProcessModel(processModel) {
             return [ false, true ].map(function frozenPolicy(frozen) {
-                return ({
-                    caseDescription: `${
-                        frozen ? 'frozen' : 'configured'
-                    } serial cases and cleanup preserve ${processModel} execution`,
-                    processModel,
-                    frozen
-                });
+                return { processModel, frozen };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel, frozen }) {
+            return [ frozen ? 'frozen' : 'configured', processModel ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel, frozen } = scope.parameters;
 

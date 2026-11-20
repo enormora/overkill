@@ -139,7 +139,7 @@ export const testNode: TestNode = suite('executable family definitions', [
         title: 'rejects malformed definitions',
         cases: invalidDefinitions,
         caseTitle(entry) {
-            return `${entry.name}`;
+            return entry.name;
         },
         test(scope) {
             const entry = scope.parameters;
@@ -160,7 +160,7 @@ export const testNode: TestNode = suite('executable family definitions', [
         title: 'rejects malformed settings',
         cases: invalidSettings,
         caseTitle(entry) {
-            return `${entry.name}`;
+            return entry.name;
         },
         test(scope) {
             const entry = scope.parameters;

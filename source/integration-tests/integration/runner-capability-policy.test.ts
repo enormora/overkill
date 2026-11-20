@@ -1,5 +1,5 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { rm } from 'node:fs/promises';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../../engine/runtime-attachment.ts';
 import {
@@ -305,19 +305,15 @@ const policyProcessModels: readonly {
 
 export const testNode: TestNode = suite('Runner capability policy', [
     table({
-        annotations: {},
-        controls: {},
         title: 'enforces microtest capability restrictions',
         cases: policyFixtures.flatMap(function createPolicyFixtureTests(fixture) {
             return policyProcessModels.map(function createPolicyFixtureProcessTest(model) {
-                return ({
-                    caseDescription: `${model.processModel}, ${fixture.name}`,
-                    fixture,
-                    model
-                });
+                return { fixture, model };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ fixture, model }) {
+            return [ model.processModel, fixture.name ].map(String).join(', ');
+        },
         async test(scope) {
             const { fixture, model } = scope.parameters;
 

@@ -1,7 +1,7 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     normalizeConfig,
@@ -108,16 +108,16 @@ export const testNode: TestNode = suite(
             cases: boundaries.map(
                 function boundary(value) {
                     const selected = value;
-                    return ({ caseDescription: `${selected}`, value, selected });
+                    return { selected };
                 }
             ),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ selected }) {
+                return [ selected ].map(String).join(', ');
+            },
             async test(scope) {
-                const { selected } = scope.parameters;
-
                 const command = await commandFor(
                     scope,
-                    selected,
+                    scope.parameters.selected,
                     'source/integration-tests/integration/fixtures/cold-import.bench.test.ts',
                     'off'
                 );

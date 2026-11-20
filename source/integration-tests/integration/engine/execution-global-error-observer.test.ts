@@ -1,7 +1,7 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { spawn } from 'node:child_process';
 import type { Readable } from 'node:stream';
 import { setImmediate as scheduleImmediate } from 'node:timers';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createTestEngine } from '../../../test-support/create-test-engine.ts';
 import { sourceErrorObserverProbe } from '../../../test-support/source-error-observer-probe.ts';

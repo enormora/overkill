@@ -70,9 +70,7 @@ export const testNode: TestNode = suite('native checker completion policy', [
     table({
         title: 'retains failed type evidence with annotations',
         cases: [ null, 'Expected matching types' ],
-        caseTitle(message) {
-            return `${String(message)}`;
-        },
+        caseTitle: String,
         test(scope) {
             const message = scope.parameters;
 
@@ -186,9 +184,7 @@ export const testNode: TestNode = suite('native checker completion policy', [
     table({
         title: 'retains compiler failures',
         cases: [ new Error('Compiler unavailable'), 'unknown failure' ],
-        caseTitle(error) {
-            return `${String(error)}`;
-        },
+        caseTitle: String,
         test(scope) {
             const error = scope.parameters;
 

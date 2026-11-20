@@ -83,7 +83,7 @@ export const testNode: TestNode = suite('replay resource restoration', [
             { scenario: 'outage', name: 'missing' }
         ],
         caseTitle({ scenario }) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
             const { scenario, name } = scope.parameters;
@@ -110,9 +110,7 @@ export const testNode: TestNode = suite('replay resource restoration', [
     table({
         title: 'passes witness and seed to restoration',
         cases: [ null, '-7' ],
-        caseTitle(seed) {
-            return `${seed}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const seed = scope.parameters;
 

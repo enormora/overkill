@@ -1,6 +1,6 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { createServer } from 'node:http';
 import { setTimeout as wait } from 'node:timers/promises';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { resourceAttachments } from '../../../attachments/attachment-context.ts';
 

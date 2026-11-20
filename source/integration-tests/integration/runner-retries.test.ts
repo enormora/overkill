@@ -1,4 +1,5 @@
 import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
+import { executionTitle } from '../../test-support/execution-profile-title.ts';
 
 import {
     defineReporter,
@@ -26,7 +27,7 @@ const hardTimeoutFixture: RetryFixture = {
     path: 'source/integration-tests/integration/fixtures/retry-hard-timeout.test.ts',
     timeouts: { collectionMilliseconds: 5000, softMilliseconds: 2000, hardMilliseconds: 3000 }
 };
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
 const workerExecution: IntegrationExecution = {
     assignmentPolicy: 'case-count-balanced',
     dispatchPolicy: 'dynamic-lease',
@@ -206,42 +207,35 @@ function assertHardTimeoutEvent(scope: TestScope, result: RunResult, events: rea
 
 export const testNode: TestNode = suite('Runner retries', [
     table({
-        ...metadata,
         title: 'retries across execution envelopes',
         cases: executions.flatMap(function retryExecution(execution, index) {
             return artifactPolicies.map(function artifactRetention(policy) {
-                return ({
-                    caseDescription: `${index + 1}, ${policy}`,
-                    execution,
-                    index,
-                    policy
-                });
+                return { execution, index, policy };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ execution, policy }) {
+            return [ executionTitle(execution), policy ].join(', ');
+        },
         async test(scope) {
-            const { execution, policy } = scope.parameters;
-
             const events: ReporterEvent[] = [];
             const reporter = eventReporter(function recordEvent(event) {
                 events.push(event);
             });
-            const command = retryCommand(execution, reporter, policy, fixture);
+            const command = retryCommand(scope.parameters.execution, reporter, scope.parameters.policy, fixture);
             const resolved = await orchestrator.resolve(command);
             scope.assert.equal(resolved.facts.execution.retries?.maxAttempts, 3);
             scope.assert.true(Object.isFrozen(resolved.facts.execution.retries));
             const result = await orchestrator.run(command);
             assertRecoveredHistory(scope, result);
-            assertRetryEvidence(scope, result, events, policy);
+            assertRetryEvidence(scope, result, events, scope.parameters.policy);
             return scope.assert.collect();
         }
     }),
     table({
-        ...metadata,
         title: 'preserves retry evidence after hard timeouts',
         cases: executions.slice(0, 2),
         caseTitle(execution) {
-            return `${execution.processModel}`;
+            return execution.processModel;
         },
         async test(scope) {
             const execution = scope.parameters;

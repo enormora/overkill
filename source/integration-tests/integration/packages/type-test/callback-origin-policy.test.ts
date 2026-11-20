@@ -203,17 +203,23 @@ export const testNode: TestNode = suite('callback origin boundaries', [
     }),
     table({
         title: 'rejects incomplete callback locations',
-        cases: [ { kind: 'unknown' }, { kind: 'known', file: '/project/case.ts', line: null, column: 1 }, {
-            kind: 'known',
-            file: '/project/case.ts',
-            line: 1,
-            column: null
+        cases: [ { description: 'unknown location', input: { kind: 'unknown' } }, {
+            description: 'missing line',
+            input: { kind: 'known', file: '/project/case.ts', line: null, column: 1 }
+        }, {
+            description: 'missing column',
+            input: {
+                kind: 'known',
+                file: '/project/case.ts',
+                line: 1,
+                column: null
+            }
         } ] as const,
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        caseTitle({ description }) {
+            return description;
         },
         async test(scope) {
-            const location = scope.parameters;
+            const location = scope.parameters.input;
 
             const fixture = ownedCallback('test', positional);
             await scope.assert.rejects(async function () {

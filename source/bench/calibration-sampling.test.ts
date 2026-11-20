@@ -1,5 +1,5 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 import { getEventListeners } from 'node:events';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { BenchmarkScope } from '../engine/test-node.ts';
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
@@ -182,7 +182,7 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
         title: 'requires execution and normalization context',
         cases: [ false, true ],
         caseTitle(missingEnvironment) {
-            return `${missingEnvironment ? 'execution environment' : 'normalization context'}`;
+            return missingEnvironment ? 'execution environment' : 'normalization context';
         },
         async test(scope) {
             const missingEnvironment = scope.parameters;
@@ -258,7 +258,7 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
         title: 'retains measured evidence after sampling failure',
         cases: [ 0, 2 ],
         caseTitle(warmupSamples) {
-            return `${warmupSamples === 0 ? 'measurement' : 'warmup'}`;
+            return warmupSamples === 0 ? 'measurement' : 'warmup';
         },
         async test(scope) {
             const warmupSamples = scope.parameters;
@@ -376,16 +376,14 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
         title: 'retains calibration evidence after losing runner context',
         cases: [ false, true ],
         caseTitle(cached) {
-            return `${cached ? 'cached' : 'new'}`;
+            return cached ? 'cached' : 'new';
         },
         async test(scope) {
-            const cached = scope.parameters;
-
             const calibration = referenceResource();
             const rules = { value: { calibration, scaling: 'proportional' as const } };
             await using resources = await startResources({ resources: { calibration }, signal: scope.signal });
             const handles = { [calibrationResourceKey(rules.value)]: resources.context.calibration };
-            if (cached) {
+            if (scope.parameters) {
                 await collectBenchmarkNormalization(calibrationScope(scope), handles, rules, policy);
             }
             const retained: BenchmarkExecutionResult[] = [];
@@ -405,7 +403,7 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
                     );
                 },
                 {
-                    message: cached
+                    message: scope.parameters
                         ? 'Normalization requires a benchmark runner reference context.'
                         : 'Calibration requires a benchmark runner reference context.'
                 }
@@ -415,7 +413,7 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
                     return { status: result.status, samples: result.normalization?.calibrations.length };
                 }),
                 [
-                    { status: 'incomplete', samples: cached ? 1 : 0 }
+                    { status: 'incomplete', samples: scope.parameters ? 1 : 0 }
                 ]
             );
             return scope.assert.collect();

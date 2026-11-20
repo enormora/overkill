@@ -44,7 +44,7 @@ export const testNode: TestNode = suite('mutation coverage selection', [
         title: 'widens unsupported attribution to the frozen catalog',
         cases: [ 'all', 'off', 'perTest' ] as const,
         caseTitle(coverageAnalysis) {
-            return `${coverageAnalysis}`;
+            return coverageAnalysis;
         },
         test(scope) {
             const coverageAnalysis = scope.parameters;

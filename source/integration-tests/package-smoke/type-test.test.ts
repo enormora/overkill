@@ -1,8 +1,8 @@
-import { type TestNode, suite, test, type TestScope } from '#tests';
 import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, rm, writeFile, readFile, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { type TestNode, suite, test, type TestScope } from '#tests';
 
 const engineCaseSource = `import * as engine from '@overkill-dev/engine';
 import { family, sameType } from '@overkill-dev/type-test';

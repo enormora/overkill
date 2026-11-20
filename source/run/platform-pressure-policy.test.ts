@@ -10,7 +10,7 @@ export const testNode: TestNode = suite('platform pressure collection policy', [
         title: 'parses Darwin memory pressure codes',
         cases: [ '1', '2', '4' ] as const,
         caseTitle(code) {
-            return `${code}`;
+            return code;
         },
         async test(scope) {
             const code = scope.parameters;
@@ -33,7 +33,7 @@ export const testNode: TestNode = suite('platform pressure collection policy', [
         title: 'marks unsupported Darwin memory pressure unavailable',
         cases: [ 'invalid', '0', '3', '8' ] as const,
         caseTitle(code) {
-            return `${code}`;
+            return code;
         },
         async test(scope) {
             const code = scope.parameters;
@@ -71,9 +71,7 @@ export const testNode: TestNode = suite('platform pressure collection policy', [
     table({
         title: 'retains Linux probe failures',
         cases: [ new Error('read failed'), 'non-error' ] as const,
-        caseTitle(failure) {
-            return `${String(failure)}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const failure = scope.parameters;
 

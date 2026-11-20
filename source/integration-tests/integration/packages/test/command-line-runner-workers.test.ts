@@ -2,23 +2,15 @@ import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { passingResult, runCommandLine } from '../../../../test-support/command-line-test-driver.ts';
 
-const emptyTestData = {
-    annotations: {},
-    controls: {}
-};
-
 export const testNode: TestNode = suite({
     title: 'Overkill CLI workers',
-    ...emptyTestData,
+
     children: [
         test({
             title: 'parses worker count for run commands',
-            ...emptyTestData,
+
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const result = await runCommandLine(
                     [ 'run', '--workers', '4', 'source/a.test.ts' ],
@@ -34,7 +26,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'rejects invalid worker counts',
-            ...emptyTestData,
+
             async body(
                 scope
             ) {
@@ -51,7 +43,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'rejects worker count for list commands',
-            ...emptyTestData,
+
             async body(
                 scope
             ) {

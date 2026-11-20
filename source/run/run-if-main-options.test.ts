@@ -1,5 +1,4 @@
-import { type TestNode, type TestScope, suite, test, type TestScope as DirectScope } from '@overkill-dev/test';
-import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     type TestPlan,
@@ -26,6 +25,8 @@ import {
     selectedReporters
 } from './run-if-main-options.ts';
 
+type PassingBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
+
 const outputRenderer = defineFixedOutputRenderer({
     render(): string {
         return '';
@@ -33,8 +34,8 @@ const outputRenderer = defineFixedOutputRenderer({
 });
 
 function passingBody(
-    scope: { readonly assert: Pick<DirectScope['assert'], 'true' | 'collect'>; }
-): ReturnType<EngineCaseBody> {
+    scope: PassingBodyAssertions
+): ReturnType<TestScope['assert']['collect']> {
     scope.assert.true(true);
 
     return scope.assert.collect();

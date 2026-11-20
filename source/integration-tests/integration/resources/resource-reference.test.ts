@@ -1,7 +1,7 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 import {
@@ -116,7 +116,7 @@ export const testNode: TestNode = suite('referenced resource sessions', [
         title: 'rejects consumer projections for shared resources',
         cases: [ 'per-case', 'shared-per-worker' ] as const,
         caseTitle(resourceScope) {
-            return `${resourceScope}`;
+            return resourceScope;
         },
         test(scope) {
             const resourceScope = scope.parameters;
@@ -152,7 +152,7 @@ export const testNode: TestNode = suite('referenced resource sessions', [
         title: 'requires exposure for request-routed scenarios',
         cases: [ 'owner', 'consumer' ] as const,
         caseTitle(role) {
-            return `${role}`;
+            return role;
         },
         async test(scope) {
             const role = scope.parameters;

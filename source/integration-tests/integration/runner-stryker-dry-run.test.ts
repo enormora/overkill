@@ -1,7 +1,7 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { adapterUrl, engineUrl, configUrl } from './support/stryker-lifecycle-fixture.ts';
 import { executeMutationScript } from './support/stryker-script.ts';
@@ -27,7 +27,7 @@ const modes = ([ 'in-process', 'supervised-process' ] as const).flatMap(function
 export const testNode: TestNode = suite(
     'Stryker structured dry runs',
     [ table({
-        title: 'runner stryker dry run scenarios',
+        title: 'returns native dry-run evidence across execution boundaries',
         cases: modes,
         caseTitle(mode) {
             return `${mode.processModel} freshState ${String(mode.freshState)} ${mode.scenario} ${

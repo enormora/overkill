@@ -1,7 +1,7 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { ChildProcess } from 'node:child_process';
 import { channel } from 'node:diagnostics_channel';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createClock } from '@enormora/clock';
 import { benchmarkHostSnapshotSchema } from '../../bench/benchmark-host-snapshot.ts';
@@ -16,14 +16,12 @@ export const testNode: TestNode = suite('benchmark host observer integration', [
             return cancelled ? 'does not start cancelled probes' : 'awaits cancelled probe closure';
         },
         async test(scope) {
-            const cancelled = scope.parameters;
-
             const probe = {
                 cancellation: new AbortController(),
                 context: new AsyncLocalStorage<boolean>(),
                 children: new Map<ChildProcess, boolean>()
             };
-            const signal = cancelled ? AbortSignal.abort() : probe.cancellation.signal;
+            const signal = scope.parameters ? AbortSignal.abort() : probe.cancellation.signal;
             const spawned = channel('child_process');
             function observeChild(message: unknown): void {
                 if (probe.context.getStore() !== true || typeof message !== 'object' || message === null) {
@@ -49,7 +47,7 @@ export const testNode: TestNode = suite('benchmark host observer integration', [
             await probe.context.run(true, async function () {
                 return await collectPlatformPressure('darwin', signal);
             });
-            scope.assert.equal(probe.children.size > 0, !cancelled);
+            scope.assert.equal(probe.children.size > 0, !scope.parameters);
             scope.assert.true(Array.from(probe.children.values()).every(Boolean));
             return scope.assert.collect();
         }

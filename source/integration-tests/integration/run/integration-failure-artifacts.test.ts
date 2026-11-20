@@ -1,6 +1,6 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { setTimeout as wait } from 'node:timers/promises';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { parseWitnessFile } from '../../../packages/engine/engine.entry-point.ts';
 

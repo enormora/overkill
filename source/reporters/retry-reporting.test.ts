@@ -10,7 +10,7 @@ import { resultWithAttemptHistory } from '../engine/test-attempt-history.ts';
 import { createBriefReporter } from './brief-reporter.ts';
 import { createDotReporter } from './dot-reporter.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+const metadata = { definitionLocations: [ { kind: 'unknown' } ] } as const;
 const context = createReportingContext({ projectRoot: null });
 type TestEndEvent = Extract<ReporterEvent, { readonly kind: 'test-end'; }>;
 
@@ -21,8 +21,8 @@ function recoveredResult(): RunResult {
     });
     return {
         ...result,
-        perTest: result.perTest.map(function recoveredTest(test) {
-            return resultWithAttemptHistory(test, [ {
+        perTest: result.perTest.map(function recoveredTest(testResult) {
+            return resultWithAttemptHistory(testResult, [ {
                 property: null,
                 benchmark: null,
                 attempt: { index: 0 },
@@ -45,8 +45,8 @@ function recoveredResult(): RunResult {
 }
 
 function retryEvent(result: RunResult): TestEndEvent {
-    const test = result.perTest[0];
-    if (test === undefined) {
+    const testResult = result.perTest[0];
+    if (testResult === undefined) {
         throw new Error('Retry reporting requires one logical test.');
     }
     return {
@@ -55,11 +55,11 @@ function retryEvent(result: RunResult): TestEndEvent {
         completion: 'retry',
         attempt: 0,
         artifacts: [],
-        case: test.id,
+        case: testResult.id,
         definitionLocations: metadata.definitionLocations,
         durationMicroseconds: 1,
         kind: 'test-end',
-        outcome: test.attempts[0].outcome,
+        outcome: testResult.attempts[0].outcome,
         suitePath: [],
         verdict: 'fail'
     };
@@ -67,11 +67,10 @@ function retryEvent(result: RunResult): TestEndEvent {
 
 export const testNode: TestNode = suite('Retry reporting', [
     table({
-        ...metadata,
         title: 'renders terminal retry verdicts',
         cases: [ 'process-exhausted', 'crashed', 'runtime-policy' ] as const,
         caseTitle(verdict) {
-            return `${verdict}`;
+            return verdict;
         },
         async test(scope) {
             const verdict = scope.parameters;

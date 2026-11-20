@@ -1,5 +1,5 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
 import assert from 'node:assert/strict';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import type { ExecuteOptions } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -83,7 +83,7 @@ export const testNode: TestNode = suite('case scope compatibility', [
         title: 'throwing scopes validate assertion references',
         cases: [ 'assert', 'require' ] as const,
         caseTitle(method) {
-            return `${method}`;
+            return method;
         },
         async test(scope) {
             const method = scope.parameters;

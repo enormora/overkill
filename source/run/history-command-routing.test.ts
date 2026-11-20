@@ -18,9 +18,7 @@ export const testNode: TestNode = suite('history command routing and confirmatio
     table({
         title: 'formats history pruning previews and publication',
         cases: [ true, false ] as const,
-        caseTitle(dryRun) {
-            return `${String(dryRun)}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const dryRun = scope.parameters;
 
@@ -62,7 +60,7 @@ export const testNode: TestNode = suite('history command routing and confirmatio
         title: 'reports history maintenance failures',
         cases: [ 'load', 'canonical' ] as const,
         caseTitle(failure) {
-            return `${failure}`;
+            return failure;
         },
         async test(scope) {
             const failure = scope.parameters;

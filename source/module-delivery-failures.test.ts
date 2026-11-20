@@ -54,12 +54,15 @@ export const testNode: TestNode = suite('frozen module delivery failure boundari
     }),
     table({
         title: 'rejects non-native module namespace',
-        cases: [ null, 42, {}, { namespace: {} } ] as const,
-        caseTitle(_parameters, index) {
-            return `${index}`;
+        cases: [ { description: 'null', input: null }, { description: 'number', input: 42 }, {
+            description: 'empty record',
+            input: {}
+        }, { description: 'wrapped namespace', input: { namespace: {} } } ] as const,
+        caseTitle({ description }) {
+            return description;
         },
         async test(scope) {
-            const value = scope.parameters;
+            const value = scope.parameters.input;
 
             const fixture = moduleLoadingRuntime();
             await scope.assert.rejects(async function () {

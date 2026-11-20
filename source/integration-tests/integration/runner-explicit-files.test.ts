@@ -1,7 +1,7 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import type {
     RunCommand,
@@ -27,7 +27,6 @@ const duplicateFixtureBPath = 'source/integration-tests/integration/fixtures/dup
 const schedulingFixturePath = 'source/integration-tests/integration/fixtures/scheduling.test.ts';
 const discoveryFixtureGlob = 'source/integration-tests/integration/fixtures/discovery/*.test.ts';
 const discoverySlowFixturePath = 'source/integration-tests/integration/fixtures/discovery/slow.test.ts';
-const emptyTestData = { annotations: {}, controls: {} } as const;
 
 type SchedulingEvent = `end:${string}` | `start:${string}`;
 
@@ -187,16 +186,13 @@ function assertConcurrentSchedulingEvents(scope: TestScope, events: readonly Sch
 
 export const testNode: TestNode = suite({
     title: 'Runner explicit files',
-    ...emptyTestData,
+
     children: [
         test({
             title: 'runner resolves and executes one explicit testNode file',
-            ...emptyTestData,
+
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'deepEqual' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const resolvedRun = await orchestrator.resolve(createRunCommand([ passingFixturePath ]));
                 const result = await orchestrator.run(createRunCommand([ passingFixturePath ]));
@@ -227,7 +223,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'runner executes a supervised microtest in a child process',
-            ...emptyTestData,
+
             async body(scope) {
                 const result = await orchestrator.run(
                     createSupervisedRunCommand([ passingFixturePath ], createRunConfig())
@@ -252,7 +248,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'runner executes all-skipped explicit files successfully',
-            ...emptyTestData,
+
             async body(scope) {
                 const result = await orchestrator.run(
                     createSupervisedRunCommand([ skippedFixturePath ], createRunConfig())
@@ -277,7 +273,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'runner resolves and executes profile-discovered files',
-            ...emptyTestData,
+
             async body(scope) {
                 const command = createSupervisedRunCommand([], createDiscoveryRunConfig());
                 const resolvedRun = await orchestrator.resolve(command);
@@ -320,7 +316,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'runner runs in-process microtests concurrently from profile scheduling',
-            ...emptyTestData,
+
             async body(scope) {
                 const events = await runSchedulingScenario('in-process', 'concurrent');
 
@@ -331,7 +327,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'runner runs in-process microtests serially from profile scheduling',
-            ...emptyTestData,
+
             async body(scope) {
                 const events = await runSchedulingScenario('in-process', 'serial');
 
@@ -347,7 +343,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'runner runs supervised microtests concurrently from profile scheduling',
-            ...emptyTestData,
+
             async body(scope) {
                 const events = await runSchedulingScenario('supervised-process', 'concurrent');
 
@@ -358,7 +354,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'runner runs supervised microtests serially from profile scheduling',
-            ...emptyTestData,
+
             async body(scope) {
                 const events = await runSchedulingScenario('supervised-process', 'serial');
 
@@ -374,7 +370,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'runner uses file identity to distinguish duplicate case names across files',
-            ...emptyTestData,
+
             async body(scope) {
                 const resolvedRun = await orchestrator.resolve(createRunCommand([
                     duplicateFixtureAPath,
@@ -406,7 +402,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'runner rejects invalid explicit paths before module import',
-            ...emptyTestData,
+
             async body(scope) {
                 const outsideDirectory = await mkdtemp(join(tmpdir(), 'overkill-runner-'));
                 const outsideFile = join(outsideDirectory, 'outside.test.ts');

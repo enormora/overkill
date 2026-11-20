@@ -69,7 +69,7 @@ export const testNode: TestNode = suite('isolated callback source ownership', [
         title: 'resolves positional callbacks without execution',
         cases: [ 'test', 'withResource', 'withResources', 'withRuntime' ],
         caseTitle(name) {
-            return `${name}`;
+            return name;
         },
         async test(scope) {
             const name = scope.parameters;
@@ -85,7 +85,7 @@ export const testNode: TestNode = suite('isolated callback source ownership', [
         title: 'resolves explicit body options',
         cases: [ 'createTestCase', 'unknownAuthoring' ],
         caseTitle(name) {
-            return `${name}`;
+            return name;
         },
         async test(scope) {
             const name = scope.parameters;
@@ -191,7 +191,7 @@ export const testNode: TestNode = suite('isolated callback source ownership', [
         title: 'recognizes adapter-owned references',
         cases: [ 'sameType', 'assignableTo', 'assignableFrom' ] as const,
         caseTitle(name) {
-            return `${name}`;
+            return name;
         },
         async test(scope) {
             const name = scope.parameters;

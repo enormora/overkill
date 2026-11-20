@@ -50,7 +50,7 @@ const behavior: Readonly<
     Record<
         Mode,
         (
-            scope: Pick<TestScope, 'plan' | 'cleanup'> & { readonly require: Pick<TestScope['require'], 'defined'>; }
+            scope: Pick<TestScope, 'cleanup' | 'plan'> & { readonly require: Pick<TestScope['require'], 'defined'>; }
         ) => void
     >
 > = {
@@ -63,7 +63,7 @@ const behavior: Readonly<
     missing() {
         return undefined;
     },
-    require(scope: Pick<TestScope, 'plan' | 'cleanup'> & { readonly require: Pick<TestScope['require'], 'defined'>; }) {
+    require(scope: Pick<TestScope, 'cleanup' | 'plan'> & { readonly require: Pick<TestScope['require'], 'defined'>; }) {
         scope.require.defined(null);
     },
     throw() {
@@ -216,7 +216,7 @@ export const testNode: TestNode = suite('resource check outcomes', [
         title: 'retains resource checks alongside body evidence without retry',
         cases: modes,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;

@@ -1,6 +1,6 @@
-import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 
@@ -105,9 +105,7 @@ async function assertBranchReports(
 export const testNode: TestNode = suite(
     'Coverage branches',
     [ table({
-        annotations: {},
-        controls: {},
-        title: 'native coverage maps branches',
+        title: 'maps native TypeScript branches',
         cases: [ '.ts', '.mts', '.cts' ].flatMap(function nativeExtension(extension) {
             const cases = declarations.flatMap(function declarationScenarios(declaration) {
                 return scenarios.map(function branchScenario(scenario) {
@@ -116,17 +114,12 @@ export const testNode: TestNode = suite(
             });
 
             return cases.map(function branchScenarioTest({ declaration, scenario }) {
-                return ({
-                    caseDescription:
-                        `native ${extension} coverage maps ${declaration.title} branches for ${scenario.title}`,
-                    extension,
-                    cases,
-                    declaration,
-                    scenario
-                });
+                return { extension, declaration, scenario };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ extension, declaration, scenario }) {
+            return [ extension, declaration.title, scenario.title ].map(String).join(', ');
+        },
         async test(scope) {
             const { extension, declaration, scenario } = scope.parameters;
 

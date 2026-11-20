@@ -1,6 +1,6 @@
-import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 import { setTimeout as scheduleTimer, clearTimeout as cancelTimer } from 'node:timers';
 import { AsyncResource } from 'node:async_hooks';
+import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 
 import { createTestEngine } from '../../../test-support/create-test-engine.ts';
 import { createAsyncLeakMonitor } from '../../../engine/async-leak-diagnostics.ts';
@@ -94,16 +94,12 @@ export const testNode: TestNode = suite(
         title: 'keeps resource growth ambiguous with current timer',
         cases: ([ 'closed', 'live', 'unknown' ] as const).flatMap(function attemptLifetime(lifetime) {
             return [ false, true ].map(function currentTimer(includeCurrentTimer) {
-                return ({
-                    caseDescription: `keeps ${lifetime} resource growth ambiguous with current timer ${
-                        String(includeCurrentTimer)
-                    }`,
-                    lifetime,
-                    includeCurrentTimer
-                });
+                return { lifetime, includeCurrentTimer };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ lifetime, includeCurrentTimer }) {
+            return [ lifetime, String(includeCurrentTimer) ].map(String).join(', ');
+        },
         async test(scope) {
             const { lifetime, includeCurrentTimer } = scope.parameters;
 

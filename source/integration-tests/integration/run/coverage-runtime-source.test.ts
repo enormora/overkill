@@ -2,8 +2,6 @@ import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createCoverageSourceCache } from '../../../run/coverage-runtime-source.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
-
 export const testNode: TestNode = suite('Coverage runtime source', [
     test('reuses method positions without retaining coverage counts', function (scope) {
         const cache = createCoverageSourceCache();
@@ -31,7 +29,6 @@ export const testNode: TestNode = suite('Coverage runtime source', [
         return scope.assert.collect();
     }),
     table({
-        ...metadata,
         title: 'classifies runtime',
         cases: [
             { source: '', runtime: false },

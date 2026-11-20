@@ -1,5 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { writeFile, readFile } from 'node:fs/promises';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import {
     defaultAttachmentLimits,

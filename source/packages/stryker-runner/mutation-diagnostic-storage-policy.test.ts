@@ -28,7 +28,7 @@ export const testNode: TestNode = suite('mutation diagnostic file retention', [
         title: 'rejects mismatches before publishing diagnostics',
         cases: [ 'source-size', 'destination-size' ] as const,
         caseTitle(scenario) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
             const scenario = scope.parameters;
@@ -45,7 +45,7 @@ export const testNode: TestNode = suite('mutation diagnostic file retention', [
         title: 'preserves diagnostic storage failures',
         cases: [ 'copy-error', 'write-error' ] as const,
         caseTitle(scenario) {
-            return `${scenario}`;
+            return scenario;
         },
         async test(scope) {
             const scenario = scope.parameters;

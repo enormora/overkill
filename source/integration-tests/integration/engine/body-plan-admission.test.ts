@@ -1,5 +1,5 @@
-import { type EngineCaseBody, executeEngineCase, engineCasePassed } from '../../../test-support/create-test-engine.ts';
 import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { type EngineCaseBody, executeEngineCase, engineCasePassed } from '../../../test-support/create-test-engine.ts';
 
 import { bodyPlanAdmission } from '../../../test-support/body-plan-admission.ts';
 import { withImplementationActivations } from '../../../implementation-participant.ts';
@@ -40,7 +40,7 @@ export const testNode: TestNode = suite('body plan implementation admission', [
         title: 'admits body implementations across execution phases',
         cases: [ 'all', 'consumer' ] as const,
         caseTitle(admission) {
-            return `${admission}`;
+            return admission;
         },
         async test(scope) {
             const require: typeof scope.require = scope.require;

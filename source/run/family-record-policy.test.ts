@@ -32,9 +32,7 @@ export const testNode: TestNode = suite('family recording policy', [
     table({
         title: 'rejects unsupported record versions',
         cases: [ 2, 3 ],
-        caseTitle(version) {
-            return `${version}`;
-        },
+        caseTitle: String,
         test(scope) {
             const version = scope.parameters;
 

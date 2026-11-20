@@ -5,18 +5,6 @@ import { integrationProfileSchema, microtestProfileSchema } from './schema.ts';
 import type { LoadedConfig } from './config-loader.ts';
 
 const files = { include: [ 'source/**/*.integration.test.ts' ] };
-const invalidPolicies: readonly unknown[] = [
-    { maxAttempts: 0 },
-    { maxAttempts: -1 },
-    { maxAttempts: 1.5 },
-    { maxAttempts: Number.MAX_SAFE_INTEGER + 1 },
-    { maxAttempts: Number.NaN },
-    { maxAttempts: Number.POSITIVE_INFINITY },
-    { maxAttempts: 3, artifacts: 'unknown' },
-    { maxAttempts: 3, delay: 1 },
-    { attempts: 3 },
-    null
-];
 
 async function integrationConfig(retries: unknown): Promise<LoadedConfig> {
     const loadConfig = createSingleConfigModuleLoader('overkill.config.js', {
@@ -28,9 +16,23 @@ async function integrationConfig(retries: unknown): Promise<LoadedConfig> {
 export const testNode: TestNode = suite('Configuration retries', [
     table({
         title: 'integration rejects invalid retry policies',
-        cases: invalidPolicies,
-        caseTitle(_policy, index) {
-            return `invalid policy ${index}`;
+        cases: [
+            { description: 'zero attempts', input: { maxAttempts: 0 } },
+            { description: 'negative attempts', input: { maxAttempts: -1 } },
+            { description: 'fractional attempts', input: { maxAttempts: 1.5 } },
+            {
+                description: 'unsafe attempt count',
+                input: { maxAttempts: Number.MAX_SAFE_INTEGER + 1 }
+            },
+            { description: 'non-number attempt count', input: { maxAttempts: Number.NaN } },
+            { description: 'infinite attempts', input: { maxAttempts: Number.POSITIVE_INFINITY } },
+            { description: 'unknown artifact policy', input: { maxAttempts: 3, artifacts: 'unknown' } },
+            { description: 'unsupported delay', input: { maxAttempts: 3, delay: 1 } },
+            { description: 'misspelled attempt field', input: { attempts: 3 } },
+            { description: 'null policy', input: null }
+        ],
+        caseTitle({ description }) {
+            return description;
         },
         test(scope) {
             scope.assert.false(
@@ -38,7 +40,7 @@ export const testNode: TestNode = suite('Configuration retries', [
                     .safeParse({
                         testFamily: 'integration',
                         files,
-                        retries: scope.parameters
+                        retries: scope.parameters.input
                     })
                     .success
             );

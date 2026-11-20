@@ -205,7 +205,7 @@ function assertRecovery(scope: TestScope): void {
 export const testNode: TestNode = suite(
     'dynamic replay decisions',
     [ table({
-        title: 'replay trace decisions scenarios',
+        title: 'retains placement decisions in compiled traces',
         cases: [
             { title: 'batch envelopes', verify: assertBatch },
             { title: 'split parentage and warm affinity', verify: assertSplit },

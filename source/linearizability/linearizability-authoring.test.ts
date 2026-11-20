@@ -13,9 +13,7 @@ export const testNode: TestNode = suite('concurrent linearizability authoring', 
     table({
         title: 'checks increment histories across overlap patterns',
         cases: [ false, true ],
-        caseTitle(overlap) {
-            return `${overlap}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const overlap = scope.parameters;
 
@@ -194,7 +192,7 @@ export const testNode: TestNode = suite('concurrent linearizability authoring', 
         title: 'maps checker verdicts',
         cases: [ 'linearizable', 'not-linearizable', 'inconclusive' ],
         caseTitle(kind) {
-            return `${kind}`;
+            return kind;
         },
         async test(scope) {
             const kind = scope.parameters;

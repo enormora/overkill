@@ -14,15 +14,13 @@ export const testNode: TestNode = suite('mutation coverage delivery', [
         title: 'returns detached counters without mutating raw evidence',
         cases: [ 'perTest', 'all' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         test(scope) {
-            const mode = scope.parameters;
-
-            const { reply, baseline } = mutationCoverageFixture(mode);
+            const { reply, baseline } = mutationCoverageFixture(scope.parameters);
             const data = mutationLifecycleDataSchema.parse(reply.data);
             const coverage = { ...baseline.coverage, static: { mutant: 4, unloaded: 0 } };
-            const result = dryMutationResult('/project', { ...reply, data: { ...data, coverage } }, mode, {
+            const result = dryMutationResult('/project', { ...reply, data: { ...data, coverage } }, scope.parameters, {
                 kind: 'dry',
                 baseline: null,
                 testFiles: null
@@ -32,12 +30,12 @@ export const testNode: TestNode = suite('mutation coverage delivery', [
             }
             scope.assert.deepEqual(
                 result.mutantCoverage,
-                mode === 'all'
+                scope.parameters === 'all'
                     ? { static: { mutant: 7, unloaded: 0 }, perTest: {} }
                     : structuredClone(coverage)
             );
             coverage.static.mutant = 99;
-            scope.assert.equal(result.mutantCoverage.static.mutant, mode === 'all' ? 7 : 4);
+            scope.assert.equal(result.mutantCoverage.static.mutant, scope.parameters === 'all' ? 7 : 4);
             return scope.assert.collect();
         }
     }),
@@ -45,7 +43,7 @@ export const testNode: TestNode = suite('mutation coverage delivery', [
         title: 'accepts complete empty counters without requiring coverage for every case',
         cases: [ 'all', 'off', 'perTest' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         test(scope) {
             const mode = scope.parameters;

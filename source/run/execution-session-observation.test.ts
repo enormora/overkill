@@ -1,5 +1,5 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
 import { runInNewContext } from 'node:vm';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { InvocationDeadlineExceededError } from '../invocation-budget.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -80,7 +80,7 @@ export const testNode: TestNode = suite(
             title: 'preserves parent-owned artifacts after interruption',
             cases: [ 'timeout', 'missing-data' ] as const,
             caseTitle(interruption) {
-                return `${interruption}`;
+                return interruption;
             },
             test(scope) {
                 const interruption = scope.parameters;

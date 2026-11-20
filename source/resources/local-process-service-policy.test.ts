@@ -32,7 +32,7 @@ export const testNode: TestNode = suite('local process service ownership', [
         title: 'requires callbacks for projected processes',
         cases: [ 'serializeHandle', 'deserializeHandle' ] as const,
         caseTitle(missing) {
-            return `${missing}`;
+            return missing;
         },
         test(scope) {
             const missing = scope.parameters;
@@ -153,9 +153,7 @@ export const testNode: TestNode = suite('local process service ownership', [
     table({
         title: 'rejects invalid output and shutdown bounds',
         cases: [ -1, 1.5, Number.NaN ],
-        caseTitle(value) {
-            return `rejects invalid output and shutdown bounds ${String(value)}`;
-        },
+        caseTitle: String,
         test(scope) {
             const value = scope.parameters;
 

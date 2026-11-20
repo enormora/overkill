@@ -1,6 +1,6 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import * as parser from '@typescript-eslint/parser';
 import { createTemporaryDirectoryResource, startResources } from '../../../packages/resources/resources.entry-point.ts';
@@ -76,9 +76,7 @@ export const testNode: TestNode = suite('config project capabilities', [
     table({
         title: 'cleans up installed dependencies after factory failure',
         cases: [ false, true ],
-        caseTitle(shouldFail) {
-            return `${shouldFail}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const shouldFail = scope.parameters;
 
@@ -147,9 +145,7 @@ export const testNode: TestNode = suite('config project capabilities', [
     table({
         title: 'ignored filenames exhaust candidate batches inconclusively',
         cases: [ false, true ],
-        caseTitle(ignored) {
-            return `${ignored}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const ignored = scope.parameters;
 

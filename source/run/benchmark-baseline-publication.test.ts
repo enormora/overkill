@@ -13,7 +13,7 @@ export const testNode: TestNode = suite('benchmark baseline publication', [
         title: 'finalizes baseline proposals with inspectable reports',
         cases: modes,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const require: typeof scope.require = scope.require;

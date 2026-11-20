@@ -2,22 +2,14 @@ import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { passingResult, runCommandLine } from '../../../../test-support/command-line-test-driver.ts';
 
-const emptyTestData = {
-    annotations: {},
-    controls: {}
-};
-
 export const testNode: TestNode = suite({
     title: 'Overkill CLI timings',
     children: [
         test({
             title: 'parses run timings flag',
-            ...emptyTestData,
+
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const result = await runCommandLine(
                     [ 'run', '--timings', 'source/a.test.ts' ],
@@ -33,7 +25,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'rejects timings flag for list',
-            ...emptyTestData,
+
             async body(
                 scope
             ) {

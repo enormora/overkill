@@ -82,7 +82,7 @@ export const testNode: TestNode = suite('imported family transport', [
         title: 'executes imported analysis without invoking bodies',
         cases: [ 'supervised-process', 'worker-pool' ] as const,
         caseTitle(processModel) {
-            return `${processModel}`;
+            return processModel;
         },
         async test(scope) {
             const processModel = scope.parameters;
@@ -117,7 +117,7 @@ export const testNode: TestNode = suite('imported family transport', [
         title: 'executes imported runtime variants across process models',
         cases: [ 'supervised-process', 'worker-pool' ] as const,
         caseTitle(processModel) {
-            return `${processModel}`;
+            return processModel;
         },
         async test(scope) {
             const processModel = scope.parameters;

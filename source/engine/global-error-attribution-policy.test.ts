@@ -1,5 +1,5 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { globalErrorObservation } from '../test-support/global-error-observation.ts';
 import { withRunnerInfrastructure } from '../execution-ownership.ts';
@@ -52,9 +52,7 @@ export const testNode: TestNode = suite('global error attribution boundaries', [
     table({
         title: 'retains denied permissions across case ownership states',
         cases: [ false, true ],
-        caseTitle(active) {
-            return `${active}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const require: typeof scope.require = scope.require;
 

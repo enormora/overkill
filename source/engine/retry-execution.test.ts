@@ -1,7 +1,7 @@
 import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { createDeterministicClock } from '@enormora/clock';
 import { type EngineCaseBody, createTestEngine } from '../test-support/create-test-engine.ts';
 
-import { createDeterministicClock } from '@enormora/clock';
 import {
     defineReporter,
     type ReporterEvent,
@@ -229,12 +229,10 @@ function assertCompletionFailure(scope: TestScope, result: RunResult): void {
 
 export const testNode: TestNode = suite('Retry execution', [
     table({
-        annotations: {},
-        controls: {},
         title: 'preserves attempts across retry scheduling modes',
         cases: schedulingCases,
         caseTitle(execution) {
-            return `${execution.mode}`;
+            return execution.mode;
         },
         async test(scope) {
             const execution = scope.parameters;
@@ -304,12 +302,10 @@ export const testNode: TestNode = suite('Retry execution', [
         return scope.assert.collect();
     }),
     table({
-        annotations: {},
-        controls: {},
         title: 'leaves retries disabled without additional attempts',
         cases: [ null, { maxAttempts: 1 } ],
         caseTitle(retryPolicy) {
-            return `${retryPolicy?.maxAttempts ?? 'no policy'}`;
+            return String(retryPolicy?.maxAttempts ?? 'no policy');
         },
         async test(scope) {
             const retryPolicy = scope.parameters;
@@ -342,12 +338,10 @@ export const testNode: TestNode = suite('Retry execution', [
         return scope.assert.collect();
     }),
     table({
-        annotations: {},
-        controls: {},
         title: 'failures are terminal',
         cases: [ 'contract', 'cleanup', 'infrastructure' ],
         caseTitle(kind) {
-            return `${kind}`;
+            return kind;
         },
         async test(scope) {
             const kind = scope.parameters;

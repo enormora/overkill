@@ -19,14 +19,12 @@ export const testNode: TestNode = suite('immutable inline implementation source 
         title: 'normalizes inline maps to immutable absolute origins',
         cases: [ 'base64', 'percent' ] as const,
         caseTitle(encoding) {
-            return `${encoding}`;
+            return encoding;
         },
         async test(scope) {
             const require: typeof scope.require = scope.require;
 
-            const encoding = scope.parameters;
-
-            const reference = inlineImplementationMap(implementationMap, encoding);
+            const reference = inlineImplementationMap(implementationMap, scope.parameters);
             const source = `export const value = 42;\n//# sourceMappingURL=${reference}`;
             const delivered = await deliverImplementationSource(source, moduleUrl);
             scope.assert.deepEqual<unknown, unknown>(delivered.sourceMap, {

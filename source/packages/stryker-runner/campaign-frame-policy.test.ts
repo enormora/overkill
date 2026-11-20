@@ -14,9 +14,7 @@ export const testNode: TestNode = suite(
     [ table({
         title: 'closes malformed campaign traffic',
         cases: [ 'body-string', 'header-string', 'large-header', 'receiver-failure', 'zero-header' ] as const,
-        caseTitle(scenario) {
-            return `closes malformed ${scenario} campaign traffic`;
-        },
+        caseTitle: String,
         async test(scope) {
             const scenario = scope.parameters;
 

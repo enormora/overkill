@@ -1,6 +1,6 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
 import { readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { MutantRunStatus, DryRunStatus, TestStatus } from '@stryker-mutator/api/test-runner';
 
@@ -21,7 +21,7 @@ export const testNode: TestNode = suite('mutation diagnostic persistence', [
         title: 'leaves excluded successful invocations unwritten',
         cases: [ 'off', 'failures' ] as const,
         caseTitle(mode) {
-            return `${mode}`;
+            return mode;
         },
         async test(scope) {
             const mode = scope.parameters;
@@ -149,7 +149,7 @@ export const testNode: TestNode = suite('mutation diagnostic persistence', [
             reason: 'timeout sentinel'
         } ] as const,
         caseTitle(result) {
-            return `${result.status}`;
+            return result.status;
         },
         async test(scope) {
             const result = scope.parameters;

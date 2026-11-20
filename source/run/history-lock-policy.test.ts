@@ -81,7 +81,7 @@ export const testNode: TestNode = suite('history lock acquisition policy', [
         title: 'preserves lock acquisition failures',
         cases: [ 'inspection', 'check', 'wait' ] as const,
         caseTitle(phase) {
-            return `${phase}`;
+            return phase;
         },
         async test(scope) {
             const phase = scope.parameters;

@@ -5,7 +5,6 @@ import { passingResult, runCommandLine } from '../../../../test-support/command-
 type CapturedCommandLineRun = Awaited<ReturnType<typeof runCommandLine>>;
 type BenchmarkVerb = 'list' | 'run';
 
-const emptyTestData = { annotations: {}, controls: {} } as const;
 const benchmarkVerbs: readonly BenchmarkVerb[] = [ 'run', 'list' ];
 
 function benchmarkRequests(
@@ -55,11 +54,11 @@ function assertBaselineRequest(
 
 export const testNode: TestNode = suite({
     title: 'Overkill CLI bench',
-    ...emptyTestData,
+
     children: [
         test({
             title: 'benchmark baseline execution verbs carry typed selection requests',
-            ...emptyTestData,
+
             async body(scope) {
                 for (const verb of [ 'apply', 'bootstrap', 'diff', 'update' ] as const) {
                     const result = await runCommandLine([
@@ -81,7 +80,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'benchmark baseline commands reject process usage flags before loading the runner',
-            ...emptyTestData,
+
             async body(
                 scope
             ) {
@@ -114,7 +113,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'benchmark baseline listing accepts disk selection flags only',
-            ...emptyTestData,
+
             async body(scope) {
                 const result = await runCommandLine(
                     [ 'bench', 'baseline', 'list', 'source', '--profile', 'startup' ],
@@ -137,12 +136,9 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'bench run carries shared selection and execution flags',
-            ...emptyTestData,
+
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'equal' | 'deepEqual' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const result = await runCommandLine([
                     'bench',
@@ -197,12 +193,9 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'bench list carries shared selection and display flags',
-            ...emptyTestData,
+
             async body(
-                scope: {
-                    readonly assert: Pick<TestScope['assert'], 'equal' | 'true' | 'deepEqual' | 'collect'>;
-                    readonly require: Pick<TestScope['require'], 'defined'>;
-                }
+                scope: TestScope
             ) {
                 const result = await runCommandLine([
                     'bench',
@@ -235,12 +228,13 @@ export const testNode: TestNode = suite({
             }
         }),
         table({
-            ...emptyTestData,
             title: 'bench dispatches explicit profile selection',
             cases: benchmarkVerbs.flatMap(function createBenchmarkCommandTests(verb) {
-                return ({ caseDescription: `${verb}`, verb });
+                return { verb };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ verb }) {
+                return [ verb ].map(String).join(', ');
+            },
             async test(scope) {
                 const { verb } = scope.parameters;
 
@@ -273,45 +267,48 @@ export const testNode: TestNode = suite({
             }
         }),
         table({
-            ...emptyTestData,
             title: 'bench dispatches path operands and config',
             cases: benchmarkVerbs.flatMap(function createBenchmarkCommandTests(verb) {
-                return ({ caseDescription: `${verb}`, verb });
+                return { verb };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ verb }) {
+                return [ verb ].map(String).join(', ');
+            },
             async test(scope) {
-                const { verb } = scope.parameters;
-
                 const scenarios = [
-                    { arguments: [ 'bench', verb ], configPath: null, paths: [] },
-                    { arguments: [ 'bench', verb, 'a.bench.ts' ], configPath: null, paths: [ 'a.bench.ts' ] },
+                    { arguments: [ 'bench', scope.parameters.verb ], configPath: null, paths: [] },
                     {
-                        arguments: [ 'bench', verb, 'b.bench.ts', 'a.bench.ts' ],
+                        arguments: [ 'bench', scope.parameters.verb, 'a.bench.ts' ],
+                        configPath: null,
+                        paths: [ 'a.bench.ts' ]
+                    },
+                    {
+                        arguments: [ 'bench', scope.parameters.verb, 'b.bench.ts', 'a.bench.ts' ],
                         configPath: null,
                         paths: [ 'b.bench.ts', 'a.bench.ts' ]
                     },
                     {
-                        arguments: [ 'bench', verb, '--', '-cold.bench.ts' ],
+                        arguments: [ 'bench', scope.parameters.verb, '--', '-cold.bench.ts' ],
                         configPath: null,
                         paths: [ '-cold.bench.ts' ]
                     },
                     {
-                        arguments: [ '--config', 'policy/config.ts', 'bench', verb, 'a.bench.ts' ],
+                        arguments: [ '--config', 'policy/config.ts', 'bench', scope.parameters.verb, 'a.bench.ts' ],
                         configPath: 'policy/config.ts',
                         paths: [ 'a.bench.ts' ]
                     },
                     {
-                        arguments: [ 'bench', '--config', 'policy/config.ts', verb, 'a.bench.ts' ],
+                        arguments: [ 'bench', '--config', 'policy/config.ts', scope.parameters.verb, 'a.bench.ts' ],
                         configPath: 'policy/config.ts',
                         paths: [ 'a.bench.ts' ]
                     },
                     {
-                        arguments: [ 'bench', verb, '--config', 'policy/config.ts', 'a.bench.ts' ],
+                        arguments: [ 'bench', scope.parameters.verb, '--config', 'policy/config.ts', 'a.bench.ts' ],
                         configPath: 'policy/config.ts',
                         paths: [ 'a.bench.ts' ]
                     },
                     {
-                        arguments: [ 'bench', verb, 'a.bench.ts', '--config=policy/config.ts' ],
+                        arguments: [ 'bench', scope.parameters.verb, 'a.bench.ts', '--config=policy/config.ts' ],
                         configPath: 'policy/config.ts',
                         paths: [ 'a.bench.ts' ]
                     }
@@ -320,13 +317,16 @@ export const testNode: TestNode = suite({
                 for (const scenario of scenarios) {
                     const result = await runCommandLine(scenario.arguments, passingResult());
 
-                    scope.assert.deepEqual(benchmarkRequests(result, verb), [ {
+                    scope.assert.deepEqual(benchmarkRequests(result, scope.parameters.verb), [ {
                         paths: scenario.paths,
                         profile: null,
                         configPath: scenario.configPath,
                         cwd: '/project'
                     } ]);
-                    scope.assert.equal(benchmarkRequests(result, verb === 'run' ? 'list' : 'run').length, 0);
+                    scope.assert.equal(
+                        benchmarkRequests(result, scope.parameters.verb === 'run' ? 'list' : 'run').length,
+                        0
+                    );
                     scope.assert.deepEqual({ run: result.runRequests, list: result.listRequests }, {
                         run: [],
                         list: []
@@ -346,12 +346,13 @@ export const testNode: TestNode = suite({
             }
         }),
         table({
-            ...emptyTestData,
             title: 'bench delivers the nested command result',
             cases: benchmarkVerbs.flatMap(function createBenchmarkCommandTests(verb) {
-                return ({ caseDescription: `${verb}`, verb });
+                return { verb };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ verb }) {
+                return [ verb ].map(String).join(', ');
+            },
             async test(scope) {
                 const { verb } = scope.parameters;
 
@@ -372,12 +373,13 @@ export const testNode: TestNode = suite({
             }
         }),
         table({
-            ...emptyTestData,
             title: 'bench reports handler crashes',
             cases: benchmarkVerbs.flatMap(function createBenchmarkCommandTests(verb) {
-                return ({ caseDescription: `${verb}`, verb });
+                return { verb };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ verb }) {
+                return [ verb ].map(String).join(', ');
+            },
             async test(scope) {
                 const { verb } = scope.parameters;
 
@@ -393,25 +395,24 @@ export const testNode: TestNode = suite({
             }
         }),
         table({
-            ...emptyTestData,
             title: 'bench rejects unsupported flags before loading the runner',
             cases: benchmarkVerbs.flatMap(function createBenchmarkCommandTests(verb) {
-                return ({ caseDescription: `${verb}`, verb });
+                return { verb };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ verb }) {
+                return [ verb ].map(String).join(', ');
+            },
             async test(scope) {
-                const { verb } = scope.parameters;
-
                 const unsupportedArguments: readonly (readonly [string, ...string[]])[] = [
                     [ '--coverage' ],
-                    ...(verb === 'list' ? [ [ '--record' ] ] : []) as readonly (readonly [
+                    ...(scope.parameters.verb === 'list' ? [ [ '--record' ] ] : []) as readonly (readonly [
                         string,
                         ...string[]
                     ])[],
-                    ...verb === 'list' ? [ [ '--debug' ] as const ] : [],
+                    ...scope.parameters.verb === 'list' ? [ [ '--debug' ] as const ] : [],
                     [ '--measure-resource-usage' ],
                     [ '--resource-budget', 'residentSetBytes=1000' ],
-                    ...(verb === 'run' ? [ [ '--with-locations' ], [ '--with-orphans' ] ] : [
+                    ...(scope.parameters.verb === 'run' ? [ [ '--with-locations' ], [ '--with-orphans' ] ] : [
                         [ '--timings' ],
                         [ '--workers', '2' ],
                         [ '--no-capture' ]
@@ -419,7 +420,10 @@ export const testNode: TestNode = suite({
                 ];
 
                 for (const flagArguments of unsupportedArguments) {
-                    const result = await runCommandLine([ 'bench', verb, ...flagArguments ], passingResult());
+                    const result = await runCommandLine(
+                        [ 'bench', scope.parameters.verb, ...flagArguments ],
+                        passingResult()
+                    );
 
                     scope.assert.equal(result.exitCode, 3);
                     scope.assert.deepEqual(result.exitCodes, [ 3 ]);
@@ -433,12 +437,13 @@ export const testNode: TestNode = suite({
             }
         }),
         table({
-            ...emptyTestData,
             title: 'bench rejects malformed config arguments before loading the runner',
             cases: benchmarkVerbs.flatMap(function createBenchmarkCommandTests(verb) {
-                return ({ caseDescription: `${verb}`, verb });
+                return { verb };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ verb }) {
+                return [ verb ].map(String).join(', ');
+            },
             async test(scope) {
                 const { verb } = scope.parameters;
 
@@ -464,7 +469,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'benchmark help does not load the runner',
-            ...emptyTestData,
+
             async body(
                 scope
             ) {
@@ -495,7 +500,7 @@ export const testNode: TestNode = suite({
         }),
         test({
             title: 'benchmark namespace rejects unknown verbs before loading the runner',
-            ...emptyTestData,
+
             async body(
                 scope
             ) {

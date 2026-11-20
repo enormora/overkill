@@ -94,32 +94,29 @@ export const testNode: TestNode = suite('supervised child message policy', [
     table({
         title: 'prefers completed debug evidence',
         cases: [ false, true ],
-        caseTitle(completedDebug) {
-            return `${completedDebug}`;
-        },
+        caseTitle: String,
         async test(scope) {
-            const require: typeof scope.require = scope.require;
-
-            const completedDebug = scope.parameters;
-
             const fixture = supervisedMessageRuntime(scope, false, true);
             const checkpoint = await debugArtifactForWork(fixture.work);
             const completed = { ...checkpoint, payload: { ...checkpoint.payload, durationMicroseconds: 10 } };
             fixture.runtime.state.recordArtifact(checkpoint);
             fixture.receive({
                 kind: 'event',
-                event: caseCompletion(fixture.work, completedDebug ? [ completed ] : [])
+                event: caseCompletion(fixture.work, scope.parameters ? [ completed ] : [])
             });
             await fixture.runtime.reporterEvents.wait();
-            const event = fixture.reported.find(function (value) {
-                return value.kind === 'test-end';
-            });
-            require.defined(event);
             scope.assert.deepEqual(
-                event.artifacts.map(function (artifact) {
-                    return artifact.payload.kind === 'debug' ? artifact.payload.durationMicroseconds : null;
-                }),
-                [ completedDebug ? 10 : 5 ]
+                fixture
+                    .reported
+                    .filter(function completedCase(value) {
+                        return value.kind === 'test-end';
+                    })
+                    .map(function durations(event) {
+                        return event.artifacts.map(function duration(artifact) {
+                            return artifact.payload.kind === 'debug' ? artifact.payload.durationMicroseconds : null;
+                        });
+                    }),
+                [ [ scope.parameters ? 10 : 5 ] ]
             );
             return scope.assert.collect();
         }
@@ -143,9 +140,7 @@ export const testNode: TestNode = suite('supervised child message policy', [
     table({
         title: 'retains reporter errors across collection outcomes',
         cases: [ false, true ],
-        caseTitle(collected) {
-            return `${collected}`;
-        },
+        caseTitle: String,
         async test(scope) {
             const require: typeof scope.require = scope.require;
 

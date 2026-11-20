@@ -1,6 +1,6 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { benchmarkHtmlFixture } from '../../../test-support/benchmark-html-fixture.ts';
 import { createReportingContext } from '../../../engine/reporting-context.ts';

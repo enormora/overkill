@@ -1,6 +1,6 @@
-import { type TestNode, suite, test, table, type TestScope } from '@overkill-dev/test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { type TestNode, suite, test, table, type TestScope } from '@overkill-dev/test';
 
 import { fromObject } from 'convert-source-map';
 import * as typescript from 'typescript';
@@ -126,12 +126,10 @@ const invalidMaps = [
 export const testNode: TestNode = suite('Coverage source map', [
     validMapTests,
     table({
-        annotations: {},
-        controls: {},
         title: 'rejects invalid source maps without falling back to JavaScript',
         cases: invalidMaps,
         caseTitle(scenario) {
-            return `${scenario.title}`;
+            return scenario.title;
         },
         async test(scope) {
             const scenario = scope.parameters;

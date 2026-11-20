@@ -19,6 +19,10 @@ import {
 
 import * as testRoot from './test.entry-point.ts';
 
+type PassingBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
+
+type CheckParameterizedNameAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'equal'>; };
+
 type RootAuthoringExecution = {
     readonly plannedCase: TestPlan['discoveredCases'][number] | undefined;
     readonly result: Awaited<ReturnType<typeof execute>>;
@@ -98,7 +102,7 @@ function assertRootAuthoringBoundary(scope: TestScope): void {
 }
 
 function passingBody(
-    scope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }
+    scope: PassingBodyAssertions
 ): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
     return scope.assert.collect();
@@ -330,7 +334,7 @@ function createMissingNameTest(title: string): TestCase {
 }
 
 function checkParameterizedName(
-    testScope: { readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>; },
+    testScope: CheckParameterizedNameAssertions,
     data: NameData
 ): ReturnType<EngineCaseBody> {
     testScope.assert.equal(data.name, 'Ada', { message: 'wrong name' });
