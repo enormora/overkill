@@ -1,5 +1,4 @@
 import { defineReporter, type ReporterEvent, type DefinedReporter } from '../engine/reporter.ts';
-import { createDefaultWorkId } from '../engine/identity.ts';
 import { currentAttachmentCoordinator, type AttachmentCoordinator } from './attachment-coordinator-context.ts';
 
 function eventWithAttachments(event: ReporterEvent, coordinator: AttachmentCoordinator): ReporterEvent {
@@ -7,7 +6,7 @@ function eventWithAttachments(event: ReporterEvent, coordinator: AttachmentCoord
         return event;
     }
     coordinator.settleAttempt(
-        event.workId ?? createDefaultWorkId(event.case),
+        event.workId,
         { index: event.attempt },
         event.verdict,
         null
@@ -17,7 +16,7 @@ function eventWithAttachments(event: ReporterEvent, coordinator: AttachmentCoord
         artifacts: [
             ...event.artifacts,
             ...coordinator.caseArtifacts(
-                event.workId ?? createDefaultWorkId(event.case),
+                event.workId,
                 { index: event.attempt },
                 null
             )

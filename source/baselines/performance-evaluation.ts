@@ -1,6 +1,5 @@
 import type { BenchmarkNormalizationEvidence } from '../engine/benchmark-result.ts';
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
-import { createDefaultWorkId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import { failedPerformanceBaselineCheck, type BenchmarkCaseEnd } from './performance-check.ts';
 import type {
@@ -82,7 +81,7 @@ function benchmarkNormalization(input: PerformanceEvaluationInput): PerformanceP
 }
 type PerformanceProposalNormalization = BenchmarkNormalizationEvidence | null;
 export function evaluatePerformanceBaseline(input: PerformanceEvaluationInput): PerformanceEvaluation {
-    const work = input.event.workId ?? createDefaultWorkId(input.event.case);
+    const work = input.event.workId;
     const observation = observePerformance(
         input.adapter,
         {
@@ -125,7 +124,7 @@ export function performanceBaselineError(error: unknown, event: BenchmarkCaseEnd
     return {
         attributedTo: event === null ? null : event.case,
         attributedToAttempt: event === null ? null : { index: event.attempt },
-        attributedToWork: event === null ? null : event.workId ?? createDefaultWorkId(event.case),
+        attributedToWork: event === null ? null : event.workId,
         cause: error,
         diagnostics: [],
         message: error instanceof Error ? error.message : String(error),
