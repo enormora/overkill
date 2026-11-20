@@ -1,10 +1,12 @@
 import { z } from 'zod/v4';
 import { implementationCatalogSchema } from '../implementation-catalog.ts';
 import { caseIdSchema, workIdSchema } from '../engine/identity-schema.ts';
+import { envelopeMessage } from './child-process-protocol.ts';
 import { frozenSupervisedCommandSchema, sessionSupervisedCommandSchema } from './frozen-supervised-command-schema.ts';
-import type {
-    SupervisedChildCommand,
-    SupervisedAssignmentCommand
+import {
+    supervisedChildCorrelationId,
+    type SupervisedChildCommand,
+    type SupervisedAssignmentCommand
 } from './supervised-protocol.ts';
 import {
     supervisedCommandFields,
@@ -45,3 +47,7 @@ export const supervisedParentMessageSchema: z.ZodType<SupervisedAssignmentComman
     commandSchema,
     assignmentSchema
 ]);
+
+export function supervisedParentMessage(message: unknown): SupervisedAssignmentCommand | SupervisedChildCommand | null {
+    return envelopeMessage(message, supervisedChildCorrelationId, supervisedParentMessageSchema);
+}

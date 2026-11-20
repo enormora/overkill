@@ -1,8 +1,7 @@
 import { stopCoverage } from 'node:v8';
 import { createClock } from '@enormora/clock';
 import { createChildProcessOutbox } from './child-process-outbox.ts';
-import { supervisedParentMessageSchema } from './supervised-parent-message-schema.ts';
-import { envelopeMessage } from './child-process-protocol.ts';
+import { supervisedParentMessage } from './supervised-parent-message-schema.ts';
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
 import { loadRunEngineModule, loadRunTestModules, runDiscovery } from './node-run-dependencies.entry-point.ts';
 import { observeProcessIpcListeners } from './node-process-policy-observation.ts';
@@ -28,10 +27,6 @@ function send(message: Parameters<SupervisedChildHost['send']>[0]): void {
 
 async function disconnect(): Promise<void> {
     await outbox.disconnect();
-}
-
-function supervisedParentMessage(message: unknown): SupervisedAssignmentCommand | SupervisedChildCommand | null {
-    return envelopeMessage(message, supervisedChildCorrelationId, supervisedParentMessageSchema);
 }
 
 function readCommand(message: unknown): SupervisedChildCommand {

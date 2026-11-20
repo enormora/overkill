@@ -15,7 +15,7 @@ export function readNativeEnvironment(): ReturnType<typeof readProcessEnvironmen
 }
 
 type ChildRunRecord = {
-    readonly completion: () => readonly ('coverage' | 'result' | 'disconnect')[];
+    readonly completion: () => readonly ('coverage' | 'disconnect' | 'result')[];
     readonly disconnected: () => boolean;
     readonly exitCode: () => number | null;
     readonly messages: () => readonly SupervisedChildMessage[];
@@ -63,7 +63,7 @@ export type ChildRunFixture = ChildRunRecord & {
 
 export function createChildRun(input: ChildHostInput): ChildRunFixture {
     const messages: SupervisedChildMessage[] = [];
-    const completion: ('coverage' | 'result' | 'disconnect')[] = [];
+    const completion: ('coverage' | 'disconnect' | 'result')[] = [];
     let disconnected = false;
     let exitCode: number | null = null;
 
