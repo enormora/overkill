@@ -1,5 +1,4 @@
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
-import { createDefaultWorkId } from '../engine/identity.ts';
 import { baselineIdentityKey, planBaselineChange } from '../baselines/baseline-planning.ts';
 import type { BaselineIdentity, BaselineUpdateMode } from '../baselines/baseline-model.ts';
 import type { OrdinaryBaselineAdapter, OrdinaryBaselineEvaluation } from '../baselines/ordinary-baseline-adapter.ts';
@@ -76,7 +75,7 @@ function comparisonChecks(
     });
 }
 export async function evaluateBaselineAdapter(input: EvaluationInput): Promise<OrdinaryAdapterEvaluation> {
-    const work = input.event.workId ?? createDefaultWorkId(input.event.case);
+    const work = input.event.workId;
     const identity: BaselineIdentity = {
         adapter: input.adapter.id,
         subtype: input.adapter.subtype,

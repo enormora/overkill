@@ -196,7 +196,7 @@ function assertAnalysisResults(
     scope.assert.deepEqual(
         events.flatMap(function start(event) {
             return event.kind === 'test-start' && event.case.title === 'check'
-                ? [ event.workId?.familyVariant?.key ]
+                ? [ event.workId.familyVariant?.key ]
                 : [];
         }),
         [ 'one', 'two' ]

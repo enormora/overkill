@@ -49,6 +49,7 @@ async function executeProtocolPhase(phase: Phase): Promise<RunResult> {
         }),
         status: 'passed'
     });
+    const firstCase = result.perTest[0]?.id ?? { file, params: null, suite: [], title: 'missing' };
     const child = createFakeSupervisedChildProcess({
         collect(input) {
             if (phase === 'before-collection') {
@@ -80,7 +81,13 @@ async function executeProtocolPhase(phase: Phase): Promise<RunResult> {
                     event: {
                         kind: 'test-start',
                         attempt: 0,
-                        case: result.perTest[0]?.id ?? { file, params: null, suite: [], title: 'missing' },
+                        case: firstCase,
+                        workId: {
+                            familyVariant: null,
+                            case: firstCase,
+                            runtimes: [],
+                            workload: null
+                        },
                         definitionLocations: metadata.definitionLocations,
                         suitePath: []
                     }

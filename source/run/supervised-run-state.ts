@@ -1,3 +1,4 @@
+import type { ReporterEvent } from '../engine/reporter.ts';
 import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import { resourceCheckSnapshotKey } from '../resource-check-snapshot.ts';
 import { interruptedPropertyEvidence } from '../engine/property-evidence.ts';
@@ -13,6 +14,7 @@ import type { PerTestResult, PropertyCaseEvidence, RunnerError, RunArtifact } fr
 import { caseAttemptHistory } from '../engine/test-attempt-history.ts';
 import type { RetryArtifactPolicy } from '../config/execution.ts';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
+import { assertRuntimeEvent, assertRuntimeResults } from './runtime-evidence-acceptance.ts';
 import {
     createBoundaryArtifactCapture,
     unknownBoundaryMetadata,
@@ -48,7 +50,11 @@ export function collectedCasesByKey(collectedPlan: CollectedRunPlan): ReadonlyMa
         }
     }
 
-    return new Map(entries);
+    const catalog = new Map(entries);
+    if (catalog.size !== entries.length) {
+        throw new TypeError('Frozen catalog contains duplicate work identities.');
+    }
+    return catalog;
 }
 
 export type StoredRunValue<Value> = StoredValue<Value>;
@@ -85,7 +91,7 @@ export type SupervisedCase = {
     readonly capture: RunRequest['capture'] | null;
     readonly definitionLocations?: PerTestResult['definitionLocations'];
     readonly id: CaseId;
-    readonly workId?: WorkId;
+    readonly workId: WorkId;
 };
 
 export type ActiveSupervisedCase = SupervisedCase & {
@@ -101,6 +107,8 @@ type TimingWindow = {
 };
 
 export type SupervisedRunState = {
+    readonly assertEvent: (event: ReporterEvent, selected: ReadonlyMap<string, SupervisedCase>) => void;
+    readonly assertResults: (results: readonly PerTestResult[], selected: ReadonlyMap<string, SupervisedCase>) => void;
     readonly resourceChecks: () => readonly ResourceCheckSnapshot[];
     readonly recordResourceCheck: (snapshot: ResourceCheckSnapshot) => void;
     readonly recordPropertyProgress: (key: string, attempt: number, evidence: PropertyCaseEvidence) => void;
@@ -166,7 +174,7 @@ function terminalResult(
         id: testCase.id,
         outcome: null,
         verdict,
-        workId: testCase.workId ?? createDefaultWorkId(testCase.id),
+        workId: testCase.workId,
         durationMicroseconds: Math.max(0, completedAtMicroseconds - testCase.startedAtMicroseconds)
     };
 }
@@ -190,7 +198,7 @@ function createRuntimePolicyError(
         return testCase.id;
     });
     const policyActiveWorkIds = Array.from(activeCases.values(), function toWorkId(testCase) {
-        return testCase.workId ?? createDefaultWorkId(testCase.id);
+        return testCase.workId;
     });
     const phase = runtimePolicyPhase(policyActiveCaseIds.length);
 
@@ -314,7 +322,7 @@ export function createSupervisedRunState(
         boundary: createBoundaryArtifactCapture(retainedEvidence.artifacts, boundary, function activeBoundaryWork() {
             return Array.from(cases.active.values(), function activeWork(active) {
                 return {
-                    work: active.workId ?? createDefaultWorkId(active.id),
+                    work: active.workId,
                     attempt: active.attempt
                 };
             });
@@ -366,6 +374,12 @@ export function createSupervisedRunState(
     }
 
     return {
+        assertEvent(event, selected) {
+            assertRuntimeEvent(event, selected, { active: cases.active, attempts: attemptResults, completed: perTest });
+        },
+        assertResults(results, selected) {
+            assertRuntimeResults(results, selected, perTest, cases.pendingTerminal);
+        },
         resourceChecks() {
             return Array.from(retainedEvidence.resourceChecks.values());
         },
@@ -428,7 +442,7 @@ export function createSupervisedRunState(
         recordCapturedOutput(stream, chunk, capturedAtMicroseconds) {
             const captureWindow = outputCases(cases);
             const activeWork = Array.from(captureWindow.values(), function capturedWork(testCase) {
-                return { attempt: testCase.attempt, work: testCase.workId ?? createDefaultWorkId(testCase.id) };
+                return { attempt: testCase.attempt, work: testCase.workId };
             });
             retainedEvidence.artifacts.write([
                 ...retainedEvidence.artifacts.read(),

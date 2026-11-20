@@ -70,7 +70,7 @@ function passResult(): PerTestResult {
 
 function startEvent(): Extract<ReporterEvent, { readonly kind: 'test-start'; }> {
     return {
-        attempt: 1,
+        attempt: 0,
         case: firstCaseId(),
         definitionLocations: [ { kind: 'unknown' } ],
         kind: 'test-start',
@@ -79,22 +79,12 @@ function startEvent(): Extract<ReporterEvent, { readonly kind: 'test-start'; }> 
     };
 }
 
-function startEventWithoutWorkId(): Extract<ReporterEvent, { readonly kind: 'test-start'; }> {
-    return {
-        attempt: 1,
-        case: firstCaseId(),
-        definitionLocations: [ { kind: 'unknown' } ],
-        kind: 'test-start',
-        suitePath: [ { definitionLocations: [ { kind: 'unknown' } ], title: 'integration' } ]
-    };
-}
-
-function endEventWithoutWorkId(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
+function endEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
     return {
         property: null,
         benchmark: null,
         completion: 'final',
-        ...startEventWithoutWorkId(),
+        ...startEvent(),
         artifacts: [],
         kind: 'test-end',
         outcome: { kind: 'pass' },
@@ -256,11 +246,12 @@ async function workerCheckpointCompletion(hasCompletedArtifact: boolean): Promis
         source: 'boundary-captured',
         payload: { ...completed.payload, completeness: 'incomplete' }
     };
+    handleWorkerMessage(eventMessage(startEvent()), taskRun, runtime);
     handleWorkerMessage(eventMessage({ kind: 'debug-checkpoint', artifact: checkpoint }), taskRun, runtime);
     const retained = taskRun.state.artifacts().find(isTestDebugArtifact);
     handleWorkerMessage(
         eventMessage({
-            ...endEventWithoutWorkId(),
+            ...endEvent(),
             attempt: 0,
             artifacts: hasCompletedArtifact ? [ completed ] : []
         }),
@@ -317,12 +308,11 @@ export const testNode: TestNode = suite({
                 const runtime = hedgedRuntime();
                 const taskRun = taskRunWithLane('worker-1', runtime);
 
-                handleWorkerMessage(eventMessage(startEventWithoutWorkId()), taskRun, runtime);
                 handleWorkerMessage(eventMessage(startEvent()), taskRun, runtime);
-                handleWorkerMessage(eventMessage(endEventWithoutWorkId()), taskRun, runtime);
+                handleWorkerMessage(eventMessage(endEvent()), taskRun, runtime);
 
                 scope.assert.equal(taskRun.timeout.read(), null);
-                scope.assert.equal(Array.from(taskRun.bufferedReporterEvents).length, 3);
+                scope.assert.equal(Array.from(taskRun.bufferedReporterEvents).length, 2);
                 scope.assert.equal(taskRun.startedCases.size, 1);
 
                 return scope.assert.collect();
@@ -419,7 +409,16 @@ export const testNode: TestNode = suite({
                 const taskRun = taskRunWithLane('worker-1', runtime);
                 const activeCase = firstCaseId();
 
-                taskRun.state.addActiveCase('active', { capture: null, id: activeCase }, 0, { index: 0 });
+                taskRun.state.addActiveCase(
+                    'active',
+                    {
+                        capture: null,
+                        id: activeCase,
+                        workId: { familyVariant: null, case: activeCase, runtimes: [], workload: null }
+                    },
+                    0,
+                    { index: 0 }
+                );
                 scope.assert.equal(recordPermissionFailureForTask(taskRun, runtime), true);
                 const attributedWork = taskRun.state.runnerErrors()[0]?.attributedToWork;
                 scope.require.defined(attributedWork);

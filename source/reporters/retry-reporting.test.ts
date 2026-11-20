@@ -56,6 +56,7 @@ function retryEvent(result: RunResult): TestEndEvent {
         attempt: 0,
         artifacts: [],
         case: testResult.id,
+        workId: { familyVariant: null, case: testResult.id, runtimes: [], workload: null },
         definitionLocations: metadata.definitionLocations,
         durationMicroseconds: 1,
         kind: 'test-end',

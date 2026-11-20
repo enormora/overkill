@@ -30,8 +30,8 @@ import {
     type HedgedAuthorities
 } from './worker-pool-hedged-arbitration.ts';
 import {
+    validateTaskResults,
     recordBatchStarted,
-    recordBatchCompleted,
     clearTaskTimeout,
     finishCompletedLease,
     finishFailedLease,
@@ -383,7 +383,7 @@ async function recordCompletedTaskRun(
         runtime: context.runtime,
         startedAtMilliseconds: context.startedAtMilliseconds
     });
-    recordBatchCompleted(taskRun, context.runtime);
+    validateTaskResults(output, taskRun, context.runtime);
     finishCompletedLease(context.dispatcher, lease);
 
     if (taskRun.reporterEventsBuffered) {

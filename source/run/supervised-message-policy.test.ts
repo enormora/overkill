@@ -2,7 +2,7 @@ import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev
 
 import { debugArtifactForWork } from '../test-support/debug-artifact-fixture.ts';
 
-import { supervisedMessageRuntime } from '../test-support/supervised-message-runtime.ts';
+import { supervisedMessageRuntime, type SupervisedMessageFixture } from '../test-support/supervised-message-runtime.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
 
@@ -13,6 +13,7 @@ function caseCompletion(work: WorkId, artifacts: readonly RunArtifact[]): CaseCo
     return {
         kind: 'test-end',
         case: work.case,
+        workId: work,
         attempt: 0,
         definitionLocations: [ { kind: 'unknown' } ],
         suitePath: [],
@@ -25,6 +26,21 @@ function caseCompletion(work: WorkId, artifacts: readonly RunArtifact[]): CaseCo
         durationMicroseconds: 1
     };
 }
+function recordActiveCheckpoint(fixture: SupervisedMessageFixture, artifact: RunArtifact): void {
+    fixture.receive({
+        kind: 'event',
+        event: {
+            kind: 'test-start',
+            case: fixture.work.case,
+            workId: fixture.work,
+            attempt: 0,
+            definitionLocations: [ { kind: 'unknown' } ],
+            suitePath: []
+        }
+    });
+    fixture.runtime.state.recordArtifact(artifact);
+}
+
 export const testNode: TestNode = suite('supervised child message policy', [
     test('retains resource observation progress before final results', async function (scope) {
         const fixture = supervisedMessageRuntime(scope, false, true);
@@ -99,7 +115,7 @@ export const testNode: TestNode = suite('supervised child message policy', [
             const fixture = supervisedMessageRuntime(scope, false, true);
             const checkpoint = await debugArtifactForWork(fixture.work);
             const completed = { ...checkpoint, payload: { ...checkpoint.payload, durationMicroseconds: 10 } };
-            fixture.runtime.state.recordArtifact(checkpoint);
+            recordActiveCheckpoint(fixture, checkpoint);
             fixture.receive({
                 kind: 'event',
                 event: caseCompletion(fixture.work, scope.parameters ? [ completed ] : [])
@@ -169,6 +185,7 @@ export const testNode: TestNode = suite('supervised child message policy', [
                 event: {
                     kind: 'test-start',
                     case: fixture.work.case,
+                    workId: fixture.work,
                     attempt: 0,
                     definitionLocations: [ { kind: 'unknown' } ],
                     suitePath: []
@@ -180,6 +197,7 @@ export const testNode: TestNode = suite('supervised child message policy', [
                 event: {
                     kind: 'test-end',
                     case: fixture.work.case,
+                    workId: fixture.work,
                     attempt: 0,
                     definitionLocations: [ { kind: 'unknown' } ],
                     suitePath: [],

@@ -80,6 +80,7 @@ async function reportTestEnd(
         completion: 'final',
         attempt: 0,
         case: id,
+        workId: { familyVariant: null, case: id, runtimes: [], workload: null },
         definitionLocations: [ definitionLocation ],
         artifacts: [],
         kind: 'test-end',

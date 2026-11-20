@@ -1,4 +1,4 @@
-import { createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
+import { workIdentityKey, type WorkId } from '../engine/identity.ts';
 import {
     isTestDebugArtifact,
     permissionDeniedRunnerErrorFromThrown,
@@ -14,7 +14,7 @@ import {
 } from './supervised-run-state.ts';
 import { captureCrashEvidence } from './supervised-run-process-policy.ts';
 import type { PlacementRecoveryDecision } from './placement-trace.ts';
-import type { WorkerPoolMessage } from './worker-pool-protocol.ts';
+import type { WorkerPoolMessage, WorkerPoolRunOutput } from './worker-pool-protocol.ts';
 import {
     workerPoolPlacementTrace,
     type WorkerPoolRunRuntime,
@@ -76,11 +76,13 @@ function casesByKey(
     return new Map(
         memberUnits(taskRun).flatMap(function toUnitCases(unit) {
             return unit.work.map(function toCaseEntry(work) {
-                const collected = collectedCases.get(workIdentityKey(work)) ??
-                    collectedCases.get(workIdentityKey(createDefaultWorkId(work.case)));
+                const collected = collectedCases.get(workIdentityKey(work));
+                if (collected === undefined) {
+                    throw new TypeError('Worker assignment does not belong to the frozen catalog.');
+                }
 
                 return [ workIdentityKey(work), {
-                    capture: collected?.capture ?? null,
+                    capture: collected.capture,
                     id: work.case,
                     workId: work
                 } ] as const;
@@ -97,7 +99,7 @@ function singleActiveCase(taskRun: WorkerPoolTaskRun): ActiveSupervisedCase | nu
 }
 
 function attributedWork(activeCase: SupervisedCase | null): WorkId | null {
-    return activeCase === null ? null : activeCase.workId ?? createDefaultWorkId(activeCase.id);
+    return activeCase === null ? null : activeCase.workId;
 }
 
 function nonEmptyWork(work: readonly WorkId[]): readonly [WorkId, ...readonly WorkId[]] | null {
@@ -341,7 +343,7 @@ function completedTaskEvent(
     taskRun: WorkerPoolTaskRun,
     runtime: WorkerPoolRunRuntime
 ): RuntimeReporterEvent {
-    const work = event.workId ?? createDefaultWorkId(event.case);
+    const work = event.workId;
     runtime.attachments?.settleAttempt(
         work,
         { index: event.attempt },
@@ -387,8 +389,9 @@ function handleWorkerEvent(
     taskRun: WorkerPoolTaskRun,
     runtime: WorkerPoolRunRuntime
 ): void {
+    taskRun.state.assertEvent(event, casesByKey(taskRun, runtime));
     if (event.kind === 'test-start') {
-        taskRun.startedCases.add(workIdentityKey(event.workId ?? createDefaultWorkId(event.case)));
+        taskRun.startedCases.add(workIdentityKey(event.workId));
     }
 
     const reportedEvent = eventWithTaskArtifacts(event, taskRun, runtime);
@@ -416,6 +419,14 @@ function handleUnitStarted(
     taskRun: WorkerPoolTaskRun,
     runtime: WorkerPoolRunRuntime
 ): void {
+    const member = taskRun.members.find(function assigned(entry) {
+        return entry.attempt === message.attempt;
+    });
+    if (
+        member === undefined || taskRun.activeAttempt.read() !== null || taskRun.completedAttempts.has(message.attempt)
+    ) {
+        throw new TypeError('Worker placement start is unknown, duplicate, or out of order.');
+    }
     taskRun.activeAttempt.write(message.attempt);
     taskRun.workerId.write(message.workerId);
     workerPoolPlacementTrace(runtime).startAttempt(message.attempt, message.workerId);
@@ -426,6 +437,9 @@ function handleUnitCompleted(
     taskRun: WorkerPoolTaskRun,
     runtime: WorkerPoolRunRuntime
 ): void {
+    if (taskRun.activeAttempt.read() !== message.attempt || taskRun.completedAttempts.has(message.attempt)) {
+        throw new TypeError('Worker placement completion is unknown, duplicate, or stale.');
+    }
     workerPoolPlacementTrace(runtime).completeAttempt(message.attempt, message.durationMicroseconds);
     taskRun.completedAttempts.add(message.attempt);
     if (taskRun.activeAttempt.read() === message.attempt) {
@@ -511,4 +525,18 @@ export function recordBatchCompleted(taskRun: WorkerPoolTaskRun, runtime: Worker
             lane: taskRun.lane
         });
     }
+}
+
+export function validateTaskResults(
+    output: WorkerPoolRunOutput,
+    task: WorkerPoolTaskRun,
+    runtime: WorkerPoolRunRuntime
+): void {
+    task.state.assertResults(
+        output.results.flatMap(function completed(entry) {
+            return entry.result.perTest;
+        }),
+        casesByKey(task, runtime)
+    );
+    recordBatchCompleted(task, runtime);
 }

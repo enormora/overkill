@@ -1,4 +1,4 @@
-import { createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
+import { workIdentityKey, type WorkId } from '../engine/identity.ts';
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { runStatusFromPlan, type PerTestResult, type RunResult, type RunnerError } from '../engine/run-result.ts';
 import type { ComparableCalibration } from '../bench/host-calibration-result.ts';
@@ -91,7 +91,7 @@ function createWorkflowState(existing: ReadonlyMap<string, StoredPerformanceBase
         participating,
         observations,
         record(adapter, event, observation) {
-            observations.push({ adapter, work: event.workId ?? createDefaultWorkId(event.case), observation });
+            observations.push({ adapter, work: event.workId, observation });
         },
         addChange(change) {
             changes.push(change);
@@ -199,7 +199,7 @@ function expectedIdentity(
             event.benchmark?.normalization ?? null
         ),
         profile: input.profile,
-        work: event.workId ?? createDefaultWorkId(event.case)
+        work: event.workId
     };
 }
 function evaluateAdapter(
@@ -279,7 +279,7 @@ function evaluateCase(
     if (event.completion !== 'final') {
         return { errors: [], event };
     }
-    const key = workIdentityKey(event.workId ?? createDefaultWorkId(event.case));
+    const key = workIdentityKey(event.workId);
     const cached = state.evaluated.get(key);
     if (cached !== undefined) {
         return { errors: [], event: cached };

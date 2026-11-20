@@ -66,9 +66,36 @@ function activeCaseStates(): readonly [SupervisedRunState, SupervisedRunState, S
     const singleState = createSupervisedRunState('first-failure-and-final');
     const multiState = createSupervisedRunState('first-failure-and-final');
 
-    singleState.addActiveCase('first', { capture: null, id: firstCaseId }, 0, { index: 0 });
-    multiState.addActiveCase('first', { capture: null, id: firstCaseId }, 0, { index: 0 });
-    multiState.addActiveCase('second', { capture: null, id: secondCaseId }, 0, { index: 0 });
+    singleState.addActiveCase(
+        'first',
+        {
+            capture: null,
+            id: firstCaseId,
+            workId: { familyVariant: null, case: firstCaseId, runtimes: [], workload: null }
+        },
+        0,
+        { index: 0 }
+    );
+    multiState.addActiveCase(
+        'first',
+        {
+            capture: null,
+            id: firstCaseId,
+            workId: { familyVariant: null, case: firstCaseId, runtimes: [], workload: null }
+        },
+        0,
+        { index: 0 }
+    );
+    multiState.addActiveCase(
+        'second',
+        {
+            capture: null,
+            id: secondCaseId,
+            workId: { familyVariant: null, case: secondCaseId, runtimes: [], workload: null }
+        },
+        0,
+        { index: 0 }
+    );
 
     return [ createSupervisedRunState('first-failure-and-final'), singleState, multiState ];
 }
@@ -140,22 +167,22 @@ export const testNode: TestNode = suite('Supervised run process policy', [
         assertCaseId(scope, processExhaustionError(breach, singleState).attributedTo, firstCaseId);
         assertCaseId(scope, crashError(singleState, 'Crashed.').attributedTo, firstCaseId);
         scope.assert.equal(processExhaustionError(breach, multiState).attributedTo, null);
+        const activeWork = Array.from(multiState.activeCases.values(), function work(testCase) {
+            return testCase.workId;
+        });
         scope.assert.deepEqual(crashError(multiState, 'Crashed.').cause, {
             activeAttempts: [
                 {
-                    work: { familyVariant: null, case: firstCaseId, runtimes: [], workload: null },
+                    work: activeWork[0],
                     attempt: { index: 0 }
                 },
                 {
-                    work: { familyVariant: null, case: secondCaseId, runtimes: [], workload: null },
+                    work: activeWork[1],
                     attempt: { index: 0 }
                 }
             ],
             activeCases: [ firstCaseId, secondCaseId ],
-            activeWork: [
-                { familyVariant: null, case: firstCaseId, runtimes: [], workload: null },
-                { familyVariant: null, case: secondCaseId, runtimes: [], workload: null }
-            ],
+            activeWork,
             reason: 'Crashed.'
         });
 

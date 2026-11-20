@@ -1,4 +1,4 @@
-import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
+import { workIdentityKey } from '../engine/identity.ts';
 import { baselineIdentityKey } from '../baselines/baseline-planning.ts';
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import type { BaselineWorkflowInput } from './baseline-types.ts';
@@ -57,7 +57,7 @@ function createEvaluationState(
         const evidence = await snapshotEvidence({
             artifacts: event.artifacts,
             profile: input.request.profile,
-            work: event.workId ?? createDefaultWorkId(event.case),
+            work: event.workId,
             mode: input.request.baselineUpdateMode,
             existing,
             projectRoot: input.projectRoot
@@ -98,7 +98,7 @@ function createEvaluationState(
             await collectAdapter(adapter);
         }
         const evaluated = withBaselineChecks(event, checks);
-        events.set(workIdentityKey(event.workId ?? createDefaultWorkId(event.case)), evaluated);
+        events.set(workIdentityKey(event.workId), evaluated);
         return { errors, event: evaluated };
     }
     return {
@@ -111,7 +111,7 @@ function createEvaluationState(
             if (event.completion !== 'final' || event.verdict !== 'pass') {
                 return { errors: [], event };
             }
-            const key = workIdentityKey(event.workId ?? createDefaultWorkId(event.case));
+            const key = workIdentityKey(event.workId);
             const evaluation = pending.get(key) ?? evaluateAdapters(event);
             pending.set(key, evaluation);
             return await evaluation;

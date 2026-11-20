@@ -1,11 +1,12 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, table, suite, test } from '@overkill-dev/test';
 
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import { createBoundaryFailureArtifact, type BoundaryFailure } from '../engine/run-artifact.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { createCollectedPlan } from '../test-support/worker-pool-execution-state.ts';
 import type { RunArtifact, RunResult } from './run-engine-primitives.ts';
 import { runningSupervisedRuntime } from './supervised-run-runtime.test.ts';
-import { handleChildMessage } from './supervised-run-runtime.ts';
+import { handleChildMessage, type SupervisedRunRuntime } from './supervised-run-runtime.ts';
 
 const work = createDefaultWorkId({ file: 'example.test.ts', suite: [], title: 'crashes', params: null });
 const sample = {
@@ -79,6 +80,39 @@ function nativeCompletion(failure: BoundaryFailure): RunResult {
     });
 }
 
+function bindNativeCatalog(scope: TestScope, runtime: SupervisedRunRuntime): void {
+    const plan = createCollectedPlan();
+    const file = plan.files[0];
+    scope.require.defined(file);
+    const testCase = file.cases[0];
+    scope.require.defined(testCase);
+    runtime.collectedPlan.write({
+        ...plan,
+        files: [ {
+            file: 'example.test.ts',
+            cases: [ {
+                ...testCase,
+                workId: work,
+                title: work.case.title,
+                params: null,
+                suitePath: []
+            } ]
+        } ]
+    });
+}
+
+function activeNativeRuntime(scope: TestScope): SupervisedRunRuntime {
+    const runtime = runningSupervisedRuntime();
+    runtime.state.addActiveCase(
+        workIdentityKey(work),
+        { capture: null, id: work.case, workId: work },
+        0,
+        { index: 0 }
+    );
+    bindNativeCatalog(scope, runtime);
+    return runtime;
+}
+
 export const testNode: TestNode = suite('supervised native completion evidence', [
     table({
         title: 'retains completion evidence after active ownership clears',
@@ -87,13 +121,7 @@ export const testNode: TestNode = suite('supervised native completion evidence',
             return failure.kind;
         },
         test(scope) {
-            const runtime = runningSupervisedRuntime();
-            runtime.state.addActiveCase(
-                workIdentityKey(work),
-                { capture: null, id: work.case, workId: work },
-                0,
-                { index: 0 }
-            );
+            const runtime = activeNativeRuntime(scope);
             const result = nativeCompletion(scope.parameters);
             runtime.state.removeActiveCase(workIdentityKey(work));
             handleChildMessage({ kind: 'result', result }, runtime);

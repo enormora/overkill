@@ -2,7 +2,7 @@ import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { CaseId } from '../packages/engine/engine.entry-point.ts';
 import type { WorkDistribution } from '../config/types.ts';
-
+import { collectedCasesByKey } from './supervised-run-state.ts';
 import { emptyWorkUnitResourceConstraints, type CollectedRunPlan } from './run-types.ts';
 import { type WorkUnitPlanningInput, workUnitsFromCollectedPlan } from './work-unit-planning.ts';
 
@@ -106,6 +106,18 @@ function planningInput(
 }
 
 export const testNode: TestNode = suite('Worker pool work identity', [
+    test('rejects duplicate catalog identities without counting another discovery', function (scope) {
+        const entry = collectedCase(firstCaseId());
+        const plan = collectedPlan([ { file: firstPath, cases: [ entry, entry ] } ]);
+        scope.assert.throws(function () {
+            return collectedCasesByKey(plan);
+        }, {
+            message: 'Frozen catalog contains duplicate work identities.'
+        });
+        scope.assert.equal(plan.files[0]?.cases.length, 2);
+        return scope.assert.collect();
+    }),
+
     test('worker-pool planning skips empty files and preserves workload ids', function (scope) {
         const workload = {
             name: 'browser',

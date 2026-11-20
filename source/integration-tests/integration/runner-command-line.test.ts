@@ -1,3 +1,4 @@
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import {
@@ -167,8 +168,18 @@ function createDiscoveryConfig(processModel: MicrotestProcessModel): NormalizedC
     };
 }
 
-async function runCommandLine(paths: readonly string[]): Promise<CommandLineRunnerResult> {
-    const runner = createCommandLineRunner(createRunnerDependencies(defaultConfig));
+async function isolatedRunState(scope: TestScope): Promise<string> {
+    await mkdir('target', { recursive: true });
+    const directory = await mkdtemp('target/command-line-state-');
+    scope.cleanup(async function removeRunState() {
+        await rm(directory, { recursive: true, force: true });
+    });
+    return directory;
+}
+
+async function runCommandLine(scope: TestScope, paths: readonly string[]): Promise<CommandLineRunnerResult> {
+    const runtimeStateDir = await isolatedRunState(scope);
+    const runner = createCommandLineRunner(createRunnerDependencies({ ...defaultConfig, runtimeStateDir }));
 
     return await runner.runTests({
         configPath: null,
@@ -303,8 +314,8 @@ export const testNode: TestNode = suite('Command-line runner', [
         return scope.assert.collect();
     }),
     test('maps invalid module exports to runner errors', async function (scope) {
-        const missingExportResult = await runCommandLine([ missingTestNodeFixturePath ]);
-        const plainExportResult = await runCommandLine([ plainTestNodeFixturePath ]);
+        const missingExportResult = await runCommandLine(scope, [ missingTestNodeFixturePath ]);
+        const plainExportResult = await runCommandLine(scope, [ plainTestNodeFixturePath ]);
 
         scope.assert.equal(missingExportResult.exitCode, 2);
         scope.assert.equal(plainExportResult.exitCode, 2);
@@ -318,8 +329,8 @@ export const testNode: TestNode = suite('Command-line runner', [
         return scope.assert.collect();
     }),
     test('maps collection failures to runner errors', async function (scope) {
-        const importFailureResult = await runCommandLine([ throwsOnImportFixturePath ]);
-        const emptySuiteResult = await runCommandLine([ emptySuiteFixturePath ]);
+        const importFailureResult = await runCommandLine(scope, [ throwsOnImportFixturePath ]);
+        const emptySuiteResult = await runCommandLine(scope, [ emptySuiteFixturePath ]);
 
         scope.assert.equal(importFailureResult.exitCode, 2);
         scope.assert.equal(emptySuiteResult.exitCode, 2);
@@ -333,7 +344,7 @@ export const testNode: TestNode = suite('Command-line runner', [
         return scope.assert.collect();
     }),
     test('maps empty explicit input to no tests collected', async function (scope) {
-        const result = await runCommandLine([]);
+        const result = await runCommandLine(scope, []);
 
         scope.assert.equal(result.exitCode, 4);
         scope.assert.deepEqual(result.fallbackDiagnostics, [

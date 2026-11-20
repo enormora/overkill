@@ -64,7 +64,7 @@ function createCollectionOnlyWorkerPool(
 function emitTestStart(context: FakeSupervisedChildRunContext, work: WorkId): void {
     context.emitMessage({
         event: {
-            attempt: 1,
+            attempt: 0,
             case: work.case,
             definitionLocations: [ { kind: 'unknown' } ],
             kind: 'test-start',
@@ -85,7 +85,7 @@ function emitTestEnd(
             property: null,
             benchmark: null,
             completion: 'final',
-            attempt: 1,
+            attempt: 0,
             artifacts: [],
             case: work.case,
             definitionLocations: [ { kind: 'unknown' } ],

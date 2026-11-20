@@ -21,7 +21,7 @@ import { createFakeSupervisedChildProcess } from './fake-supervised-child-proces
 import { runResultFactory } from './run-result-factory.ts';
 
 type RuntimeChildMessage = Exclude<SupervisedChildMessage, { readonly kind: 'timing'; }>;
-type SupervisedMessageFixture = {
+export type SupervisedMessageFixture = {
     readonly runtime: SupervisedRunRuntime;
     readonly plan: CollectedRunPlan;
     readonly work: WorkId;
