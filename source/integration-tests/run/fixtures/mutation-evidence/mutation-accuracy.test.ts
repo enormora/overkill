@@ -61,14 +61,47 @@ type CampaignRequest = {
     readonly coverage: MutationCoverageMode;
     readonly catalog: boolean;
     readonly targets: readonly string[];
+    readonly reload: 'unchanged' | 'native' | 'replace-worker';
 };
 
 export async function runMutationCampaign(
     request: CampaignRequest
-): Promise<{ readonly results: z.infer<typeof campaignResultSchema>['results']; readonly durationMicroseconds: number; }> {
-    const { modules, mode, seed, coverage, catalog, targets } = request;
-    const files = (await readdir('.')).filter(file => file.endsWith('.mjs') || file === 'package.json');
+): Promise<{ readonly results: z.infer<typeof campaignResultSchema>['results']; readonly durationMicroseconds: number; readonly workers: number; readonly configResolutions: number; readonly reloadRequests: number; }> {
+    const { modules, mode, seed, coverage, catalog, targets, reload } = request;
+    const files = (await readdir('.')).filter(file => file === 'package.json' || file.endsWith('.mjs') && file !== 'reload-plugin.mjs');
     const plugins = [ modules.adapter ];
+    if (reload !== 'unchanged') {
+        await writeFile('reload-trace', '');
+        await writeFile('reload-plugin.mjs', `
+import { appendFileSync } from 'node:fs';
+import { strykerPlugins as adapterPlugins, strykerValidationSchema } from ${JSON.stringify(modules.adapter)};
+import { declareFactoryPlugin, PluginKind } from ${JSON.stringify(modules.plugin)};
+export { strykerValidationSchema };
+const trace = event => appendFileSync(${JSON.stringify(process.cwd() + '/reload-trace')}, event + '\\n');
+function createRunner(...args) {
+    const runner = adapterPlugins[0].factory(...args);
+    trace('worker ' + process.pid);
+    return {
+        ...runner,
+        async init() {
+            await runner.init();
+            trace('config ' + process.pid);
+        },
+        async capabilities() {
+            const capabilities = await runner.capabilities();
+            return ${JSON.stringify(reload)} === 'replace-worker' ? { ...capabilities, reloadEnvironment: false } : capabilities;
+        },
+        mutantRun(options) {
+            if (options.reloadEnvironment) trace('reload');
+            return runner.mutantRun(options);
+        }
+    };
+}
+createRunner.inject = adapterPlugins[0].factory.inject;
+export const strykerPlugins = [declareFactoryPlugin(PluginKind.TestRunner, 'overkill', createRunner)];
+`);
+        plugins[0] = pathToFileURL(process.cwd() + '/reload-plugin.mjs').href;
+    }
     if (catalog) {
         await writeFile('catalog-reporter.mjs', `
 import { writeFileSync } from 'node:fs';
@@ -95,8 +128,14 @@ export const strykerPlugins = [declareFactoryPlugin(PluginKind.Reporter, 'catalo
             }
         });
     });
-    return { ...campaignResultSchema.parse(JSON.parse(output)),
-        durationMicroseconds: Number(clock.currentMonotonicMicroseconds - start) };
+    const durationMicroseconds = Number(clock.currentMonotonicMicroseconds - start);
+    const events = reload === 'unchanged' ? [] : (await readFile('reload-trace', 'utf8')).trim().split('\n');
+    return {
+        ...campaignResultSchema.parse(JSON.parse(output)), durationMicroseconds,
+        workers: new Set(events.filter(event => event.startsWith('worker '))).size,
+        configResolutions: new Set(events.filter(event => event.startsWith('config '))).size,
+        reloadRequests: events.filter(event => event === 'reload').length
+    };
 }
 
 export async function accuracyCampaign(
@@ -104,7 +143,7 @@ export async function accuracyCampaign(
 ): Promise<CampaignEvidence> {
     return await withMutationProject(async function campaign(cwd) {
         await writeAccuracyProject(modules, mode);
-        const result = await runMutationCampaign({ modules, mode, seed, coverage, catalog: true, targets: [ '*.mjs' ] });
+        const result = await runMutationCampaign({ modules, mode, seed, coverage, catalog: true, targets: [ '*.mjs' ], reload: 'unchanged' });
         const tests: unknown = JSON.parse(await readFile('catalog.json', 'utf8'));
         const evidence = campaignEvidenceSchema.parse({
             coverage, durationMicroseconds: result.durationMicroseconds, tests,
