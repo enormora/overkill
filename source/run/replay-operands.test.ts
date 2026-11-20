@@ -1,10 +1,10 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { normalizeConfig } from '../config/config.ts';
 import { orchestrator } from '../packages/run/run.entry-point.ts';
 import { createReplayCommands } from './replay-commands.ts';
 
-export const testNode = suite('replay command operands', [
+export const testNode = authoredSuite('replay command operands', [
     ...[
         { command: 'replayRun', args: [], message: 'Replay requires one retained run id.' },
         { command: 'replayRun', args: [ 'first', 'second' ], message: 'Replay requires one retained run id.' },
@@ -21,7 +21,7 @@ export const testNode = suite('replay command operands', [
         }
     ]
         .map(function invalidOperands(entry) {
-            return test(
+            return authoredTest(
                 `${entry.command} rejects ${entry.args.length} operands before loading config`,
                 async function (scope: TestScope) {
                     const commands = createReplayCommands(async function unexpectedConfig() {
@@ -35,7 +35,7 @@ export const testNode = suite('replay command operands', [
                 }
             );
         }),
-    test(
+    authoredTest(
         'routes witness operands through the public operation and reports missing input',
         async function (scope: TestScope) {
             const commands = createReplayCommands(async function config() {
@@ -52,4 +52,3 @@ export const testNode = suite('replay command operands', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

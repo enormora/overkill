@@ -1,4 +1,5 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { currentMeasurementContext } from './measurement-context.ts';
 import { createMeasurementRecording, type MeasurementRecording } from './measurement-evidence.ts';
 import { resolveMeasurementTarget } from './measurement-target.ts';
@@ -21,7 +22,7 @@ function recordingFor(strategy: UncalibratedMeasurement): MeasurementRecording {
         strategy
     );
 }
-export const testNode = suite('measurement evidence ownership', [
+export const testNode = authoredSuite('measurement evidence ownership', [
     test('assigns fresh external target instances to each invocation', function (scope) {
         for (const strategy of [ processMeasurement({ instrumentation: 'node' }), moduleMeasurement() ]) {
             const recording = recordingFor(strategy);

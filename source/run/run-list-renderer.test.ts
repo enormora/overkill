@@ -1,18 +1,9 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
-import {
-    defaultMicrotestProfile,
-    defaultRunConfig,
-    defaultRunRequest
-} from '../test-support/run-command-factory.ts';
+import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { renderResolvedRunList } from './run-list-renderer.ts';
 import type { ResolvedRun } from './run-types.ts';
 
@@ -186,41 +177,27 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
     };
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-list-renderer.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'renderResolvedRunList() renders location variants',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const testPlan = createLocationVariantPlan();
-                const result = renderResolvedRunList(
-                    createResolvedRun(testPlan),
-                    { withLocations: true, withOrphans: false }
-                );
+export const testNode = suite('source/run/run-list-renderer.test.ts', [
+    test('renderResolvedRunList() renders location variants', function (scope: OverkillScope) {
+        const testPlan = createLocationVariantPlan();
+        const result = renderResolvedRunList(
+            createResolvedRun(testPlan),
+            { withLocations: true, withOrphans: false }
+        );
 
-                scope.assert.deepEqual(result, [
-                    'order=lexical seed=42',
-                    'source/location-variants.test.ts',
-                    '  suite',
-                    '    no location',
-                    '    line only (relative.test.ts:7)',
-                    '      expanded at macro.test.ts:5',
-                    '      constructed at constructed.test.ts',
-                    '    rows (/outside/table.test.ts)',
-                    `      row [${rowParameterIdentity}] (/outside/table.test.ts)`,
-                    `      other row [${otherRowParameterIdentity}] (/outside/table.test.ts)`
-                ]);
+        scope.assert.deepEqual(result, [
+            'order=lexical seed=42',
+            'source/location-variants.test.ts',
+            '  suite',
+            '    no location',
+            '    line only (relative.test.ts:7)',
+            '      expanded at macro.test.ts:5',
+            '      constructed at constructed.test.ts',
+            '    rows (/outside/table.test.ts)',
+            `      row [${rowParameterIdentity}] (/outside/table.test.ts)`,
+            `      other row [${otherRowParameterIdentity}] (/outside/table.test.ts)`
+        ]);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

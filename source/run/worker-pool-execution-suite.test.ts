@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as orchestration } from './worker-pool-orchestration-policy.test.ts';
 import { testNode as workerPoolExecutionStateTestNode } from './worker-pool-execution-state.test.ts';
 import { testNode as workerPoolHedgingSuiteTestNode } from './worker-pool-hedging-suite.test.ts';
@@ -9,21 +9,13 @@ import { testNode as workerPoolWarmLaneDispatchTestNode } from './worker-pool-wa
 import { testNode as workerPoolWarmLaneAffinityTestNode } from './worker-pool-warm-lane-affinity.test.ts';
 import { testNode as workerPoolWorkDispatcherTestNode } from './worker-pool-work-dispatcher.test.ts';
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-execution-suite.test.ts',
-    children: [
-        orchestration,
-        workerPoolExecutionStateTestNode,
-        workerPoolHedgingSuiteTestNode,
-        workerPoolResourceLifecycleSuiteTestNode,
-        workerPoolResultsTestNode,
-        workerPoolWarmLaneDispatchTestNode,
-        workerPoolWarmLaneAffinityTestNode,
-        workerPoolWorkDispatcherTestNode
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/worker-pool-execution-suite.test.ts', [
+    orchestration,
+    workerPoolExecutionStateTestNode,
+    workerPoolHedgingSuiteTestNode,
+    workerPoolResourceLifecycleSuiteTestNode,
+    workerPoolResultsTestNode,
+    workerPoolWarmLaneDispatchTestNode,
+    workerPoolWarmLaneAffinityTestNode,
+    workerPoolWorkDispatcherTestNode
+]);

@@ -1,5 +1,6 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import type { Linter, Rule } from 'eslint';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { defineConfigTests } from '../packages/eslint-test/eslint-test.entry-point.ts';
 import { configDefinition, executeConfigNode } from '../test-support/eslint-config.ts';
 
@@ -38,7 +39,7 @@ const processor: Linter.Processor = {
     }
 };
 
-export const testNode = suite('config processor regressions', [
+export const testNode = authoredSuite('config processor regressions', [
     test('preserves original document locations and uses processor-aware native autofixing', async function (scope) {
         const definitions = defineConfigTests({
             ...configDefinition([ {

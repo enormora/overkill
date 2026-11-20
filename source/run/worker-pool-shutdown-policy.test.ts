@@ -1,8 +1,8 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { workerPoolShutdown } from '../test-support/worker-pool-shutdown.ts';
 
-export const testNode = suite('worker pool shutdown ownership', [
+export const testNode = authoredSuite('worker pool shutdown ownership', [
     test('registers each worker exit once across repeated task dispatch', async function (scope: TestScope) {
         const fixture = workerPoolShutdown(null, null);
         const worker = fixture.addWorker();
@@ -69,4 +69,3 @@ export const testNode = suite('worker pool shutdown ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

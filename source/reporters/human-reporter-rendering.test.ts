@@ -1,18 +1,9 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { createDefaultWorkId, type CaseId } from '../engine/identity.ts';
 import type { RunResult, RunArtifact } from '../engine/run-result.ts';
-import {
-    preciseTimingReport,
-    runTimingSummary,
-    type RunTimingSpan
-} from '../engine/run-timings.ts';
+import { preciseTimingReport, runTimingSummary, type RunTimingSpan } from '../engine/run-timings.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { testNode as debug } from './human-debug-rendering-policy.test.ts';
 import { contextPrefix, problemLines } from './human-reporter-rendering.ts';
@@ -160,251 +151,204 @@ function resultWithTimingSpans(spans: readonly RunTimingSpan[]): RunResult {
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/reporters/human-reporter-rendering.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            annotations: {},
-            controls: {},
-            title: 'human context prefixes retain nested suites when color is requested',
-            body(scope: OverkillScope) {
-                const prefix = contextPrefix([], null, [ 'root', 'child' ], { color: true, wrap: false });
-                scope.assert.includes(prefix, 'root');
-                scope.assert.includes(prefix, ' > child]');
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            annotations: {},
-            controls: {},
-            title: 'human problem output preserves workload attribution on runner errors',
-            body(scope: OverkillScope) {
-                const result = runResultFactory.build({
-                    runnerErrors: [ {
-                        message: 'worker stopped',
-                        subtype: 'loader',
+export const testNode = suite('source/reporters/human-reporter-rendering.test.ts', [
+    test('human context prefixes retain nested suites when color is requested', function (scope: OverkillScope) {
+        const prefix = contextPrefix([], null, [ 'root', 'child' ], { color: true, wrap: false });
+        scope.assert.includes(prefix, 'root');
+        scope.assert.includes(prefix, ' > child]');
+        return scope.assert.collect();
+    }),
+    test('human problem output preserves workload attribution on runner errors', function (scope: OverkillScope) {
+        const result = runResultFactory.build({
+            runnerErrors: [ {
+                message: 'worker stopped',
+                subtype: 'loader',
+                attributedTo: failingCaseId,
+                attributedToWork: {
+                    ...createDefaultWorkId(failingCaseId),
+                    workload: { name: 'large', params: {} }
+                }
+            } ]
+        });
+        scope.assert.deepEqual(
+            problemLines(result, {
+                failureArtifacts: defaultFailureArtifactPolicy,
+                relativizeLocationPath(location) {
+                    return location.file;
+                }
+            }, { verbose: true }),
+            [
+                'Problems',
+                '  Runner error: worker stopped',
+                '  type: loader',
+                '  test: source/fails.test.ts: root > fails [workload=large]'
+            ]
+        );
+        return scope.assert.collect();
+    }),
+    test('human problem output labels case artifacts without a corresponding result', function (scope: OverkillScope) {
+        const result = runResultFactory.build({ artifacts: [ caseOutputArtifact() ], perTest: [] });
+        scope.assert.deepEqual(
+            problemLines(result, {
+                failureArtifacts: defaultFailureArtifactPolicy,
+                relativizeLocationPath(location) {
+                    return location.file;
+                }
+            }, { verbose: true }),
+            [ 'Problems', '  passes', '    stdout:', '    visible output' ]
+        );
+        return scope.assert.collect();
+    }),
+    debug,
+    attachmentRendering,
+    test('human timing output shows at most five spans strictly above 500 ms', function (scope: OverkillScope) {
+        const spans: readonly RunTimingSpan[] = [
+            {
+                ...successfulTimingSpan('resource.acquire', 1_200_000),
+                label: 'startup',
+                processId: '42',
+                resource: { name: 'database', scope: 'per-run' },
+                status: 'timeout',
+                workerId: 'lane-1'
+            },
+            { ...successfulTimingSpan('collection.import', 1_100_000), label: 'source/users.test.ts' },
+            { ...successfulTimingSpan('worker-pool.ready', 1_000_000), workerId: 'lane-2' },
+            {
+                ...successfulTimingSpan('resource.acquire', 900_000),
+                resource: { name: 'database', scope: 'per-run' }
+            },
+            { ...successfulTimingSpan('cleanup', 800_000), status: 'failure' },
+            successfulTimingSpan('reporter.finish', 700_000),
+            successfulTimingSpan('reporter.deliver', 500_000)
+        ];
+
+        scope.assert.deepEqual(
+            formatTimingOffenderLines(resultWithTimingSpans(spans)),
+            [
+                'Slow runner overhead:',
+                '  resource acquire for startup (resource database, per-run, process 42, worker lane-1, ' +
+                'timeout): 1200 ms',
+                '  collection import for source/users.test.ts: 1100 ms',
+                '  worker pool ready (worker lane-2): 1000 ms',
+                '  resource acquire for database (per-run): 900 ms',
+                '  cleanup (failure): 800 ms'
+            ]
+        );
+
+        return scope.assert.collect();
+    }),
+    test('human timing output omits the block without a qualifying precise span', function (scope: OverkillScope) {
+        scope.assert.deepEqual(formatTimingOffenderLines(runResultFactory.build()), []);
+        scope.assert.deepEqual(
+            formatTimingOffenderLines(resultWithTimingSpans([
+                successfulTimingSpan('config.load', 500_000)
+            ])),
+            []
+        );
+
+        return scope.assert.collect();
+    }),
+    test(
+        'human reporter problem lines include verbose passing artifacts and attributed runner errors',
+        async function (scope: OverkillScope) {
+            const result = runResultFactory.build({
+                artifacts: [ caseOutputArtifact(), truncatedCaseOutputArtifact(), ignoredRunArtifact() ],
+                perTest: [
+                    {
+                        definitionLocations: [ { kind: 'unknown' as const } ],
+                        id: passingCaseId,
+                        outcome: { kind: 'pass' },
+                        verdict: 'pass'
+                    }
+                ],
+                runnerErrors: [
+                    {
                         attributedTo: failingCaseId,
-                        attributedToWork: {
-                            ...createDefaultWorkId(failingCaseId),
-                            workload: { name: 'large', params: {} }
-                        }
-                    } ]
-                });
-                scope.assert.deepEqual(
-                    problemLines(result, {
-                        failureArtifacts: defaultFailureArtifactPolicy,
-                        relativizeLocationPath(location) {
-                            return location.file;
-                        }
-                    }, { verbose: true }),
-                    [
-                        'Problems',
-                        '  Runner error: worker stopped',
-                        '  type: loader',
-                        '  test: source/fails.test.ts: root > fails [workload=large]'
-                    ]
-                );
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            annotations: {},
-            controls: {},
-            title: 'human problem output labels case artifacts without a corresponding result',
-            body(scope: OverkillScope) {
-                const result = runResultFactory.build({ artifacts: [ caseOutputArtifact() ], perTest: [] });
-                scope.assert.deepEqual(
-                    problemLines(result, {
-                        failureArtifacts: defaultFailureArtifactPolicy,
-                        relativizeLocationPath(location) {
-                            return location.file;
-                        }
-                    }, { verbose: true }),
-                    [ 'Problems', '  passes', '    stdout:', '    visible output' ]
-                );
-                return scope.assert.collect();
-            }
-        }),
-        debug,
-        attachmentRendering,
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'human timing output shows at most five spans strictly above 500 ms',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const spans: readonly RunTimingSpan[] = [
-                    {
-                        ...successfulTimingSpan('resource.acquire', 1_200_000),
-                        label: 'startup',
-                        processId: '42',
-                        resource: { name: 'database', scope: 'per-run' },
-                        status: 'timeout',
-                        workerId: 'lane-1'
-                    },
-                    { ...successfulTimingSpan('collection.import', 1_100_000), label: 'source/users.test.ts' },
-                    { ...successfulTimingSpan('worker-pool.ready', 1_000_000), workerId: 'lane-2' },
-                    {
-                        ...successfulTimingSpan('resource.acquire', 900_000),
-                        resource: { name: 'database', scope: 'per-run' }
-                    },
-                    { ...successfulTimingSpan('cleanup', 800_000), status: 'failure' },
-                    successfulTimingSpan('reporter.finish', 700_000),
-                    successfulTimingSpan('reporter.deliver', 500_000)
-                ];
+                        diagnostics: [ { label: 'phase', value: 'teardown' } ],
+                        message: 'worker stopped',
+                        subtype: 'runtime-policy'
+                    }
+                ],
+                summary: { failed: 1, passed: 1 }
+            });
 
-                scope.assert.deepEqual(
-                    formatTimingOffenderLines(resultWithTimingSpans(spans)),
-                    [
-                        'Slow runner overhead:',
-                        '  resource acquire for startup (resource database, per-run, process 42, worker lane-1, ' +
-                        'timeout): 1200 ms',
-                        '  collection import for source/users.test.ts: 1100 ms',
-                        '  worker pool ready (worker lane-2): 1000 ms',
-                        '  resource acquire for database (per-run): 900 ms',
-                        '  cleanup (failure): 800 ms'
-                    ]
-                );
+            scope.assert.deepEqual(
+                problemLines(result, {
+                    failureArtifacts: defaultFailureArtifactPolicy,
+                    relativizeLocationPath(location) {
+                        return location.file;
+                    }
+                }, { verbose: true }),
+                [
+                    'Problems',
+                    '  passes',
+                    '    stdout:',
+                    '    visible output',
+                    '  passes',
+                    '    stderr truncated:',
+                    '  Runner error: worker stopped',
+                    '  type: runtime-policy',
+                    '  test: source/fails.test.ts: root > fails',
+                    '  phase: teardown'
+                ]
+            );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'human timing output omits the block without a qualifying precise span',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                scope.assert.deepEqual(formatTimingOffenderLines(runResultFactory.build()), []);
-                scope.assert.deepEqual(
-                    formatTimingOffenderLines(resultWithTimingSpans([
-                        successfulTimingSpan('config.load', 500_000)
-                    ])),
-                    []
-                );
+            return scope.assert.collect();
+        }
+    ),
+    test('human context prefixes render sorted runtime scenarios', function (scope: OverkillScope) {
+        const plainRuntime = {
+            dimensions: {},
+            name: 'api',
+            scenarios: {},
+            variantId: null
+        };
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'human reporter problem lines include verbose passing artifacts and attributed runner errors',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = runResultFactory.build({
-                    artifacts: [ caseOutputArtifact(), truncatedCaseOutputArtifact(), ignoredRunArtifact() ],
-                    perTest: [
-                        {
-                            definitionLocations: [ { kind: 'unknown' as const } ],
-                            id: passingCaseId,
-                            outcome: { kind: 'pass' },
-                            verdict: 'pass'
-                        }
-                    ],
-                    runnerErrors: [
-                        {
-                            attributedTo: failingCaseId,
-                            diagnostics: [ { label: 'phase', value: 'teardown' } ],
-                            message: 'worker stopped',
-                            subtype: 'runtime-policy'
-                        }
-                    ],
-                    summary: { failed: 1, passed: 1 }
-                });
-
-                scope.assert.deepEqual(
-                    problemLines(result, {
-                        failureArtifacts: defaultFailureArtifactPolicy,
-                        relativizeLocationPath(location) {
-                            return location.file;
-                        }
-                    }, { verbose: true }),
-                    [
-                        'Problems',
-                        '  passes',
-                        '    stdout:',
-                        '    visible output',
-                        '  passes',
-                        '    stderr truncated:',
-                        '  Runner error: worker stopped',
-                        '  type: runtime-policy',
-                        '  test: source/fails.test.ts: root > fails',
-                        '  phase: teardown'
-                    ]
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'human context prefixes render sorted runtime scenarios',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const plainRuntime = {
-                    dimensions: {},
+        scope.assert.equal(
+            contextPrefix([ plainRuntime ], null, [], { color: false, wrap: false }),
+            '[api]'
+        );
+        scope.assert.equal(
+            contextPrefix([ plainRuntime ], { name: 'small', params: {} }, [], { color: false, wrap: false }),
+            '[api] [workload=small]'
+        );
+        scope.assert.includes(
+            contextPrefix([ plainRuntime ], null, [], { color: true, wrap: false }),
+            'api'
+        );
+        scope.assert.equal(
+            contextPrefix(
+                [ { ...plainRuntime, scenarios: { api: 'payments-500' } } ],
+                null,
+                [],
+                { color: false, wrap: false }
+            ),
+            '[api:scenario.api=payments-500]'
+        );
+        scope.assert.equal(
+            contextPrefix(
+                [ { ...plainRuntime, variantId: 'node-26' } ],
+                null,
+                [],
+                { color: false, wrap: false }
+            ),
+            '[api:node-26]'
+        );
+        scope.assert.equal(
+            contextPrefix(
+                [ {
+                    dimensions: { node: '26' },
                     name: 'api',
-                    scenarios: {},
+                    scenarios: { database: 'empty', api: 'payments-500' },
                     variantId: null
-                };
+                } ],
+                null,
+                [],
+                { color: false, wrap: false }
+            ),
+            '[api:node=26,scenario.api=payments-500,scenario.database=empty]'
+        );
 
-                scope.assert.equal(
-                    contextPrefix([ plainRuntime ], null, [], { color: false, wrap: false }),
-                    '[api]'
-                );
-                scope.assert.equal(
-                    contextPrefix([ plainRuntime ], { name: 'small', params: {} }, [], { color: false, wrap: false }),
-                    '[api] [workload=small]'
-                );
-                scope.assert.includes(
-                    contextPrefix([ plainRuntime ], null, [], { color: true, wrap: false }),
-                    'api'
-                );
-                scope.assert.equal(
-                    contextPrefix(
-                        [ { ...plainRuntime, scenarios: { api: 'payments-500' } } ],
-                        null,
-                        [],
-                        { color: false, wrap: false }
-                    ),
-                    '[api:scenario.api=payments-500]'
-                );
-                scope.assert.equal(
-                    contextPrefix(
-                        [ { ...plainRuntime, variantId: 'node-26' } ],
-                        null,
-                        [],
-                        { color: false, wrap: false }
-                    ),
-                    '[api:node-26]'
-                );
-                scope.assert.equal(
-                    contextPrefix(
-                        [ {
-                            dimensions: { node: '26' },
-                            name: 'api',
-                            scenarios: { database: 'empty', api: 'payments-500' },
-                            variantId: null
-                        } ],
-                        null,
-                        [],
-                        { color: false, wrap: false }
-                    ),
-                    '[api:node=26,scenario.api=payments-500,scenario.database=empty]'
-                );
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

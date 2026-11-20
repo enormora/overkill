@@ -1,11 +1,6 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type PerTestResult,
-    type RunResult,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import type { PerTestResult, RunResult } from '../packages/engine/engine.entry-point.ts';
 import { summaryRunTimings } from '../engine/run-timings.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import {
@@ -16,11 +11,7 @@ import {
     fakeWorkerRuntime,
     workerPoolResolvedRun
 } from '../test-support/worker-pool-execution-state.ts';
-import {
-    createStoredRunValue,
-    createSupervisedRunState,
-    type SupervisedRunState
-} from './supervised-run-state.ts';
+import { createStoredRunValue, createSupervisedRunState, type SupervisedRunState } from './supervised-run-state.ts';
 import { createEmptyWorkerPoolResult, finishWorkerPoolRun } from './worker-pool-results.ts';
 import type { PlacementTrace } from './placement-trace.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
@@ -269,11 +260,11 @@ async function workerPoolFinalizationResults(): Promise<{
     return { emptyResult, placementTrace, result };
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-results.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool finalization and empty results aggregate run state',
             async body(scope: OverkillScope) {
@@ -297,7 +288,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool empty shard results report a successful empty shard run',
             async body(scope: OverkillScope) {
@@ -329,5 +320,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

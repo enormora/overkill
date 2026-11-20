@@ -1,4 +1,5 @@
-import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
+import { test, suite } from '@overkill-dev/test';
+
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { createFakeSupervisedChildProcess } from '../test-support/fake-supervised-child-process.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
@@ -102,11 +103,10 @@ async function cancelAt(phase: Phase): Promise<EngineRunResult> {
     return completion;
 }
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'supervised invocation cancellation',
-    children: phases.map(function cancellationPhase(phase) {
-        return createTestCase({
+export const testNode = suite(
+    'supervised invocation cancellation',
+    phases.map(function cancellationPhase(phase) {
+        return test({
             ...metadata,
             title: `cancellation during ${phase} respects child completion`,
             async body(scope) {
@@ -135,4 +135,4 @@ export const testNode = createSuite({
             }
         });
     })
-});
+);

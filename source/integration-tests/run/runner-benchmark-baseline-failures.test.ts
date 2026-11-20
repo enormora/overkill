@@ -1,6 +1,5 @@
 import { mkdir, readFile, rename } from 'node:fs/promises';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { defineReporter, type DefinedReporter, type PerTestResult } from '../../packages/engine/engine.entry-point.ts';
 import { normalizeConfig, orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import type { PerformanceBaselineAdapter } from '../../baselines/performance-adapter.ts';
@@ -312,7 +311,7 @@ async function assertLateReporterFailure(scope: TestScope): Promise<void> {
     scope.assert.equal(contents.length, 2);
 }
 
-export const testNode = suite('benchmark baseline failure boundaries', [
+export const testNode = authoredSuite('benchmark baseline failure boundaries', [
     test('sample cleanup failures retain readings and block pending creates', async function (scope: TestScope) {
         await assertSampleCleanupBlocksWrites(scope);
         return scope.assert.collect();
@@ -348,4 +347,3 @@ export const testNode = suite('benchmark baseline failure boundaries', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

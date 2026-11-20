@@ -1,4 +1,5 @@
-import { createSuite } from '../../../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as baselineStoreTestNode } from '../../../run/baseline-store.test.ts';
 import { testNode as baselineSessionTestNode } from '../../../run/baseline-session.test.ts';
 import { testNode as baselineCommandsTestNode } from '../../../run/baseline-commands.test.ts';
@@ -6,17 +7,11 @@ import { testNode as baselineStorageTestNode } from '../../../run/baseline-stora
 import { testNode as baselineFailureBoundariesTestNode } from '../../../run/baseline-failure-boundaries.test.ts';
 import { testNode as runnerOrdinaryBaselinesTestNode } from '../../run/runner-ordinary-baselines.test.ts';
 
-export const testNode = createSuite({
-    title: 'persistence baselines integration',
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    children: [
-        baselineStoreTestNode,
-        baselineSessionTestNode,
-        baselineCommandsTestNode,
-        baselineStorageTestNode,
-        baselineFailureBoundariesTestNode,
-        runnerOrdinaryBaselinesTestNode
-    ]
-});
+export const testNode = suite('persistence baselines integration', [
+    baselineStoreTestNode,
+    baselineSessionTestNode,
+    baselineCommandsTestNode,
+    baselineStorageTestNode,
+    baselineFailureBoundariesTestNode,
+    runnerOrdinaryBaselinesTestNode
+]);

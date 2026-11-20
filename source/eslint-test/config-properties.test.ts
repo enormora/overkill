@@ -1,6 +1,7 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import type { Rule } from 'eslint';
 import type { TestScope } from '../packages/engine/engine.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { gen } from '../packages/property/property.entry-point.ts';
 import {
     defineConfigTests,
@@ -35,7 +36,7 @@ function configuredRule(rule: Rule.RuleModule, contracts: readonly ConfigContrac
     });
 }
 
-export const testNode = suite('config automatic properties', [
+export const testNode = authoredSuite('config automatic properties', [
     test(
         'fix stability counts complete native fix runs and permits remaining nonfixable reports',
         async function (scope) {

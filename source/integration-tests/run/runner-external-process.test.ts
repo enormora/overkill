@@ -1,11 +1,9 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
 import { normalizeConfig, orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
-
 import { assertCompletedBenchmarks } from './process-evidence-assertions.test.ts';
 
 const fixture = 'source/integration-tests/run/fixtures/external-process.bench.test.ts';
@@ -37,7 +35,7 @@ async function commandFor(scope: TestScope, boundary: Boundary): Promise<RunComm
     };
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'runner external-process benchmarks',
     boundaries.map(function boundaryTests(boundary) {
         return test(`runs pipe and PTY samples with ${boundary}`, async function (scope: TestScope) {
@@ -50,5 +48,3 @@ export const testNode = suite(
         });
     })
 );
-
-await runIfMain(import.meta, testNode);

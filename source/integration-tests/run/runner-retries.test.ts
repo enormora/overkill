@@ -1,7 +1,6 @@
-import { runIfMain } from '#test-runner';
+import { test, suite } from '@overkill-dev/test';
+
 import {
-    createSuite,
-    createTestCase,
     defineReporter,
     type ReporterEvent,
     type DefinedReporter,
@@ -202,51 +201,45 @@ function assertHardTimeoutEvent(scope: TestScope, result: RunResult, events: rea
     scope.assert.equal(completedEvent.durationMicroseconds, result.perTest[0]?.attempts.at(-1)?.durationMicroseconds);
 }
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'source/integration-tests/run/runner-retries.test.ts',
-    children: [
-        ...executions.flatMap(function retryExecution(execution, index) {
-            return artifactPolicies.map(function artifactRetention(policy) {
-                return createTestCase({
-                    ...metadata,
-                    title: `runner retries across execution envelope ${index + 1} with ${policy}`,
-                    async body(scope: TestScope) {
-                        const events: ReporterEvent[] = [];
-                        const reporter = eventReporter(function recordEvent(event) {
-                            events.push(event);
-                        });
-                        const command = retryCommand(execution, reporter, policy, fixture);
-                        const resolved = await orchestrator.resolve(command);
-                        scope.assert.equal(resolved.facts.execution.retries?.maxAttempts, 3);
-                        scope.assert.true(Object.isFrozen(resolved.facts.execution.retries));
-                        const result = await orchestrator.run(command);
-                        assertRecoveredHistory(scope, result);
-                        assertRetryEvidence(scope, result, events, policy);
-                        return scope.assert.collect();
-                    }
-                });
-            });
-        }),
-        ...executions.slice(0, 2).map(function hardTimeoutExecution(execution) {
-            return createTestCase({
+export const testNode = suite('source/integration-tests/run/runner-retries.test.ts', [
+    ...executions.flatMap(function retryExecution(execution, index) {
+        return artifactPolicies.map(function artifactRetention(policy) {
+            return test({
                 ...metadata,
-                title: `hard timeout preserves retry evidence under ${execution.processModel}`,
+                title: `runner retries across execution envelope ${index + 1} with ${policy}`,
                 async body(scope: TestScope) {
                     const events: ReporterEvent[] = [];
                     const reporter = eventReporter(function recordEvent(event) {
                         events.push(event);
                     });
-                    const result = await orchestrator.run(
-                        retryCommand(execution, reporter, 'first-failure-and-final', hardTimeoutFixture)
-                    );
-                    assertHardTimeoutEvidence(scope, result);
-                    assertHardTimeoutEvent(scope, result, events);
+                    const command = retryCommand(execution, reporter, policy, fixture);
+                    const resolved = await orchestrator.resolve(command);
+                    scope.assert.equal(resolved.facts.execution.retries?.maxAttempts, 3);
+                    scope.assert.true(Object.isFrozen(resolved.facts.execution.retries));
+                    const result = await orchestrator.run(command);
+                    assertRecoveredHistory(scope, result);
+                    assertRetryEvidence(scope, result, events, policy);
                     return scope.assert.collect();
                 }
             });
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        });
+    }),
+    ...executions.slice(0, 2).map(function hardTimeoutExecution(execution) {
+        return test({
+            ...metadata,
+            title: `hard timeout preserves retry evidence under ${execution.processModel}`,
+            async body(scope: TestScope) {
+                const events: ReporterEvent[] = [];
+                const reporter = eventReporter(function recordEvent(event) {
+                    events.push(event);
+                });
+                const result = await orchestrator.run(
+                    retryCommand(execution, reporter, 'first-failure-and-final', hardTimeoutFixture)
+                );
+                assertHardTimeoutEvidence(scope, result);
+                assertHardTimeoutEvent(scope, result, events);
+                return scope.assert.collect();
+            }
+        });
+    })
+]);

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import {
     replayProject,
@@ -29,7 +29,7 @@ async function assertPreparation(scope: TestScope, project: ReplayProject): Prom
     scope.assert.deepEqual(replay.runnerErrors, []);
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'imported family empty selections',
     ([ 'supervised-process', 'worker-pool' ] as const).map(function boundary(processModel) {
         return test(
@@ -54,5 +54,3 @@ export const testNode = suite(
         );
     })
 );
-
-await runIfMain(import.meta, testNode);

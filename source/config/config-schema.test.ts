@@ -1,14 +1,11 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, defineMacro, suite, table, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+
 import { safeParse } from '@schema-hub/zod-error-formatter';
 import type { $ZodType } from 'zod/v4/core';
 
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import {
     integrationExecutionSchema,
@@ -39,19 +36,29 @@ function assertValidationSuccess(scope: OverkillScope, schema: Readonly<$ZodType
     scope.assert.deepEqual(result.data, data);
 }
 
-function assertValidationFailure(scope: OverkillScope, testCase: SchemaValidationFailure): void {
-    const result = safeParse(testCase.schema, testCase.data);
-
-    if (result.success) {
-        scope.assert.fail({ message: 'Validation succeeded but a failure was expected' });
-
-        return;
+const schemaRejection = defineCompositeAssertion({
+    name: 'schema rejection',
+    assert(check, testCase: SchemaValidationFailure) {
+        const result = safeParse(testCase.schema, testCase.data);
+        return result.success
+            ? check.annotated('Validation succeeded but a failure was expected').fail()
+            : check.deepEqual(result.error.issues, testCase.expectedIssues);
     }
+});
 
-    scope.assert.deepEqual(result.error.issues, testCase.expectedIssues);
-}
-
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+const rejectedSchemaCases = defineMacro(function (title: string, cases: readonly SchemaValidationFailure[]) {
+    return table({
+        title,
+        cases,
+        caseTitle(testCase) {
+            return testCase.name;
+        },
+        test(scope) {
+            scope.assert(schemaRejection, scope.parameters);
+            return scope.assert.collect();
+        }
+    });
+});
 
 const invalidMicrotestProfileFields: readonly SchemaValidationFailure[] = [
     {
@@ -131,422 +138,300 @@ const invalidNestedFields: readonly SchemaValidationFailure[] = [
     }
 ];
 
-export const testNode = createOverkillSuite({
-    ...metadata,
+export const testNode = suite('source/config/config-schema.test.ts', [
+    test('microtest profile schema accepts the minimal profile', function (scope: OverkillScope) {
+        assertValidationSuccess(scope, microtestProfileSchema, {
+            testFamily: 'microtest',
+            failureArtifacts: defaultFailureArtifactPolicy
+        });
 
-    title: 'source/config/config-schema.test.ts',
+        return scope.assert.collect();
+    }),
+    test('microtest profile schema accepts every current profile field', function (scope: OverkillScope) {
+        const reporter = createInMemoryRealTimeReporter();
 
-    children: [
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'microtest profile schema accepts the minimal profile',
-
-            body(scope: OverkillScope) {
-                assertValidationSuccess(scope, microtestProfileSchema, {
-                    testFamily: 'microtest',
-                    failureArtifacts: defaultFailureArtifactPolicy
-                });
-
-                return scope.assert.collect();
+        assertValidationSuccess(scope, microtestProfileSchema, {
+            failureArtifacts: defaultFailureArtifactPolicy,
+            coverage: { outputs: [] },
+            execution: {
+                processModel: 'in-process',
+                scheduling: 'serial'
+            },
+            files: {
+                exclude: [ 'source/**/*.slow.test.ts' ],
+                include: [ 'source/**/*.test.ts' ]
+            },
+            reporters: [ reporter ],
+            processUsage: {
+                budgets: {
+                    activeResourceCount: 1,
+                    javaScriptEngineHeapBytes: null,
+                    residentSetBytes: 2,
+                    residentSetGrowthBytesPerSecond: 3
+                },
+                measure: true,
+                samplingIntervalMilliseconds: 4
+            },
+            testFamily: 'microtest',
+            timings: { collection: 'precise' },
+            timeouts: {
+                hardMilliseconds: 6,
+                softMilliseconds: 5
             }
-        }),
-        createOverkillTestCase({
-            ...metadata,
+        });
 
-            title: 'microtest profile schema accepts every current profile field',
-
-            body(scope: OverkillScope) {
-                const reporter = createInMemoryRealTimeReporter();
-
-                assertValidationSuccess(scope, microtestProfileSchema, {
-                    failureArtifacts: defaultFailureArtifactPolicy,
-                    coverage: { outputs: [] },
-                    execution: {
-                        processModel: 'in-process',
-                        scheduling: 'serial'
+        return scope.assert.collect();
+    }),
+    test('microtest profile schema accepts profile file sets', function (scope: OverkillScope) {
+        assertValidationSuccess(scope, microtestProfileSchema, {
+            failureArtifacts: defaultFailureArtifactPolicy,
+            files: {
+                sets: {
+                    integration: {
+                        exclude: [ 'source/integration/**/*.slow.test.ts' ],
+                        include: [ 'source/integration/**/*.test.ts' ]
                     },
-                    files: {
-                        exclude: [ 'source/**/*.slow.test.ts' ],
-                        include: [ 'source/**/*.test.ts' ]
-                    },
-                    reporters: [ reporter ],
-                    processUsage: {
-                        budgets: {
-                            activeResourceCount: 1,
-                            javaScriptEngineHeapBytes: null,
-                            residentSetBytes: 2,
-                            residentSetGrowthBytesPerSecond: 3
-                        },
-                        measure: true,
-                        samplingIntervalMilliseconds: 4
-                    },
-                    testFamily: 'microtest',
-                    timings: { collection: 'precise' },
-                    timeouts: {
-                        hardMilliseconds: 6,
-                        softMilliseconds: 5
+                    unit: {
+                        include: [ 'source/unit/**/*.test.ts' ]
                     }
+                }
+            },
+            testFamily: 'microtest'
+        });
+
+        return scope.assert.collect();
+    }),
+    test('microtest execution schema accepts process model and scheduling variants', function (scope: OverkillScope) {
+        for (const processModel of [ 'in-process', 'supervised-process' ] as const) {
+            for (const scheduling of [ 'concurrent', 'serial' ] as const) {
+                assertValidationSuccess(scope, microtestExecutionSchema, { processModel, scheduling });
+                assertValidationSuccess(scope, microtestExecutionSchema, { maxConcurrency: 3, processModel });
+                assertValidationSuccess(scope, microtestExecutionSchema, {
+                    maxConcurrency: 'unlimited',
+                    processModel
                 });
-
-                return scope.assert.collect();
             }
-        }),
-        createOverkillTestCase({
-            ...metadata,
+        }
 
-            title: 'microtest profile schema accepts profile file sets',
+        return scope.assert.collect();
+    }),
+    test('integration profile schema accepts supervised profiles with files', function (scope: OverkillScope) {
+        const reporter = createInMemoryRealTimeReporter();
 
-            body(scope: OverkillScope) {
-                assertValidationSuccess(scope, microtestProfileSchema, {
-                    failureArtifacts: defaultFailureArtifactPolicy,
-                    files: {
-                        sets: {
-                            integration: {
-                                exclude: [ 'source/integration/**/*.slow.test.ts' ],
-                                include: [ 'source/integration/**/*.test.ts' ]
-                            },
-                            unit: {
-                                include: [ 'source/unit/**/*.test.ts' ]
-                            }
+        assertValidationSuccess(scope, integrationProfileSchema, {
+            failureArtifacts: defaultFailureArtifactPolicy,
+            attachments: defaultAttachmentLimits,
+            execution: {
+                processModel: 'supervised-process',
+                scheduling: 'serial'
+            },
+            files: {
+                exclude: [ 'source/**/*.slow.test.ts' ],
+                include: [ 'source/**/*.integration.test.ts' ]
+            },
+            reporters: [ reporter ],
+            processUsage: { measure: false },
+            testFamily: 'integration',
+            timings: { collection: 'summary' },
+            timeouts: {
+                collectionMilliseconds: 5,
+                hardMilliseconds: 7,
+                softMilliseconds: 6
+            }
+        });
+
+        return scope.assert.collect();
+    }),
+    test('integration profile schema accepts worker-pool profiles with files', function (scope: OverkillScope) {
+        assertValidationSuccess(scope, integrationProfileSchema, {
+            failureArtifacts: defaultFailureArtifactPolicy,
+            attachments: defaultAttachmentLimits,
+            execution: {
+                processModel: 'worker-pool',
+                scheduling: 'serial'
+            },
+            files: {
+                exclude: [],
+                include: [ 'source/**/*.integration.test.ts' ]
+            },
+            testFamily: 'integration'
+        });
+
+        return scope.assert.collect();
+    }),
+    test(
+        'integration execution schema accepts worker-pool lifecycle and distribution fields',
+        function (scope: OverkillScope) {
+            assertValidationSuccess(scope, integrationExecutionSchema, {
+                assignmentPolicy: 'case-count-balanced',
+                dispatchPolicy: 'dynamic-lease',
+                maxWorkers: 4,
+                processModel: 'worker-pool',
+                scheduling: 'serial',
+                workDistribution: { mode: 'file' },
+                workerLifecycle: 'fresh-worker-per-unit'
+            });
+            assertValidationSuccess(scope, integrationExecutionSchema, {
+                assignmentPolicy: 'stable',
+                dispatchPolicy: 'static-assignment',
+                processModel: 'worker-pool',
+                scheduling: 'serial',
+                workDistribution: { mode: 'case' },
+                workerLifecycle: 'fresh-worker-per-unit'
+            });
+            assertValidationSuccess(scope, integrationExecutionSchema, {
+                processModel: 'worker-pool',
+                scheduling: 'serial',
+                workDistribution: {
+                    groups: [
+                        {
+                            fileSets: [ 'integration' ],
+                            granularity: 'case',
+                            name: 'integration',
+                            order: 'seeded',
+                            scheduling: 'serial',
+                            workerLifecycle: 'fresh-worker-per-unit'
                         }
-                    },
-                    testFamily: 'microtest'
-                });
+                    ],
+                    mode: 'group',
+                    unmatched: 'file'
+                },
+                workerLifecycle: 'fresh-worker-per-unit'
+            });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
+            assertValidationSuccess(scope, integrationExecutionSchema, {
+                processModel: 'worker-pool',
+                scheduling: 'serial',
+                workerLifecycle: 'reuse'
+            });
 
-            title: 'microtest execution schema accepts process model and scheduling variants',
-
-            body(scope: OverkillScope) {
-                for (const processModel of [ 'in-process', 'supervised-process' ] as const) {
-                    for (const scheduling of [ 'concurrent', 'serial' ] as const) {
-                        assertValidationSuccess(scope, microtestExecutionSchema, { processModel, scheduling });
-                        assertValidationSuccess(scope, microtestExecutionSchema, { maxConcurrency: 3, processModel });
-                        assertValidationSuccess(scope, microtestExecutionSchema, {
-                            maxConcurrency: 'unlimited',
-                            processModel
-                        });
-                    }
-                }
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'integration profile schema accepts supervised profiles with files',
-
-            body(scope: OverkillScope) {
-                const reporter = createInMemoryRealTimeReporter();
-
-                assertValidationSuccess(scope, integrationProfileSchema, {
-                    failureArtifacts: defaultFailureArtifactPolicy,
-                    attachments: defaultAttachmentLimits,
-                    execution: {
-                        processModel: 'supervised-process',
-                        scheduling: 'serial'
-                    },
-                    files: {
-                        exclude: [ 'source/**/*.slow.test.ts' ],
-                        include: [ 'source/**/*.integration.test.ts' ]
-                    },
-                    reporters: [ reporter ],
-                    processUsage: { measure: false },
-                    testFamily: 'integration',
-                    timings: { collection: 'summary' },
-                    timeouts: {
-                        collectionMilliseconds: 5,
-                        hardMilliseconds: 7,
-                        softMilliseconds: 6
-                    }
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'integration profile schema accepts worker-pool profiles with files',
-
-            body(scope: OverkillScope) {
-                assertValidationSuccess(scope, integrationProfileSchema, {
-                    failureArtifacts: defaultFailureArtifactPolicy,
-                    attachments: defaultAttachmentLimits,
-                    execution: {
-                        processModel: 'worker-pool',
-                        scheduling: 'serial'
-                    },
-                    files: {
-                        exclude: [],
-                        include: [ 'source/**/*.integration.test.ts' ]
-                    },
-                    testFamily: 'integration'
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'integration execution schema accepts worker-pool lifecycle and distribution fields',
-
-            body(scope: OverkillScope) {
-                assertValidationSuccess(scope, integrationExecutionSchema, {
-                    assignmentPolicy: 'case-count-balanced',
-                    dispatchPolicy: 'dynamic-lease',
-                    maxWorkers: 4,
-                    processModel: 'worker-pool',
-                    scheduling: 'serial',
-                    workDistribution: { mode: 'file' },
-                    workerLifecycle: 'fresh-worker-per-unit'
-                });
-                assertValidationSuccess(scope, integrationExecutionSchema, {
-                    assignmentPolicy: 'stable',
-                    dispatchPolicy: 'static-assignment',
-                    processModel: 'worker-pool',
-                    scheduling: 'serial',
-                    workDistribution: { mode: 'case' },
-                    workerLifecycle: 'fresh-worker-per-unit'
-                });
-                assertValidationSuccess(scope, integrationExecutionSchema, {
-                    processModel: 'worker-pool',
-                    scheduling: 'serial',
-                    workDistribution: {
-                        groups: [
-                            {
-                                fileSets: [ 'integration' ],
-                                granularity: 'case',
-                                name: 'integration',
-                                order: 'seeded',
-                                scheduling: 'serial',
-                                workerLifecycle: 'fresh-worker-per-unit'
-                            }
-                        ],
-                        mode: 'group',
-                        unmatched: 'file'
-                    },
-                    workerLifecycle: 'fresh-worker-per-unit'
-                });
-
-                assertValidationSuccess(scope, integrationExecutionSchema, {
-                    processModel: 'worker-pool',
-                    scheduling: 'serial',
-                    workerLifecycle: 'reuse'
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'integration execution schema rejects invalid worker-pool distribution fields',
-
-            body(scope: OverkillScope) {
-                const result = safeParse(integrationExecutionSchema, {
-                    processModel: 'worker-pool',
-                    scheduling: 'serial',
-                    workDistribution: {
-                        groups: [ { fileSets: [ 'integration' ], granularity: 'suite', name: 'integration' } ],
-                        mode: 'group',
-                        unmatched: 'fallback'
-                    }
-                });
-
-                scope.assert.equal(result.success, false);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'integration execution schema rejects host-process fields',
-
-            body(scope: OverkillScope) {
-                const result = safeParse(integrationExecutionSchema, {
-                    hostProcess: {
-                        kind: 'child',
-                        nodeArguments: [ '--expose-gc' ]
-                    },
-                    processModel: 'worker-pool',
-                    scheduling: 'serial'
-                });
-
-                scope.assert.equal(result.success, false);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'integration execution schema rejects invalid worker lifecycle fields',
-
-            body(scope: OverkillScope) {
-                const result = safeParse(integrationExecutionSchema, {
-                    processModel: 'worker-pool',
-                    scheduling: 'serial',
-                    workerLifecycle: 'per-file'
-                });
-
-                scope.assert.equal(result.success, false);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'integration execution schema accepts duration-history-balanced assignment policy',
-
-            body(scope: OverkillScope) {
-                const result = safeParse(integrationExecutionSchema, {
-                    assignmentPolicy: 'duration-history-balanced',
-                    processModel: 'worker-pool',
-                    scheduling: 'serial'
-                });
-
-                scope.assert.equal(result.success, true);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'integration execution schema rejects invalid worker-pool dispatch policy',
-
-            body(scope: OverkillScope) {
-                const result = safeParse(integrationExecutionSchema, {
-                    dispatchPolicy: 'least-busy',
-                    processModel: 'worker-pool',
-                    scheduling: 'serial'
-                });
-
-                scope.assert.equal(result.success, false);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'integration execution schema rejects worker-pool fields on supervised profiles',
-
-            body(scope: OverkillScope) {
-                const result = safeParse(integrationExecutionSchema, {
-                    dispatchPolicy: 'dynamic-lease',
-                    processModel: 'supervised-process',
-                    scheduling: 'serial',
-                    workDistribution: { mode: 'file' },
-                    workerLifecycle: 'fresh-worker-per-unit'
-                });
-
-                scope.assert.equal(result.success, false);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'integration execution schema rejects in-process profiles',
-
-            body(scope: OverkillScope) {
-                const result = safeParse(integrationExecutionSchema, {
-                    processModel: 'in-process',
-                    scheduling: 'serial'
-                });
-
-                scope.assert.equal(result.success, false);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'integration profile schema rejects missing files',
-
-            body(scope: OverkillScope) {
-                const result = safeParse(integrationProfileSchema, { testFamily: 'integration' });
-
-                scope.assert.equal(result.success, false);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'microtest process usage schema accepts measured and unmeasured policies',
-
-            body(scope: OverkillScope) {
-                assertValidationSuccess(scope, processUsageSchema, { measure: false });
-                assertValidationSuccess(scope, processUsageSchema, {
-                    budgets: {
-                        activeResourceCount: 1,
-                        javaScriptEngineHeapBytes: 2,
-                        residentSetBytes: null,
-                        residentSetGrowthBytesPerSecond: 3
-                    },
-                    measure: true,
-                    samplingIntervalMilliseconds: 4
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'microtest timeout schema accepts soft and hard timeouts',
-
-            body(scope: OverkillScope) {
-                assertValidationSuccess(scope, timeoutSchema, {
-                    hardMilliseconds: 2,
-                    softMilliseconds: 1
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        ...invalidMicrotestProfileFields.map(function createInvalidMicrotestProfileFieldTest(testCase) {
-            return createOverkillTestCase({
-                ...metadata,
-
-                title: `microtest profile schema rejects ${testCase.name}`,
-
-                body(scope: OverkillScope) {
-                    assertValidationFailure(scope, testCase);
-
-                    return scope.assert.collect();
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'integration execution schema rejects invalid worker-pool distribution fields',
+        function (scope: OverkillScope) {
+            const result = safeParse(integrationExecutionSchema, {
+                processModel: 'worker-pool',
+                scheduling: 'serial',
+                workDistribution: {
+                    groups: [ { fileSets: [ 'integration' ], granularity: 'suite', name: 'integration' } ],
+                    mode: 'group',
+                    unmatched: 'fallback'
                 }
             });
-        }),
-        ...invalidNestedFields.map(function createInvalidNestedFieldTest(testCase) {
-            return createOverkillTestCase({
-                ...metadata,
 
-                title: `microtest profile nested schema ${testCase.name}`,
+            scope.assert.equal(result.success, false);
 
-                body(scope: OverkillScope) {
-                    assertValidationFailure(scope, testCase);
+            return scope.assert.collect();
+        }
+    ),
+    test('integration execution schema rejects host-process fields', function (scope: OverkillScope) {
+        const result = safeParse(integrationExecutionSchema, {
+            hostProcess: {
+                kind: 'child',
+                nodeArguments: [ '--expose-gc' ]
+            },
+            processModel: 'worker-pool',
+            scheduling: 'serial'
+        });
 
-                    return scope.assert.collect();
-                }
+        scope.assert.equal(result.success, false);
+
+        return scope.assert.collect();
+    }),
+    test('integration execution schema rejects invalid worker lifecycle fields', function (scope: OverkillScope) {
+        const result = safeParse(integrationExecutionSchema, {
+            processModel: 'worker-pool',
+            scheduling: 'serial',
+            workerLifecycle: 'per-file'
+        });
+
+        scope.assert.equal(result.success, false);
+
+        return scope.assert.collect();
+    }),
+    test(
+        'integration execution schema accepts duration-history-balanced assignment policy',
+        function (scope: OverkillScope) {
+            const result = safeParse(integrationExecutionSchema, {
+                assignmentPolicy: 'duration-history-balanced',
+                processModel: 'worker-pool',
+                scheduling: 'serial'
             });
-        })
-    ]
-});
 
-await runIfMain(import.meta, testNode);
+            scope.assert.equal(result.success, true);
+
+            return scope.assert.collect();
+        }
+    ),
+    test('integration execution schema rejects invalid worker-pool dispatch policy', function (scope: OverkillScope) {
+        const result = safeParse(integrationExecutionSchema, {
+            dispatchPolicy: 'least-busy',
+            processModel: 'worker-pool',
+            scheduling: 'serial'
+        });
+
+        scope.assert.equal(result.success, false);
+
+        return scope.assert.collect();
+    }),
+    test(
+        'integration execution schema rejects worker-pool fields on supervised profiles',
+        function (scope: OverkillScope) {
+            const result = safeParse(integrationExecutionSchema, {
+                dispatchPolicy: 'dynamic-lease',
+                processModel: 'supervised-process',
+                scheduling: 'serial',
+                workDistribution: { mode: 'file' },
+                workerLifecycle: 'fresh-worker-per-unit'
+            });
+
+            scope.assert.equal(result.success, false);
+
+            return scope.assert.collect();
+        }
+    ),
+    test('integration execution schema rejects in-process profiles', function (scope: OverkillScope) {
+        const result = safeParse(integrationExecutionSchema, {
+            processModel: 'in-process',
+            scheduling: 'serial'
+        });
+
+        scope.assert.equal(result.success, false);
+
+        return scope.assert.collect();
+    }),
+    test('integration profile schema rejects missing files', function (scope: OverkillScope) {
+        const result = safeParse(integrationProfileSchema, { testFamily: 'integration' });
+
+        scope.assert.equal(result.success, false);
+
+        return scope.assert.collect();
+    }),
+    test('microtest process usage schema accepts measured and unmeasured policies', function (scope: OverkillScope) {
+        assertValidationSuccess(scope, processUsageSchema, { measure: false });
+        assertValidationSuccess(scope, processUsageSchema, {
+            budgets: {
+                activeResourceCount: 1,
+                javaScriptEngineHeapBytes: 2,
+                residentSetBytes: null,
+                residentSetGrowthBytesPerSecond: 3
+            },
+            measure: true,
+            samplingIntervalMilliseconds: 4
+        });
+
+        return scope.assert.collect();
+    }),
+    test('microtest timeout schema accepts soft and hard timeouts', function (scope: OverkillScope) {
+        assertValidationSuccess(scope, timeoutSchema, {
+            hardMilliseconds: 2,
+            softMilliseconds: 1
+        });
+
+        return scope.assert.collect();
+    }),
+    rejectedSchemaCases('microtest profile schema rejects unsupported fields', invalidMicrotestProfileFields),
+    rejectedSchemaCases('microtest profile nested schema rejects unsupported fields', invalidNestedFields)
+]);

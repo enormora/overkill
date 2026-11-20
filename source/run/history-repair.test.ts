@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
 import { createMemoryHistoryStorage } from '../test-support/memory-history-storage.ts';
@@ -47,7 +47,7 @@ async function writeMergeHistoryRecords(store: HistoryStorage): Promise<void> {
     );
 }
 
-export const testNode = suite('history schema compatibility', [
+export const testNode = authoredSuite('history schema compatibility', [
     failures,
     test(
         'repair preserves summaries and counters after detailed records are pruned',
@@ -121,4 +121,3 @@ export const testNode = suite('history schema compatibility', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

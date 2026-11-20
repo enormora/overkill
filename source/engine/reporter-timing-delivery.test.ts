@@ -1,10 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock } from '@enormora/clock';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+
 import {
     createInMemoryFinalResultReporter,
     createInMemoryRealTimeReporter,
@@ -131,39 +128,28 @@ async function executeWithPreciseTimings(
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/engine/reporter-timing-delivery.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() delivers complete precise timings through both reporter lifecycles',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const engine = createTimingDeliveryEngine();
-                const realTimeReporter = createInMemoryRealTimeReporter();
-                const finalResultReporter = createInMemoryFinalResultReporter();
-                const precise = preciseTimings();
+export const testNode = suite('source/engine/reporter-timing-delivery.test.ts', [
+    test(
+        'execute() delivers complete precise timings through both reporter lifecycles',
+        async function (scope: OverkillScope) {
+            const engine = createTimingDeliveryEngine();
+            const realTimeReporter = createInMemoryRealTimeReporter();
+            const finalResultReporter = createInMemoryFinalResultReporter();
+            const precise = preciseTimings();
 
-                await executeWithPreciseTimings(engine, realTimeReporter, finalResultReporter, precise);
+            await executeWithPreciseTimings(engine, realTimeReporter, finalResultReporter, precise);
 
-                const deliveredReports = [
-                    ...realTimePreciseReports(realTimeReporter),
-                    ...finalPreciseReports(finalResultReporter)
-                ];
+            const deliveredReports = [
+                ...realTimePreciseReports(realTimeReporter),
+                ...finalPreciseReports(finalResultReporter)
+            ];
 
-                scope.assert.equal(deliveredReports.length, 3);
-                for (const deliveredReport of deliveredReports) {
-                    scope.assert.equal(deliveredReport, precise);
-                }
-
-                return scope.assert.collect();
+            scope.assert.equal(deliveredReports.length, 3);
+            for (const deliveredReport of deliveredReports) {
+                scope.assert.equal(deliveredReport, precise);
             }
-        })
-    ]
-});
 
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

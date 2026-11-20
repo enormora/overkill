@@ -8,8 +8,6 @@
         "source/packages/**/*.ts",
         "source/run/node-command-line-runner.entry-point.ts",
         "source/run/worker-pool-worker.ts",
-        "source/test-support/unit-coverage.ts",
-        "source/test-support/run-integration.ts",
         "source/test-support/body-plan-implementation.ts",
         "source/reporters/null-reporter.ts",
         "build-benchmark-html.js",

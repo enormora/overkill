@@ -1,4 +1,5 @@
-import { suite, test } from '../test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { runResultFactory } from '../../test-support/run-result-factory.ts';
 import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
@@ -6,7 +7,7 @@ import { mutantExecutionResult } from './mutation-results.ts';
 import { dryMutationResult } from './dry-run-results.ts';
 import type { MutationInvocationExpectation } from './mutation-observation.ts';
 
-export const testNode = suite('mutation invocation observations', [
+export const testNode = authoredSuite('mutation invocation observations', [
     test('rejects jointly shortened selection and results against the caller request', function (scope) {
         const { reply, baseline } = mutationCoverageFixture('perTest');
         const data = mutationLifecycleDataSchema.parse(reply.data);

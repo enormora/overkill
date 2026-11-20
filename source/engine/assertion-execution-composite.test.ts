@@ -1,14 +1,10 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
     defineCompositeAssertion,
     defineCompositeAssertion as definePublishedCompositeAssertion,
     defineNarrowingCompositeAssertion
-} from '../packages/assert/assert.entry-point.ts';
+} from '@overkill-dev/test/assert';
 import type {
     FailedCheck,
     FailedCompositeCheck,
@@ -158,337 +154,290 @@ function firstForeignChild(outcome: FailOutcome): FailedForeignCheck | null {
     return null;
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/engine/assertion-execution-composite.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() records callable composite assertion references as one planned boundary',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const resultOk = defineCompositeAssertion({
-                    assert(check, result: BooleanResult) {
-                        return check.true(result.ok);
-                    },
-                    name: 'resultOk'
-                });
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.plan(1);
-                    testScope.assert(resultOk, { ok: true });
-                    testScope.assert.length([ 1, 2 ], 2);
-                    return testScope.assert.collect();
-                });
+export const testNode = suite('source/engine/assertion-execution-composite.test.ts', [
+    test(
+        'execute() records callable composite assertion references as one planned boundary',
+        async function (scope: OverkillScope) {
+            const resultOk = defineCompositeAssertion({
+                assert(check, result: BooleanResult) {
+                    return check.true(result.ok);
+                },
+                name: 'resultOk'
+            });
+            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                testScope.plan(1);
+                testScope.assert(resultOk, { ok: true });
+                testScope.assert.length([ 1, 2 ], 2);
+                return testScope.assert.collect();
+            });
 
-                scope.assert.equal(result.summary.failed, 1);
-                const outcome = firstFailOutcome(result);
-                scope.require.notNull(outcome);
-                scope.assert.deepEqual(outcome.failures, [
-                    {
-                        actual: 2,
-                        code: 'plan-mismatch',
-                        expected: '1',
-                        kind: 'test-contract',
-                        summary: 'Assertion plan count did not match.'
-                    }
+            scope.assert.equal(result.summary.failed, 1);
+            const outcome = firstFailOutcome(result);
+            scope.require.notNull(outcome);
+            scope.assert.deepEqual(outcome.failures, [
+                {
+                    actual: 2,
+                    code: 'plan-mismatch',
+                    expected: '1',
+                    kind: 'test-contract',
+                    summary: 'Assertion plan count did not match.'
+                }
+            ]);
+
+            return scope.assert.collect();
+        }
+    ),
+    test('execute() reports composite parent failures with child diagnostics', async function (scope: OverkillScope) {
+        const resultOk = defineCompositeAssertion({
+            assert(check, result: ValueResult, expected: unknown) {
+                return check.group([
+                    check.annotated('status').true(result.ok),
+                    check.annotated('value').deepEqual(result.value, expected)
                 ]);
+            },
+            formatSummary(context, result: ValueResult, expected: unknown) {
+                scope.assert.deepEqual(result, { ok: false, value: { count: 1 } });
+                scope.assert.deepEqual(expected, { count: 2 });
+                return `Expected ${context.name} to match.`;
+            },
+            name: 'resultOk'
+        });
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            testScope.assert(resultOk, { ok: false, value: { count: 1 } }, { count: 2 });
+            return testScope.assert.collect();
+        });
+        const outcome = firstFailOutcome(result);
+        scope.require.notNull(outcome);
+        const composite = firstCompositeCheck(outcome);
+        scope.require.notNull(composite);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() reports composite parent failures with child diagnostics',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const resultOk = defineCompositeAssertion({
-                    assert(check, result: ValueResult, expected: unknown) {
-                        return check.group([
-                            check.annotated('status').true(result.ok),
-                            check.annotated('value').deepEqual(result.value, expected)
-                        ]);
-                    },
-                    formatSummary(context, result: ValueResult, expected: unknown) {
-                        scope.assert.deepEqual(result, { ok: false, value: { count: 1 } });
-                        scope.assert.deepEqual(expected, { count: 2 });
-                        return `Expected ${context.name} to match.`;
-                    },
-                    name: 'resultOk'
-                });
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.assert(resultOk, { ok: false, value: { count: 1 } }, { count: 2 });
-                    return testScope.assert.collect();
-                });
-                const outcome = firstFailOutcome(result);
-                scope.require.notNull(outcome);
-                const composite = firstCompositeCheck(outcome);
-                scope.require.notNull(composite);
+        scope.assert(capturedTestLocation, composite.sourceLocations[0]);
+        scope.assert.deepEqual(
+            composite.children.map(function toLocation(child) {
+                return child.sourceLocations[0];
+            }),
+            [ composite.sourceLocations[0], composite.sourceLocations[0] ]
+        );
 
-                scope.assert(capturedTestLocation, composite.sourceLocations[0]);
-                scope.assert.deepEqual(
-                    composite.children.map(function toLocation(child) {
-                        return child.sourceLocations[0];
-                    }),
-                    [ composite.sourceLocations[0], composite.sourceLocations[0] ]
-                );
-
-                scope.assert.deepEqual(outcome.failures, [
+        scope.assert.deepEqual(outcome.failures, [
+            {
+                checks: [
                     {
-                        checks: [
+                        actual: serializeValue({ ok: false, value: { count: 1 } }),
+                        children: [
                             {
-                                actual: serializeValue({ ok: false, value: { count: 1 } }),
-                                children: [
-                                    {
-                                        actual: serializeValue(false),
-                                        diff: composite.children[0].diff,
-                                        expected: serializeValue(true),
-                                        id: '1.1',
-                                        kind: 'leaf',
-                                        sourceLocations: [ composite.children[0].sourceLocations[0] ],
-                                        path: [],
-                                        source: 'assert',
-                                        summary: 'status'
-                                    },
-                                    {
-                                        actual: serializeValue({ count: 1 }),
-                                        diff: composite.children[1]?.diff,
-                                        expected: serializeValue({ count: 2 }),
-                                        id: '1.2',
-                                        kind: 'leaf',
-                                        sourceLocations: [ composite.children[1]?.sourceLocations[0] ],
-                                        path: [ { key: { kind: 'string', value: 'count' }, kind: 'property' } ],
-                                        source: 'assert',
-                                        summary: 'value'
-                                    }
-                                ],
-                                diff: null,
-                                expected: serializeValue({ count: 2 }),
-                                id: '1',
-                                kind: 'composite',
-                                sourceLocations: [ composite.sourceLocations[0] ],
+                                actual: serializeValue(false),
+                                diff: composite.children[0].diff,
+                                expected: serializeValue(true),
+                                id: '1.1',
+                                kind: 'leaf',
+                                sourceLocations: [ composite.children[0].sourceLocations[0] ],
                                 path: [],
                                 source: 'assert',
-                                summary: 'Expected resultOk to match.'
-                            }
-                        ],
-                        kind: 'assertion'
-                    }
-                ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() records narrowing assertion references through assert',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const isString = defineNarrowingCompositeAssertion({
-                    name: 'isString',
-                    narrows(value: unknown): value is string {
-                        return typeof value === 'string';
-                    }
-                });
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.assert(isString, 'value');
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.equal(result.summary.passed, 1);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() rejects non-engine assertion references',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    callUnknownFacade(testScope.assert, [ 'not-reference' ]);
-                    return testScope.assert.collect();
-                });
-                const outcome = firstFailOutcome(result);
-                const failure = outcome === null ? null : firstContractFailure(outcome);
-
-                scope.require.notNull(outcome);
-                scope.require.notNull(failure);
-                scope.assert.equal(failure.code, 'invalid-assertion-reference');
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() rejects non-narrowing references through require',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const reference = defineCompositeAssertion({
-                    assert(check) {
-                        return check.true(true);
-                    },
-                    name: 'custom'
-                });
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    callUnknownFacade(testScope.require, [ reference, 'value' ]);
-                    return testScope.assert.collect();
-                });
-                const outcome = firstFailOutcome(result);
-                const failure = outcome === null ? null : firstContractFailure(outcome);
-
-                scope.require.notNull(outcome);
-                scope.require.notNull(failure);
-                scope.assert.equal(failure.code, 'invalid-require-reference');
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() short-circuits failed narrowing assertion references through require',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const error = new Error('boom');
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.plan(2);
-                    const actual: NarrowingResult = { error, ok: false };
-
-                    testScope.require(narrowingResultOk, actual);
-                    testScope.assert.fail({ message: 'ignored' });
-                    return testScope.assert.collect();
-                });
-                const outcome = firstFailOutcome(result);
-                scope.require.notNull(outcome);
-                const composite = firstCompositeCheck(outcome);
-                scope.require.notNull(composite);
-
-                scope.assert(capturedTestLocation, composite.sourceLocations[0]);
-                scope.assert.deepEqual(
-                    composite.children.map(function toLocation(child) {
-                        return child.sourceLocations[0];
-                    }),
-                    [ composite.sourceLocations[0] ]
-                );
-
-                scope.assert.deepEqual(outcome.failures, [
-                    {
-                        checks: [
+                                summary: 'status'
+                            },
                             {
-                                actual: serializeValue({ error, ok: false }),
-                                children: [
-                                    {
-                                        actual: serializeValue(false),
-                                        diff: composite.children[0].diff,
-                                        expected: serializeValue(true),
-                                        id: '1.1',
-                                        kind: 'leaf',
-                                        sourceLocations: [ composite.children[0].sourceLocations[0] ],
-                                        path: [],
-                                        source: 'require',
-                                        summary: 'Expected resultOk narrowing predicate to pass.'
-                                    }
-                                ],
-                                diff: null,
-                                expected: serializeValue('resultOk'),
-                                id: '1',
-                                kind: 'composite',
-                                sourceLocations: [ composite.sourceLocations[0] ],
-                                path: [],
-                                source: 'require',
-                                summary: 'Expected resultOk assertion to pass.'
+                                actual: serializeValue({ count: 1 }),
+                                diff: composite.children[1]?.diff,
+                                expected: serializeValue({ count: 2 }),
+                                id: '1.2',
+                                kind: 'leaf',
+                                sourceLocations: [ composite.children[1]?.sourceLocations[0] ],
+                                path: [ { key: { kind: 'string', value: 'count' }, kind: 'property' } ],
+                                source: 'assert',
+                                summary: 'value'
                             }
                         ],
-                        kind: 'assertion'
+                        diff: null,
+                        expected: serializeValue({ count: 2 }),
+                        id: '1',
+                        kind: 'composite',
+                        sourceLocations: [ composite.sourceLocations[0] ],
+                        path: [],
+                        source: 'assert',
+                        summary: 'Expected resultOk to match.'
                     }
-                ]);
-
-                return scope.assert.collect();
+                ],
+                kind: 'assertion'
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() rejects unawaited async custom assertions at collect',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const eventuallyOk = defineCompositeAssertion({
-                    async assert(check) {
-                        await Promise.resolve();
-                        return check.true(true);
-                    },
-                    name: 'eventuallyOk'
-                });
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    const pendingAssertions = [ testScope.assert(eventuallyOk) ];
+        ]);
 
-                    scope.assert.equal(pendingAssertions.length, 1);
-                    return testScope.assert.collect();
-                });
-                const outcome = firstFailOutcome(result);
-
-                scope.require.notNull(outcome);
-                scope.assert.deepEqual(outcome.failures, [
-                    {
-                        actual: 'pending async assertion',
-                        code: 'pending-async-assertion',
-                        expected: 'all async assertions awaited before collect',
-                        kind: 'test-contract',
-                        summary: 'Async assertion must be awaited before scope.assert.collect().'
-                    }
-                ]);
-
-                return scope.assert.collect();
+        return scope.assert.collect();
+    }),
+    test('execute() records narrowing assertion references through assert', async function (scope: OverkillScope) {
+        const isString = defineNarrowingCompositeAssertion({
+            name: 'isString',
+            narrows(value: unknown): value is string {
+                return typeof value === 'string';
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() normalizes foreign bridge failures under the composite parent',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    testScope.assert.annotated('foreign failed')(foreignFailureAssertion);
-                    return testScope.assert.collect();
-                });
-                const outcome = firstFailOutcome(result);
+        });
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            testScope.assert(isString, 'value');
+            return testScope.assert.collect();
+        });
 
-                scope.require.notNull(outcome);
-                const composite = firstCompositeCheck(outcome);
-                const child = firstForeignChild(outcome);
-                scope.require.notNull(composite);
-                scope.require.notNull(child);
-                scope.assert.deepEqual(
-                    {
-                        childErrorMessage: child.error.message,
-                        childErrorName: child.error.name,
-                        childLabel: child.label,
-                        childLocation: child.sourceLocations[0],
-                        compositeLocation: composite.sourceLocations[0],
-                        compositeSummary: composite.summary
-                    },
-                    {
-                        childErrorMessage: 'wrong shape',
-                        childErrorName: 'TypeError',
-                        childLabel: 'foreign.expectation',
-                        childLocation: composite.sourceLocations[0],
-                        compositeLocation: composite.sourceLocations[0],
-                        compositeSummary: 'foreign failed'
-                    }
-                );
-                scope.assert(capturedTestLocation, composite.sourceLocations[0]);
+        scope.assert.equal(result.summary.passed, 1);
 
-                return scope.assert.collect();
+        return scope.assert.collect();
+    }),
+    test('execute() rejects non-engine assertion references', async function (scope: OverkillScope) {
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            callUnknownFacade(testScope.assert, [ 'not-reference' ]);
+            return testScope.assert.collect();
+        });
+        const outcome = firstFailOutcome(result);
+        const failure = outcome === null ? null : firstContractFailure(outcome);
+
+        scope.require.notNull(outcome);
+        scope.require.notNull(failure);
+        scope.assert.equal(failure.code, 'invalid-assertion-reference');
+
+        return scope.assert.collect();
+    }),
+    test('execute() rejects non-narrowing references through require', async function (scope: OverkillScope) {
+        const reference = defineCompositeAssertion({
+            assert(check) {
+                return check.true(true);
+            },
+            name: 'custom'
+        });
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            callUnknownFacade(testScope.require, [ reference, 'value' ]);
+            return testScope.assert.collect();
+        });
+        const outcome = firstFailOutcome(result);
+        const failure = outcome === null ? null : firstContractFailure(outcome);
+
+        scope.require.notNull(outcome);
+        scope.require.notNull(failure);
+        scope.assert.equal(failure.code, 'invalid-require-reference');
+
+        return scope.assert.collect();
+    }),
+    test(
+        'execute() short-circuits failed narrowing assertion references through require',
+        async function (scope: OverkillScope) {
+            const error = new Error('boom');
+            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                testScope.plan(2);
+                const actual: NarrowingResult = { error, ok: false };
+
+                testScope.require(narrowingResultOk, actual);
+                testScope.assert.fail({ message: 'ignored' });
+                return testScope.assert.collect();
+            });
+            const outcome = firstFailOutcome(result);
+            scope.require.notNull(outcome);
+            const composite = firstCompositeCheck(outcome);
+            scope.require.notNull(composite);
+
+            scope.assert(capturedTestLocation, composite.sourceLocations[0]);
+            scope.assert.deepEqual(
+                composite.children.map(function toLocation(child) {
+                    return child.sourceLocations[0];
+                }),
+                [ composite.sourceLocations[0] ]
+            );
+
+            scope.assert.deepEqual(outcome.failures, [
+                {
+                    checks: [
+                        {
+                            actual: serializeValue({ error, ok: false }),
+                            children: [
+                                {
+                                    actual: serializeValue(false),
+                                    diff: composite.children[0].diff,
+                                    expected: serializeValue(true),
+                                    id: '1.1',
+                                    kind: 'leaf',
+                                    sourceLocations: [ composite.children[0].sourceLocations[0] ],
+                                    path: [],
+                                    source: 'require',
+                                    summary: 'Expected resultOk narrowing predicate to pass.'
+                                }
+                            ],
+                            diff: null,
+                            expected: serializeValue('resultOk'),
+                            id: '1',
+                            kind: 'composite',
+                            sourceLocations: [ composite.sourceLocations[0] ],
+                            path: [],
+                            source: 'require',
+                            summary: 'Expected resultOk assertion to pass.'
+                        }
+                    ],
+                    kind: 'assertion'
+                }
+            ]);
+
+            return scope.assert.collect();
+        }
+    ),
+    test('execute() rejects unawaited async custom assertions at collect', async function (scope: OverkillScope) {
+        const eventuallyOk = defineCompositeAssertion({
+            async assert(check) {
+                await Promise.resolve();
+                return check.true(true);
+            },
+            name: 'eventuallyOk'
+        });
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const pendingAssertions = [ testScope.assert(eventuallyOk) ];
+
+            scope.assert.equal(pendingAssertions.length, 1);
+            return testScope.assert.collect();
+        });
+        const outcome = firstFailOutcome(result);
+
+        scope.require.notNull(outcome);
+        scope.assert.deepEqual(outcome.failures, [
+            {
+                actual: 'pending async assertion',
+                code: 'pending-async-assertion',
+                expected: 'all async assertions awaited before collect',
+                kind: 'test-contract',
+                summary: 'Async assertion must be awaited before scope.assert.collect().'
             }
-        })
-    ]
-});
+        ]);
 
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    }),
+    test(
+        'execute() normalizes foreign bridge failures under the composite parent',
+        async function (scope: OverkillScope) {
+            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                testScope.assert.annotated('foreign failed')(foreignFailureAssertion);
+                return testScope.assert.collect();
+            });
+            const outcome = firstFailOutcome(result);
+
+            scope.require.notNull(outcome);
+            const composite = firstCompositeCheck(outcome);
+            const child = firstForeignChild(outcome);
+            scope.require.notNull(composite);
+            scope.require.notNull(child);
+            scope.assert.deepEqual(
+                {
+                    childErrorMessage: child.error.message,
+                    childErrorName: child.error.name,
+                    childLabel: child.label,
+                    childLocation: child.sourceLocations[0],
+                    compositeLocation: composite.sourceLocations[0],
+                    compositeSummary: composite.summary
+                },
+                {
+                    childErrorMessage: 'wrong shape',
+                    childErrorName: 'TypeError',
+                    childLabel: 'foreign.expectation',
+                    childLocation: composite.sourceLocations[0],
+                    compositeLocation: composite.sourceLocations[0],
+                    compositeSummary: 'foreign failed'
+                }
+            );
+            scope.assert(capturedTestLocation, composite.sourceLocations[0]);
+
+            return scope.assert.collect();
+        }
+    )
+]);

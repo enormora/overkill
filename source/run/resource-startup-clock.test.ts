@@ -1,24 +1,27 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { startupClock, startupResource } from '../test-support/resource-startup-clock.ts';
 import { isResourceStartupTimeoutError } from './resource-lifecycle-startup-budget.ts';
 
-export const testNode = suite('resource startup clock policy', [
+export const testNode = authoredSuite('resource startup clock policy', [
     ...([ [], [ { kind: 'serial' } ], [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: -1 } ], [ {
         kind: 'startup-budget-milliseconds',
         minimumMilliseconds: Number.NaN
     } ], [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: Number.POSITIVE_INFINITY } ] ] as const)
         .map(function (requirements, index) {
-            return test(`does not schedule invalid or absent budget ${index}`, async function (scope: TestScope) {
-                const clock = startupClock();
-                const fixture = startupResource(requirements, 'success');
-                scope.assert.equal(await fixture.acquire(clock.runtime), 'handle');
-                scope.assert.equal(fixture.observed.read(), fixture.parent.signal);
-                scope.assert.deepEqual(clock.scheduled, []);
-                return scope.assert.collect();
-            });
+            return authoredTest(
+                `does not schedule invalid or absent budget ${index}`,
+                async function (scope: TestScope) {
+                    const clock = startupClock();
+                    const fixture = startupResource(requirements, 'success');
+                    scope.assert.equal(await fixture.acquire(clock.runtime), 'handle');
+                    scope.assert.equal(fixture.observed.read(), fixture.parent.signal);
+                    scope.assert.deepEqual(clock.scheduled, []);
+                    return scope.assert.collect();
+                }
+            );
         }),
-    test('uses the greatest budget and cancels its timer after acquisition', async function (scope: TestScope) {
+    authoredTest('uses the greatest budget and cancels its timer after acquisition', async function (scope: TestScope) {
         const clock = startupClock();
         const fixture = startupResource([ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 2 }, {
             kind: 'startup-budget-milliseconds',
@@ -31,25 +34,31 @@ export const testNode = suite('resource startup clock policy', [
         scope.assert.equal(clock.pending(), 0);
         return scope.assert.collect();
     }),
-    test('aborts acquisition and brands timeout errors when the clock expires', async function (scope: TestScope) {
-        const clock = startupClock();
-        const fixture = startupResource([ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 0 } ], 'wait');
-        const pending = fixture.acquire(clock.runtime);
-        clock.expire();
-        await scope.assert.rejects(async function () {
-            await pending;
-        }, { message: 'Resource "database" exceeded startup budget of 0 ms.' });
-        const signal = fixture.observed.read();
-        scope.require.defined(signal);
-        scope.assert.deepEqual({
-            aborted: signal.aborted,
-            timeout: isResourceStartupTimeoutError(signal.reason),
-            parentAborted: fixture.parent.signal.aborted,
-            pending: clock.pending()
-        }, { aborted: true, timeout: true, parentAborted: false, pending: 0 });
-        return scope.assert.collect();
-    }),
-    test('forwards parent cancellation and removes the startup timer', async function (scope: TestScope) {
+    authoredTest(
+        'aborts acquisition and brands timeout errors when the clock expires',
+        async function (scope: TestScope) {
+            const clock = startupClock();
+            const fixture = startupResource(
+                [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 0 } ],
+                'wait'
+            );
+            const pending = fixture.acquire(clock.runtime);
+            clock.expire();
+            await scope.assert.rejects(async function () {
+                await pending;
+            }, { message: 'Resource "database" exceeded startup budget of 0 ms.' });
+            const signal = fixture.observed.read();
+            scope.require.defined(signal);
+            scope.assert.deepEqual({
+                aborted: signal.aborted,
+                timeout: isResourceStartupTimeoutError(signal.reason),
+                parentAborted: fixture.parent.signal.aborted,
+                pending: clock.pending()
+            }, { aborted: true, timeout: true, parentAborted: false, pending: 0 });
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('forwards parent cancellation and removes the startup timer', async function (scope: TestScope) {
         const clock = startupClock();
         const fixture = startupResource([ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 7 } ], 'wait');
         const pending = fixture.acquire(clock.runtime);
@@ -62,7 +71,7 @@ export const testNode = suite('resource startup clock policy', [
         scope.assert.false(isResourceStartupTimeoutError(error));
         return scope.assert.collect();
     }),
-    test('preserves acquisition errors while releasing timer ownership', async function (scope: TestScope) {
+    authoredTest('preserves acquisition errors while releasing timer ownership', async function (scope: TestScope) {
         const clock = startupClock();
         const fixture = startupResource([ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 7 } ], 'error');
         await scope.assert.rejects(async function () {
@@ -73,10 +82,9 @@ export const testNode = suite('resource startup clock policy', [
         return scope.assert.collect();
     }),
     ...([ null, undefined, 42, 'failure', {}, new Error('ordinary') ] as const).map(function (error, index) {
-        return test(`does not recognize unrelated timeout value ${index}`, function (scope: TestScope) {
+        return authoredTest(`does not recognize unrelated timeout value ${index}`, function (scope: TestScope) {
             scope.assert.false(isResourceStartupTimeoutError(error));
             return scope.assert.collect();
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

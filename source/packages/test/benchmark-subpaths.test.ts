@@ -1,5 +1,6 @@
+import { suite, test } from '@overkill-dev/test';
 import { benchmarkAuthoringExports } from '../../test-support/benchmark-authoring-exports.ts';
-import { suite, test } from './test.entry-point.ts';
+
 import * as bench from './bench.entry-point.ts';
 import * as baselines from './baselines.entry-point.ts';
 

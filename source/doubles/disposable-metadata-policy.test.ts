@@ -1,10 +1,10 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { testDisposable, testAsyncDisposable } from './protocol-double.ts';
 import { protocolIteratorEvents, protocolDisposeMethod } from './protocol-double-metadata.ts';
 import { doubleUsage } from './double-usage.ts';
 
-export const testNode = suite('disposable protocol metadata', [
+export const testNode = authoredSuite('disposable protocol metadata', [
     test('exposes empty iteration history for disposable protocol objects', function (scope: TestScope) {
         scope.assert.deepEqual<unknown, unknown>(protocolIteratorEvents(testDisposable()), []);
         scope.assert.deepEqual<unknown, unknown>(protocolIteratorEvents(testAsyncDisposable()), []);
@@ -20,4 +20,3 @@ export const testNode = suite('disposable protocol metadata', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

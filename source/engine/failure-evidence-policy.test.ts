@@ -1,7 +1,6 @@
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import {
-    createSuite,
-    createTestCase,
     defaultFailureArtifactPolicy,
     type RunnerError,
     type TestScope
@@ -101,91 +100,76 @@ async function rejectedExecution(error: Error, cleanupErrors: readonly unknown[]
     throw new Error('Expected execution to reject.');
 }
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'failure artifact contexts',
-    children: [
-        ...timeoutOwners.map(function timeoutAttribution({ activeWork, ...attribution }) {
-            return createTestCase({
-                ...metadata,
-                title: `hard timeout attribution follows ${activeWork.length} active attempts`,
-                body(scope: TestScope) {
-                    const cause: CrashCause = {
-                        activeAttempts: activeWork.map(function (active) {
-                            return active.attempt;
-                        }),
-                        activeCases: activeWork.map(function (active) {
-                            return active.work.case;
-                        }),
-                        activeWork: activeWork.map(function (active) {
-                            return active.work;
-                        }),
-                        reason: 'hard-timeout',
-                        termination: 'hard-timeout'
-                    };
-                    scope.assert.partialDeepEqual(executionCrashError(cause), {
-                        ...attribution,
-                        cause,
-                        subtype: 'crash'
-                    });
-                    return scope.assert.collect();
-                }
-            });
-        }),
-        createTestCase({
+export const testNode = suite('failure artifact contexts', [
+    ...timeoutOwners.map(function timeoutAttribution({ activeWork, ...attribution }) {
+        return test({
             ...metadata,
-            title: 'execution and cleanup failures retain their original causes in order',
-            async body(scope: TestScope) {
-                const error = new Error('execution failed');
-                const cleanup = new Error('capture cleanup failed');
-                const failure = await rejectedExecution(error, [ cleanup, null ]);
-                scope.require.instanceOf(failure, AggregateError);
-                scope.assert.deepEqual(failure.errors, [ error, cleanup, null ]);
-                scope.assert.equal(failure.cause, error);
-                scope.assert.equal(await rejectedExecution(error, []), error);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'attempt evidence excludes foreign work and retries without mutating earlier snapshots',
+            title: `hard timeout attribution follows ${activeWork.length} active attempts`,
             body(scope: TestScope) {
-                const owned = crashEvidence([ { work, attempt } ]);
-                const shared = crashEvidence([ { work, attempt }, { work: peer, attempt } ]);
-                const observed = withFailureArtifactContext(defaultFailureArtifactPolicy, function captureEvidence() {
-                    return observeAttemptEvidence(owned, shared);
-                }, null);
-                scope.assert.deepEqual(observed, {
-                    before: [ owned ],
-                    all: [ owned, shared ],
-                    matching: [ owned ],
-                    foreign: [],
-                    retried: []
+                const cause: CrashCause = {
+                    activeAttempts: activeWork.map(function (active) {
+                        return active.attempt;
+                    }),
+                    activeCases: activeWork.map(function (active) {
+                        return active.work.case;
+                    }),
+                    activeWork: activeWork.map(function (active) {
+                        return active.work;
+                    }),
+                    reason: 'hard-timeout',
+                    termination: 'hard-timeout'
+                };
+                scope.assert.partialDeepEqual(executionCrashError(cause), {
+                    ...attribution,
+                    cause,
+                    subtype: 'crash'
                 });
                 return scope.assert.collect();
             }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'nested executions restore outer boundary evidence and sampling intervals',
-            body(scope: TestScope) {
-                const previousInterval = currentProcessUsageSamplingInterval();
-                const owned = crashEvidence([ { work, attempt } ]);
-                const other = crashEvidence([ { work: peer, attempt } ]);
-                const observed = withFailureArtifactContext(defaultFailureArtifactPolicy, function outerExecution() {
-                    recordBoundaryArtifact(owned);
-                    const inner = withFailureArtifactContext(defaultFailureArtifactPolicy, function innerExecution() {
-                        recordBoundaryArtifact(other);
-                        return boundaryArtifacts();
-                    }, 25);
-                    return { inner, outer: boundaryArtifacts(), interval: currentProcessUsageSamplingInterval() };
-                }, 10);
-                scope.assert.deepEqual(observed, { inner: [ other ], outer: [ owned ], interval: 10 });
-                scope.assert.equal(currentProcessUsageSamplingInterval(), previousInterval);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        });
+    }),
+    test('execution and cleanup failures retain their original causes in order', async function (scope: TestScope) {
+        const error = new Error('execution failed');
+        const cleanup = new Error('capture cleanup failed');
+        const failure = await rejectedExecution(error, [ cleanup, null ]);
+        scope.require.instanceOf(failure, AggregateError);
+        scope.assert.deepEqual(failure.errors, [ error, cleanup, null ]);
+        scope.assert.equal(failure.cause, error);
+        scope.assert.equal(await rejectedExecution(error, []), error);
+        return scope.assert.collect();
+    }),
+    test(
+        'attempt evidence excludes foreign work and retries without mutating earlier snapshots',
+        function (scope: TestScope) {
+            const owned = crashEvidence([ { work, attempt } ]);
+            const shared = crashEvidence([ { work, attempt }, { work: peer, attempt } ]);
+            const observed = withFailureArtifactContext(defaultFailureArtifactPolicy, function captureEvidence() {
+                return observeAttemptEvidence(owned, shared);
+            }, null);
+            scope.assert.deepEqual(observed, {
+                before: [ owned ],
+                all: [ owned, shared ],
+                matching: [ owned ],
+                foreign: [],
+                retried: []
+            });
+            return scope.assert.collect();
+        }
+    ),
+    test('nested executions restore outer boundary evidence and sampling intervals', function (scope: TestScope) {
+        const previousInterval = currentProcessUsageSamplingInterval();
+        const owned = crashEvidence([ { work, attempt } ]);
+        const other = crashEvidence([ { work: peer, attempt } ]);
+        const observed = withFailureArtifactContext(defaultFailureArtifactPolicy, function outerExecution() {
+            recordBoundaryArtifact(owned);
+            const inner = withFailureArtifactContext(defaultFailureArtifactPolicy, function innerExecution() {
+                recordBoundaryArtifact(other);
+                return boundaryArtifacts();
+            }, 25);
+            return { inner, outer: boundaryArtifacts(), interval: currentProcessUsageSamplingInterval() };
+        }, 10);
+        scope.assert.deepEqual(observed, { inner: [ other ], outer: [ owned ], interval: 10 });
+        scope.assert.equal(currentProcessUsageSamplingInterval(), previousInterval);
+        return scope.assert.collect();
+    })
+]);

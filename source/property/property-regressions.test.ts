@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
+import { test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import type { PropertyWitnessFile } from '../engine/witness-file.ts';
 import { emptyPropertyCorpus } from '../engine/property-corpus.ts';
@@ -29,9 +30,9 @@ async function witness(): Promise<PropertyWitnessFile> {
     return saved;
 }
 
-export const testNode = suite('stored property regressions', [
+export const testNode = authoredSuite('stored property regressions', [
     invocationTargets,
-    test('replays a witness once without exploring or confirming it', async function (scope) {
+    authoredTest('replays a witness once without exploring or confirming it', async function (scope) {
         const saved = await witness();
         const inputs: number[] = [];
         const result = await executePropertyNode(
@@ -52,7 +53,7 @@ export const testNode = suite('stored property regressions', [
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    test('rejects an incompatible direct replay without executing the body', async function (scope) {
+    authoredTest('rejects an incompatible direct replay without executing the body', async function (scope) {
         const saved = await witness();
         const inputs: number[] = [];
         const result = await executePropertyNode(
@@ -80,7 +81,7 @@ export const testNode = suite('stored property regressions', [
         scope.assert.equal(result.summary.passed, 0);
         return scope.assert.collect();
     }),
-    test('rejects replay when the selected declaration is no longer a property', async function (scope) {
+    authoredTest('rejects replay when the selected declaration is no longer a property', async function (scope) {
         const saved = await witness();
         const inputs: string[] = [];
         const result = await executePropertyNode(
@@ -97,7 +98,7 @@ export const testNode = suite('stored property regressions', [
         }));
         return scope.assert.collect();
     }),
-    test('replays confirmed inputs outside the current generation domain', async function (scope) {
+    authoredTest('replays confirmed inputs outside the current generation domain', async function (scope) {
         const saved = await witness();
         const inputs: number[] = [];
         const result = await executePropertyNode(
@@ -117,7 +118,7 @@ export const testNode = suite('stored property regressions', [
         scope.assert.deepEqual(inputs, [ 42, 42 ]);
         return scope.assert.collect();
     }),
-    test('skips incompatible local entries but fails incompatible checked-in entries', async function (scope) {
+    authoredTest('skips incompatible local entries but fails incompatible checked-in entries', async function (scope) {
         const saved = await witness();
         const incompatible = {
             ...saved,
@@ -145,4 +146,3 @@ export const testNode = suite('stored property regressions', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

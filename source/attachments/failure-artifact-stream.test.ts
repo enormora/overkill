@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { inlineAttachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createAttachmentExecution } from '../run/attachment-execution.ts';
@@ -121,71 +122,49 @@ async function assertLateClosedCapture(scope: TestScope): Promise<void> {
         completion: { kind: 'complete' }
     });
 }
-export const testNode = createSuite({
-    ...metadata,
-    title: 'source/attachments/failure-artifact-stream.test.ts',
-    children: [
-        createTestCase({
-            ...metadata,
-            title: 'late output reports a closed writer failure while preserving captured evidence',
-            async body(scope: TestScope) {
-                await assertLateClosedCapture(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'attempt cleanup reports failed stream drains as an aggregate error',
-            async body(scope: TestScope) {
-                await assertCaptureFailure(scope, new Error('disconnected'), 'prepare', true);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'unmanaged captures remain unavailable without opening streams',
-            async body(scope) {
-                scope.assert.equal(
-                    createFailureArtifactStream(
-                        { name: 'service', condition: { kind: 'attempt', work, attempt: { index: 0 } } },
-                        'instrumented',
-                        'log',
-                        'text/plain'
-                    ),
-                    null
-                );
-                await closeAttemptFailureStreams(work, { index: 0 });
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'capture limits preserve complete UTF-8 characters and discard subsequent output',
-            async body(scope) {
-                await assertBoundedUnicode(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'closed empty captures report late output once without creating evidence',
-            async body(scope) {
-                await assertLateEmptyCapture(scope);
-                return scope.assert.collect();
-            }
-        }),
-        ...([ 'prepare', 'write', 'close' ] as const).flatMap(function failedOperation(operation) {
-            return [ new Error('disconnected'), null ].map(function failedCause(cause) {
-                return createTestCase({
-                    ...metadata,
-                    title: `${operation} failure preserves capture errors: ${String(cause)}`,
-                    async body(scope) {
-                        await assertCaptureFailure(scope, cause, operation, false);
-                        return scope.assert.collect();
-                    }
-                });
+export const testNode = suite('source/attachments/failure-artifact-stream.test.ts', [
+    test(
+        'late output reports a closed writer failure while preserving captured evidence',
+        async function (scope: TestScope) {
+            await assertLateClosedCapture(scope);
+            return scope.assert.collect();
+        }
+    ),
+    test('attempt cleanup reports failed stream drains as an aggregate error', async function (scope: TestScope) {
+        await assertCaptureFailure(scope, new Error('disconnected'), 'prepare', true);
+        return scope.assert.collect();
+    }),
+    test('unmanaged captures remain unavailable without opening streams', async function (scope) {
+        scope.assert.equal(
+            createFailureArtifactStream(
+                { name: 'service', condition: { kind: 'attempt', work, attempt: { index: 0 } } },
+                'instrumented',
+                'log',
+                'text/plain'
+            ),
+            null
+        );
+        await closeAttemptFailureStreams(work, { index: 0 });
+        return scope.assert.collect();
+    }),
+    test('capture limits preserve complete UTF-8 characters and discard subsequent output', async function (scope) {
+        await assertBoundedUnicode(scope);
+        return scope.assert.collect();
+    }),
+    test('closed empty captures report late output once without creating evidence', async function (scope) {
+        await assertLateEmptyCapture(scope);
+        return scope.assert.collect();
+    }),
+    ...([ 'prepare', 'write', 'close' ] as const).flatMap(function failedOperation(operation) {
+        return [ new Error('disconnected'), null ].map(function failedCause(cause) {
+            return test({
+                ...metadata,
+                title: `${operation} failure preserves capture errors: ${String(cause)}`,
+                async body(scope) {
+                    await assertCaptureFailure(scope, cause, operation, false);
+                    return scope.assert.collect();
+                }
             });
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+        });
+    })
+]);

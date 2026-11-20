@@ -1,11 +1,6 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import type { TerminalOutput } from './terminal.ts';
 import { createDotReporter } from './dot-reporter.ts';
 
@@ -38,44 +33,30 @@ function createFakeTerminal(columns: number): FakeTerminal {
     };
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/reporters/dot-reporter-terminal.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'dot reporter disposes its resize listener',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(80);
-                const reporter = createDotReporter({
-                    interactive: true,
-                    stdout: terminal.output
-                })({
-                    failureArtifacts: defaultFailureArtifactPolicy,
-                    relativizeLocationPath(location) {
-                        return location.file;
-                    }
-                });
-
-                scope.assert.equal(terminal.listenerCount(), 1);
-                const { dispose } = reporter;
-
-                if (dispose === null) {
-                    throw new TypeError('Expected dot reporter to expose dispose.');
-                }
-
-                await dispose();
-
-                scope.assert.equal(terminal.listenerCount(), 0);
-
-                return scope.assert.collect();
+export const testNode = suite('source/reporters/dot-reporter-terminal.test.ts', [
+    test('dot reporter disposes its resize listener', async function (scope: OverkillScope) {
+        const terminal = createFakeTerminal(80);
+        const reporter = createDotReporter({
+            interactive: true,
+            stdout: terminal.output
+        })({
+            failureArtifacts: defaultFailureArtifactPolicy,
+            relativizeLocationPath(location) {
+                return location.file;
             }
-        })
-    ]
-});
+        });
 
-await runIfMain(import.meta, testNode);
+        scope.assert.equal(terminal.listenerCount(), 1);
+        const { dispose } = reporter;
+
+        if (dispose === null) {
+            throw new TypeError('Expected dot reporter to expose dispose.');
+        }
+
+        await dispose();
+
+        scope.assert.equal(terminal.listenerCount(), 0);
+
+        return scope.assert.collect();
+    })
+]);

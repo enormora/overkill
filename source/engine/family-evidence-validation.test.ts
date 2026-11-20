@@ -1,4 +1,5 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
     defineTestFamily,
@@ -167,8 +168,8 @@ async function reportInvalidArtifactEvidence(context: FamilyAnalysisContext, wor
     await report({ kind: 'case-end', result: resultFor(workId, { kind: 'pass' }), artifacts: [] });
 }
 
-export const testNode = suite('family evidence validation', [
-    test('preserves completed evidence when the backend subsequently cancels', async function (scope) {
+export const testNode = authoredSuite('family evidence validation', [
+    authoredTest('preserves completed evidence when the backend subsequently cancels', async function (scope) {
         const abort = new AbortController();
         const result = await analyze(async function ({ report }, workId) {
             await report({ kind: 'case-start', workId });
@@ -181,7 +182,7 @@ export const testNode = suite('family evidence validation', [
         scope.assert.equal(result.runnerErrors[0]?.cause, 'cancel after evidence');
         return scope.assert.collect();
     }),
-    test('awaits reporter delivery before accepting later evidence', async function (scope) {
+    authoredTest('awaits reporter delivery before accepting later evidence', async function (scope) {
         const gate = { entered: Promise.withResolvers<undefined>(), release: Promise.withResolvers<undefined>() };
         const observed: string[] = [];
         const reporter = defineReporter(function () {
@@ -228,67 +229,74 @@ export const testNode = suite('family evidence validation', [
         'contradiction'
     ]
         .map(function invalidSequence(scenario) {
-            return test(`rejects ${scenario} independently without losing valid evidence`, async function (scope) {
-                const result = await analyze(async function ({ report }, workId) {
-                    const start: FamilyEvent = { kind: 'case-start', workId };
-                    const end: FamilyEvent = {
-                        kind: 'case-end',
-                        result: resultFor(workId, { kind: 'pass' }),
-                        artifacts: []
-                    };
-                    const sequences: Readonly<Record<string, readonly FamilyEvent[]>> = {
-                        'progress-before-start': [ { kind: 'case-progress', workId, note: 'too early' }, start, end ],
-                        'end-before-start': [ end, start, end ],
-                        'duplicate-start': [ start, start, end ],
-                        'duplicate-end': [ start, end, end ],
-                        attempt: [ start, {
-                            ...end,
-                            result: {
-                                ...end.result,
-                                attempts: [ {
-                                    ...end
-                                        .result
-                                        .attempts[0],
-                                    attempt: { index: 1 }
-                                } ]
-                            }
-                        }, end ],
-                        contradiction: [ start, { ...end, result: { ...end.result, verdict: 'fail' } }, end ],
-                        unknown: [
-                            {
-                                kind: 'case-start',
-                                workId: { ...workId, case: { ...workId.case, title: 'unselected' } }
-                            },
-                            start,
-                            end
-                        ],
-                        variant: [
-                            {
-                                kind: 'case-start',
-                                workId: {
-                                    ...workId,
-                                    familyVariant: { family: '@example/analysis-evidence', key: 'unselected' }
+            return authoredTest(
+                `rejects ${scenario} independently without losing valid evidence`,
+                async function (scope) {
+                    const result = await analyze(async function ({ report }, workId) {
+                        const start: FamilyEvent = { kind: 'case-start', workId };
+                        const end: FamilyEvent = {
+                            kind: 'case-end',
+                            result: resultFor(workId, { kind: 'pass' }),
+                            artifacts: []
+                        };
+                        const sequences: Readonly<Record<string, readonly FamilyEvent[]>> = {
+                            'progress-before-start': [
+                                { kind: 'case-progress', workId, note: 'too early' },
+                                start,
+                                end
+                            ],
+                            'end-before-start': [ end, start, end ],
+                            'duplicate-start': [ start, start, end ],
+                            'duplicate-end': [ start, end, end ],
+                            attempt: [ start, {
+                                ...end,
+                                result: {
+                                    ...end.result,
+                                    attempts: [ {
+                                        ...end
+                                            .result
+                                            .attempts[0],
+                                        attempt: { index: 1 }
+                                    } ]
                                 }
-                            },
-                            start,
-                            end
-                        ]
-                    };
-                    const events = sequences[scenario] ?? [];
-                    for (const event of events) {
-                        await report(event);
-                    }
-                }, options);
-                scope.assert.equal(result.status, 'failed');
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(result.summary.inconclusive, 0);
-                scope.assert.equal(result.runnerErrors.length, 1);
-                scope.assert.equal(result.runnerErrors[0]?.subtype, 'runtime-state');
-                return scope.assert.collect();
-            });
+                            }, end ],
+                            contradiction: [ start, { ...end, result: { ...end.result, verdict: 'fail' } }, end ],
+                            unknown: [
+                                {
+                                    kind: 'case-start',
+                                    workId: { ...workId, case: { ...workId.case, title: 'unselected' } }
+                                },
+                                start,
+                                end
+                            ],
+                            variant: [
+                                {
+                                    kind: 'case-start',
+                                    workId: {
+                                        ...workId,
+                                        familyVariant: { family: '@example/analysis-evidence', key: 'unselected' }
+                                    }
+                                },
+                                start,
+                                end
+                            ]
+                        };
+                        const events = sequences[scenario] ?? [];
+                        for (const event of events) {
+                            await report(event);
+                        }
+                    }, options);
+                    scope.assert.equal(result.status, 'failed');
+                    scope.assert.equal(result.summary.passed, 1);
+                    scope.assert.equal(result.summary.inconclusive, 0);
+                    scope.assert.equal(result.runnerErrors.length, 1);
+                    scope.assert.equal(result.runnerErrors[0]?.subtype, 'runtime-state');
+                    return scope.assert.collect();
+                }
+            );
         }),
     ...[ 'run-end', 'finish', 'result', 'dispose' ].map(function reporterFailure(phase) {
-        return test(`retains analysis evidence after reporter ${phase} failure`, async function (scope) {
+        return authoredTest(`retains analysis evidence after reporter ${phase} failure`, async function (scope) {
             const failure = new Error(`reporter ${phase} sentinel`);
             const observed: string[] = [];
             const reporter = defineReporter(function () {
@@ -350,25 +358,28 @@ export const testNode = suite('family evidence validation', [
             return scope.assert.collect();
         });
     }),
-    test('retains run artifacts and declared run errors without attributing them to the case', async function (scope) {
-        const result = await analyze(reportRunEvidence, options);
-        scope.assert.equal(result.status, 'failed');
-        scope.assert.equal(result.summary.passed, 1);
-        scope.assert.deepEqual(
-            result.artifacts.map(function scopeKind(entry) {
-                return entry.id.scope.kind;
-            }),
-            [ 'run' ]
-        );
-        scope.assert.deepEqual(
-            result.runnerErrors.map(function message(error) {
-                return error.message;
-            }),
-            [ 'Project diagnostics were incomplete.' ]
-        );
-        return scope.assert.collect();
-    }),
-    test('rejects inactive and duplicate artifacts and mismatched case identities', async function (scope) {
+    authoredTest(
+        'retains run artifacts and declared run errors without attributing them to the case',
+        async function (scope) {
+            const result = await analyze(reportRunEvidence, options);
+            scope.assert.equal(result.status, 'failed');
+            scope.assert.equal(result.summary.passed, 1);
+            scope.assert.deepEqual(
+                result.artifacts.map(function scopeKind(entry) {
+                    return entry.id.scope.kind;
+                }),
+                [ 'run' ]
+            );
+            scope.assert.deepEqual(
+                result.runnerErrors.map(function message(error) {
+                    return error.message;
+                }),
+                [ 'Project diagnostics were incomplete.' ]
+            );
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('rejects inactive and duplicate artifacts and mismatched case identities', async function (scope) {
         const result = await analyze(reportInvalidArtifactEvidence, options);
         scope.assert.equal(result.summary.passed, 1);
         scope.assert.equal(result.artifacts.length, 1);
@@ -384,7 +395,7 @@ export const testNode = suite('family evidence validation', [
         );
         return scope.assert.collect();
     }),
-    test('retains no-assertions as a case failure', async function (scope) {
+    authoredTest('retains no-assertions as a case failure', async function (scope) {
         const result = await analyze(async function (context, workId) {
             const { report } = context;
             const outcome: TestOutcome = {
@@ -404,7 +415,7 @@ export const testNode = suite('family evidence validation', [
         scope.assert.deepEqual(result.runnerErrors, []);
         return scope.assert.collect();
     }),
-    test('rejects a property runtime policy before entering analysis', async function (scope) {
+    authoredTest('rejects a property runtime policy before entering analysis', async function (scope) {
         await scope.assert.rejects(async function () {
             await analyze(async function () {
                 throw new Error('Analysis should not begin with invalid options.');
@@ -412,7 +423,7 @@ export const testNode = suite('family evidence validation', [
         }, { message: /does not support runtime execution policy/u });
         return scope.assert.collect();
     }),
-    test('rejects late evidence and retains incomplete results', async function (scope) {
+    authoredTest('rejects late evidence and retains incomplete results', async function (scope) {
         const captured = Promise.withResolvers<FamilyAnalysisContext>();
         const result = await analyze(async function (context) {
             captured.resolve(context);
@@ -438,7 +449,7 @@ export const testNode = suite('family evidence validation', [
         ]);
         return scope.assert.collect();
     }),
-    test('preserves an analysis abort reason as a run error', async function (scope) {
+    authoredTest('preserves an analysis abort reason as a run error', async function (scope) {
         const abort = new AbortController();
         abort.abort('checker stopped');
         const result = await analyze(async function ({ signal }) {

@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { normalizeConfig, type IntegrationProfileConfig } from '../packages/run/run.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { attachmentFixture } from '../test-support/attachment-fixture.ts';
@@ -46,7 +47,7 @@ async function preparationInput(scope: TestScope): Promise<PreparationInput> {
     };
 }
 
-export const testNode = suite('snapshot preparation', [
+export const testNode = authoredSuite('snapshot preparation', [
     test(
         'loads compatible expectations for the requested profile and restores context',
         async function (scope: TestScope) {

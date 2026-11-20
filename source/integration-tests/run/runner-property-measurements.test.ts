@@ -1,8 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
+import { test, suite as authoredSuite } from '@overkill-dev/test';
 import { z } from 'zod/v4';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../../packages/test/test.entry-point.ts';
+
 import { propertyWorkloads, type PropertyWorkload } from '../../test-support/property-workload.ts';
 
 async function execute(args: readonly string[]): Promise<string> {
@@ -49,7 +49,7 @@ async function measured(
     const result = await execute([ '--expose-gc', '--input-type=module', '--eval', driver ]);
     return measurement.parse(JSON.parse(result));
 }
-export const testNode = suite(
+export const testNode = authoredSuite(
     'property workload measurements',
     propertyWorkloads.flatMap(function workloadCases(workload) {
         return [ { size: 8, depth: 2 }, { size: 64, depth: 5 } ].map(function workloadSize({ size, depth }) {
@@ -94,4 +94,3 @@ export const testNode = suite(
         });
     })
 );
-await runIfMain(import.meta, testNode);

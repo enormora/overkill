@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, test as authoredTest, suite as authoredSuite } from '@overkill-dev/test';
+
 import type { RunResult } from '../packages/engine/engine.entry-point.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { gen, property } from '../packages/property/property.entry-point.ts';
 import { linearizability } from '../packages/linearizability/linearizability.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
@@ -31,9 +32,9 @@ function assertScheduleDisagreement(scope: TestScope, result: RunResult): void {
     }));
 }
 
-export const testNode = suite('linearizability confirmation', [
+export const testNode = authoredSuite('linearizability confirmation', [
     ...[ 1, 2 ].map(function exhaustedConfirmation(failures) {
-        return test(
+        return authoredTest(
             `preserves failure when confirmation ${failures} exhausts checker work`,
             async function (scope: TestScope) {
                 let calls = 0;
@@ -72,63 +73,65 @@ export const testNode = suite('linearizability confirmation', [
         );
     }),
     ...[ 1, 2 ].map(function confirmation(disagreement) {
-        return test(`detects schedule disagreement on confirmation ${disagreement}`, async function (scope: TestScope) {
-            let created = 0;
-            let cleaned = 0;
-            const result = await executePropertyNode(
-                property({
-                    title: 'schedule changes',
-                    generator: gen.tuple(gen.tuple(gen.constant(1)), gen.tuple(gen.constant(1))),
-                    test: linearizability({
-                        create(sample) {
-                            created += 1;
-                            sample.cleanup(function () {
-                                cleaned += 1;
-                            });
-                            const gate = Promise.withResolvers<undefined>();
-                            if (created > disagreement) {
-                                gate.resolve(undefined);
-                            }
-                            return {
-                                overlap: created <= disagreement,
-                                counter: new Map([ [ 'value', 0 ] ]),
-                                admitted: Array.of<number>(),
-                                gate
-                            };
-                        },
-                        async run(operation: number, system) {
-                            const value = system.counter.get('value') ?? 0;
-                            system.admitted.push(operation);
-                            if (system.overlap) {
-                                if (system.admitted.length === 2) {
-                                    system.gate.resolve(undefined);
+        return authoredTest(
+            `detects schedule disagreement on confirmation ${disagreement}`,
+            async function (scope: TestScope) {
+                let created = 0;
+                let cleaned = 0;
+                const result = await executePropertyNode(
+                    property({
+                        title: 'schedule changes',
+                        generator: gen.tuple(gen.tuple(gen.constant(1)), gen.tuple(gen.constant(1))),
+                        test: linearizability({
+                            create(sample) {
+                                created += 1;
+                                sample.cleanup(function () {
+                                    cleaned += 1;
+                                });
+                                const gate = Promise.withResolvers<undefined>();
+                                if (created > disagreement) {
+                                    gate.resolve(undefined);
                                 }
-                                await system.gate.promise;
-                            }
-                            system.counter.set('value', value + operation);
-                            return value + operation;
-                        },
-                        model: {
-                            initial() {
-                                return 0;
+                                return {
+                                    overlap: created <= disagreement,
+                                    counter: new Map([ [ 'value', 0 ] ]),
+                                    admitted: Array.of<number>(),
+                                    gate
+                                };
                             },
-                            transition(state, observation) {
-                                const next = state + observation.operation;
-                                return observation.outcome.kind === 'returned' && observation.outcome.value === next
-                                    ? { kind: 'enabled', state: next }
-                                    : { kind: 'disabled' };
-                            }
-                        },
-                        maxWork: 1000
-                    })
-                }),
-                propertyExecutionDefaults
-            );
-            assertScheduleDisagreement(scope, result);
-            scope.assert.equal(created, disagreement + 1);
-            scope.assert.equal(cleaned, created);
-            return scope.assert.collect();
-        });
+                            async run(operation: number, system) {
+                                const value = system.counter.get('value') ?? 0;
+                                system.admitted.push(operation);
+                                if (system.overlap) {
+                                    if (system.admitted.length === 2) {
+                                        system.gate.resolve(undefined);
+                                    }
+                                    await system.gate.promise;
+                                }
+                                system.counter.set('value', value + operation);
+                                return value + operation;
+                            },
+                            model: {
+                                initial() {
+                                    return 0;
+                                },
+                                transition(state, observation) {
+                                    const next = state + observation.operation;
+                                    return observation.outcome.kind === 'returned' && observation.outcome.value === next
+                                        ? { kind: 'enabled', state: next }
+                                        : { kind: 'disabled' };
+                                }
+                            },
+                            maxWork: 1000
+                        })
+                    }),
+                    propertyExecutionDefaults
+                );
+                assertScheduleDisagreement(scope, result);
+                scope.assert.equal(created, disagreement + 1);
+                scope.assert.equal(cleaned, created);
+                return scope.assert.collect();
+            }
+        );
     })
 ]);
-await runIfMain(import.meta, testNode);

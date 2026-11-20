@@ -1,13 +1,9 @@
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { suite, test } from '@overkill-dev/test';
 import { z } from 'zod/v4';
-import { runIfMain } from '#test-runner';
-import {
-    createSuite,
-    createTestCase,
-    type RunResult,
-    type TestScope
-} from '../../packages/engine/engine.entry-point.ts';
+
+import type { RunResult, TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import type { RetryArtifactPolicy } from '../../config/execution.ts';
 import {
@@ -98,63 +94,54 @@ async function assertRetryFiles(
     await assertRetainedRetryFiles(scope, attachments);
     await assertCompletedRecord(scope, stateDirectory, result.artifacts);
 }
-export const testNode = createSuite({
-    ...metadata,
-    title: 'source/integration-tests/run/runner-attachment-retention.test.ts',
-    children: [
-        ...([ [ 'first-failure-and-final', [ 0, 2 ] ], [ 'last-failure-and-final', [ 1, 2 ] ], [ 'all', [
-            0,
-            1,
-            2
-        ] ] ] as const)
-            .map(function retryPolicyTest([ policy, indexes ]) {
-                return createTestCase({
-                    ...metadata,
-                    title: `retains files with ${policy}`,
-                    async body(scope: TestScope) {
-                        await assertRetryFiles(scope, policy, indexes);
-                        return scope.assert.collect();
-                    }
-                });
-            }),
-        createTestCase({
-            ...metadata,
-            title: 'unclosed attachment writers fail the runner and preserve text',
-            async body(scope: TestScope) {
-                const result = await retentionRun(
-                    'unclosed writers retain their prefix',
-                    'all',
-                    'target/attachment-unclosed'
-                );
-                scope.assert.equal(result.status, 'failed');
-                scope.assert.equal(
-                    result
-                        .runnerErrors
-                        .filter(function attachmentError(error) {
-                            return error.subtype === 'artifact';
-                        })
-                        .length,
-                    1
-                );
-                const content = result
-                    .artifacts
-                    .find(function attachment(artifact) {
-                        return artifact.payload.kind === 'runtime-attachment';
-                    })
-                    ?.payload;
-                scope.require.defined(content);
-                if (content.kind !== 'runtime-attachment') {
-                    throw new Error('Expected runtime evidence.');
+export const testNode = suite('source/integration-tests/run/runner-attachment-retention.test.ts', [
+    ...([ [ 'first-failure-and-final', [ 0, 2 ] ], [ 'last-failure-and-final', [ 1, 2 ] ], [ 'all', [
+        0,
+        1,
+        2
+    ] ] ] as const)
+        .map(function retryPolicyTest([ policy, indexes ]) {
+            return test({
+                ...metadata,
+                title: `retains files with ${policy}`,
+                async body(scope: TestScope) {
+                    await assertRetryFiles(scope, policy, indexes);
+                    return scope.assert.collect();
                 }
-                scope.assert.deepEqual(content.content, {
-                    byteLength: 20,
-                    completion: { kind: 'incomplete', reason: 'unclosed' },
-                    kind: 'text',
-                    text: 'last service message'
-                });
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+            });
+        }),
+    test('unclosed attachment writers fail the runner and preserve text', async function (scope: TestScope) {
+        const result = await retentionRun(
+            'unclosed writers retain their prefix',
+            'all',
+            'target/attachment-unclosed'
+        );
+        scope.assert.equal(result.status, 'failed');
+        scope.assert.equal(
+            result
+                .runnerErrors
+                .filter(function attachmentError(error) {
+                    return error.subtype === 'artifact';
+                })
+                .length,
+            1
+        );
+        const content = result
+            .artifacts
+            .find(function attachment(artifact) {
+                return artifact.payload.kind === 'runtime-attachment';
+            })
+            ?.payload;
+        scope.require.defined(content);
+        if (content.kind !== 'runtime-attachment') {
+            throw new Error('Expected runtime evidence.');
+        }
+        scope.assert.deepEqual(content.content, {
+            byteLength: 20,
+            completion: { kind: 'incomplete', reason: 'unclosed' },
+            kind: 'text',
+            text: 'last service message'
+        });
+        return scope.assert.collect();
+    })
+]);

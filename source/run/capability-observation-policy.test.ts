@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { capabilityObservation } from '../test-support/capability-observation.ts';
 import { observationCase } from '../test-support/observation-lifetime.ts';
 
-export const testNode = suite('injected capability observation', [
+export const testNode = authoredSuite('injected capability observation', [
     test('ignores explicit violations after observation closes', function (scope: TestScope) {
         const fixture = capabilityObservation();
         fixture.policy.recordViolation('net', 'connection denied', 'blocked');
@@ -51,4 +51,3 @@ export const testNode = suite('injected capability observation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

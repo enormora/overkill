@@ -1,16 +1,15 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { ChildProcess } from 'node:child_process';
 import { channel } from 'node:diagnostics_channel';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { createClock } from '@enormora/clock';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { benchmarkHostSnapshotSchema } from '../../bench/benchmark-host-snapshot.ts';
 import { collectBenchmarkHost } from '../../run/benchmark-host.ts';
 import { collectPlatformPressure } from '../../run/benchmark-host-platform.ts';
 
-export const testNode = suite('benchmark host observer integration', [
+export const testNode = authoredSuite('benchmark host observer integration', [
     ...[ true, false ].map(function (cancelled) {
-        return test(
+        return authoredTest(
             cancelled ? 'does not start cancelled probes' : 'awaits cancelled probe closure',
             async function (scope) {
                 const probe = {
@@ -50,11 +49,11 @@ export const testNode = suite('benchmark host observer integration', [
             }
         );
     }),
-    test('records no platform-specific pressure on unsupported platforms', async function (scope: TestScope) {
+    authoredTest('records no platform-specific pressure on unsupported platforms', async function (scope: TestScope) {
         scope.assert.deepEqual(await collectPlatformPressure('unsupported', AbortSignal.abort()), {});
         return scope.assert.collect();
     }),
-    test('records cancelled platform probes as unavailable', async function (scope: TestScope) {
+    authoredTest('records cancelled platform probes as unavailable', async function (scope: TestScope) {
         const linux = await collectPlatformPressure('linux', AbortSignal.abort());
         const darwin = await collectPlatformPressure('darwin', AbortSignal.abort());
         scope.assert.equal(linux['linux.memory.some.avg10']?.availability, 'unavailable');
@@ -62,7 +61,7 @@ export const testNode = suite('benchmark host observer integration', [
         scope.assert.equal(darwin.darwinMemoryPressureCode?.availability, 'unavailable');
         return scope.assert.collect();
     }),
-    test(
+    authoredTest(
         'records real observer provenance and returns valid evidence after a capped window',
         async function (scope: TestScope) {
             const snapshot = await collectBenchmarkHost({ timeoutMilliseconds: 1000 }, createClock());
@@ -78,5 +77,3 @@ export const testNode = suite('benchmark host observer integration', [
         }
     )
 ]);
-
-await runIfMain(import.meta, testNode);

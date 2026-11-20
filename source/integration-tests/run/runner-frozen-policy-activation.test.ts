@@ -1,14 +1,13 @@
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { suite, test } from '@overkill-dev/test';
 import { INSTRUMENTER_CONSTANTS } from '@stryker-mutator/api/core';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../../packages/engine/engine.entry-point.ts';
+
+import type { TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { createPlainOutputRenderer } from '../../engine/reporter-output.ts';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import { initializeMutationPolicy } from '../../packages/stryker-runner/mutation-policy-process.ts';
-
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
 async function createInstrumentedProject(cwd: string): Promise<void> {
     await writeFile(join(cwd, 'case.test.mjs'), 'throw new Error("collected a test before policy validation");');
@@ -87,24 +86,16 @@ async function rejectStaticPolicy(scope: TestScope, cwd: string): Promise<void> 
     }
 }
 
-export const testNode = createSuite({
-    title: 'frozen policy with static activation',
-    ...metadata,
-    children: [ createTestCase({
-        title: 'isolated initialization leaves static config coverage for execution',
-        ...metadata,
-        async body(scope: TestScope) {
-            const directory = await mkdtemp(join(tmpdir(), 'overkill-static-policy-'));
-            const cwd = await realpath(directory);
-            try {
-                await createInstrumentedProject(cwd);
-                await rejectStaticPolicy(scope, cwd);
-                return scope.assert.collect();
-            } finally {
-                await rm(cwd, { recursive: true, force: true });
-            }
+export const testNode = suite('frozen policy with static activation', [
+    test('isolated initialization leaves static config coverage for execution', async function (scope: TestScope) {
+        const directory = await mkdtemp(join(tmpdir(), 'overkill-static-policy-'));
+        const cwd = await realpath(directory);
+        try {
+            await createInstrumentedProject(cwd);
+            await rejectStaticPolicy(scope, cwd);
+            return scope.assert.collect();
+        } finally {
+            await rm(cwd, { recursive: true, force: true });
         }
-    }) ]
-});
-
-await runIfMain(import.meta, testNode);
+    })
+]);

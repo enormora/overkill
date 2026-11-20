@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { passingIsolatedWorkerRun } from '../test-support/isolated-worker-run.ts';
 import { observationPlan } from '../test-support/observation-lifetime.ts';
 import { createCollectedPlan } from '../test-support/worker-pool-execution-state.ts';
@@ -27,7 +27,7 @@ function collectedContext(): CollectedRunContext {
         moduleBoundary: null
     };
 }
-export const testNode = suite('collected invocation selection policy', [
+export const testNode = authoredSuite('collected invocation selection policy', [
     test('plans an ordinary local invocation without replacing its selected case', async function (scope: TestScope) {
         const context = collectedContext();
         const result = await planCollectedInvocation(context, { selection: { kind: 'all' } });
@@ -75,4 +75,3 @@ export const testNode = suite('collected invocation selection policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { defineResource, type AnyResourceDefinition } from './resources.ts';
 import {
     withResourceChecks,
@@ -36,8 +36,8 @@ function installationSession(install: ResourceCheckInstaller<AnyResourceDefiniti
 function finish(): void {
     return undefined;
 }
-export const testNode = suite('resource observation installation admission', [
-    test('rejects observation errors recorded during installation', async function (scope: TestScope) {
+export const testNode = authoredSuite('resource observation installation admission', [
+    authoredTest('rejects observation errors recorded during installation', async function (scope: TestScope) {
         const session = installationSession(function (context) {
             context.ledger.error({ kind: 'lifetime' }, null, new Error('installation evidence failed'));
             return {
@@ -54,7 +54,7 @@ export const testNode = suite('resource observation installation admission', [
         return scope.assert.collect();
     }),
     ...[ 'prepare', 'finalize' ].map(function (method) {
-        return test(`rejects malformed ${method} observer callbacks`, async function (scope: TestScope) {
+        return authoredTest(`rejects malformed ${method} observer callbacks`, async function (scope: TestScope) {
             const session = installationSession(function () {
                 const observation = {
                     prepare: finish,
@@ -72,7 +72,7 @@ export const testNode = suite('resource observation installation admission', [
             return scope.assert.collect();
         });
     }),
-    test('retains cleanup failures registered after closure', async function (scope: TestScope) {
+    authoredTest('retains cleanup failures registered after closure', async function (scope: TestScope) {
         const installed = Promise.withResolvers<ResourceCheckInstallationContext<AnyResourceDefinition>>();
         const session = installationSession(function (context) {
             installed.resolve(context);
@@ -95,4 +95,3 @@ export const testNode = suite('resource observation installation admission', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

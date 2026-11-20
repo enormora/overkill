@@ -1,14 +1,13 @@
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { resourceAttachments, type attachmentsForProducer } from '../attachments/attachment-context.ts';
 import { attachmentFixture } from '../test-support/attachment-fixture.ts';
 import { createAttachmentServer } from './attachment-server.ts';
 import { runWithWorkerAttachments } from './attachment-worker-context.ts';
 import { runWithAttachmentExecution } from './resource-lifecycle-state.ts';
-
-const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
 type AttachmentCapabilityModule = { readonly attachmentsForProducer: typeof attachmentsForProducer; };
 function isAttachmentCapabilityModule(value: unknown): value is AttachmentCapabilityModule {
@@ -74,34 +73,23 @@ async function assertTokenScopedAttachments(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(artifact.payload.producer, { kind: 'resource', name: 'service' });
 }
 
-export const testNode = createSuite({
-    ...definition,
-    title: 'source/run/runtime-attachment-worker.test.ts',
-    children: [
-        createTestCase({
-            ...definition,
-            title: 'workers without a shared lifecycle use their execution token for attachments',
-            async body(scope: TestScope) {
-                await assertTokenScopedAttachments(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'separate package module instances share the active attachment context',
-            async body(scope: TestScope) {
-                await assertPackageContextSharing(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'shared resource teardown keeps its attachment channel across worker tasks',
-            async body(scope: TestScope) {
-                await assertSharedLifecycleAttachments(scope);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/runtime-attachment-worker.test.ts', [
+    test(
+        'workers without a shared lifecycle use their execution token for attachments',
+        async function (scope: TestScope) {
+            await assertTokenScopedAttachments(scope);
+            return scope.assert.collect();
+        }
+    ),
+    test('separate package module instances share the active attachment context', async function (scope: TestScope) {
+        await assertPackageContextSharing(scope);
+        return scope.assert.collect();
+    }),
+    test(
+        'shared resource teardown keeps its attachment channel across worker tasks',
+        async function (scope: TestScope) {
+            await assertSharedLifecycleAttachments(scope);
+            return scope.assert.collect();
+        }
+    )
+]);

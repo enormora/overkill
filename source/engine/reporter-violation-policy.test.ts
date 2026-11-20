@@ -1,13 +1,14 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, test, suite as authoredSuite, testDouble } from '@overkill-dev/test';
+
 import { createDeterministicClock } from '@enormora/clock';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { defineFixedReporter } from '../test-support/reporter-definition.ts';
-import { testDouble } from '../packages/doubles/doubles.entry-point.ts';
+
 import { createReporterDispatcher } from './reporter-dispatcher.ts';
 import { createPlainOutputRenderer } from './reporter-output.ts';
 import { recordReporterConsoleDiagnostic } from './reporter-output-scope.ts';
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'reporter output violation classification',
     [ false, true ].map(function (disposing) {
         return test(
@@ -47,4 +48,3 @@ export const testNode = suite(
         );
     })
 );
-await runIfMain(import.meta, testNode);

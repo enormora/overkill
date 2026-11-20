@@ -1,4 +1,5 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
     type LoadedConfig,
     type ConfiguredRunCommand,
@@ -6,12 +7,7 @@ import {
     type RunRequest,
     RunResolutionError
 } from '../packages/run/run.entry-point.ts';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope,
-    type DefinedReporter
-} from '../packages/engine/engine.entry-point.ts';
+import type { DefinedReporter } from '../packages/engine/engine.entry-point.ts';
 
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
 import { runnerResultFactory } from '../test-support/runner-result-factory.ts';
@@ -203,129 +199,105 @@ async function runWithRunnerErrors(): ReturnType<ConfiguredRunOrchestrator['run'
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/command-line-runner-reporter-resolution.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title:
-                'commandLineRunner.runTests() keeps global reporters as fallback when profile reporters override them',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const defaultReporter = createDefaultReporterLoader(memoryReporter);
-                const scenario = await runScenario(
-                    loadedConfig([ terminalReporter ], [ memoryReporter ]),
-                    defaultReporter,
-                    defaultRequest,
-                    passingRun
-                );
+export const testNode = suite('source/run/command-line-runner-reporter-resolution.test.ts', [
+    test(
+        'commandLineRunner.runTests() keeps global reporters as fallback when profile reporters override them',
+        async function (scope: OverkillScope) {
+            const defaultReporter = createDefaultReporterLoader(memoryReporter);
+            const scenario = await runScenario(
+                loadedConfig([ terminalReporter ], [ memoryReporter ]),
+                defaultReporter,
+                defaultRequest,
+                passingRun
+            );
 
-                scope.assert.equal(scenario.result.exitCode, 0);
-                scope.assert.equal(defaultReporter.loadCount(), 0);
-                scope.require.notNull(scenario.command.config.reporters);
-                scope.assert.equal(scenario.command.config.reporters[0], terminalReporter);
-                scope.assert.equal(selectedProfileReporters(scenario.command)[0], memoryReporter);
+            scope.assert.equal(scenario.result.exitCode, 0);
+            scope.assert.equal(defaultReporter.loadCount(), 0);
+            scope.require.notNull(scenario.command.config.reporters);
+            scope.assert.equal(scenario.command.config.reporters[0], terminalReporter);
+            scope.assert.equal(selectedProfileReporters(scenario.command)[0], memoryReporter);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() skips the default reporter when profile reporters exist',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const defaultReporter = createDefaultReporterLoader(terminalReporter);
-                const scenario = await runScenario(
-                    loadedConfig(null, [ memoryReporter ]),
-                    defaultReporter,
-                    defaultRequest,
-                    passingRun
-                );
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'commandLineRunner.runTests() skips the default reporter when profile reporters exist',
+        async function (scope: OverkillScope) {
+            const defaultReporter = createDefaultReporterLoader(terminalReporter);
+            const scenario = await runScenario(
+                loadedConfig(null, [ memoryReporter ]),
+                defaultReporter,
+                defaultRequest,
+                passingRun
+            );
 
-                scope.assert.equal(defaultReporter.loadCount(), 0);
-                scope.require.notNull(scenario.command.config.reporters);
-                scope.assert.deepEqual(scenario.command.config.reporters, []);
-                scope.assert.equal(selectedProfileReporters(scenario.command)[0], memoryReporter);
+            scope.assert.equal(defaultReporter.loadCount(), 0);
+            scope.require.notNull(scenario.command.config.reporters);
+            scope.assert.deepEqual(scenario.command.config.reporters, []);
+            scope.assert.equal(selectedProfileReporters(scenario.command)[0], memoryReporter);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() skips the default reporter when global non-terminal reporters exist',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const defaultReporter = createDefaultReporterLoader(terminalReporter);
-                const scenario = await runScenario(
-                    loadedConfig([ memoryReporter ], null),
-                    defaultReporter,
-                    defaultRequest,
-                    passingRun
-                );
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'commandLineRunner.runTests() skips the default reporter when global non-terminal reporters exist',
+        async function (scope: OverkillScope) {
+            const defaultReporter = createDefaultReporterLoader(terminalReporter);
+            const scenario = await runScenario(
+                loadedConfig([ memoryReporter ], null),
+                defaultReporter,
+                defaultRequest,
+                passingRun
+            );
 
-                scope.assert.equal(defaultReporter.loadCount(), 0);
-                scope.require.notNull(scenario.command.config.reporters);
-                scope.assert.equal(scenario.command.config.reporters[0], memoryReporter);
+            scope.assert.equal(defaultReporter.loadCount(), 0);
+            scope.require.notNull(scenario.command.config.reporters);
+            scope.assert.equal(scenario.command.config.reporters[0], memoryReporter);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() skips the default reporter for unknown profiles',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const defaultReporter = createDefaultReporterLoader(memoryReporter);
-                const scenario = await runScenario(
-                    loadedConfig(null, null),
-                    defaultReporter,
-                    { ...defaultRequest, profile: 'missing' },
-                    unknownProfileRun
-                );
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'commandLineRunner.runTests() skips the default reporter for unknown profiles',
+        async function (scope: OverkillScope) {
+            const defaultReporter = createDefaultReporterLoader(memoryReporter);
+            const scenario = await runScenario(
+                loadedConfig(null, null),
+                defaultReporter,
+                { ...defaultRequest, profile: 'missing' },
+                unknownProfileRun
+            );
 
-                scope.assert.equal(scenario.result.exitCode, 3);
-                scope.assert.equal(defaultReporter.loadCount(), 0);
-                scope.require.notNull(scenario.command.config.reporters);
-                scope.assert.deepEqual(scenario.command.config.reporters, []);
-                scope.assert.deepEqual(scenario.result.fallbackDiagnostics, [
-                    'Overkill argument error: Unknown run profile: missing'
-                ]);
+            scope.assert.equal(scenario.result.exitCode, 3);
+            scope.assert.equal(defaultReporter.loadCount(), 0);
+            scope.require.notNull(scenario.command.config.reporters);
+            scope.assert.deepEqual(scenario.command.config.reporters, []);
+            scope.assert.deepEqual(scenario.result.fallbackDiagnostics, [
+                'Overkill argument error: Unknown run profile: missing'
+            ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() falls back when profile terminal reporters did not receive errors',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const defaultReporter = createDefaultReporterLoader(memoryReporter);
-                const scenario = await runScenario(
-                    loadedConfig(null, [ terminalReporter ]),
-                    defaultReporter,
-                    defaultRequest,
-                    runWithRunnerErrors
-                );
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'commandLineRunner.runTests() falls back when profile terminal reporters did not receive errors',
+        async function (scope: OverkillScope) {
+            const defaultReporter = createDefaultReporterLoader(memoryReporter);
+            const scenario = await runScenario(
+                loadedConfig(null, [ terminalReporter ]),
+                defaultReporter,
+                defaultRequest,
+                runWithRunnerErrors
+            );
 
-                scope.assert.equal(scenario.result.exitCode, 2);
-                scope.assert.equal(defaultReporter.loadCount(), 0);
-                scope.assert.deepEqual(scenario.result.fallbackDiagnostics, [
-                    'Overkill runner error: Loader failed.',
-                    'Overkill runner error: Dispose failed.'
-                ]);
+            scope.assert.equal(scenario.result.exitCode, 2);
+            scope.assert.equal(defaultReporter.loadCount(), 0);
+            scope.assert.deepEqual(scenario.result.fallbackDiagnostics, [
+                'Overkill runner error: Loader failed.',
+                'Overkill runner error: Dispose failed.'
+            ]);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

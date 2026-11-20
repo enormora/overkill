@@ -37,21 +37,22 @@ lint: eslint lint-filename lint-unused-code lint-dependencies lint-duplication
 lint-fix: eslint-fix
 
 test-unit: benchmark-html-browser
-    node source/overkill.test.ts
+    overkill run --profile unit
 
 test-integration: benchmark-html-browser
-    node source/test-support/run-integration.ts
+    node node_modules/.bin/overkill run --profile integration
+    node node_modules/.bin/overkill run --profile mutationCampaigns
 
 test-runner-integration: test-integration
 
 test-process-integration: benchmark-html-browser
-    node source/integration-tests/process.test.ts
+    node node_modules/.bin/overkill run --profile process
 
 test-unit-with-coverage: benchmark-html-browser
-    node source/test-support/unit-coverage.ts
+    node --permission-audit --allow-inspector node_modules/.bin/overkill run --profile unit --coverage
 
 test-type-test-api:
-    node source/integration-tests/type-test-api/compiler-assessment.test.ts
+    node node_modules/.bin/overkill run --profile compilerAssessment
 
 test-types:
     TSTYCHE_TYPESCRIPT_SPECIFIER=typescript tstyche
@@ -72,7 +73,7 @@ test-model-package-smoke: compile
     ln -s model/node_modules/@overkill-dev/engine target/model-package-smoke/node_modules/@overkill-dev/engine
     ln -s model/node_modules/@overkill-dev/property target/model-package-smoke/node_modules/@overkill-dev/property
     ln -s ../../../../model-package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
-    node target/build/source/integration-tests/package-smoke/model.test.js
+    node node_modules/.bin/overkill run --profile packageSmoke target/build/source/integration-tests/package-smoke/model.test.js
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
 
 test-linearizability-package-smoke: compile
@@ -83,7 +84,7 @@ test-linearizability-package-smoke: compile
     ln -s linearizability/node_modules/@overkill-dev/engine target/linearizability-package-smoke/node_modules/@overkill-dev/engine
     ln -s linearizability/node_modules/@overkill-dev/property target/linearizability-package-smoke/node_modules/@overkill-dev/property
     ln -s ../../../../linearizability-package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
-    node target/build/source/integration-tests/package-smoke/linearizability.test.js
+    node node_modules/.bin/overkill run --profile packageSmoke target/build/source/integration-tests/package-smoke/linearizability.test.js
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
 
 test-eslint-package-smoke: compile
@@ -93,30 +94,15 @@ test-eslint-package-smoke: compile
     NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" PACKTORY_INCLUDED_PACKAGES={{eslint-smoke-packages}} packtory pack @overkill-dev/eslint-test --format folder --version 0.0.0 --vendor-dependencies --out target/eslint-package-smoke/node_modules/@overkill-dev/eslint-test
     ln -sfn eslint-test/node_modules/@overkill-dev/engine target/eslint-package-smoke/node_modules/@overkill-dev/engine
     ln -s ../../../../eslint-package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
-    node target/build/source/integration-tests/package-smoke/eslint-test.test.js
+    node node_modules/.bin/overkill run --profile packageSmoke target/build/source/integration-tests/package-smoke/eslint-test.test.js
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
 
 test-mutation-package-smoke: (_pack-smoke-packages mutation-smoke-packages)
-    node target/build/source/integration-tests/package-smoke/stryker-runner.test.js
+    node node_modules/.bin/overkill run --profile packageSmoke target/build/source/integration-tests/package-smoke/stryker-runner.test.js
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
 
 test-package-smoke: (_pack-smoke-packages package-smoke-packages)
-    node target/build/source/integration-tests/package-smoke/content-snapshots.test.js
-    node target/build/source/integration-tests/package-smoke/engine-direct-execution.test.js
-    node target/build/source/integration-tests/package-smoke/run-lifecycle.test.js
-    node target/build/source/integration-tests/package-smoke/benchmark-html.test.js
-    node target/build/source/integration-tests/package-smoke/bench.test.js
-    node target/build/source/integration-tests/package-smoke/property.test.js
-    node target/build/source/integration-tests/package-smoke/model.test.js
-    node target/build/source/integration-tests/package-smoke/differential.test.js
-    node target/build/source/integration-tests/package-smoke/eslint-test.test.js
-    node target/build/source/integration-tests/package-smoke/linearizability.test.js
-    node target/build/source/integration-tests/package-smoke/type-test.test.js
-    node target/build/source/integration-tests/package-smoke/stryker-runner.test.js
-    node target/build/source/integration-tests/package-smoke/test-binary.test.js
-    node target/build/source/integration-tests/package-smoke/test-binary-permissions.test.js
-    node target/build/source/integration-tests/package-smoke/test-binary-attachments.test.js
-    node target/build/source/integration-tests/package-smoke/test-binary-coverage.test.js
+    node node_modules/.bin/overkill run --profile packageSmoke
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
 
 publish-dry-run: compile
@@ -125,7 +111,7 @@ publish-dry-run: compile
     NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" packtory publish
 
 benchmark-mutation-cost: compile
-    node target/build/source/packages/test/overkill.entry-point.js bench run --profile mutation-cost --seed 42 --order lexical
+    node node_modules/.bin/overkill bench run --profile mutation-cost --seed 42 --order lexical
 
 test-type-test-package-smoke: (_pack-smoke-packages "@overkill-dev/engine,@overkill-dev/run,@overkill-dev/type-test")
-    node target/build/source/integration-tests/package-smoke/type-test.test.js
+    node node_modules/.bin/overkill run --profile packageSmoke target/build/source/integration-tests/package-smoke/type-test.test.js

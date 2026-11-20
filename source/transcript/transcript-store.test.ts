@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     captureErrorHttpTranscript,
     createHttpTranscriptRecorder,
@@ -10,11 +11,7 @@ import {
     type TranscriptCaptureErrorEntry,
     type TranscriptView
 } from './http-transcript.ts';
-import {
-    createTranscriptStore,
-    isTranscriptView,
-    runWithTranscriptScope
-} from './transcript-store.ts';
+import { createTranscriptStore, isTranscriptView, runWithTranscriptScope } from './transcript-store.ts';
 
 const textEncoder = new TextEncoder();
 const nonErrorCapture: TranscriptCaptureErrorEntry = [
@@ -88,39 +85,19 @@ async function assertScopedTranscriptStore(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(store.view.entries, [ [ 'state', 1 ], [ 'state', 2 ] ]);
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/transcript/transcript-store.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'HTTP transcript primitives expose immutable safe values',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await runWithTranscriptScope(null, async function assertLifetimePrimitives() {
-                    assertTranscriptPrimitives(scope);
-                });
+export const testNode = suite('source/transcript/transcript-store.test.ts', [
+    test('HTTP transcript primitives expose immutable safe values', async function (scope: TestScope) {
+        await runWithTranscriptScope(null, async function assertLifetimePrimitives() {
+            assertTranscriptPrimitives(scope);
+        });
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'transcript stores isolate entries by active scope',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await runWithTranscriptScope(null, async function assertScopeRestoration() {
-                    await assertScopedTranscriptStore(scope);
-                });
+        return scope.assert.collect();
+    }),
+    test('transcript stores isolate entries by active scope', async function (scope: TestScope) {
+        await runWithTranscriptScope(null, async function assertScopeRestoration() {
+            await assertScopedTranscriptStore(scope);
+        });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

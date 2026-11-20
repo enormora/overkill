@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { completedHistoryRecord, historyWork } from '../test-support/history-record-fixture.ts';
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
 import { canonicalJson } from '../canonical-identity.ts';
@@ -100,7 +100,7 @@ function benchmarkEvidence(scope: TestScope): BenchmarkExecutionResult {
     };
 }
 
-export const testNode = suite('compact run evidence', [
+export const testNode = authoredSuite('compact run evidence', [
     test('preserves lifecycle summaries when measurement evidence is absent', function (scope: TestScope) {
         const original = completedHistoryRecord('unmeasured');
         const benchmark = benchmarkEvidence(scope);
@@ -255,5 +255,3 @@ export const testNode = suite('compact run evidence', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

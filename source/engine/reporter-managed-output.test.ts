@@ -1,11 +1,8 @@
 import { channel } from 'node:diagnostics_channel';
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock } from '@enormora/clock';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+
 import { createRuntimeCapabilityPolicy } from '../run/capability-policy.ts';
 import {
     createPlainOutputRenderer,
@@ -16,10 +13,7 @@ import {
 } from './reporter-output.ts';
 import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from './reporter.ts';
 import { createReporterDispatcher, type ReporterDispatcher } from './reporter-dispatcher.ts';
-import {
-    recordReporterConsoleDiagnostic,
-    runWithReporterOutputScopeNow
-} from './reporter-output-scope.ts';
+import { recordReporterConsoleDiagnostic, runWithReporterOutputScopeNow } from './reporter-output-scope.ts';
 import type { RunnerError } from './run-result.ts';
 
 const definitionLocation = { kind: 'unknown' as const };
@@ -128,230 +122,189 @@ function ignoreProcessObservation(): () => void {
     };
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/engine/reporter-managed-output.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'native policy retains reporter console restrictions without test-policy attribution',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const environment = {};
-                const policy = createRuntimeCapabilityPolicy({
-                    dependencies: {
-                        observeIpcListeners: ignoreProcessObservation,
-                        observeProcessExit: ignoreProcessObservation,
-                        readEnvironment() {
-                            return environment;
-                        },
-                        readStorage() {
-                            return null;
-                        }
+export const testNode = suite('source/engine/reporter-managed-output.test.ts', [
+    test(
+        'native policy retains reporter console restrictions without test-policy attribution',
+        async function (scope: OverkillScope) {
+            const environment = {};
+            const policy = createRuntimeCapabilityPolicy({
+                dependencies: {
+                    observeIpcListeners: ignoreProcessObservation,
+                    observeProcessExit: ignoreProcessObservation,
+                    readEnvironment() {
+                        return environment;
                     },
-                    observedStderr: false,
-                    observedStdout: false
-                });
-                scope.cleanup(function stopReporterPolicy() {
-                    policy.takeRunErrors();
-                });
-                const result = await policy.runLoad(async function reportWithNativePolicy() {
-                    return runWithReporterOutputScopeNow([], function deniedReporterConsole(method) {
-                        return `blocked ${method}`;
-                    }, function publishReporterDiagnostic() {
-                        channel('console.log').publish({});
-                    });
-                });
-                scope.assert.deepEqual(result.violations, [ 'blocked log' ]);
-                scope.assert.deepEqual(policy.takeRunErrors(), []);
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reporter dispatcher writes managed output in reporter registration order',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const { dispatcher, stderrLines, stdoutLines } = createRecordingDispatcher();
-                const errors = await reportEvent(
-                    dispatcher,
-                    [
-                        createOutputReporter('primary', [ { kind: 'stdout-managed-primary' } ], [
-                            stdoutPrimaryIntent
-                        ]),
-                        createOutputReporter('supplemental', [ { kind: 'stdout-managed-supplemental' } ], [
-                            stdoutSupplementalIntent
-                        ])
-                    ],
-                    suiteStartEvent('suite')
-                );
-
-                scope.assert.deepEqual(errors, []);
-                scope.assert.deepEqual(stdoutLines, [ 'primary line', 'supplemental line' ]);
-                scope.assert.deepEqual(stderrLines, []);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reporter output scope records undeclared console diagnostics',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const result = runWithReporterOutputScopeNow(
-                    [],
-                    function violationMessage(method) {
-                        return `blocked ${method}`;
-                    },
-                    function recordConsoleDiagnostic() {
-                        return recordReporterConsoleDiagnostic('console.log');
+                    readStorage() {
+                        return null;
                     }
-                );
+                },
+                observedStderr: false,
+                observedStdout: false
+            });
+            scope.cleanup(function stopReporterPolicy() {
+                policy.takeRunErrors();
+            });
+            const result = await policy.runLoad(async function reportWithNativePolicy() {
+                return runWithReporterOutputScopeNow([], function deniedReporterConsole(method) {
+                    return `blocked ${method}`;
+                }, function publishReporterDiagnostic() {
+                    channel('console.log').publish({});
+                });
+            });
+            scope.assert.deepEqual(result.violations, [ 'blocked log' ]);
+            scope.assert.deepEqual(policy.takeRunErrors(), []);
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'reporter dispatcher writes managed output in reporter registration order',
+        async function (scope: OverkillScope) {
+            const { dispatcher, stderrLines, stdoutLines } = createRecordingDispatcher();
+            const errors = await reportEvent(
+                dispatcher,
+                [
+                    createOutputReporter('primary', [ { kind: 'stdout-managed-primary' } ], [
+                        stdoutPrimaryIntent
+                    ]),
+                    createOutputReporter('supplemental', [ { kind: 'stdout-managed-supplemental' } ], [
+                        stdoutSupplementalIntent
+                    ])
+                ],
+                suiteStartEvent('suite')
+            );
 
-                scope.assert.equal(result.result, true);
-                scope.assert.deepEqual(result.violations, [ 'blocked log' ]);
+            scope.assert.deepEqual(errors, []);
+            scope.assert.deepEqual(stdoutLines, [ 'primary line', 'supplemental line' ]);
+            scope.assert.deepEqual(stderrLines, []);
 
-                return scope.assert.collect();
+            return scope.assert.collect();
+        }
+    ),
+    test('reporter output scope records undeclared console diagnostics', function (scope: OverkillScope) {
+        const result = runWithReporterOutputScopeNow(
+            [],
+            function violationMessage(method) {
+                return `blocked ${method}`;
+            },
+            function recordConsoleDiagnostic() {
+                return recordReporterConsoleDiagnostic('console.log');
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reporter dispatcher writes managed stderr output',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const { dispatcher, stderrLines, stdoutLines } = createRecordingDispatcher();
-                const errors = await reportEvent(
-                    dispatcher,
-                    [
-                        createOutputReporter('stderr', [ { kind: 'stderr-managed-supplemental' } ], [
-                            stderrSupplementalIntent
-                        ])
-                    ],
-                    suiteStartEvent('suite')
-                );
+        );
 
-                scope.assert.deepEqual(errors, []);
-                scope.assert.deepEqual(stdoutLines, []);
-                scope.assert.deepEqual(stderrLines, [ 'stderr supplemental line' ]);
+        scope.assert.equal(result.result, true);
+        scope.assert.deepEqual(result.violations, [ 'blocked log' ]);
 
-                return scope.assert.collect();
+        return scope.assert.collect();
+    }),
+    test('reporter dispatcher writes managed stderr output', async function (scope: OverkillScope) {
+        const { dispatcher, stderrLines, stdoutLines } = createRecordingDispatcher();
+        const errors = await reportEvent(
+            dispatcher,
+            [
+                createOutputReporter('stderr', [ { kind: 'stderr-managed-supplemental' } ], [
+                    stderrSupplementalIntent
+                ])
+            ],
+            suiteStartEvent('suite')
+        );
+
+        scope.assert.deepEqual(errors, []);
+        scope.assert.deepEqual(stdoutLines, []);
+        scope.assert.deepEqual(stderrLines, [ 'stderr supplemental line' ]);
+
+        return scope.assert.collect();
+    }),
+    test(
+        'reporter dispatcher records undeclared managed output as a reporter error',
+        async function (scope: OverkillScope) {
+            const { dispatcher } = createRecordingDispatcher();
+            const errors = await reportEvent(
+                dispatcher,
+                [
+                    createOutputReporter('undeclared-output', [], [ stdoutPrimaryIntent ])
+                ],
+                suiteStartEvent('suite')
+            );
+
+            scope.assert.deepEqual(
+                errorMessages(errors),
+                [ 'undeclared-output: Reporter returned undeclared managed stdout output.' ]
+            );
+
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'reporter dispatcher records wrong-role managed output as a reporter error',
+        async function (scope: OverkillScope) {
+            const { dispatcher } = createRecordingDispatcher();
+            const errors = await reportEvent(
+                dispatcher,
+                [
+                    createOutputReporter(
+                        'wrong-role-output',
+                        [ { kind: 'stdout-managed-supplemental' } ],
+                        [ stdoutPrimaryIntent ]
+                    )
+                ],
+                suiteStartEvent('suite')
+            );
+
+            scope.assert.deepEqual(
+                errorMessages(errors),
+                [ 'wrong-role-output: Reporter returned undeclared managed stdout output.' ]
+            );
+
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'reporter dispatcher records invalid managed output as a reporter error',
+        async function (scope: OverkillScope) {
+            const { dispatcher } = createRecordingDispatcher();
+            const errors = await reportEvent(
+                dispatcher,
+                [
+                    createOutputReporter('invalid-output', [ { kind: 'stdout-managed-primary' } ], [
+                        { annotation: null, kind: 'stdout-line', role: 'primary' }
+                    ])
+                ],
+                suiteStartEvent('suite')
+            );
+
+            scope.assert.deepEqual(
+                errorMessages(errors),
+                [ 'invalid-output: Reporter returned invalid managed output.' ]
+            );
+
+            return scope.assert.collect();
+        }
+    ),
+    test('reporter dispatcher records rendered newlines as a reporter error', async function (scope: OverkillScope) {
+        const { dispatcher } = createRecordingDispatcher();
+        const renderer: OutputRenderer = {
+            render() {
+                return 'bad\nline';
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reporter dispatcher records undeclared managed output as a reporter error',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const { dispatcher } = createRecordingDispatcher();
-                const errors = await reportEvent(
-                    dispatcher,
-                    [
-                        createOutputReporter('undeclared-output', [], [ stdoutPrimaryIntent ])
-                    ],
-                    suiteStartEvent('suite')
-                );
+        };
+        const errors = await reportEvent(
+            dispatcher,
+            [
+                createOutputReporter('newline-output', [ { kind: 'stdout-managed-primary' } ], [
+                    stdoutPrimaryIntent
+                ])
+            ],
+            suiteStartEvent('suite'),
+            defineOutputRenderer(function createNewlineOutputRenderer() {
+                return renderer;
+            })
+        );
 
-                scope.assert.deepEqual(
-                    errorMessages(errors),
-                    [ 'undeclared-output: Reporter returned undeclared managed stdout output.' ]
-                );
+        scope.assert.deepEqual(
+            errorMessages(errors),
+            [ 'newline-output: Managed output renderer returned a line containing a newline.' ]
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reporter dispatcher records wrong-role managed output as a reporter error',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const { dispatcher } = createRecordingDispatcher();
-                const errors = await reportEvent(
-                    dispatcher,
-                    [
-                        createOutputReporter(
-                            'wrong-role-output',
-                            [ { kind: 'stdout-managed-supplemental' } ],
-                            [ stdoutPrimaryIntent ]
-                        )
-                    ],
-                    suiteStartEvent('suite')
-                );
-
-                scope.assert.deepEqual(
-                    errorMessages(errors),
-                    [ 'wrong-role-output: Reporter returned undeclared managed stdout output.' ]
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reporter dispatcher records invalid managed output as a reporter error',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const { dispatcher } = createRecordingDispatcher();
-                const errors = await reportEvent(
-                    dispatcher,
-                    [
-                        createOutputReporter('invalid-output', [ { kind: 'stdout-managed-primary' } ], [
-                            { annotation: null, kind: 'stdout-line', role: 'primary' }
-                        ])
-                    ],
-                    suiteStartEvent('suite')
-                );
-
-                scope.assert.deepEqual(
-                    errorMessages(errors),
-                    [ 'invalid-output: Reporter returned invalid managed output.' ]
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reporter dispatcher records rendered newlines as a reporter error',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const { dispatcher } = createRecordingDispatcher();
-                const renderer: OutputRenderer = {
-                    render() {
-                        return 'bad\nline';
-                    }
-                };
-                const errors = await reportEvent(
-                    dispatcher,
-                    [
-                        createOutputReporter('newline-output', [ { kind: 'stdout-managed-primary' } ], [
-                            stdoutPrimaryIntent
-                        ])
-                    ],
-                    suiteStartEvent('suite'),
-                    defineOutputRenderer(function createNewlineOutputRenderer() {
-                        return renderer;
-                    })
-                );
-
-                scope.assert.deepEqual(
-                    errorMessages(errors),
-                    [ 'newline-output: Managed output renderer returned a line containing a newline.' ]
-                );
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

@@ -1,13 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { LoadedConfig, ConfiguredRunCommand, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
 
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope,
-    type TestPlan
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy, type TestPlan } from '../packages/engine/engine.entry-point.ts';
 
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
@@ -262,43 +257,32 @@ function assertProcessUsageCommand(scope: OverkillScope, suppliedCommand: Config
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/command-line-runner-process-usage.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() carries process usage config and request values',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const recordedCommands = createRecordedRunCommands();
-                const runner = createCommandLineRunner(createRunnerDependencies(recordedCommands));
-                const result = await runner.runTests({
-                    configPath: null,
-                    cwd: process.cwd(),
-                    runRequest: {
-                        ...defaultRequest,
-                        processBudgetOverrides: {
-                            activeResourceCount: null,
-                            javaScriptEngineHeapBytes: 100,
-                            residentSetBytes: null,
-                            residentSetGrowthBytesPerSecond: null
-                        }
+export const testNode = suite('source/run/command-line-runner-process-usage.test.ts', [
+    test(
+        'commandLineRunner.runTests() carries process usage config and request values',
+        async function (scope: OverkillScope) {
+            const recordedCommands = createRecordedRunCommands();
+            const runner = createCommandLineRunner(createRunnerDependencies(recordedCommands));
+            const result = await runner.runTests({
+                configPath: null,
+                cwd: process.cwd(),
+                runRequest: {
+                    ...defaultRequest,
+                    processBudgetOverrides: {
+                        activeResourceCount: null,
+                        javaScriptEngineHeapBytes: 100,
+                        residentSetBytes: null,
+                        residentSetGrowthBytesPerSecond: null
                     }
-                });
+                }
+            });
 
-                scope.assert.equal(result.exitCode, 0);
-                const receivedCommand = recordedCommands.first();
-                scope.require.defined(receivedCommand);
-                assertProcessUsageCommand(scope, receivedCommand);
+            scope.assert.equal(result.exitCode, 0);
+            const receivedCommand = recordedCommands.first();
+            scope.require.defined(receivedCommand);
+            assertProcessUsageCommand(scope, receivedCommand);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

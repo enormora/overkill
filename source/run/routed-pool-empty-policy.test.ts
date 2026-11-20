@@ -1,8 +1,8 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createRoutedPool } from './worker-pool-routing.ts';
 
-export const testNode = suite('empty routed pool observations', [
+export const testNode = authoredSuite('empty routed pool observations', [
     test('rejects a usage summary without any routed process samples', async function (scope: TestScope) {
         const pool = createRoutedPool([]);
         const createTracker = pool.createProcessUsageTracker;
@@ -16,4 +16,3 @@ export const testNode = suite('empty routed pool observations', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

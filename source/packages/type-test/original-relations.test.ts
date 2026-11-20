@@ -1,8 +1,7 @@
 import { mkdir, mkdtemp, writeFile, rm, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import type { Type } from 'typescript-beta/async';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
 import { runNativeProject } from '../../test-support/native-type-project.ts';
 import { relationSource } from '../../test-support/type-test-relation-project.ts';
 import { loadProject, disposeProject, typeAnalysis, type FrozenProject } from './frozen-project.ts';
@@ -208,7 +207,7 @@ const nodes=[generic<'literal'>(),table({title:'static rows',cases:[1,2],test:sc
 }})];
 `;
 
-export const testNode = suite('original-source relations', [
+export const testNode = authoredSuite('original-source relations', [
     test('implements the documented equality rules in the original project', async function (scope) {
         const { project, directory } = await originalProject(scope);
         const analysis = typeAnalysis(project);
@@ -238,4 +237,3 @@ export const testNode = suite('original-source relations', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

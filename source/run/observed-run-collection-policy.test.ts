@@ -1,11 +1,11 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { globalErrorObservation } from '../test-support/global-error-observation.ts';
 import { observeCollection } from '../engine/execution-global-error-observer.ts';
 import { createCollectedPlan, workerPoolResolvedRun } from '../test-support/worker-pool-execution-state.ts';
 
-export const testNode = suite('collection error observation', [
-    test('returns the collected plan and removes process hook ownership', async function (scope: TestScope) {
+export const testNode = authoredSuite('collection error observation', [
+    authoredTest('returns the collected plan and removes process hook ownership', async function (scope: TestScope) {
         const fixture = globalErrorObservation();
         const expected = workerPoolResolvedRun(createCollectedPlan());
         const result = await observeCollection(async function () {
@@ -15,7 +15,7 @@ export const testNode = suite('collection error observation', [
         scope.assert.equal(fixture.events.listenerCount('unhandledRejection'), 0);
         return scope.assert.collect();
     }),
-    test('preserves collection failures and removes process hook ownership', async function (scope: TestScope) {
+    authoredTest('preserves collection failures and removes process hook ownership', async function (scope: TestScope) {
         const fixture = globalErrorObservation();
         const failure = new Error('Collection failed.');
         await scope.assert.rejects(async function () {
@@ -27,7 +27,7 @@ export const testNode = suite('collection error observation', [
         return scope.assert.collect();
     }),
     ...[ false, true ].map(function (drained) {
-        return test(
+        return authoredTest(
             `rejects process hook failures with diagnostics drained ${drained}`,
             async function (scope: TestScope) {
                 const fixture = globalErrorObservation();
@@ -51,4 +51,3 @@ export const testNode = suite('collection error observation', [
         );
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,7 +1,6 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
 import { workIdentityKey, type RunResult } from '../../packages/engine/engine.entry-point.ts';
 import {
     normalizeConfig,
@@ -163,7 +162,7 @@ async function assertWorkloadExecution(scope: TestScope, command: RunCommand): P
     await assertFilteredBaselines(scope, filtered);
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'workload runner integration',
     executions.map(function scenario(execution, index) {
         return test(`execution ${index + 1}`, async function (scope) {
@@ -179,5 +178,3 @@ export const testNode = suite(
         });
     })
 );
-
-await runIfMain(import.meta, testNode);

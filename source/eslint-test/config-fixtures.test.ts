@@ -1,11 +1,12 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { defineConfigTests, type ConfigFixture } from '../packages/eslint-test/eslint-test.entry-point.ts';
 import { configDefinition, executeConfigNode, emptyConfigProject } from '../test-support/eslint-config.ts';
 
 function fixture(title: string, code: string, expect: ConfigFixture<'basic'>['expect']): ConfigFixture<'basic'> {
     return { title, configs: 'all', source: { kind: 'inline', filename: 'sample.js', code }, expect };
 }
-export const testNode = suite('config fixture regressions', [
+export const testNode = authoredSuite('config fixture regressions', [
     test('honors returned custom assertions and ordinary assertion plans', async function (scope) {
         const definition = defineConfigTests({
             ...configDefinition([]),

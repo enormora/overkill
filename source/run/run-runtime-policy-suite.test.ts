@@ -1,8 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { suite } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite } from '@overkill-dev/test';
+
 import { testNode as snapshotTestNode } from './capability-policy-snapshots.test.ts';
 import { testNode as runtimePolicyTestNode } from './run-runtime-policy.test.ts';
 
-export const testNode = suite('runtime policy', [ snapshotTestNode, runtimePolicyTestNode ]);
-
-await runIfMain(import.meta, testNode);
+export const testNode = authoredSuite('runtime policy', [ snapshotTestNode, runtimePolicyTestNode ]);

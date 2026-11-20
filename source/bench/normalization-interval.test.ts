@@ -1,5 +1,7 @@
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { CalibrationSnapshot } from '../engine/benchmark-result.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
 import { calibrationFactor, normalizeStatisticalInterval, calibrationInterval } from './normalization-interval.ts';
 import { evaluateBudgetInterval } from './benchmark-budget.ts';
@@ -11,7 +13,7 @@ function constantCalibration(value: number): CalibrationSnapshot {
         return value;
     }));
 }
-export const testNode = suite('benchmark normalization intervals', [
+export const testNode = authoredSuite('benchmark normalization intervals', [
     test('scales duration and throughput in opposite directions', function (scope: TestScope) {
         const actual = constantCalibration(200);
         const reference = constantCalibration(100);

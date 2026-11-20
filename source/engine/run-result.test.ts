@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import {
@@ -123,206 +119,165 @@ function stacklessPermissionDeniedError(): Error {
     return denied;
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/engine/run-result.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'verdictFromOutcome() returns the outcome kind as the verdict',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const outcome: TestOutcome = {
-                    failures: [ { checks: [ createFailedCheck() ], kind: 'assertion' } ],
-                    kind: 'fail'
-                };
+export const testNode = suite('source/engine/run-result.test.ts', [
+    test('verdictFromOutcome() returns the outcome kind as the verdict', function (scope: OverkillScope) {
+        const outcome: TestOutcome = {
+            failures: [ { checks: [ createFailedCheck() ], kind: 'assertion' } ],
+            kind: 'fail'
+        };
 
-                scope.assert.equal(verdictFromOutcome(outcome), 'fail');
+        scope.assert.equal(verdictFromOutcome(outcome), 'fail');
 
-                return scope.assert.collect();
+        return scope.assert.collect();
+    }),
+    test('isCaseRunnerError() accepts only branded runner errors', function (scope: OverkillScope) {
+        assertCaseRunnerErrorPredicates(scope);
+
+        return scope.assert.collect();
+    }),
+    test('permissionDeniedRunnerErrorFromThrown() preserves non-Error denied fields', function (scope: OverkillScope) {
+        const denied = {
+            code: 'ERR_ACCESS_DENIED',
+            permission: 'FileSystemRead'
+        };
+        const runnerError = permissionDeniedRunnerErrorFromThrown(denied, permissionRunnerErrorContext);
+
+        if (runnerError === null) {
+            throw new Error('Expected permission runner error.');
+        }
+
+        scope.assert.equal(isPermissionDeniedRunnerError(runnerError), true);
+        scope.assert.equal(runnerError.message, 'Permission denied: FileSystemRead.');
+        scope.assert.deepEqual(runnerError.cause, {
+            boundary: 'in-process',
+            capability: 'fs-read',
+            diagnosticChannel: null,
+            error: {
+                code: 'ERR_ACCESS_DENIED',
+                message: '[object Object]',
+                name: 'Error',
+                permission: 'FileSystemRead',
+                resource: null,
+                stack: null
+            },
+            hook: null,
+            kind: 'node-permission-denial',
+            permission: 'FileSystemRead',
+            phase: 'body',
+            resource: null,
+            source: 'throw'
+        });
+
+        return scope.assert.collect();
+    }),
+    test(
+        'permissionDeniedRunnerErrorFromDiagnostic() falls back without denied fields',
+        function (scope: OverkillScope) {
+            const runnerError = permissionDeniedRunnerErrorFromDiagnostic({
+                channel: 'node:permission-model:fs',
+                fallbackCapability: 'fs-read',
+                message: {}
+            }, permissionRunnerErrorContext);
+
+            scope.assert.equal(isPermissionDeniedRunnerError(runnerError), true);
+            scope.assert.equal(runnerError.message, 'Permission denied: unknown permission.');
+            scope.assert.deepEqual(runnerError.cause, {
+                boundary: 'in-process',
+                capability: 'fs-read',
+                diagnosticChannel: 'node:permission-model:fs',
+                error: null,
+                hook: null,
+                kind: 'node-permission-denial',
+                permission: null,
+                phase: 'body',
+                resource: null,
+                source: 'diagnostic-channel'
+            });
+
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'permissionDeniedRunnerErrorFromThrown() serializes Error denials without stacks',
+        function (scope: OverkillScope) {
+            const runnerError = permissionDeniedRunnerErrorFromThrown(
+                stacklessPermissionDeniedError(),
+                permissionRunnerErrorContext
+            );
+
+            if (runnerError === null) {
+                throw new Error('Expected permission runner error.');
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'isCaseRunnerError() accepts only branded runner errors',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                assertCaseRunnerErrorPredicates(scope);
-
-                return scope.assert.collect();
+            if (runnerError.cause.error === null) {
+                throw new Error('Expected serialized denied error.');
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'permissionDeniedRunnerErrorFromThrown() preserves non-Error denied fields',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const denied = {
-                    code: 'ERR_ACCESS_DENIED',
-                    permission: 'FileSystemRead'
-                };
-                const runnerError = permissionDeniedRunnerErrorFromThrown(denied, permissionRunnerErrorContext);
 
-                if (runnerError === null) {
-                    throw new Error('Expected permission runner error.');
-                }
+            scope.assert.equal(runnerError.message, 'Permission denied: CustomPermission for /private.');
+            scope.assert.deepEqual(runnerError.cause.error, {
+                code: 'ERR_ACCESS_DENIED',
+                message: 'denied',
+                name: 'Error',
+                permission: 'CustomPermission',
+                resource: '/private',
+                stack: null
+            });
 
-                scope.assert.equal(isPermissionDeniedRunnerError(runnerError), true);
-                scope.assert.equal(runnerError.message, 'Permission denied: FileSystemRead.');
-                scope.assert.deepEqual(runnerError.cause, {
-                    boundary: 'in-process',
-                    capability: 'fs-read',
-                    diagnosticChannel: null,
-                    error: {
-                        code: 'ERR_ACCESS_DENIED',
-                        message: '[object Object]',
-                        name: 'Error',
-                        permission: 'FileSystemRead',
-                        resource: null,
-                        stack: null
-                    },
-                    hook: null,
-                    kind: 'node-permission-denial',
-                    permission: 'FileSystemRead',
-                    phase: 'body',
-                    resource: null,
-                    source: 'throw'
-                });
-
-                return scope.assert.collect();
+            return scope.assert.collect();
+        }
+    ),
+    test('runTimingSummary() clamps execution time to total wall time', function (scope: OverkillScope) {
+        scope.assert.deepEqual(
+            runTimingSummary({
+                testExecutionWallTimeMicroseconds: 15,
+                totalWallTimeMicroseconds: 10
+            }),
+            {
+                runnerOverheadWallTimeMicroseconds: 0,
+                testExecutionWallTimeMicroseconds: 10,
+                totalWallTimeMicroseconds: 10
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'permissionDeniedRunnerErrorFromDiagnostic() falls back without denied fields',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const runnerError = permissionDeniedRunnerErrorFromDiagnostic({
-                    channel: 'node:permission-model:fs',
-                    fallbackCapability: 'fs-read',
-                    message: {}
-                }, permissionRunnerErrorContext);
+        );
 
-                scope.assert.equal(isPermissionDeniedRunnerError(runnerError), true);
-                scope.assert.equal(runnerError.message, 'Permission denied: unknown permission.');
-                scope.assert.deepEqual(runnerError.cause, {
-                    boundary: 'in-process',
-                    capability: 'fs-read',
-                    diagnosticChannel: 'node:permission-model:fs',
-                    error: null,
-                    hook: null,
-                    kind: 'node-permission-denial',
-                    permission: null,
-                    phase: 'body',
-                    resource: null,
-                    source: 'diagnostic-channel'
-                });
+        return scope.assert.collect();
+    }),
+    test(
+        'preciseTimingReport() bounds spans, aggregates totals, and records slowest spans',
+        function (scope: OverkillScope) {
+            const configLoadStart = timingSpan('config.load', 3, 0);
+            const reporterDelivery = timingSpan('reporter.deliver', 20, 3);
+            const configLoadEnd = timingSpan('config.load', 10, 23);
+            const input: PreciseTimingReportInput = {
+                aggregationMicroseconds: 3,
+                observationWindow: { durationMicroseconds: 33, startTimeUnixMicroseconds: 0 },
+                recordingMicroseconds: 2,
+                slowestSpanLimit: 2,
+                spanLimit: 2,
+                spans: [ configLoadStart, reporterDelivery, configLoadEnd ]
+            };
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'permissionDeniedRunnerErrorFromThrown() serializes Error denials without stacks',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const runnerError = permissionDeniedRunnerErrorFromThrown(
-                    stacklessPermissionDeniedError(),
-                    permissionRunnerErrorContext
-                );
-
-                if (runnerError === null) {
-                    throw new Error('Expected permission runner error.');
-                }
-                if (runnerError.cause.error === null) {
-                    throw new Error('Expected serialized denied error.');
-                }
-
-                scope.assert.equal(runnerError.message, 'Permission denied: CustomPermission for /private.');
-                scope.assert.deepEqual(runnerError.cause.error, {
-                    code: 'ERR_ACCESS_DENIED',
-                    message: 'denied',
-                    name: 'Error',
-                    permission: 'CustomPermission',
-                    resource: '/private',
-                    stack: null
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runTimingSummary() clamps execution time to total wall time',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                scope.assert.deepEqual(
-                    runTimingSummary({
-                        testExecutionWallTimeMicroseconds: 15,
-                        totalWallTimeMicroseconds: 10
-                    }),
-                    {
-                        runnerOverheadWallTimeMicroseconds: 0,
-                        testExecutionWallTimeMicroseconds: 10,
-                        totalWallTimeMicroseconds: 10
-                    }
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'preciseTimingReport() bounds spans, aggregates totals, and records slowest spans',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const configLoadStart = timingSpan('config.load', 3, 0);
-                const reporterDelivery = timingSpan('reporter.deliver', 20, 3);
-                const configLoadEnd = timingSpan('config.load', 10, 23);
-                const input: PreciseTimingReportInput = {
+            scope.assert.deepEqual(preciseTimingReport(input), {
+                aggregates: [
+                    { count: 2, durationMicroseconds: 13, kind: 'config.load' },
+                    { count: 1, durationMicroseconds: 20, kind: 'reporter.deliver' }
+                ],
+                ambientNoise: 'unknown',
+                droppedSpanCount: 1,
+                overhead: {
                     aggregationMicroseconds: 3,
-                    observationWindow: { durationMicroseconds: 33, startTimeUnixMicroseconds: 0 },
                     recordingMicroseconds: 2,
-                    slowestSpanLimit: 2,
-                    spanLimit: 2,
-                    spans: [ configLoadStart, reporterDelivery, configLoadEnd ]
-                };
+                    renderingMicroseconds: 0,
+                    serializationMicroseconds: 0
+                },
+                observationWindow: { durationMicroseconds: 33, startTimeUnixMicroseconds: 0 },
+                slowestSpanLimit: 2,
+                slowestSpans: [ reporterDelivery, configLoadEnd ],
+                spanLimit: 2,
+                spans: [ configLoadStart, reporterDelivery ],
+                truncated: true
+            });
+            assertDefaultTimingModelValues(scope);
 
-                scope.assert.deepEqual(preciseTimingReport(input), {
-                    aggregates: [
-                        { count: 2, durationMicroseconds: 13, kind: 'config.load' },
-                        { count: 1, durationMicroseconds: 20, kind: 'reporter.deliver' }
-                    ],
-                    ambientNoise: 'unknown',
-                    droppedSpanCount: 1,
-                    overhead: {
-                        aggregationMicroseconds: 3,
-                        recordingMicroseconds: 2,
-                        renderingMicroseconds: 0,
-                        serializationMicroseconds: 0
-                    },
-                    observationWindow: { durationMicroseconds: 33, startTimeUnixMicroseconds: 0 },
-                    slowestSpanLimit: 2,
-                    slowestSpans: [ reporterDelivery, configLoadEnd ],
-                    spanLimit: 2,
-                    spans: [ configLoadStart, reporterDelivery ],
-                    truncated: true
-                });
-                assertDefaultTimingModelValues(scope);
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

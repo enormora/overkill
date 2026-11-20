@@ -2,8 +2,7 @@ import { execFile } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
 import {
     normalizeConfig,
@@ -125,13 +124,19 @@ async function runExposedGarbageCollectionProbe(): Promise<string> {
     });
 }
 
-export const testNode = suite('benchmark GC process boundaries', [
-    test('rejects direct engine GC even when the caller explicitly exposes it', async function (scope: TestScope) {
-        const stdout = await runExposedGarbageCollectionProbe();
-        scope.assert.equal(stdout, JSON.stringify({ exposed: true, requestedSamples: 0, errors: [ 'measurement' ] }));
-        return scope.assert.collect();
-    }),
-    test('derives each shard host from its own selected benchmark work', async function (scope: TestScope) {
+export const testNode = authoredSuite('benchmark GC process boundaries', [
+    authoredTest(
+        'rejects direct engine GC even when the caller explicitly exposes it',
+        async function (scope: TestScope) {
+            const stdout = await runExposedGarbageCollectionProbe();
+            scope.assert.equal(
+                stdout,
+                JSON.stringify({ exposed: true, requestedSamples: 0, errors: [ 'measurement' ] })
+            );
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('derives each shard host from its own selected benchmark work', async function (scope: TestScope) {
         const command = await commandFor(scope, 'reuse', 'off', 'after-sample');
         const listed = await Promise.all([ 1, 2 ].map(async function (index) {
             return await orchestrator.bench.list({
@@ -157,7 +162,7 @@ export const testNode = suite('benchmark GC process boundaries', [
         return scope.assert.collect();
     }),
     ...([ 'supervised-process', 'reuse', 'fresh-worker-per-unit' ] as const).map(function (boundary) {
-        return test(`collects only requested invocations in ${boundary}`, async function (scope: TestScope) {
+        return authoredTest(`collects only requested invocations in ${boundary}`, async function (scope: TestScope) {
             const originalGc = globalThis.gc;
             const command = await commandFor(scope, boundary, 'off', 'after-sample');
             const listed = await orchestrator.bench.list(command, { timing: null });
@@ -169,7 +174,7 @@ export const testNode = suite('benchmark GC process boundaries', [
             return scope.assert.collect();
         });
     }),
-    test(
+    authoredTest(
         'keeps unselected GC requests out of host resolution and honors an off override',
         async function (scope: TestScope) {
             const command = await commandFor(scope, 'reuse', 'after-sample', 'off');
@@ -184,12 +189,10 @@ export const testNode = suite('benchmark GC process boundaries', [
             return scope.assert.collect();
         }
     ),
-    test('passes the profile default through hosted worker commands', async function (scope: TestScope) {
+    authoredTest('passes the profile default through hosted worker commands', async function (scope: TestScope) {
         const command = await commandFor(scope, 'reuse', 'after-sample', 'profile-default');
         const result = await orchestrator.bench.run(command, { timing: null });
         assertGarbageCollectionRun(scope, result);
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

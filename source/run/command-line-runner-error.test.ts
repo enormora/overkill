@@ -1,11 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { LoadedConfig, ConfiguredRunCommand, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope,
-    type TestPlan
-} from '../packages/engine/engine.entry-point.ts';
+import type { TestPlan } from '../packages/engine/engine.entry-point.ts';
 
 import { testDouble } from '../doubles/test-double.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -167,55 +163,35 @@ function createRunOnlyOrchestrator(run: ConfiguredRunOrchestrator['run']): Confi
     };
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/command-line-runner-error.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() formats non-error internal crashes',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const run = testDouble.rejects<ConfiguredRunOrchestrator['run']>('unexpected string failure');
-                const runner = createCommandLineRunner(createRunnerDependencies(createRunOnlyOrchestrator(run)));
-                const result = await runner.runTests({
-                    configPath: null,
-                    cwd: process.cwd(),
-                    runRequest: defaultRequest
-                });
+export const testNode = suite('source/run/command-line-runner-error.test.ts', [
+    test('commandLineRunner.runTests() formats non-error internal crashes', async function (scope: OverkillScope) {
+        const run = testDouble.rejects<ConfiguredRunOrchestrator['run']>('unexpected string failure');
+        const runner = createCommandLineRunner(createRunnerDependencies(createRunOnlyOrchestrator(run)));
+        const result = await runner.runTests({
+            configPath: null,
+            cwd: process.cwd(),
+            runRequest: defaultRequest
+        });
 
-                scope.assert.equal(result.exitCode, 70);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill internal error: unexpected string failure'
-                ]);
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() formats Error internal crashes',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const run = testDouble.rejects<ConfiguredRunOrchestrator['run']>(new Error('Unexpected failure.'));
-                const runner = createCommandLineRunner(createRunnerDependencies(createRunOnlyOrchestrator(run)));
-                const result = await runner.runTests({
-                    configPath: null,
-                    cwd: process.cwd(),
-                    runRequest: defaultRequest
-                });
+        scope.assert.equal(result.exitCode, 70);
+        scope.assert.deepEqual(result.fallbackDiagnostics, [
+            'Overkill internal error: unexpected string failure'
+        ]);
+        return scope.assert.collect();
+    }),
+    test('commandLineRunner.runTests() formats Error internal crashes', async function (scope: OverkillScope) {
+        const run = testDouble.rejects<ConfiguredRunOrchestrator['run']>(new Error('Unexpected failure.'));
+        const runner = createCommandLineRunner(createRunnerDependencies(createRunOnlyOrchestrator(run)));
+        const result = await runner.runTests({
+            configPath: null,
+            cwd: process.cwd(),
+            runRequest: defaultRequest
+        });
 
-                scope.assert.equal(result.exitCode, 70);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill internal error: Unexpected failure.'
-                ]);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        scope.assert.equal(result.exitCode, 70);
+        scope.assert.deepEqual(result.fallbackDiagnostics, [
+            'Overkill internal error: Unexpected failure.'
+        ]);
+        return scope.assert.collect();
+    })
+]);

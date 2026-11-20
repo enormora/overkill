@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { createSuite } from './packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as assertAndRunTestNode } from './test-support/unit-suite-groups/compiler-and-assertions.ts';
 import { testNode as compareTestNode } from './test-support/unit-suite-groups/compare.ts';
 import { testNode as doublesTestNode } from './test-support/unit-suite-groups/doubles.ts';
@@ -9,21 +9,13 @@ import { testNode as outputRenderersTestNode } from './test-support/unit-suite-g
 import { testNode as reportersTestNode } from './test-support/unit-suite-groups/reporters.ts';
 import { testNode as resourcesTestNode } from './test-support/unit-suite-groups/resources.ts';
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/overkill.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        assertAndRunTestNode,
-        compareTestNode,
-        doublesTestNode,
-        engineCoreTestNode,
-        engineSupportTestNode,
-        outputRenderersTestNode,
-        reportersTestNode,
-        resourcesTestNode
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/overkill.test.ts', [
+    assertAndRunTestNode,
+    compareTestNode,
+    doublesTestNode,
+    engineCoreTestNode,
+    engineSupportTestNode,
+    outputRenderersTestNode,
+    reportersTestNode,
+    resourcesTestNode
+]);

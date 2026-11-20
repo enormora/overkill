@@ -1,16 +1,9 @@
-import { createSuite } from '../../packages/engine/engine.entry-point.ts';
-import {
-    testNode as githubActionsOutputRendererTestNode
-} from '../../output-renderers/github-actions-output-renderer.test.ts';
+import { suite } from '@overkill-dev/test';
+
+import { testNode as githubActionsTestNode } from '../../output-renderers/github-actions-output-renderer.test.ts';
 import { testNode as workerPoolRuntimeFixturesTestNode } from '../worker-pool-runtime-fixtures.test.ts';
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/test-support/unit-suite-groups/output-renderers.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        githubActionsOutputRendererTestNode,
-        workerPoolRuntimeFixturesTestNode
-    ]
-});
+export const testNode = suite('source/test-support/unit-suite-groups/output-renderers.ts', [
+    githubActionsTestNode,
+    workerPoolRuntimeFixturesTestNode
+]);

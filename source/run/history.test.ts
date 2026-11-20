@@ -1,8 +1,7 @@
 import { mkdtemp, rm, mkdir, writeFile, readFile, symlink } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
 import type { History } from './history-types.ts';
@@ -107,7 +106,7 @@ async function recordThenPrune(root: string, service: History, outcome: Recorded
     await service.compact();
     await service.prune({ dryRun: false });
 }
-export const testNode = suite('history operations', [
+export const testNode = authoredSuite('history operations', [
     test(
         'explicit maintenance removes abandoned owners while dry-run preserves them',
         async function (scope: TestScope) {
@@ -294,4 +293,3 @@ export const testNode = suite('history operations', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

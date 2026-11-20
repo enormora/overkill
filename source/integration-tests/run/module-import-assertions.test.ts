@@ -1,5 +1,6 @@
+import type { TestScope } from '@overkill-dev/test';
 import { z } from 'zod/v4';
-import type { TestScope } from '../../packages/test/test.entry-point.ts';
+
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
 import { readBenchmarkTimeline, type BenchmarkTimelineReport } from '../../packages/bench/bench.entry-point.ts';
 import { processEvidenceSchema } from '../../bench/process-evidence.ts';

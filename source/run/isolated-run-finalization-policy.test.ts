@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { passingIsolatedWorkerRun } from '../test-support/isolated-worker-run.ts';
 import { attachmentRecording } from '../test-support/attachment-recording.ts';
 import { runIsolatedProcessCommand } from './run-isolated-process.ts';
@@ -21,7 +21,7 @@ function baselineSession(
         }
     };
 }
-export const testNode = suite(
+export const testNode = authoredSuite(
     'isolated run finalization ownership',
     [ false, true ].flatMap(function (record) {
         return [ false, true ].map(function (baseline) {
@@ -61,4 +61,3 @@ export const testNode = suite(
         });
     })
 );
-await runIfMain(import.meta, testNode);

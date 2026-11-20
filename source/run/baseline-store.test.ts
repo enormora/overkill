@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import properLockfile from 'proper-lockfile';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import { createOrdinaryBaselineStore, type OrdinaryBaselineStore } from './baseline-store.ts';
 import type { OrdinaryBaselineChange } from './baseline-record.ts';
@@ -42,7 +42,7 @@ async function assertHeldLock(scope: TestScope, fixture: StoreFixture): Promise<
         await release();
     }
 }
-export const testNode = suite('ordinary baseline storage', [
+export const testNode = authoredSuite('ordinary baseline storage', [
     test('coordinates publication with other writers and releases its lock', async function (scope: TestScope) {
         const fixture = await storeFixture(scope);
         await assertHeldLock(scope, fixture);

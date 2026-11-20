@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { memoryHistoryAccess, idleHistoryScenario } from '../test-support/history-access.ts';
 import { testNode as metadata } from './history-owner-policy.test.ts';
 import { testNode as locks } from './history-lock-policy.test.ts';
@@ -9,26 +9,29 @@ import { RunCollectionError } from './run-errors.ts';
 import { HistoryMaintenanceDeferredError, withinHistoryMaintenanceBudget } from './history-maintenance-budget.ts';
 import { inspectDetailedRecordState, assertHistoryRunId, compareHistoryRuns } from './history-state-access.ts';
 
-export const testNode = suite('history access ownership policy', [
+export const testNode = authoredSuite('history access ownership policy', [
     metadata,
     system,
     locks,
     operations,
-    test('uses the configured state directory and acquires an idle owner guard', async function (scope: TestScope) {
-        const fixture = await memoryHistoryAccess(idleHistoryScenario);
-        await fixture.access.assertOwnedLocation();
-        await fixture.access.assertIdle();
-        scope.assert.equal(
-            await fixture.access.guarded(async function () {
-                return 42;
-            }),
-            42
-        );
-        scope.assert.deepEqual(fixture.created, [ '/project/.overkill' ]);
-        scope.assert.deepEqual(fixture.access.diagnostics(), []);
-        return scope.assert.collect();
-    }),
-    test('removes only abandoned ownership metadata and its lease', async function (scope: TestScope) {
+    authoredTest(
+        'uses the configured state directory and acquires an idle owner guard',
+        async function (scope: TestScope) {
+            const fixture = await memoryHistoryAccess(idleHistoryScenario);
+            await fixture.access.assertOwnedLocation();
+            await fixture.access.assertIdle();
+            scope.assert.equal(
+                await fixture.access.guarded(async function () {
+                    return 42;
+                }),
+                42
+            );
+            scope.assert.deepEqual(fixture.created, [ '/project/.overkill' ]);
+            scope.assert.deepEqual(fixture.access.diagnostics(), []);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('removes only abandoned ownership metadata and its lease', async function (scope: TestScope) {
         const fixture = await memoryHistoryAccess({
             ...idleHistoryScenario,
             owners: [ { name: 'old.json', pid: 42, host: 'test-host' }, {
@@ -48,7 +51,7 @@ export const testNode = suite('history access ownership policy', [
         scope.assert.deepEqual(fixture.access.diagnostics(), []);
         return scope.assert.collect();
     }),
-    test('rejects maintenance while a local run owner is alive', async function (scope: TestScope) {
+    authoredTest('rejects maintenance while a local run owner is alive', async function (scope: TestScope) {
         const fixture = await memoryHistoryAccess({
             ...idleHistoryScenario,
             alivePid: 42,
@@ -60,20 +63,23 @@ export const testNode = suite('history access ownership policy', [
         scope.assert.deepEqual(fixture.removed, []);
         return scope.assert.collect();
     }),
-    test('defers bounded maintenance instead of reclassifying active ownership', async function (scope: TestScope) {
-        const fixture = await memoryHistoryAccess({
-            ...idleHistoryScenario,
-            alivePid: 42,
-            owners: [ { name: 'live.json', pid: 42, host: 'test-host' } ]
-        });
-        await withinHistoryMaintenanceBudget(60_000, async function () {
-            await scope.assert.rejects(async function () {
-                await fixture.access.guarded(fixture.access.assertIdle);
-            }, { type: HistoryMaintenanceDeferredError });
-        }, performance.now.bind(performance));
-        return scope.assert.collect();
-    }),
-    test('checks remote ownership leases before reclaiming metadata', async function (scope: TestScope) {
+    authoredTest(
+        'defers bounded maintenance instead of reclassifying active ownership',
+        async function (scope: TestScope) {
+            const fixture = await memoryHistoryAccess({
+                ...idleHistoryScenario,
+                alivePid: 42,
+                owners: [ { name: 'live.json', pid: 42, host: 'test-host' } ]
+            });
+            await withinHistoryMaintenanceBudget(60_000, async function () {
+                await scope.assert.rejects(async function () {
+                    await fixture.access.guarded(fixture.access.assertIdle);
+                }, { type: HistoryMaintenanceDeferredError });
+            }, performance.now.bind(performance));
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('checks remote ownership leases before reclaiming metadata', async function (scope: TestScope) {
         const active = await memoryHistoryAccess({
             ...idleHistoryScenario,
             foreignLeaseActive: true,
@@ -91,7 +97,7 @@ export const testNode = suite('history access ownership policy', [
         return scope.assert.collect();
     }),
     ...[ '.', '/' ].map(function (stateDirectory) {
-        return test(`rejects history state stored in ${stateDirectory}`, async function (scope: TestScope) {
+        return authoredTest(`rejects history state stored in ${stateDirectory}`, async function (scope: TestScope) {
             const fixture = await memoryHistoryAccess({ ...idleHistoryScenario, stateDirectory });
             await scope.assert.rejects(async function () {
                 await fixture.access.assertOwnedLocation();
@@ -99,63 +105,76 @@ export const testNode = suite('history access ownership policy', [
             return scope.assert.collect();
         });
     }),
-    test('rejects linked state subdirectories before touching their contents', async function (scope: TestScope) {
-        const fixture = await memoryHistoryAccess({ ...idleHistoryScenario, linked: '/project/.overkill/runs' });
-        await scope.assert.rejects(async function () {
-            await fixture.access.assertOwnedLocation();
-        }, { message: 'History directory is a symbolic link: /project/.overkill/runs' });
-        scope.assert.deepEqual(fixture.removed, []);
-        return scope.assert.collect();
-    }),
-    test('wraps storage failures while preserving classified history failures', async function (scope: TestScope) {
-        const fixture = await memoryHistoryAccess(idleHistoryScenario);
-        const cause = new Error('Storage failed.');
-        await scope.assert.rejects(async function () {
-            await fixture.access.guarded(async function () {
-                throw cause;
+    authoredTest(
+        'rejects linked state subdirectories before touching their contents',
+        async function (scope: TestScope) {
+            const fixture = await memoryHistoryAccess({ ...idleHistoryScenario, linked: '/project/.overkill/runs' });
+            await scope.assert.rejects(async function () {
+                await fixture.access.assertOwnedLocation();
+            }, { message: 'History directory is a symbolic link: /project/.overkill/runs' });
+            scope.assert.deepEqual(fixture.removed, []);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest(
+        'wraps storage failures while preserving classified history failures',
+        async function (scope: TestScope) {
+            const fixture = await memoryHistoryAccess(idleHistoryScenario);
+            const cause = new Error('Storage failed.');
+            await scope.assert.rejects(async function () {
+                await fixture.access.guarded(async function () {
+                    throw cause;
+                });
+            }, {
+                type: RunCollectionError,
+                message: 'History operation failed: Storage failed.',
+                cause: { exact: cause }
             });
-        }, { type: RunCollectionError, message: 'History operation failed: Storage failed.', cause: { exact: cause } });
-        const classified = new RunCollectionError('Already classified.', {}, 'runtime-state');
-        await scope.assert.rejects(async function () {
-            await fixture.access.guarded(async function () {
-                throw classified;
-            });
-        }, { exact: classified });
-        return scope.assert.collect();
-    }),
-    test('distinguishes pruned records from directories and incompatible content', async function (scope: TestScope) {
-        const fixture = await memoryHistoryAccess(idleHistoryScenario);
-        scope.assert.equal(
-            await inspectDetailedRecordState('/record.json', {
-                ...fixture.runtime,
-                async metadata() {
-                    return null;
-                }
-            }),
-            'pruned'
-        );
-        scope.assert.equal(
-            await inspectDetailedRecordState('/record.json', {
-                ...fixture.runtime,
-                async metadata() {
-                    return 'other';
-                }
-            }),
-            'unavailable'
-        );
-        scope.assert.equal(
-            await inspectDetailedRecordState('/record.json', {
-                ...fixture.runtime,
-                async readText() {
-                    return 'invalid JSON';
-                }
-            }),
-            'unavailable'
-        );
-        scope.assert.equal(await inspectDetailedRecordState('/record.json', fixture.runtime), 'unavailable');
-        return scope.assert.collect();
-    }),
-    test(
+            const classified = new RunCollectionError('Already classified.', {}, 'runtime-state');
+            await scope.assert.rejects(async function () {
+                await fixture.access.guarded(async function () {
+                    throw classified;
+                });
+            }, { exact: classified });
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest(
+        'distinguishes pruned records from directories and incompatible content',
+        async function (scope: TestScope) {
+            const fixture = await memoryHistoryAccess(idleHistoryScenario);
+            scope.assert.equal(
+                await inspectDetailedRecordState('/record.json', {
+                    ...fixture.runtime,
+                    async metadata() {
+                        return null;
+                    }
+                }),
+                'pruned'
+            );
+            scope.assert.equal(
+                await inspectDetailedRecordState('/record.json', {
+                    ...fixture.runtime,
+                    async metadata() {
+                        return 'other';
+                    }
+                }),
+                'unavailable'
+            );
+            scope.assert.equal(
+                await inspectDetailedRecordState('/record.json', {
+                    ...fixture.runtime,
+                    async readText() {
+                        return 'invalid JSON';
+                    }
+                }),
+                'unavailable'
+            );
+            scope.assert.equal(await inspectDetailedRecordState('/record.json', fixture.runtime), 'unavailable');
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest(
         'rejects path traversal in run identities and orders equal timestamps by identity',
         function (scope: TestScope) {
             for (const id of [ '', '..', '.', '../run', '/run' ]) {
@@ -176,4 +195,3 @@ export const testNode = suite('history access ownership policy', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,11 +1,9 @@
-import { createSuite } from '../../../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as directEntrypointCollectionTestNode } from '../../../run/direct-entrypoint-collection.test.ts';
 import { testNode as initializedRunTestNode } from '../../../run/initialized-run.test.ts';
 
-export const testNode = createSuite({
-    title: 'runner collection integration',
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    children: [ directEntrypointCollectionTestNode, initializedRunTestNode ]
-});
+export const testNode = suite('runner collection integration', [
+    directEntrypointCollectionTestNode,
+    initializedRunTestNode
+]);

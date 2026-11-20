@@ -2,17 +2,19 @@ import { mkdtempDisposable, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { runIfMain } from '#test-runner';
-import { suite, test, table, type ParameterizedTestScope } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
+import { test, table, type ParameterizedTestScope } from '../packages/test/test.entry-point.ts';
 import {
     defineBodyReference,
-    createThrowingTestCase,
-    createWorkloadTestCase,
     type TestScope,
     type TestBody,
     type ThrowingTestScope,
-    type BodyReference
+    type BodyReference,
+    createThrowingTestCase,
+    createWorkloadTestCase
 } from '../packages/engine/engine.entry-point.ts';
+
 import { executeReferenceFamily } from '../test-support/execute-reference-family.ts';
 import {
     property,
@@ -64,8 +66,8 @@ async function fixture(use: (directory: string) => Promise<void>): Promise<void>
     );
     await use(directory.path);
 }
-export const testNode = suite('referenced body family composition', [
-    test('preserves table parameters and throwing scope contracts', async function (scope) {
+export const testNode = authoredSuite('referenced body family composition', [
+    authoredTest('preserves table parameters and throwing scope contracts', async function (scope) {
         await fixture(async function execute(directory) {
             const rows = table({
                 title: 'rows',
@@ -85,7 +87,7 @@ export const testNode = suite('referenced body family composition', [
         });
         return scope.assert.collect();
     }),
-    test('preserves workload parameters through reference admission', async function (scope) {
+    authoredTest('preserves workload parameters through reference admission', async function (scope) {
         await fixture(async function execute(directory) {
             const body = defineBodyReference({
                 ...reference<TestScope, ReturnType<TestBody>>(directory, 'work').reference,
@@ -112,7 +114,7 @@ export const testNode = suite('referenced body family composition', [
         return scope.assert.collect();
     }),
     ...([ 'property', 'integration' ] as const).map(function propertyFamily(family) {
-        return test(`resolves ${family} implementations before generated trials`, async function (scope) {
+        return authoredTest(`resolves ${family} implementations before generated trials`, async function (scope) {
             await fixture(async function execute(directory) {
                 const body = reference<
                     { readonly value: 42; readonly sample: PropertySampleScope<42>; },
@@ -127,7 +129,7 @@ export const testNode = suite('referenced body family composition', [
             return scope.assert.collect();
         });
     }),
-    test('retains property family metadata on referenced wrappers', async function (scope) {
+    authoredTest('retains property family metadata on referenced wrappers', async function (scope) {
         await fixture(async function execute(directory) {
             const body = withProperties(reference<PropertyCaseScope, ReturnType<TestBody>>(directory, 'nested'));
             const result = await executeReferenceFamily(directory, 'property', [ test('nested', body) ]);
@@ -142,7 +144,7 @@ export const testNode = suite('referenced body family composition', [
         });
         return scope.assert.collect();
     }),
-    test('resolves measurement implementations before benchmark sampling', async function (scope) {
+    authoredTest('resolves measurement implementations before benchmark sampling', async function (scope) {
         await fixture(async function execute(directory) {
             const body = reference<BenchmarkMeasureContext<{ readonly size: 42; }>, BenchmarkMetrics>(
                 directory,
@@ -164,4 +166,3 @@ export const testNode = suite('referenced body family composition', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

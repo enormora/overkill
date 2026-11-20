@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { historyTimestamp, historyWork } from '../test-support/history-record-fixture.ts';
 import { durationIndexProjection, emptyDurationState, ingestDurationState } from './duration-history-storage.ts';
@@ -20,7 +20,7 @@ const observation = {
 } as const;
 const context = { now: historyTimestamp, policy: defaultHistoryPolicy };
 
-export const testNode = suite('duration history retention', [
+export const testNode = authoredSuite('duration history retention', [
     test('placement excludes uncommitted runs while retaining independent observations', function (scope: TestScope) {
         const pending = ingestDurationState(emptyDurationState(historyTimestamp), [ observation ], {
             ...context,
@@ -107,4 +107,3 @@ export const testNode = suite('duration history retention', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

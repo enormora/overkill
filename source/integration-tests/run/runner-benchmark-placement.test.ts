@@ -1,6 +1,5 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     normalizeConfig,
@@ -103,10 +102,10 @@ const parallelExecutions: readonly Extract<BenchmarkExecution, { readonly proces
     { ...workerExecution, hostProcess: { kind: 'child', nodeArguments: [] } }
 ];
 
-export const testNode = suite('adaptive benchmark worker execution', [
+export const testNode = authoredSuite('adaptive benchmark worker execution', [
     ...parallelExecutions.map(function parallelExecution(execution) {
         const shape = `${execution.workerLifecycle}/${execution.dispatchPolicy}/${execution.hostProcess.kind}`;
-        return test(
+        return authoredTest(
             `overlaps size measurements with ${shape}`,
             async function (scope) {
                 await assertPlacement(scope, {
@@ -119,7 +118,7 @@ export const testNode = suite('adaptive benchmark worker execution', [
             }
         );
     }),
-    test('serializes size measurements under CPU saturation', async function (scope) {
+    authoredTest('serializes size measurements under CPU saturation', async function (scope) {
         await assertPlacement(scope, {
             execution: workerExecution,
             title: 'serial sizes',
@@ -128,7 +127,7 @@ export const testNode = suite('adaptive benchmark worker execution', [
         });
         return scope.assert.collect();
     }),
-    test('serializes sensitive measurements on an idle host', async function (scope) {
+    authoredTest('serializes sensitive measurements on an idle host', async function (scope) {
         await assertPlacement(scope, {
             execution: workerExecution,
             title: 'sensitive work',
@@ -137,7 +136,7 @@ export const testNode = suite('adaptive benchmark worker execution', [
         });
         return scope.assert.collect();
     }),
-    test('preserves supervised serialization on an idle host', async function (scope) {
+    authoredTest('preserves supervised serialization on an idle host', async function (scope) {
         await assertPlacement(scope, {
             execution: { processModel: 'supervised-process', scheduling: 'serial', maxConcurrency: 1 },
             title: 'serial sizes',
@@ -147,5 +146,3 @@ export const testNode = suite('adaptive benchmark worker execution', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

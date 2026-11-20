@@ -1,8 +1,10 @@
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import figures from 'figures';
 import colors from 'yoctocolors';
-import { runIfMain } from '#test-runner';
+
 import type { RealTimeReporter } from '../engine/reporter.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { defaultFailureArtifactPolicy } from '../engine/failure-artifact-policy.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createLineReporter } from './line-reporter.ts';
@@ -27,7 +29,7 @@ function lineFixture(): LineFixture {
     });
     return { lines, reporter };
 }
-export const testNode = suite('line reporter completion policy', [
+export const testNode = authoredSuite('line reporter completion policy', [
     test('renders retry completion without presenting it as a final result', async function (scope: TestScope) {
         const { lines, reporter } = lineFixture();
         scope.require.notNull(reporter.onEvent);
@@ -61,4 +63,3 @@ export const testNode = suite('line reporter completion policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

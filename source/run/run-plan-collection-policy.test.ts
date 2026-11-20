@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { runPlanCollection } from '../test-support/run-plan-collection.ts';
 import { testNode as localFailure } from './local-collection-failure-policy.test.ts';
 import { testNode as resolution } from './collected-resolution-policy.test.ts';
@@ -11,7 +11,7 @@ import {
     createRunTestPlanFromDirectEntrypoint
 } from './run-test-plan.ts';
 
-export const testNode = suite('run collection boundary classification', [
+export const testNode = authoredSuite('run collection boundary classification', [
     localFailure,
     resolution,
     transport,
@@ -51,4 +51,3 @@ export const testNode = suite('run collection boundary classification', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

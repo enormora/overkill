@@ -1,8 +1,8 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { nodeChildObservation } from '../test-support/node-child-observation.ts';
 
-export const testNode = suite('child runtime metric ownership', [
+export const testNode = authoredSuite('child runtime metric ownership', [
     test('converts process readings and retains metric provenance', function (scope: TestScope) {
         const fixture = nodeChildObservation(2);
         const report = fixture.observation.snapshot();
@@ -50,4 +50,3 @@ export const testNode = suite('child runtime metric ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

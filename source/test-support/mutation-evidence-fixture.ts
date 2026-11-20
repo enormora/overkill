@@ -1,4 +1,4 @@
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 import type { PerTestResult, RunExecutionLifecycle, RunnerError } from '../packages/run/run.entry-point.ts';
 import { createMutationLifecycle } from '../packages/stryker-runner/mutation-lifecycle.ts';
 import type { MutationInvocationExpectation } from '../packages/stryker-runner/mutation-observation.ts';

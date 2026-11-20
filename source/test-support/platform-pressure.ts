@@ -1,4 +1,4 @@
-import { testDouble } from '../packages/test/test.entry-point.ts';
+import { testDouble } from '@overkill-dev/test';
 import type { DarwinPressureProbe } from '../run/benchmark-host-darwin.ts';
 import type { PlatformPressureRuntime } from '../run/benchmark-host-platform.ts';
 

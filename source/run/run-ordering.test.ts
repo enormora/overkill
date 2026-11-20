@@ -1,15 +1,7 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
-import {
-    defaultMicrotestProfile,
-    defaultRunConfig,
-    defaultRunRequest
-} from '../test-support/run-command-factory.ts';
+import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import type { NormalizedConfig } from '../config/types.ts';
 import { testNode as shards } from './run-sharding-policy.test.ts';
 import { orderedRunItems } from './run-ordering.ts';
@@ -66,119 +58,87 @@ function caseTitles(resolvedRun: ResolvedRun): readonly string[] {
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-ordering.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        shards,
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() keeps source-stable order for lexical requests',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createUnitRunOrchestrator();
-                const resolvedRun = await runOrchestrator.resolve(runCommand(
-                    localConfig,
-                    runRequest('lexical', 1n)
-                ));
+export const testNode = suite('source/run/run-ordering.test.ts', [
+    shards,
+    test(
+        'orchestrator.resolve() keeps source-stable order for lexical requests',
+        async function (scope: OverkillScope) {
+            const runOrchestrator = createUnitRunOrchestrator();
+            const resolvedRun = await runOrchestrator.resolve(runCommand(
+                localConfig,
+                runRequest('lexical', 1n)
+            ));
 
-                scope.assert.deepEqual(caseTitles(resolvedRun), sourceOrder);
-                scope.assert.equal(resolvedRun.facts.execution.order, 'lexical');
-                scope.assert.equal(resolvedRun.facts.reproducibility.seed, '1');
+            scope.assert.deepEqual(caseTitles(resolvedRun), sourceOrder);
+            scope.assert.equal(resolvedRun.facts.execution.order, 'lexical');
+            scope.assert.equal(resolvedRun.facts.reproducibility.seed, '1');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() applies repeatable seeded ordering',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createUnitRunOrchestrator();
-                const firstRun = await runOrchestrator.resolve(
-                    runCommand(localConfig, runRequest('seeded', 1n))
-                );
-                const repeatedRun = await runOrchestrator.resolve(
-                    runCommand(localConfig, runRequest('seeded', 1n))
-                );
-                const otherRun = await runOrchestrator.resolve(
-                    runCommand(localConfig, runRequest('seeded', 2n))
-                );
+            return scope.assert.collect();
+        }
+    ),
+    test('orchestrator.resolve() applies repeatable seeded ordering', async function (scope: OverkillScope) {
+        const runOrchestrator = createUnitRunOrchestrator();
+        const firstRun = await runOrchestrator.resolve(
+            runCommand(localConfig, runRequest('seeded', 1n))
+        );
+        const repeatedRun = await runOrchestrator.resolve(
+            runCommand(localConfig, runRequest('seeded', 1n))
+        );
+        const otherRun = await runOrchestrator.resolve(
+            runCommand(localConfig, runRequest('seeded', 2n))
+        );
 
-                scope.assert.deepEqual(caseTitles(firstRun), [
-                    'other query row',
-                    'refunds card',
-                    'charges card',
-                    'query row'
-                ]);
-                scope.assert.deepEqual(caseTitles(firstRun), caseTitles(repeatedRun));
-                scope.assert.notDeepEqual(caseTitles(firstRun), caseTitles(otherRun));
-                scope.assert.notDeepEqual(caseTitles(firstRun), sourceOrder);
+        scope.assert.deepEqual(caseTitles(firstRun), [
+            'other query row',
+            'refunds card',
+            'charges card',
+            'query row'
+        ]);
+        scope.assert.deepEqual(caseTitles(firstRun), caseTitles(repeatedRun));
+        scope.assert.notDeepEqual(caseTitles(firstRun), caseTitles(otherRun));
+        scope.assert.notDeepEqual(caseTitles(firstRun), sourceOrder);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() executes supervised assignments in ordered fact order',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createUnitRunOrchestrator();
-                const request = runRequest('seeded', 1n);
-                const expectedRun = await runOrchestrator.resolve(runCommand(supervisedConfig, request));
-                const result = await runOrchestrator.run(runCommand(supervisedConfig, request));
+        return scope.assert.collect();
+    }),
+    test(
+        'orchestrator.run() executes supervised assignments in ordered fact order',
+        async function (scope: OverkillScope) {
+            const runOrchestrator = createUnitRunOrchestrator();
+            const request = runRequest('seeded', 1n);
+            const expectedRun = await runOrchestrator.resolve(runCommand(supervisedConfig, request));
+            const result = await runOrchestrator.run(runCommand(supervisedConfig, request));
 
-                scope.assert.deepEqual(
-                    result.perTest.map(function toTitle(testCase) {
-                        return testCase.id.title;
-                    }),
-                    caseTitles(expectedRun)
-                );
+            scope.assert.deepEqual(
+                result.perTest.map(function toTitle(testCase) {
+                    return testCase.id.title;
+                }),
+                caseTitles(expectedRun)
+            );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orderedRunItems() rejects seeded order without a resolved seed',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                scope.assert.throws(
-                    function orderWithUnresolvedSeed() {
-                        orderedRunItems([ singleCase ], 'seeded', { value: null });
-                    },
-                    { message: 'Seeded ordering requires a resolved run seed.' }
-                );
+            return scope.assert.collect();
+        }
+    ),
+    test('orderedRunItems() rejects seeded order without a resolved seed', function (scope: OverkillScope) {
+        scope.assert.throws(
+            function orderWithUnresolvedSeed() {
+                orderedRunItems([ singleCase ], 'seeded', { value: null });
+            },
+            { message: 'Seeded ordering requires a resolved run seed.' }
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orderedRunItems() rejects sparse seeded case arrays',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const sparseCases = [ singleCase, singleCase ];
-                sparseCases.length = 3;
+        return scope.assert.collect();
+    }),
+    test('orderedRunItems() rejects sparse seeded case arrays', function (scope: OverkillScope) {
+        const sparseCases = [ singleCase, singleCase ];
+        sparseCases.length = 3;
 
-                scope.assert.throws(
-                    function orderSparseCases() {
-                        orderedRunItems(sparseCases, 'seeded', { value: 1n });
-                    },
-                    { message: 'Seeded ordering selected an invalid case index.' }
-                );
+        scope.assert.throws(
+            function orderSparseCases() {
+                orderedRunItems(sparseCases, 'seeded', { value: 1n });
+            },
+            { message: 'Seeded ordering selected an invalid case index.' }
+        );
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

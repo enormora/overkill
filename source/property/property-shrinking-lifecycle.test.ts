@@ -1,15 +1,17 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import { createDeterministicClock } from '@enormora/clock';
-import { runIfMain } from '#test-runner';
+
 import { createTimedTestEngine } from '../test-support/create-test-engine.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import {
-    createRoot,
-    createTestPlan,
     serializeValue,
     type ExecuteOptions,
     type RunResult,
-    type TestScope
+    type TestScope,
+    createRoot,
+    createTestPlan
 } from '../packages/engine/engine.entry-point.ts';
+
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { resolveTestPlanCollectionPolicy } from '../run/run-selection.ts';
 import { property } from './property-authoring.ts';
@@ -67,7 +69,7 @@ function assertDeadlineEvidence(scope: TestScope, result: RunResult): void {
     scope.assert.includes(JSON.stringify(evidence.retained?.failure), 'original failure before deadline');
 }
 
-export const testNode = suite('shrink lifecycle', [
+export const testNode = authoredSuite('shrink lifecycle', [
     test('retains confirmed evidence when an engine deadline interrupts shrinking', async function (scope) {
         const result = await executeShrinkDeadline({ timeoutMilliseconds: 100, hardTimeoutMilliseconds: 10 });
         scope.assert.equal(result.summary.crashed, 1);
@@ -201,5 +203,3 @@ export const testNode = suite('shrink lifecycle', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

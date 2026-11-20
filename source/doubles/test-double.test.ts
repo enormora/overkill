@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
     answerFromBehavior,
     fallbackForInvocation,
@@ -69,13 +65,11 @@ function behaviorRuntime(entries: readonly unknown[]): BehaviorRuntime {
 
 const emptyTestData = { annotations: {}, controls: {} } as const;
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
+export const testNode = suite({
     title: 'source/doubles/test-double.test.ts',
     ...emptyTestData,
     children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'testDouble() creates an untyped callable double',
             ...emptyTestData,
             body: function body(scope: OverkillScope) {
@@ -86,8 +80,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'testDouble.returns() creates a fixed-return double',
             ...emptyTestData,
             body: function body(scope: OverkillScope) {
@@ -98,8 +91,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'testDouble.resolves() creates a fixed-resolution double',
             ...emptyTestData,
             body: async function body(scope: OverkillScope) {
@@ -110,8 +102,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'testDouble.rejects() creates a fixed-rejection double',
             ...emptyTestData,
             body: async function body(scope: OverkillScope) {
@@ -125,8 +116,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'testDouble.throws() creates a fixed-throw double',
             ...emptyTestData,
             body: function body(scope: OverkillScope) {
@@ -140,8 +130,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'testDouble.constructs() creates a fixed-construction double',
             ...emptyTestData,
             body: function body(scope: OverkillScope) {
@@ -157,8 +146,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'answerFromBehavior() handles modes and sequence fallthrough',
             ...emptyTestData,
             body(scope: OverkillScope) {
@@ -186,8 +174,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'ruleMatches() handles invocation kind, argument, and index criteria',
             ...emptyTestData,
             body(scope: OverkillScope) {
@@ -206,8 +193,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'fallbackForInvocation() selects direct and invocation-specific fallbacks',
             ...emptyTestData,
             body(scope: OverkillScope) {
@@ -221,8 +207,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'rule fixed behavior markers expose direct results',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -242,8 +227,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'rule generator markers expose result iterators and guarded markers',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -280,8 +264,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'created doubles reject wrong invocation modes',
             ...emptyTestData,
             body: function body(scope: OverkillScope) {
@@ -299,8 +282,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'testDouble.constructs() rejects primitive instances at runtime',
             ...emptyTestData,
             body: function body(scope: OverkillScope) {
@@ -313,8 +295,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'rule.when() matches partial-deep argument prefixes',
             ...emptyTestData,
             body: function body(scope: OverkillScope) {
@@ -335,8 +316,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'rule.whenConstructedWith() matches partial-deep constructor argument prefixes',
             ...emptyTestData,
             body: function body(scope: OverkillScope) {
@@ -357,8 +337,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'ordered call rules use zero-based indexes',
             ...emptyTestData,
             body(scope: OverkillScope) {
@@ -377,8 +356,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'ordered construction rules use zero-based indexes',
             ...emptyTestData,
             body: function body(scope: OverkillScope) {
@@ -399,8 +377,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'rules are evaluated in order and exhausted sequences fall through',
             ...emptyTestData,
             body: function body(scope: OverkillScope) {
@@ -423,8 +400,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'rule.sequence() treats raw array values as returns entries',
             ...emptyTestData,
             body: function body(scope: OverkillScope) {
@@ -440,8 +416,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'rule.sequence() supports async behavior entries',
             ...emptyTestData,
             body: async function body(scope: OverkillScope) {
@@ -460,8 +435,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'fallback can configure call and construction defaults together',
             ...emptyTestData,
             body: function body(scope: OverkillScope) {
@@ -485,8 +459,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'answer receives invocation arguments, index, and kind',
             ...emptyTestData,
             body: function body(scope: OverkillScope) {
@@ -519,8 +492,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'ordered rules reject invalid indexes at runtime',
             ...emptyTestData,
             body: function body(scope: OverkillScope) {
@@ -534,8 +506,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'configured doubles throw TypeError when no behavior can answer',
             ...emptyTestData,
             body: function body(scope: OverkillScope) {
@@ -554,5 +525,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { placementPlan, fakeWorkerRuntime } from './worker-pool-placement-validation.test.ts';
 import {
     createPlacementTraceRecorder,
@@ -202,7 +202,7 @@ function assertRecovery(scope: TestScope): void {
         JSON.stringify({ kind: 'recovery', previousAttempt: 'attempt-1' })
     );
 }
-export const testNode = suite(
+export const testNode = authoredSuite(
     'dynamic replay decisions',
     [
         { title: 'batch envelopes', verify: assertBatch },
@@ -217,4 +217,3 @@ export const testNode = suite(
             });
         })
 );
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { coverageReportBackend } from '../test-support/coverage-report-backend.ts';
 import { collectCoverageReports, type CoverageReportRequest } from './coverage-reporting.ts';
 
@@ -19,7 +19,7 @@ const summary = {
     statements: backendMetric,
     bytes: backendMetric
 };
-export const testNode = suite('coverage report backend policy', [
+export const testNode = authoredSuite('coverage report backend policy', [
     test('maps requested reports to paths and preserves executable summary counts', async function (scope: TestScope) {
         const fixture = coverageReportBackend(true, { summary }, true);
         const result = await collectCoverageReports(request, fixture.runtime);
@@ -106,4 +106,3 @@ export const testNode = suite('coverage report backend policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

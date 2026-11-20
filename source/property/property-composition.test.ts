@@ -1,22 +1,19 @@
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import {
-    createRoot,
-    createTestPlan,
-    createWorkloadTestCase,
     readTestBodyFamily,
     type TestBody,
     type TestNode,
     type TestPlan,
     type TestPlanCase,
-    type TestScope
+    type TestScope,
+    createRoot,
+    createTestPlan,
+    createWorkloadTestCase
 } from '../packages/engine/engine.entry-point.ts';
+
 import { suite, table, test, createTestFacade } from '../packages/test/test.entry-point.ts';
-import {
-    defineResource,
-    defineRuntime,
-    withResource,
-    withRuntime
-} from '../packages/test/resources.entry-point.ts';
+import { defineResource, defineRuntime, withResource, withRuntime } from '../packages/test/resources.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { unexecutedGenerator } from '../test-support/property-generator.ts';
 import { stampTestNodeFamily } from '../engine/test-node.ts';
@@ -56,8 +53,8 @@ function assertNestedPropertyDeclaration(scope: TestScope, planned: TestPlanCase
     scope.assert.equal(readTestBodyFamily(planned.execution.body)?.definition, readTestBodyFamily(body)?.definition);
 }
 
-export const testNode = suite('property composition', [
-    test('property profiles reject resource descriptors before acquisition', function (scope) {
+export const testNode = authoredSuite('property composition', [
+    authoredTest('property profiles reject resource descriptors before acquisition', function (scope) {
         let acquisitions = 0;
         const resource = defineResource({
             name: 'fixture',
@@ -80,7 +77,7 @@ export const testNode = suite('property composition', [
         scope.assert.equal(acquisitions, 0);
         return scope.assert.collect();
     }),
-    test('resource wrapper orders preserve declarations and prevent acquisition', async function (scope) {
+    authoredTest('resource wrapper orders preserve declarations and prevent acquisition', async function (scope) {
         let acquisitions = 0;
         const resource = defineResource({
             name: 'fixture',
@@ -114,7 +111,7 @@ export const testNode = suite('property composition', [
         scope.assert.equal(acquisitions, 0);
         return scope.assert.collect();
     }),
-    test('runtime wrappers and facade mapping preserve nested declarations', function (scope) {
+    authoredTest('runtime wrappers and facade mapping preserve nested declarations', function (scope) {
         const runtime = defineRuntime({ name: 'local', dimensions: {}, resources: {}, requirements: [] });
         const nested = withProperties(unexpectedBody);
         const facade = createTestFacade({
@@ -136,7 +133,7 @@ export const testNode = suite('property composition', [
         }
         return scope.assert.collect();
     }),
-    test('tables and workloads resolve property identity from each final body', function (scope) {
+    authoredTest('tables and workloads resolve property identity from each final body', function (scope) {
         const body = withProperties(unexpectedBody);
         const nodes = [
             table({ title: 'property rows', cases: [ 1, 2 ], test: body }),
@@ -160,7 +157,7 @@ export const testNode = suite('property composition', [
         }
         return scope.assert.collect();
     }),
-    test('table family stamps cannot conceal property bodies', function (scope) {
+    authoredTest('table family stamps cannot conceal property bodies', function (scope) {
         const node = table({ title: 'conflict', cases: [ 1, 2 ], test: withProperties(unexpectedBody) });
         stampTestNodeFamily(node, 'microtest');
         scope.assert.throws(function () {
@@ -170,7 +167,7 @@ export const testNode = suite('property composition', [
         });
         return scope.assert.collect();
     }),
-    test('selection excludes unavailable property execution', async function (scope: TestScope) {
+    authoredTest('selection excludes unavailable property execution', async function (scope: TestScope) {
         const nested = test('excluded', withProperties(unexpectedBody));
         const ordinary = test('selected', function (inner) {
             inner.assert.equal(Object.hasOwn(inner, 'forall'), false);
@@ -185,5 +182,3 @@ export const testNode = suite('property composition', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

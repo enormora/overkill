@@ -1,11 +1,12 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { mergeRecordFixture } from '../test-support/merge-record-fixture.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { mergeInputStorage, mergedInputDocument } from '../test-support/merge-input-storage.ts';
 import { RunResolutionError } from './run-errors.ts';
 import { readMergeInput } from './merge-results-input.ts';
 
-export const testNode = suite('merge input discovery and decoding', [
+export const testNode = authoredSuite('merge input discovery and decoding', [
     test('sorts equal shard indices by canonical path', async function (scope: TestScope) {
         const fixture = mergeInputStorage();
         fixture.seed('/records/second.json', JSON.stringify(mergeRecordFixture('second', 1, 1)));
@@ -156,4 +157,3 @@ export const testNode = suite('merge input discovery and decoding', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

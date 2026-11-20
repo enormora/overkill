@@ -1,10 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+
 import {
     createInMemoryFinalResultReporter,
     createInMemoryRealTimeReporter,
@@ -214,301 +211,263 @@ function createDefaultReporterDeliveryEngine(): Engine {
     return createReporterDeliveryEngine(createDeterministicClock({ initialUnixEpochMicroseconds: 0n }));
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/engine/reporter-delivery.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() records reporter callback failures and notifies other real-time reporters',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const engine = createDefaultReporterDeliveryEngine();
-                const observer = createInMemoryRealTimeReporter();
-                const failingReporter: RealTimeReporter = {
-                    dispose: null,
-                    kind: 'real-time',
-                    name: 'broken',
-                    onEvent(event): Promise<undefined> | undefined {
-                        if (event.kind === 'test-start') {
-                            throw new Error('cannot render');
-                        }
+export const testNode = suite('source/engine/reporter-delivery.test.ts', [
+    test(
+        'execute() records reporter callback failures and notifies other real-time reporters',
+        async function body(scope: OverkillScope) {
+            const engine = createDefaultReporterDeliveryEngine();
+            const observer = createInMemoryRealTimeReporter();
+            const failingReporter: RealTimeReporter = {
+                dispose: null,
+                kind: 'real-time',
+                name: 'broken',
+                onEvent(event): Promise<undefined> | undefined {
+                    if (event.kind === 'test-start') {
+                        throw new Error('cannot render');
+                    }
 
-                        return undefined;
-                    },
-                    onFinish: null,
-                    sinks: []
-                };
+                    return undefined;
+                },
+                onFinish: null,
+                sinks: []
+            };
 
-                const result = await engine.execute(createPassingPlan(engine), {
-                    debug: { mode: 'off' },
-                    retryPolicy: null,
-                    execution: { mode: 'serial-in-process' },
-                    reporters: [ defineRuntimeReporter(failingReporter), observer ],
-                    runFacts: {},
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
+            const result = await engine.execute(createPassingPlan(engine), {
+                debug: { mode: 'off' },
+                retryPolicy: null,
+                execution: { mode: 'serial-in-process' },
+                reporters: [ defineRuntimeReporter(failingReporter), observer ],
+                runFacts: {},
+                startedAt: '2026-07-15T00:00:00.000Z'
+            });
 
-                const reporterError = firstRunnerError(result);
+            const reporterError = firstRunnerError(result);
 
-                scope.assert.equal(reporterError.message, 'broken: cannot render');
-                scope.assert.equal(reporterError.subtype, 'reporter');
-                scope.assert.deepEqual(runnerErrorMessages(observer), [ 'broken: cannot render' ]);
+            scope.assert.equal(reporterError.message, 'broken: cannot render');
+            scope.assert.equal(reporterError.subtype, 'reporter');
+            scope.assert.deepEqual(runnerErrorMessages(observer), [ 'broken: cannot render' ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() does not recurse when a reporter fails while handling runner-error',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const engine = createDefaultReporterDeliveryEngine();
-                const observer = createInMemoryRealTimeReporter();
-                const failingReporter: RealTimeReporter = {
-                    dispose: null,
-                    kind: 'real-time',
-                    name: 'broken',
-                    onEvent(event) {
-                        if (event.kind === 'test-start') {
-                            throw new Error('primary failure');
-                        }
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'execute() does not recurse when a reporter fails while handling runner-error',
+        async function body(scope: OverkillScope) {
+            const engine = createDefaultReporterDeliveryEngine();
+            const observer = createInMemoryRealTimeReporter();
+            const failingReporter: RealTimeReporter = {
+                dispose: null,
+                kind: 'real-time',
+                name: 'broken',
+                onEvent(event) {
+                    if (event.kind === 'test-start') {
+                        throw new Error('primary failure');
+                    }
 
-                        return undefined;
-                    },
-                    onFinish: null,
-                    sinks: []
-                };
-                const runnerErrorFailingReporter: RealTimeReporter = {
-                    dispose: null,
-                    kind: 'real-time',
-                    name: 'also-broken',
-                    onEvent(event) {
-                        if (event.kind === 'runner-error') {
-                            throw new Error('nested failure');
-                        }
+                    return undefined;
+                },
+                onFinish: null,
+                sinks: []
+            };
+            const runnerErrorFailingReporter: RealTimeReporter = {
+                dispose: null,
+                kind: 'real-time',
+                name: 'also-broken',
+                onEvent(event) {
+                    if (event.kind === 'runner-error') {
+                        throw new Error('nested failure');
+                    }
 
-                        return undefined;
-                    },
-                    onFinish: null,
-                    sinks: []
-                };
+                    return undefined;
+                },
+                onFinish: null,
+                sinks: []
+            };
 
-                const result = await engine.execute(createPassingPlan(engine), {
-                    debug: { mode: 'off' },
-                    retryPolicy: null,
-                    execution: { mode: 'serial-in-process' },
-                    reporters: [
-                        defineRuntimeReporter(failingReporter),
-                        defineRuntimeReporter(runnerErrorFailingReporter),
-                        observer
-                    ],
-                    runFacts: {},
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
+            const result = await engine.execute(createPassingPlan(engine), {
+                debug: { mode: 'off' },
+                retryPolicy: null,
+                execution: { mode: 'serial-in-process' },
+                reporters: [
+                    defineRuntimeReporter(failingReporter),
+                    defineRuntimeReporter(runnerErrorFailingReporter),
+                    observer
+                ],
+                runFacts: {},
+                startedAt: '2026-07-15T00:00:00.000Z'
+            });
 
-                scope.assert.deepEqual(
-                    result.runnerErrors.map(function toMessage(error) {
-                        return error.message;
-                    }),
-                    [ 'broken: primary failure', 'also-broken: nested failure' ]
-                );
-                scope.assert.deepEqual(runnerErrorMessages(observer), [ 'broken: primary failure' ]);
+            scope.assert.deepEqual(
+                result.runnerErrors.map(function toMessage(error) {
+                    return error.message;
+                }),
+                [ 'broken: primary failure', 'also-broken: nested failure' ]
+            );
+            scope.assert.deepEqual(runnerErrorMessages(observer), [ 'broken: primary failure' ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() isolates reporter callback timeouts',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const testStartSignal = createReporterSignal();
-                const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
-                const engine = createReporterDeliveryEngine(wallClock);
-                const hangingReporter: RealTimeReporter = {
-                    dispose: null,
-                    kind: 'real-time',
-                    name: 'slow',
-                    async onEvent(event): Promise<undefined> {
-                        if (event.kind === 'test-start') {
-                            testStartSignal.notify();
-                            await Promise.race<never>([]);
-                        }
+            return scope.assert.collect();
+        }
+    ),
+    test('execute() isolates reporter callback timeouts', async function body(scope: OverkillScope) {
+        const testStartSignal = createReporterSignal();
+        const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+        const engine = createReporterDeliveryEngine(wallClock);
+        const hangingReporter: RealTimeReporter = {
+            dispose: null,
+            kind: 'real-time',
+            name: 'slow',
+            async onEvent(event): Promise<undefined> {
+                if (event.kind === 'test-start') {
+                    testStartSignal.notify();
+                    await Promise.race<never>([]);
+                }
 
-                        return undefined;
-                    },
-                    onFinish: null,
-                    sinks: []
-                };
+                return undefined;
+            },
+            onFinish: null,
+            sinks: []
+        };
 
-                const execution = engine.execute(createPassingPlan(engine), {
-                    debug: { mode: 'off' },
-                    retryPolicy: null,
-                    execution: { mode: 'serial-in-process' },
-                    reporters: [ defineRuntimeReporter(hangingReporter), createInMemoryRealTimeReporter() ],
-                    runFacts: {},
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
-                await testStartSignal.promise;
-                await Promise.resolve();
-                wallClock.advanceByMilliseconds(100);
+        const execution = engine.execute(createPassingPlan(engine), {
+            debug: { mode: 'off' },
+            retryPolicy: null,
+            execution: { mode: 'serial-in-process' },
+            reporters: [ defineRuntimeReporter(hangingReporter), createInMemoryRealTimeReporter() ],
+            runFacts: {},
+            startedAt: '2026-07-15T00:00:00.000Z'
+        });
+        await testStartSignal.promise;
+        await Promise.resolve();
+        wallClock.advanceByMilliseconds(100);
 
-                scope.assert.match(
-                    firstRunnerError(await execution).message,
-                    /slow: slow reporter callback timed out after 100 ms\./
-                );
+        scope.assert.match(
+            firstRunnerError(await execution).message,
+            /slow: slow reporter callback timed out after 100 ms\./
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() records final reporter errors and emits them after real-time finish',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const engine = createDefaultReporterDeliveryEngine();
-                const observer = createInMemoryRealTimeReporter();
-                const failingFinalReporter: FinalResultReporter = {
-                    dispose: null,
-                    kind: 'final-result',
-                    name: 'final-broken',
-                    onResult() {
-                        throw new Error('cannot finalize');
-                    },
-                    sinks: []
-                };
+        return scope.assert.collect();
+    }),
+    test(
+        'execute() records final reporter errors and emits them after real-time finish',
+        async function body(scope: OverkillScope) {
+            const engine = createDefaultReporterDeliveryEngine();
+            const observer = createInMemoryRealTimeReporter();
+            const failingFinalReporter: FinalResultReporter = {
+                dispose: null,
+                kind: 'final-result',
+                name: 'final-broken',
+                onResult() {
+                    throw new Error('cannot finalize');
+                },
+                sinks: []
+            };
 
-                const result = await engine.execute(createPassingPlan(engine), {
-                    debug: { mode: 'off' },
-                    retryPolicy: null,
-                    execution: { mode: 'serial-in-process' },
-                    reporters: [ observer, defineRuntimeReporter(failingFinalReporter) ],
-                    runFacts: {},
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
+            const result = await engine.execute(createPassingPlan(engine), {
+                debug: { mode: 'off' },
+                retryPolicy: null,
+                execution: { mode: 'serial-in-process' },
+                reporters: [ observer, defineRuntimeReporter(failingFinalReporter) ],
+                runFacts: {},
+                startedAt: '2026-07-15T00:00:00.000Z'
+            });
 
-                scope.assert.deepEqual(
-                    result.runnerErrors.map(function toMessage(error) {
-                        return error.message;
-                    }),
-                    [ 'final-broken: cannot finalize' ]
-                );
-                scope.assert.deepEqual(runnerErrorMessages(observer), [ 'final-broken: cannot finalize' ]);
+            scope.assert.deepEqual(
+                result.runnerErrors.map(function toMessage(error) {
+                    return error.message;
+                }),
+                [ 'final-broken: cannot finalize' ]
+            );
+            scope.assert.deepEqual(runnerErrorMessages(observer), [ 'final-broken: cannot finalize' ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() returns final-phase reporter errors without changing sibling callback input',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const engine = createDefaultReporterDeliveryEngine();
-                const fixture = createFinalPhaseReporterFixture();
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'execute() returns final-phase reporter errors without changing sibling callback input',
+        async function body(scope: OverkillScope) {
+            const engine = createDefaultReporterDeliveryEngine();
+            const fixture = createFinalPhaseReporterFixture();
 
-                const result = await engine.execute(createPassingPlan(engine), {
-                    debug: { mode: 'off' },
-                    retryPolicy: null,
-                    execution: { mode: 'serial-in-process' },
-                    reporters: fixture.reporters,
-                    runFacts: {},
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
-                assertFinalPhaseCallbackInputsUnchanged(scope, fixture);
-                assertFinalPhaseErrorsReturnedAndNotified(scope, fixture, result);
+            const result = await engine.execute(createPassingPlan(engine), {
+                debug: { mode: 'off' },
+                retryPolicy: null,
+                execution: { mode: 'serial-in-process' },
+                reporters: fixture.reporters,
+                runFacts: {},
+                startedAt: '2026-07-15T00:00:00.000Z'
+            });
+            assertFinalPhaseCallbackInputsUnchanged(scope, fixture);
+            assertFinalPhaseErrorsReturnedAndNotified(scope, fixture, result);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() disposes reporters once after final reporting',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const engine = createDefaultReporterDeliveryEngine();
-                const calls: string[] = [];
-                const reporter: RealTimeReporter = {
-                    dispose() {
-                        calls.push('dispose');
-                    },
-                    kind: 'real-time',
-                    name: 'cleanup',
-                    onEvent(event) {
-                        if (event.kind === 'run-start') {
-                            calls.push('run-start');
-                        } else if (event.kind === 'run-end') {
-                            calls.push('run-end');
-                        }
-                    },
-                    onFinish() {
-                        calls.push('finish');
-                    },
-                    sinks: []
-                };
+            return scope.assert.collect();
+        }
+    ),
+    test('execute() disposes reporters once after final reporting', async function body(scope: OverkillScope) {
+        const engine = createDefaultReporterDeliveryEngine();
+        const calls: string[] = [];
+        const reporter: RealTimeReporter = {
+            dispose() {
+                calls.push('dispose');
+            },
+            kind: 'real-time',
+            name: 'cleanup',
+            onEvent(event) {
+                if (event.kind === 'run-start') {
+                    calls.push('run-start');
+                } else if (event.kind === 'run-end') {
+                    calls.push('run-end');
+                }
+            },
+            onFinish() {
+                calls.push('finish');
+            },
+            sinks: []
+        };
 
-                await engine.execute(createPassingPlan(engine), {
-                    debug: { mode: 'off' },
-                    retryPolicy: null,
-                    execution: { mode: 'serial-in-process' },
-                    reporters: [ defineRuntimeReporter(reporter) ],
-                    runFacts: {},
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
+        await engine.execute(createPassingPlan(engine), {
+            debug: { mode: 'off' },
+            retryPolicy: null,
+            execution: { mode: 'serial-in-process' },
+            reporters: [ defineRuntimeReporter(reporter) ],
+            runFacts: {},
+            startedAt: '2026-07-15T00:00:00.000Z'
+        });
 
-                scope.assert.deepEqual(calls, [ 'run-start', 'run-end', 'finish', 'dispose' ]);
+        scope.assert.deepEqual(calls, [ 'run-start', 'run-end', 'finish', 'dispose' ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() records dispose failures in the returned result',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const engine = createDefaultReporterDeliveryEngine();
-                const failingReporter: RealTimeReporter = {
-                    dispose() {
-                        throw new Error('cannot cleanup');
-                    },
-                    kind: 'real-time',
-                    name: 'dirty',
-                    onEvent() {
-                        return undefined;
-                    },
-                    onFinish: null,
-                    sinks: []
-                };
+        return scope.assert.collect();
+    }),
+    test('execute() records dispose failures in the returned result', async function body(scope: OverkillScope) {
+        const engine = createDefaultReporterDeliveryEngine();
+        const failingReporter: RealTimeReporter = {
+            dispose() {
+                throw new Error('cannot cleanup');
+            },
+            kind: 'real-time',
+            name: 'dirty',
+            onEvent() {
+                return undefined;
+            },
+            onFinish: null,
+            sinks: []
+        };
 
-                const result = await engine.execute(createPassingPlan(engine), {
-                    debug: { mode: 'off' },
-                    retryPolicy: null,
-                    execution: { mode: 'serial-in-process' },
-                    reporters: [ defineRuntimeReporter(failingReporter) ],
-                    runFacts: {},
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
+        const result = await engine.execute(createPassingPlan(engine), {
+            debug: { mode: 'off' },
+            retryPolicy: null,
+            execution: { mode: 'serial-in-process' },
+            reporters: [ defineRuntimeReporter(failingReporter) ],
+            runFacts: {},
+            startedAt: '2026-07-15T00:00:00.000Z'
+        });
 
-                scope.assert.deepEqual(
-                    result.runnerErrors.map(function toMessage(error) {
-                        return error.message;
-                    }),
-                    [ 'dirty: cannot cleanup' ]
-                );
+        scope.assert.deepEqual(
+            result.runnerErrors.map(function toMessage(error) {
+                return error.message;
+            }),
+            [ 'dirty: cannot cleanup' ]
+        );
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

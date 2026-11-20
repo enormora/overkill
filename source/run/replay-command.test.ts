@@ -1,8 +1,7 @@
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import type { NormalizedConfig } from '../config/types.ts';
 import { normalizeConfig } from '../config/config.ts';
 import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
@@ -93,7 +92,7 @@ async function inRecordedProject(operation: (root: string, config: ReplayConfig)
     }
 }
 
-export const testNode = suite('replay selection', [
+export const testNode = authoredSuite('replay selection', [
     test('nonterminal invocation rejects before config or selection', async function (scope: TestScope) {
         const command = createReplayCommand({
             loadConfig: unexpected,
@@ -134,4 +133,3 @@ export const testNode = suite('replay selection', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

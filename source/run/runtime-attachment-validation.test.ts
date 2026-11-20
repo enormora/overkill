@@ -1,6 +1,7 @@
 import { writeFile, readFile } from 'node:fs/promises';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     defaultAttachmentLimits,
     type AttachmentWriter,
@@ -12,7 +13,6 @@ import { snapshotJson } from '../attachments/json-snapshot.ts';
 import { createAttachmentExecution } from './attachment-execution.ts';
 import { createAttachmentStream } from './attachment-writer.ts';
 
-const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const metadata = { name: 'evidence', mediaType: 'application/octet-stream' };
 
 async function assertPendingFailure(
@@ -285,83 +285,51 @@ async function assertForeignTransportFailure(scope: TestScope): Promise<void> {
         completion: { kind: 'incomplete', reason: 'write-error' }
     });
 }
-export const testNode = createSuite({
-    ...definition,
-    title: 'source/run/runtime-attachment-validation.test.ts',
-    children: [
-        createTestCase({
-            ...definition,
-            title: 'foreign transport rejections preserve incomplete capture metadata',
-            async body(scope: TestScope) {
-                await assertForeignTransportFailure(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'failed binary writers refuse further operations and do not add unclosed errors',
-            async body(scope: TestScope) {
-                await assertFailedWriterBoundary(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'resource consumers cannot substitute another runtime variant of a selected case',
-            async body(scope: TestScope) {
-                await assertForeignConsumer(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'a pending write failure keeps the artifact incomplete when close races it',
-            async body(scope: TestScope) {
-                await assertFailedPendingWrite(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'close waits for the pending write and overlapping writes are rejected',
-            async body(scope: TestScope) {
-                await assertPendingWrite(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'binary writers reject strings and writes after close',
-            async body(scope: TestScope) {
-                await assertWriterContract(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'file capture copies evidence and preserves overflow failures',
-            async body(scope: TestScope) {
-                await assertIndependentCopy(scope);
-                await assertFileOverflow(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'JSON descriptors and depth preserve representable values',
-            body(scope: TestScope) {
-                assertJsonDescriptors(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'invalid metadata and JSON failures remain bounded per attempt',
-            async body(scope: TestScope) {
-                await assertFailureBudget(scope);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/runtime-attachment-validation.test.ts', [
+    test('foreign transport rejections preserve incomplete capture metadata', async function (scope: TestScope) {
+        await assertForeignTransportFailure(scope);
+        return scope.assert.collect();
+    }),
+    test(
+        'failed binary writers refuse further operations and do not add unclosed errors',
+        async function (scope: TestScope) {
+            await assertFailedWriterBoundary(scope);
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'resource consumers cannot substitute another runtime variant of a selected case',
+        async function (scope: TestScope) {
+            await assertForeignConsumer(scope);
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'a pending write failure keeps the artifact incomplete when close races it',
+        async function (scope: TestScope) {
+            await assertFailedPendingWrite(scope);
+            return scope.assert.collect();
+        }
+    ),
+    test('close waits for the pending write and overlapping writes are rejected', async function (scope: TestScope) {
+        await assertPendingWrite(scope);
+        return scope.assert.collect();
+    }),
+    test('binary writers reject strings and writes after close', async function (scope: TestScope) {
+        await assertWriterContract(scope);
+        return scope.assert.collect();
+    }),
+    test('file capture copies evidence and preserves overflow failures', async function (scope: TestScope) {
+        await assertIndependentCopy(scope);
+        await assertFileOverflow(scope);
+        return scope.assert.collect();
+    }),
+    test('JSON descriptors and depth preserve representable values', function (scope: TestScope) {
+        assertJsonDescriptors(scope);
+        return scope.assert.collect();
+    }),
+    test('invalid metadata and JSON failures remain bounded per attempt', async function (scope: TestScope) {
+        await assertFailureBudget(scope);
+        return scope.assert.collect();
+    })
+]);

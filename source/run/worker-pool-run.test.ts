@@ -1,12 +1,10 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
     defineOutputRenderer,
     defineReporter,
-    type DefinedOutputRenderer,
-    type TestScope as OverkillScope
+    type DefinedOutputRenderer
 } from '../packages/engine/engine.entry-point.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type { RunArtifact } from '../engine/run-result.ts';
@@ -110,19 +108,124 @@ function createArtifactRecorder(): ArtifactRecorder {
     };
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-run.test.ts',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() uses worker-pool for integration defaults',
-            async body(scope: OverkillScope) {
-                const resolvedRun = await orchestrator.resolve(integrationCommand(
+export const testNode = suite('source/run/worker-pool-run.test.ts', [
+    test('orchestrator.resolve() uses worker-pool for integration defaults', async function (scope: OverkillScope) {
+        const resolvedRun = await orchestrator.resolve(integrationCommand(
+            defaultIntegrationProfile({
+                files: {
+                    exclude: [],
+                    include: [ passingFixturePath ]
+                }
+            }),
+            passingFixturePath
+        ));
+
+        if (resolvedRun.facts.execution.processModel !== 'worker-pool') {
+            throw new Error('Expected worker-pool execution facts.');
+        }
+
+        scope.assert.equal(resolvedRun.facts.execution.assignmentPolicy, 'case-count-balanced');
+        scope.assert.deepEqual(resolvedRun.facts.execution.hostProcess, { kind: 'direct' });
+        scope.assert.equal(resolvedRun.facts.execution.workerLifecycle, 'reuse');
+        scope.assert.deepEqual(resolvedRun.facts.execution.workDistribution, { mode: 'file' });
+        scope.assert.equal(resolvedRun.plan.kind, 'worker-pool');
+
+        return scope.assert.collect();
+    }),
+    test('orchestrator.resolve() preserves explicit worker-pool lifecycle', async function (scope: OverkillScope) {
+        const resolvedRun = await orchestrator.resolve(integrationCommand(
+            defaultIntegrationProfile({
+                execution: {
+                    processModel: 'worker-pool',
+                    scheduling: 'serial',
+                    workerLifecycle: 'fresh-worker-per-unit'
+                },
+                files: {
+                    exclude: [],
+                    include: [ passingFixturePath ]
+                }
+            }),
+            passingFixturePath
+        ));
+
+        if (resolvedRun.facts.execution.processModel !== 'worker-pool') {
+            throw new Error('Expected worker-pool execution facts.');
+        }
+
+        scope.assert.equal(resolvedRun.facts.execution.assignmentPolicy, 'case-count-balanced');
+        scope.assert.deepEqual(resolvedRun.facts.execution.hostProcess, { kind: 'direct' });
+        scope.assert.equal(resolvedRun.facts.execution.workerLifecycle, 'fresh-worker-per-unit');
+        scope.assert.deepEqual(resolvedRun.facts.execution.workDistribution, { mode: 'file' });
+
+        return scope.assert.collect();
+    }),
+    test('orchestrator.run() hosts worker-pool execution with Node arguments', async function (scope: OverkillScope) {
+        const result = await orchestrator.run(integrationCommand(
+            defaultIntegrationProfile({
+                execution: {
+                    hostProcess: {
+                        kind: 'child',
+                        nodeArguments: [ '--expose-gc' ]
+                    },
+                    processModel: 'worker-pool'
+                },
+                files: {
+                    exclude: [],
+                    include: [ hostProcessNodeArgumentsFixturePath ]
+                },
+                timeouts: {
+                    collectionMilliseconds: 15_000
+                }
+            }),
+            hostProcessNodeArgumentsFixturePath
+        ));
+
+        scope.assert.equal(result.summary.passed, 1);
+        scope.assert.deepEqual(result.runnerErrors, []);
+
+        return scope.assert.collect();
+    }),
+    test(
+        'orchestrator.run() captures worker-pool integration output as artifacts',
+        async function (scope: OverkillScope) {
+            const artifactRecorder = createArtifactRecorder();
+            const result = await orchestrator.run(integrationCommand(
+                defaultIntegrationProfile({
+                    files: {
+                        exclude: [],
+                        include: [ integrationOutputFixturePath ]
+                    },
+                    reporters: [ artifactRecorder.reporter ]
+                }),
+                integrationOutputFixturePath
+            ));
+            const caseArtifacts = result.artifacts.filter(function isCaseArtifact(artifact) {
+                return artifact.id.scope.kind === 'case';
+            });
+            const runArtifacts = result.artifacts.filter(function isRunArtifact(artifact) {
+                return artifact.id.scope.kind === 'run';
+            });
+
+            scope.assert.equal(result.summary.passed, 1);
+            scope.assert.equal(result.runnerErrors.length, 0);
+            scope.assert.deepEqual(runArtifacts.map(capturedOutputText), [ 'collection stdout\n' ]);
+            scope.assert.deepEqual(capturedOutputTexts(caseArtifacts), [
+                'case stderr\n',
+                'case stdout\n'
+            ]);
+            scope.assert.deepEqual(capturedOutputTexts(artifactRecorder.artifacts()), [
+                'case stderr\n',
+                'case stdout\n'
+            ]);
+
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'orchestrator.run() returns an empty worker-pool result when selection matches no cases',
+        async function (scope: OverkillScope) {
+            const result = await orchestrator.run({
+                ...integrationCommand(
                     defaultIntegrationProfile({
                         files: {
                             exclude: [],
@@ -130,226 +233,80 @@ export const testNode = createOverkillSuite({
                         }
                     }),
                     passingFixturePath
-                ));
+                ),
+                request: defaultRunRequest({
+                    paths: [ passingFixturePath ],
+                    profile: 'integration',
+                    selection: {
+                        filter: { field: 'title', kind: 'equals', value: 'missing' },
+                        kind: 'filter'
+                    }
+                })
+            });
 
-                if (resolvedRun.facts.execution.processModel !== 'worker-pool') {
-                    throw new Error('Expected worker-pool execution facts.');
-                }
+            scope.assert.equal(result.summary.planned, 0);
+            scope.assert.deepEqual(result.perTest, []);
+            scope.assert.deepEqual(result.runnerErrors, []);
 
-                scope.assert.equal(resolvedRun.facts.execution.assignmentPolicy, 'case-count-balanced');
-                scope.assert.deepEqual(resolvedRun.facts.execution.hostProcess, { kind: 'direct' });
-                scope.assert.equal(resolvedRun.facts.execution.workerLifecycle, 'reuse');
-                scope.assert.deepEqual(resolvedRun.facts.execution.workDistribution, { mode: 'file' });
-                scope.assert.equal(resolvedRun.plan.kind, 'worker-pool');
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() preserves explicit worker-pool lifecycle',
-            async body(scope: OverkillScope) {
-                const resolvedRun = await orchestrator.resolve(integrationCommand(
-                    defaultIntegrationProfile({
-                        execution: {
-                            processModel: 'worker-pool',
-                            scheduling: 'serial',
-                            workerLifecycle: 'fresh-worker-per-unit'
-                        },
-                        files: {
-                            exclude: [],
-                            include: [ passingFixturePath ]
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'orchestrator.run() rejects instance engines for worker-pool execution',
+        async function (scope: OverkillScope) {
+            await scope.assert.rejects(async function runWithInstanceEngine() {
+                await orchestrator.run({
+                    config: defaultRunConfig({
+                        profiles: {
+                            integration: defaultIntegrationProfile({
+                                files: {
+                                    exclude: [],
+                                    include: [ passingFixturePath ]
+                                }
+                            }),
+                            microtest: defaultMicrotestProfile()
                         }
                     }),
-                    passingFixturePath
-                ));
-
-                if (resolvedRun.facts.execution.processModel !== 'worker-pool') {
-                    throw new Error('Expected worker-pool execution facts.');
-                }
-
-                scope.assert.equal(resolvedRun.facts.execution.assignmentPolicy, 'case-count-balanced');
-                scope.assert.deepEqual(resolvedRun.facts.execution.hostProcess, { kind: 'direct' });
-                scope.assert.equal(resolvedRun.facts.execution.workerLifecycle, 'fresh-worker-per-unit');
-                scope.assert.deepEqual(resolvedRun.facts.execution.workDistribution, { mode: 'file' });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() hosts worker-pool execution with Node arguments',
-            async body(scope: OverkillScope) {
-                const result = await orchestrator.run(integrationCommand(
-                    defaultIntegrationProfile({
-                        execution: {
-                            hostProcess: {
-                                kind: 'child',
-                                nodeArguments: [ '--expose-gc' ]
-                            },
-                            processModel: 'worker-pool'
-                        },
-                        files: {
-                            exclude: [],
-                            include: [ hostProcessNodeArgumentsFixturePath ]
-                        },
-                        timeouts: {
-                            collectionMilliseconds: 15_000
-                        }
-                    }),
-                    hostProcessNodeArgumentsFixturePath
-                ));
-
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.deepEqual(result.runnerErrors, []);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() captures worker-pool integration output as artifacts',
-            async body(scope: OverkillScope) {
-                const artifactRecorder = createArtifactRecorder();
-                const result = await orchestrator.run(integrationCommand(
-                    defaultIntegrationProfile({
-                        files: {
-                            exclude: [],
-                            include: [ integrationOutputFixturePath ]
-                        },
-                        reporters: [ artifactRecorder.reporter ]
-                    }),
-                    integrationOutputFixturePath
-                ));
-                const caseArtifacts = result.artifacts.filter(function isCaseArtifact(artifact) {
-                    return artifact.id.scope.kind === 'case';
-                });
-                const runArtifacts = result.artifacts.filter(function isRunArtifact(artifact) {
-                    return artifact.id.scope.kind === 'run';
-                });
-
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(result.runnerErrors.length, 0);
-                scope.assert.deepEqual(runArtifacts.map(capturedOutputText), [ 'collection stdout\n' ]);
-                scope.assert.deepEqual(capturedOutputTexts(caseArtifacts), [
-                    'case stderr\n',
-                    'case stdout\n'
-                ]);
-                scope.assert.deepEqual(capturedOutputTexts(artifactRecorder.artifacts()), [
-                    'case stderr\n',
-                    'case stdout\n'
-                ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() returns an empty worker-pool result when selection matches no cases',
-            async body(scope: OverkillScope) {
-                const result = await orchestrator.run({
-                    ...integrationCommand(
-                        defaultIntegrationProfile({
-                            files: {
-                                exclude: [],
-                                include: [ passingFixturePath ]
-                            }
-                        }),
-                        passingFixturePath
-                    ),
+                    cwd: process.cwd(),
+                    engine: { engine: defaultRunEngine, kind: 'instance' },
                     request: defaultRunRequest({
                         paths: [ passingFixturePath ],
-                        profile: 'integration',
-                        selection: {
-                            filter: { field: 'title', kind: 'equals', value: 'missing' },
-                            kind: 'filter'
-                        }
+                        profile: 'integration'
                     })
                 });
+            }, {
+                message: 'Instance engines are not supported with worker-pool execution. Use a module engine.'
+            });
 
-                scope.assert.equal(result.summary.planned, 0);
-                scope.assert.deepEqual(result.perTest, []);
-                scope.assert.deepEqual(result.runnerErrors, []);
+            return scope.assert.collect();
+        }
+    ),
+    test('orchestrator.run() requeues pending cases after a worker-pool crash', async function (scope: OverkillScope) {
+        const result = await orchestrator.run(integrationCommand(
+            defaultIntegrationProfile({
+                execution: {
+                    processModel: 'worker-pool',
+                    scheduling: 'serial'
+                },
+                files: {
+                    exclude: [],
+                    include: [ workerPoolCrashFixturePath ]
+                },
+                timeouts: {
+                    hardMilliseconds: 200,
+                    softMilliseconds: 100
+                }
+            }),
+            workerPoolCrashFixturePath
+        ));
+        const crash = result.runnerErrors.find(function isCrash(error) {
+            return error.subtype === 'crash' && error.attributedTo?.title === 'exits worker';
+        });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() rejects instance engines for worker-pool execution',
-            async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function runWithInstanceEngine() {
-                    await orchestrator.run({
-                        config: defaultRunConfig({
-                            profiles: {
-                                integration: defaultIntegrationProfile({
-                                    files: {
-                                        exclude: [],
-                                        include: [ passingFixturePath ]
-                                    }
-                                }),
-                                microtest: defaultMicrotestProfile()
-                            }
-                        }),
-                        cwd: process.cwd(),
-                        engine: { engine: defaultRunEngine, kind: 'instance' },
-                        request: defaultRunRequest({
-                            paths: [ passingFixturePath ],
-                            profile: 'integration'
-                        })
-                    });
-                }, {
-                    message: 'Instance engines are not supported with worker-pool execution. Use a module engine.'
-                });
+        scope.assert.equal(result.summary.passed, 2);
+        scope.assert.equal(result.summary.crashed, 1);
+        scope.require.defined(crash);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() requeues pending cases after a worker-pool crash',
-            async body(scope: OverkillScope) {
-                const result = await orchestrator.run(integrationCommand(
-                    defaultIntegrationProfile({
-                        execution: {
-                            processModel: 'worker-pool',
-                            scheduling: 'serial'
-                        },
-                        files: {
-                            exclude: [],
-                            include: [ workerPoolCrashFixturePath ]
-                        },
-                        timeouts: {
-                            hardMilliseconds: 200,
-                            softMilliseconds: 100
-                        }
-                    }),
-                    workerPoolCrashFixturePath
-                ));
-                const crash = result.runnerErrors.find(function isCrash(error) {
-                    return error.subtype === 'crash' && error.attributedTo?.title === 'exits worker';
-                });
-
-                scope.assert.equal(result.summary.passed, 2);
-                scope.assert.equal(result.summary.crashed, 1);
-                scope.require.defined(crash);
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

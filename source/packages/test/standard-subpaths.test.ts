@@ -1,29 +1,21 @@
-import { runIfMain } from '#test-runner';
+import { suite, test as authoredTest } from '@overkill-dev/test';
+
 import {
-    createRoot,
-    createSuite,
-    createTestCase,
-    createTestPlan,
     readTestBodyResourceAttachments,
     type RootOptions,
     type TestBodyResourceSummary,
     type TestPlan,
-    type TestScope
+    type TestScope,
+    createRoot,
+    createTestPlan
 } from '../engine/engine.entry-point.ts';
+
 import { createReportingContext } from '../../engine/reporting-context.ts';
 import * as assertSubpath from './assert.entry-point.ts';
 import * as configSubpath from './config.entry-point.ts';
 import * as reportersSubpath from './reporters.entry-point.ts';
 import * as resourcesSubpath from './resources.entry-point.ts';
-import {
-    createTestFacade,
-    defineMacro,
-    table,
-    test,
-    type ParameterizedTestScope
-} from './test.entry-point.ts';
-
-const testCaseMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+import { createTestFacade, defineMacro, table, test, type ParameterizedTestScope } from './test.entry-point.ts';
 
 const invokeWithResource = resourcesSubpath.withResource as (...parameters: readonly unknown[]) => unknown;
 const invokeWithResources = resourcesSubpath.withResources as (...parameters: readonly unknown[]) => unknown;
@@ -469,49 +461,25 @@ async function assertResourcesSubpath(scope: TestScope): Promise<void> {
     assertResourceWrapperValidation(scope, database, runtime, temporaryDirectory);
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/packages/test/standard-subpaths.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            ...testCaseMetadata,
-            title: '@overkill-dev/test/config exposes shared project configuration',
-            body(scope: TestScope) {
-                assertConfigSubpath(scope);
+export const testNode = suite('source/packages/test/standard-subpaths.test.ts', [
+    authoredTest('@overkill-dev/test/config exposes shared project configuration', function (scope: TestScope) {
+        assertConfigSubpath(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...testCaseMetadata,
-            title: '@overkill-dev/test/reporters exposes current built-in factories',
-            async body(scope: TestScope) {
-                await assertReporterSubpath(scope);
+        return scope.assert.collect();
+    }),
+    authoredTest('@overkill-dev/test/reporters exposes current built-in factories', async function (scope: TestScope) {
+        await assertReporterSubpath(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...testCaseMetadata,
-            title: '@overkill-dev/test/assert re-exports assertion extension ownership',
-            body(scope: TestScope) {
-                assertAssertSubpath(scope);
+        return scope.assert.collect();
+    }),
+    authoredTest('@overkill-dev/test/assert re-exports assertion extension ownership', function (scope: TestScope) {
+        assertAssertSubpath(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...testCaseMetadata,
-            title: '@overkill-dev/test/resources re-exports resource descriptors',
-            async body(scope: TestScope) {
-                await assertResourcesSubpath(scope);
+        return scope.assert.collect();
+    }),
+    authoredTest('@overkill-dev/test/resources re-exports resource descriptors', async function (scope: TestScope) {
+        await assertResourcesSubpath(scope);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

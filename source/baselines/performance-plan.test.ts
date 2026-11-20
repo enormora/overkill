@@ -1,10 +1,12 @@
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type {
     BenchmarkNormalizationEvidence,
     CalibrationSnapshot,
     NormalizationRuleSummary
 } from '../engine/benchmark-result.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import { proposePerformanceBaseline } from './performance-plan.ts';
 import type { PerformanceBaselineAdapter, PerformanceBaselineValue } from './performance-adapter.ts';
@@ -61,7 +63,7 @@ function normalizedEvidence(
         }
     };
 }
-export const testNode = suite('performance baseline change planning', [
+export const testNode = authoredSuite('performance baseline change planning', [
     test('creates missing expectations only for explicit update modes', function (scope: TestScope) {
         scope.assert.equal(proposePerformanceBaseline({ ...input, mode: 'none' }), null);
         for (const mode of [ 'update', 'apply', 'bootstrap', 'diff' ] as const) {

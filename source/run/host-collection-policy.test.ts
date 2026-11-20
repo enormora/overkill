@@ -1,14 +1,14 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { observationPlan } from '../test-support/observation-lifetime.ts';
 import { supervisedChildCommand } from '../test-support/supervised-child-fixture.ts';
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import { createHostTestPlan, resolveHostEngine } from './host-test-plan.ts';
 
-export const testNode = suite('host collection policy forwarding', [
+export const testNode = authoredSuite('host collection policy forwarding', [
     ...([ 'integration', 'property' ] as const).map(function (testFamily) {
-        return test(
+        return authoredTest(
             `forwards ${testFamily} collection policy without executing cases`,
             async function (scope: TestScope) {
                 const command = {
@@ -44,7 +44,7 @@ export const testNode = suite('host collection policy forwarding', [
             }
         );
     }),
-    test('resolves explicit engine modules through the provided loader', async function (scope: TestScope) {
+    authoredTest('resolves explicit engine modules through the provided loader', async function (scope: TestScope) {
         const engine = createTestEngine();
         const selection = {
             kind: 'module',
@@ -62,4 +62,3 @@ export const testNode = suite('host collection policy forwarding', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

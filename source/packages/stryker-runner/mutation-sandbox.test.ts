@@ -2,7 +2,8 @@ import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { suite, test } from '../test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { ConfigError } from '../run/config.entry-point.ts';
 import {
     assertExcludedMutationFiles,
@@ -29,7 +30,7 @@ async function withSandbox(operation: (paths: ProjectDirectories) => Promise<voi
     }
 }
 
-export const testNode = suite('mutation sandbox origins', [
+export const testNode = authoredSuite('mutation sandbox origins', [
     test('rejects the executing adapter directory as a mutation target', async function (scope) {
         const originalRoot = dirname(dirname(import.meta.dirname));
         const adapterPath = join(import.meta.dirname, 'overkill-test-runner.ts');

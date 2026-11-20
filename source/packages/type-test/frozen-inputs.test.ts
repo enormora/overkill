@@ -1,7 +1,6 @@
 import { writeFile, mkdir, symlink, unlink, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { frozenTypeProject } from '../../test-support/frozen-type-project.ts';
 import { verifyProjectInputs } from './frozen-inputs.ts';
 import { loadProject, disposeProject, type FrozenProject } from './frozen-project.ts';
@@ -38,8 +37,8 @@ async function linkedProject(scope: TestScope): Promise<{
     return { directory, alias, frozen };
 }
 
-export const testNode = suite('frozen compiler inputs', [
-    test('matches canonical callback paths and detects changed project links', async function (scope) {
+export const testNode = authoredSuite('frozen compiler inputs', [
+    authoredTest('matches canonical callback paths and detects changed project links', async function (scope) {
         const { directory, alias, frozen } = await linkedProject(scope);
         const file = await originalSourceFile(
             projectSourceAnalysis(frozen),
@@ -55,7 +54,7 @@ export const testNode = suite('frozen compiler inputs', [
         return scope.assert.collect();
     }),
     ...([ 'value.d.ts', 'base.json' ] as const).map(function (file) {
-        return test(`detects changes to ${file}`, async function (scope) {
+        return authoredTest(`detects changes to ${file}`, async function (scope) {
             const directory = await frozenTypeProject(scope, projectFiles);
             const frozen = await loadProject(join(directory, 'tsconfig.json'), {
                 kind: 'package',
@@ -76,7 +75,7 @@ export const testNode = suite('frozen compiler inputs', [
             return scope.assert.collect();
         });
     }),
-    test('detects changes to automatic type discovery', async function (scope) {
+    authoredTest('detects changes to automatic type discovery', async function (scope) {
         const directory = await frozenTypeProject(scope, {
             'tsconfig.json': '{"compilerOptions":{"noLib":true,"types":["*"]},"files":["case.ts"]}',
             'case.ts': 'export type Value = string;',
@@ -102,7 +101,7 @@ export const testNode = suite('frozen compiler inputs', [
         }, { message: /input changed/u });
         return scope.assert.collect();
     }),
-    test('detects newly created resolution candidates', async function (scope) {
+    authoredTest('detects newly created resolution candidates', async function (scope) {
         const directory = await frozenTypeProject(scope, {
             'tsconfig.json': '{"compilerOptions":{"types":[],"noLib":true},"files":["case.ts"]}',
             'case.ts': "import type { Value } from './missing.js'; export type Result = Value;"
@@ -123,4 +122,3 @@ export const testNode = suite('frozen compiler inputs', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

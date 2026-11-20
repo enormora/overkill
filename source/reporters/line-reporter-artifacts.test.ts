@@ -1,14 +1,16 @@
-import { runIfMain } from '#test-runner';
+import {
+    type TestScope as OverkillScope,
+    suite,
+    test,
+    doubleUsage,
+    testDouble,
+    type TestDouble
+} from '@overkill-dev/test';
+
 import figures from 'figures';
 import colors from 'yoctocolors';
 
-import { doubleUsage, testDouble, type TestDouble } from '../packages/doubles/doubles.entry-point.ts';
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import type { CapturedOutputArtifact } from '../engine/run-artifact.ts';
 import type { RunArtifact } from '../engine/run-result.ts';
@@ -148,194 +150,156 @@ const coverageArtifact: RunArtifact = {
     source: 'v8-native'
 };
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/reporters/line-reporter-artifacts.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter points to completed coverage output',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
+export const testNode = suite('source/reporters/line-reporter-artifacts.test.ts', [
+    test('line reporter points to completed coverage output', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
 
-                await reporter.onFinish?.({
-                    context: {
-                        id: null,
-                        startedAt: null,
-                        facts: null
-                    },
-                    result: runResultFactory.build({
-                        artifacts: [ coverageArtifact ]
-                    })
-                });
+        await reporter.onFinish?.({
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            },
+            result: runResultFactory.build({
+                artifacts: [ coverageArtifact ]
+            })
+        });
 
-                scope.assert(
-                    doubleUsage.calledWith,
-                    log,
-                    [ infoSymbol, 'Coverage: lines 66.67% (2/3), functions 50% (1/2), branches 50% (1/2)' ]
-                );
-                scope.assert(
-                    doubleUsage.calledWith,
-                    log,
-                    [ infoSymbol, 'Coverage output: .overkill/runs/01/coverage' ]
-                );
+        scope.assert(
+            doubleUsage.calledWith,
+            log,
+            [ infoSymbol, 'Coverage: lines 66.67% (2/3), functions 50% (1/2), branches 50% (1/2)' ]
+        );
+        scope.assert(
+            doubleUsage.calledWith,
+            log,
+            [ infoSymbol, 'Coverage output: .overkill/runs/01/coverage' ]
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter suppresses captured output for passing tests by default',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
+        return scope.assert.collect();
+    }),
+    test(
+        'line reporter suppresses captured output for passing tests by default',
+        async function (scope: OverkillScope) {
+            const log = testDouble<LogFunction>();
+            const reporter = lineReporterWithLog(log);
 
-                await reporter.onEvent({
-                    property: null,
-                    benchmark: null,
-                    completion: 'final',
-                    attempt: 0,
-                    artifacts: [ caseOutputArtifact('hidden output\n') ],
-                    case: passingCaseId,
-                    definitionLocations: [ definitionLocation ],
-                    kind: 'test-end',
-                    outcome: { kind: 'pass' },
-                    suitePath: suitePathFromTitles(passingCaseId.suite),
-                    verdict: 'pass',
-                    durationMicroseconds: 3000
-                });
+            await reporter.onEvent({
+                property: null,
+                benchmark: null,
+                completion: 'final',
+                attempt: 0,
+                artifacts: [ caseOutputArtifact('hidden output\n') ],
+                case: passingCaseId,
+                definitionLocations: [ definitionLocation ],
+                kind: 'test-end',
+                outcome: { kind: 'pass' },
+                suitePath: suitePathFromTitles(passingCaseId.suite),
+                verdict: 'pass',
+                durationMicroseconds: 3000
+            });
 
-                scope.assert(doubleUsage.callCount, log, 1);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ successSymbol, 'passes (3 ms)' ]);
+            scope.assert(doubleUsage.callCount, log, 1);
+            scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ successSymbol, 'passes (3 ms)' ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter defers captured output for passing tests in verbose mode',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithOptions(log, true);
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'line reporter defers captured output for passing tests in verbose mode',
+        async function (scope: OverkillScope) {
+            const log = testDouble<LogFunction>();
+            const reporter = lineReporterWithOptions(log, true);
 
-                await reporter.onEvent({
-                    property: null,
-                    benchmark: null,
-                    completion: 'final',
-                    attempt: 0,
-                    artifacts: [ caseOutputArtifact('visible output\n') ],
-                    case: passingCaseId,
-                    definitionLocations: [ definitionLocation ],
-                    kind: 'test-end',
-                    outcome: { kind: 'pass' },
-                    suitePath: suitePathFromTitles(passingCaseId.suite),
-                    verdict: 'pass',
-                    durationMicroseconds: 3000
-                });
+            await reporter.onEvent({
+                property: null,
+                benchmark: null,
+                completion: 'final',
+                attempt: 0,
+                artifacts: [ caseOutputArtifact('visible output\n') ],
+                case: passingCaseId,
+                definitionLocations: [ definitionLocation ],
+                kind: 'test-end',
+                outcome: { kind: 'pass' },
+                suitePath: suitePathFromTitles(passingCaseId.suite),
+                verdict: 'pass',
+                durationMicroseconds: 3000
+            });
 
-                scope.assert(doubleUsage.callCount, log, 1);
+            scope.assert(doubleUsage.callCount, log, 1);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter defers truncated empty captured output',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithOptions(log, true);
+            return scope.assert.collect();
+        }
+    ),
+    test('line reporter defers truncated empty captured output', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithOptions(log, true);
 
-                await reporter.onEvent({
-                    property: null,
-                    benchmark: null,
-                    completion: 'final',
-                    attempt: 0,
-                    artifacts: [ truncatedEmptyCaseOutputArtifact() ],
-                    case: passingCaseId,
-                    definitionLocations: [ definitionLocation ],
-                    kind: 'test-end',
-                    outcome: { kind: 'pass' },
-                    suitePath: suitePathFromTitles(passingCaseId.suite),
-                    verdict: 'pass',
-                    durationMicroseconds: 3000
-                });
+        await reporter.onEvent({
+            property: null,
+            benchmark: null,
+            completion: 'final',
+            attempt: 0,
+            artifacts: [ truncatedEmptyCaseOutputArtifact() ],
+            case: passingCaseId,
+            definitionLocations: [ definitionLocation ],
+            kind: 'test-end',
+            outcome: { kind: 'pass' },
+            suitePath: suitePathFromTitles(passingCaseId.suite),
+            verdict: 'pass',
+            durationMicroseconds: 3000
+        });
 
-                scope.assert(doubleUsage.callCount, log, 1);
+        scope.assert(doubleUsage.callCount, log, 1);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter defers captured output for non-passing tests',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
+        return scope.assert.collect();
+    }),
+    test('line reporter defers captured output for non-passing tests', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
 
-                await reporter.onEvent({
-                    property: null,
-                    benchmark: null,
-                    completion: 'final',
-                    attempt: 0,
-                    artifacts: [ caseOutputArtifact('skip output\n') ],
-                    case: skippedCaseId,
-                    definitionLocations: [ definitionLocation ],
-                    kind: 'test-end',
-                    outcome: { kind: 'skip', reason: 'not supported' },
-                    suitePath: suitePathFromTitles(skippedCaseId.suite),
-                    verdict: 'skip',
-                    durationMicroseconds: 4000
-                });
+        await reporter.onEvent({
+            property: null,
+            benchmark: null,
+            completion: 'final',
+            attempt: 0,
+            artifacts: [ caseOutputArtifact('skip output\n') ],
+            case: skippedCaseId,
+            definitionLocations: [ definitionLocation ],
+            kind: 'test-end',
+            outcome: { kind: 'skip', reason: 'not supported' },
+            suitePath: suitePathFromTitles(skippedCaseId.suite),
+            verdict: 'skip',
+            durationMicroseconds: 4000
+        });
 
-                scope.assert(doubleUsage.callCount, log, 1);
+        scope.assert(doubleUsage.callCount, log, 1);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints run-level captured output for non-green runs',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
+        return scope.assert.collect();
+    }),
+    test('line reporter prints run-level captured output for non-green runs', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
 
-                await reporter.onFinish?.({
-                    context: {
-                        id: null,
-                        startedAt: null,
-                        facts: null
-                    },
-                    result: runResultFactory.build({
-                        artifacts: [ runOutputArtifact('collection error output\n') ],
-                        runnerErrors: [ { message: 'cannot collect', subtype: 'loader' } ],
-                        summary: { failed: 1 }
-                    })
-                });
+        await reporter.onFinish?.({
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            },
+            result: runResultFactory.build({
+                artifacts: [ runOutputArtifact('collection error output\n') ],
+                runnerErrors: [ { message: 'cannot collect', subtype: 'loader' } ],
+                summary: { failed: 1 }
+            })
+        });
 
-                scope.assert(doubleUsage.callCount, log, 6);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ 'Problems' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 3, [ '  stderr:' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 4, [ '  collection error output' ]);
+        scope.assert(doubleUsage.callCount, log, 6);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ 'Problems' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 3, [ '  stderr:' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 4, [ '  collection error output' ]);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

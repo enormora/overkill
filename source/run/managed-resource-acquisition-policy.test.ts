@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { managedAcquisition, managedDescriptor, managedRecord } from '../test-support/managed-resource-acquisition.ts';
 import { defineResource } from '../resources/resources.ts';
 import { testNode as disposal } from './managed-disposal-policy.test.ts';
@@ -7,7 +7,7 @@ import { managedResourceHandle, resourceProjectionRecordsFromStores } from './re
 import { runWithLifecycleCase } from './resource-lifecycle-state.ts';
 
 const noProjections = { resources: [] } as const;
-export const testNode = suite('managed resource acquisition policy', [
+export const testNode = authoredSuite('managed resource acquisition policy', [
     disposal,
     test('deduplicates acquired handles within the same boundary', async function (scope: TestScope) {
         const fixture = managedAcquisition(noProjections);
@@ -188,4 +188,3 @@ export const testNode = suite('managed resource acquisition policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

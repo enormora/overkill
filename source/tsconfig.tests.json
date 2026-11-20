@@ -45,7 +45,6 @@
         "./**/*.test.ts",
         "./test-support/**/*.ts",
         "./integration-tests/**/*.ts",
-        "../.c8rc.json",
         "./property/fixtures/property-values-v1.json",
         "./property/fixtures/property-graph-v1.json",
         "./property/fixtures/property-custom-v1.json",

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { planningInput } from '../test-support/benchmark-plan-input.ts';
 import { frozenMicrotestPolicy } from '../test-support/frozen-microtest-policy.ts';
 import { defaultRunConfig, defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
@@ -11,7 +11,7 @@ import {
     createWorkerPoolCommand
 } from './run-isolated-command.ts';
 
-export const testNode = suite('isolated command transport policy', [
+export const testNode = authoredSuite('isolated command transport policy', [
     test('preserves benchmark collection policy and resolves an absent seed', function (scope: TestScope) {
         const input = planningInput();
         const command = {
@@ -86,4 +86,3 @@ export const testNode = suite('isolated command transport policy', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

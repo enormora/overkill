@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../../packages/test/test.entry-point.ts';
+import { test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { readProcessEnvironment } from '../../run/node-host-readers.ts';
 
 const fixturePath = fileURLToPath(new URL('./fixtures/permission-audit.test.ts', import.meta.url));
@@ -31,7 +31,7 @@ async function runAuditProbe(mode: 'argv' | 'environment'): Promise<AuditProbeOu
     });
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'native permission audit',
     ([ 'argv', 'environment' ] as const).map(function auditMode(mode) {
         return test(
@@ -54,5 +54,3 @@ export const testNode = suite(
         );
     })
 );
-
-await runIfMain(import.meta, testNode);

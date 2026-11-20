@@ -1,10 +1,10 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { CalibrationPublicationError } from '../baselines/calibration-store.ts';
 import { readCalibrationReferenceReport } from '../bench/calibration-report.ts';
 import { calibrationCapture } from '../test-support/calibration-capture.ts';
 
-export const testNode = suite('calibration capture publication', [
+export const testNode = authoredSuite('calibration capture publication', [
     test('deduplicates references and records their consuming work', async function (scope: TestScope) {
         const fixture = calibrationCapture(null, 4096);
         const result = await fixture.session.finalize(fixture.result);
@@ -66,4 +66,3 @@ export const testNode = suite('calibration capture publication', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

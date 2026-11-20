@@ -1,7 +1,9 @@
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { createClock } from '@enormora/clock';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { normalizeConfig } from '../config/config.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
 import { defaultRunRequest, defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
@@ -74,9 +76,9 @@ function maintenance(remove: MaintenanceInput['store']['remove']): MaintenanceIn
         }
     };
 }
-export const testNode = suite('calibration maintenance failures', [
+export const testNode = authoredSuite('calibration maintenance failures', [
     ...([ 'apply', 'diff', 'none' ] as const).map(function (mode) {
-        return test(`retains maintenance report in ${mode} mode`, async function (scope: TestScope) {
+        return authoredTest(`retains maintenance report in ${mode} mode`, async function (scope: TestScope) {
             const original = maintenance(async function () {
                 return [ 'calibration/old.json' ];
             });
@@ -93,33 +95,36 @@ export const testNode = suite('calibration maintenance failures', [
             return scope.assert.collect();
         });
     }),
-    test('delegates result preparation and finalization to the baseline session', async function (scope: TestScope) {
-        const calls: string[] = [];
-        const original = maintenance(unexpectedOperation);
-        const failed = runResultFactory.build({ status: 'failed' });
-        const baseline: NonNullable<MaintenanceInput['baseline']> = {
-            reporterDispatcher: original.dependencies.reporterDispatcher,
-            prepareResult(result) {
-                calls.push('prepare');
-                return result;
-            },
-            async finalize() {
-                calls.push('finalize');
-                return failed;
-            }
-        };
-        const session = calibrationMaintenanceSession({ ...original, baseline });
-        scope.require.defined(session);
-        scope.assert.equal(session.prepareResult(successful), successful);
-        scope.assert.deepEqual({ dispatcher: session.reporterDispatcher, result: await session.finalize(failed) }, {
-            dispatcher: baseline.reporterDispatcher,
-            result: failed
-        });
-        scope.assert.deepEqual(calls, [ 'prepare', 'finalize' ]);
-        return scope.assert.collect();
-    }),
+    authoredTest(
+        'delegates result preparation and finalization to the baseline session',
+        async function (scope: TestScope) {
+            const calls: string[] = [];
+            const original = maintenance(unexpectedOperation);
+            const failed = runResultFactory.build({ status: 'failed' });
+            const baseline: NonNullable<MaintenanceInput['baseline']> = {
+                reporterDispatcher: original.dependencies.reporterDispatcher,
+                prepareResult(result) {
+                    calls.push('prepare');
+                    return result;
+                },
+                async finalize() {
+                    calls.push('finalize');
+                    return failed;
+                }
+            };
+            const session = calibrationMaintenanceSession({ ...original, baseline });
+            scope.require.defined(session);
+            scope.assert.equal(session.prepareResult(successful), successful);
+            scope.assert.deepEqual({ dispatcher: session.reporterDispatcher, result: await session.finalize(failed) }, {
+                dispatcher: baseline.reporterDispatcher,
+                result: failed
+            });
+            scope.assert.deepEqual(calls, [ 'prepare', 'finalize' ]);
+            return scope.assert.collect();
+        }
+    ),
     ...[ { paths: [ 'selected.bench.ts' ] }, { selection: { kind: 'none' as const } } ].map(function (request) {
-        return test(
+        return authoredTest(
             `skips maintenance for incomplete inventory ${JSON.stringify(request)}`,
             function (scope: TestScope) {
                 const original = maintenance(unexpectedOperation);
@@ -142,26 +147,26 @@ export const testNode = suite('calibration maintenance failures', [
             }
         );
     }),
-    test('returns the baseline when no references exist', function (scope: TestScope) {
+    authoredTest('returns the baseline when no references exist', function (scope: TestScope) {
         scope.assert.equal(
             calibrationMaintenanceSession({ ...maintenance(unexpectedOperation), references: [] }),
             null
         );
         return scope.assert.collect();
     }),
-    test('prepares results without a baseline', function (scope: TestScope) {
+    authoredTest('prepares results without a baseline', function (scope: TestScope) {
         const session = calibrationMaintenanceSession(maintenance(unexpectedOperation));
         scope.require.defined(session);
         scope.assert.equal(session.prepareResult(successful), successful);
         return scope.assert.collect();
     }),
-    test('preserves references outside the selected shard', function (scope: TestScope) {
+    authoredTest('preserves references outside the selected shard', function (scope: TestScope) {
         const original = maintenance(unexpectedOperation);
         const input = { ...original.input, request: { ...original.input.request, shard: { index: 1, total: 2 } } };
         scope.assert.equal(calibrationMaintenanceSession({ ...original, input }), null);
         return scope.assert.collect();
     }),
-    test('reports invalid profile types without deleting references', async function (scope: TestScope) {
+    authoredTest('reports invalid profile types without deleting references', async function (scope: TestScope) {
         const original = maintenance(unexpectedOperation);
         const session = calibrationMaintenanceSession({
             ...original,
@@ -173,7 +178,7 @@ export const testNode = suite('calibration maintenance failures', [
         scope.assert.equal(readCalibrationReferenceReport(result), null);
         return scope.assert.collect();
     }),
-    test('preserves references owned by skipped cases', async function (scope: TestScope) {
+    authoredTest('preserves references owned by skipped cases', async function (scope: TestScope) {
         const owner = reference.owners[0];
         scope.require.defined(owner);
         const session = calibrationMaintenanceSession(maintenance(unexpectedOperation));
@@ -198,7 +203,7 @@ export const testNode = suite('calibration maintenance failures', [
         }
     ]
         .map(function removalFailureCase(input) {
-            return test(`reports ${input.name} with completed removals`, async function (scope: TestScope) {
+            return authoredTest(`reports ${input.name} with completed removals`, async function (scope: TestScope) {
                 const session = calibrationMaintenanceSession(maintenance(async function () {
                     throw input.error;
                 }));
@@ -217,33 +222,36 @@ export const testNode = suite('calibration maintenance failures', [
                 return scope.assert.collect();
             });
         }),
-    test('retains errors when even the failure report exceeds the artifact limit', async function (scope: TestScope) {
-        const original = maintenance(unexpectedOperation);
-        const { profile } = original.input;
-        if (profile.testFamily !== 'benchmark') {
-            throw new Error('Expected benchmark profile.');
-        }
-        const session = calibrationMaintenanceSession({
-            ...original,
-            input: {
-                ...original.input,
-                profile: { ...profile, attachments: { ...profile.attachments, maxArtifactBytes: 1 } }
+    authoredTest(
+        'retains errors when even the failure report exceeds the artifact limit',
+        async function (scope: TestScope) {
+            const original = maintenance(unexpectedOperation);
+            const { profile } = original.input;
+            if (profile.testFamily !== 'benchmark') {
+                throw new Error('Expected benchmark profile.');
             }
-        });
-        scope.require.defined(session);
-        const result = await session.finalize(successful);
-        scope.assert.equal(result.status, 'failed');
-        scope.assert.equal(readCalibrationReferenceReport(result), null);
-        return scope.assert.collect();
-    }),
-    test('retains references when the run fails', async function (scope: TestScope) {
+            const session = calibrationMaintenanceSession({
+                ...original,
+                input: {
+                    ...original.input,
+                    profile: { ...profile, attachments: { ...profile.attachments, maxArtifactBytes: 1 } }
+                }
+            });
+            scope.require.defined(session);
+            const result = await session.finalize(successful);
+            scope.assert.equal(result.status, 'failed');
+            scope.assert.equal(readCalibrationReferenceReport(result), null);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('retains references when the run fails', async function (scope: TestScope) {
         const session = calibrationMaintenanceSession(maintenance(unexpectedOperation));
         scope.require.defined(session);
         const failed = runResultFactory.build({ status: 'failed', summary: { planned: 0 } });
         scope.assert.equal(await session.finalize(failed), failed);
         return scope.assert.collect();
     }),
-    test('preserves references when machine attribution is unavailable', async function (scope: TestScope) {
+    authoredTest('preserves references when machine attribution is unavailable', async function (scope: TestScope) {
         const original = maintenance(unexpectedOperation);
         const session = calibrationMaintenanceSession({
             ...original,

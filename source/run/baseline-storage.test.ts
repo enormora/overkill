@@ -1,7 +1,7 @@
 import { mkdir, readFile, symlink, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import type { IntegrationProfileConfig } from '../config/types.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import {
     createOrdinaryBaselineFixture,
     type OrdinaryBaselineFixture
@@ -35,7 +35,7 @@ async function storedFixture(scope: TestScope): Promise<StoredFixture> {
     scope.require.defined(entry);
     return { data, store, file: entry.path };
 }
-export const testNode = suite('ordinary baseline file validation', [
+export const testNode = authoredSuite('ordinary baseline file validation', [
     test('includes fileless records only in unfiltered inventories', async function (scope: TestScope) {
         const fixture = await storedFixture(scope);
         await fixture.store.apply({

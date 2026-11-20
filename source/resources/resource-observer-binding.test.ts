@@ -1,11 +1,11 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { resourceObserverBinding } from '../test-support/resource-observer-binding.ts';
 import { defineResource } from './resources.ts';
 import { withResourceChecks } from './resource-checks.ts';
 import { resourceImplementationParticipants } from './resource-implementation-participants.ts';
 
-export const testNode = suite('resource observer reference admission', [
+export const testNode = authoredSuite('resource observer reference admission', [
     test('admits the observer and forwards its prepared input', async function (scope: TestScope) {
         const fixture = await resourceObserverBinding(scope);
         const activation = fixture.participant.bind(
@@ -93,4 +93,3 @@ export const testNode = suite('resource observer reference admission', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

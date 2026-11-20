@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import type { CalibrationSnapshot } from '../engine/benchmark-result.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
 import { storedCalibrationSchema, type StoredCalibration } from './calibration-reference.ts';
@@ -67,7 +67,7 @@ async function removalFailure(
     }
     throw new Error('Expected calibration removal to fail.');
 }
-export const testNode = suite('calibration reference persistence', [
+export const testNode = authoredSuite('calibration reference persistence', [
     test('rejects references outside the project root', async function (scope: TestScope) {
         const fixture = await calibrationStore(scope);
         await scope.assert.rejects(async function () {

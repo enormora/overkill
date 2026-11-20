@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { extname } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import type { TestPlanCase } from './test-plan.ts';
@@ -153,7 +153,7 @@ async function unscopedHookProbe(): Promise<string> {
     return await executeOwnershipProbe(script, [ observer ]);
 }
 
-export const testNode = suite('native error ownership', [
+export const testNode = authoredSuite('native error ownership', [
     test('attributes unscoped errors to the sole active boundary', async function (scope) {
         scope.assert.equal(
             await unscopedHookProbe(),
@@ -214,5 +214,3 @@ export const testNode = suite('native error ownership', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

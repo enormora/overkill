@@ -1,16 +1,9 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { fakeWorkerPoolRuntimeDependencies as fakeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import { createWorkerPoolRuntime, type WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
-import {
-    createCollectedPlan,
-    workerPoolResolvedRun
-} from './worker-pool-runtime.test.ts';
+import { createCollectedPlan, workerPoolResolvedRun } from './worker-pool-runtime.test.ts';
 
 type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
 type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;
@@ -54,69 +47,55 @@ async function createRuntime(resolvedRun: ResolvedRun): Promise<void> {
     });
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-runtime-edge.test.ts',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool runtime rejects invalid placement plans',
-            async body(scope: OverkillScope) {
-                const resolvedRun = workerPoolResolvedRun(createCollectedPlan());
-                const plan = placementPlan(resolvedRun);
-                const [ unit ] = plan.units;
-                const [ assignment ] = plan.assignments;
+export const testNode = suite('source/run/worker-pool-runtime-edge.test.ts', [
+    test('worker-pool runtime rejects invalid placement plans', async function (scope: OverkillScope) {
+        const resolvedRun = workerPoolResolvedRun(createCollectedPlan());
+        const plan = placementPlan(resolvedRun);
+        const [ unit ] = plan.units;
+        const [ assignment ] = plan.assignments;
 
-                if (unit === undefined || assignment === undefined) {
-                    throw new Error('Worker-pool runtime edge test requires planned work.');
-                }
+        if (unit === undefined || assignment === undefined) {
+            throw new Error('Worker-pool runtime edge test requires planned work.');
+        }
 
-                await scope.assert.rejects(async function createRuntimeWithUnknownAssignment() {
-                    await createRuntime(resolvedRunWithPlacementPlan({
-                        ...plan,
-                        assignments: [
-                            {
-                                lane: assignment.lane,
-                                unit: {
-                                    familyVariant: null,
-                                    key: 'missing',
-                                    mode: 'file',
-                                    runtimes: [],
-                                    workload: null
-                                }
-                            }
-                        ]
-                    }));
-                }, { message: 'Placement assignment referenced an unknown work unit.' });
-                await scope.assert.rejects(async function createRuntimeWithMixedLaneLifecycle() {
-                    await createRuntime(resolvedRunWithPlacementPlan({
-                        ...plan,
-                        assignments: [
-                            { lane: 'shared', unit: unit.id },
-                            {
-                                lane: 'shared',
-                                unit: { familyVariant: null, key: 'fresh', mode: 'file', runtimes: [], workload: null }
-                            }
-                        ],
-                        units: [
-                            unit,
-                            {
-                                ...unit,
-                                id: { familyVariant: null, key: 'fresh', mode: 'file', runtimes: [], workload: null },
-                                workerLifecycle: 'fresh-worker-per-unit'
-                            }
-                        ]
-                    }));
-                }, { message: 'Placement lane cannot mix worker lifecycle policies.' });
+        await scope.assert.rejects(async function createRuntimeWithUnknownAssignment() {
+            await createRuntime(resolvedRunWithPlacementPlan({
+                ...plan,
+                assignments: [
+                    {
+                        lane: assignment.lane,
+                        unit: {
+                            familyVariant: null,
+                            key: 'missing',
+                            mode: 'file',
+                            runtimes: [],
+                            workload: null
+                        }
+                    }
+                ]
+            }));
+        }, { message: 'Placement assignment referenced an unknown work unit.' });
+        await scope.assert.rejects(async function createRuntimeWithMixedLaneLifecycle() {
+            await createRuntime(resolvedRunWithPlacementPlan({
+                ...plan,
+                assignments: [
+                    { lane: 'shared', unit: unit.id },
+                    {
+                        lane: 'shared',
+                        unit: { familyVariant: null, key: 'fresh', mode: 'file', runtimes: [], workload: null }
+                    }
+                ],
+                units: [
+                    unit,
+                    {
+                        ...unit,
+                        id: { familyVariant: null, key: 'fresh', mode: 'file', runtimes: [], workload: null },
+                        workerLifecycle: 'fresh-worker-per-unit'
+                    }
+                ]
+            }));
+        }, { message: 'Placement lane cannot mix worker lifecycle policies.' });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { EqualAssertionNode } from '../assertion-protocol/assertions/equality.ts';
 import { createDefaultWorkId } from './identity.ts';
 import {
@@ -35,7 +35,7 @@ function completedAttempt(): DebugAttempt {
     return attempt;
 }
 
-export const testNode = suite('debug recording boundaries', [
+export const testNode = authoredSuite('debug recording boundaries', [
     test('drops oversized timeline labels while preserving body completion', function (scope: TestScope) {
         const attempt = createDebugAttempt(work);
         attempt.assertion({ ...assertion, message: 'x'.repeat(11 * 1024 * 1024) });
@@ -151,4 +151,3 @@ export const testNode = suite('debug recording boundaries', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

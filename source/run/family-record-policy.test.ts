@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { isDefinedFamilyProfile, type DefinedFamilyProfile } from '../config/types.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { defineTestFamily, type TestFamily } from '../packages/engine/engine.entry-point.ts';
 import { normalizeConfig } from '../packages/run/run.entry-point.ts';
 import { family } from '../integration-tests/run/fixtures/imported-runtime-family.ts';
@@ -27,16 +28,16 @@ function familyProfile(definition: TestFamily<null>): DefinedFamilyProfile {
     return profile;
 }
 
-export const testNode = suite('family recording policy', [
+export const testNode = authoredSuite('family recording policy', [
     ...[ 2, 3 ].map(function unsupportedVersion(version) {
-        return test(`rejects unsupported record version ${version}`, function (scope) {
+        return authoredTest(`rejects unsupported record version ${version}`, function (scope) {
             scope.assert.throws(function parseFutureRecord() {
                 historyRecordSchema.parse({ ...completedHistoryRecord('unsupported'), version });
             }, { name: 'ZodError' });
             return scope.assert.collect();
         });
     }),
-    test('inspects merged v1 records without resolving family modules', function (scope) {
+    authoredTest('inspects merged v1 records without resolving family modules', function (scope) {
         const record = completedHistoryRecord('historical-merged');
         const parsed = historyRecordSchema.parse({
             ...record,
@@ -57,7 +58,7 @@ export const testNode = suite('family recording policy', [
         scope.assert.equal(parsed.replayPlan, null);
         return scope.assert.collect();
     }),
-    test('rejects replacement of a recorded family with a built-in profile', async function (scope: TestScope) {
+    authoredTest('rejects replacement of a recorded family with a built-in profile', async function (scope: TestScope) {
         const current = normalizeConfig({ profiles: { custom: { testFamily: 'microtest' } } }).profiles.custom;
         scope.require.defined(current);
         await scope.assert.rejects(async function restoreChangedKind() {
@@ -65,14 +66,14 @@ export const testNode = suite('family recording policy', [
         }, { message: 'Recorded family configuration changed; collect a new run.' });
         return scope.assert.collect();
     }),
-    test('rejects changed configured settings before backend loading', async function (scope) {
+    authoredTest('rejects changed configured settings before backend loading', async function (scope) {
         const profile = familyProfile(family);
         await scope.assert.rejects(async function restoreChangedSettings() {
             await restoreFamilyReplayProfile(recordedReplayProfile(profile), { ...profile, settings: 'changed' });
         }, { message: 'Recorded family configuration settings changed; collect a new run.' });
         return scope.assert.collect();
     }),
-    test('serializes a family profile without executable definitions', async function (scope) {
+    authoredTest('serializes a family profile without executable definitions', async function (scope) {
         const profile = familyProfile(family);
         const serialized = JSON.stringify(recordedReplayProfile(profile));
         const restored = await restoreFamilyReplayProfile(JSON.parse(serialized), profile);
@@ -82,7 +83,7 @@ export const testNode = suite('family recording policy', [
         scope.assert.equal(serialized.includes('load'), false);
         return scope.assert.collect();
     }),
-    test('requires explicit configuration when the recorded definition has no module', async function (scope) {
+    authoredTest('requires explicit configuration when the recorded definition has no module', async function (scope) {
         const local = defineTestFamily({ ...family, module: null });
         const saved = recordedReplayProfile(familyProfile(local));
         await scope.assert.rejects(async function restoreLocalOnlyFamily() {
@@ -90,7 +91,7 @@ export const testNode = suite('family recording policy', [
         }, { message: 'Recorded family requires an explicit compatible configuration.' });
         return scope.assert.collect();
     }),
-    test('rejects a changed implementation version before backend loading', async function (scope) {
+    authoredTest('rejects a changed implementation version before backend loading', async function (scope) {
         const profile = familyProfile(family);
         const changed = defineTestFamily({
             ...family,
@@ -104,7 +105,7 @@ export const testNode = suite('family recording policy', [
         }, { message: 'Frozen family identity or implementation version changed; collect a new run.' });
         return scope.assert.collect();
     }),
-    test('inspects v1 records without resolving family modules', function (scope) {
+    authoredTest('inspects v1 records without resolving family modules', function (scope) {
         const record = completedHistoryRecord('historical');
         const parsed = historyRecordSchema.parse({
             ...record,
@@ -125,4 +126,3 @@ export const testNode = suite('family recording policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

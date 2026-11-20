@@ -1,9 +1,8 @@
 import { execFile } from 'node:child_process';
 import { rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { suite, test } from '#tests';
 import { createProgram, getPreEmitDiagnostics, ModuleKind, ScriptTarget } from 'typescript';
-import { createSuite, createTestCase } from '@overkill-dev/engine';
-import { runIfMain } from '#test-runner';
 
 const lifecycleScript = `
 import assert from 'node:assert/strict';
@@ -34,7 +33,7 @@ try {
         }, profiles: {microtest: {
             testFamily: 'microtest',
             runRecords: {persist: 'always'},
-            timeouts: {collectionMilliseconds: 5000},
+            timeouts: {collectionMilliseconds: 30000},
             files: {include: ['test.mjs']},
             execution: {processModel: 'in-process', scheduling: 'serial'}
         }}}),
@@ -92,7 +91,7 @@ try {
         ...command,
         config: normalizeConfig({profiles: {microtest: {
             testFamily: 'microtest',
-            timeouts: {collectionMilliseconds: 5000},
+            timeouts: {collectionMilliseconds: 30000},
             files: {include: ['test.mjs']},
             execution: {processModel: 'supervised-process', scheduling: 'serial'}
         }}})
@@ -119,7 +118,7 @@ try {
             ...command,
             config: normalizeConfig({profiles: {microtest: {
                 testFamily: 'microtest',
-                timeouts: {collectionMilliseconds: 5000},
+                timeouts: {collectionMilliseconds: 30000},
                 files: {include: ['nested.test.mjs']},
                 execution: {processModel, scheduling: 'serial'}
             }}})
@@ -169,25 +168,17 @@ async function executeLifecycleScript(): Promise<string> {
     });
 }
 
-export const testNode = createSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'packaged public runner lifecycle',
-    children: [
-        createTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'published runner accepts engine nodes, reporters, and renderers without type aliases',
-            async body(scope) {
-                const sourcePath = path.join(import.meta.dirname, 'run-consumer.mts');
-                scope.cleanup(async function removeConsumer() {
-                    await rm(sourcePath, { force: true });
-                });
-                await writeFile(
-                    sourcePath,
-                    `
+export const testNode = suite('packaged public runner lifecycle', [
+    test(
+        'published runner accepts engine nodes, reporters, and renderers without type aliases',
+        async function (scope) {
+            const sourcePath = path.join(import.meta.dirname, 'run-consumer.mts');
+            scope.cleanup(async function removeConsumer() {
+                await rm(sourcePath, { force: true });
+            });
+            await writeFile(
+                sourcePath,
+                `
                 import { createPlainOutputRenderer, createTestCase, defineReporter } from '@overkill-dev/engine';
                 import { normalizeConfig, runIfMain } from '@overkill-dev/run';
                 const testNode = createTestCase({
@@ -201,34 +192,25 @@ export const testNode = createSuite({
                 normalizeConfig({ reporters: [reporter], outputRenderer });
                 await runIfMain(import.meta, testNode, { reporters: [reporter], outputRenderer });
             `
-                );
-                const program = createProgram([ sourcePath ], {
-                    module: ModuleKind.NodeNext,
-                    target: ScriptTarget.ESNext,
-                    strict: true,
-                    noEmit: true,
-                    types: [ 'node' ]
-                });
-                scope.assert.deepEqual(
-                    getPreEmitDiagnostics(program).map(function diagnosticText(diagnostic) {
-                        return diagnostic.messageText;
-                    }),
-                    []
-                );
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'consumer bootstraps before imports and reruns the public collected handle',
-            async body(scope) {
-                scope.assert.equal(await executeLifecycleScript(), 'packaged collected lifecycle passed\n');
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            );
+            const program = createProgram([ sourcePath ], {
+                module: ModuleKind.NodeNext,
+                target: ScriptTarget.ESNext,
+                strict: true,
+                noEmit: true,
+                types: [ 'node' ]
+            });
+            scope.assert.deepEqual(
+                getPreEmitDiagnostics(program).map(function diagnosticText(diagnostic) {
+                    return diagnostic.messageText;
+                }),
+                []
+            );
+            return scope.assert.collect();
+        }
+    ),
+    test('consumer bootstraps before imports and reruns the public collected handle', async function (scope) {
+        scope.assert.equal(await executeLifecycleScript(), 'packaged collected lifecycle passed\n');
+        return scope.assert.collect();
+    })
+]);

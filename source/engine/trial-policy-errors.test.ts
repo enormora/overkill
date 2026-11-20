@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { observationError } from '../test-support/observation-lifetime.ts';
 import { propertyTrialWithPolicyErrors, propertyBoundary } from './property-trial-outcome.ts';
 import type { ExecutedBody } from './body-result.ts';
@@ -13,7 +13,7 @@ const body: ExecutedBody = {
     runnerErrors: [],
     returnedAssertions: []
 };
-export const testNode = suite('trial runtime policy completion', [
+export const testNode = authoredSuite('trial runtime policy completion', [
     test('converts a passing trial into a terminated trial with its policy error', function (scope: TestScope) {
         const error = observationError();
         scope.assert.deepEqual(propertyTrialWithPolicyErrors({ kind: 'passed' }, [ error ]), {
@@ -56,4 +56,3 @@ export const testNode = suite('trial runtime policy completion', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,10 +1,11 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { ResourceLifecycleError } from '../packages/resources/resources.entry-point.ts';
 import { emptyConfigProject } from '../test-support/eslint-config.ts';
 import { projectFailure, propagateConfigControls } from './config-errors.ts';
 import { trialCandidates } from './config-seeds.ts';
 
-export const testNode = suite('config execution controls', [
+export const testNode = authoredSuite('config execution controls', [
     test('rejects replay references to removed fixtures', async function (scope) {
         await scope.assert.rejects(async function removed() {
             await trialCandidates(

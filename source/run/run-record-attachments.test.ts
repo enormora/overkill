@@ -1,11 +1,9 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { z } from 'zod/v4';
 import type { RunResult } from '../engine/run-result.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import {
-    localAttachmentRunFixture,
-    type AttachmentRunFixture
-} from '../test-support/attachment-run-fixture.ts';
+
+import { localAttachmentRunFixture, type AttachmentRunFixture } from '../test-support/attachment-run-fixture.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { attachmentsForProducer } from '../attachments/attachment-context.ts';
 import { createRunRecordSession, type RunRecordSession } from './run-record.ts';
@@ -94,7 +92,7 @@ async function assertSharedRecord(scope: TestScope, fail: boolean): Promise<void
     scope.assert.equal(final.result?.artifacts.length, 1);
 }
 
-export const testNode = suite('attachment recording shares its invocation record', [
+export const testNode = authoredSuite('attachment recording shares its invocation record', [
     test('successful attachments leave completion to the invocation owner', async function (scope) {
         await assertSharedRecord(scope, false);
         return scope.assert.collect();
@@ -104,5 +102,3 @@ export const testNode = suite('attachment recording shares its invocation record
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

@@ -1,19 +1,12 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type RunnerError,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import type { RunnerError } from '../packages/engine/engine.entry-point.ts';
 import {
     createCollectedPlan,
     fakeReporterDelivery,
     fakeWorkerRuntime
 } from '../test-support/worker-pool-execution-state.ts';
-import {
-    reportRunStart,
-    startPoolProcessUsageTracking
-} from './worker-pool-process-usage-tracking.ts';
+import { reportRunStart, startPoolProcessUsageTracking } from './worker-pool-process-usage-tracking.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 
 const testCaseMetadata = {
@@ -59,11 +52,11 @@ function runtimeWithEmptyPlacementPlan(): WorkerPoolRunRuntime {
     };
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-process-usage-tracking.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool execution skips run start for empty placement plans',
             async body(scope: OverkillScope) {
@@ -86,7 +79,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool execution records run-start reporter delivery errors',
             async body(scope: OverkillScope) {
@@ -106,7 +99,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool execution starts pool process usage tracking with optional start waiters',
             async body(scope: OverkillScope) {
@@ -142,5 +135,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

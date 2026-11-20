@@ -1,5 +1,6 @@
 import { runInNewContext } from 'node:vm';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { InvocationDeadlineExceededError } from '../invocation-budget.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { permissionDeniedRunnerErrorFromDiagnostic } from '../engine/run-result.ts';
@@ -72,11 +73,11 @@ function failedDeliveryReply(delivery: FailedDelivery): FailureReply {
     return reply;
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'interrupted execution evidence',
     [
         ...([ 'timeout', 'missing-data' ] as const).map(function interruptedDelivery(interruption) {
-            return test(`preserves parent-owned artifacts after ${interruption}`, function (scope) {
+            return authoredTest(`preserves parent-owned artifacts after ${interruption}`, function (scope) {
                 const result = runResultFactory.build({
                     artifacts: [ {
                         id: {
@@ -114,7 +115,7 @@ export const testNode = suite(
                 return scope.assert.collect();
             });
         }),
-        test('ignores lifecycle data from another execution correlation', function (scope) {
+        authoredTest('ignores lifecycle data from another execution correlation', function (scope) {
             const observation = createExecutionDataObservation();
             observeExecutionMessage(
                 observation,
@@ -130,7 +131,7 @@ export const testNode = suite(
             scope.assert.false(observation.invalid.signal.aborted);
             return scope.assert.collect();
         }),
-        test('normalizes cross-realm delivery failures and retains checkpoint data', function (scope) {
+        authoredTest('normalizes cross-realm delivery failures and retains checkpoint data', function (scope) {
             const delivery = failingDelivery(runInNewContext('new Error("Delivery failed.")') as Error);
             const reply = failedDeliveryReply(delivery);
             const retainedData: unknown = reply.data;
@@ -140,7 +141,7 @@ export const testNode = suite(
             scope.assert.true(delivery.observation.invalid.signal.aborted);
             return scope.assert.collect();
         }),
-        test('retains native delivery errors and checkpoint data', function (scope) {
+        authoredTest('retains native delivery errors and checkpoint data', function (scope) {
             const delivery = failingDelivery(new Error('Delivery failed.'));
             const reply = failedDeliveryReply(delivery);
             const retainedData: unknown = reply.data;
@@ -150,7 +151,7 @@ export const testNode = suite(
             scope.assert.true(delivery.observation.invalid.signal.aborted);
             return scope.assert.collect();
         }),
-        test('retains permission failures when a deadline expires before lifecycle delivery', function (scope) {
+        authoredTest('retains permission failures when a deadline expires before lifecycle delivery', function (scope) {
             const error = permissionDeniedRunnerErrorFromDiagnostic({
                 channel: 'node:permission-model:fs',
                 fallbackCapability: 'fs-write',

@@ -1,7 +1,6 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
 import { normalizeConfig, orchestrator, type PerTestResult } from '../../packages/run/run.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
@@ -69,7 +68,7 @@ function assertCostEvidence(scope: TestScope, entry: PerTestResult, mode: Mutati
     }
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'mutation cost measurement completeness',
     mutationModes.map(function executionModes(mode) {
         return test(`${mode.processModel} freshState ${String(mode.freshState)}`, async function (scope) {
@@ -100,5 +99,3 @@ export const testNode = suite(
         });
     })
 );
-
-await runIfMain(import.meta, testNode);

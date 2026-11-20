@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { mergeRecordFixture } from '../test-support/merge-record-fixture.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { workerReplayRecord } from '../test-support/replay-record-fixture.ts';
 import { implementationFingerprint } from '../implementation-fingerprint.ts';
 import { createCollectedPlan, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
@@ -29,7 +30,7 @@ function implementationEvidence(): NonNullable<ReplayRunRecord['facts']['impleme
         builds: [ { assignments: [], graph: { ...identity, build: implementationFingerprint(identity) } } ]
     };
 }
-export const testNode = suite('recorded implementation provenance', [
+export const testNode = authoredSuite('recorded implementation provenance', [
     test('reports incompatible implementation catalogs as merge conflicts', function (scope) {
         const current = mergeRecordFixture('current', 1, 1);
         const implementations = implementationEvidence();
@@ -99,4 +100,3 @@ export const testNode = suite('recorded implementation provenance', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

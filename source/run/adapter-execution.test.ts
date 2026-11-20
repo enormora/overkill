@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { normalizeConfig } from '../config/config.ts';
 import { createDeterministicRunCoordinator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -37,8 +37,8 @@ function analysisPlan(engine: Engine): TestPlan {
     return engine.createTestPlan(engine.createRoot({ ...options, title: 'root', children: [ node ] }));
 }
 
-export const testNode = suite('family profile execution', [
-    test('executes imported analysis through engine evidence and disposal', async function (scope) {
+export const testNode = authoredSuite('family profile execution', [
+    authoredTest('executes imported analysis through engine evidence and disposal', async function (scope) {
         const events: string[] = [];
         const coordinator = createDeterministicRunCoordinator();
         const result = await coordinator.orchestrator.run(fixtureCommand(function record(event) {
@@ -49,7 +49,7 @@ export const testNode = suite('family profile execution', [
         scope.assert.equal(result.summary.inconclusive, 0);
         return scope.assert.collect();
     }),
-    test('creates fresh single-use preparations for collected invocations', async function (scope) {
+    authoredTest('creates fresh single-use preparations for collected invocations', async function (scope) {
         const events: string[] = [];
         const coordinator = createDeterministicRunCoordinator();
         const initialized = await coordinator.orchestrator.initialize(fixtureCommand(function record(event) {
@@ -78,7 +78,7 @@ export const testNode = suite('family profile execution', [
         return scope.assert.collect();
     }),
     ...([ 'missing', 'duplicate' ] as const).map(function (mode) {
-        return test(`rejects ${mode} backend evidence`, async function (scope) {
+        return authoredTest(`rejects ${mode} backend evidence`, async function (scope) {
             const events: string[] = [];
             const coordinator = createDeterministicRunCoordinator();
             const result = await coordinator.orchestrator.run(fixtureCommand(function record(event) {
@@ -91,7 +91,7 @@ export const testNode = suite('family profile execution', [
             return scope.assert.collect();
         });
     }),
-    test('disposes inspection-only preparations', async function (scope) {
+    authoredTest('disposes inspection-only preparations', async function (scope) {
         const events: string[] = [];
         const coordinator = createDeterministicRunCoordinator();
         await coordinator.orchestrator.resolve(fixtureCommand(function record(event) {
@@ -100,7 +100,7 @@ export const testNode = suite('family profile execution', [
         scope.assert.deepEqual(events, [ 'load', 'prepare', 'collect', 'dispose' ]);
         return scope.assert.collect();
     }),
-    test('keeps direct engine analysis below runner configuration and runtime bodies', async function (scope) {
+    authoredTest('keeps direct engine analysis below runner configuration and runtime bodies', async function (scope) {
         const events: string[] = [];
         const engine = createTestEngine();
         const plan = analysisPlan(engine);
@@ -134,4 +134,3 @@ export const testNode = suite('family profile execution', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

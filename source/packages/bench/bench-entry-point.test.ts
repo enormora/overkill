@@ -1,15 +1,17 @@
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { createTestEngine } from '../../test-support/create-test-engine.ts';
 import { benchmarkAuthoringExports } from '../../test-support/benchmark-authoring-exports.ts';
 import {
     createEngine,
-    createRoot,
-    createTestPlan,
-    ownsTestNode,
     type RunResult,
     type TestBody,
     type TestPlan,
-    type TestScope
+    type TestScope,
+    createRoot,
+    createTestPlan,
+    ownsTestNode
 } from '../engine/engine.entry-point.ts';
+
 import { suite, test } from '../test/test.entry-point.ts';
 import * as bench from './bench.entry-point.ts';
 
@@ -93,8 +95,8 @@ function assertMixedOutcomes(scope: TestScope, execution: MixedAuthoringExecutio
     );
 }
 
-export const testNode = suite('source/packages/bench/bench-entry-point.test.ts', [
-    test('exposes only the focused authoring surface', function (scope) {
+export const testNode = authoredSuite('source/packages/bench/bench-entry-point.test.ts', [
+    authoredTest('exposes only the focused authoring surface', function (scope) {
         scope.assert.deepEqual(
             Object.keys(bench).toSorted(function compareNames(left, right) {
                 return left.localeCompare(right);
@@ -103,7 +105,7 @@ export const testNode = suite('source/packages/bench/bench-entry-point.test.ts',
         );
         return scope.assert.collect();
     }),
-    test('constructs neutral nodes without executing bodies', function (scope) {
+    authoredTest('constructs neutral nodes without executing bodies', function (scope) {
         let calls = 0;
         const child = bench.test('deferred body', async function (testScope) {
             calls += 1;
@@ -121,13 +123,13 @@ export const testNode = suite('source/packages/bench/bench-entry-point.test.ts',
         scope.assert.equal(plan.discoveredCases[0].testFamily, null);
         return scope.assert.collect();
     }),
-    test('executes mixed suites with tables, controls, annotations, and skips', async function (scope) {
+    authoredTest('executes mixed suites with tables, controls, annotations, and skips', async function (scope) {
         const execution = await executeMixedTree();
         assertMixedMetadata(scope, execution.plan);
         assertMixedOutcomes(scope, execution);
         return scope.assert.collect();
     }),
-    test('preserves validation errors for malformed authoring', function (scope) {
+    authoredTest('preserves validation errors for malformed authoring', function (scope) {
         scope.assert.throws(function () {
             return bench.test('', passingBody);
         }, {
@@ -150,7 +152,7 @@ export const testNode = suite('source/packages/bench/bench-entry-point.test.ts',
         });
         return scope.assert.collect();
     }),
-    test('uses ordinary defaults for object-form tests and suites', function (scope) {
+    authoredTest('uses ordinary defaults for object-form tests and suites', function (scope) {
         const child = bench.test({ body: passingBody, title: 'object form' });
         const plan = createTestPlan(createRoot({
             annotations: {},
@@ -167,7 +169,7 @@ export const testNode = suite('source/packages/bench/bench-entry-point.test.ts',
         });
         return scope.assert.collect();
     }),
-    test('rejects malformed children and non-function reuse factories', function (scope) {
+    authoredTest('rejects malformed children and non-function reuse factories', function (scope) {
         scope.assert.throws(function () {
             Reflect.apply(bench.suite, undefined, [ { children: null, title: 'invalid' } ]);
         }, { message: 'suite() requires (title, children) or ({ title, annotations?, controls?, children }).' });
@@ -179,7 +181,7 @@ export const testNode = suite('source/packages/bench/bench-entry-point.test.ts',
         }, { message: 'defineParameterizedTestBody() requires a body function.' });
         return scope.assert.collect();
     }),
-    test('rejects macro nodes from another engine instance', function (scope) {
+    authoredTest('rejects macro nodes from another engine instance', function (scope) {
         const foreign = createEngine().createTestCase({
             annotations: {},
             body: passingBody,

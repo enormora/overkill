@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { testNode as leakPolicy } from './async-leak-policy.test.ts';
 import {
@@ -19,7 +19,7 @@ function release(scope: TestScope): void {
 function complete(): void {
     return undefined;
 }
-export const testNode = suite('native resource observation records', [
+export const testNode = authoredSuite('native resource observation records', [
     leakPolicy,
     ...([ { async: true, handle: {}, active: true }, { async: false, handle: {}, active: false }, {
         async: false,
@@ -27,7 +27,7 @@ export const testNode = suite('native resource observation records', [
         active: true
     } ] as const)
         .map(function (scenario) {
-            return test(
+            return authoredTest(
                 `recognizes write completion ownership with asynchronous ${scenario.async} and handle ${
                     scenario.handle === null
                         ? 'closed'
@@ -46,7 +46,7 @@ export const testNode = suite('native resource observation records', [
                 }
             );
         }),
-    test('ignores completed writes without a completion callback', function (scope: TestScope) {
+    authoredTest('ignores completed writes without a completion callback', function (scope: TestScope) {
         release(scope);
         const snapshot = observeNativeResources();
         withRunnerInfrastructure(function () {
@@ -55,7 +55,7 @@ export const testNode = suite('native resource observation records', [
         scope.assert.deepEqual(snapshot().active, []);
         return scope.assert.collect();
     }),
-    test('reads current timer reference state without retaining the timer', function (scope: TestScope) {
+    authoredTest('reads current timer reference state without retaining the timer', function (scope: TestScope) {
         release(scope);
         const snapshot = observeNativeResources();
         let referenced = true;
@@ -72,7 +72,7 @@ export const testNode = suite('native resource observation records', [
         scope.assert.deepEqual(snapshot().active, []);
         return scope.assert.collect();
     }),
-    test('retains unconfirmed infrastructure allocations as uncertain', function (scope: TestScope) {
+    authoredTest('retains unconfirmed infrastructure allocations as uncertain', function (scope: TestScope) {
         release(scope);
         const snapshot = observeNativeResources();
         withRunnerInfrastructure(function () {
@@ -83,7 +83,7 @@ export const testNode = suite('native resource observation records', [
         return scope.assert.collect();
     }),
     ...([ 'PROMISE', 'TickObject', 'Microtask' ] as const).map(function (type) {
-        return test(`ignores unreferenced ${type} records`, function (scope: TestScope) {
+        return authoredTest(`ignores unreferenced ${type} records`, function (scope: TestScope) {
             release(scope);
             const snapshot = observeNativeResources();
             recordNativeResource(allocation, type, {});
@@ -91,11 +91,10 @@ export const testNode = suite('native resource observation records', [
             return scope.assert.collect();
         });
     }),
-    test('matches socket and provider names independent of case', function (scope: TestScope) {
+    authoredTest('matches socket and provider names independent of case', function (scope: TestScope) {
         scope.assert.true(sameNativeResourceType('TCPSocketWrap', 'TCPWRAP'));
         scope.assert.true(sameNativeResourceType('PipeWrap', 'PIPEWRAP'));
         scope.assert.false(sameNativeResourceType('Timeout', 'TCPWRAP'));
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

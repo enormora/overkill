@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { createInMemoryFinalResultReporter, createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { createPlainOutputRenderer } from './reporter-output.ts';
 import { defineReporter, type DefinedReporter, type Reporter } from './reporter.ts';
@@ -32,14 +32,14 @@ function deliveredReporters(final: boolean, kind: 'empty' | 'final' | 'live'): r
             return reporter.name;
         });
 }
-export const testNode = suite('final result reporter preparation', [
+export const testNode = authoredSuite('final result reporter preparation', [
     ...[ false, true ].flatMap(function (final) {
         return ([ 'empty', 'final', 'live' ] as const).map(function (kind) {
             const ordinary = kind === 'empty'
                 ? []
                 : [ kind === 'final' ? 'in-memory-final-result' : 'in-memory-real-time' ];
             const expected = final ? [ 'in-memory-final-result' ] : ordinary;
-            return test(
+            return authoredTest(
                 `selects ${kind} reporter definitions for final delivery ${final}`,
                 function (scope: TestScope) {
                     scope.assert.deepEqual(deliveredReporters(final, kind), expected);
@@ -48,7 +48,7 @@ export const testNode = suite('final result reporter preparation', [
             );
         });
     }),
-    test('validates required facts before final result delivery', function (scope: TestScope) {
+    authoredTest('validates required facts before final result delivery', function (scope: TestScope) {
         const reporters: Reporter[] = [];
         const reporting = createDeliveryReportingContext({
             facts: { value: 42 },
@@ -79,4 +79,3 @@ export const testNode = suite('final result reporter preparation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

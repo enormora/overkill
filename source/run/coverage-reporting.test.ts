@@ -2,13 +2,10 @@ import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { V8CoverageEntry } from 'monocart-coverage-reports';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+
 import { generateCoverageReports } from './coverage-reporting.ts';
 
 const sourcePath = 'source/integration-tests/run/fixtures/coverage-source.ts';
@@ -158,81 +155,55 @@ async function assertEmptyReportRejected(scope: OverkillScope, temporaryRoot: st
     }, { message: 'Coverage source selection contains no executable sources.' });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/coverage-reporting.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'generateCoverageReports() emits every configured report format from raw process data',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const temporaryRoot = await createTemporaryCoverageRoot();
+export const testNode = suite('source/run/coverage-reporting.test.ts', [
+    test(
+        'generateCoverageReports() emits every configured report format from raw process data',
+        async function (scope: OverkillScope) {
+            const temporaryRoot = await createTemporaryCoverageRoot();
 
-                try {
-                    await assertLoadedReport(scope, temporaryRoot);
-                } finally {
-                    await rm(temporaryRoot, { force: true, recursive: true });
-                }
-
-                return scope.assert.collect();
+            try {
+                await assertLoadedReport(scope, temporaryRoot);
+            } finally {
+                await rm(temporaryRoot, { force: true, recursive: true });
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'generateCoverageReports() supports raw-only coverage',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const temporaryRoot = await createTemporaryCoverageRoot();
 
-                try {
-                    await assertRawOnlyReport(scope, temporaryRoot);
-                } finally {
-                    await rm(temporaryRoot, { force: true, recursive: true });
-                }
+            return scope.assert.collect();
+        }
+    ),
+    test('generateCoverageReports() supports raw-only coverage', async function (scope: OverkillScope) {
+        const temporaryRoot = await createTemporaryCoverageRoot();
 
-                return scope.assert.collect();
+        try {
+            await assertRawOnlyReport(scope, temporaryRoot);
+        } finally {
+            await rm(temporaryRoot, { force: true, recursive: true });
+        }
+
+        return scope.assert.collect();
+    }),
+    test(
+        'generateCoverageReports() synthesizes unloaded TypeScript runtime files',
+        async function (scope: OverkillScope) {
+            const temporaryRoot = await createTemporaryCoverageRoot();
+
+            try {
+                await assertAllFilesReport(scope, temporaryRoot);
+            } finally {
+                await rm(temporaryRoot, { force: true, recursive: true });
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'generateCoverageReports() synthesizes unloaded TypeScript runtime files',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const temporaryRoot = await createTemporaryCoverageRoot();
 
-                try {
-                    await assertAllFilesReport(scope, temporaryRoot);
-                } finally {
-                    await rm(temporaryRoot, { force: true, recursive: true });
-                }
+            return scope.assert.collect();
+        }
+    ),
+    test('generateCoverageReports() rejects scopes without executable sources', async function (scope: OverkillScope) {
+        const temporaryRoot = await createTemporaryCoverageRoot();
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'generateCoverageReports() rejects scopes without executable sources',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const temporaryRoot = await createTemporaryCoverageRoot();
+        try {
+            await assertEmptyReportRejected(scope, temporaryRoot);
+        } finally {
+            await rm(temporaryRoot, { force: true, recursive: true });
+        }
 
-                try {
-                    await assertEmptyReportRejected(scope, temporaryRoot);
-                } finally {
-                    await rm(temporaryRoot, { force: true, recursive: true });
-                }
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

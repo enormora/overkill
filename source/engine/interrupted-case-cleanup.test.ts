@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createInterruptedCase, type InterruptedCase } from '../test-support/interrupted-case.ts';
 import { createPermissionDenialRuntimePolicy } from '../run/capability-policy.ts';
 import { createAssertionRecorder } from './assertion-recorder.ts';
@@ -110,15 +109,15 @@ function assertCleanupFailures(result: ConcurrentCase, scope: TestScope): void {
     );
 }
 
-export const testNode = suite('interrupted case cleanup', [
-    test('awaits reverse cleanup before returning while the body remains pending', async function (scope) {
+export const testNode = authoredSuite('interrupted case cleanup', [
+    authoredTest('awaits reverse cleanup before returning while the body remains pending', async function (scope) {
         const probe = createCleanupProbe(scope);
         const result = await finishInterruptedCleanup(probe, scope);
         await verifyLateBody(probe, result, scope);
         return scope.assert.collect();
     }),
     ...([ 'unhandledRejection', 'uncaughtException' ] as const).map(function fatalHook(hook) {
-        return test(`${hook} closes a pending body's scope before returning`, async function (scope) {
+        return authoredTest(`${hook} closes a pending body's scope before returning`, async function (scope) {
             const state = { gate: Promise.withResolvers<undefined>(), cleanups: createStoredValue(0) };
             const fixture = createInterruptedCase(async function fatalBody(testScope) {
                 testScope.cleanup(function recordCleanup() {
@@ -138,7 +137,7 @@ export const testNode = suite('interrupted case cleanup', [
             return scope.assert.collect();
         });
     }),
-    test('preserves preparation and cleanup failures after interruption', async function (scope) {
+    authoredTest('preserves preparation and cleanup failures after interruption', async function (scope) {
         const state = { gate: Promise.withResolvers<undefined>(), policy: createPermissionDenialRuntimePolicy() };
         scope.cleanup(function stopPolicy() {
             state.policy.takeRunErrors();
@@ -162,7 +161,7 @@ export const testNode = suite('interrupted case cleanup', [
         state.gate.resolve(undefined);
         return scope.assert.collect();
     }),
-    test('retains a soft timeout when fatal-error cleanup exceeds the case limit', async function (scope) {
+    authoredTest('retains a soft timeout when fatal-error cleanup exceeds the case limit', async function (scope) {
         const gate = Promise.withResolvers<undefined>();
         const fixture = createInterruptedCase(async function fatalBody(testScope) {
             testScope.cleanup(function slowCleanup() {
@@ -184,7 +183,7 @@ export const testNode = suite('interrupted case cleanup', [
         gate.resolve(undefined);
         return scope.assert.collect();
     }),
-    test('retains an interruption that arrives while cleanup is pending', async function (scope) {
+    authoredTest('retains an interruption that arrives while cleanup is pending', async function (scope) {
         const state = { gate: Promise.withResolvers<undefined>(), started: Promise.withResolvers<undefined>() };
         const fixture = createInterruptedCase(function passingBody(testScope) {
             testScope.cleanup(async function pendingCleanup() {
@@ -203,7 +202,7 @@ export const testNode = suite('interrupted case cleanup', [
         scope.assert.equal(result.result.verdict, 'crashed');
         return scope.assert.collect();
     }),
-    test('concurrent finalization waits for the same cleanup and retains its failures', async function (scope) {
+    authoredTest('concurrent finalization waits for the same cleanup and retains its failures', async function (scope) {
         const state = { gate: Promise.withResolvers<undefined>(), controller: new AbortController(), cleanups: 0 };
         const lifecycle = createTestScopeLifecycle(createAssertionRecorder(), {
             seed: 0n,
@@ -230,5 +229,3 @@ export const testNode = suite('interrupted case cleanup', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

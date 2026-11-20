@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { simulatedHttpListener, simulatedListenerScenario } from '../test-support/simulated-http-listener.ts';
 import { defineSimulatedHttpServer } from './simulation.ts';
 import { assertNoSimulatedHttpHandlerErrors, listenToSimulatedHttpServer } from './simulated-http-server.ts';
@@ -10,7 +11,7 @@ const simulation = defineSimulatedHttpServer({
         return new Response('unit');
     }
 });
-export const testNode = suite('simulated HTTP listener ownership', [
+export const testNode = authoredSuite('simulated HTTP listener ownership', [
     test('rejects unbranded definitions before creating a listener', async function (scope: TestScope) {
         const fixture = simulatedHttpListener(simulatedListenerScenario);
         await scope.assert.rejects(async function () {

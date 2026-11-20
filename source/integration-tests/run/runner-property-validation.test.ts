@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, test as authoredTest, suite as authoredSuite } from '@overkill-dev/test';
+
 import type { RunResult, PropertyInvocationSummary } from '../../packages/engine/engine.entry-point.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+
 import { orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import {
     replayProject,
@@ -57,10 +58,10 @@ function summaryFor(result: RunResult): PropertyInvocationSummary {
     }
     return summary;
 }
-export const testNode = suite(
+export const testNode = authoredSuite(
     'property integration validation',
     ([ 'in-process', 'supervised-process' ] as const).map(function executionMode(processModel) {
-        return test(`${processModel} preserves exploration streams across scheduling`, async function (scope) {
+        return authoredTest(`${processModel} preserves exploration streams across scheduling`, async function (scope) {
             const command = await streamCommand(scope, processModel);
             const first = await orchestrator.run(command);
             const second = await concurrentStream(command, processModel);
@@ -74,4 +75,3 @@ export const testNode = suite(
         });
     })
 );
-await runIfMain(import.meta, testNode);

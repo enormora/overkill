@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { test, suite } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { attachmentFixture } from '../test-support/attachment-fixture.ts';
 import { createAttachmentRetention, type AttachmentRetention } from './attachment-retention.ts';
@@ -59,15 +60,14 @@ async function assertFileClosure(scope: TestScope): Promise<void> {
     await retention.finish({ kind: 'truncated', reason: 'byte-limit' });
     await assertClosedFile(scope, retention, filePath);
 }
-export const testNode = createSuite({
-    ...definition,
-    title: 'source/run/runtime-attachment-content.test.ts',
-    children: ([ [ 'text completion remains stable when finalization repeats', assertRepeatedTextFinish ], [
+export const testNode = suite(
+    'source/run/runtime-attachment-content.test.ts',
+    ([ [ 'text completion remains stable when finalization repeats', assertRepeatedTextFinish ], [
         'incomplete JSON and canonical expansion respect inline limits',
         assertJsonCompletion
     ], [ 'binary finalization closes the file and retains explicit truncation', assertFileClosure ] ] as const)
         .map(function contentCase([ title, check ]) {
-            return createTestCase({
+            return test({
                 ...definition,
                 title,
                 async body(scope: TestScope) {
@@ -76,5 +76,4 @@ export const testNode = createSuite({
                 }
             });
         })
-});
-await runIfMain(import.meta, testNode);
+);

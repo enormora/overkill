@@ -1,7 +1,8 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { simulatedHttpResource } from '../test-support/simulated-http-resource.ts';
 
-export const testNode = suite('simulated HTTP resource ownership', [
+export const testNode = authoredSuite('simulated HTTP resource ownership', [
     test('acquires a routed handle with preserved service endpoint and transcript', async function (scope: TestScope) {
         const fixture = simulatedHttpResource([]);
         const handle = await fixture.service.acquire(fixture.context);

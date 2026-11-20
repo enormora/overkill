@@ -1,14 +1,8 @@
-import { runIfMain } from '#test-runner';
-import {
-    createDeterministicClock,
-    type DeterministicClock
-} from '@enormora/clock';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 import { resourceAttachments } from '../attachments/attachment-context.ts';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+
 import { defineResource, type AnyResourceDefinition } from '../resources/resources.ts';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
 import { acquireResourceWithStartupBudget } from './resource-lifecycle-startup-budget.ts';
@@ -87,10 +81,10 @@ function timeoutResource(): AnyResourceDefinition {
     });
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/resource-lifecycle-timing.test.ts',
-    children: [ createOverkillTestCase({
+    children: [ test({
         ...testCaseMetadata,
         title: 'resource lifecycle timing distinguishes startup budget timeouts',
         async body(scope: OverkillScope) {
@@ -116,5 +110,3 @@ export const testNode = createOverkillSuite({
         }
     }) ]
 });
-
-await runIfMain(import.meta, testNode);

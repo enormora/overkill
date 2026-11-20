@@ -1,11 +1,13 @@
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { PerTestResult } from '../engine/run-result.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { witnessAttachmentRetention, confirmedWitnessResult } from '../test-support/witness-attachment-retention.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { testNode as storageOwnership } from './property-witness-run-policy.test.ts';
 import { retainPropertyWitnessAttachments } from './property-witness-storage.ts';
 
-export const testNode = suite('confirmed witness attachment retention', [
+export const testNode = authoredSuite('confirmed witness attachment retention', [
     storageOwnership,
     test('retains confirmed witness bytes under their original attempt ownership', async function (scope: TestScope) {
         const fixture = witnessAttachmentRetention(scope, null);

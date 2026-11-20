@@ -2,8 +2,8 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
-import { runIfMain } from '#test-runner';
+import { suite, test, type TestScope } from '#tests';
+
 import {
     createCoverageConfigScript,
     coverageSmokeScript,
@@ -35,7 +35,7 @@ async function runPackagedCoverage(): Promise<{ readonly stderr: string; readonl
             { cwd: packageSmokeFolder },
             function collectResult(error, stdout, stderr) {
                 if (error instanceof Error) {
-                    reject(error);
+                    reject(new Error(`Packaged coverage failed:\n${stdout}${stderr}`, { cause: error }));
                 } else {
                     resolve({ stderr, stdout });
                 }
@@ -81,15 +81,11 @@ function assertConsumerCoverage(scope: TestScope, lcov: string, sourceKind: Cove
 
 const processModels = [ 'in-process', 'supervised-process' ] as const;
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'packaged overkill generates coverage reports for consumer source',
-    annotations: {},
-    controls: {},
-    children: processModels.flatMap(function coverageProcess(processModel) {
+export const testNode = suite(
+    'packaged overkill generates coverage reports for consumer source',
+    processModels.flatMap(function coverageProcess(processModel) {
         return ([ 'javascript', 'mapped', 'native', 'unloaded' ] as const).map(function coverageTest(sourceKind) {
-            return createTestCase({
-                definitionLocations: [ { kind: 'unknown' } ],
+            return test({
                 title: `${processModel} ${sourceKind}`,
                 annotations: {},
                 controls: {},
@@ -134,6 +130,4 @@ export const testNode = createSuite({
             });
         });
     })
-});
-
-await runIfMain(import.meta, testNode);
+);

@@ -1,7 +1,7 @@
 import { setTimeout as scheduleTimer, clearTimeout as cancelTimer } from 'node:timers';
 import { AsyncResource } from 'node:async_hooks';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { activeResourceLeakError, createAsyncLeakMonitor } from './async-leak-diagnostics.ts';
 import { settleAsyncWork } from './async-control.ts';
@@ -12,10 +12,10 @@ function ignoreTimer(): void {
     return undefined;
 }
 
-export const testNode = suite('native infrastructure resources', [
+export const testNode = authoredSuite('native infrastructure resources', [
     staleResources,
     ...([ 'live', 'unref', 'closed' ] as const).map(function infrastructureTimer(lifetime) {
-        return test(`${lifetime} infrastructure timers cannot mask test timer leaks`, async function (scope) {
+        return authoredTest(`${lifetime} infrastructure timers cannot mask test timer leaks`, async function (scope) {
             const monitor = createAsyncLeakMonitor();
             scope.cleanup(monitor.stop);
             const background = withRunnerInfrastructure(function createBackgroundContext() {
@@ -55,7 +55,7 @@ export const testNode = suite('native infrastructure resources', [
             return scope.assert.collect();
         });
     }),
-    test('retains unknown infrastructure handle growth as ambiguous', async function (scope) {
+    authoredTest('retains unknown infrastructure handle growth as ambiguous', async function (scope) {
         const monitor = createAsyncLeakMonitor();
         scope.cleanup(monitor.stop);
         const resources: string[] = [];
@@ -75,5 +75,3 @@ export const testNode = suite('native infrastructure resources', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

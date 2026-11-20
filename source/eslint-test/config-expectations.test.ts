@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import type { Linter } from 'eslint';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { observeRule, ruleCheck } from './rule-observation.ts';
 import { checkConfigDiagnostics, checkResolvedConfig, normalizedRule } from './config-expectations.ts';
 import type { ConfigDiagnostics, ConfigFileExpectation } from './config-definition.ts';
@@ -31,20 +32,20 @@ const severities: readonly RuleSeverityCase[] = [
     { input: [ 'error', 'always' ], expected: [ 2, 'always' ] },
     { input: [], expected: [ undefined ] }
 ];
-export const testNode = suite('ESLint config expectation evaluation', [
+export const testNode = authoredSuite('ESLint config expectation evaluation', [
     ...severities.map(function (entry, index) {
-        return test(`normalizes rule severity ${index}`, function (scope: TestScope) {
+        return authoredTest(`normalizes rule severity ${index}`, function (scope: TestScope) {
             scope.assert.deepEqual(normalizedRule(entry.input), entry.expected);
             return scope.assert.collect();
         });
     }),
-    test('rejects unknown severity names', function (scope: TestScope) {
+    authoredTest('rejects unknown severity names', function (scope: TestScope) {
         scope.assert.throws(function () {
             normalizedRule('fatal');
         }, { type: Error });
         return scope.assert.collect();
     }),
-    test('accepts matching message fields and text patterns repeatedly', function (scope: TestScope) {
+    authoredTest('accepts matching message fields and text patterns repeatedly', function (scope: TestScope) {
         scope.assert(
             ruleCheck,
             'Configuration matches',
@@ -61,7 +62,7 @@ export const testNode = suite('ESLint config expectation evaluation', [
         );
         return scope.assert.collect();
     }),
-    test('filters selected rules and compares unique rule identities', function (scope: TestScope) {
+    authoredTest('filters selected rules and compares unique rule identities', function (scope: TestScope) {
         scope.assert(
             ruleCheck,
             'Configuration matches',
@@ -81,7 +82,7 @@ export const testNode = suite('ESLint config expectation evaluation', [
         );
         return scope.assert.collect();
     }),
-    test('detects missing messages and incorrect message content', function (scope: TestScope) {
+    authoredTest('detects missing messages and incorrect message content', function (scope: TestScope) {
         scope.assert.throws(function () {
             checkConfigDiagnostics([], { kind: 'messages', rules: 'all', expected: [ { ruleId: 'eqeqeq' } ] });
         }, { message: /Diagnostic count differs/u });
@@ -104,7 +105,7 @@ export const testNode = suite('ESLint config expectation evaluation', [
         }, { message: /Expected no diagnostics/u });
         return scope.assert.collect();
     }),
-    test('matches fatal parser diagnostics and rejects unrelated diagnostics', function (scope: TestScope) {
+    authoredTest('matches fatal parser diagnostics and rejects unrelated diagnostics', function (scope: TestScope) {
         checkConfigDiagnostics([ fatal ], { kind: 'parse-failure', message: /token/gu });
         scope.assert.throws(function () {
             checkConfigDiagnostics([ message ], { kind: 'parse-failure', message: /token/u });
@@ -117,7 +118,7 @@ export const testNode = suite('ESLint config expectation evaluation', [
         }, { message: /Unexpected parser failure/u });
         return scope.assert.collect();
     }),
-    test('accepts equivalent numeric and named rule severities', function (scope: TestScope) {
+    authoredTest('accepts equivalent numeric and named rule severities', function (scope: TestScope) {
         scope.assert(
             ruleCheck,
             'Configuration matches',
@@ -131,7 +132,7 @@ export const testNode = suite('ESLint config expectation evaluation', [
         );
         return scope.assert.collect();
     }),
-    test('rejects missing, forbidden, and unexpected configured rules', function (scope: TestScope) {
+    authoredTest('rejects missing, forbidden, and unexpected configured rules', function (scope: TestScope) {
         scope.assert.throws(function () {
             checkResolvedConfig({ ...actual, rules: {} }, expectation);
         }, { message: /Rule eqeqeq is missing/u });
@@ -146,7 +147,7 @@ export const testNode = suite('ESLint config expectation evaluation', [
         }, { message: /Rule eqeqeq differs/u });
         return scope.assert.collect();
     }),
-    test('checks parser identity and selected language and settings fields', function (scope: TestScope) {
+    authoredTest('checks parser identity and selected language and settings fields', function (scope: TestScope) {
         const parser = {};
         checkResolvedConfig({
             ...actual,
@@ -169,4 +170,3 @@ export const testNode = suite('ESLint config expectation evaluation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

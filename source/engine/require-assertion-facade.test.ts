@@ -1,20 +1,14 @@
-import { runIfMain } from '#test-runner';
-import { defineNarrowingCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
+
 import type { RequireAssertionNode } from '../assertion-protocol/assertion-node.ts';
 import type {
     AssertionSource,
     ResolvableSourceLocation,
     SourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
-import {
-    createRecordingRequireFacadeWithLocation,
-    type RequireAssertionFacade
-} from './require-assertion-facade.ts';
+import { createRecordingRequireFacadeWithLocation, type RequireAssertionFacade } from './require-assertion-facade.ts';
 
 type RequireRecording = {
     readonly facade: RequireAssertionFacade;
@@ -138,104 +132,84 @@ function recordRequireNodes(facade: RequireAssertionFacade): void {
     recordTypeRequireNodes(facade);
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/engine/require-assertion-facade.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'createRecordingRequireFacade() records every built-in requirement node',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const recording = createRequireRecording();
+export const testNode = suite('source/engine/require-assertion-facade.test.ts', [
+    test('createRecordingRequireFacade() records every built-in requirement node', function (scope: OverkillScope) {
+        const recording = createRequireRecording();
 
-                recordRequireNodes(recording.facade);
+        recordRequireNodes(recording.facade);
 
-                scope.assert.deepEqual(assertionChecks(recording.records), [
-                    'array',
-                    'boolean',
-                    'defined',
-                    'has-property',
-                    'instance-of',
-                    'function',
-                    'not-null',
-                    'null',
-                    'number',
-                    'object',
-                    'string'
-                ]);
-                scope.assert.deepEqual(
-                    recordSources(recording.records),
-                    expectedRecordSources(recording.records, 'require')
-                );
-                scope.assert.deepEqual(recordLocations(recording.records), expectedRecordLocations(recording.records));
+        scope.assert.deepEqual(assertionChecks(recording.records), [
+            'array',
+            'boolean',
+            'defined',
+            'has-property',
+            'instance-of',
+            'function',
+            'not-null',
+            'null',
+            'number',
+            'object',
+            'string'
+        ]);
+        scope.assert.deepEqual(
+            recordSources(recording.records),
+            expectedRecordSources(recording.records, 'require')
+        );
+        scope.assert.deepEqual(recordLocations(recording.records), expectedRecordLocations(recording.records));
 
-                const samples = requirePayloadSamples(recording.records);
-                scope.require.defined(samples.instanceOf);
-                scope.require(instanceOfRequireAssertionNode, samples.instanceOf);
-                scope.assert.deepEqual(
-                    {
-                        array: samples.array,
-                        hasProperty: samples.hasProperty,
-                        instanceOf: samples.instanceOf
-                    },
-                    {
-                        array: {
-                            actual: [ 1 ],
-                            check: 'array',
-                            sourceLocations: [ testLocation ],
-                            message: 'array',
-                            source: 'require'
-                        },
-                        hasProperty: {
-                            actual: { name: 'Ada' },
-                            check: 'has-property',
-                            key: 'name',
-                            sourceLocations: [ testLocation ],
-                            message: null,
-                            source: 'require'
-                        },
-                        instanceOf: {
-                            actual: samples.instanceOf.actual,
-                            check: 'instance-of',
-                            expected: Error,
-                            sourceLocations: [ testLocation ],
-                            message: null,
-                            source: 'require'
-                        }
-                    }
-                );
-
-                return scope.assert.collect();
+        const samples = requirePayloadSamples(recording.records);
+        scope.require.defined(samples.instanceOf);
+        scope.require(instanceOfRequireAssertionNode, samples.instanceOf);
+        scope.assert.deepEqual(
+            {
+                array: samples.array,
+                hasProperty: samples.hasProperty,
+                instanceOf: samples.instanceOf
+            },
+            {
+                array: {
+                    actual: [ 1 ],
+                    check: 'array',
+                    sourceLocations: [ testLocation ],
+                    message: 'array',
+                    source: 'require'
+                },
+                hasProperty: {
+                    actual: { name: 'Ada' },
+                    check: 'has-property',
+                    key: 'name',
+                    sourceLocations: [ testLocation ],
+                    message: null,
+                    source: 'require'
+                },
+                instanceOf: {
+                    actual: samples.instanceOf.actual,
+                    check: 'instance-of',
+                    expected: Error,
+                    sourceLocations: [ testLocation ],
+                    message: null,
+                    source: 'require'
+                }
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'createRecordingRequireFacade() applies annotated messages',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const recording = createRequireRecording();
-                const requiredValue: RequireAssertionFacade = recording.facade.annotated('required value');
-                const optionValue: RequireAssertionFacade = recording.facade.annotated('base message');
+        );
 
-                requiredValue.string('value');
-                optionValue.string('value', { message: 'option value' });
+        return scope.assert.collect();
+    }),
+    test('createRecordingRequireFacade() applies annotated messages', function (scope: OverkillScope) {
+        const recording = createRequireRecording();
+        const requiredValue: RequireAssertionFacade = recording.facade.annotated('required value');
+        const optionValue: RequireAssertionFacade = recording.facade.annotated('base message');
 
-                scope.assert.deepEqual(
-                    recording.records.map(function messageOf(record) {
-                        return record.message;
-                    }),
-                    [ 'required value', 'option value' ]
-                );
+        requiredValue.string('value');
+        optionValue.string('value', { message: 'option value' });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+        scope.assert.deepEqual(
+            recording.records.map(function messageOf(record) {
+                return record.message;
+            }),
+            [ 'required value', 'option value' ]
+        );
 
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

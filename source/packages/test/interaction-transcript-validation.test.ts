@@ -1,7 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { suite, test as authoredTest } from '@overkill-dev/test';
+
 import type { TestScope as EngineScope } from '../engine/engine.entry-point.ts';
 import { transcriptAssertion } from '../../test-support/transcript-assertion.ts';
-import { suite, test, type TestScope } from './test.entry-point.ts';
+import type { TestScope } from './test.entry-point.ts';
 import { recordAsyncSink, transcriptUsage, createTranscript } from './interaction-transcript.ts';
 
 type InvalidTranscriptCase = { readonly name: string; readonly check: (scope: EngineScope) => void; };
@@ -33,7 +34,7 @@ const invalidCases: readonly InvalidTranscriptCase[] = [ {
 } ];
 export const testNode = suite('transcript assertion validation', [
     ...invalidCases.map(function (scenario) {
-        return test(
+        return authoredTest(
             `reports an assertion failure for invalid ${scenario.name} subjects`,
             async function (scope: TestScope) {
                 const result = await transcriptAssertion(scenario.check);
@@ -47,13 +48,13 @@ export const testNode = suite('transcript assertion validation', [
             }
         );
     }),
-    test('rejects non-callable asynchronous subscription factories', function (scope: TestScope) {
+    authoredTest('rejects non-callable asynchronous subscription factories', function (scope: TestScope) {
         scope.assert.throws(function () {
             Reflect.apply(recordAsyncSink, undefined, [ null ]);
         }, { message: 'recordAsyncSink() requires a subscription factory function.' });
         return scope.assert.collect();
     }),
-    test('rejects asynchronous subscriptions without a cleanup function', function (scope: TestScope) {
+    authoredTest('rejects asynchronous subscriptions without a cleanup function', function (scope: TestScope) {
         scope.assert.throws(function () {
             Reflect.apply(recordAsyncSink, undefined, [ function () {
                 return null;
@@ -61,7 +62,7 @@ export const testNode = suite('transcript assertion validation', [
         }, { message: 'recordAsyncSink() subscription factory must return a cleanup function.' });
         return scope.assert.collect();
     }),
-    test('rejects empty ordered transcript sequences as assertion failures', async function (scope: TestScope) {
+    authoredTest('rejects empty ordered transcript sequences as assertion failures', async function (scope: TestScope) {
         const result = await transcriptAssertion(function (inner) {
             const assert: unknown = inner.assert;
             if (typeof assert !== 'function') {
@@ -78,4 +79,3 @@ export const testNode = suite('transcript assertion validation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

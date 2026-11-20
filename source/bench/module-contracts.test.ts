@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { processMeasurement, timelineMeasurement, moduleMeasurement } from '../packages/bench/bench.entry-point.ts';
 import { createModuleSample, type ModuleSampleLifetime } from './module-sampling.ts';
 import { createProcessSamplingSession } from './process-sampling.ts';
@@ -26,7 +26,7 @@ async function moduleFile(scope: TestScope, name: string, source: string): Promi
     return pathToFileURL(filename);
 }
 
-export const testNode = suite('module import failure contracts', [
+export const testNode = authoredSuite('module import failure contracts', [
     test('requires URL instances from JavaScript callers', async function (scope) {
         const lifetime = await moduleSample(scope, scope.signal);
         await scope.assert.rejects(async function stringUrl() {

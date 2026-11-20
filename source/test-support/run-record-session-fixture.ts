@@ -63,16 +63,33 @@ export type RecordSessionSnapshot = z.output<typeof snapshotSchema>;
 
 type RecordFixture = { readonly session: RunRecordSession; readonly writes: readonly RecordSessionSnapshot[]; };
 
-export function recordFixtureWithStorageProbe(
+type PersistenceProbes = {
+    readonly storage: () => Promise<void> | void;
+    readonly history: () => Promise<void> | void;
+};
+
+export function recordFixtureWithPersistenceProbes(
     failedWrites: readonly number[],
-    probe: () => Promise<void> | void
+    probes: PersistenceProbes
 ): RecordFixture {
     const writes: RecordSessionSnapshot[] = [];
     let attempts = 0;
+    const history = createMemoryHistoryStorage();
     const session = createRunRecordSession('/project/subdirectory', input, {
         detail: 'detailed',
-        history: createMemoryHistoryStorage(),
+        history: {
+            ...history,
+            async beginRun(id) {
+                await probes.history();
+                const release = await history.beginRun(id);
+                return async function releaseRecordedRun() {
+                    await probes.history();
+                    await release();
+                };
+            }
+        },
         async maintainHistory() {
+            await probes.history();
             return [];
         },
         createId() {
@@ -81,7 +98,7 @@ export function recordFixtureWithStorageProbe(
         node,
         store: {
             async write(filePath, content) {
-                await probe();
+                await probes.storage();
                 attempts += 1;
                 if (failedWrites.includes(attempts)) {
                     throw new Error(`Cannot write ${filePath}`);
@@ -98,8 +115,13 @@ export function recordFixtureWithStorageProbe(
 }
 
 export function recordFixture(failedWrites: readonly number[]): RecordFixture {
-    return recordFixtureWithStorageProbe(failedWrites, function noStorageProbe() {
-        return undefined;
+    return recordFixtureWithPersistenceProbes(failedWrites, {
+        storage() {
+            return undefined;
+        },
+        history() {
+            return undefined;
+        }
     });
 }
 

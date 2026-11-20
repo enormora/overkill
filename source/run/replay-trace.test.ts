@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { PlacementPlan, PlacementLane } from './run-types.ts';
 import type { WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
 import { placementPlan, fakeWorkerRuntime } from './worker-pool-placement-validation.test.ts';
@@ -43,7 +43,7 @@ function recordedDispatcher(): DispatchFixture {
         work: unit.work
     };
 }
-export const testNode = suite('recorded scheduling replay', [
+export const testNode = authoredSuite('recorded scheduling replay', [
     test('dispatches the recorded lane and waits for actual completion', function (scope: TestScope) {
         const { dispatcher, lane, work } = recordedDispatcher();
         const lease = dispatcher.pull(lane);
@@ -97,4 +97,3 @@ export const testNode = suite('recorded scheduling replay', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

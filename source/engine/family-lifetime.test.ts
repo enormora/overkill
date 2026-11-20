@@ -1,4 +1,5 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest, table } from '@overkill-dev/test';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
     defineTestFamily,
@@ -141,8 +142,8 @@ async function abandonActiveExecution(): Promise<AbandonmentObservation> {
     };
 }
 
-export const testNode = suite('family lifetime', [
-    test('retains backend and cleanup failures together without repeating disposal', async function (scope) {
+export const testNode = authoredSuite('family lifetime', [
+    authoredTest('retains backend and cleanup failures together without repeating disposal', async function (scope) {
         const engine = createTestEngine();
         const failures = [ new Error('execution sentinel'), new Error('cleanup sentinel') ] as const;
         await using prepared = await prepare(engine, async function ({ testPlan }) {
@@ -180,8 +181,13 @@ export const testNode = suite('family lifetime', [
         await prepared[asyncDispose]();
         return scope.assert.collect();
     }),
-    ...[ false, true ].map(function abandonment(collected) {
-        return test(`disposes abandoned preparation after collection ${String(collected)}`, async function (scope) {
+    table({
+        title: 'disposes abandoned preparation',
+        cases: [ false, true ],
+        caseTitle(collected) {
+            return `after collection ${String(collected)}`;
+        },
+        async test(scope) {
             const engine = createTestEngine();
             const observed: string[] = [];
             await using prepared = await prepare(engine, async function ({ testPlan }) {
@@ -203,9 +209,9 @@ export const testNode = suite('family lifetime', [
                     }
                 };
             });
-            const run = collected ? await prepared.collect(selection(prepared)) : null;
+            const run = scope.parameters ? await prepared.collect(selection(prepared)) : null;
             await Promise.all([ prepared[asyncDispose](), prepared[asyncDispose]() ]);
-            scope.assert.deepEqual(observed, collected ? [ 'collect', 'dispose' ] : [ 'dispose' ]);
+            scope.assert.deepEqual(observed, scope.parameters ? [ 'collect', 'dispose' ] : [ 'dispose' ]);
             await scope.assert.rejects(async function () {
                 await prepared.collect(selection(prepared));
             }, { message: /consumed or disposed/u });
@@ -215,9 +221,9 @@ export const testNode = suite('family lifetime', [
                 }, { message: /consumed or disposed/u });
             }
             return scope.assert.collect();
-        });
+        }
     }),
-    test('abandonment cancels active execution and waits before cleanup', async function (scope) {
+    authoredTest('abandonment cancels active execution and waits before cleanup', async function (scope) {
         scope.assert.deepEqual(await abandonActiveExecution(), {
             beforeCleanup: { aborted: true, events: [] },
             events: [ 'settled', 'dispose' ],
@@ -227,7 +233,7 @@ export const testNode = suite('family lifetime', [
         });
         return scope.assert.collect();
     }),
-    test('rejects concurrent collection without cancelling the first call', async function (scope) {
+    authoredTest('rejects concurrent collection without cancelling the first call', async function (scope) {
         const release = Promise.withResolvers<undefined>();
         await using prepared = await prepare(createTestEngine(), async function backend({ testPlan }) {
             return {
@@ -259,7 +265,7 @@ export const testNode = suite('family lifetime', [
         scope.assert.equal(collected.testPlan.cases.length, 1);
         return scope.assert.collect();
     }),
-    test('rejects concurrent execution without cancelling admitted work', async function (scope) {
+    authoredTest('rejects concurrent execution without cancelling admitted work', async function (scope) {
         const engine = createTestEngine();
         const release = Promise.withResolvers<undefined>();
         await using prepared = await prepare(engine, async function backend({ testPlan }) {
@@ -291,46 +297,49 @@ export const testNode = suite('family lifetime', [
         await first;
         return scope.assert.collect();
     }),
-    test('consumes collections, rejects foreign engines, and completes missing evidence', async function (scope) {
-        const engine = createTestEngine();
-        const observed: string[] = [];
-        await using prepared = await prepare(engine, async function backend({ testPlan }) {
-            return {
-                testPlan,
-                facts: null,
-                async collect() {
-                    return {
-                        kind: 'analysis',
-                        facts: null,
-                        async execute() {
-                            observed.push('execute');
-                        }
-                    };
-                },
-                async dispose() {
-                    observed.push('dispose');
-                }
-            };
-        });
-        const collected = await prepared.collect(selection(prepared));
-        await scope.assert.rejects(async function () {
-            await createTestEngine().execute(collected, options);
-        }, { message: /from this engine/u });
-        const result = await engine.execute(collected, options);
-        scope.assert.deepEqual([ result.status, result.summary.inconclusive, result.runnerErrors.length ], [
-            'failed',
-            1,
-            1
-        ]);
-        await scope.assert.rejects(async function () {
-            await engine.execute(collected, options);
-        }, {
-            message: /consumed or disposed/u
-        });
-        scope.assert.deepEqual(observed, [ 'execute', 'dispose' ]);
-        return scope.assert.collect();
-    }),
-    test('awaits active collection before disposing once', async function (scope) {
+    authoredTest(
+        'consumes collections, rejects foreign engines, and completes missing evidence',
+        async function (scope) {
+            const engine = createTestEngine();
+            const observed: string[] = [];
+            await using prepared = await prepare(engine, async function backend({ testPlan }) {
+                return {
+                    testPlan,
+                    facts: null,
+                    async collect() {
+                        return {
+                            kind: 'analysis',
+                            facts: null,
+                            async execute() {
+                                observed.push('execute');
+                            }
+                        };
+                    },
+                    async dispose() {
+                        observed.push('dispose');
+                    }
+                };
+            });
+            const collected = await prepared.collect(selection(prepared));
+            await scope.assert.rejects(async function () {
+                await createTestEngine().execute(collected, options);
+            }, { message: /from this engine/u });
+            const result = await engine.execute(collected, options);
+            scope.assert.deepEqual([ result.status, result.summary.inconclusive, result.runnerErrors.length ], [
+                'failed',
+                1,
+                1
+            ]);
+            await scope.assert.rejects(async function () {
+                await engine.execute(collected, options);
+            }, {
+                message: /consumed or disposed/u
+            });
+            scope.assert.deepEqual(observed, [ 'execute', 'dispose' ]);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('awaits active collection before disposing once', async function (scope) {
         const release = Promise.withResolvers<undefined>();
         const observed: string[] = [];
         await using prepared = await prepare(createTestEngine(), async function backend({ testPlan }) {
@@ -363,7 +372,7 @@ export const testNode = suite('family lifetime', [
         scope.assert.deepEqual(observed, [ 'aborted', 'dispose' ]);
         return scope.assert.collect();
     }),
-    test('delivers cleanup failures before final reporting without redelivery', async function (scope) {
+    authoredTest('delivers cleanup failures before final reporting without redelivery', async function (scope) {
         const engine = createTestEngine();
         const failure = new Error('cleanup failed');
         const observed: string[] = [];

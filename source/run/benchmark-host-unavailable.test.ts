@@ -1,7 +1,6 @@
 import os from 'node:os';
 import { mock } from 'node:test';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import type { HostReading } from '../bench/benchmark-host-snapshot.ts';
 import { benchmarkHostSnapshot } from '../test-support/benchmark-host-snapshot.ts';
 import {
@@ -66,7 +65,7 @@ function unavailable(reason: string): HostReading<never> {
     });
 }
 
-export const testNode = suite('unavailable benchmark host evidence', [
+export const testNode = authoredSuite('unavailable benchmark host evidence', [
     test('marks unsupported Windows load and resource counters unavailable', function (scope: TestScope) {
         const { capacity, metrics } = windowsHostEvidence();
         scope.assert.partialDeepEqual(capacity.loadAverage, {
@@ -203,5 +202,3 @@ export const testNode = suite('unavailable benchmark host evidence', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

@@ -2,9 +2,8 @@ import { execFile, type ExecException } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { suite, test, type TestScope } from '#tests';
 import { z } from 'zod/v4';
-import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
-import { runIfMain } from '#test-runner';
 
 const directory = fileURLToPath(new URL('.', import.meta.url));
 function cliExitCode(error: Readonly<ExecException> | null): number | null {
@@ -197,51 +196,29 @@ async function assertPackagedFailureEvidence(scope: TestScope): Promise<void> {
     await assertPackagedWitness(scope, artifact);
 }
 
-export const testNode = createSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/integration-tests/package-smoke/test-binary-attachments.test.ts',
-    children: [
-        createTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'published runner and simulation packages share transcript attribution',
-            async body(scope: TestScope) {
-                const script = [
-                    "import {runWithTranscriptScope} from '@overkill-dev/run/transcript-store';",
-                    "import {createHttpTranscriptRecorder} from '@overkill-dev/simulation/transcript';",
-                    'const recorder = createHttpTranscriptRecorder(); const owner = {case: "first"};',
-                    'await runWithTranscriptScope(owner, async () => { if (recorder.currentScope() !== owner) {throw new Error("Transcript attribution drifted.");} recorder.recordCaptureError("custom", "first", recorder.currentScope()); });',
-                    'await runWithTranscriptScope({case: "second"}, async () => {if (recorder.transcript.entryCount !== 0) {throw new Error("Transcript borrowed another attempt.");} await runWithTranscriptScope(null, async () => {if (recorder.transcript.entryCount !== 1) {throw new Error("Lifetime transcript evidence was lost.");}});});',
-                    'console.log("isolated");'
-                ]
-                    .join('\n');
-                scope.assert.equal(await executeNode([ '--input-type=module', '-e', script ], 0), 'isolated\n');
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'packaged integration resources retain native witnesses with their producer version',
-            async body(scope: TestScope) {
-                await assertPackagedFailureEvidence(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'packaged fixtures and wrapped bodies share runner attachments',
-            async body(scope: TestScope) {
-                await assertPackagedAttachments(scope);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/integration-tests/package-smoke/test-binary-attachments.test.ts', [
+    test('published runner and simulation packages share transcript attribution', async function (scope: TestScope) {
+        const script = [
+            "import {runWithTranscriptScope} from '@overkill-dev/run/transcript-store';",
+            "import {createHttpTranscriptRecorder} from '@overkill-dev/simulation/transcript';",
+            'const recorder = createHttpTranscriptRecorder(); const owner = {case: "first"};',
+            'await runWithTranscriptScope(owner, async () => { if (recorder.currentScope() !== owner) {throw new Error("Transcript attribution drifted.");} recorder.recordCaptureError("custom", "first", recorder.currentScope()); });',
+            'await runWithTranscriptScope({case: "second"}, async () => {if (recorder.transcript.entryCount !== 0) {throw new Error("Transcript borrowed another attempt.");} await runWithTranscriptScope(null, async () => {if (recorder.transcript.entryCount !== 1) {throw new Error("Lifetime transcript evidence was lost.");}});});',
+            'console.log("isolated");'
+        ]
+            .join('\n');
+        scope.assert.equal(await executeNode([ '--input-type=module', '-e', script ], 0), 'isolated\n');
+        return scope.assert.collect();
+    }),
+    test(
+        'packaged integration resources retain native witnesses with their producer version',
+        async function (scope: TestScope) {
+            await assertPackagedFailureEvidence(scope);
+            return scope.assert.collect();
+        }
+    ),
+    test('packaged fixtures and wrapped bodies share runner attachments', async function (scope: TestScope) {
+        await assertPackagedAttachments(scope);
+        return scope.assert.collect();
+    })
+]);

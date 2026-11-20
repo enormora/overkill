@@ -1,10 +1,11 @@
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { z } from 'zod/v4';
 import { createTemporaryDirectoryResource, startResources } from '../packages/resources/resources.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import {
     defineBodyReference,
     defineTestFamily,
@@ -90,7 +91,7 @@ function replacedBody(source: TestPlan, body: TestBody): TestPlan {
     const [ first, ...rest ] = source.cases;
     return { ...source, cases: [ { ...first, execution: { kind: 'body', bodyMode: 'builder', body } }, ...rest ] };
 }
-export const testNode = suite('referenced body execution', [
+export const testNode = authoredSuite('referenced body execution', [
     test('rejects references introduced into a historical plan without provenance', async function (scope) {
         await fixture(scope.signal, async function execute(directory) {
             const engine = createTestEngine();
@@ -174,4 +175,3 @@ export const testNode = suite('referenced body execution', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

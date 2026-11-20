@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { managedCase } from '../test-support/managed-resource-acquisition.ts';
 import { createDisabledExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
 
-export const testNode = suite('disabled global error observation', [
+export const testNode = authoredSuite('disabled global error observation', [
     test('preserves boundary, case, and phase results without observing hooks', async function (scope: TestScope) {
         const observer = createDisabledExecutionGlobalErrorObserver();
         const values = await observer.runBoundary(async function () {
@@ -36,4 +36,3 @@ export const testNode = suite('disabled global error observation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

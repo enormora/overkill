@@ -1,13 +1,14 @@
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
-    createRoot,
-    createSuite,
-    createTestCase,
-    createTestPlan,
-    execute,
     type TestBody,
     type TestScope,
-    type TestScope as OverkillScope
+    createRoot,
+    createTestCase,
+    createTestPlan,
+    execute
 } from '../engine/engine.entry-point.ts';
+
 import { runWithTranscriptScope } from '../run/transcript-store.entry-point.ts';
 import { testNode as validation } from './interaction-transcript-validation.test.ts';
 import { testNode as ownership } from './interaction-transcript-ownership.test.ts';
@@ -174,225 +175,180 @@ function assertWarnTranscriptUsage(
     scope.assert(transcriptUsage.inOrder, transcript, ordered);
 }
 
-export const testNode = createSuite({
-    children: [
-        validation,
-        ownership,
-        createTestCase({
-            body(scope: OverkillScope): ReturnType<TestBody> {
-                const transcript = createTranscript<StateEntry>();
-                const { entries } = transcript;
+export const testNode = suite('source/packages/test/interaction-transcript.test.ts', [
+    validation,
+    ownership,
+    test('createTranscript() records live ordered entries', function (scope: OverkillScope): ReturnType<TestBody> {
+        const transcript = createTranscript<StateEntry>();
+        const { entries } = transcript;
 
-                transcript.record('state', 1);
-                assertRecordedFirstState(scope, transcript, entries);
+        transcript.record('state', 1);
+        assertRecordedFirstState(scope, transcript, entries);
 
-                transcript.reset();
-                assertResetTranscript(scope, transcript);
+        transcript.reset();
+        assertResetTranscript(scope, transcript);
 
-                return scope.assert.collect();
-            },
-            definitionLocations: [ { kind: 'unknown' } ],
-            annotations: {},
-            controls: {},
-            title: 'createTranscript() records live ordered entries'
-        }),
-        createTestCase({
-            body(scope: OverkillScope): ReturnType<TestBody> {
-                const transcript = createTranscript<WarnEntry>();
-                const warn = transcript.sink('warn');
+        return scope.assert.collect();
+    }),
+    test(
+        'transcript.sink() records through a test double with independent reset',
+        function (scope: OverkillScope): ReturnType<TestBody> {
+            const transcript = createTranscript<WarnEntry>();
+            const warn = transcript.sink('warn');
 
-                warn('retrying', { attempt: 2 });
-                assertWarnSinkRecorded(scope, transcript, warn);
+            warn('retrying', { attempt: 2 });
+            assertWarnSinkRecorded(scope, transcript, warn);
 
-                warn.reset();
-                scope.assert.equal(warn.callCount, 0);
-                scope.assert.equal(transcript.entryCount, 1);
+            warn.reset();
+            scope.assert.equal(warn.callCount, 0);
+            scope.assert.equal(transcript.entryCount, 1);
 
-                transcript.reset();
+            transcript.reset();
 
-                scope.assert.equal(transcript.entryCount, 0);
+            scope.assert.equal(transcript.entryCount, 0);
 
-                return scope.assert.collect();
-            },
-            definitionLocations: [ { kind: 'unknown' } ],
-            annotations: {},
-            controls: {},
-            title: 'transcript.sink() records through a test double with independent reset'
-        }),
-        createTestCase({
-            body(scope: OverkillScope): ReturnType<TestBody> {
-                let cleanupCount = 0;
-                let recordState: (value: number) => void = function missingRecordState() {
-                    throw new Error('recordSink() did not subscribe.');
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'recordSink() subscribes immediately and disposes sync cleanup once',
+        function (scope: OverkillScope): ReturnType<TestBody> {
+            let cleanupCount = 0;
+            let recordState: (value: number) => void = function missingRecordState() {
+                throw new Error('recordSink() did not subscribe.');
+            };
+            const states = recordSink<StateEntry>(function subscribe(record) {
+                recordState = function recordRetainedState(value) {
+                    record('state', value);
                 };
-                const states = recordSink<StateEntry>(function subscribe(record) {
-                    recordState = function recordRetainedState(value) {
-                        record('state', value);
-                    };
 
-                    return function cleanup() {
-                        cleanupCount += 1;
-                    };
-                });
+                return function cleanup() {
+                    cleanupCount += 1;
+                };
+            });
 
-                recordState(1);
-                disposeTwice(states);
-                recordState(2);
+            recordState(1);
+            disposeTwice(states);
+            recordState(2);
 
-                scope.assert.equal(Object.isFrozen(states), true);
-                scope.assert.equal(cleanupCount, 1);
-                scope.assert.deepEqual(states.entries, [
-                    [ 'state', 1 ],
-                    [ 'state', 2 ]
-                ]);
+            scope.assert.equal(Object.isFrozen(states), true);
+            scope.assert.equal(cleanupCount, 1);
+            scope.assert.deepEqual(states.entries, [
+                [ 'state', 1 ],
+                [ 'state', 2 ]
+            ]);
 
-                return scope.assert.collect();
-            },
-            definitionLocations: [ { kind: 'unknown' } ],
-            annotations: {},
-            controls: {},
-            title: 'recordSink() subscribes immediately and disposes sync cleanup once'
-        }),
-        createTestCase({
-            async body(scope: OverkillScope) {
-                let cleanupCount = 0;
-                const states = recordAsyncSink<StateEntry>(function subscribe(record) {
-                    record('state', 1);
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'recordAsyncSink() subscribes immediately and disposes async cleanup once',
+        async function (scope: OverkillScope) {
+            let cleanupCount = 0;
+            const states = recordAsyncSink<StateEntry>(function subscribe(record) {
+                record('state', 1);
 
-                    return async function cleanup() {
-                        cleanupCount += 1;
-                    };
-                });
+                return async function cleanup() {
+                    cleanupCount += 1;
+                };
+            });
 
-                await states.asyncDispose();
-                await states.asyncDispose();
+            await states.asyncDispose();
+            await states.asyncDispose();
 
-                scope.assert.equal(Object.isFrozen(states), true);
-                scope.assert.equal(cleanupCount, 1);
-                scope.assert.deepEqual(states.entries, [ [ 'state', 1 ] ]);
+            scope.assert.equal(Object.isFrozen(states), true);
+            scope.assert.equal(cleanupCount, 1);
+            scope.assert.deepEqual(states.entries, [ [ 'state', 1 ] ]);
 
-                return scope.assert.collect();
-            },
-            definitionLocations: [ { kind: 'unknown' } ],
-            annotations: {},
-            controls: {},
-            title: 'recordAsyncSink() subscribes immediately and disposes async cleanup once'
-        }),
-        createTestCase({
-            async body(scope: OverkillScope) {
-                scope.assert.throws(function createSyncSinkWithoutFactory() {
-                    recordSink(undefined as unknown as (record: (...entry: StateEntry) => void) => () => void);
-                }, { message: 'recordSink() requires a subscription factory function.' });
-                scope.assert.throws(function createSyncSinkWithoutCleanup() {
-                    recordSink(function subscribe() {
-                        return null as unknown as () => void;
-                    });
-                }, { message: 'recordSink() subscription factory must return a cleanup function.' });
+            return scope.assert.collect();
+        }
+    ),
+    test('subscription recorders reject invalid factories and cleanup shapes', async function (scope: OverkillScope) {
+        scope.assert.throws(function createSyncSinkWithoutFactory() {
+            recordSink(undefined as unknown as (record: (...entry: StateEntry) => void) => () => void);
+        }, { message: 'recordSink() requires a subscription factory function.' });
+        scope.assert.throws(function createSyncSinkWithoutCleanup() {
+            recordSink(function subscribe() {
+                return null as unknown as () => void;
+            });
+        }, { message: 'recordSink() subscription factory must return a cleanup function.' });
 
-                const syncSink = recordSink(function subscribe() {
-                    return async function cleanup() {
-                        await Promise.resolve();
-                    };
-                });
+        const syncSink = recordSink(function subscribe() {
+            return async function cleanup() {
+                await Promise.resolve();
+            };
+        });
 
-                scope.assert.throws(function disposeSyncSinkWithAsyncCleanup() {
-                    syncSink.dispose();
-                }, { message: 'recordSink() cleanup returned a promise. Use recordAsyncSink() for async cleanup.' });
+        scope.assert.throws(function disposeSyncSinkWithAsyncCleanup() {
+            syncSink.dispose();
+        }, { message: 'recordSink() cleanup returned a promise. Use recordAsyncSink() for async cleanup.' });
 
-                const asyncSink = recordAsyncSink(function subscribe() {
-                    return function cleanup() {
-                        return null;
-                    } as unknown as () => Promise<void>;
-                });
+        const asyncSink = recordAsyncSink(function subscribe() {
+            return function cleanup() {
+                return null;
+            } as unknown as () => Promise<void>;
+        });
 
-                await scope.assert.rejects(async function disposeAsyncSinkWithSyncCleanup() {
-                    await asyncSink.asyncDispose();
-                }, { message: 'recordAsyncSink() cleanup must return a promise. Use recordSink() for sync cleanup.' });
+        await scope.assert.rejects(async function disposeAsyncSinkWithSyncCleanup() {
+            await asyncSink.asyncDispose();
+        }, { message: 'recordAsyncSink() cleanup must return a promise. Use recordSink() for sync cleanup.' });
 
-                return scope.assert.collect();
-            },
-            definitionLocations: [ { kind: 'unknown' } ],
-            annotations: {},
-            controls: {},
-            title: 'subscription recorders reject invalid factories and cleanup shapes'
-        }),
-        createTestCase({
-            async body(scope: OverkillScope) {
-                const transcript = createTranscript<WarnEntry>();
-                const prefix: readonly [TranscriptEntry] = [
-                    [ 'warn', 'retrying', { attempt: 2 } ]
-                ];
-                const ordered: readonly [TranscriptEntry, TranscriptEntry] = [
-                    [ 'warn', 'retrying', { attempt: 2 } ],
-                    [ 'warn', 'done', { attempt: 3 } ]
-                ];
+        return scope.assert.collect();
+    }),
+    test('transcriptUsage asserts exact and partial transcript entries', async function (scope: OverkillScope) {
+        const transcript = createTranscript<WarnEntry>();
+        const prefix: readonly [TranscriptEntry] = [
+            [ 'warn', 'retrying', { attempt: 2 } ]
+        ];
+        const ordered: readonly [TranscriptEntry, TranscriptEntry] = [
+            [ 'warn', 'retrying', { attempt: 2 } ],
+            [ 'warn', 'done', { attempt: 3 } ]
+        ];
 
-                recordWarnTranscript(transcript);
-                assertWarnTranscriptUsage(scope, transcript, prefix, ordered);
+        recordWarnTranscript(transcript);
+        assertWarnTranscriptUsage(scope, transcript, prefix, ordered);
 
-                await assertKindOnlyFails(scope, transcript);
-                await assertPlainObjectFails(scope);
-                await assertEmptySequenceFails(scope, transcript);
+        await assertKindOnlyFails(scope, transcript);
+        await assertPlainObjectFails(scope);
+        await assertEmptySequenceFails(scope, transcript);
 
-                return scope.assert.collect();
-            },
-            definitionLocations: [ { kind: 'unknown' } ],
-            annotations: {},
-            controls: {},
-            title: 'transcriptUsage asserts exact and partial transcript entries'
-        }),
-        createTestCase({
-            async body(scope: OverkillScope) {
-                const result = await executeAssertionBody(function assertBeforeLaterRecord(testScope) {
-                    const transcript = createTranscript();
+        return scope.assert.collect();
+    }),
+    test('transcriptUsage snapshots entries when the assertion is recorded', async function (scope: OverkillScope) {
+        const result = await executeAssertionBody(function assertBeforeLaterRecord(testScope) {
+            const transcript = createTranscript();
 
-                    transcript.record('state', 1);
-                    testScope.assert(transcriptUsage.exactly, transcript, [ [ 'state', 1 ] ]);
-                    transcript.record('state', 2);
-                });
+            transcript.record('state', 1);
+            testScope.assert(transcriptUsage.exactly, transcript, [ [ 'state', 1 ] ]);
+            transcript.record('state', 2);
+        });
 
-                assertPassingExecution(scope, result);
+        assertPassingExecution(scope, result);
 
-                return scope.assert.collect();
-            },
-            definitionLocations: [ { kind: 'unknown' } ],
-            annotations: {},
-            controls: {},
-            title: 'transcriptUsage snapshots entries when the assertion is recorded'
-        }),
-        createTestCase({
-            async body(scope: OverkillScope) {
-                const transcript = createTranscript<StateEntry>();
-                const firstCase = {};
-                const secondCase = {};
+        return scope.assert.collect();
+    }),
+    test('transcripts show the active case or the full resource lifetime', async function (scope: OverkillScope) {
+        const transcript = createTranscript<StateEntry>();
+        const firstCase = {};
+        const secondCase = {};
 
-                transcript.record('state', 0);
-                await runWithTranscriptScope(firstCase, async function recordFirstCase() {
-                    transcript.record('state', 1);
-                    scope.assert.deepEqual(transcript.entries, [ [ 'state', 1 ] ]);
-                });
-                await runWithTranscriptScope(secondCase, async function recordSecondCase() {
-                    transcript.record('state', 2);
-                    scope.assert.deepEqual(transcript.entries, [ [ 'state', 2 ] ]);
-                });
-                await runWithTranscriptScope(null, async function assertLifetimeEntries() {
-                    scope.assert.deepEqual(transcript.entries, [
-                        [ 'state', 0 ],
-                        [ 'state', 1 ],
-                        [ 'state', 2 ]
-                    ]);
-                });
+        transcript.record('state', 0);
+        await runWithTranscriptScope(firstCase, async function recordFirstCase() {
+            transcript.record('state', 1);
+            scope.assert.deepEqual(transcript.entries, [ [ 'state', 1 ] ]);
+        });
+        await runWithTranscriptScope(secondCase, async function recordSecondCase() {
+            transcript.record('state', 2);
+            scope.assert.deepEqual(transcript.entries, [ [ 'state', 2 ] ]);
+        });
+        await runWithTranscriptScope(null, async function assertLifetimeEntries() {
+            scope.assert.deepEqual(transcript.entries, [
+                [ 'state', 0 ],
+                [ 'state', 1 ],
+                [ 'state', 2 ]
+            ]);
+        });
 
-                return scope.assert.collect();
-            },
-            definitionLocations: [ { kind: 'unknown' } ],
-            annotations: {},
-            controls: {},
-            title: 'transcripts show the active case or the full resource lifetime'
-        })
-    ],
-    definitionLocations: [ { kind: 'unknown' } ],
-    annotations: {},
-    controls: {},
-    title: 'source/packages/test/interaction-transcript.test.ts'
-});
+        return scope.assert.collect();
+    })
+]);

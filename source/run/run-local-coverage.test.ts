@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope, type RunResult } from '../packages/engine/engine.entry-point.ts';
+import { test, suite } from '@overkill-dev/test';
+
+import type { TestScope, RunResult } from '../packages/engine/engine.entry-point.ts';
 import { withMemoryCoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
 import { defaultMicrotestProfile, defaultRunConfig } from '../test-support/run-command-factory.ts';
 import { createDeterministicRunTestModuleLoader } from '../test-support/deterministic-run-fixtures.ts';
@@ -27,15 +28,11 @@ const scenarios = collectionScenarios.flatMap(function baselineCases(scenario) {
     return [ { ...scenario, baseline: false }, { ...scenario, baseline: true } ];
 });
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/run-local-coverage.test.ts',
-    annotations: {},
-    controls: {},
-    children: scenarios.map(function localCoverageTest(scenario) {
+export const testNode = suite(
+    'source/run/run-local-coverage.test.ts',
+    scenarios.map(function localCoverageTest(scenario) {
         const { file } = scenario;
-        return createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        return test({
             title: `local coverage checkpoints ${file} with ${scenario.mode} restrictions, ` +
                 `selection ${scenario.missingSelection}, shard ${scenario.shard.index}/${scenario.shard.total}, ` +
                 `baselines ${scenario.baseline}`,
@@ -105,5 +102,4 @@ export const testNode = createSuite({
             }
         });
     })
-});
-await runIfMain(import.meta, testNode);
+);

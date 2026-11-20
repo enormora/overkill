@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { observationCase } from '../test-support/observation-lifetime.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createDisabledAsyncLeakMonitor } from './async-leak-diagnostics.ts';
@@ -17,7 +17,7 @@ const contractOutcome: TestOutcome = {
     } ]
 };
 const outcomes: readonly (TestOutcome | null)[] = [ null, { kind: 'pass' }, contractOutcome ];
-export const testNode = suite('case leak attribution policy', [
+export const testNode = authoredSuite('case leak attribution policy', [
     ...outcomes.flatMap(function (outcome) {
         return [ false, true ].flatMap(function (includeActiveResourceLeaks) {
             return [ false, true ].map(function (ambiguous) {
@@ -94,4 +94,3 @@ export const testNode = suite('case leak attribution policy', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

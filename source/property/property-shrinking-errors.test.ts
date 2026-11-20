@@ -1,11 +1,7 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
-import {
-    serializeValue,
-    defineReporter,
-    type PropertyCaseEvidence
-} from '../packages/engine/engine.entry-point.ts';
+import { serializeValue, defineReporter, type PropertyCaseEvidence } from '../packages/engine/engine.entry-point.ts';
 import { propertyEvidenceSchema } from '../run/property-evidence-schema.ts';
 import { formatPropertyDiagnostics } from '../reporters/failure-summary.ts';
 import { gen } from './generators.ts';
@@ -59,7 +55,7 @@ const rejectPropertyProgress = defineReporter(function rejectCheckpoints() {
     };
 });
 
-export const testNode = suite('shrink failure paths', [
+export const testNode = authoredSuite('shrink failure paths', [
     test('confirms a replayable example when compatible shrink state is unavailable', async function (scope) {
         let calls = 0;
         const result = await executePropertyNode(
@@ -342,5 +338,3 @@ export const testNode = suite('shrink failure paths', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

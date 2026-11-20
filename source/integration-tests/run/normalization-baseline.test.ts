@@ -1,9 +1,9 @@
 import { mkdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import type { StoredCalibration } from '../../baselines/calibration-reference.ts';
 import { readCalibrationReferenceReport } from '../../packages/bench/bench.entry-point.ts';
 import type { RunResult } from '../../engine/run-result.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import { createPerformanceBaselineStore, type PerformanceBaselineStore } from '../../baselines/performance-store.ts';
 import { normalizationCommand, normalizationReferences } from '../../test-support/benchmark-normalization-fixture.ts';
@@ -215,7 +215,7 @@ async function preparePartialCaptureFailure(scope: TestScope, command: RunComman
     await mkdir(join(command.cwd, store.pathOf(second)), { recursive: true });
     return store.pathOf(first);
 }
-export const testNode = suite('saved normalization references', [
+export const testNode = authoredSuite('saved normalization references', [
     test('reports completed references after a later publication failure', async function (scope: TestScope) {
         const command = await normalizationCommand(scope, 'reuse', 'capture multiple references');
         const completedPath = await preparePartialCaptureFailure(scope, command);

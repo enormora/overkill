@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { InvocationDeadlineExceededError } from '../run/run.entry-point.ts';
 import { memoryCampaignWorker } from '../../test-support/memory-campaign-worker.ts';
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
@@ -10,7 +10,7 @@ const { signal } = new AbortController();
 async function register(worker: CampaignWorker): Promise<void> {
     await worker.respond({ kind: 'register', root: '/project' }, signal, null);
 }
-export const testNode = suite('campaign worker authority', [
+export const testNode = authoredSuite('campaign worker authority', [
     authorityPolicy,
     test('assigns a stable campaign identity to a canonical sandbox', async function (scope: TestScope) {
         const fixture = await memoryCampaignWorker(null);
@@ -196,4 +196,3 @@ export const testNode = suite('campaign worker authority', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

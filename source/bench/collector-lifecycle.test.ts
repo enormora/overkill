@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { MeasurementInvocationEvidence } from '../engine/measurement-evidence.ts';
 import type { AsyncMetricCollector, MetricCollector } from './measurement-types.ts';
 import { createAsyncMeasurementSample, createMeasurementSample } from './measurement-region.ts';
@@ -6,7 +7,7 @@ import { asyncMeasurementStrategy, measurementStrategy } from './measurement-str
 import { availableMetric } from './metric-reading.ts';
 import { measurementContext, currentMeasurementContext } from './measurement-context.ts';
 
-export const testNode = suite('collector lifecycle ownership', [
+export const testNode = authoredSuite('collector lifecycle ownership', [
     test('releases allocations registered by preparation before it throws', function (scope: TestScope) {
         const events: string[] = [];
         const failure = new Error('partial preparation');

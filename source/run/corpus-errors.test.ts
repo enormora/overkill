@@ -1,8 +1,8 @@
 import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/witness-file.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { writeCorpusIndex } from '../test-support/corpus-index.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { capturePropertyInput } from '../property/property-graph.ts';
@@ -26,7 +26,7 @@ function replayableWitness(): PropertyWitnessFile {
         })
     });
 }
-export const testNode = suite('corpus error handling', [
+export const testNode = authoredSuite('corpus error handling', [
     test('missing, malformed, and unsupported sources fail inspection', async function (scope: TestScope) {
         const cwd = await corpusDirectory(scope);
         await writeFile(path.join(cwd, 'malformed.json'), '{');

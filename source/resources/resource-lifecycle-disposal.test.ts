@@ -1,5 +1,7 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestNode, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
+import { type TestNode, type TestScope, createTestCase } from '../packages/engine/engine.entry-point.ts';
+
 import {
     type AnyResourceDefinition,
     defineResource,
@@ -246,17 +248,9 @@ function disposalTestCase(
     });
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/resources/resource-lifecycle-disposal.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        disposalTestCase('runtime session supports async disposal', assertAsyncDispose),
-        disposalTestCase('runtime session skips resources without dispose callbacks', assertNullDispose),
-        disposalTestCase('startRuntime rejects malformed descriptors', assertInvalidDescriptors),
-        disposalTestCase('startRuntime wraps dependency read failures', assertDependencyReadFailure)
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/resources/resource-lifecycle-disposal.test.ts', [
+    disposalTestCase('runtime session supports async disposal', assertAsyncDispose),
+    disposalTestCase('runtime session skips resources without dispose callbacks', assertNullDispose),
+    disposalTestCase('startRuntime rejects malformed descriptors', assertInvalidDescriptors),
+    disposalTestCase('startRuntime wraps dependency read failures', assertDependencyReadFailure)
+]);

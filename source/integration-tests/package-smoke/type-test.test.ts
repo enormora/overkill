@@ -2,10 +2,8 @@ import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, rm, writeFile, readFile, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
-import { runIfMain } from '#test-runner';
+import { suite, test, type TestScope } from '#tests';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const engineCaseSource = `import * as engine from '@overkill-dev/engine';
 import { family, sameType } from '@overkill-dev/type-test';
 const metadata = { annotations: {}, controls: {}, definitionLocations: [{kind:'unknown'}] } as const;
@@ -135,61 +133,46 @@ export const config=defineConfig({profiles:{types:{testFamily:family,
     );
 }
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'packaged native type tests',
-    children: [
-        createTestCase({
-            ...metadata,
-            title: 'checks engine roots without the high-level distribution',
-            async body(scope) {
-                const directory = await isolatedConsumer(scope, false);
-                await writeCheckingProject(directory);
-                const result = await runNode(directory, [ 'case.mts' ]);
-                scope.assert.equal(result.code, 0, { message: result.stderr });
-                scope.assert.equal(result.stdout, 'native check passed\n');
-                await scope.assert.rejects(async function () {
-                    return readdir(join(directory, 'checker-store'));
-                }, { message: /ENOENT/u });
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'runs a registered profile through the public runner without the high-level distribution',
-            async body(scope) {
-                const directory = await isolatedConsumer(scope, true);
-                await writeRunnerProject(directory, 'in-process');
-                const result = await runNode(directory, [ 'runner.mts' ]);
-                scope.assert.equal(result.code, 0, { message: result.stderr });
-                scope.assert.includes(result.stdout, '1 pass');
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'checks installed beta compilers in a supervised profile',
-            async body(scope) {
-                const directory = await isolatedConsumer(scope, true);
-                await writeRunnerProject(directory, 'supervised-process');
-                const result = await runNode(directory, [ 'runner.mts' ]);
-                scope.assert.equal(result.code, 0, { message: result.stderr });
-                scope.assert.includes(result.stdout, '1 pass');
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'authoring and profile imports do not load the execution backend',
-            async body(scope) {
-                const directory = await isolatedConsumer(scope, false);
-                const backend = join(
-                    directory,
-                    'node_modules/@overkill-dev/type-test/packages/type-test/family-backend.entry-point.js'
-                );
-                await readFile(backend);
-                await rm(backend);
-                const script = `import {family,sameType,assignableTo,assignableFrom} from '@overkill-dev/type-test';
+export const testNode = suite('packaged native type tests', [
+    test('checks engine roots without the high-level distribution', async function (scope) {
+        const directory = await isolatedConsumer(scope, false);
+        await writeCheckingProject(directory);
+        const result = await runNode(directory, [ 'case.mts' ]);
+        scope.assert.equal(result.code, 0, { message: result.stderr });
+        scope.assert.equal(result.stdout, 'native check passed\n');
+        await scope.assert.rejects(async function () {
+            return readdir(join(directory, 'checker-store'));
+        }, { message: /ENOENT/u });
+        return scope.assert.collect();
+    }),
+    test(
+        'runs a registered profile through the public runner without the high-level distribution',
+        async function (scope) {
+            const directory = await isolatedConsumer(scope, true);
+            await writeRunnerProject(directory, 'in-process');
+            const result = await runNode(directory, [ 'runner.mts' ]);
+            scope.assert.equal(result.code, 0, { message: result.stderr });
+            scope.assert.includes(result.stdout, '1 pass');
+            return scope.assert.collect();
+        }
+    ),
+    test('checks installed beta compilers in a supervised profile', async function (scope) {
+        const directory = await isolatedConsumer(scope, true);
+        await writeRunnerProject(directory, 'supervised-process');
+        const result = await runNode(directory, [ 'runner.mts' ]);
+        scope.assert.equal(result.code, 0, { message: result.stderr });
+        scope.assert.includes(result.stdout, '1 pass');
+        return scope.assert.collect();
+    }),
+    test('authoring and profile imports do not load the execution backend', async function (scope) {
+        const directory = await isolatedConsumer(scope, false);
+        const backend = join(
+            directory,
+            'node_modules/@overkill-dev/type-test/packages/type-test/family-backend.entry-point.js'
+        );
+        await readFile(backend);
+        await rm(backend);
+        const script = `import {family,sameType,assignableTo,assignableFrom} from '@overkill-dev/type-test';
 sameType();assignableTo();assignableFrom();
 if(family.id!=='@overkill-dev/type-test')throw new Error('Missing family');
 for(const subpath of ['profile','check']) {
@@ -198,13 +181,9 @@ for(const subpath of ['profile','check']) {
 }
 
 console.log('lazy imports passed');`;
-                const result = await runNode(directory, [ '--input-type=module', '--eval', script ]);
-                scope.assert.equal(result.code, 0, { message: result.stderr });
-                scope.assert.equal(result.stdout, 'lazy imports passed\n');
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        const result = await runNode(directory, [ '--input-type=module', '--eval', script ]);
+        scope.assert.equal(result.code, 0, { message: result.stderr });
+        scope.assert.equal(result.stdout, 'lazy imports passed\n');
+        return scope.assert.collect();
+    })
+]);

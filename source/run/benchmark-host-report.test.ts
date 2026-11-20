@@ -1,5 +1,7 @@
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { RunResult } from '../engine/run-result.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { benchmarkHostSnapshot } from '../test-support/benchmark-host-snapshot.ts';
@@ -33,7 +35,7 @@ function preparedBenchmark(scope: TestScope): RunResult {
         checks: []
     });
 }
-export const testNode = suite('benchmark host reporting', [
+export const testNode = authoredSuite('benchmark host reporting', [
     test('preserves host evidence through fallback preparation', function (scope: TestScope) {
         const result = preparedBenchmark(scope);
         const fallback = withBenchmarkErrorMetadata(result, benchmarkCommand(), null);

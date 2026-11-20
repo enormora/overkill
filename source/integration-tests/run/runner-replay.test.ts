@@ -1,9 +1,8 @@
 import { readFile, writeFile, unlink } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import type { ReplayRunRecord } from '../../run/replay-record-types.ts';
 import { orchestrator, type ReplayRunCommand } from '../../packages/run/run.entry-point.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import {
     replayProject,
     replayProfile,
@@ -84,9 +83,9 @@ async function verifyInvalidRecord(scope: TestScope): Promise<void> {
         await orchestrator.replay(replayInput(project, original.id));
     }, { message: /seed is inconsistent/u });
 }
-export const testNode = suite('replay public execution boundaries', [
+export const testNode = authoredSuite('replay public execution boundaries', [
     ...([ 'in-process', 'supervised-process', 'worker-pool' ] as const).map(function boundary(mode) {
-        return test(`${mode} reruns current bodies and preserves the source record`, async function (scope) {
+        return authoredTest(`${mode} reruns current bodies and preserves the source record`, async function (scope) {
             const project = await replayProject(scope, replayProfile(mode));
             await writeReplayCase(project, replayPassingCase('retained case', true));
             await executeOriginal(scope, project);
@@ -94,11 +93,11 @@ export const testNode = suite('replay public execution boundaries', [
             return scope.assert.collect();
         });
     }),
-    test('empty replay requires no surviving source modules', async function (scope) {
+    authoredTest('empty replay requires no surviving source modules', async function (scope) {
         await verifyEmptyReplay(scope);
         return scope.assert.collect();
     }),
-    test('replays records written before the merge intent field existed', async function (scope: TestScope) {
+    authoredTest('replays records written before the merge intent field existed', async function (scope: TestScope) {
         const project = await replayProject(scope, replayProfile('in-process'));
         await writeReplayCase(project, replayPassingCase('retained case', true));
         await executeOriginal(scope, project);
@@ -110,9 +109,8 @@ export const testNode = suite('replay public execution boundaries', [
         await verifyReplay(scope, project);
         return scope.assert.collect();
     }),
-    test('rejects inconsistent records before importing code', async function (scope) {
+    authoredTest('rejects inconsistent records before importing code', async function (scope) {
         await verifyInvalidRecord(scope);
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

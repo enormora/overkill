@@ -1,10 +1,11 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { executionLifecycle } from '../test-support/execution-lifecycle.ts';
 import { currentCaseExecutionLifecycle } from '../engine/case-execution-lifecycle.ts';
 import { runExecutionLifecycle } from './execution-session-lifecycle.ts';
 import { currentExecutionSession } from './execution-session-context.ts';
 
-export const testNode = suite('execution lifecycle policy', [
+export const testNode = authoredSuite('execution lifecycle policy', [
     test('loads an isolated lifecycle and validates selection and checkpoints', async function (scope: TestScope) {
         const fixture = executionLifecycle(null);
         const value = await runExecutionLifecycle({

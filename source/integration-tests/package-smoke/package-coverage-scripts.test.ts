@@ -27,7 +27,7 @@ export function createCoverageConfigScript(
         '    profiles: {',
         '        microtest: {',
         "            testFamily: 'microtest',",
-        '            timeouts: { collectionMilliseconds: 10000 },',
+        '            timeouts: { collectionMilliseconds: 30000, softMilliseconds: 5000, hardMilliseconds: 10000 },',
         `            coverage: { outputDir: 'coverage-smoke', sources: { mode: 'all', include: ${
             JSON.stringify([ coverageSourceFile(sourceKind), 'coverage-types.ts' ])
         } } },`,

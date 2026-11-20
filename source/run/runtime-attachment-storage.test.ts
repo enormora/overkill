@@ -1,6 +1,7 @@
 import { glob } from 'node:fs/promises';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { attachmentRunFixture } from '../test-support/attachment-run-fixture.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -206,52 +207,43 @@ async function assertUnknownLifetime(scope: TestScope): Promise<void> {
     scope.assert.equal(store.selectedArtifacts().length, 1);
 }
 
-export const testNode = createSuite({
-    ...definition,
-    title: 'source/run/runtime-attachment-storage.test.ts',
-    children: [
-        ...([ 'binary', 'json', 'text' ] as const).flatMap(function interruptedContent(kind) {
-            return [ false, true ].map(function captureCompletion(closed) {
-                return createTestCase({
-                    ...definition,
-                    title: `unknown attempt retains only interrupted prefixes: ${kind}, closed ${closed}`,
-                    async body(scope: TestScope) {
-                        await assertUnknownAttemptPrefix(scope, kind, closed);
-                        return scope.assert.collect();
-                    }
-                });
+export const testNode = suite('source/run/runtime-attachment-storage.test.ts', [
+    ...([ 'binary', 'json', 'text' ] as const).flatMap(function interruptedContent(kind) {
+        return [ false, true ].map(function captureCompletion(closed) {
+            return test({
+                ...definition,
+                title: `unknown attempt retains only interrupted prefixes: ${kind}, closed ${closed}`,
+                async body(scope: TestScope) {
+                    await assertUnknownAttemptPrefix(scope, kind, closed);
+                    return scope.assert.collect();
+                }
             });
-        }),
-        createTestCase({
-            ...definition,
-            title: 'unknown consumers discard shared evidence unless their resource fails',
-            async body(scope: TestScope) {
-                await assertUnknownLifetime(scope);
-                return scope.assert.collect();
-            }
-        }),
-        ...([
-            [ 'storage refuses missing integration limits', assertMissingLimits ],
-            [ 'checkpoint failures reject attachment persistence', assertCheckpointFailure ],
-            [ 'finalization remains idempotent with the default retry policy', assertFinalization ],
-            [ 'capture clock failures remove newly allocated attachment files', assertClockFailure ],
-            [ 'completed witness evidence survives an interrupted attempt', async function (scope: TestScope) {
-                await assertInterruptedPreparation(scope, 'attempt');
-            } ],
-            [ 'shared lifetime evidence survives an interrupted consumer', async function (scope: TestScope) {
-                await assertInterruptedPreparation(scope, 'lifetime');
-            } ]
-        ] as const)
-            .map(function storageCase([ title, check ]) {
-                return createTestCase({
-                    ...definition,
-                    title,
-                    async body(scope: TestScope) {
-                        await check(scope);
-                        return scope.assert.collect();
-                    }
-                });
-            })
-    ]
-});
-await runIfMain(import.meta, testNode);
+        });
+    }),
+    test('unknown consumers discard shared evidence unless their resource fails', async function (scope: TestScope) {
+        await assertUnknownLifetime(scope);
+        return scope.assert.collect();
+    }),
+    ...([
+        [ 'storage refuses missing integration limits', assertMissingLimits ],
+        [ 'checkpoint failures reject attachment persistence', assertCheckpointFailure ],
+        [ 'finalization remains idempotent with the default retry policy', assertFinalization ],
+        [ 'capture clock failures remove newly allocated attachment files', assertClockFailure ],
+        [ 'completed witness evidence survives an interrupted attempt', async function (scope: TestScope) {
+            await assertInterruptedPreparation(scope, 'attempt');
+        } ],
+        [ 'shared lifetime evidence survives an interrupted consumer', async function (scope: TestScope) {
+            await assertInterruptedPreparation(scope, 'lifetime');
+        } ]
+    ] as const)
+        .map(function storageCase([ title, check ]) {
+            return test({
+                ...definition,
+                title,
+                async body(scope: TestScope) {
+                    await check(scope);
+                    return scope.assert.collect();
+                }
+            });
+        })
+]);

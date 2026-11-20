@@ -1,7 +1,8 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import { z } from 'zod/v4';
-import { runIfMain } from '#test-runner';
+
 import { implementationFingerprint } from './implementation-fingerprint.ts';
-import { suite, test } from './packages/test/test.entry-point.ts';
+
 import {
     defineImplementationReference,
     implementationFacts,
@@ -22,7 +23,7 @@ function reference(): ImplementationReference<{ readonly expected: number; }> {
     });
 }
 
-export const testNode = suite('portable implementation references', [
+export const testNode = authoredSuite('portable implementation references', [
     test('preserves canonically equivalent object keys in lossless input identity', function (scope) {
         const composed = '\u{E9}';
         const decomposed = 'e\u{301}';
@@ -71,4 +72,3 @@ export const testNode = suite('portable implementation references', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

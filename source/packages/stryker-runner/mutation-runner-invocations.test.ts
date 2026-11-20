@@ -1,11 +1,12 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { DryRunStatus, MutantRunStatus } from '@stryker-mutator/api/test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { mutationInvocations } from '../../test-support/mutation-invocations.ts';
 
 const dry = { coverageAnalysis: 'off', timeout: 50, disableBail: false } as const;
-export const testNode = suite('mutation runner invocation orchestration', [
+export const testNode = authoredSuite('mutation runner invocation orchestration', [
     test('publishes the first complete dry run as the campaign baseline', async function (scope: TestScope) {
         const { reply } = mutationCoverageFixture('off');
         const fixture = mutationInvocations(scope, null, reply);
@@ -113,4 +114,3 @@ export const testNode = suite('mutation runner invocation orchestration', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../engine/engine.entry-point.ts';
 import { passingResult, runCommandLine } from '../../test-support/command-line-test-driver.ts';
 import { parseRuntimeSelector } from './run-runtime-selector.ts';
 
@@ -29,13 +30,11 @@ function assertRunRuntimeSelection(scope: TestScope, selection: unknown): void {
     });
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
+export const testNode = suite({
     title: 'source/packages/test/command-line-runner-runtime-selection.test.ts',
     ...emptyTestData,
     children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'runtime selector parser lowers names, variants, and dimensions',
             ...emptyTestData,
             body(scope: TestScope) {
@@ -58,8 +57,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper combines repeated runtime selectors with filter expressions',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -83,8 +81,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill list accepts repeated duplicate runtime selectors',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -111,8 +108,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper rejects malformed runtime selectors before runner loading',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -132,5 +128,3 @@ export const testNode = createSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

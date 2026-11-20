@@ -1,6 +1,5 @@
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import type { TestDebugArtifact } from '../packages/engine/engine.entry-point.ts';
 import { debugArtifactFixture } from '../test-support/debug-artifact-fixture.ts';
 import { runRecordPolicyFixture } from '../test-support/run-record-policy-fixture.ts';
@@ -22,7 +21,7 @@ function assertStoredArtifact(
     scope.assert.equal(JSON.stringify(savedValue), JSON.stringify(artifact));
 }
 
-export const testNode = suite('debug artifact persistence', [
+export const testNode = authoredSuite('debug artifact persistence', [
     test('exhaustion finalizes a checkpoint while preserving completed evidence', async function (scope: TestScope) {
         const { artifact } = await debugArtifactFixture('exhausted');
         const checkpoint: TestDebugArtifact = {
@@ -163,4 +162,3 @@ export const testNode = suite('debug artifact persistence', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

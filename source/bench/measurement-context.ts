@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import type { MeasurementInvocation, MeasurementInvocationEvidence } from '../engine/measurement-evidence.ts';
 import { defaultMeasurementTarget, readMeasurementTarget, type MeasurementTarget } from './measurement-target.ts';
 
@@ -13,7 +14,7 @@ export const measurementContext = new AsyncLocalStorage<MeasurementContext>();
 export function currentMeasurementContext(): MeasurementContext {
     return measurementContext.getStore() ?? {
         invocation: {
-            execution: randomUUID(),
+            execution: withRunnerInfrastructure(randomUUID),
             work: {
                 case: { file: null, suite: [], title: 'measurement', params: null },
                 runtimes: [],

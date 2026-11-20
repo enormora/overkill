@@ -1,8 +1,7 @@
 import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { completedHistoryRecord, type CompletedHistoryFixture } from '../test-support/history-record-fixture.ts';
 import { createHistory, normalizeConfig, type History } from '../packages/run/run.entry-point.ts';
 import { createNodeHistoryStorage } from './node-history-storage.ts';
@@ -51,7 +50,7 @@ async function storeOlderIndex(project: Project): Promise<void> {
     const index = await requiredIndex(project);
     await store.write(path.join(directory, 'history/index.json'), JSON.stringify({ ...index, version: 0 }));
 }
-export const testNode = suite('history maintenance boundaries', [
+export const testNode = authoredSuite('history maintenance boundaries', [
     test('prune rejects artifact identities that disagree with their directory', async function (scope: TestScope) {
         await withProject(async function mismatchedArtifact({ directory, history, store }) {
             const record = freshRecord('example');
@@ -255,4 +254,3 @@ export const testNode = suite('history maintenance boundaries', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

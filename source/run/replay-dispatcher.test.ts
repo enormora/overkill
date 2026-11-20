@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createTaskRun } from '../test-support/worker-pool-execution-state.ts';
 import { placementPlan, fakeWorkerRuntime } from './worker-pool-placement-validation.test.ts';
 import { createPlacementTraceRecorder, type PlacementTrace } from './placement-trace.ts';
@@ -84,7 +84,7 @@ function assertDuplicateCancellation(scope: TestScope): void {
         return dispatcher.blocked(primaryLane);
     });
 }
-export const testNode = suite('replay dispatcher lifecycle', [
+export const testNode = authoredSuite('replay dispatcher lifecycle', [
     test('cancels the recorded duplicate after its authority completes', function (scope: TestScope) {
         assertDuplicateCancellation(scope);
         return scope.assert.collect();
@@ -121,4 +121,3 @@ export const testNode = suite('replay dispatcher lifecycle', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

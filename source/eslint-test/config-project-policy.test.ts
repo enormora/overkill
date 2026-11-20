@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { emptyConfigProject } from '../test-support/eslint-config.ts';
 import { inConfigProject, configLayers, generatedProject, projectPath, validateProject } from './config-project.ts';
 
-export const testNode = suite('configuration project and layer policy', [
+export const testNode = authoredSuite('configuration project and layer policy', [
     test('runs an existing project callback without creating a temporary project', async function (scope: TestScope) {
         const context = await inConfigProject(
             { kind: 'existing', root: '/project' },
@@ -91,4 +91,3 @@ export const testNode = suite('configuration project and layer policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

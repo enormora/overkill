@@ -1,13 +1,15 @@
+import { extname } from 'node:path';
 import { execFile } from 'node:child_process';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { guardOwnershipTestNode, nativeGuardProbeUrl } from '../test-support/native-guard-probe.ts';
 
-export const testNode = suite(guardOwnershipTestNode.title, [
+export const testNode = authoredSuite(guardOwnershipTestNode.title, [
     test('isolates native diagnostic probes from the runner', async function (scope) {
+        const engineUrl = new URL(`../packages/engine/engine.entry-point${extname(import.meta.url)}`, import.meta.url);
         const script = `
             import assert from 'node:assert/strict';
-            const { createRoot, createTestPlan, execute } = await import('@overkill-dev/engine');
+            const { createRoot, createTestPlan, execute } = await import(${JSON.stringify(engineUrl.href)});
             const { guardOwnershipTestNode } = await import(${JSON.stringify(nativeGuardProbeUrl)});
             const plan = createTestPlan(createRoot({
                 title: 'native guard probe', annotations: {}, controls: {}, children: [guardOwnershipTestNode]
@@ -35,5 +37,3 @@ export const testNode = suite(guardOwnershipTestNode.title, [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

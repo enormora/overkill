@@ -1,10 +1,6 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite,
-    createTestCase,
-    type RunResult,
-    type TestScope
-} from '../../packages/engine/engine.entry-point.ts';
+import { test, suite } from '@overkill-dev/test';
+
+import type { RunResult, TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { normalizeConfig } from '../../packages/run/config.entry-point.ts';
 import {
     orchestrator,
@@ -83,12 +79,11 @@ async function mutationInput(command: RunCommand, frozen: boolean): Promise<Froz
     };
 }
 
-export const testNode = createSuite({
-    title: 'mutation execution policy through the public runner',
-    ...metadata,
-    children: ([ 'in-process', 'supervised-process' ] as const).flatMap(function mutationProcessModel(processModel) {
+export const testNode = suite(
+    'mutation execution policy through the public runner',
+    ([ 'in-process', 'supervised-process' ] as const).flatMap(function mutationProcessModel(processModel) {
         return [ false, true ].map(function frozenPolicy(frozen) {
-            return createTestCase({
+            return test({
                 title: `${
                     frozen ? 'frozen' : 'configured'
                 } serial cases and cleanup preserve ${processModel} execution`,
@@ -110,6 +105,4 @@ export const testNode = createSuite({
             });
         });
     })
-});
-
-await runIfMain(import.meta, testNode);
+);

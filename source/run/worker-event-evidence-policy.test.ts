@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock } from '@enormora/clock';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { createCollectedPlan, fakeWorkerRuntime, createTaskRun } from '../test-support/worker-pool-execution-state.ts';
 import { debugArtifactFixture } from '../test-support/debug-artifact-fixture.ts';
 import { attachmentCoordinationForWork } from '../test-support/attachment-coordination.ts';
@@ -8,7 +9,7 @@ import { exchangedAttachment } from '../test-support/attachment-exchange.ts';
 import { createRunTimingMeasurement } from './run-timing-collection.ts';
 import { handleWorkerMessage } from './worker-pool-task-events.ts';
 
-export const testNode = suite('worker event evidence ownership', [
+export const testNode = authoredSuite('worker event evidence ownership', [
     test('records local worker timing observations', function (scope: TestScope) {
         const source = fakeWorkerRuntime(createCollectedPlan());
         const timing = createRunTimingMeasurement(createDeterministicClock({ initialUnixEpochMicroseconds: 0n }));
@@ -85,4 +86,3 @@ export const testNode = suite('worker event evidence ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

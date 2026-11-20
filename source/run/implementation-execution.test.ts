@@ -1,9 +1,8 @@
 import { mkdtempDisposable, readFile, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
 import type { IntegrationProfileConfig } from '../config/types.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { placementRunner } from '../test-support/benchmark-placement-fixture.ts';
 import { defaultRunConfig, defaultIntegrationProfile, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { writeImplementationProject, type ProjectedResourceScope } from '../test-support/implementation-project.ts';
@@ -72,7 +71,7 @@ async function verifyPlacement(
     const events = await readFile(log, 'utf8');
     assertLifetime(scope, events.trim().split('\n'));
 }
-export const testNode = suite(
+export const testNode = authoredSuite(
     'portable implementations across process models',
     placements.flatMap(function placement(value) {
         const scopes: readonly ProjectedResourceScope[] = [ 'per-file', 'per-run', 'per-suite' ];
@@ -87,4 +86,3 @@ export const testNode = suite(
         });
     })
 );
-await runIfMain(import.meta, testNode);

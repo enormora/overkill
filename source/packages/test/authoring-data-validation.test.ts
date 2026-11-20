@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from './test.entry-point.ts';
+import { test, suite } from '@overkill-dev/test';
+
+import type { TestScope } from './test.entry-point.ts';
 import {
     readAuthoringAnnotations,
     readAuthoringControls,
@@ -63,4 +64,3 @@ export const testNode = suite('authoring data validation', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,30 +1,20 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
 import {
     defaultFailureArtifactPolicy,
-    createRoot,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    createTestPlan,
     type TestPlan,
     type TestCaseOptions,
     type TestNode,
-    type TestScope as OverkillScope,
-    type WorkId
+    type WorkId,
+    createRoot,
+    createTestPlan
 } from '../packages/engine/engine.entry-point.ts';
+
 import { createTestFacade } from '../packages/test/test.entry-point.ts';
-import {
-    defineResource,
-    withResources,
-    type ResourceDefinition
-} from '../packages/test/resources.entry-point.ts';
+import { defineResource, withResources, type ResourceDefinition } from '../packages/test/resources.entry-point.ts';
 import type { EmptyResourceDependencies } from '../resources/resources.ts';
 import { createWorkerProcessUsageTracker } from './worker-execution-engine.ts';
-import type {
-    WorkerPoolCommand,
-    WorkerPoolLifecycleIdentity,
-    WorkerPoolTask
-} from './worker-pool-protocol.ts';
+import type { WorkerPoolCommand, WorkerPoolLifecycleIdentity, WorkerPoolTask } from './worker-pool-protocol.ts';
 import {
     acquireWorkerRunResources,
     disposeWorkerLaneLifecycle,
@@ -182,7 +172,7 @@ function collectedWorkerPlanFromNode(testNode: TestNode): CollectedWorkerPlan {
 }
 
 function collectedWorkerPlan(body: TestCaseOptions['body']): CollectedWorkerPlan {
-    return collectedWorkerPlanFromNode(createOverkillTestCase({
+    return collectedWorkerPlanFromNode(test({
         ...testCaseMetadata,
         body,
         title: 'uses resources'
@@ -334,11 +324,11 @@ async function assertLaneSessionsAreReusedAndDisposed(scope: OverkillScope): Pro
     scope.assert.deepEqual(await disposeWorkerLaneLifecycle(disposeLaneTask(lifecycle)), { runnerErrors: [] });
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-worker-resources.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool worker resources acquire projected run resources',
             async body(scope: OverkillScope) {
@@ -347,7 +337,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool worker resources record acquisition failures',
             async body(scope: OverkillScope) {
@@ -356,7 +346,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool worker resources ignore plain test bodies',
             async body(scope: OverkillScope) {
@@ -365,7 +355,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool worker resources ignore mapped scope wrappers',
             async body(scope: OverkillScope) {
@@ -374,7 +364,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool worker resources reuse lane sessions',
             async body(scope: OverkillScope) {
@@ -386,5 +376,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

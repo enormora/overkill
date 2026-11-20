@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { memorySupervisedChild } from '../test-support/memory-supervised-child.ts';
 import type { SupervisedChildMessage } from './supervised-protocol.ts';
 
@@ -11,7 +11,7 @@ function isResult(
 ): message is Extract<SupervisedChildMessage, { readonly kind: 'result'; }> {
     return message.kind === 'result';
 }
-export const testNode = suite(
+export const testNode = authoredSuite(
     'supervised child command policy',
     ([ 'collect', 'run' ] as const).flatMap(function (mode) {
         return [ false, true ].flatMap(function (selected) {
@@ -43,4 +43,3 @@ export const testNode = suite(
         });
     })
 );
-await runIfMain(import.meta, testNode);

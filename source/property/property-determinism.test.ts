@@ -1,4 +1,5 @@
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { readPropertyExecutionHost, type TestNode } from '../packages/engine/engine.entry-point.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
@@ -64,8 +65,8 @@ function nestedStreamProperty(recordValue: (value: number) => void, includeEarli
     );
 }
 
-export const testNode = suite('property deterministic streams', [
-    test('unrelated nested calls do not reseed a later invocation', async function (scope) {
+export const testNode = authoredSuite('property deterministic streams', [
+    authoredTest('unrelated nested calls do not reseed a later invocation', async function (scope) {
         const first: number[] = [];
         const second: number[] = [];
         const firstRun = await executePropertyNode(
@@ -85,7 +86,7 @@ export const testNode = suite('property deterministic streams', [
         scope.assert.deepEqual(first, second);
         return scope.assert.collect();
     }),
-    test('corpus changes leave new exploration unchanged', async function (scope) {
+    authoredTest('corpus changes leave new exploration unchanged', async function (scope) {
         const first: number[] = [];
         const second: number[] = [];
         const results = await Promise.all([
@@ -119,7 +120,7 @@ export const testNode = suite('property deterministic streams', [
         scope.assert.deepEqual(first, second.slice(2));
         return scope.assert.collect();
     }),
-    test('case scheduling does not perturb generated inputs', async function (scope) {
+    authoredTest('case scheduling does not perturb generated inputs', async function (scope) {
         const serial: number[] = [];
         const concurrent: number[] = [];
         const first = await executePropertyNode(
@@ -142,7 +143,7 @@ export const testNode = suite('property deterministic streams', [
         scope.assert.deepEqual(serial, concurrent);
         return scope.assert.collect();
     }),
-    test('the complete run seed contributes to the exploration stream', async function (scope) {
+    authoredTest('the complete run seed contributes to the exploration stream', async function (scope) {
         const first: number[] = [];
         const second: number[] = [];
         const results = await Promise.all([
@@ -172,5 +173,3 @@ export const testNode = suite('property deterministic streams', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

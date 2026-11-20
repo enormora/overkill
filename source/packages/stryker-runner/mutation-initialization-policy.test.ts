@@ -1,10 +1,10 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { mutationInitialization } from '../../test-support/mutation-initialization.ts';
 import { runExecutionFailure } from '../run/run.entry-point.ts';
 import { initializeCampaignRunner } from './mutation-runner-initialization.ts';
 
-export const testNode = suite('mutation adapter initialization', [
+export const testNode = authoredSuite('mutation adapter initialization', [
     test('registers the campaign before freezing policy and creating execution', async function (scope: TestScope) {
         const fixture = await mutationInitialization([ { kind: 'registered', campaign: 'campaign' } ], null);
         const result = await initializeCampaignRunner(fixture.input, fixture.runtime);
@@ -97,4 +97,3 @@ export const testNode = suite('mutation adapter initialization', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

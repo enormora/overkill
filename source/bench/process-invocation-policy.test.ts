@@ -1,10 +1,10 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { processInvocation } from '../test-support/process-invocation.ts';
 import { testNode as reports } from './process-probe-report-policy.test.ts';
 import { testNode as sampling } from './process-sampling-policy.test.ts';
 
-export const testNode = suite('process sample invocation ownership', [
+export const testNode = authoredSuite('process sample invocation ownership', [
     reports,
     sampling,
     test('measures exactly one process region and records its observation', async function (scope: TestScope) {
@@ -77,4 +77,3 @@ export const testNode = suite('process sample invocation ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

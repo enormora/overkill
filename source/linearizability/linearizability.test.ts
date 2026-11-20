@@ -1,6 +1,6 @@
 import { setImmediate as scheduleCancellation, clearImmediate as cancelScheduledCancellation } from 'node:timers';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     checkLinearizability,
     type LinearizabilityEvent,
@@ -27,7 +27,7 @@ function response(id: string, value: number): Event {
     return { kind: 'respond', id, outcome: { kind: 'returned', value } };
 }
 
-export const testNode = suite('linearizability histories', [
+export const testNode = authoredSuite('linearizability histories', [
     test('observes cancellation during yielded search', async function (scope) {
         const controller = new AbortController();
         const history: Event[] = Array.from({ length: 8 }, function (_value, index): Event {
@@ -48,4 +48,3 @@ export const testNode = suite('linearizability histories', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,7 +1,6 @@
 import { setTimeout as scheduleTimer, clearTimeout as cancelTimer } from 'node:timers';
 import { AsyncResource } from 'node:async_hooks';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createAsyncLeakMonitor } from './async-leak-diagnostics.ts';
 import { createExecutionObservation, type ExecutionObservation } from './execution-observation.ts';
@@ -88,7 +87,7 @@ async function observeStaleTimers(
     });
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'stale native resource ownership',
     ([ 'closed', 'live', 'unknown' ] as const).flatMap(function attemptLifetime(lifetime) {
         return [ false, true ].map(function currentTimer(includeCurrentTimer) {
@@ -124,4 +123,3 @@ export const testNode = suite(
         });
     })
 );
-await runIfMain(import.meta, testNode);

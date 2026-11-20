@@ -1,13 +1,8 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import {
-    createSuite,
-    createTestCase,
-    type TestScope,
-    type RunResult,
-    type RunArtifactId
-} from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope, RunResult, RunArtifactId } from '../packages/engine/engine.entry-point.ts';
 import { withCoverageRecordFixture, type CoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
 import { defaultMicrotestProfile, defaultRunConfig } from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -121,214 +116,170 @@ async function assertCoverageArtifacts(
     assertFinalArtifacts(scope, fixture, result);
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/recorded-coverage-run.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        ...[ 0, 100 ].map(function coverageArtifactTest(threshold) {
-            return createTestCase({
-                definitionLocations: [ { kind: 'unknown' } ],
-                title: `coverage artifacts persist after finalization with threshold ${threshold}`,
-                annotations: {},
-                controls: {},
-                async body(scope: TestScope) {
-                    return await withCoverageRecordFixture(
-                        defaultRunConfig({
-                            profiles: {
-                                microtest: defaultMicrotestProfile({
-                                    coverage: {
-                                        sources: {
-                                            mode: 'all',
-                                            include: [ 'source/integration-tests/run/fixtures/coverage-source.ts' ],
-                                            exclude: []
-                                        },
-                                        outputs: [],
-                                        thresholds: { branches: threshold, functions: threshold, lines: threshold }
-                                    }
-                                })
-                            }
-                        }),
-                        [],
-                        async function verifyArtifact(fixture) {
-                            await assertCoverageArtifacts(scope, fixture, threshold);
-                            return scope.assert.collect();
-                        }
-                    );
-                }
-            });
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'writes the attempt before setup and completes only after the returned result',
+export const testNode = suite('source/run/recorded-coverage-run.test.ts', [
+    ...[ 0, 100 ].map(function coverageArtifactTest(threshold) {
+        return test({
+            title: `coverage artifacts persist after finalization with threshold ${threshold}`,
             annotations: {},
             controls: {},
-            async body(scope) {
-                return await withCoverageRecordFixture(config, [], async function verifyRecord(fixture) {
-                    const result = await runRecordedCoverage({
-                        ...fixture.request,
-                        async execute({ record, session }) {
-                            scope.assert.equal(fixture.records[0]?.status, 'started');
-                            scope.assert.equal(fixture.records[0]?.facts, null);
-                            scope.assert.equal(
-                                session.childProcess?.writablePath.endsWith(`${record.id}/coverage/raw/*`),
-                                true
-                            );
-                            await record.recordFacts(fixture.facts, null);
-                            return await record.checkpointResult(
-                                runResultFactory.build({
-                                    summary: { discovered: 1, defined: 1, planned: 1, passed: 1 }
-                                })
-                            );
-                        }
-                    });
-                    scope.assert.equal(result.status, 'passed');
-                    scope.assert.equal(fixture.records.at(-1)?.status, 'completed');
-                    scope.assert.deepEqual<unknown, unknown>(fixture.records.at(-1)?.facts, fixture.facts);
-
-                    return scope.assert.collect();
-                });
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'required start persistence gates setup and execution',
-            annotations: {},
-            controls: {},
-            async body(scope) {
-                return await withCoverageRecordFixture(config, [ 1 ], async function verifyRecord(fixture) {
-                    let executed = false;
-
-                    const result = await runRecordedCoverage({
-                        ...fixture.request,
-                        async execute() {
-                            executed = true;
-                            return runResultFactory.build();
-                        }
-                    });
-                    scope.assert.equal(executed, false);
-                    scope.assert.equal(result.status, 'failed');
-                    scope.assert.equal(result.runnerErrors[0]?.subtype, 'runtime-state');
-                    scope.assert.equal(fixture.records.at(-1)?.facts, null);
-
-                    return scope.assert.collect();
-                });
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'coverage setup failures retain the selected policy and planned output paths',
-            annotations: {},
-            controls: {},
-            async body(scope) {
+            async body(scope: TestScope) {
                 return await withCoverageRecordFixture(
                     defaultRunConfig({
                         profiles: {
                             microtest: defaultMicrotestProfile({
-                                coverage: { outputDirectory: path.resolve(process.cwd(), '..', 'outside-project') }
+                                coverage: {
+                                    sources: {
+                                        mode: 'all',
+                                        include: [ 'source/integration-tests/run/fixtures/coverage-source.ts' ],
+                                        exclude: []
+                                    },
+                                    outputs: [],
+                                    thresholds: { branches: threshold, functions: threshold, lines: threshold }
+                                }
                             })
                         }
                     }),
                     [],
-                    async function verifyRecord(fixture) {
-                        const result = await runRecordedCoverage({
-                            ...fixture.request,
-                            async execute() {
-                                throw new Error('Execution must not start');
-                            }
-                        });
-                        scope.assert.equal(result.runnerErrors[0]?.subtype, 'coverage');
-                        scope.assert.equal(fixture.records.at(-1)?.status, 'completed');
-                        scope.assert.equal(fixture.records.at(-1)?.facts, null);
-                        scope.assert.equal(fixture.records.at(-1)?.coverage?.directory, '../outside-project');
-
+                    async function verifyArtifact(fixture) {
+                        await assertCoverageArtifacts(scope, fixture, threshold);
                         return scope.assert.collect();
                     }
                 );
             }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'known import errors complete with reporter failures in the final record',
-            annotations: {},
-            controls: {},
-            async body(scope) {
-                const reporter = defineFixedReporter({
-                    kind: 'real-time',
-                    name: 'failing-finish',
-                    sinks: [ { kind: 'memory' } ],
-                    dispose: null,
-                    onEvent() {
-                        return undefined;
-                    },
-                    onFinish() {
-                        throw new Error('Reporter failed');
+        });
+    }),
+    test('writes the attempt before setup and completes only after the returned result', async function (scope) {
+        return await withCoverageRecordFixture(config, [], async function verifyRecord(fixture) {
+            const result = await runRecordedCoverage({
+                ...fixture.request,
+                async execute({ record, session }) {
+                    scope.assert.equal(fixture.records[0]?.status, 'started');
+                    scope.assert.equal(fixture.records[0]?.facts, null);
+                    scope.assert.equal(
+                        session.childProcess?.writablePath.endsWith(`${record.id}/coverage/raw/*`),
+                        true
+                    );
+                    await record.recordFacts(fixture.facts, null);
+                    return await record.checkpointResult(
+                        runResultFactory.build({
+                            summary: { discovered: 1, defined: 1, planned: 1, passed: 1 }
+                        })
+                    );
+                }
+            });
+            scope.assert.equal(result.status, 'passed');
+            scope.assert.equal(fixture.records.at(-1)?.status, 'completed');
+            scope.assert.deepEqual<unknown, unknown>(fixture.records.at(-1)?.facts, fixture.facts);
+
+            return scope.assert.collect();
+        });
+    }),
+    test('required start persistence gates setup and execution', async function (scope) {
+        return await withCoverageRecordFixture(config, [ 1 ], async function verifyRecord(fixture) {
+            let executed = false;
+
+            const result = await runRecordedCoverage({
+                ...fixture.request,
+                async execute() {
+                    executed = true;
+                    return runResultFactory.build();
+                }
+            });
+            scope.assert.equal(executed, false);
+            scope.assert.equal(result.status, 'failed');
+            scope.assert.equal(result.runnerErrors[0]?.subtype, 'runtime-state');
+            scope.assert.equal(fixture.records.at(-1)?.facts, null);
+
+            return scope.assert.collect();
+        });
+    }),
+    test('coverage setup failures retain the selected policy and planned output paths', async function (scope) {
+        return await withCoverageRecordFixture(
+            defaultRunConfig({
+                profiles: {
+                    microtest: defaultMicrotestProfile({
+                        coverage: { outputDirectory: path.resolve(process.cwd(), '..', 'outside-project') }
+                    })
+                }
+            }),
+            [],
+            async function verifyRecord(fixture) {
+                const result = await runRecordedCoverage({
+                    ...fixture.request,
+                    async execute() {
+                        throw new Error('Execution must not start');
                     }
                 });
-                return await withCoverageRecordFixture(
-                    { ...config, reporters: [ reporter ] },
-                    [],
-                    async function verifyRecord(fixture) {
-                        const result = await runRecordedCoverage({
-                            ...fixture.request,
-                            async execute() {
-                                throw new RunCollectionError('Import failed', { cause: 42n }, 'loader');
-                            }
-                        });
-                        scope.assert.equal(result.runnerErrors.length, 2);
-                        scope.assert.equal(fixture.records.at(-1)?.status, 'completed');
-                        scope.assert.equal(fixture.records.at(-1)?.result?.runnerErrors.length, 2);
-                        scope.assert.equal(fixture.records.at(-1)?.facts, null);
+                scope.assert.equal(result.runnerErrors[0]?.subtype, 'coverage');
+                scope.assert.equal(fixture.records.at(-1)?.status, 'completed');
+                scope.assert.equal(fixture.records.at(-1)?.facts, null);
+                scope.assert.equal(fixture.records.at(-1)?.coverage?.directory, '../outside-project');
 
-                        return scope.assert.collect();
+                return scope.assert.collect();
+            }
+        );
+    }),
+    test('known import errors complete with reporter failures in the final record', async function (scope) {
+        const reporter = defineFixedReporter({
+            kind: 'real-time',
+            name: 'failing-finish',
+            sinks: [ { kind: 'memory' } ],
+            dispose: null,
+            onEvent() {
+                return undefined;
+            },
+            onFinish() {
+                throw new Error('Reporter failed');
+            }
+        });
+        return await withCoverageRecordFixture(
+            { ...config, reporters: [ reporter ] },
+            [],
+            async function verifyRecord(fixture) {
+                const result = await runRecordedCoverage({
+                    ...fixture.request,
+                    async execute() {
+                        throw new RunCollectionError('Import failed', { cause: 42n }, 'loader');
                     }
-                );
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'escaping exceptions interrupt the attempt and preserve the original error',
-            annotations: {},
-            controls: {},
-            async body(scope) {
-                return await withCoverageRecordFixture(config, [], async function verifyRecord(fixture) {
-                    await scope.assert.rejects(async function runUnexpectedFailure() {
-                        await runRecordedCoverage({
-                            ...fixture.request,
-                            async execute() {
-                                throw new TypeError('Unexpected failure');
-                            }
-                        });
-                    }, { name: 'TypeError', message: 'Unexpected failure' });
-                    scope.assert.equal(fixture.records.at(-1)?.status, 'interrupted');
-                    scope.assert.equal(fixture.records.at(-1)?.result?.status, 'failed');
-
-                    return scope.assert.collect();
                 });
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'interrupted persistence failure preserves both errors',
-            annotations: {},
-            controls: {},
-            async body(scope) {
-                return await withCoverageRecordFixture(config, [ 2 ], async function verifyRecord(fixture) {
-                    await scope.assert.rejects(async function runFailedInterruption() {
-                        await runRecordedCoverage({
-                            ...fixture.request,
-                            async execute() {
-                                throw new Error('Original failure');
-                            }
-                        });
-                    }, { name: 'AggregateError', message: 'Execution and run record persistence failed.' });
-                    scope.assert.equal(fixture.records.length, 1);
+                scope.assert.equal(result.runnerErrors.length, 2);
+                scope.assert.equal(fixture.records.at(-1)?.status, 'completed');
+                scope.assert.equal(fixture.records.at(-1)?.result?.runnerErrors.length, 2);
+                scope.assert.equal(fixture.records.at(-1)?.facts, null);
 
-                    return scope.assert.collect();
-                });
+                return scope.assert.collect();
             }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+        );
+    }),
+    test('escaping exceptions interrupt the attempt and preserve the original error', async function (scope) {
+        return await withCoverageRecordFixture(config, [], async function verifyRecord(fixture) {
+            await scope.assert.rejects(async function runUnexpectedFailure() {
+                await runRecordedCoverage({
+                    ...fixture.request,
+                    async execute() {
+                        throw new TypeError('Unexpected failure');
+                    }
+                });
+            }, { name: 'TypeError', message: 'Unexpected failure' });
+            scope.assert.equal(fixture.records.at(-1)?.status, 'interrupted');
+            scope.assert.equal(fixture.records.at(-1)?.result?.status, 'failed');
+
+            return scope.assert.collect();
+        });
+    }),
+    test('interrupted persistence failure preserves both errors', async function (scope) {
+        return await withCoverageRecordFixture(config, [ 2 ], async function verifyRecord(fixture) {
+            await scope.assert.rejects(async function runFailedInterruption() {
+                await runRecordedCoverage({
+                    ...fixture.request,
+                    async execute() {
+                        throw new Error('Original failure');
+                    }
+                });
+            }, { name: 'AggregateError', message: 'Execution and run record persistence failed.' });
+            scope.assert.equal(fixture.records.length, 1);
+
+            return scope.assert.collect();
+        });
+    })
+]);

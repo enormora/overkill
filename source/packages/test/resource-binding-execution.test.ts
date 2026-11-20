@@ -1,19 +1,20 @@
-import { runIfMain } from '#test-runner';
+import { suite } from '@overkill-dev/test';
+
 import {
-    createRoot,
-    createSuite,
-    createTestCase,
-    createTestPlan,
     defineReporter,
-    execute,
     type DefinedReporter,
     type ExecuteExecution,
     type ReporterEvent,
     type RunResult,
     type TestBody,
     type TestNode,
-    type TestScope
+    type TestScope,
+    createRoot,
+    createTestCase,
+    createTestPlan,
+    execute
 } from '../engine/engine.entry-point.ts';
+
 import * as resourcesSubpath from './resources.entry-point.ts';
 
 type Database = {
@@ -425,42 +426,34 @@ function executionTestCase(title: string, assertion: (scope: TestScope) => Promi
     });
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/packages/test/resource-binding-execution.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        executionTestCase('resource wrappers inject runtime and direct handles', assertWrappersInjectHandles),
-        executionTestCase(
-            'nested resource wrappers inject composed scope and share acquisition',
-            assertNestedWrappersShareAcquisition
-        ),
-        executionTestCase(
-            'nested runtime wrappers keep internal resource keys namespaced',
-            assertRuntimeInternalKeysRemainNamespaced
-        ),
-        executionTestCase(
-            'nested resource wrappers reject duplicate public keys',
-            assertNestedWrapperDuplicateKeysFail
-        ),
-        executionTestCase(
-            'resource wrappers report acquire failures as fixture runner errors',
-            assertAcquireFailureRunnerError
-        ),
-        executionTestCase(
-            'resource wrappers report dispose failures as fixture runner errors',
-            assertDisposeFailureRunnerError
-        ),
-        executionTestCase(
-            'resource wrappers reject broader resource scopes before acquisition',
-            assertBroaderScopeRunnerError
-        ),
-        executionTestCase(
-            'resource wrappers report concurrent acquire failures as fixture runner errors',
-            assertConcurrentAcquireFailureRunnerError
-        )
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/packages/test/resource-binding-execution.test.ts', [
+    executionTestCase('resource wrappers inject runtime and direct handles', assertWrappersInjectHandles),
+    executionTestCase(
+        'nested resource wrappers inject composed scope and share acquisition',
+        assertNestedWrappersShareAcquisition
+    ),
+    executionTestCase(
+        'nested runtime wrappers keep internal resource keys namespaced',
+        assertRuntimeInternalKeysRemainNamespaced
+    ),
+    executionTestCase(
+        'nested resource wrappers reject duplicate public keys',
+        assertNestedWrapperDuplicateKeysFail
+    ),
+    executionTestCase(
+        'resource wrappers report acquire failures as fixture runner errors',
+        assertAcquireFailureRunnerError
+    ),
+    executionTestCase(
+        'resource wrappers report dispose failures as fixture runner errors',
+        assertDisposeFailureRunnerError
+    ),
+    executionTestCase(
+        'resource wrappers reject broader resource scopes before acquisition',
+        assertBroaderScopeRunnerError
+    ),
+    executionTestCase(
+        'resource wrappers report concurrent acquire failures as fixture runner errors',
+        assertConcurrentAcquireFailureRunnerError
+    )
+]);

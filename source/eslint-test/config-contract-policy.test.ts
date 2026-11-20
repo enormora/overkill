@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import type { Linter } from 'eslint';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { configLintTranscript } from '../test-support/config-lint-transcript.ts';
 import { evaluateConfigContract } from './config-contracts.ts';
 import { stableObservation, type ConfigExecution, type ConfigSourceResult } from './config-execution.ts';
@@ -43,22 +44,25 @@ const cases: readonly ContractCase[] = [
 function execution(scope: TestScope): ConfigExecution {
     return { context: { root: '/project', signal: scope.signal }, materialized: false, configs: [] };
 }
-export const testNode = suite('ESLint config contract policy', [
+export const testNode = authoredSuite('ESLint config contract policy', [
     ...cases.map(function (entry) {
-        return test(`evaluates ${entry.contract.kind} through the lint backend`, async function (scope: TestScope) {
-            const fixture = configLintTranscript(entry.replies);
-            const observation = await evaluateConfigContract(execution(scope), input, entry.contract, fixture.lint);
-            scope.assert.equal(observation.output, entry.output);
-            scope.assert.deepEqual(
-                fixture.calls.map(function (call) {
-                    return call.mode;
-                }),
-                entry.modes
-            );
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `evaluates ${entry.contract.kind} through the lint backend`,
+            async function (scope: TestScope) {
+                const fixture = configLintTranscript(entry.replies);
+                const observation = await evaluateConfigContract(execution(scope), input, entry.contract, fixture.lint);
+                scope.assert.equal(observation.output, entry.output);
+                scope.assert.deepEqual(
+                    fixture.calls.map(function (call) {
+                        return call.mode;
+                    }),
+                    entry.modes
+                );
+                return scope.assert.collect();
+            }
+        );
     }),
-    test('parses each suggested edit against the original source', async function (scope: TestScope) {
+    authoredTest('parses each suggested edit against the original source', async function (scope: TestScope) {
         const fixture = configLintTranscript([ {
             ...original,
             messages: [ {
@@ -74,7 +78,7 @@ export const testNode = suite('ESLint config contract policy', [
         scope.assert.deepEqual(fixture.calls, [ { mode: 'lint', code: 'old' }, { mode: 'parse', code: 'new' } ]);
         return scope.assert.collect();
     }),
-    test('rejects fixes which produce invalid syntax', async function (scope: TestScope) {
+    authoredTest('rejects fixes which produce invalid syntax', async function (scope: TestScope) {
         const fixture = configLintTranscript([ original, fixed, { ...fixed, messages: [ fatal ] } ]);
         await scope.assert.rejects(async function () {
             await evaluateConfigContract(execution(scope), input, { kind: 'fix-syntax' }, fixture.lint);
@@ -87,7 +91,7 @@ export const testNode = suite('ESLint config contract policy', [
         );
         return scope.assert.collect();
     }),
-    test('rejects unexpected parser failures in original source', async function (scope: TestScope) {
+    authoredTest('rejects unexpected parser failures in original source', async function (scope: TestScope) {
         const fixture = configLintTranscript([ { ...original, messages: [ fatal ] } ]);
         await scope.assert.rejects(async function () {
             await evaluateConfigContract(execution(scope), input, { kind: 'crash-freedom' }, fixture.lint);
@@ -95,25 +99,28 @@ export const testNode = suite('ESLint config contract policy', [
         scope.assert.equal(fixture.calls.length, 1);
         return scope.assert.collect();
     }),
-    test('rejects fixes which do not stabilize within the configured rounds', async function (scope: TestScope) {
-        const fixture = configLintTranscript([ original, fixed, fixed, fixed ]);
-        await scope.assert.rejects(async function () {
-            await evaluateConfigContract(
-                execution(scope),
-                input,
-                { kind: 'fix-stability', maxRounds: 1 },
-                fixture.lint
+    authoredTest(
+        'rejects fixes which do not stabilize within the configured rounds',
+        async function (scope: TestScope) {
+            const fixture = configLintTranscript([ original, fixed, fixed, fixed ]);
+            await scope.assert.rejects(async function () {
+                await evaluateConfigContract(
+                    execution(scope),
+                    input,
+                    { kind: 'fix-stability', maxRounds: 1 },
+                    fixture.lint
+                );
+            }, { message: 'Autofixes did not stabilize within 1 complete ESLint fix runs.' });
+            scope.assert.deepEqual(
+                fixture.calls.map(function (call) {
+                    return call.mode;
+                }),
+                [ 'lint', 'fix', 'fix', 'parse' ]
             );
-        }, { message: 'Autofixes did not stabilize within 1 complete ESLint fix runs.' });
-        scope.assert.deepEqual(
-            fixture.calls.map(function (call) {
-                return call.mode;
-            }),
-            [ 'lint', 'fix', 'fix', 'parse' ]
-        );
-        return scope.assert.collect();
-    }),
-    test('normalizes project paths in backend error messages and stacks', async function (scope: TestScope) {
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('normalizes project paths in backend error messages and stacks', async function (scope: TestScope) {
         const failure = new Error('Failure in /project/source.js');
         await scope.assert.rejects(async function () {
             await evaluateConfigContract(execution(scope), input, { kind: 'crash-freedom' }, async function () {
@@ -122,7 +129,7 @@ export const testNode = suite('ESLint config contract policy', [
         }, { message: 'Failure in <project>/source.js' });
         return scope.assert.collect();
     }),
-    test('normalizes original and fixed diagnostic paths', function (scope: TestScope) {
+    authoredTest('normalizes original and fixed diagnostic paths', function (scope: TestScope) {
         const observation = stableObservation({
             filename: input.filename,
             code: 'old',
@@ -135,4 +142,3 @@ export const testNode = suite('ESLint config contract policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

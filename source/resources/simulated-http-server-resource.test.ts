@@ -1,15 +1,14 @@
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import { resourceAttachments } from '../attachments/attachment-context.ts';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defineSimulatedHttpServer } from '../simulation/simulation.ts';
 import type { HttpTranscript } from '../transcript/http-transcript.ts';
 import { ResourceLifecycleError } from './resource-lifecycle-error.ts';
 import { startResources } from './resource-session.ts';
 import { defineRuntime } from './resources.ts';
 import { startRuntime } from './runtime-lifecycle.ts';
-import {
-    createSimulatedHttpServerResource
-} from './simulated-http-server-resource.ts';
+import { createSimulatedHttpServerResource } from './simulated-http-server-resource.ts';
 
 type SimulatedHttpResourceDescriptor = {
     readonly name: string;
@@ -223,68 +222,30 @@ async function assertScenarioContextFallbacks(scope: TestScope): Promise<void> {
     );
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/resources/simulated-http-server-resource.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'simulated HTTP server resources expose acquired server handles',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertSimulatedHttpResource(scope);
+export const testNode = suite('source/resources/simulated-http-server-resource.test.ts', [
+    test('simulated HTTP server resources expose acquired server handles', async function (scope: TestScope) {
+        await assertSimulatedHttpResource(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'simulated HTTP server resources fail disposal after handler errors',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertHandlerErrorsFailResourceDisposal(scope);
+        return scope.assert.collect();
+    }),
+    test('simulated HTTP server resources fail disposal after handler errors', async function (scope: TestScope) {
+        await assertHandlerErrorsFailResourceDisposal(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'simulated HTTP server resources pass explicit addresses',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertExplicitResourceAddress(scope);
+        return scope.assert.collect();
+    }),
+    test('simulated HTTP server resources pass explicit addresses', async function (scope: TestScope) {
+        await assertExplicitResourceAddress(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'runtime scenarios select simulated HTTP base URLs',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertRuntimeScenarioSelectsBaseUrl(scope);
+        return scope.assert.collect();
+    }),
+    test('runtime scenarios select simulated HTTP base URLs', async function (scope: TestScope) {
+        await assertRuntimeScenarioSelectsBaseUrl(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'simulated HTTP resources default malformed scenario contexts',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertScenarioContextFallbacks(scope);
+        return scope.assert.collect();
+    }),
+    test('simulated HTTP resources default malformed scenario contexts', async function (scope: TestScope) {
+        await assertScenarioContextFallbacks(scope);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

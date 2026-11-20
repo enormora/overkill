@@ -1,14 +1,12 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createCaseId } from '../engine/identity.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import { defineResource } from '../resources/resources.ts';
 import { bindResourceScenarios } from '../resources/resource-scenario-binding.ts';
 import { testNode as workloadInputValidationTestNode } from './workload-input-validation.test.ts';
-import {
-    caseResourceBoundaryKeys,
-    resourceLifecycleBoundaryUseCounts
-} from './resource-lifecycle-boundaries.ts';
+import { caseResourceBoundaryKeys, resourceLifecycleBoundaryUseCounts } from './resource-lifecycle-boundaries.ts';
 import {
     resourceAcquisitionCacheIdentity,
     resourceDescriptorCacheIdentityNode,
@@ -260,56 +258,24 @@ function assertDefaultMatrixSelection(scope: TestScope): void {
         }, new Set([ 'per-run' ]));
     }, { message: 'Runtime matrix "api" has no selected variant.' });
 }
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/resource-lifecycle-boundaries.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        workloadInputValidationTestNode,
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'ignores unknown resource summaries and deduplicates shared dependencies',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                assertIncompleteResourceGraphs(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'selects the default runtime matrix variant and rejects empty matrices',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                assertDefaultMatrixSelection(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'scenario timing controls reusable lifecycle cache identities',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                assertScenarioCacheIdentities(scope);
+export const testNode = suite('source/run/resource-lifecycle-boundaries.test.ts', [
+    workloadInputValidationTestNode,
+    test('ignores unknown resource summaries and deduplicates shared dependencies', function (scope: TestScope) {
+        assertIncompleteResourceGraphs(scope);
+        return scope.assert.collect();
+    }),
+    test('selects the default runtime matrix variant and rejects empty matrices', function (scope: TestScope) {
+        assertDefaultMatrixSelection(scope);
+        return scope.assert.collect();
+    }),
+    test('scenario timing controls reusable lifecycle cache identities', function (scope: TestScope) {
+        assertScenarioCacheIdentities(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'cache identities omit empty state and traverse resource descriptors',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                assertCacheIdentityNodes(scope);
+        return scope.assert.collect();
+    }),
+    test('cache identities omit empty state and traverse resource descriptors', function (scope: TestScope) {
+        assertCacheIdentityNodes(scope);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

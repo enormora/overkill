@@ -1,10 +1,5 @@
 import * as syntax from 'typescript-beta/ast';
-import {
-    ModuleKind,
-    ModuleResolutionKind,
-    SymbolFlags,
-    TypeFlags
-} from 'typescript-beta/async';
+import { ModuleKind, ModuleResolutionKind, SymbolFlags, TypeFlags } from 'typescript-beta/async';
 import { CaseSensitivity, toRootedFilePath, pathKey } from 'typescript-beta/path';
 import {
     createSourceAnalysis,

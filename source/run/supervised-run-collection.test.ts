@@ -1,11 +1,6 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { createFakeSupervisedChildProcess } from '../test-support/fake-supervised-child-process.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -13,10 +8,7 @@ import type { SupervisedChildProcess } from './supervised-child-process.ts';
 import type { CollectedRunPlan } from './run-types.ts';
 import { createRunTimingMeasurement } from './run-timing-collection.ts';
 import { collectSupervisedRun } from './supervised-run-collection.ts';
-import {
-    supervisedChildEnvelope,
-    type SupervisedCollectCommand
-} from './supervised-protocol.ts';
+import { supervisedChildEnvelope, type SupervisedCollectCommand } from './supervised-protocol.ts';
 
 type TimeoutCallback = () => void;
 type SupervisedChildExitListener = () => void;
@@ -213,84 +205,61 @@ function timeoutDependencies(): RunOrchestratorDependencies {
     };
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/supervised-run-collection.test.ts',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'collectSupervisedRun() records collection spawn and ready timings',
-            async body(scope: OverkillScope) {
-                const dependencies = fakeWorkerPoolRuntimeDependencies();
-                const timing = createRunTimingMeasurement(dependencies.wallClock);
-                const result = await collectSupervisedRun(
-                    supervisedCollectCommand(),
-                    {
-                        ...dependencies,
-                        async startSupervisedChild() {
-                            return createFakeSupervisedChildProcess({
-                                collect() {
-                                    return {
-                                        collectedPlan: collectedPlan(),
-                                        runnerErrors: []
-                                    };
-                                },
-                                run() {
-                                    return undefined;
-                                }
-                            });
+export const testNode = suite('source/run/supervised-run-collection.test.ts', [
+    test('collectSupervisedRun() records collection spawn and ready timings', async function (scope: OverkillScope) {
+        const dependencies = fakeWorkerPoolRuntimeDependencies();
+        const timing = createRunTimingMeasurement(dependencies.wallClock);
+        const result = await collectSupervisedRun(
+            supervisedCollectCommand(),
+            {
+                ...dependencies,
+                async startSupervisedChild() {
+                    return createFakeSupervisedChildProcess({
+                        collect() {
+                            return {
+                                collectedPlan: collectedPlan(),
+                                runnerErrors: []
+                            };
+                        },
+                        run() {
+                            return undefined;
                         }
-                    },
-                    timing
-                );
+                    });
+                }
+            },
+            timing
+        );
 
-                scope.assert.equal(result.collectedPlan.files.length, 0);
-                scope.assert.deepEqual(
-                    timing.report().spans.map(function toKind(span) {
-                        return span.kind;
-                    }),
-                    [ 'supervised-process.spawn', 'supervised-process.ready' ]
-                );
+        scope.assert.equal(result.collectedPlan.files.length, 0);
+        scope.assert.deepEqual(
+            timing.report().spans.map(function toKind(span) {
+                return span.kind;
+            }),
+            [ 'supervised-process.spawn', 'supervised-process.ready' ]
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'collectSupervisedRun() preserves runner errors emitted before collection',
-            async body(scope: OverkillScope) {
-                const result = await collectSupervisedRun(supervisedCollectCommand(), {
-                    ...fakeWorkerPoolRuntimeDependencies(),
-                    startSupervisedChild: createEventChild
-                });
+        return scope.assert.collect();
+    }),
+    test(
+        'collectSupervisedRun() preserves runner errors emitted before collection',
+        async function (scope: OverkillScope) {
+            const result = await collectSupervisedRun(supervisedCollectCommand(), {
+                ...fakeWorkerPoolRuntimeDependencies(),
+                startSupervisedChild: createEventChild
+            });
 
-                scope.assert.equal(result.runnerErrors[0]?.message, 'Collected with runner error.');
+            scope.assert.equal(result.runnerErrors[0]?.message, 'Collected with runner error.');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'collectSupervisedRun() reports collection timeouts as runner errors',
-            async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function collectTimedOutRun() {
-                    await collectSupervisedRun(supervisedCollectCommand(), timeoutDependencies());
-                }, {
-                    message: 'Supervised collection exceeded collection timeout.'
-                });
+            return scope.assert.collect();
+        }
+    ),
+    test('collectSupervisedRun() reports collection timeouts as runner errors', async function (scope: OverkillScope) {
+        await scope.assert.rejects(async function collectTimedOutRun() {
+            await collectSupervisedRun(supervisedCollectCommand(), timeoutDependencies());
+        }, {
+            message: 'Supervised collection exceeded collection timeout.'
+        });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

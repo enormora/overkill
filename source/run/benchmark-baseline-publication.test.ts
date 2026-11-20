@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { baselineCaseResult } from '../test-support/baseline-case-fixture.ts';
 import { performanceFinalization } from '../test-support/performance-finalization.ts';
 import { readPerformanceBaselineReport } from '../baselines/performance-report.ts';
@@ -8,27 +8,36 @@ import { testNode as sessionPolicy } from './benchmark-baseline-session-policy.t
 import { finalizeBenchmarkBaselines } from './benchmark-baseline-finalization.ts';
 
 const modes: readonly BaselineUpdateMode[] = [ 'none', 'diff', 'update', 'apply', 'bootstrap' ];
-export const testNode = suite('benchmark baseline publication', [
+export const testNode = authoredSuite('benchmark baseline publication', [
     sessionPolicy,
     ...modes.map(function (mode) {
-        return test(`finalizes ${mode} proposals with an inspectable report`, async function (scope: TestScope) {
-            const fixture = await performanceFinalization(mode, null);
-            const result = await finalizeBenchmarkBaselines({
-                ...fixture,
-                mode,
-                result: baselineCaseResult,
-                completeInventory: true,
-                maxBytes: 4096
-            });
-            const report = readPerformanceBaselineReport(result);
-            scope.require.defined(report);
-            scope.assert.equal(report.writeOutcome.kind, mode === 'none' || mode === 'diff' ? 'read-only' : 'written');
-            scope.assert.deepEqual(fixture.applied, mode === 'none' || mode === 'diff' ? [] : fixture.workflow.changes);
-            scope.assert.deepEqual(fixture.notified, []);
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `finalizes ${mode} proposals with an inspectable report`,
+            async function (scope: TestScope) {
+                const fixture = await performanceFinalization(mode, null);
+                const result = await finalizeBenchmarkBaselines({
+                    ...fixture,
+                    mode,
+                    result: baselineCaseResult,
+                    completeInventory: true,
+                    maxBytes: 4096
+                });
+                const report = readPerformanceBaselineReport(result);
+                scope.require.defined(report);
+                scope.assert.equal(
+                    report.writeOutcome.kind,
+                    mode === 'none' || mode === 'diff' ? 'read-only' : 'written'
+                );
+                scope.assert.deepEqual(
+                    fixture.applied,
+                    mode === 'none' || mode === 'diff' ? [] : fixture.workflow.changes
+                );
+                scope.assert.deepEqual(fixture.notified, []);
+                return scope.assert.collect();
+            }
+        );
     }),
-    test('blocks proposals when the execution failed', async function (scope: TestScope) {
+    authoredTest('blocks proposals when the execution failed', async function (scope: TestScope) {
         const fixture = await performanceFinalization('update', null);
         const result = await finalizeBenchmarkBaselines({
             ...fixture,
@@ -52,7 +61,7 @@ export const testNode = suite('benchmark baseline publication', [
         scope.assert.deepEqual(fixture.applied, []);
         return scope.assert.collect();
     }),
-    test('retains publication errors in the result and report', async function (scope: TestScope) {
+    authoredTest('retains publication errors in the result and report', async function (scope: TestScope) {
         const fixture = await performanceFinalization('update', new Error('Publication failed.'));
         const result = await finalizeBenchmarkBaselines({
             ...fixture,
@@ -68,7 +77,7 @@ export const testNode = suite('benchmark baseline publication', [
         scope.assert.deepEqual(fixture.applied, []);
         return scope.assert.collect();
     }),
-    test('rejects an oversized report before writing any proposal', async function (scope: TestScope) {
+    authoredTest('rejects an oversized report before writing any proposal', async function (scope: TestScope) {
         const fixture = await performanceFinalization('update', null);
         const result = await finalizeBenchmarkBaselines({
             ...fixture,
@@ -84,4 +93,3 @@ export const testNode = suite('benchmark baseline publication', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

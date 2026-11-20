@@ -1,4 +1,4 @@
-import type { TestScope } from '../../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
 import { processEvidenceSchema } from '../../bench/process-evidence.ts';
 import { processEvidenceForWork } from '../../bench/process-evidence-query.ts';

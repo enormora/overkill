@@ -1,16 +1,15 @@
 import assert from 'node:assert/strict';
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
-    createRoot,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    createTestPlan,
-    execute,
-    ownsTestNode,
     type TestCase,
     type TestPlan,
-    type TestScope as OverkillScope
+    createRoot,
+    createTestPlan,
+    execute,
+    ownsTestNode
 } from '../engine/engine.entry-point.ts';
+
 import * as compatibilitySubpath from './compatibility.entry-point.ts';
 import { throwingTest } from './compatibility.entry-point.ts';
 import * as rootSubpath from './test.entry-point.ts';
@@ -57,116 +56,84 @@ function assertPlannedCompatibilityCase(scope: OverkillScope, plannedCase: Plann
     scope.assert.equal(plannedCase.controls.timeoutMilliseconds, 50);
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/packages/test/compatibility-entry-point.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test/compatibility exposes throwingTest only',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                scope.assert.deepEqual(Object.keys(compatibilitySubpath), [ 'throwingTest' ]);
-                scope.assert.equal(Object.hasOwn(rootSubpath, 'throwingTest'), false);
+export const testNode = suite('source/packages/test/compatibility-entry-point.test.ts', [
+    test('@overkill-dev/test/compatibility exposes throwingTest only', function (scope: OverkillScope) {
+        scope.assert.deepEqual(Object.keys(compatibilitySubpath), [ 'throwingTest' ]);
+        scope.assert.equal(Object.hasOwn(rootSubpath, 'throwingTest'), false);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test/compatibility throwingTest() creates neutral tests',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const testCase = throwingTest({
-                    annotations: { tags: [ 'compatibility' ] },
-                    body(testScope) {
-                        testScope.assert.equal(1, 1);
-                    },
-                    controls: { timeoutMilliseconds: 50 },
-                    title: 'passes'
-                });
-                const plan = createTestPlan(createRoot({
-                    annotations: {},
-                    children: [ testCase ],
-                    controls: {},
-                    title: 'root'
-                }));
-                const result = await execute(plan);
-                const plannedCase = plan.discoveredCases[0];
+        return scope.assert.collect();
+    }),
+    test(
+        '@overkill-dev/test/compatibility throwingTest() creates neutral tests',
+        async function (scope: OverkillScope) {
+            const testCase = throwingTest({
+                annotations: { tags: [ 'compatibility' ] },
+                body(testScope) {
+                    testScope.assert.equal(1, 1);
+                },
+                controls: { timeoutMilliseconds: 50 },
+                title: 'passes'
+            });
+            const plan = createTestPlan(createRoot({
+                annotations: {},
+                children: [ testCase ],
+                controls: {},
+                title: 'root'
+            }));
+            const result = await execute(plan);
+            const plannedCase = plan.discoveredCases[0];
 
-                scope.require.defined(plannedCase);
-                assertThrowingTestCase(scope, testCase);
-                assertPlannedCompatibilityCase(scope, plannedCase);
-                scope.assert.equal(result.summary.passed, 1);
+            scope.require.defined(plannedCase);
+            assertThrowingTestCase(scope, testCase);
+            assertPlannedCompatibilityCase(scope, plannedCase);
+            scope.assert.equal(result.summary.passed, 1);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test/compatibility treats normal completion as success',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeAuthoredNode(throwingTest('passes', function noAssertions() {
-                    return undefined;
-                }));
+            return scope.assert.collect();
+        }
+    ),
+    test('@overkill-dev/test/compatibility treats normal completion as success', async function (scope: OverkillScope) {
+        const result = await executeAuthoredNode(throwingTest('passes', function noAssertions() {
+            return undefined;
+        }));
 
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(result.summary.failed, 0);
+        scope.assert.equal(result.summary.passed, 1);
+        scope.assert.equal(result.summary.failed, 0);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test/compatibility reports Node AssertionError as an assertion failure',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeAuthoredNode(throwingTest('fails', function fails() {
-                    assert.equal(1, 2, 'wrong count');
-                }));
-                const outcome = firstFailedOutcome(result);
-                const failure = outcome.failures[0];
+        return scope.assert.collect();
+    }),
+    test(
+        '@overkill-dev/test/compatibility reports Node AssertionError as an assertion failure',
+        async function (scope: OverkillScope) {
+            const result = await executeAuthoredNode(throwingTest('fails', function fails() {
+                assert.equal(1, 2, 'wrong count');
+            }));
+            const outcome = firstFailedOutcome(result);
+            const failure = outcome.failures[0];
 
-                scope.assert.equal(failure.kind, 'assertion');
+            scope.assert.equal(failure.kind, 'assertion');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test/compatibility validates unsupported authoring forms',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                scope.assert.throws(function createThrowingTestWithWrongArity() {
-                    invokeThrowingTest();
-                }, {
-                    message: 'throwingTest() requires (title, body) or ({ title, annotations?, controls?, body }).'
-                });
-                scope.assert.throws(function createThrowingTestWithInvalidBody() {
-                    invokeThrowingTest('passes', null);
-                }, { message: 'Test case body must be a function.' });
-                const captureCase = throwingTest({
-                    body() {
-                        return undefined;
-                    },
-                    controls: { capture: 'live' },
-                    title: 'captures'
-                });
+            return scope.assert.collect();
+        }
+    ),
+    test('@overkill-dev/test/compatibility validates unsupported authoring forms', function (scope: OverkillScope) {
+        scope.assert.throws(function createThrowingTestWithWrongArity() {
+            invokeThrowingTest();
+        }, {
+            message: 'throwingTest() requires (title, body) or ({ title, annotations?, controls?, body }).'
+        });
+        scope.assert.throws(function createThrowingTestWithInvalidBody() {
+            invokeThrowingTest('passes', null);
+        }, { message: 'Test case body must be a function.' });
+        const captureCase = throwingTest({
+            body() {
+                return undefined;
+            },
+            controls: { capture: 'live' },
+            title: 'captures'
+        });
 
-                scope.assert.deepEqual(captureCase.controls, { capture: 'live' });
+        scope.assert.deepEqual(captureCase.controls, { capture: 'live' });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

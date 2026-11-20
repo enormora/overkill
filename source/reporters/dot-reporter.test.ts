@@ -1,21 +1,15 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import figures from 'figures';
 import colors from 'yoctocolors';
 
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import type { CaseId } from '../engine/identity.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createDotReporter, type DotReporterDependencies } from './dot-reporter.ts';
 import type { TerminalOutput } from './terminal.ts';
-
-const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
 type FakeTerminal = {
     readonly listenerCount: () => number;
@@ -148,396 +142,354 @@ function createFailureDetailResult(): RunResult {
     });
 }
 
-export const testNode = createOverkillSuite({
-    title: 'source/reporters/dot-reporter.test.ts',
-    ...testMetadata,
+export const testNode = suite('source/reporters/dot-reporter.test.ts', [
+    test('dot reporter declares raw stdout', function (scope: OverkillScope) {
+        const terminal = createFakeTerminal(80);
+        const reporter = createDotRuntimeReporter({
+            interactive: false,
+            stdout: terminal.output
+        });
 
-    children: [
-        createOverkillTestCase({
-            title: 'dot reporter declares raw stdout',
-            ...testMetadata,
+        scope.assert.deepEqual(reporter.sinks, [ { kind: 'stdout-raw' } ]);
 
-            body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(80);
-                const reporter = createDotRuntimeReporter({
-                    interactive: false,
-                    stdout: terminal.output
-                });
+        return scope.assert.collect();
+    }),
+    test('dot reporter maps outcomes and runner errors to compact marks', async function (scope: OverkillScope) {
+        const terminal = createFakeTerminal(80);
+        const reporter = createDotRuntimeReporter({
+            interactive: false,
+            stdout: terminal.output
+        });
 
-                scope.assert.deepEqual(reporter.sinks, [ { kind: 'stdout-raw' } ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'dot reporter maps outcomes and runner errors to compact marks',
-            ...testMetadata,
-
-            async body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(80);
-                const reporter = createDotRuntimeReporter({
-                    interactive: false,
-                    stdout: terminal.output
-                });
-
-                await reportTestEnd(reporter, passingCaseId, { kind: 'pass' });
-                await reportTestEnd(reporter, failingCaseId, {
-                    failures: [
+        await reportTestEnd(reporter, passingCaseId, { kind: 'pass' });
+        await reportTestEnd(reporter, failingCaseId, {
+            failures: [
+                {
+                    checks: [
                         {
-                            checks: [
-                                {
-                                    actual: { kind: 'number', value: 1 },
-                                    diff: {
-                                        actual: { kind: 'number', value: 1 },
-                                        expected: { kind: 'number', value: 2 },
-                                        kind: 'value'
-                                    },
-                                    expected: { kind: 'number', value: 2 },
-                                    id: 'check',
-                                    kind: 'leaf',
-                                    path: [],
-                                    source: 'assert',
-                                    sourceLocations: [ definitionLocation ],
-                                    summary: 'numbers differ'
-                                }
-                            ],
-                            kind: 'assertion'
+                            actual: { kind: 'number', value: 1 },
+                            diff: {
+                                actual: { kind: 'number', value: 1 },
+                                expected: { kind: 'number', value: 2 },
+                                kind: 'value'
+                            },
+                            expected: { kind: 'number', value: 2 },
+                            id: 'check',
+                            kind: 'leaf',
+                            path: [],
+                            source: 'assert',
+                            sourceLocations: [ definitionLocation ],
+                            summary: 'numbers differ'
                         }
                     ],
-                    kind: 'fail'
-                });
-                await reportTestEnd(reporter, skippedCaseId, { kind: 'skip', reason: 'not here' });
-                await reportTestEnd(reporter, inconclusiveCaseId, { kind: 'inconclusive', reason: 'unknown' });
-                await reporter.onEvent({
-                    error: {
-                        attributedToAttempt: null,
-                        attributedTo: null,
-                        cause: new Error('boom'),
-                        diagnostics: [],
-                        message: 'runner exploded',
-                        subtype: 'crash'
-                    },
-                    kind: 'runner-error'
-                });
-
-                scope.assert.equal(
-                    terminal.text(),
-                    [
-                        colors.green(figures.tick),
-                        colors.red(figures.cross),
-                        colors.cyan('°'),
-                        colors.cyan('?'),
-                        colors.red(figures.warning)
-                    ]
-                        .join('')
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'dot reporter wraps progress marks by terminal width',
-            ...testMetadata,
-
-            async body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(2);
-                const reporter = createDotRuntimeReporter({
-                    interactive: false,
-                    stdout: terminal.output
-                });
-
-                await reportTestEnd(reporter, passingCaseId, { kind: 'pass' });
-                await reportTestEnd(reporter, passingCaseId, { kind: 'pass' });
-                await reportTestEnd(reporter, passingCaseId, { kind: 'pass' });
-
-                scope.assert.equal(
-                    terminal.text(),
-                    `${colors.green(figures.tick)}${colors.green(figures.tick)}\n${colors.green(figures.tick)}`
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'dot reporter prints summary and short details on finish',
-            ...testMetadata,
-
-            async body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(80);
-                const reporter = createDotRuntimeReporter({
-                    interactive: false,
-                    stdout: terminal.output
-                });
-                const result = runResultFactory.build({
-                    perTest: [
-                        { id: passingCaseId, outcome: { kind: 'pass' } },
-                        {
-                            id: failingCaseId,
-                            outcome: {
-                                checks: [
-                                    {
-                                        sourceLocations: [ definitionLocation ],
-                                        summary: 'numbers differ'
-                                    }
-                                ],
-                                kind: 'fail'
-                            }
-                        },
-                        {
-                            id: inconclusiveCaseId,
-                            outcome: { kind: 'inconclusive', reason: 'missing signal' }
-                        }
-                    ],
-                    runnerErrors: [
-                        {
-                            message: 'loader failed',
-                            subtype: 'loader'
-                        }
-                    ],
-                    summary: {
-                        discovered: 3,
-                        failed: 1,
-                        inconclusive: 1,
-                        passed: 1,
-                        planned: 3,
-                        skipped: 0
-                    },
-                    totalWallTimeMicroseconds: 12_000
-                });
-                const { onFinish } = reporter;
-
-                if (onFinish === null) {
-                    throw new TypeError('Expected dot reporter to expose onFinish.');
+                    kind: 'assertion'
                 }
+            ],
+            kind: 'fail'
+        });
+        await reportTestEnd(reporter, skippedCaseId, { kind: 'skip', reason: 'not here' });
+        await reportTestEnd(reporter, inconclusiveCaseId, { kind: 'inconclusive', reason: 'unknown' });
+        await reporter.onEvent({
+            error: {
+                attributedToAttempt: null,
+                attributedTo: null,
+                cause: new Error('boom'),
+                diagnostics: [],
+                message: 'runner exploded',
+                subtype: 'crash'
+            },
+            kind: 'runner-error'
+        });
 
-                await reportTestEnd(reporter, passingCaseId, { kind: 'pass' });
-                await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
+        scope.assert.equal(
+            terminal.text(),
+            [
+                colors.green(figures.tick),
+                colors.red(figures.cross),
+                colors.cyan('°'),
+                colors.cyan('?'),
+                colors.red(figures.warning)
+            ]
+                .join('')
+        );
 
-                scope.assert.equal(
-                    terminal.text(),
-                    [
-                        colors.green(figures.tick),
-                        `${colors.red(figures.cross)} 3 discovered, 3 planned, 3 executed ` +
-                        '(1 pass, 1 fail, 0 skip, 1 inconclusive) in 12 ms ' +
-                        '(total 12 ms, execution 0 ms, overhead 12 ms)',
-                        'Problems',
-                        '  root > fails (source/example.test.ts)',
-                        '    numbers differ',
-                        '    expected: null',
-                        '    actual: null',
-                        '  root > maybe (source/example.test.ts)',
-                        '    missing signal',
-                        '  Runner error: loader failed',
-                        '  type: loader',
-                        ''
-                    ]
-                        .join('\n')
-                );
+        return scope.assert.collect();
+    }),
+    test('dot reporter wraps progress marks by terminal width', async function (scope: OverkillScope) {
+        const terminal = createFakeTerminal(2);
+        const reporter = createDotRuntimeReporter({
+            interactive: false,
+            stdout: terminal.output
+        });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'dot reporter prints assertion failure source locations on finish',
-            ...testMetadata,
+        await reportTestEnd(reporter, passingCaseId, { kind: 'pass' });
+        await reportTestEnd(reporter, passingCaseId, { kind: 'pass' });
+        await reportTestEnd(reporter, passingCaseId, { kind: 'pass' });
 
-            async body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(80);
-                const reporter = createDotReporter({
-                    interactive: false,
-                    stdout: terminal.output
-                })({
-                    failureArtifacts: defaultFailureArtifactPolicy,
-                    relativizeLocationPath(location) {
-                        return location.file === '/workspace/source/users.test.ts'
-                            ? 'source/users.test.ts'
-                            : location.file;
+        scope.assert.equal(
+            terminal.text(),
+            `${colors.green(figures.tick)}${colors.green(figures.tick)}\n${colors.green(figures.tick)}`
+        );
+
+        return scope.assert.collect();
+    }),
+    test('dot reporter prints summary and short details on finish', async function (scope: OverkillScope) {
+        const terminal = createFakeTerminal(80);
+        const reporter = createDotRuntimeReporter({
+            interactive: false,
+            stdout: terminal.output
+        });
+        const result = runResultFactory.build({
+            perTest: [
+                { id: passingCaseId, outcome: { kind: 'pass' } },
+                {
+                    id: failingCaseId,
+                    outcome: {
+                        checks: [
+                            {
+                                sourceLocations: [ definitionLocation ],
+                                summary: 'numbers differ'
+                            }
+                        ],
+                        kind: 'fail'
                     }
-                });
-                const fileOnlyCaseId: CaseId = { file: null, title: 'file only', params: null, suite: [ 'root' ] };
-                const result = runResultFactory.build({
-                    perTest: [
-                        {
-                            id: failingCaseId,
-                            outcome: {
-                                checks: [
+                },
+                {
+                    id: inconclusiveCaseId,
+                    outcome: { kind: 'inconclusive', reason: 'missing signal' }
+                }
+            ],
+            runnerErrors: [
+                {
+                    message: 'loader failed',
+                    subtype: 'loader'
+                }
+            ],
+            summary: {
+                discovered: 3,
+                failed: 1,
+                inconclusive: 1,
+                passed: 1,
+                planned: 3,
+                skipped: 0
+            },
+            totalWallTimeMicroseconds: 12_000
+        });
+        const { onFinish } = reporter;
+
+        if (onFinish === null) {
+            throw new TypeError('Expected dot reporter to expose onFinish.');
+        }
+
+        await reportTestEnd(reporter, passingCaseId, { kind: 'pass' });
+        await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
+
+        scope.assert.equal(
+            terminal.text(),
+            [
+                colors.green(figures.tick),
+                `${colors.red(figures.cross)} 3 discovered, 3 planned, 3 executed ` +
+                '(1 pass, 1 fail, 0 skip, 1 inconclusive) in 12 ms ' +
+                '(total 12 ms, execution 0 ms, overhead 12 ms)',
+                'Problems',
+                '  root > fails (source/example.test.ts)',
+                '    numbers differ',
+                '    expected: null',
+                '    actual: null',
+                '  root > maybe (source/example.test.ts)',
+                '    missing signal',
+                '  Runner error: loader failed',
+                '  type: loader',
+                ''
+            ]
+                .join('\n')
+        );
+
+        return scope.assert.collect();
+    }),
+    test('dot reporter prints assertion failure source locations on finish', async function (scope: OverkillScope) {
+        const terminal = createFakeTerminal(80);
+        const reporter = createDotReporter({
+            interactive: false,
+            stdout: terminal.output
+        })({
+            failureArtifacts: defaultFailureArtifactPolicy,
+            relativizeLocationPath(location) {
+                return location.file === '/workspace/source/users.test.ts'
+                    ? 'source/users.test.ts'
+                    : location.file;
+            }
+        });
+        const fileOnlyCaseId: CaseId = { file: null, title: 'file only', params: null, suite: [ 'root' ] };
+        const result = runResultFactory.build({
+            perTest: [
+                {
+                    id: failingCaseId,
+                    outcome: {
+                        checks: [
+                            {
+                                sourceLocations: [
                                     {
-                                        sourceLocations: [
-                                            {
-                                                column: 5,
-                                                file: '/workspace/source/users.test.ts',
-                                                kind: 'known',
-                                                line: 10
-                                            }
-                                        ],
-                                        summary: 'numbers differ'
+                                        column: 5,
+                                        file: '/workspace/source/users.test.ts',
+                                        kind: 'known',
+                                        line: 10
                                     }
                                 ],
-                                kind: 'fail'
+                                summary: 'numbers differ'
                             }
-                        },
-                        {
-                            id: fileOnlyCaseId,
-                            outcome: {
-                                checks: [
+                        ],
+                        kind: 'fail'
+                    }
+                },
+                {
+                    id: fileOnlyCaseId,
+                    outcome: {
+                        checks: [
+                            {
+                                sourceLocations: [
                                     {
-                                        sourceLocations: [
-                                            {
-                                                column: null,
-                                                file: 'source/profile.test.ts',
-                                                kind: 'known',
-                                                line: null
-                                            }
-                                        ],
-                                        summary: 'missing field'
+                                        column: null,
+                                        file: 'source/profile.test.ts',
+                                        kind: 'known',
+                                        line: null
                                     }
                                 ],
-                                kind: 'fail'
+                                summary: 'missing field'
                             }
-                        }
-                    ],
-                    summary: {
-                        discovered: 2,
-                        failed: 2,
-                        planned: 2
-                    },
-                    totalWallTimeMicroseconds: 7000
-                });
-                const { onFinish } = reporter;
-
-                if (onFinish === null) {
-                    throw new TypeError('Expected dot reporter to expose onFinish.');
+                        ],
+                        kind: 'fail'
+                    }
                 }
+            ],
+            summary: {
+                discovered: 2,
+                failed: 2,
+                planned: 2
+            },
+            totalWallTimeMicroseconds: 7000
+        });
+        const { onFinish } = reporter;
 
-                await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
+        if (onFinish === null) {
+            throw new TypeError('Expected dot reporter to expose onFinish.');
+        }
 
-                scope.assert.equal(
-                    terminal.text(),
-                    [
-                        `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +
-                        '(0 pass, 2 fail, 0 skip) in 7 ms ' +
-                        '(total 7 ms, execution 0 ms, overhead 7 ms)',
-                        'Problems',
-                        '  root > fails (source/example.test.ts)',
-                        '    numbers differ',
-                        '    source: source/users.test.ts:10:5',
-                        '    expected: null',
-                        '    actual: null',
-                        '  root > file only (source/example.test.ts)',
-                        '    missing field',
-                        '    source: source/profile.test.ts',
-                        '    expected: null',
-                        '    actual: null',
-                        ''
-                    ]
-                        .join('\n')
-                );
+        await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'dot reporter prints body-error and contract failure details',
-            ...testMetadata,
+        scope.assert.equal(
+            terminal.text(),
+            [
+                `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +
+                '(0 pass, 2 fail, 0 skip) in 7 ms ' +
+                '(total 7 ms, execution 0 ms, overhead 7 ms)',
+                'Problems',
+                '  root > fails (source/example.test.ts)',
+                '    numbers differ',
+                '    source: source/users.test.ts:10:5',
+                '    expected: null',
+                '    actual: null',
+                '  root > file only (source/example.test.ts)',
+                '    missing field',
+                '    source: source/profile.test.ts',
+                '    expected: null',
+                '    actual: null',
+                ''
+            ]
+                .join('\n')
+        );
 
-            async body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(80);
-                const reporter = createDotRuntimeReporter({
-                    interactive: false,
-                    stdout: terminal.output
-                });
-                const result = createFailureDetailResult();
-                const { onFinish } = reporter;
+        return scope.assert.collect();
+    }),
+    test('dot reporter prints body-error and contract failure details', async function (scope: OverkillScope) {
+        const terminal = createFakeTerminal(80);
+        const reporter = createDotRuntimeReporter({
+            interactive: false,
+            stdout: terminal.output
+        });
+        const result = createFailureDetailResult();
+        const { onFinish } = reporter;
 
-                if (onFinish === null) {
-                    throw new TypeError('Expected dot reporter to expose onFinish.');
-                }
+        if (onFinish === null) {
+            throw new TypeError('Expected dot reporter to expose onFinish.');
+        }
 
-                await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
-                await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
+        await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
+        await onFinish({ context: { id: null, startedAt: null, facts: null }, result });
 
-                scope.assert.equal(
-                    terminal.text(),
-                    [
-                        `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +
-                        '(0 pass, 2 fail, 0 skip), 1 orphaned in 0 ms ' +
-                        '(total 0 ms, execution 0 ms, overhead 0 ms)',
-                        'Problems',
-                        '  root > throws (source/example.test.ts)',
-                        '    Error: boom',
-                        '  root > empty (source/example.test.ts)',
-                        '    Expected at least one assertion. (no-assertions)',
-                        '    expected: at least one assertion',
-                        '    actual: 0',
-                        `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +
-                        '(0 pass, 2 fail, 0 skip), 1 orphaned in 0 ms ' +
-                        '(total 0 ms, execution 0 ms, overhead 0 ms)',
-                        'Problems',
-                        '  root > throws (source/example.test.ts)',
-                        '    Error: boom',
-                        '  root > empty (source/example.test.ts)',
-                        '    Expected at least one assertion. (no-assertions)',
-                        '    expected: at least one assertion',
-                        '    actual: 0',
-                        ''
-                    ]
-                        .join('\n')
-                );
+        scope.assert.equal(
+            terminal.text(),
+            [
+                `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +
+                '(0 pass, 2 fail, 0 skip), 1 orphaned in 0 ms ' +
+                '(total 0 ms, execution 0 ms, overhead 0 ms)',
+                'Problems',
+                '  root > throws (source/example.test.ts)',
+                '    Error: boom',
+                '  root > empty (source/example.test.ts)',
+                '    Expected at least one assertion. (no-assertions)',
+                '    expected: at least one assertion',
+                '    actual: 0',
+                `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +
+                '(0 pass, 2 fail, 0 skip), 1 orphaned in 0 ms ' +
+                '(total 0 ms, execution 0 ms, overhead 0 ms)',
+                'Problems',
+                '  root > throws (source/example.test.ts)',
+                '    Error: boom',
+                '  root > empty (source/example.test.ts)',
+                '    Expected at least one assertion. (no-assertions)',
+                '    expected: at least one assertion',
+                '    actual: 0',
+                ''
+            ]
+                .join('\n')
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'dot reporter prints post-finish runner errors below the summary',
-            ...testMetadata,
+        return scope.assert.collect();
+    }),
+    test('dot reporter prints post-finish runner errors below the summary', async function (scope: OverkillScope) {
+        const terminal = createFakeTerminal(80);
+        const reporter = createDotRuntimeReporter({
+            interactive: false,
+            stdout: terminal.output
+        });
+        const { onFinish } = reporter;
 
-            async body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(80);
-                const reporter = createDotRuntimeReporter({
-                    interactive: false,
-                    stdout: terminal.output
-                });
-                const { onFinish } = reporter;
+        if (onFinish === null) {
+            throw new TypeError('Expected dot reporter to expose onFinish.');
+        }
 
-                if (onFinish === null) {
-                    throw new TypeError('Expected dot reporter to expose onFinish.');
-                }
+        await onFinish({
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            },
+            result: runResultFactory.build()
+        });
+        await reporter.onEvent({
+            error: {
+                attributedToAttempt: null,
+                attributedTo: null,
+                cause: new Error('late'),
+                diagnostics: [],
+                message: 'final reporter failed',
+                subtype: 'reporter'
+            },
+            kind: 'runner-error'
+        });
 
-                await onFinish({
-                    context: {
-                        id: null,
-                        startedAt: null,
-                        facts: null
-                    },
-                    result: runResultFactory.build()
-                });
-                await reporter.onEvent({
-                    error: {
-                        attributedToAttempt: null,
-                        attributedTo: null,
-                        cause: new Error('late'),
-                        diagnostics: [],
-                        message: 'final reporter failed',
-                        subtype: 'reporter'
-                    },
-                    kind: 'runner-error'
-                });
+        scope.assert.equal(
+            terminal.text(),
+            [
+                `${colors.red(figures.cross)} 0 discovered, 0 planned, 0 executed ` +
+                '(0 pass, 0 fail, 0 skip) in 0 ms (total 0 ms, execution 0 ms, overhead 0 ms)',
+                'Runner error: final reporter failed',
+                ''
+            ]
+                .join('\n')
+        );
 
-                scope.assert.equal(
-                    terminal.text(),
-                    [
-                        `${colors.red(figures.cross)} 0 discovered, 0 planned, 0 executed ` +
-                        '(0 pass, 0 fail, 0 skip) in 0 ms (total 0 ms, execution 0 ms, overhead 0 ms)',
-                        'Runner error: final reporter failed',
-                        ''
-                    ]
-                        .join('\n')
-                );
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

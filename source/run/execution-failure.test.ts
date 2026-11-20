@@ -1,5 +1,6 @@
 import { deserialize, serialize } from 'node:v8';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     ConfigError,
     RunCollectionError,
@@ -22,7 +23,7 @@ function transportedFailure(error: unknown): Error {
     return restoreRunExecutionFailure(response.failure);
 }
 
-export const testNode = suite('mutation invocation transport', [
+export const testNode = authoredSuite('mutation invocation transport', [
     test('retains non-error throws and missing stacks through serialization', function (scope) {
         for (const original of [ null, undefined, 'sentinel', 42 ]) {
             const restored = transportedFailure(original);

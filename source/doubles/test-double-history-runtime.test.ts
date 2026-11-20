@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { rule } from './double-rule.ts';
 import { testDouble, type TestDouble } from './test-double.ts';
 
@@ -84,294 +80,217 @@ function createRejectedResultRecord(error: Error): RejectedResultRecord {
     return { firstResult, loadValue, promise };
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/doubles/test-double-history-runtime.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubles expose aggregate counts for returned calls',
-            annotations: {},
-            controls: {},
-            body: function body(scope: OverkillScope) {
-                const { loadValue } = createRecordedScopedLoadValue();
+export const testNode = suite('source/doubles/test-double-history-runtime.test.ts', [
+    test('doubles expose aggregate counts for returned calls', function body(scope: OverkillScope) {
+        const { loadValue } = createRecordedScopedLoadValue();
 
-                scope.assert.equal(loadValue.interactionCount, 1);
-                scope.assert.equal(loadValue.callCount, 1);
-                scope.assert.equal(loadValue.constructionCount, 0);
-                scope.assert.equal(loadValue.nthCall(1), null);
+        scope.assert.equal(loadValue.interactionCount, 1);
+        scope.assert.equal(loadValue.callCount, 1);
+        scope.assert.equal(loadValue.constructionCount, 0);
+        scope.assert.equal(loadValue.nthCall(1), null);
 
-                return scope.assert.collect();
+        return scope.assert.collect();
+    }),
+    test('doubles expose aggregate call history for returned calls', function body(scope: OverkillScope) {
+        const { actual, loadValue, receiver } = createRecordedScopedLoadValue();
+        const { firstInteraction, firstCall } = loadValue;
+        const nthCall = loadValue.nthCall(0);
+
+        scope.require.notNull(firstInteraction);
+        scope.require.notNull(firstCall);
+        scope.require.notNull(nthCall);
+        scope.assert.deepEqual(
+            {
+                actual,
+                arguments: firstCall.arguments,
+                index: firstCall.index,
+                interactionKind: firstInteraction.kind,
+                order: firstCall.order,
+                resultStatus: nthCall.result.status,
+                thisValue: firstCall.thisValue
+            },
+            {
+                actual: 'value',
+                arguments: [ 'a' ],
+                index: 0,
+                interactionKind: 'call',
+                order: 0,
+                resultStatus: 'returned',
+                thisValue: receiver
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubles expose aggregate call history for returned calls',
-            annotations: {},
-            controls: {},
-            body: function body(scope: OverkillScope) {
-                const { actual, loadValue, receiver } = createRecordedScopedLoadValue();
-                const { firstInteraction, firstCall } = loadValue;
-                const nthCall = loadValue.nthCall(0);
+        );
 
-                scope.require.notNull(firstInteraction);
-                scope.require.notNull(firstCall);
-                scope.require.notNull(nthCall);
-                scope.assert.deepEqual(
-                    {
-                        actual,
-                        arguments: firstCall.arguments,
-                        index: firstCall.index,
-                        interactionKind: firstInteraction.kind,
-                        order: firstCall.order,
-                        resultStatus: nthCall.result.status,
-                        thisValue: firstCall.thisValue
-                    },
-                    {
-                        actual: 'value',
-                        arguments: [ 'a' ],
-                        index: 0,
-                        interactionKind: 'call',
-                        order: 0,
-                        resultStatus: 'returned',
-                        thisValue: receiver
-                    }
-                );
+        return scope.assert.collect();
+    }),
+    test('doubles expose returned call result history', function body(scope: OverkillScope) {
+        const { actual, loadValue } = createRecordedScopedLoadValue();
+        const { lastResult } = loadValue;
 
-                return scope.assert.collect();
+        scope.assert.equal(actual, 'value');
+        scope.require.notNull(lastResult);
+        scope.assert.equal(lastResult.status, 'returned');
+
+        return scope.assert.collect();
+    }),
+    test('doubles expose construction counts for returned constructions', function body(scope: OverkillScope) {
+        const { Client } = createRecordedClientConstructor();
+
+        scope.assert.equal(Client.interactionCount, 1);
+        scope.assert.equal(Client.callCount, 0);
+        scope.assert.equal(Client.constructionCount, 1);
+
+        return scope.assert.collect();
+    }),
+    test('doubles expose construction history for returned constructions', function body(scope: OverkillScope) {
+        const { Client, actual, client } = createRecordedClientConstructor();
+        const { firstConstruction, firstInteraction } = Client;
+
+        scope.assert.equal(actual, client);
+        scope.require.notNull(firstConstruction);
+        scope.require.notNull(firstInteraction);
+        scope.assert.deepEqual(firstConstruction.arguments, [ 'https://api.example.test' ]);
+        scope.assert.equal(firstConstruction.instance, client);
+        scope.assert.equal(firstConstruction.result.status, 'returned');
+        scope.assert.equal(firstInteraction.kind, 'construction');
+
+        return scope.assert.collect();
+    }),
+    test('aggregate history counts calls and constructions together', function body(scope: OverkillScope) {
+        const { calledClient, calledResult, clientFactoryDouble, constructedClient, constructedResult } =
+            createRecordedClientFactory();
+
+        scope.assert.equal(calledResult, calledClient);
+        scope.assert.equal(constructedResult, constructedClient);
+        scope.assert.equal(clientFactoryDouble.interactionCount, 2);
+        scope.assert.equal(clientFactoryDouble.callCount, 1);
+        scope.assert.equal(clientFactoryDouble.constructionCount, 1);
+
+        return scope.assert.collect();
+    }),
+    test('aggregate history preserves chronological call and construction order', function body(scope: OverkillScope) {
+        const { calledClient, calledResult, clientFactoryDouble, constructedClient, constructedResult } =
+            createRecordedClientFactory();
+
+        scope.assert.deepEqual(
+            {
+                calledResult,
+                constructedResult,
+                interactionKinds: clientFactoryDouble.interactions.map(function interactionKind(interaction) {
+                    return interaction.kind;
+                }),
+                resultKinds: clientFactoryDouble.results.map(function resultKind(result) {
+                    return result.invocationKind;
+                })
+            },
+            {
+                calledResult: calledClient,
+                constructedResult: constructedClient,
+                interactionKinds: [ 'call', 'construction' ],
+                resultKinds: [ 'call', 'construction' ]
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubles expose returned call result history',
-            annotations: {},
-            controls: {},
-            body: function body(scope: OverkillScope) {
-                const { actual, loadValue } = createRecordedScopedLoadValue();
-                const { lastResult } = loadValue;
-
-                scope.assert.equal(actual, 'value');
-                scope.require.notNull(lastResult);
-                scope.assert.equal(lastResult.status, 'returned');
-
-                return scope.assert.collect();
+        );
+        const { firstResult, lastResult } = clientFactoryDouble;
+        scope.require.notNull(firstResult);
+        scope.require.notNull(lastResult);
+        scope.assert.deepEqual(
+            {
+                firstOrder: firstResult.order,
+                lastOrder: lastResult.order
+            },
+            {
+                firstOrder: 0,
+                lastOrder: 1
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubles expose construction counts for returned constructions',
-            annotations: {},
-            controls: {},
-            body: function body(scope: OverkillScope) {
-                const { Client } = createRecordedClientConstructor();
+        );
 
-                scope.assert.equal(Client.interactionCount, 1);
-                scope.assert.equal(Client.callCount, 0);
-                scope.assert.equal(Client.constructionCount, 1);
+        return scope.assert.collect();
+    }),
+    test('history records thrown calls', function (scope: OverkillScope) {
+        type LoadValue = (id: string) => string;
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'doubles expose construction history for returned constructions',
-            annotations: {},
-            controls: {},
-            body: function body(scope: OverkillScope) {
-                const { Client, actual, client } = createRecordedClientConstructor();
-                const { firstConstruction, firstInteraction } = Client;
+        const expected = new Error('expected');
+        const throwingLoadValue = testDouble.throws<LoadValue>(expected);
 
-                scope.assert.equal(actual, client);
-                scope.require.notNull(firstConstruction);
-                scope.require.notNull(firstInteraction);
-                scope.assert.deepEqual(firstConstruction.arguments, [ 'https://api.example.test' ]);
-                scope.assert.equal(firstConstruction.instance, client);
-                scope.assert.equal(firstConstruction.result.status, 'returned');
-                scope.assert.equal(firstInteraction.kind, 'construction');
+        scope.assert.throws(function throwConfiguredError() {
+            throwingLoadValue('id');
+        }, { exact: expected });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'aggregate history counts calls and constructions together',
-            annotations: {},
-            controls: {},
-            body: function body(scope: OverkillScope) {
-                const { calledClient, calledResult, clientFactoryDouble, constructedClient, constructedResult } =
-                    createRecordedClientFactory();
+        scope.assert.equal(throwingLoadValue.firstResult?.status, 'threw');
 
-                scope.assert.equal(calledResult, calledClient);
-                scope.assert.equal(constructedResult, constructedClient);
-                scope.assert.equal(clientFactoryDouble.interactionCount, 2);
-                scope.assert.equal(clientFactoryDouble.callCount, 1);
-                scope.assert.equal(clientFactoryDouble.constructionCount, 1);
+        return scope.assert.collect();
+    }),
+    test('history records missing behavior', function (scope: OverkillScope) {
+        type LoadValue = (id: string) => string;
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'aggregate history preserves chronological call and construction order',
-            annotations: {},
-            controls: {},
-            body: function body(scope: OverkillScope) {
-                const { calledClient, calledResult, clientFactoryDouble, constructedClient, constructedResult } =
-                    createRecordedClientFactory();
+        const missingLoadValue = testDouble<LoadValue>({
+            rules: [ rule.when('known').returns('value') ]
+        });
 
-                scope.assert.deepEqual(
-                    {
-                        calledResult,
-                        constructedResult,
-                        interactionKinds: clientFactoryDouble.interactions.map(function interactionKind(interaction) {
-                            return interaction.kind;
-                        }),
-                        resultKinds: clientFactoryDouble.results.map(function resultKind(result) {
-                            return result.invocationKind;
-                        })
-                    },
-                    {
-                        calledResult: calledClient,
-                        constructedResult: constructedClient,
-                        interactionKinds: [ 'call', 'construction' ],
-                        resultKinds: [ 'call', 'construction' ]
-                    }
-                );
-                const { firstResult, lastResult } = clientFactoryDouble;
-                scope.require.notNull(firstResult);
-                scope.require.notNull(lastResult);
-                scope.assert.deepEqual(
-                    {
-                        firstOrder: firstResult.order,
-                        lastOrder: lastResult.order
-                    },
-                    {
-                        firstOrder: 0,
-                        lastOrder: 1
-                    }
-                );
+        scope.assert.throws(function throwMissingBehavior() {
+            missingLoadValue('unknown');
+        }, { message: /no configured behavior/u });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'history records thrown calls',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                type LoadValue = (id: string) => string;
+        scope.assert.equal(missingLoadValue.firstResult?.status, 'threw');
 
-                const expected = new Error('expected');
-                const throwingLoadValue = testDouble.throws<LoadValue>(expected);
+        return scope.assert.collect();
+    }),
+    test('history records unsupported invocation modes', function body(scope: OverkillScope) {
+        const Client = testDouble.constructs({ id: 'client' });
 
-                scope.assert.throws(function throwConfiguredError() {
-                    throwingLoadValue('id');
-                }, { exact: expected });
+        scope.assert.throws(function callConstructorDouble() {
+            (Client as unknown as () => unknown)();
+        }, { message: /Class constructor/u });
 
-                scope.assert.equal(throwingLoadValue.firstResult?.status, 'threw');
+        scope.assert.equal(Client.firstCall?.result.status, 'threw');
+        scope.assert.equal(Client.callCount, 1);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'history records missing behavior',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                type LoadValue = (id: string) => string;
+        return scope.assert.collect();
+    }),
+    test('history records thrown constructions with null instances', function body(scope: OverkillScope) {
+        type ClientConstructor = new () => ClientWithId;
 
-                const missingLoadValue = testDouble<LoadValue>({
-                    rules: [ rule.when('known').returns('value') ]
-                });
+        const error = new Error('expected');
+        const Client = testDouble<ClientConstructor>({
+            fallback: rule.throws(error)
+        });
 
-                scope.assert.throws(function throwMissingBehavior() {
-                    missingLoadValue('unknown');
-                }, { message: /no configured behavior/u });
+        scope.assert.throws(function constructClientForHistory() {
+            Reflect.construct(Client, []);
+        }, { exact: error });
 
-                scope.assert.equal(missingLoadValue.firstResult?.status, 'threw');
+        scope.assert.equal(Client.constructionCount, 1);
+        const { firstConstruction } = Client;
+        scope.require.notNull(firstConstruction);
+        scope.assert.equal(firstConstruction.instance, null);
+        scope.assert.equal(firstConstruction.result.status, 'threw');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'history records unsupported invocation modes',
-            annotations: {},
-            controls: {},
-            body: function body(scope: OverkillScope) {
-                const Client = testDouble.constructs({ id: 'client' });
+        return scope.assert.collect();
+    }),
+    test(
+        'promise results are recorded immediately without awaiting settlement',
+        async function body(scope: OverkillScope) {
+            const error = new Error('expected');
+            const { firstResult, loadValue, promise } = createRejectedResultRecord(error);
 
-                scope.assert.throws(function callConstructorDouble() {
-                    (Client as unknown as () => unknown)();
-                }, { message: /Class constructor/u });
+            scope.require.notNull(firstResult);
+            scope.require.hasProperty(firstResult, 'value');
+            await scope.assert.rejects(async function awaitRejectedValue() {
+                await promise;
+            }, { exact: error });
+            scope.assert.deepEqual(
+                {
+                    firstStatus: firstResult.status,
+                    retainedStatus: loadValue.firstResult?.status,
+                    value: firstResult.value
+                },
+                {
+                    firstStatus: 'returned',
+                    retainedStatus: 'returned',
+                    value: promise
+                }
+            );
 
-                scope.assert.equal(Client.firstCall?.result.status, 'threw');
-                scope.assert.equal(Client.callCount, 1);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'history records thrown constructions with null instances',
-            annotations: {},
-            controls: {},
-            body: function body(scope: OverkillScope) {
-                type ClientConstructor = new () => ClientWithId;
-
-                const error = new Error('expected');
-                const Client = testDouble<ClientConstructor>({
-                    fallback: rule.throws(error)
-                });
-
-                scope.assert.throws(function constructClientForHistory() {
-                    Reflect.construct(Client, []);
-                }, { exact: error });
-
-                scope.assert.equal(Client.constructionCount, 1);
-                const { firstConstruction } = Client;
-                scope.require.notNull(firstConstruction);
-                scope.assert.equal(firstConstruction.instance, null);
-                scope.assert.equal(firstConstruction.result.status, 'threw');
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'promise results are recorded immediately without awaiting settlement',
-            annotations: {},
-            controls: {},
-            body: async function body(scope: OverkillScope) {
-                const error = new Error('expected');
-                const { firstResult, loadValue, promise } = createRejectedResultRecord(error);
-
-                scope.require.notNull(firstResult);
-                scope.require.hasProperty(firstResult, 'value');
-                await scope.assert.rejects(async function awaitRejectedValue() {
-                    await promise;
-                }, { exact: error });
-                scope.assert.deepEqual(
-                    {
-                        firstStatus: firstResult.status,
-                        retainedStatus: loadValue.firstResult?.status,
-                        value: firstResult.value
-                    },
-                    {
-                        firstStatus: 'returned',
-                        retainedStatus: 'returned',
-                        value: promise
-                    }
-                );
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

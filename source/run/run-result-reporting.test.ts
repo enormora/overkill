@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createDefaultWorkId } from '../engine/identity.ts';
 import { createBoundaryFailureArtifact } from '../engine/run-artifact.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -82,7 +82,7 @@ function crashArtifact(attempt: number): RunArtifact {
     );
 }
 
-export const testNode = suite('terminal failure reporting', [
+export const testNode = authoredSuite('terminal failure reporting', [
     test('reports pending crashes absent from the final result and collected plan', async function (scope) {
         const events: ReporterEvent[] = [];
         const result = runResultFactory.build();
@@ -138,5 +138,3 @@ export const testNode = suite('terminal failure reporting', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

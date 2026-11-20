@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { inlineAttachmentFixture, attachmentWork, type AttachmentFixture } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
@@ -48,7 +49,7 @@ function retainedEvidence(fixture: AttachmentFixture): ReturnType<typeof process
     return processEvidenceSchema.parse(content.value);
 }
 
-export const testNode = suite('module import evidence', [
+export const testNode = authoredSuite('module import evidence', [
     test('keeps zero-duration imports explicit without infinite throughput', function (scope) {
         const result = moduleImportResult(observation, processOutput('pipes', 0).snapshot(), {
             availability: 'available',

@@ -1,4 +1,5 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { workload } from '../packages/bench/bench.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defineResource, defineRuntime, startRuntime, withResource } from '../packages/test/resources.entry-point.ts';
@@ -34,7 +35,7 @@ function workloadPlan(engine: Engine, input: WorkloadInput, body: TestBody): Tes
     }));
 }
 
-export const testNode = suite('workload resources', [
+export const testNode = authoredSuite('workload resources', [
     workloadResourceValidationTestNode,
     test('passes typed workload parameters to acquisition and the same value to disposal', async function (scope) {
         const observed: unknown[] = [];

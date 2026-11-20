@@ -1,18 +1,17 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
-    createRoot,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    createTestPlan,
-    execute,
-    ownsTestNode,
     resolveSourceLocation,
     type SourceLocation,
     type Suite,
     type TestCase,
     type TestPlan,
-    type TestScope as OverkillScope
+    createRoot,
+    createTestPlan,
+    execute,
+    ownsTestNode
 } from '../engine/engine.entry-point.ts';
+
 import { createTestFacade, skippedTest, suite } from './test.entry-point.ts';
 
 type SkippedAuthoringExecution = {
@@ -181,75 +180,55 @@ function assertSkippedSummary(scope: OverkillScope, summary: Awaited<ReturnType<
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/packages/test/skipped-test-entry-point.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test skippedTest() creates visible skipped engine nodes',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const execution = await executeRootSkippedNode();
+export const testNode = authoredSuite('source/packages/test/skipped-test-entry-point.test.ts', [
+    test(
+        '@overkill-dev/test skippedTest() creates visible skipped engine nodes',
+        async function (scope: OverkillScope) {
+            const execution = await executeRootSkippedNode();
 
-                scope.assert.equal(ownsTestNode(execution.testCase), true);
-                scope.assert.equal(ownsTestNode(execution.testNode), true);
-                assertRootSkippedCase(scope, execution);
-                assertDefinitionLocationInThisFile(scope, execution.testCase.definitionLocations);
-                assertSkippedSummary(scope, execution.result.summary);
+            scope.assert.equal(ownsTestNode(execution.testCase), true);
+            scope.assert.equal(ownsTestNode(execution.testNode), true);
+            assertRootSkippedCase(scope, execution);
+            assertDefinitionLocationInThisFile(scope, execution.testCase.definitionLocations);
+            assertSkippedSummary(scope, execution.result.summary);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test facade skippedTest() composes family test data',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const execution = await executeFacadeSkippedNode();
+            return scope.assert.collect();
+        }
+    ),
+    test('@overkill-dev/test facade skippedTest() composes family test data', async function (scope: OverkillScope) {
+        const execution = await executeFacadeSkippedNode();
 
-                scope.assert.equal(ownsTestNode(execution.testCase), true);
-                scope.assert.equal(ownsTestNode(execution.testNode), true);
-                assertFacadeSkippedCase(scope, execution);
+        scope.assert.equal(ownsTestNode(execution.testCase), true);
+        scope.assert.equal(ownsTestNode(execution.testNode), true);
+        assertFacadeSkippedCase(scope, execution);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test skippedTest() delegates invalid inputs to engine validation',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                scope.assert.throws(function createSkippedTestWithWrongArity() {
-                    invokeSkippedTest();
-                }, {
-                    message: 'skippedTest() requires (title, reason) or ({ title, annotations?, controls?, reason }).'
-                });
-                scope.assert.throws(function createSkippedTestWithoutStringReason() {
-                    invokeSkippedTest('skips', 1);
-                }, {
-                    message: 'skippedTest() requires (title, reason) or ({ title, annotations?, controls?, reason }).'
-                });
-                scope.assert.throws(function createSkippedTestWithoutReason() {
-                    skippedTest('skips', ' ');
-                }, { message: 'Skipped test reason must not be empty.' });
-                const captureCase = skippedTest({
-                    controls: { capture: 'live' },
-                    reason: 'not supported',
-                    title: 'captures'
-                });
+        return scope.assert.collect();
+    }),
+    test(
+        '@overkill-dev/test skippedTest() delegates invalid inputs to engine validation',
+        function (scope: OverkillScope) {
+            scope.assert.throws(function createSkippedTestWithWrongArity() {
+                invokeSkippedTest();
+            }, {
+                message: 'skippedTest() requires (title, reason) or ({ title, annotations?, controls?, reason }).'
+            });
+            scope.assert.throws(function createSkippedTestWithoutStringReason() {
+                invokeSkippedTest('skips', 1);
+            }, {
+                message: 'skippedTest() requires (title, reason) or ({ title, annotations?, controls?, reason }).'
+            });
+            scope.assert.throws(function createSkippedTestWithoutReason() {
+                skippedTest('skips', ' ');
+            }, { message: 'Skipped test reason must not be empty.' });
+            const captureCase = skippedTest({
+                controls: { capture: 'live' },
+                reason: 'not supported',
+                title: 'captures'
+            });
 
-                scope.assert.deepEqual(captureCase.controls, { capture: 'live' });
+            scope.assert.deepEqual(captureCase.controls, { capture: 'live' });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

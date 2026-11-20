@@ -1,16 +1,12 @@
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { copyConfig } from '../config/snapshot.ts';
-import type { NormalizedConfig, ProfileConfig } from '../config/types.ts';
 import { readCollectionFiles } from './run-collection-source.ts';
 import { copyRunEngineSelection, freezeValue } from './run-support.ts';
 import { selectBenchmarkProfile, selectTestProfile } from './test-profile.ts';
 import { copyRunRequest } from './request-snapshot.ts';
 import type { RunCommand, RunRequest, RunCollectionSource, RunFacts } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import {
-    assertProfileRequestSupported,
-    assertSupportedProcessEngine,
-    validateRunInput
-} from './run-validation.ts';
+import { assertProfileRequestSupported, assertSupportedProcessEngine, validateRunInput } from './run-validation.ts';
 
 export type RunInputResolutionDependencies = Pick<
     RunOrchestratorDependencies,
@@ -27,10 +23,10 @@ export type ResolvedRunInput = {
     readonly benchmarkHost: RunFacts['benchmarkHost'];
     readonly benchmarkCalibration: RunFacts['benchmarkCalibration'];
     readonly benchmarkNormalization: RunFacts['benchmarkNormalization'];
-    readonly config: NormalizedConfig;
+    readonly config: RunCommand['config'];
     readonly engine: RunCommand['engine'];
     readonly files: Awaited<ReturnType<RunOrchestratorDependencies['discoverRunFilesWithProjectRoot']>>['files'];
-    readonly profile: ProfileConfig;
+    readonly profile: RunCommand['config']['profiles'][string];
     readonly projectRoot: string;
     readonly request: RunRequest;
 };
@@ -77,4 +73,10 @@ export async function readResolvedRunInput(
     const { readLastFailedSelection } = await import('./last-failed-selection.ts');
     const selection = await readLastFailedSelection(input.request.selection, input, dependencies);
     return { ...input, request: freezeValue({ ...input.request, selection }) };
+}
+
+export function resolveRunRequestSeed(request: RunRequest, createSeed: () => bigint): RunRequest {
+    return request.seed.value === null
+        ? { ...request, seed: { value: withRunnerInfrastructure(createSeed) } }
+        : request;
 }

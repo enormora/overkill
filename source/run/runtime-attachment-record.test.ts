@@ -1,14 +1,14 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import { z } from 'zod/v4';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { attachmentRunFixture } from '../test-support/attachment-run-fixture.ts';
 import { executeWithAttachments } from './attachment-run.ts';
 import { currentAttachmentCoordinator } from './attachment-coordinator-context.ts';
 import { createAttachmentConnection } from './attachment-connection.ts';
 
-const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const interruptedRecordSchema = z.object({
     status: z.literal('interrupted'),
     result: z.object({
@@ -64,18 +64,12 @@ async function assertInterruptedRecord(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(Array.from(await readFile(path.resolve(artifact.payload.content.path))), [ 1, 2, 3 ]);
 }
 
-export const testNode = createSuite({
-    ...definition,
-    title: 'source/run/runtime-attachment-record.test.ts',
-    children: [
-        createTestCase({
-            ...definition,
-            title: 'interrupted runs persist the final prefix and byte count of remote attachments',
-            async body(scope: TestScope) {
-                await assertInterruptedRecord(scope);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/runtime-attachment-record.test.ts', [
+    test(
+        'interrupted runs persist the final prefix and byte count of remote attachments',
+        async function (scope: TestScope) {
+            await assertInterruptedRecord(scope);
+            return scope.assert.collect();
+        }
+    )
+]);

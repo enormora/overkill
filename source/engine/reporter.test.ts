@@ -1,10 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock } from '@enormora/clock';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+
 import { defineFixedReporter } from '../test-support/reporter-definition.ts';
 import {
     type FinalResultReporter,
@@ -15,11 +12,7 @@ import {
     type SinkDeclaration,
     validateReporterSinks
 } from './reporter.ts';
-import {
-    createPlainOutputRenderer,
-    type DefinedOutputRenderer,
-    type OutputLineIntent
-} from './reporter-output.ts';
+import { createPlainOutputRenderer, type DefinedOutputRenderer, type OutputLineIntent } from './reporter-output.ts';
 import { createReporterDispatcher, type ReporterDispatcher } from './reporter-dispatcher.ts';
 import type { RunnerError } from './run-result.ts';
 
@@ -98,339 +91,280 @@ const stdoutPrimaryIntent: OutputLineIntent = {
     text: 'primary line'
 };
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/engine/reporter.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'validateReporterSinks() allows managed supplemental standard output sinks',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
+export const testNode = suite('source/engine/reporter.test.ts', [
+    test('validateReporterSinks() allows managed supplemental standard output sinks', function (scope: OverkillScope) {
+        validateReporterSinks([
+            createFinalReporter('first', [ { kind: 'stdout-managed-supplemental' } ]),
+            createFinalReporter('second', [ { kind: 'stdout-managed-supplemental' } ])
+        ]);
+        scope.assert.true(true, { message: 'managed supplemental stdout sinks are valid' });
+
+        return scope.assert.collect();
+    }),
+    test('validateReporterSinks() rejects raw standard output conflicts', function (scope: OverkillScope) {
+        scope.assert.throws(function validateConflictingStandardOutputSinks() {
+            validateReporterSinks([
+                createFinalReporter('first', [ { kind: 'stderr-raw' } ]),
+                createFinalReporter('second', [ { kind: 'stderr-managed-supplemental' } ])
+            ]);
+        }, {
+            message: 'Reporter sink conflict: stderr is claimed by incompatible reporters.',
+            type: ReporterSinkConflictError
+        });
+
+        return scope.assert.collect();
+    }),
+    test(
+        'validateReporterSinks() rejects duplicate managed primary standard output sinks',
+        function (scope: OverkillScope) {
+            scope.assert.throws(function validateConflictingManagedOutputSinks() {
                 validateReporterSinks([
-                    createFinalReporter('first', [ { kind: 'stdout-managed-supplemental' } ]),
-                    createFinalReporter('second', [ { kind: 'stdout-managed-supplemental' } ])
+                    createFinalReporter('first', [ { kind: 'stdout-managed-primary' } ]),
+                    createFinalReporter('second', [ { kind: 'stdout-managed-primary' } ])
                 ]);
-                scope.assert.true(true, { message: 'managed supplemental stdout sinks are valid' });
+            }, {
+                message: 'Reporter sink conflict: stdout is claimed by incompatible reporters.',
+                type: ReporterSinkConflictError
+            });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'validateReporterSinks() rejects raw standard output conflicts',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                scope.assert.throws(function validateConflictingStandardOutputSinks() {
-                    validateReporterSinks([
-                        createFinalReporter('first', [ { kind: 'stderr-raw' } ]),
-                        createFinalReporter('second', [ { kind: 'stderr-managed-supplemental' } ])
-                    ]);
-                }, {
-                    message: 'Reporter sink conflict: stderr is claimed by incompatible reporters.',
-                    type: ReporterSinkConflictError
-                });
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'validateReporterSinks() allows one managed primary with managed supplemental standard output sinks',
+        function (scope: OverkillScope) {
+            validateReporterSinks([
+                createFinalReporter('primary', [ { kind: 'stdout-managed-primary' } ]),
+                createFinalReporter('supplemental', [ { kind: 'stdout-managed-supplemental' } ])
+            ]);
+            scope.assert.true(true, { message: 'managed stdout primary and supplemental sinks are valid' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'validateReporterSinks() rejects duplicate managed primary standard output sinks',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                scope.assert.throws(function validateConflictingManagedOutputSinks() {
-                    validateReporterSinks([
-                        createFinalReporter('first', [ { kind: 'stdout-managed-primary' } ]),
-                        createFinalReporter('second', [ { kind: 'stdout-managed-primary' } ])
-                    ]);
-                }, {
-                    message: 'Reporter sink conflict: stdout is claimed by incompatible reporters.',
-                    type: ReporterSinkConflictError
-                });
+            return scope.assert.collect();
+        }
+    ),
+    test('validateReporterSinks() rejects exact file and directory path conflicts', function (scope: OverkillScope) {
+        scope.assert.throws(function validateConflictingPathSinks() {
+            validateReporterSinks([
+                createFinalReporter('first', [
+                    { kind: 'file', path: 'target/report' }
+                ]),
+                createFinalReporter('second', [
+                    { kind: 'directory', path: 'target/report' }
+                ])
+            ]);
+        }, {
+            message: 'Reporter sink conflict: path "target/report" is claimed by multiple reporters.',
+            type: ReporterSinkConflictError
+        });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'validateReporterSinks() allows one managed primary with managed supplemental standard output sinks',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                validateReporterSinks([
-                    createFinalReporter('primary', [ { kind: 'stdout-managed-primary' } ]),
-                    createFinalReporter('supplemental', [ { kind: 'stdout-managed-supplemental' } ])
-                ]);
-                scope.assert.true(true, { message: 'managed stdout primary and supplemental sinks are valid' });
+        return scope.assert.collect();
+    }),
+    test('validateReporterSinks() treats memory and stream sinks as private', function (scope: OverkillScope) {
+        const stream = new WritableStream<unknown>();
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'validateReporterSinks() rejects exact file and directory path conflicts',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                scope.assert.throws(function validateConflictingPathSinks() {
-                    validateReporterSinks([
-                        createFinalReporter('first', [
-                            { kind: 'file', path: 'target/report' }
-                        ]),
-                        createFinalReporter('second', [
-                            { kind: 'directory', path: 'target/report' }
-                        ])
-                    ]);
-                }, {
-                    message: 'Reporter sink conflict: path "target/report" is claimed by multiple reporters.',
-                    type: ReporterSinkConflictError
-                });
+        validateReporterSinks([
+            createFinalReporter('first', [
+                { kind: 'memory' },
+                { kind: 'stream', provided: stream }
+            ]),
+            createFinalReporter('second', [
+                { kind: 'memory' },
+                { kind: 'stream', provided: stream }
+            ])
+        ]);
+        scope.assert.true(true, { message: 'private sinks are valid' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'validateReporterSinks() treats memory and stream sinks as private',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const stream = new WritableStream<unknown>();
+        return scope.assert.collect();
+    }),
+    test('reporter dispatcher disposes reporters once', async function (scope: OverkillScope) {
+        const { dispatcher } = createRecordingDispatcher();
+        let disposeCount = 0;
+        const reporter: FinalResultReporter = {
+            dispose() {
+                disposeCount += 1;
+            },
+            kind: 'final-result',
+            name: 'disposable',
+            onResult() {
+                return undefined;
+            },
+            sinks: []
+        };
+        const delivery = await dispatcher.createDelivery(
+            [ defineFixedReporter(reporter) ],
+            createPlainOutputRenderer()
+        );
 
-                validateReporterSinks([
-                    createFinalReporter('first', [
-                        { kind: 'memory' },
-                        { kind: 'stream', provided: stream }
-                    ]),
-                    createFinalReporter('second', [
-                        { kind: 'memory' },
-                        { kind: 'stream', provided: stream }
-                    ])
-                ]);
-                scope.assert.true(true, { message: 'private sinks are valid' });
+        scope.assert.deepEqual(await delivery.disposeReporters(), []);
+        scope.assert.deepEqual(await delivery.disposeReporters(), []);
+        scope.assert.equal(disposeCount, 1);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reporter dispatcher disposes reporters once',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const { dispatcher } = createRecordingDispatcher();
-                let disposeCount = 0;
-                const reporter: FinalResultReporter = {
-                    dispose() {
-                        disposeCount += 1;
-                    },
-                    kind: 'final-result',
-                    name: 'disposable',
-                    onResult() {
-                        return undefined;
-                    },
-                    sinks: []
-                };
-                const delivery = await dispatcher.createDelivery(
-                    [ defineFixedReporter(reporter) ],
-                    createPlainOutputRenderer()
-                );
-
-                scope.assert.deepEqual(await delivery.disposeReporters(), []);
-                scope.assert.deepEqual(await delivery.disposeReporters(), []);
-                scope.assert.equal(disposeCount, 1);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reporter dispatcher records direct runner-error delivery failures without notification',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
-                const dispatcher = createReporterDispatcher({
-                    stderr: { writeLine: ignoreOutputLine },
-                    stdout: { writeLine: ignoreOutputLine },
-                    wallClock
-                });
-                const failingReporter: RealTimeReporter = {
-                    dispose: null,
-                    kind: 'real-time',
-                    name: 'broken-runner-error',
-                    onEvent(event) {
-                        if (event.kind === 'runner-error') {
-                            throw new Error('cannot render runner error');
-                        }
-                    },
-                    onFinish: null,
-                    sinks: []
-                };
-
-                const errors = await reportEvent(dispatcher, [ failingReporter ], {
-                    error: {
-                        attributedToAttempt: null,
-                        attributedTo: null,
-                        cause: new Error('original'),
-                        diagnostics: [],
-                        message: 'original',
-                        subtype: 'crash'
-                    },
-                    kind: 'runner-error'
-                });
-
-                scope.assert.deepEqual(
-                    errors.map(function toMessage(error) {
-                        return error.message;
-                    }),
-                    [ 'broken-runner-error: cannot render runner error' ]
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reporter dispatcher records terminal runner-error notifications as delivered',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const { dispatcher } = createRecordingDispatcher();
-                const failingReporter: RealTimeReporter = {
-                    dispose: null,
-                    kind: 'real-time',
-                    name: 'broken-event',
-                    onEvent(event) {
-                        if (event.kind === 'suite-start') {
-                            throw new Error('cannot render event');
-                        }
-                    },
-                    onFinish: null,
-                    sinks: []
-                };
-                const terminalReporter: RealTimeReporter = {
-                    dispose: null,
-                    kind: 'real-time',
-                    name: 'terminal',
-                    onEvent() {
-                        return undefined;
-                    },
-                    onFinish: null,
-                    sinks: [ { kind: 'stdout-raw' } ]
-                };
-                const { deliveredRunnerErrors, result } = await dispatcher.trackRunnerErrorDelivery(
-                    async function reportFailingEvent() {
-                        return await reportEvent(
-                            dispatcher,
-                            [ failingReporter, terminalReporter ],
-                            suiteStartEvent('suite')
-                        );
+        return scope.assert.collect();
+    }),
+    test(
+        'reporter dispatcher records direct runner-error delivery failures without notification',
+        async function (scope: OverkillScope) {
+            const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+            const dispatcher = createReporterDispatcher({
+                stderr: { writeLine: ignoreOutputLine },
+                stdout: { writeLine: ignoreOutputLine },
+                wallClock
+            });
+            const failingReporter: RealTimeReporter = {
+                dispose: null,
+                kind: 'real-time',
+                name: 'broken-runner-error',
+                onEvent(event) {
+                    if (event.kind === 'runner-error') {
+                        throw new Error('cannot render runner error');
                     }
-                );
+                },
+                onFinish: null,
+                sinks: []
+            };
 
-                scope.assert.deepEqual(
-                    result.map(function toMessage(error) {
-                        return error.message;
-                    }),
-                    [ 'broken-event: cannot render event' ]
-                );
-                scope.assert.deepEqual(deliveredRunnerErrors, result);
+            const errors = await reportEvent(dispatcher, [ failingReporter ], {
+                error: {
+                    attributedToAttempt: null,
+                    attributedTo: null,
+                    cause: new Error('original'),
+                    diagnostics: [],
+                    message: 'original',
+                    subtype: 'crash'
+                },
+                kind: 'runner-error'
+            });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reporter dispatcher records runner-error notification output failures',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const { dispatcher } = createRecordingDispatcher();
-                const failingReporter: RealTimeReporter = {
-                    dispose: null,
-                    kind: 'real-time',
-                    name: 'broken-event',
-                    onEvent() {
+            scope.assert.deepEqual(
+                errors.map(function toMessage(error) {
+                    return error.message;
+                }),
+                [ 'broken-runner-error: cannot render runner error' ]
+            );
+
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'reporter dispatcher records terminal runner-error notifications as delivered',
+        async function (scope: OverkillScope) {
+            const { dispatcher } = createRecordingDispatcher();
+            const failingReporter: RealTimeReporter = {
+                dispose: null,
+                kind: 'real-time',
+                name: 'broken-event',
+                onEvent(event) {
+                    if (event.kind === 'suite-start') {
                         throw new Error('cannot render event');
-                    },
-                    onFinish: null,
-                    sinks: []
-                };
-                const notifyingReporter: RealTimeReporter = {
-                    dispose: null,
-                    kind: 'real-time',
-                    name: 'broken-notification-output',
-                    onEvent(event: ReporterEvent) {
-                        return event.kind === 'runner-error' ? [ stdoutPrimaryIntent ] : [];
-                    },
-                    onFinish: null,
-                    sinks: []
-                } as unknown as RealTimeReporter;
+                    }
+                },
+                onFinish: null,
+                sinks: []
+            };
+            const terminalReporter: RealTimeReporter = {
+                dispose: null,
+                kind: 'real-time',
+                name: 'terminal',
+                onEvent() {
+                    return undefined;
+                },
+                onFinish: null,
+                sinks: [ { kind: 'stdout-raw' } ]
+            };
+            const { deliveredRunnerErrors, result } = await dispatcher.trackRunnerErrorDelivery(
+                async function reportFailingEvent() {
+                    return await reportEvent(
+                        dispatcher,
+                        [ failingReporter, terminalReporter ],
+                        suiteStartEvent('suite')
+                    );
+                }
+            );
 
-                const errors = await reportEvent(
-                    dispatcher,
-                    [ failingReporter, notifyingReporter ],
-                    suiteStartEvent('suite')
-                );
+            scope.assert.deepEqual(
+                result.map(function toMessage(error) {
+                    return error.message;
+                }),
+                [ 'broken-event: cannot render event' ]
+            );
+            scope.assert.deepEqual(deliveredRunnerErrors, result);
 
-                scope.assert.deepEqual(
-                    errors.map(function toMessage(error) {
-                        return error.message;
-                    }),
-                    [
-                        'broken-event: cannot render event',
-                        'broken-notification-output: Reporter returned undeclared managed stdout output.'
-                    ]
-                );
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'reporter dispatcher records runner-error notification output failures',
+        async function (scope: OverkillScope) {
+            const { dispatcher } = createRecordingDispatcher();
+            const failingReporter: RealTimeReporter = {
+                dispose: null,
+                kind: 'real-time',
+                name: 'broken-event',
+                onEvent() {
+                    throw new Error('cannot render event');
+                },
+                onFinish: null,
+                sinks: []
+            };
+            const notifyingReporter: RealTimeReporter = {
+                dispose: null,
+                kind: 'real-time',
+                name: 'broken-notification-output',
+                onEvent(event: ReporterEvent) {
+                    return event.kind === 'runner-error' ? [ stdoutPrimaryIntent ] : [];
+                },
+                onFinish: null,
+                sinks: []
+            } as unknown as RealTimeReporter;
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reporter dispatcher reports non-error failures',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const { dispatcher } = createRecordingDispatcher();
-                const failingReporter: RealTimeReporter = {
-                    dispose: null,
-                    kind: 'real-time',
-                    name: 'broken-non-error',
-                    async onEvent() {
-                        const failure = Promise.withResolvers<never>();
+            const errors = await reportEvent(
+                dispatcher,
+                [ failingReporter, notifyingReporter ],
+                suiteStartEvent('suite')
+            );
 
-                        failure.reject({
-                            toString() {
-                                return 'string failure';
-                            }
-                        });
+            scope.assert.deepEqual(
+                errors.map(function toMessage(error) {
+                    return error.message;
+                }),
+                [
+                    'broken-event: cannot render event',
+                    'broken-notification-output: Reporter returned undeclared managed stdout output.'
+                ]
+            );
 
-                        return await failure.promise;
-                    },
-                    onFinish: null,
-                    sinks: []
-                };
+            return scope.assert.collect();
+        }
+    ),
+    test('reporter dispatcher reports non-error failures', async function (scope: OverkillScope) {
+        const { dispatcher } = createRecordingDispatcher();
+        const failingReporter: RealTimeReporter = {
+            dispose: null,
+            kind: 'real-time',
+            name: 'broken-non-error',
+            async onEvent() {
+                const failure = Promise.withResolvers<never>();
 
-                const errors = await reportEvent(
-                    dispatcher,
-                    [ failingReporter ],
-                    suiteStartEvent('suite')
-                );
+                failure.reject({
+                    toString() {
+                        return 'string failure';
+                    }
+                });
 
-                scope.assert.equal(errors[0]?.message, 'broken-non-error: string failure');
+                return await failure.promise;
+            },
+            onFinish: null,
+            sinks: []
+        };
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+        const errors = await reportEvent(
+            dispatcher,
+            [ failingReporter ],
+            suiteStartEvent('suite')
+        );
 
-await runIfMain(import.meta, testNode);
+        scope.assert.equal(errors[0]?.message, 'broken-non-error: string failure');
+
+        return scope.assert.collect();
+    })
+]);

@@ -2,12 +2,14 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+import { runWithAttachmentContext } from '../attachments/attachment-context.ts';
 import {
+    type RunResult,
+    type PerTestResult,
     createRoot,
     createTestPlan,
-    execute,
-    type RunResult,
-    type PerTestResult
+    execute
 } from '../packages/engine/engine.entry-point.ts';
 import {
     benchmark,
@@ -22,7 +24,6 @@ import {
     type ModuleSample,
     type BenchmarkMeasureContext
 } from '../packages/bench/bench.entry-point.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 
 const modes = [ 'success', 'missing', 'duplicate', 'caught-failure', 'cleanup-failure', 'budget-failure' ] as const;
 type Mode = typeof modes[number];
@@ -96,12 +97,14 @@ async function runModule(
         lifecycle: { ...defaultBenchmarkLifecyclePolicy, warmupSamples: 0 },
         sampling: { ...defaultSamplingPolicy, minimumSamples: 2, maximumSamples: 2 }
     });
-    return await execute(createTestPlan(createRoot({
-        title: 'strategy',
-        annotations: {},
-        controls: {},
-        children: [ node ]
-    })));
+    return await runWithAttachmentContext(null, async function () {
+        return await execute(createTestPlan(createRoot({
+            title: 'strategy',
+            annotations: {},
+            controls: {},
+            children: [ node ]
+        })));
+    });
 }
 
 function assertDirectEvidence(scope: TestScope, result: RunResult): void {
@@ -156,7 +159,7 @@ function assertInterrupted(scope: TestScope, result: RunResult, lifecycle: reado
     }
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'public module strategy contracts',
     modes.map(function scenario(mode) {
         return test(mode, async function (scope) {

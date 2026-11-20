@@ -1,11 +1,7 @@
 import { setImmediate as scheduleImmediate } from 'node:timers';
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock } from '@enormora/clock';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
 
 import { createEngine, type Engine } from './engine.ts';
 import { createExecute } from './execution.ts';
@@ -106,172 +102,134 @@ function scheduleFiniteCascade(events: EventLog): void {
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/engine/async-control.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'scope.yieldToNextTurn() waits for setImmediate work',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(async function testBody(testScope: TestScope) {
-                    let finished = false;
+export const testNode = suite('source/engine/async-control.test.ts', [
+    test('scope.yieldToNextTurn() waits for setImmediate work', async function (scope: OverkillScope) {
+        const result = await executeSingleBody(async function testBody(testScope: TestScope) {
+            let finished = false;
 
-                    scheduleImmediate(function finishNextTurn() {
-                        finished = true;
-                    });
+            scheduleImmediate(function finishNextTurn() {
+                finished = true;
+            });
 
-                    testScope.assert.equal(finished, false);
-                    await testScope.yieldToNextTurn();
-                    testScope.assert.equal(finished, true);
+            testScope.assert.equal(finished, false);
+            await testScope.yieldToNextTurn();
+            testScope.assert.equal(finished, true);
 
-                    return testScope.assert.collect();
+            return testScope.assert.collect();
+        });
+
+        scope.assert.deepEqual(caseVerdicts(result), [ 'pass' ]);
+
+        return scope.assert.collect();
+    }),
+    test('scope.settleAsyncWork() checkpoints finite queue cascades', async function (scope: OverkillScope) {
+        const result = await executeSingleBody(async function testBody(testScope: TestScope) {
+            const events: string[] = [];
+            const eventLog: EventLog = {
+                add(event) {
+                    events.push(event);
+                }
+            };
+
+            scheduleFiniteCascade(eventLog);
+
+            await testScope.settleAsyncWork();
+
+            testScope.assert.deepEqual(events, [ 'done' ]);
+
+            return testScope.assert.collect();
+        });
+
+        scope.assert.deepEqual(caseVerdicts(result), [ 'pass' ]);
+
+        return scope.assert.collect();
+    }),
+    test('scope.startInFlight() rejects pending tasks', async function (scope: OverkillScope) {
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const pendingResolutions: ((value: never) => void)[] = [];
+            testScope.startInFlight(async function startTask() {
+                return await new Promise<never>(function neverSettle(resolve) {
+                    pendingResolutions.push(resolve);
                 });
+            });
+            testScope.assert.true(true);
+            testScope.assert.equal(pendingResolutions.length, 1);
 
-                scope.assert.deepEqual(caseVerdicts(result), [ 'pass' ]);
+            return testScope.assert.collect();
+        });
 
-                return scope.assert.collect();
+        scope.assert.deepEqual(caseVerdicts(result), [ 'fail' ]);
+        scope.assert.deepEqual(failureCodes(result), [ 'pending-in-flight-task' ]);
+
+        return scope.assert.collect();
+    }),
+    test('execute() reports generic pending promises as runtime policy leaks', async function (scope: OverkillScope) {
+        const leakedPromises: Promise<unknown>[] = [];
+        const leakedPromiseResolutions: ((value: never) => void)[] = [];
+        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            leakedPromises.push(
+                new Promise(function neverSettle(resolve: (value: never) => void) {
+                    leakedPromiseResolutions.push(resolve);
+                })
+            );
+            testScope.assert.true(true);
+            testScope.assert.equal(leakedPromiseResolutions.length, 1);
+
+            return testScope.assert.collect();
+        });
+
+        scope.assert.deepEqual(caseVerdicts(result), [ 'runtime-policy' ]);
+        scope.assert.equal(result.runnerErrors[0]?.subtype, 'runtime-policy');
+        scope.assert.equal(result.runnerErrors[0]?.attributedTo?.title, 'test');
+        scope.assert.equal(leakedPromises.length, 1);
+
+        return scope.assert.collect();
+    }),
+    test('execute() waits one turn before active-resource leak diagnostics', async function (scope: OverkillScope) {
+        let allocated = false;
+        let resourceReleased = false;
+        const engine = createEngineWithActiveResources(function readActiveResourceTypes() {
+            if (!allocated || resourceReleased) {
+                return [];
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'scope.settleAsyncWork() checkpoints finite queue cascades',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(async function testBody(testScope: TestScope) {
-                    const events: string[] = [];
-                    const eventLog: EventLog = {
-                        add(event) {
-                            events.push(event);
-                        }
-                    };
 
-                    scheduleFiniteCascade(eventLog);
-
-                    await testScope.settleAsyncWork();
-
-                    testScope.assert.deepEqual(events, [ 'done' ]);
-
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.deepEqual(caseVerdicts(result), [ 'pass' ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'scope.startInFlight() rejects pending tasks',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    const pendingResolutions: ((value: never) => void)[] = [];
-                    testScope.startInFlight(async function startTask() {
-                        return await new Promise<never>(function neverSettle(resolve) {
-                            pendingResolutions.push(resolve);
-                        });
-                    });
-                    testScope.assert.true(true);
-                    testScope.assert.equal(pendingResolutions.length, 1);
-
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.deepEqual(caseVerdicts(result), [ 'fail' ]);
-                scope.assert.deepEqual(failureCodes(result), [ 'pending-in-flight-task' ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() reports generic pending promises as runtime policy leaks',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const leakedPromises: Promise<unknown>[] = [];
-                const leakedPromiseResolutions: ((value: never) => void)[] = [];
-                const result = await executeSingleBody(function testBody(testScope: TestScope) {
-                    leakedPromises.push(
-                        new Promise(function neverSettle(resolve: (value: never) => void) {
-                            leakedPromiseResolutions.push(resolve);
-                        })
-                    );
-                    testScope.assert.true(true);
-                    testScope.assert.equal(leakedPromiseResolutions.length, 1);
-
-                    return testScope.assert.collect();
-                });
-
-                scope.assert.deepEqual(caseVerdicts(result), [ 'runtime-policy' ]);
-                scope.assert.equal(result.runnerErrors[0]?.subtype, 'runtime-policy');
-                scope.assert.equal(result.runnerErrors[0]?.attributedTo?.title, 'test');
-                scope.assert.equal(leakedPromises.length, 1);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() waits one turn before active-resource leak diagnostics',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                let allocated = false;
-                let resourceReleased = false;
-                const engine = createEngineWithActiveResources(function readActiveResourceTypes() {
-                    if (!allocated || resourceReleased) {
-                        return [];
-                    }
-
-                    return [ 'UnitResource' ];
-                });
-                const testPlan = engine.createTestPlan(
-                    engine.createRoot({
-                        children: [
-                            engine.createTestCase({
-                                body(testScope) {
-                                    allocated = true;
-                                    scheduleImmediate(function releaseResource() {
-                                        resourceReleased = true;
-                                    });
-                                    testScope.assert.true(true);
-                                    return testScope.assert.collect();
-                                },
-                                definitionLocations: [ { kind: 'unknown' } ],
-                                annotations: {},
-                                controls: {},
-                                title: 'releases'
-                            })
-                        ],
+            return [ 'UnitResource' ];
+        });
+        const testPlan = engine.createTestPlan(
+            engine.createRoot({
+                children: [
+                    engine.createTestCase({
+                        body(testScope) {
+                            allocated = true;
+                            scheduleImmediate(function releaseResource() {
+                                resourceReleased = true;
+                            });
+                            testScope.assert.true(true);
+                            return testScope.assert.collect();
+                        },
+                        definitionLocations: [ { kind: 'unknown' } ],
                         annotations: {},
                         controls: {},
-                        title: 'root'
+                        title: 'releases'
                     })
-                );
-                const result = await engine.execute(testPlan, {
-                    debug: { mode: 'off' },
-                    retryPolicy: null,
-                    execution: { mode: 'serial-in-process' },
-                    reporters: [],
-                    runFacts: {},
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
+                ],
+                annotations: {},
+                controls: {},
+                title: 'root'
+            })
+        );
+        const result = await engine.execute(testPlan, {
+            debug: { mode: 'off' },
+            retryPolicy: null,
+            execution: { mode: 'serial-in-process' },
+            reporters: [],
+            runFacts: {},
+            startedAt: '2026-07-15T00:00:00.000Z'
+        });
 
-                scope.assert.deepEqual(caseVerdicts(result), [ 'pass' ]);
-                scope.assert.deepEqual(result.runnerErrors, []);
+        scope.assert.deepEqual(caseVerdicts(result), [ 'pass' ]);
+        scope.assert.deepEqual(result.runnerErrors, []);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

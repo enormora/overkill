@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import { defineFixedReporter } from '../test-support/reporter-definition.ts';
 import type { Engine } from './engine.ts';
@@ -332,95 +328,66 @@ async function executeFatalLimitedPlan(recordStart: (title: string) => void): Pr
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/engine/execution-concurrent-reporting.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() runs concurrent in-process cases with plan-ordered starts and results',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const engine = createEngine();
-                const scenario = createPlanOrderedConcurrentScenario(engine);
-                const execution = executeConcurrentTestPlan(engine, scenario.testPlan, scenario.reporter);
-                await scenario.secondEnded.promise;
-                scenario.releaseFirst.notify();
-                const result = await execution;
+export const testNode = suite('source/engine/execution-concurrent-reporting.test.ts', [
+    test(
+        'execute() runs concurrent in-process cases with plan-ordered starts and results',
+        async function (scope: OverkillScope) {
+            const engine = createEngine();
+            const scenario = createPlanOrderedConcurrentScenario(engine);
+            const execution = executeConcurrentTestPlan(engine, scenario.testPlan, scenario.reporter);
+            await scenario.secondEnded.promise;
+            scenario.releaseFirst.notify();
+            const result = await execution;
 
-                scope.assert.deepEqual(eventCaseTitles(scenario.events, 'test-start'), [ 'first', 'second' ]);
-                scope.assert.deepEqual(eventCaseTitles(scenario.events, 'test-end'), [ 'second', 'first' ]);
-                scope.assert.deepEqual(
-                    result.perTest.map(function toCaseName(testResult) {
-                        return testResult.id.title;
-                    }),
-                    [ 'first', 'second' ]
-                );
+            scope.assert.deepEqual(eventCaseTitles(scenario.events, 'test-start'), [ 'first', 'second' ]);
+            scope.assert.deepEqual(eventCaseTitles(scenario.events, 'test-end'), [ 'second', 'first' ]);
+            scope.assert.deepEqual(
+                result.perTest.map(function toCaseName(testResult) {
+                    return testResult.id.title;
+                }),
+                [ 'first', 'second' ]
+            );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() serializes reporter callbacks during concurrent execution',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const engine = createEngine();
-                const scenario = createReporterSerializationScenario(engine);
-                const execution = executeConcurrentTestPlan(engine, scenario.testPlan, scenario.reporter);
-                await scenario.endEntered.promise;
-                await Promise.resolve();
-                scenario.releaseEnd.notify();
-                await execution;
+            return scope.assert.collect();
+        }
+    ),
+    test('execute() serializes reporter callbacks during concurrent execution', async function (scope: OverkillScope) {
+        const engine = createEngine();
+        const scenario = createReporterSerializationScenario(engine);
+        const execution = executeConcurrentTestPlan(engine, scenario.testPlan, scenario.reporter);
+        await scenario.endEntered.promise;
+        await Promise.resolve();
+        scenario.releaseEnd.notify();
+        await execution;
 
-                scope.assert.equal(scenario.maximumActiveEndReports(), 1);
+        scope.assert.equal(scenario.maximumActiveEndReports(), 1);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() admits concurrent cases through a sliding limit',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const scenario = createLimitedConcurrencyScenario();
+        return scope.assert.collect();
+    }),
+    test('execute() admits concurrent cases through a sliding limit', async function (scope: OverkillScope) {
+        const scenario = createLimitedConcurrencyScenario();
 
-                await scenario.initialCasesStarted.promise;
-                scope.assert.deepEqual(scenario.state.startedCases(), [ 'first', 'second' ]);
-                await scenario.admitThird();
-                scope.assert.deepEqual(scenario.state.startedCases(), [ 'first', 'second', 'third' ]);
-                const result = await scenario.finish();
+        await scenario.initialCasesStarted.promise;
+        scope.assert.deepEqual(scenario.state.startedCases(), [ 'first', 'second' ]);
+        await scenario.admitThird();
+        scope.assert.deepEqual(scenario.state.startedCases(), [ 'first', 'second', 'third' ]);
+        const result = await scenario.finish();
 
-                scope.assert.equal(scenario.state.maximumActiveCases(), 2);
-                assertLimitedResult(scope, result);
+        scope.assert.equal(scenario.state.maximumActiveCases(), 2);
+        assertLimitedResult(scope, result);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() does not start queued cases after a fatal error',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const startedCases: string[] = [];
-                const result = await executeFatalLimitedPlan(function recordStart(title) {
-                    startedCases.push(title);
-                });
+        return scope.assert.collect();
+    }),
+    test('execute() does not start queued cases after a fatal error', async function (scope: OverkillScope) {
+        const startedCases: string[] = [];
+        const result = await executeFatalLimitedPlan(function recordStart(title) {
+            startedCases.push(title);
+        });
 
-                scope.assert.deepEqual(startedCases, [ 'first' ]);
-                scope.assert.equal(result.runnerErrors[0]?.subtype, 'unhandled-rejection');
-                scope.assert.equal(result.perTest.length, 1);
+        scope.assert.deepEqual(startedCases, [ 'first' ]);
+        scope.assert.equal(result.runnerErrors[0]?.subtype, 'unhandled-rejection');
+        scope.assert.equal(result.perTest.length, 1);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

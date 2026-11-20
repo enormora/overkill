@@ -1,15 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import ansiEscapes from 'ansi-escapes';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
-import {
-    createTerminalProgressRenderer,
-    type TerminalOutput,
-    visibleTerminalWidth
-} from './terminal.ts';
+
+import { createTerminalProgressRenderer, type TerminalOutput, visibleTerminalWidth } from './terminal.ts';
 
 type FakeTerminal = {
     readonly listenerCount: () => number;
@@ -55,154 +48,110 @@ function createFakeTerminal(columns: number): FakeTerminal {
     };
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/reporters/terminal.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'visibleTerminalWidth() ignores ANSI escapes and counts Unicode display width',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                scope.assert.equal(visibleTerminalWidth('\u{1B}[31m✓\u{1B}[39m漢'), 3);
+export const testNode = suite('source/reporters/terminal.test.ts', [
+    test(
+        'visibleTerminalWidth() ignores ANSI escapes and counts Unicode display width',
+        function (scope: OverkillScope) {
+            scope.assert.equal(visibleTerminalWidth('\u{1B}[31m✓\u{1B}[39m漢'), 3);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'terminal progress renderer redraws the full block on interactive resize',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(4);
-                const renderer = createTerminalProgressRenderer({
-                    interactive: true,
-                    output: terminal.output
-                });
+            return scope.assert.collect();
+        }
+    ),
+    test('terminal progress renderer redraws the full block on interactive resize', function (scope: OverkillScope) {
+        const terminal = createFakeTerminal(4);
+        const renderer = createTerminalProgressRenderer({
+            interactive: true,
+            output: terminal.output
+        });
 
-                renderer.writeMark('a');
-                renderer.writeMark('b');
-                renderer.writeMark('c');
-                terminal.resize();
+        renderer.writeMark('a');
+        renderer.writeMark('b');
+        renderer.writeMark('c');
+        terminal.resize();
 
-                scope.assert.equal(terminal.text(), `abc${ansiEscapes.eraseLines(1)}ab\nc`);
+        scope.assert.equal(terminal.text(), `abc${ansiEscapes.eraseLines(1)}ab\nc`);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'terminal progress renderer ignores resize before progress and after finish',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(4);
-                const renderer = createTerminalProgressRenderer({
-                    interactive: true,
-                    output: terminal.output
-                });
+        return scope.assert.collect();
+    }),
+    test('terminal progress renderer ignores resize before progress and after finish', function (scope: OverkillScope) {
+        const terminal = createFakeTerminal(4);
+        const renderer = createTerminalProgressRenderer({
+            interactive: true,
+            output: terminal.output
+        });
 
-                terminal.resize();
-                renderer.writeMark('a');
-                renderer.finish();
-                terminal.resize();
+        terminal.resize();
+        renderer.writeMark('a');
+        renderer.finish();
+        terminal.resize();
 
-                scope.assert.equal(terminal.text(), 'a\n');
+        scope.assert.equal(terminal.text(), 'a\n');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'terminal progress renderer does not emit cursor escapes in non-interactive output',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(2);
-                const renderer = createTerminalProgressRenderer({
-                    interactive: false,
-                    output: terminal.output
-                });
+        return scope.assert.collect();
+    }),
+    test(
+        'terminal progress renderer does not emit cursor escapes in non-interactive output',
+        function (scope: OverkillScope) {
+            const terminal = createFakeTerminal(2);
+            const renderer = createTerminalProgressRenderer({
+                interactive: false,
+                output: terminal.output
+            });
 
-                renderer.writeMark('a');
-                renderer.writeMark('b');
-                renderer.writeMark('c');
-                terminal.resize();
-                renderer.finish();
+            renderer.writeMark('a');
+            renderer.writeMark('b');
+            renderer.writeMark('c');
+            terminal.resize();
+            renderer.finish();
 
-                scope.assert.equal(terminal.text(), 'ab\nc\n');
+            scope.assert.equal(terminal.text(), 'ab\nc\n');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'terminal progress renderer falls back when output columns are invalid',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(0);
-                const renderer = createTerminalProgressRenderer({
-                    interactive: false,
-                    output: terminal.output
-                });
+            return scope.assert.collect();
+        }
+    ),
+    test('terminal progress renderer falls back when output columns are invalid', function (scope: OverkillScope) {
+        const terminal = createFakeTerminal(0);
+        const renderer = createTerminalProgressRenderer({
+            interactive: false,
+            output: terminal.output
+        });
 
-                renderer.writeMark('a');
-                renderer.writeMark('b');
-                renderer.writeMark('c');
+        renderer.writeMark('a');
+        renderer.writeMark('b');
+        renderer.writeMark('c');
 
-                scope.assert.equal(terminal.text(), 'abc');
+        scope.assert.equal(terminal.text(), 'abc');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'terminal progress renderer treats finish as idempotent',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(4);
-                const renderer = createTerminalProgressRenderer({
-                    interactive: false,
-                    output: terminal.output
-                });
+        return scope.assert.collect();
+    }),
+    test('terminal progress renderer treats finish as idempotent', function (scope: OverkillScope) {
+        const terminal = createFakeTerminal(4);
+        const renderer = createTerminalProgressRenderer({
+            interactive: false,
+            output: terminal.output
+        });
 
-                renderer.finish();
-                renderer.finish();
-                renderer.writeMark('a');
+        renderer.finish();
+        renderer.finish();
+        renderer.writeMark('a');
 
-                scope.assert.equal(terminal.text(), 'a');
+        scope.assert.equal(terminal.text(), 'a');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'terminal progress renderer removes resize listener on dispose',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(4);
-                const renderer = createTerminalProgressRenderer({
-                    interactive: true,
-                    output: terminal.output
-                });
+        return scope.assert.collect();
+    }),
+    test('terminal progress renderer removes resize listener on dispose', function (scope: OverkillScope) {
+        const terminal = createFakeTerminal(4);
+        const renderer = createTerminalProgressRenderer({
+            interactive: true,
+            output: terminal.output
+        });
 
-                scope.assert.equal(terminal.listenerCount(), 1);
-                renderer.dispose();
-                renderer.dispose();
+        scope.assert.equal(terminal.listenerCount(), 1);
+        renderer.dispose();
+        renderer.dispose();
 
-                scope.assert.equal(terminal.listenerCount(), 0);
+        scope.assert.equal(terminal.listenerCount(), 0);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

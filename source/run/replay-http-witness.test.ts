@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import type { SimulationWitnessFile } from '../engine/witness-file.ts';
 import { defineResource } from '../resources/resources.ts';
 import { withHttpSimulationWitness } from '../resources/simulated-http-witness.ts';
@@ -34,7 +34,7 @@ const witness: SimulationWitnessFile = {
 async function restore(value: SimulationWitnessFile, signal: AbortSignal): Promise<void> {
     await restoreResourceWitness(resource, { handle, witness: value, signal, seed: null });
 }
-export const testNode = suite('HTTP witness compatibility', [
+export const testNode = authoredSuite('HTTP witness compatibility', [
     ...[
         { title: 'another simulation', value: { ...witness, simulation: { ...witness.simulation, name: 'other' } } },
         { title: 'a runtime snapshot', value: { ...witness, runtimeSnapshot: {} } },
@@ -42,7 +42,7 @@ export const testNode = suite('HTTP witness compatibility', [
         { title: 'a random seed', value: { ...witness, seed: '42' } }
     ]
         .map(function unsupported(entry) {
-            return test(`rejects ${entry.title}`, async function (scope: TestScope) {
+            return authoredTest(`rejects ${entry.title}`, async function (scope: TestScope) {
                 await scope.assert.rejects(async function incompatible() {
                     await restore(entry.value, AbortSignal.any([]));
                 }, { message: 'HTTP simulation witness contains unsupported replay inputs.' });
@@ -50,17 +50,20 @@ export const testNode = suite('HTTP witness compatibility', [
             });
         }),
     ...[ null, { version: 2, scenarios: {}, interactions: [] } ].map(function invalidPayload(payload) {
-        return test(`rejects incompatible payload ${JSON.stringify(payload)}`, async function (scope: TestScope) {
-            await scope.assert.rejects(async function incompatible() {
-                await restore(
-                    { ...witness, simulation: { ...witness.simulation, payload } },
-                    AbortSignal.any([])
-                );
-            }, { name: 'ZodError' });
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `rejects incompatible payload ${JSON.stringify(payload)}`,
+            async function (scope: TestScope) {
+                await scope.assert.rejects(async function incompatible() {
+                    await restore(
+                        { ...witness, simulation: { ...witness.simulation, payload } },
+                        AbortSignal.any([])
+                    );
+                }, { name: 'ZodError' });
+                return scope.assert.collect();
+            }
+        );
     }),
-    test('rejects conflicting scenario metadata', async function (scope: TestScope) {
+    authoredTest('rejects conflicting scenario metadata', async function (scope: TestScope) {
         await scope.assert.rejects(async function incompatible() {
             await restore({ ...witness, scenario: 'default' }, AbortSignal.any([]));
         }, { message: 'HTTP simulation witness scenario metadata is inconsistent.' });
@@ -72,17 +75,16 @@ export const testNode = suite('HTTP witness compatibility', [
         simulation: { ...witness.simulation, payload: { version: 1, scenarios: {}, interactions: [] } }
     } ]
         .map(function supported(value) {
-            return test(`accepts scenario ${value.scenario}`, async function (scope: TestScope) {
+            return authoredTest(`accepts scenario ${value.scenario}`, async function (scope: TestScope) {
                 await restore(value, AbortSignal.any([]));
                 scope.assert.deepEqual(handle.transcript.entries, []);
                 return scope.assert.collect();
             });
         }),
-    test('honors cancellation before restoring HTTP state', async function (scope: TestScope) {
+    authoredTest('honors cancellation before restoring HTTP state', async function (scope: TestScope) {
         await scope.assert.rejects(async function cancelled() {
             await restore(witness, AbortSignal.abort(new Error('cancelled replay')));
         }, { message: 'cancelled replay' });
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

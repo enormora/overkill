@@ -1,12 +1,12 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     workerImplementationLifetime,
     healthyImplementationLease,
     aggregateLeaseFailure
 } from '../test-support/worker-implementation-lifetime.ts';
 
-export const testNode = suite('worker implementation lease ownership', [
+export const testNode = authoredSuite('worker implementation lease ownership', [
     test('runs inline plans without creating a body lease', async function (scope: TestScope) {
         const fixture = workerImplementationLifetime(healthyImplementationLease);
         const result = await fixture.lifetime.with('worker', fixture.inline, async function (plan) {
@@ -149,4 +149,3 @@ export const testNode = suite('worker implementation lease ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

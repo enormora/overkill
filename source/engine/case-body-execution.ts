@@ -3,8 +3,8 @@ import { createThrownErrorRecord, type ThrownErrorRecord } from '../assertion-pr
 import { isPropertyInconclusiveSignalError } from './property-inconclusive.ts';
 import {
     isTestContractFailure,
-    RequireFailedSignalError,
-    TestContractSignalError,
+    isRequireFailedSignalError,
+    isTestContractSignalError,
     type AssertionRecorder
 } from './assertion-recorder.ts';
 import { isNodeAssertionError, nodeAssertionErrorFailure } from './node-assertion-error.ts';
@@ -228,11 +228,11 @@ export function completedThrowingBody(recorder: AssertionRecorder): ExecutedBody
 function nonRunnerFailedBody(input: FailedBodyInput): ExecutedBody {
     const { context, error } = input;
 
-    if (error instanceof RequireFailedSignalError) {
+    if (isRequireFailedSignalError(error)) {
         return requireFailedBody(context);
     }
 
-    if (error instanceof TestContractSignalError) {
+    if (isTestContractSignalError(error)) {
         return contractFailedBody(context, [ error.failure(), ...context.contractFailures ]);
     }
 

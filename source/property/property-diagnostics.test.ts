@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
+import { test } from '../packages/test/test.entry-point.ts';
 import {
     defineReporter,
     readPropertyExecutionHost,
@@ -35,8 +36,8 @@ function diagnosticProperty(expected: number): TestNode {
     });
 }
 
-export const testNode = suite('property diagnostic rendering', [
-    test(
+export const testNode = authoredSuite('property diagnostic rendering', [
+    authoredTest(
         'reports unavailable coverage when the work budget prevents body evaluation',
         async function (scope: TestScope) {
             const result = await executePropertyNode(
@@ -61,7 +62,7 @@ export const testNode = suite('property diagnostic rendering', [
             return scope.assert.collect();
         }
     ),
-    test('reports completed exhaustive traversal and eligible coverage', async function (scope: TestScope) {
+    authoredTest('reports completed exhaustive traversal and eligible coverage', async function (scope: TestScope) {
         const result = await executePropertyNode(
             property({
                 title: 'exhaustive coverage',
@@ -81,7 +82,7 @@ export const testNode = suite('property diagnostic rendering', [
         scope.assert.includes(lines, 'Required input coverage positive: 1/2 (50%), minimum 50%');
         return scope.assert.collect();
     }),
-    test('exhaustive completion does not hide unmet input coverage', async function (scope: TestScope) {
+    authoredTest('exhaustive completion does not hide unmet input coverage', async function (scope: TestScope) {
         const result = await executePropertyNode(
             property({
                 title: 'unmet exhaustive coverage',
@@ -103,39 +104,45 @@ export const testNode = suite('property diagnostic rendering', [
         scope.assert.includes(lines, 'Required input coverage positive: 0/1 (0%), minimum 100%');
         return scope.assert.collect();
     }),
-    test('historical evidence renders diagnostics without inventing a summary', async function (scope: TestScope) {
-        const evidence = casePropertyEvidence(
-            await executePropertyNode(diagnosticProperty(0), propertyExecutionDefaults)
-        );
-        const historical = {
-            invocations: evidence.invocations.map(function legacy(invocation) {
-                return Object.fromEntries(
-                    Object.entries(invocation).filter(function historicalField([ field ]) {
-                        return field !== 'summary';
-                    })
-                );
-            })
-        };
-        const decoded = propertyEvidenceSchema.parse(historical);
-        const lines = formatPropertyDiagnostics(decoded).join('\n');
-        scope.assert.equal(decoded.invocations[0]?.summary, null);
-        scope.assert.includes(lines, 'Shrinking exhausted the candidate search');
-        scope.assert.false(lines.includes('run seed='));
-        return scope.assert.collect();
-    }),
-    test('renders the original witness seed separately during direct replay', async function (scope: TestScope) {
-        const node = diagnosticProperty(0);
-        const failure = casePropertyEvidence(await executePropertyNode(node, propertyExecutionDefaults));
-        const witness = failure.invocations[0]?.confirmedWitness;
-        scope.require.defined(witness);
-        const replay = await executePropertyNode(node, { ...propertyExecutionDefaults, replay: witness });
-        const evidence = casePropertyEvidence(replay);
-        scope.assert.equal(replay.summary.failed, 1);
-        scope.assert.includes(formatPropertyDiagnostics(evidence).join('\n'), `Witness seed=${witness.seed}`);
-        scope.assert.equal(evidence.invocations[0]?.summary?.accounting.phases.witness.executed, 1);
-        return scope.assert.collect();
-    }),
-    test(
+    authoredTest(
+        'historical evidence renders diagnostics without inventing a summary',
+        async function (scope: TestScope) {
+            const evidence = casePropertyEvidence(
+                await executePropertyNode(diagnosticProperty(0), propertyExecutionDefaults)
+            );
+            const historical = {
+                invocations: evidence.invocations.map(function legacy(invocation) {
+                    return Object.fromEntries(
+                        Object.entries(invocation).filter(function historicalField([ field ]) {
+                            return field !== 'summary';
+                        })
+                    );
+                })
+            };
+            const decoded = propertyEvidenceSchema.parse(historical);
+            const lines = formatPropertyDiagnostics(decoded).join('\n');
+            scope.assert.equal(decoded.invocations[0]?.summary, null);
+            scope.assert.includes(lines, 'Shrinking exhausted the candidate search');
+            scope.assert.false(lines.includes('run seed='));
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest(
+        'renders the original witness seed separately during direct replay',
+        async function (scope: TestScope) {
+            const node = diagnosticProperty(0);
+            const failure = casePropertyEvidence(await executePropertyNode(node, propertyExecutionDefaults));
+            const witness = failure.invocations[0]?.confirmedWitness;
+            scope.require.defined(witness);
+            const replay = await executePropertyNode(node, { ...propertyExecutionDefaults, replay: witness });
+            const evidence = casePropertyEvidence(replay);
+            scope.assert.equal(replay.summary.failed, 1);
+            scope.assert.includes(formatPropertyDiagnostics(evidence).join('\n'), `Witness seed=${witness.seed}`);
+            scope.assert.equal(evidence.invocations[0]?.summary?.accounting.phases.witness.executed, 1);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest(
         'successful witness replay has no failure observations or counterexample diagnostic',
         async function (scope: TestScope) {
             const failure = casePropertyEvidence(
@@ -155,7 +162,7 @@ export const testNode = suite('property diagnostic rendering', [
             return scope.assert.collect();
         }
     ),
-    test(
+    authoredTest(
         'replay keeps cleanup failures native and marks the invocation interrupted',
         async function (scope: TestScope) {
             let cleanupFailure: Error | null = null;
@@ -184,7 +191,7 @@ export const testNode = suite('property diagnostic rendering', [
             return scope.assert.collect();
         }
     ),
-    test(
+    authoredTest(
         'incompatible or foreign replay input records an execution error without evaluating a trial',
         async function (scope: TestScope) {
             const witness = casePropertyEvidence(
@@ -218,7 +225,7 @@ export const testNode = suite('property diagnostic rendering', [
             return scope.assert.collect();
         }
     ),
-    test('canceled replay records interruption before admitting a trial', async function (scope: TestScope) {
+    authoredTest('canceled replay records interruption before admitting a trial', async function (scope: TestScope) {
         const controller = new AbortController();
         let calls = 0;
         const witness = casePropertyEvidence(
@@ -278,7 +285,7 @@ export const testNode = suite('property diagnostic rendering', [
         );
         return scope.assert.collect();
     }),
-    test('rejects evidence with only one failure observation', async function (scope: TestScope) {
+    authoredTest('rejects evidence with only one failure observation', async function (scope: TestScope) {
         const evidence = casePropertyEvidence(
             await executePropertyNode(diagnosticProperty(0), propertyExecutionDefaults)
         );
@@ -295,5 +302,3 @@ export const testNode = suite('property diagnostic rendering', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

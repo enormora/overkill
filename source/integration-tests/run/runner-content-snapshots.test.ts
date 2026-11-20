@@ -1,6 +1,5 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { normalizeConfig, orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { createOrdinaryBaselineStore, type OrdinaryBaselineStore } from '../../run/baseline-store.ts';
@@ -121,9 +120,9 @@ async function rejectInvalidSnapshot(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(await fixture.store.list(), []);
 }
 
-export const testNode = suite('content snapshot workflow', [
+export const testNode = authoredSuite('content snapshot workflow', [
     ...Array.from([ 'supervised-process', 'worker-pool' ] as const, function executionMode(processModel) {
-        return test(`compares and updates snapshots with ${processModel}`, async function (scope) {
+        return authoredTest(`compares and updates snapshots with ${processModel}`, async function (scope) {
             const fixture = await createSnapshotFixture(scope, processModel, fixtureFile);
             await establishSnapshots(scope, fixture);
             await updateChangedSnapshot(scope, fixture);
@@ -131,10 +130,8 @@ export const testNode = suite('content snapshot workflow', [
             return scope.assert.collect();
         });
     }),
-    test('blocks publication after a caught snapshot infrastructure failure', async function (scope) {
+    authoredTest('blocks publication after a caught snapshot infrastructure failure', async function (scope) {
         await rejectInvalidSnapshot(scope);
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

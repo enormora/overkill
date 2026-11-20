@@ -2,9 +2,10 @@ import { mkdir, mkdtempDisposable, readFile, realpath, writeFile } from 'node:fs
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { z } from 'zod/v4';
-import { suite, test, testDouble } from './packages/test/test.entry-point.ts';
+import { testDouble } from './packages/test/test.entry-point.ts';
 import {
     defineImplementationReference,
     prepareImplementation,
@@ -92,28 +93,31 @@ async function withChangedResolution<Value>(
     }, operation);
 }
 
-export const testNode = suite('native implementation admission boundaries', [
+export const testNode = authoredSuite('native implementation admission boundaries', [
     ...([ 'entry', 'dependency' ] as const).map(function remappedModule(kind) {
-        return test(`rejects remapped ${kind} URLs before evaluating implementation modules`, async function (scope) {
-            await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-remapped-implementation-'));
-            const project = await dependencyProject(directory.path);
-            const input = preparation(directory.path, 'body.mjs', 'host');
-            const prepared = await prepareImplementation(input);
-            const change = function removeBuildIdentity(url: URL): URL {
-                const changed = new URL(url);
-                changed.search = '';
-                return changed;
-            };
-            await scope.assert.rejects(async function changedLoader() {
-                await withChangedResolution(project[kind], change, async function load() {
-                    return await nativeValue(input, prepared);
-                });
-            }, { message: 'Implementation module resolution changed after preparation.' });
-            scope.assert.equal(await readFile(project.log, 'utf8'), '');
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `rejects remapped ${kind} URLs before evaluating implementation modules`,
+            async function (scope) {
+                await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-remapped-implementation-'));
+                const project = await dependencyProject(directory.path);
+                const input = preparation(directory.path, 'body.mjs', 'host');
+                const prepared = await prepareImplementation(input);
+                const change = function removeBuildIdentity(url: URL): URL {
+                    const changed = new URL(url);
+                    changed.search = '';
+                    return changed;
+                };
+                await scope.assert.rejects(async function changedLoader() {
+                    await withChangedResolution(project[kind], change, async function load() {
+                        return await nativeValue(input, prepared);
+                    });
+                }, { message: 'Implementation module resolution changed after preparation.' });
+                scope.assert.equal(await readFile(project.log, 'utf8'), '');
+                return scope.assert.collect();
+            }
+        );
     }),
-    test('retains non-Error native resolver failures as loading errors', async function (scope) {
+    authoredTest('retains non-Error native resolver failures as loading errors', async function (scope) {
         await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-resolver-failure-'));
         const project = await dependencyProject(directory.path);
         const input = preparation(directory.path, 'body.mjs', 'host');
@@ -127,7 +131,7 @@ export const testNode = suite('native implementation admission boundaries', [
         scope.assert.equal(await readFile(project.log, 'utf8'), '');
         return scope.assert.collect();
     }),
-    test('recognizes delivered import identity only while its build is active', async function (scope) {
+    authoredTest('recognizes delivered import identity only while its build is active', async function (scope) {
         await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-import-identity-'));
         await writeFile(
             join(directory.path, 'body.mjs'),
@@ -153,7 +157,7 @@ export const testNode = suite('native implementation admission boundaries', [
         'file:///project/body.mjs#version'
     ] as const)
         .map(function unsupportedUrl(moduleUrl) {
-            return test(`rejects unsupported implementation URL ${moduleUrl}`, async function (scope) {
+            return authoredTest(`rejects unsupported implementation URL ${moduleUrl}`, async function (scope) {
                 const input = preparation(tmpdir(), 'body.mjs', 'host');
                 const reference = defineImplementationReference({
                     ...input.reference,
@@ -166,7 +170,7 @@ export const testNode = suite('native implementation admission boundaries', [
             });
         }),
     ...([ 'reference', 'parser' ] as const).map(function changedInput(kind) {
-        return test(`rejects changed ${kind} inputs before evaluating implementations`, async function (scope) {
+        return authoredTest(`rejects changed ${kind} inputs before evaluating implementations`, async function (scope) {
             await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-input-drift-'));
             const project = await dependencyProject(directory.path);
             const input = preparation(directory.path, 'body.mjs', 'host');
@@ -192,13 +196,13 @@ export const testNode = suite('native implementation admission boundaries', [
             return scope.assert.collect();
         });
     }),
-    test('rejects browser references before reading host module files', async function (scope) {
+    authoredTest('rejects browser references before reading host module files', async function (scope) {
         await scope.assert.rejects(async function unsupportedRealm() {
             await prepareImplementation(preparation(tmpdir(), 'absent.mjs', 'browser'));
         }, { message: 'The native implementation loader supports the host realm only.' });
         return scope.assert.collect();
     }),
-    test('surfaces unreadable package metadata instead of treating it as absent', async function (scope) {
+    authoredTest('surfaces unreadable package metadata instead of treating it as absent', async function (scope) {
         await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-package-metadata-'));
         await mkdir(join(directory.path, 'package.json'));
         await writeFile(join(directory.path, 'body.mjs'), 'export const body={version:"1",implementation:42};');
@@ -207,7 +211,7 @@ export const testNode = suite('native implementation admission boundaries', [
         }, { message: /EISDIR/u });
         return scope.assert.collect();
     }),
-    test('admits native JSON exports without losing their value', async function (scope) {
+    authoredTest('admits native JSON exports without losing their value', async function (scope) {
         await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-json-implementation-'));
         await writeFile(join(directory.path, 'body.json'), JSON.stringify({ version: '1', implementation: 42 }));
         const input = preparation(directory.path, 'body.json', 'host');
@@ -222,7 +226,7 @@ export const testNode = suite('native implementation admission boundaries', [
         scope.assert.equal(prepared.graph.modules[0]?.format, 'json');
         return scope.assert.collect();
     }),
-    test('rejects forged graph identities before evaluating modules', async function (scope) {
+    authoredTest('rejects forged graph identities before evaluating modules', async function (scope) {
         await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-forged-graph-'));
         await writeFile(join(directory.path, 'body.mjs'), 'throw new Error("Module evaluated");');
         const prepared = await prepareImplementation(preparation(directory.path, 'body.mjs', 'host'));
@@ -238,7 +242,7 @@ export const testNode = suite('native implementation admission boundaries', [
         }, { message: 'Implementation entry is outside the frozen graph.' });
         return scope.assert.collect();
     }),
-    test('records declared builtin candidates without evaluating an implementation', async function (scope) {
+    authoredTest('records declared builtin candidates without evaluating an implementation', async function (scope) {
         await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-builtin-candidate-'));
         await writeFile(join(directory.path, 'body.mjs'), 'throw new Error("Module evaluated");');
         const input = preparation(directory.path, 'body.mjs', 'host');
@@ -252,4 +256,3 @@ export const testNode = suite('native implementation admission boundaries', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

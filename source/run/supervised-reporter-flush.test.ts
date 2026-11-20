@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { createTestCase } from '../packages/engine/engine.entry-point.ts';
+import { test } from '@overkill-dev/test';
+
 import { settleAsyncWork } from '../engine/async-control.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
 import { delayedOutbox, type OutboxFixture } from '../test-support/child-process-outbox-fixture.ts';
@@ -34,12 +34,9 @@ async function reportThroughPendingTransport(): Promise<{
     return { beforeFlush, disconnected: fixture.disconnected(), disconnectedBeforeFlush, sent: fixture.messages };
 }
 
-export const testNode = createTestCase({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'supervised reporting queues events before draining IPC on disconnect',
-    async body(scope) {
+export const testNode = test(
+    'supervised reporting queues events before draining IPC on disconnect',
+    async function (scope) {
         const result = await reportThroughPendingTransport();
         scope.assert.equal(result.beforeFlush, undefined);
         scope.assert.equal(result.disconnectedBeforeFlush, false);
@@ -49,6 +46,4 @@ export const testNode = createTestCase({
         } ]);
         return scope.assert.collect();
     }
-});
-
-await runIfMain(import.meta, testNode);
+);

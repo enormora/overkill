@@ -3,8 +3,8 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { loadConfig } from '../packages/run/config.entry-point.ts';
 import { RunResolutionError, withFileModuleBoundary } from '../packages/run/run.entry-point.ts';
 
@@ -28,7 +28,7 @@ async function withProjectDirectories(operation: (paths: ProjectDirectories) => 
     }
 }
 
-export const testNode = suite('file module boundaries', [
+export const testNode = authoredSuite('file module boundaries', [
     test('rejects missing outside modules before filesystem resolution', async function (scope) {
         await withProjectDirectories(async function assertMissingEscapes({ root, other }) {
             const boundary = { projectRoot: root, sharedRoots: [] };
@@ -217,5 +217,3 @@ export const config = {runtimeStateDir:value};`
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

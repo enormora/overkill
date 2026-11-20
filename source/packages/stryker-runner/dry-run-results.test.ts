@@ -1,6 +1,8 @@
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { DryRunStatus, TestStatus } from '@stryker-mutator/api/test-runner';
 import { collectedMutationPlan } from '../../test-support/mutation-plan-fixture.ts';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+
 import { workIdentityKey, type PerTestResult, type RunExecutionReply } from '../run/run.entry-point.ts';
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { runResultFactory } from '../../test-support/run-result-factory.ts';
@@ -40,8 +42,8 @@ function withOutcome(reply: ResultReply, outcome: PerTestResult['outcome']): Res
     };
 }
 
-export const testNode = suite('structured dry-run results', [
-    test('returns timeouts for valid interrupted lifecycle evidence', function (scope: TestScope) {
+export const testNode = authoredSuite('structured dry-run results', [
+    authoredTest('returns timeouts for valid interrupted lifecycle evidence', function (scope: TestScope) {
         const { reply } = mutationCoverageFixture('off');
         scope.assert.deepEqual(
             dryMutationResult('/project', { kind: 'timeout', data: reply.data, artifacts: [] }, 'off', expectation),
@@ -49,7 +51,7 @@ export const testNode = suite('structured dry-run results', [
         );
         return scope.assert.collect();
     }),
-    test('reports authoritative full-suite coverage from the shared baseline', function (scope: TestScope) {
+    authoredTest('reports authoritative full-suite coverage from the shared baseline', function (scope: TestScope) {
         const fixture = mutationCoverageFixture('all');
         const baseline = {
             ...fixture.baseline,
@@ -63,7 +65,7 @@ export const testNode = suite('structured dry-run results', [
         scope.assert.deepEqual(baseline.coverage.static, { baselineOnly: 7 });
         return scope.assert.collect();
     }),
-    test('includes parameter labels in the dry-run display name', function (scope: TestScope) {
+    authoredTest('includes parameter labels in the dry-run display name', function (scope: TestScope) {
         const result = runResultFactory.build({
             summary: { planned: 1, passed: 1 },
             perTest: [ {
@@ -105,75 +107,78 @@ export const testNode = suite('structured dry-run results', [
 
     precedenceTestNode,
     mutantResultsTestNode,
-    test('reports mixed outcomes with structural identities and fractional millisecond durations', function (scope) {
-        const { reply } = mutationCoverageFixture('perTest');
-        const data = mutationLifecycleDataSchema.parse(reply.data);
-        const results = runResultFactory
-            .build({
-                perTest: [
+    authoredTest(
+        'reports mixed outcomes with structural identities and fractional millisecond durations',
+        function (scope) {
+            const { reply } = mutationCoverageFixture('perTest');
+            const data = mutationLifecycleDataSchema.parse(reply.data);
+            const results = runResultFactory
+                .build({
+                    perTest: [
+                        {
+                            id: { file: 'first.test.ts', suite: [], title: 'first', params: null },
+                            durationMicroseconds: 1537,
+                            outcome: { kind: 'pass' }
+                        },
+                        {
+                            id: { file: 'second.test.ts', suite: [], title: 'second', params: null },
+                            durationMicroseconds: 2750,
+                            outcome: { kind: 'fail' }
+                        },
+                        {
+                            id: { file: 'unrelated.test.ts', suite: [], title: 'unrelated', params: null },
+                            durationMicroseconds: 0,
+                            outcome: { kind: 'skip', reason: 'intentional' }
+                        }
+                    ]
+                })
+                .perTest;
+            const result = dryMutationResult(
+                '/project',
+                {
+                    ...reply,
+                    result: { ...reply.result, perTest: results },
+                    data: {
+                        ...data,
+                        catalog: data.catalog.map(function intentionalSkip(entry, index) {
+                            return index === 2 ? { ...entry, skipReason: 'intentional' } : entry;
+                        })
+                    }
+                },
+                'perTest',
+                expectation
+            );
+            if (result.status !== DryRunStatus.Complete) {
+                throw new Error('Expected a complete mixed dry run.');
+            }
+            scope.assert.deepEqual(
+                result.tests.map(function reportedCase(entry) {
+                    return { id: entry.id, status: entry.status, duration: entry.timeSpentMs, file: entry.fileName };
+                }),
+                [
                     {
-                        id: { file: 'first.test.ts', suite: [], title: 'first', params: null },
-                        durationMicroseconds: 1537,
-                        outcome: { kind: 'pass' }
+                        id: '["first.test.ts",[],"first",null]',
+                        status: TestStatus.Success,
+                        duration: 1.537,
+                        file: 'first.test.ts'
                     },
                     {
-                        id: { file: 'second.test.ts', suite: [], title: 'second', params: null },
-                        durationMicroseconds: 2750,
-                        outcome: { kind: 'fail' }
+                        id: '["second.test.ts",[],"second",null]',
+                        status: TestStatus.Failed,
+                        duration: 2.75,
+                        file: 'second.test.ts'
                     },
                     {
-                        id: { file: 'unrelated.test.ts', suite: [], title: 'unrelated', params: null },
-                        durationMicroseconds: 0,
-                        outcome: { kind: 'skip', reason: 'intentional' }
+                        id: '["unrelated.test.ts",[],"unrelated",null]',
+                        status: TestStatus.Skipped,
+                        duration: 0,
+                        file: 'unrelated.test.ts'
                     }
                 ]
-            })
-            .perTest;
-        const result = dryMutationResult(
-            '/project',
-            {
-                ...reply,
-                result: { ...reply.result, perTest: results },
-                data: {
-                    ...data,
-                    catalog: data.catalog.map(function intentionalSkip(entry, index) {
-                        return index === 2 ? { ...entry, skipReason: 'intentional' } : entry;
-                    })
-                }
-            },
-            'perTest',
-            expectation
-        );
-        if (result.status !== DryRunStatus.Complete) {
-            throw new Error('Expected a complete mixed dry run.');
+            );
+            return scope.assert.collect();
         }
-        scope.assert.deepEqual(
-            result.tests.map(function reportedCase(entry) {
-                return { id: entry.id, status: entry.status, duration: entry.timeSpentMs, file: entry.fileName };
-            }),
-            [
-                {
-                    id: '["first.test.ts",[],"first",null]',
-                    status: TestStatus.Success,
-                    duration: 1.537,
-                    file: 'first.test.ts'
-                },
-                {
-                    id: '["second.test.ts",[],"second",null]',
-                    status: TestStatus.Failed,
-                    duration: 2.75,
-                    file: 'second.test.ts'
-                },
-                {
-                    id: '["unrelated.test.ts",[],"unrelated",null]',
-                    status: TestStatus.Skipped,
-                    duration: 0,
-                    file: 'unrelated.test.ts'
-                }
-            ]
-        );
-        return scope.assert.collect();
-    }),
+    ),
     ...([ { kind: 'fail', failures: [ bodyFailure ] }, {
         kind: 'fail',
         failures: [ {
@@ -185,7 +190,7 @@ export const testNode = suite('structured dry-run results', [
         } ]
     } ] as const)
         .map(function ordinaryFailure(outcome) {
-            return test(`reports ${outcome.failures[0].kind} as an individual failure`, function (scope) {
+            return authoredTest(`reports ${outcome.failures[0].kind} as an individual failure`, function (scope) {
                 const { reply } = mutationCoverageFixture('off');
                 const result = dryMutationResult('/project', withOutcome(reply, outcome), 'off', expectation);
                 if (result.status !== DryRunStatus.Complete) {
@@ -200,7 +205,7 @@ export const testNode = suite('structured dry-run results', [
         cleanupFailure
     ] ] as const)
         .map(function cleanupFailures(failures) {
-            return test(
+            return authoredTest(
                 `rejects ${
                     failures
                         .map(function (failure) {
@@ -240,7 +245,7 @@ export const testNode = suite('structured dry-run results', [
                 }
             );
         }),
-    test('preserves every assertion failure when cleanup invalidates the case', function (scope) {
+    authoredTest('preserves every assertion failure when cleanup invalidates the case', function (scope) {
         const { reply } = mutationCoverageFixture('perTest');
         const failed = runResultFactory.build({ perTest: [ { outcome: { kind: 'fail' } } ] }).perTest[0];
         if (failed?.outcome?.kind !== 'fail') {
@@ -268,7 +273,7 @@ export const testNode = suite('structured dry-run results', [
         scope.assert.equal(result.errorMessage.match(/body sentinel/gu)?.length, 110);
         return scope.assert.collect();
     }),
-    test('rejects unsupported case failures as infrastructure errors', function (scope) {
+    authoredTest('rejects unsupported case failures as infrastructure errors', function (scope) {
         const { reply } = mutationCoverageFixture('off');
         const result = dryMutationResult(
             '/project',
@@ -297,7 +302,7 @@ export const testNode = suite('structured dry-run results', [
         scope.assert.match(result.errorMessage, /unsupported sentinel/u);
         return scope.assert.collect();
     }),
-    test('returns errors for inconclusive and missing outcomes', function (scope) {
+    authoredTest('returns errors for inconclusive and missing outcomes', function (scope) {
         const { reply } = mutationCoverageFixture('off');
         for (const outcome of [ null, { kind: 'inconclusive', reason: 'uncertain sentinel' } ] as const) {
             const result = dryMutationResult('/project', withOutcome(reply, outcome), 'off', expectation);
@@ -305,7 +310,7 @@ export const testNode = suite('structured dry-run results', [
         }
         return scope.assert.collect();
     }),
-    test('rejects unsupported verdicts even when a failed outcome is available', function (scope) {
+    authoredTest('rejects unsupported verdicts even when a failed outcome is available', function (scope) {
         const { reply } = mutationCoverageFixture('off');
         for (const verdict of [ 'crashed', 'inconclusive', 'process-exhausted', 'runtime-policy' ] as const) {
             const result = dryMutationResult(
@@ -329,7 +334,7 @@ export const testNode = suite('structured dry-run results', [
         }
         return scope.assert.collect();
     }),
-    test('returns timeout replies without completed tests or coverage', function (scope) {
+    authoredTest('returns timeout replies without completed tests or coverage', function (scope) {
         const { reply } = mutationCoverageFixture('perTest');
         for (
             const timedReply of [
@@ -348,7 +353,7 @@ export const testNode = suite('structured dry-run results', [
         }
         return scope.assert.collect();
     }),
-    test('retains checkpoint infrastructure errors when a later case exceeds its deadline', function (scope) {
+    authoredTest('retains checkpoint infrastructure errors when a later case exceeds its deadline', function (scope) {
         const { reply } = mutationCoverageFixture('off');
         const data = mutationLifecycleDataSchema.parse(reply.data);
         scope.assert.deepEqual(
@@ -375,12 +380,12 @@ export const testNode = suite('structured dry-run results', [
         );
         return scope.assert.collect();
     }),
-    test('rejects malformed timeout checkpoints', function (scope) {
+    authoredTest('rejects malformed timeout checkpoints', function (scope) {
         const result = dryMutationResult('/project', { artifacts: [], kind: 'timeout', data: {} }, 'off', expectation);
         scope.assert.equal(result.status, DryRunStatus.Error);
         return scope.assert.collect();
     }),
-    test('returns execution failure diagnostics without completing a dry run', function (scope) {
+    authoredTest('returns execution failure diagnostics without completing a dry run', function (scope) {
         const result = dryMutationResult(
             '/project',
             {
@@ -395,7 +400,7 @@ export const testNode = suite('structured dry-run results', [
         scope.assert.deepEqual(result, { status: DryRunStatus.Error, errorMessage: 'execution sentinel' });
         return scope.assert.collect();
     }),
-    test('retains an infrastructure error when runner diagnostics are empty', function (scope) {
+    authoredTest('retains an infrastructure error when runner diagnostics are empty', function (scope) {
         const { reply } = mutationCoverageFixture('off');
         const { runnerErrors } = runResultFactory.build({ runnerErrors: [ { message: '' } ] });
         scope.assert.deepEqual(
@@ -412,48 +417,51 @@ export const testNode = suite('structured dry-run results', [
         );
         return scope.assert.collect();
     }),
-    test('omits unknown filenames without replacing structural identity with the display name', function (scope) {
-        const native = runResultFactory.build({ perTest: [ { durationMicroseconds: 1234 } ] });
-        const ids = native.perTest.map(function (result) {
-            return workIdentityKey(result.workId);
-        });
-        const result = dryMutationResult(
-            '/project',
-            {
-                kind: 'result',
-                deadlineExceeded: false,
-                result: { ...native, summary: { ...native.summary, planned: 1 } },
-                data: {
-                    catalog: native.perTest.map(function catalogEntry(entry) {
-                        return {
-                            id: workIdentityKey(entry.workId),
-                            work: entry.workId,
-                            annotations: { ownership: [], tags: [] },
-                            controls: { capture: null, duplicateExecution: null, timeoutMilliseconds: null },
-                            skipReason: null
-                        };
-                    }),
-                    selected: ids,
-                    completed: ids,
-                    coverage: { static: {}, perTest: {} },
-                    bailed: false,
-                    caseFailures: [],
-                    infrastructureErrors: [],
-                    hitLimitExceeded: false
-                }
-            },
-            'off',
-            expectation
-        );
-        if (result.status !== DryRunStatus.Complete) {
-            throw new Error('Expected a complete case without a file origin.');
+    authoredTest(
+        'omits unknown filenames without replacing structural identity with the display name',
+        function (scope) {
+            const native = runResultFactory.build({ perTest: [ { durationMicroseconds: 1234 } ] });
+            const ids = native.perTest.map(function (result) {
+                return workIdentityKey(result.workId);
+            });
+            const result = dryMutationResult(
+                '/project',
+                {
+                    kind: 'result',
+                    deadlineExceeded: false,
+                    result: { ...native, summary: { ...native.summary, planned: 1 } },
+                    data: {
+                        catalog: native.perTest.map(function catalogEntry(entry) {
+                            return {
+                                id: workIdentityKey(entry.workId),
+                                work: entry.workId,
+                                annotations: { ownership: [], tags: [] },
+                                controls: { capture: null, duplicateExecution: null, timeoutMilliseconds: null },
+                                skipReason: null
+                            };
+                        }),
+                        selected: ids,
+                        completed: ids,
+                        coverage: { static: {}, perTest: {} },
+                        bailed: false,
+                        caseFailures: [],
+                        infrastructureErrors: [],
+                        hitLimitExceeded: false
+                    }
+                },
+                'off',
+                expectation
+            );
+            if (result.status !== DryRunStatus.Complete) {
+                throw new Error('Expected a complete case without a file origin.');
+            }
+            scope.assert.deepEqual(result.tests, [ {
+                id: '[null,["root"],"passes",null]',
+                name: 'root > passes',
+                timeSpentMs: 1.234,
+                status: TestStatus.Success
+            } ]);
+            return scope.assert.collect();
         }
-        scope.assert.deepEqual(result.tests, [ {
-            id: '[null,["root"],"passes",null]',
-            name: 'root > passes',
-            timeSpentMs: 1.234,
-            status: TestStatus.Success
-        } ]);
-        return scope.assert.collect();
-    })
+    )
 ]);

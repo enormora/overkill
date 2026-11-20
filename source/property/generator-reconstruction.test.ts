@@ -1,6 +1,7 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import { Random, configureGlobal, readConfigureGlobal, resetConfigureGlobal } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { generatorContext, shrinkDescendants } from '../test-support/generator-execution.ts';
 import { gen } from './generators.ts';
@@ -75,7 +76,7 @@ function assertRebuiltState(scope: TestScope, retained: GeneratedInput<StatefulI
     return fresh.branch;
 }
 
-export const testNode = suite('generator reconstruction', [
+export const testNode = authoredSuite('generator reconstruction', [
     test('isolates generation and reconstruction from backend global sizing defaults', function (scope) {
         const previous = readConfigureGlobal();
         scope.cleanup(function restoreBackendDefaults() {

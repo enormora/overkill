@@ -1,34 +1,13 @@
 import diagnosticsChannel from 'node:diagnostics_channel';
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 import type { NormalizedConfig, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    defineReporter,
-    type RunnerError,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defineReporter, type RunnerError } from '../packages/engine/engine.entry-point.ts';
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
-import {
-    defaultMicrotestProfile,
-    defaultRunConfig,
-    defaultRunRequest
-} from '../test-support/run-command-factory.ts';
+import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
-
-import {
-    createPermissionDenialRuntimePolicy,
-    createRuntimeCapabilityPolicy,
-    type RuntimeCapabilityPolicy
-} from './capability-policy.ts';
-import {
-    isRuntimeCapabilityPolicyEnvironment,
-    type RuntimeCapabilityPolicyEnvironment,
-    type WebStorageLike
-} from './capability-policy-snapshots.ts';
-import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
-
-const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+import { createPermissionDenialRuntimePolicy } from './permission-denial-runtime-policy.ts';
+import { createRuntimeCapabilityPolicy, type RuntimeCapabilityPolicy } from './capability-policy.ts';
+import type { RuntimeCapabilityPolicyEnvironment, WebStorageLike } from './capability-policy-snapshots.ts';
 
 type RunCommandParts = {
     readonly config: NormalizedConfig;
@@ -223,331 +202,277 @@ function createSparseStorage(): WebStorageLike {
     };
 }
 
-export const testNode = createOverkillSuite({
-    title: 'source/run/run-capability-policy.test.ts',
-    ...testMetadata,
-
-    children: [
-        createOverkillTestCase({
-            title: 'orchestrator.run() reports load-time capability restrictions outside a test case',
-            ...testMetadata,
-
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createUnitRunOrchestrator();
-                const result = await runOrchestrator.run(createRunCommand({
-                    config: defaultRunConfig({
-                        profiles: {
-                            microtest: defaultMicrotestProfile({
-                                execution: {
-                                    processModel: 'in-process',
-                                    scheduling: 'serial'
-                                }
-                            })
-                        }
-                    }),
-                    cwd: process.cwd(),
-                    engine: { kind: 'default' },
-                    request: defaultRunRequest({ paths: [ loadEnvPolicyFixturePath ] })
-                }));
-                const [ runnerError ] = result.runnerErrors;
-
-                scope.assert.equal(result.perTest[0]?.verdict, 'pass');
-                scope.assert.equal(runnerError?.subtype, 'runtime-policy');
-                scope.assert.equal(runnerError?.attributedTo, null);
-                scope.assert.equal(runnerErrorPhase(runnerError), 'load');
-                scope.assert.equal(runnerErrorMessageIncludes(runnerError, 'process.env'), true);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'runtime capability policy host readers reject invalid host values',
-            ...testMetadata,
-
-            body(scope: OverkillScope) {
-                const invalidProcess = { env: { NUMBER: 1 } };
-                const invalidHost = { sessionStorage: { length: '1' } };
-
-                scope.assert.equal(isRuntimeCapabilityPolicyEnvironment({ VALID: 'value', OMITTED: undefined }), true);
-                scope.assert.equal(isRuntimeCapabilityPolicyEnvironment({ INVALID: 1 }), false);
-                scope.assert.deepEqual(readProcessEnvironment(invalidProcess), {});
-                scope.assert.equal(readWebStorage(invalidHost, 'sessionStorage'), null);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'orchestrator.resolve() preserves profile-level reporter lists',
-            ...testMetadata,
-
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createUnitRunOrchestrator();
-                const profileReporter: NonNullable<NormalizedConfig['reporters']>[number] = defineReporter(
-                    function profileMemoryReporter() {
-                        return {
-                            dispose: null,
-                            kind: 'real-time',
-                            name: 'profile-memory',
-                            onEvent() {
-                                return undefined;
-                            },
-                            onFinish: null,
-                            sinks: [ { kind: 'memory' } ]
-                        };
+export const testNode = suite('source/run/run-capability-policy.test.ts', [
+    test(
+        'orchestrator.run() reports load-time capability restrictions outside a test case',
+        async function (scope: OverkillScope) {
+            const runOrchestrator = createUnitRunOrchestrator();
+            const result = await runOrchestrator.run(createRunCommand({
+                config: defaultRunConfig({
+                    profiles: {
+                        microtest: defaultMicrotestProfile({
+                            execution: {
+                                processModel: 'in-process',
+                                scheduling: 'serial'
+                            }
+                        })
                     }
-                );
-                const resolvedRun = await runOrchestrator.resolve(createRunCommand({
-                    config: defaultRunConfig({
-                        profiles: {
-                            microtest: defaultMicrotestProfile({
-                                timeouts: { collectionMilliseconds: 5000 },
-                                reporters: [ profileReporter ]
-                            })
-                        }
-                    }),
-                    cwd: process.cwd(),
-                    engine: { kind: 'default' },
-                    request: defaultRunRequest({ paths: [ passingFixturePath ] })
-                }));
+                }),
+                cwd: process.cwd(),
+                engine: { kind: 'default' },
+                request: defaultRunRequest({ paths: [ loadEnvPolicyFixturePath ] })
+            }));
+            const [ runnerError ] = result.runnerErrors;
 
-                scope.assert.deepEqual(resolvedRun.reporters, [ profileReporter ]);
+            scope.assert.equal(result.perTest[0]?.verdict, 'pass');
+            scope.assert.equal(runnerError?.subtype, 'runtime-policy');
+            scope.assert.equal(runnerError?.attributedTo, null);
+            scope.assert.equal(runnerErrorPhase(runnerError), 'load');
+            scope.assert.equal(runnerErrorMessageIncludes(runnerError, 'process.env'), true);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'runtime capability policy attributes observed case side effects',
-            ...testMetadata,
-
-            async body(scope: OverkillScope) {
-                const environment: Record<string, string | undefined> = { BEFORE: 'yes' };
-                const sessionStorageValues = new Map([ [ 'before', 'yes' ] ]);
-                const localStorageValues = new Map([ [ 'before', 'yes' ] ]);
-                const policy = createRuntimeCapabilityPolicy({
-                    dependencies: {
-                        observeIpcListeners: installNoPolicyRestriction,
-                        observeProcessExit: installNoPolicyRestriction,
-                        readEnvironment() {
-                            return environment;
-                        },
-                        readStorage(name) {
-                            return createStorage(name === 'sessionStorage' ? sessionStorageValues : localStorageValues);
-                        }
+            return scope.assert.collect();
+        }
+    ),
+    test('orchestrator.resolve() preserves profile-level reporter lists', async function (scope: OverkillScope) {
+        const runOrchestrator = createUnitRunOrchestrator();
+        const profileReporter: NonNullable<NormalizedConfig['reporters']>[number] = defineReporter(
+            function profileMemoryReporter() {
+                return {
+                    dispose: null,
+                    kind: 'real-time',
+                    name: 'profile-memory',
+                    onEvent() {
+                        return undefined;
                     },
-                    observedStderr: false,
-                    observedStdout: false
-                });
-
-                await policy.runAttempt(policyTestCase, { index: 0 }, async function createObservedSideEffects() {
-                    environment.AFTER = 'yes';
-                    sessionStorageValues.set('after', 'yes');
-                    localStorageValues.set('after', 'yes');
-                    policy.recordViolation(
-                        'timer',
-                        'Runtime policy violation: setTimeout/setInterval created a timer.',
-                        'observed'
-                    );
-                });
-                const caseErrors = policy.takeAttemptErrors(policyTestCase, { index: 0 });
-                policy.takeRunErrors();
-
-                scope.assert.deepEqual(caseErrors.map(errorCapability).toSorted(compareNullableStrings), [
-                    'fs-write',
-                    'fs-write',
-                    'process-env',
-                    'timer'
-                ]);
-                scope.assert.equal(
-                    caseErrors.every(function attributedToCase(error) {
-                        return error.attributedTo === policyTestCase.id;
-                    }),
-                    true
-                );
-
-                return scope.assert.collect();
+                    onFinish: null,
+                    sinks: [ { kind: 'memory' } ]
+                };
             }
-        }),
-        createOverkillTestCase({
-            title: 'permission denial runtime policy attributes Node permission diagnostics',
-            ...testMetadata,
+        );
+        const resolvedRun = await runOrchestrator.resolve(createRunCommand({
+            config: defaultRunConfig({
+                profiles: {
+                    microtest: defaultMicrotestProfile({
+                        timeouts: { collectionMilliseconds: 5000 },
+                        reporters: [ profileReporter ]
+                    })
+                }
+            }),
+            cwd: process.cwd(),
+            engine: { kind: 'default' },
+            request: defaultRunRequest({ paths: [ passingFixturePath ] })
+        }));
 
-            async body(scope: OverkillScope) {
-                const policy = createPermissionDenialRuntimePolicy();
-                const channel = await readPermissionDiagnosticChannel();
+        scope.assert.deepEqual(resolvedRun.reporters, [ profileReporter ]);
 
-                await policy.runAttempt(policyTestCase, { index: 0 }, async function publishCasePermissionDiagnostic() {
-                    publishPermissionDiagnostic(channel, 'FileSystemWrite', '/project/output.txt');
-                });
-                const error = firstRunnerError(policy.takeAttemptErrors(policyTestCase, { index: 0 }));
-                const runErrors = policy.takeRunErrors();
+        return scope.assert.collect();
+    }),
+    test('runtime capability policy attributes observed case side effects', async function (scope: OverkillScope) {
+        const environment: Record<string, string | undefined> = { BEFORE: 'yes' };
+        const sessionStorageValues = new Map([ [ 'before', 'yes' ] ]);
+        const localStorageValues = new Map([ [ 'before', 'yes' ] ]);
+        const policy = createRuntimeCapabilityPolicy({
+            dependencies: {
+                observeIpcListeners: installNoPolicyRestriction,
+                observeProcessExit: installNoPolicyRestriction,
+                readEnvironment() {
+                    return environment;
+                },
+                readStorage(name) {
+                    return createStorage(name === 'sessionStorage' ? sessionStorageValues : localStorageValues);
+                }
+            },
+            observedStderr: false,
+            observedStdout: false
+        });
 
-                assertPermissionDiagnosticError(scope, error, {
-                    capability: 'fs-write',
-                    message: 'Permission denied: FileSystemWrite for /project/output.txt.',
-                    permission: 'FileSystemWrite',
-                    resource: '/project/output.txt'
-                });
-                scope.assert.equal(error.attributedTo, policyTestCase.id);
-                scope.assert.deepEqual(runErrors, []);
+        await policy.runAttempt(policyTestCase, { index: 0 }, async function createObservedSideEffects() {
+            environment.AFTER = 'yes';
+            sessionStorageValues.set('after', 'yes');
+            localStorageValues.set('after', 'yes');
+            policy.recordViolation(
+                'timer',
+                'Runtime policy violation: setTimeout/setInterval created a timer.',
+                'observed'
+            );
+        });
+        const caseErrors = policy.takeAttemptErrors(policyTestCase, { index: 0 });
+        policy.takeRunErrors();
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'runtime capability policy reports Node permission diagnostics as permission errors',
-            ...testMetadata,
+        scope.assert.deepEqual(caseErrors.map(errorCapability).toSorted(compareNullableStrings), [
+            'fs-write',
+            'fs-write',
+            'process-env',
+            'timer'
+        ]);
+        scope.assert.equal(
+            caseErrors.every(function attributedToCase(error) {
+                return error.attributedTo === policyTestCase.id;
+            }),
+            true
+        );
 
-            async body(scope: OverkillScope) {
-                const environment: RuntimeCapabilityPolicyEnvironment = {};
-                const channel = await readPermissionDiagnosticChannel();
-                const policy = createRuntimeCapabilityPolicy({
-                    dependencies: {
-                        observeIpcListeners: installNoPolicyRestriction,
-                        observeProcessExit: installNoPolicyRestriction,
-                        readEnvironment() {
-                            return environment;
-                        },
-                        readStorage() {
-                            return null;
-                        }
+        return scope.assert.collect();
+    }),
+    test(
+        'permission denial runtime policy attributes Node permission diagnostics',
+        async function (scope: OverkillScope) {
+            const policy = createPermissionDenialRuntimePolicy({ auditDiagnostics: 'ignore', auditEnabled: false });
+            const channel = await readPermissionDiagnosticChannel();
+
+            await policy.runAttempt(policyTestCase, { index: 0 }, async function publishCasePermissionDiagnostic() {
+                publishPermissionDiagnostic(channel, 'FileSystemWrite', '/project/output.txt');
+            });
+            const error = firstRunnerError(policy.takeAttemptErrors(policyTestCase, { index: 0 }));
+            const runErrors = policy.takeRunErrors();
+
+            assertPermissionDiagnosticError(scope, error, {
+                capability: 'fs-write',
+                message: 'Permission denied: FileSystemWrite for /project/output.txt.',
+                permission: 'FileSystemWrite',
+                resource: '/project/output.txt'
+            });
+            scope.assert.equal(error.attributedTo, policyTestCase.id);
+            scope.assert.deepEqual(runErrors, []);
+
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'runtime capability policy reports Node permission diagnostics as permission errors',
+        async function (scope: OverkillScope) {
+            const environment: RuntimeCapabilityPolicyEnvironment = {};
+            const channel = await readPermissionDiagnosticChannel();
+            const policy = createRuntimeCapabilityPolicy({
+                dependencies: {
+                    observeIpcListeners: installNoPolicyRestriction,
+                    observeProcessExit: installNoPolicyRestriction,
+                    readEnvironment() {
+                        return environment;
                     },
-                    observedStderr: false,
-                    observedStdout: false
-                });
-
-                await policy.runAttempt(
-                    policyTestCase,
-                    { index: 0 },
-                    async function publishStrictPermissionDiagnostic() {
-                        publishPermissionDiagnostic(channel, 'FileSystemRead', '/project/input.txt');
+                    readStorage() {
+                        return null;
                     }
-                );
-                const error = firstRunnerError(policy.takeAttemptErrors(policyTestCase, { index: 0 }));
-                const runErrors = policy.takeRunErrors();
+                },
+                observedStderr: false,
+                observedStdout: false
+            });
 
-                assertPermissionDiagnosticError(scope, error, {
-                    capability: 'fs-read',
-                    message: null,
-                    permission: 'FileSystemRead',
-                    resource: '/project/input.txt'
-                });
-                scope.assert.deepEqual(runErrors, []);
+            await policy.runAttempt(
+                policyTestCase,
+                { index: 0 },
+                async function publishStrictPermissionDiagnostic() {
+                    publishPermissionDiagnostic(channel, 'FileSystemRead', '/project/input.txt');
+                }
+            );
+            const error = firstRunnerError(policy.takeAttemptErrors(policyTestCase, { index: 0 }));
+            const runErrors = policy.takeRunErrors();
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'runtime capability policy accepts sparse unchanged storage snapshots',
-            ...testMetadata,
+            assertPermissionDiagnosticError(scope, error, {
+                capability: 'fs-read',
+                message: null,
+                permission: 'FileSystemRead',
+                resource: '/project/input.txt'
+            });
+            scope.assert.deepEqual(runErrors, []);
 
-            async body(scope: OverkillScope) {
-                const environment: RuntimeCapabilityPolicyEnvironment = {};
-                const sparseStorage = createSparseStorage();
-                const policy = createRuntimeCapabilityPolicy({
-                    dependencies: {
-                        observeIpcListeners: installNoPolicyRestriction,
-                        observeProcessExit: installNoPolicyRestriction,
-                        readEnvironment() {
-                            return environment;
-                        },
-                        readStorage() {
-                            return sparseStorage;
-                        }
-                    },
-                    observedStderr: false,
-                    observedStdout: false
-                });
+            return scope.assert.collect();
+        }
+    ),
+    test('runtime capability policy accepts sparse unchanged storage snapshots', async function (scope: OverkillScope) {
+        const environment: RuntimeCapabilityPolicyEnvironment = {};
+        const sparseStorage = createSparseStorage();
+        const policy = createRuntimeCapabilityPolicy({
+            dependencies: {
+                observeIpcListeners: installNoPolicyRestriction,
+                observeProcessExit: installNoPolicyRestriction,
+                readEnvironment() {
+                    return environment;
+                },
+                readStorage() {
+                    return sparseStorage;
+                }
+            },
+            observedStderr: false,
+            observedStdout: false
+        });
 
-                await policy.runAttempt(policyTestCase, { index: 0 }, async function leaveStorageUnchanged() {
-                    return undefined;
-                });
-                const caseErrors = policy.takeAttemptErrors(policyTestCase, { index: 0 });
-                const runErrors = policy.takeRunErrors();
+        await policy.runAttempt(policyTestCase, { index: 0 }, async function leaveStorageUnchanged() {
+            return undefined;
+        });
+        const caseErrors = policy.takeAttemptErrors(policyTestCase, { index: 0 });
+        const runErrors = policy.takeRunErrors();
 
-                scope.assert.deepEqual(caseErrors, []);
-                scope.assert.deepEqual(runErrors, []);
+        scope.assert.deepEqual(caseErrors, []);
+        scope.assert.deepEqual(runErrors, []);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'runtime capability policy reports process.env identity drift',
-            ...testMetadata,
+        return scope.assert.collect();
+    }),
+    test('runtime capability policy reports process.env identity drift', async function (scope: OverkillScope) {
+        let environment: RuntimeCapabilityPolicyEnvironment = {};
+        const policy = createRuntimeCapabilityPolicy({
+            dependencies: {
+                observeIpcListeners: installNoPolicyRestriction,
+                observeProcessExit: installNoPolicyRestriction,
+                readEnvironment() {
+                    return environment;
+                },
+                readStorage() {
+                    return null;
+                }
+            },
+            observedStderr: false,
+            observedStdout: false
+        });
 
-            async body(scope: OverkillScope) {
-                let environment: RuntimeCapabilityPolicyEnvironment = {};
-                const policy = createRuntimeCapabilityPolicy({
-                    dependencies: {
-                        observeIpcListeners: installNoPolicyRestriction,
-                        observeProcessExit: installNoPolicyRestriction,
-                        readEnvironment() {
-                            return environment;
-                        },
-                        readStorage() {
-                            return null;
-                        }
-                    },
-                    observedStderr: false,
-                    observedStdout: false
-                });
+        await policy.runAttempt(policyTestCase, { index: 0 }, async function replaceEnvironmentObject() {
+            environment = {};
+        });
+        const caseErrors = policy.takeAttemptErrors(policyTestCase, { index: 0 });
+        policy.takeRunErrors();
 
-                await policy.runAttempt(policyTestCase, { index: 0 }, async function replaceEnvironmentObject() {
-                    environment = {};
-                });
-                const caseErrors = policy.takeAttemptErrors(policyTestCase, { index: 0 });
-                policy.takeRunErrors();
+        scope.assert.deepEqual(caseErrors.map(errorCapability), [ 'process-env' ]);
 
-                scope.assert.deepEqual(caseErrors.map(errorCapability), [ 'process-env' ]);
+        return scope.assert.collect();
+    }),
+    test('runtime capability policy records injected strictness and raw output', async function (scope: OverkillScope) {
+        const environment: RuntimeCapabilityPolicyEnvironment = {};
+        const policy = createRuntimeCapabilityPolicy({
+            dependencies: {
+                observeIpcListeners: installNoPolicyRestriction,
+                observeProcessExit: installNoPolicyRestriction,
+                readEnvironment() {
+                    return environment;
+                },
+                readStorage() {
+                    return null;
+                }
+            },
+            observedStderr: true,
+            observedStdout: true
+        });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'runtime capability policy records injected strictness and raw output',
-            ...testMetadata,
+        await policy.runLoad(async function publishLoadDiagnostics() {
+            policy.recordViolation('net', 'Runtime policy violation: net.', 'blocked');
+            policy.recordViolation('fs-write', 'Runtime policy violation: fs-write.', 'blocked');
+            policy.recordViolation('net', 'Runtime policy violation: net.', 'blocked');
+            policy.recordViolation('console', 'Runtime policy violation: console.', 'observed');
+        });
+        policy.recordViolation('console', 'Runtime policy violation: console.', 'observed');
+        const runErrors = policy.takeRunErrors();
 
-            async body(scope: OverkillScope) {
-                const environment: RuntimeCapabilityPolicyEnvironment = {};
-                const policy = createRuntimeCapabilityPolicy({
-                    dependencies: {
-                        observeIpcListeners: installNoPolicyRestriction,
-                        observeProcessExit: installNoPolicyRestriction,
-                        readEnvironment() {
-                            return environment;
-                        },
-                        readStorage() {
-                            return null;
-                        }
-                    },
-                    observedStderr: true,
-                    observedStdout: true
-                });
+        scope.assert.deepEqual(runErrors.map(errorCapabilityAndStrictness), [
+            [ 'net', 'blocked' ],
+            [ 'fs-write', 'blocked' ],
+            [ 'net', 'blocked' ],
+            [ 'console', 'observed' ],
+            [ 'console', 'observed' ],
+            [ 'raw-stdout', 'observed' ],
+            [ 'raw-stderr', 'observed' ]
+        ]);
+        scope.assert.equal(runnerErrorPhase(runErrors[4]), 'out-of-test');
+        scope.assert.deepEqual(policy.takeRunErrors(), []);
 
-                await policy.runLoad(async function publishLoadDiagnostics() {
-                    policy.recordViolation('net', 'Runtime policy violation: net.', 'blocked');
-                    policy.recordViolation('fs-write', 'Runtime policy violation: fs-write.', 'blocked');
-                    policy.recordViolation('net', 'Runtime policy violation: net.', 'blocked');
-                    policy.recordViolation('console', 'Runtime policy violation: console.', 'observed');
-                });
-                policy.recordViolation('console', 'Runtime policy violation: console.', 'observed');
-                const runErrors = policy.takeRunErrors();
-
-                scope.assert.deepEqual(runErrors.map(errorCapabilityAndStrictness), [
-                    [ 'net', 'blocked' ],
-                    [ 'fs-write', 'blocked' ],
-                    [ 'net', 'blocked' ],
-                    [ 'console', 'observed' ],
-                    [ 'console', 'observed' ],
-                    [ 'raw-stdout', 'observed' ],
-                    [ 'raw-stderr', 'observed' ]
-                ]);
-                scope.assert.equal(runnerErrorPhase(runErrors[4]), 'out-of-test');
-                scope.assert.deepEqual(policy.takeRunErrors(), []);
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

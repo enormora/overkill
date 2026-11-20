@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { workerReplayRecord } from '../test-support/replay-record-fixture.ts';
 import { createCollectedPlan, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
 import { replayRecordSchema } from './replay-record-schema.ts';
@@ -239,8 +239,8 @@ async function prepareRecord(record: ReplayRunRecord): Promise<PreparedReplay> {
         }
     });
 }
-export const testNode = suite('retained replay record validation', [
-    test('replays baseline write records with comparisons only', async function (scope: TestScope) {
+export const testNode = authoredSuite('retained replay record validation', [
+    authoredTest('replays baseline write records with comparisons only', async function (scope: TestScope) {
         const record = retainedRecord();
         for (const mode of [ 'apply', 'bootstrap', 'diff', 'update' ] as const) {
             const prepared = await prepareRecord({
@@ -251,7 +251,7 @@ export const testNode = suite('retained replay record validation', [
         }
         return scope.assert.collect();
     }),
-    test('rejects a saved profile that disagrees with execution facts', async function (scope: TestScope) {
+    authoredTest('rejects a saved profile that disagrees with execution facts', async function (scope: TestScope) {
         const record = retainedRecord();
         await scope.assert.rejects(async function inconsistentProfile() {
             await prepareRecord({
@@ -261,13 +261,13 @@ export const testNode = suite('retained replay record validation', [
         }, { message: 'Recorded profile and execution facts are inconsistent.' });
         return scope.assert.collect();
     }),
-    test('accepts a source without placement decisions', async function (scope: TestScope) {
+    authoredTest('accepts a source without placement decisions', async function (scope: TestScope) {
         const record = replayRecordSchema.parse(placedRecord(retainedRecord(), null));
         scope.assert.deepEqual(await readContent(JSON.stringify(record), ignoreRead, record.id), record);
         return scope.assert.collect();
     }),
     ...invalidRecords().map(function inconsistentRecord(entry) {
-        return test(entry.title, async function (scope: TestScope) {
+        return authoredTest(entry.title, async function (scope: TestScope) {
             const record = retainedRecord();
             await scope.assert.rejects(async function rejectInconsistentRecord() {
                 await readContent(JSON.stringify(entry.change(record)), ignoreRead, record.id);
@@ -275,7 +275,7 @@ export const testNode = suite('retained replay record validation', [
             return scope.assert.collect();
         });
     }),
-    test('accepts a consistent interrupted snapshot', async function (scope: TestScope) {
+    authoredTest('accepts a consistent interrupted snapshot', async function (scope: TestScope) {
         const record = retainedRecord();
         const replay = await readContent(JSON.stringify(record), ignoreRead, record.id);
         scope.assert.deepEqual(replay.identities, record.identities);
@@ -283,7 +283,7 @@ export const testNode = suite('retained replay record validation', [
         return scope.assert.collect();
     }),
     ...[ null, '{' ].map(function unreadableContent(content) {
-        return test(
+        return authoredTest(
             content === null ? 'rejects missing run records' : 'rejects malformed run JSON',
             async function (scope: TestScope) {
                 await scope.assert.rejects(async function rejectUnreadableRecord() {
@@ -293,7 +293,7 @@ export const testNode = suite('retained replay record validation', [
             }
         );
     }),
-    test('rejects traversal before reading the store', async function (scope: TestScope) {
+    authoredTest('rejects traversal before reading the store', async function (scope: TestScope) {
         let reads = 0;
         await scope.assert.rejects(async function rejectTraversal() {
             await readContent('{}', function observeRead() {
@@ -304,4 +304,3 @@ export const testNode = suite('retained replay record validation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

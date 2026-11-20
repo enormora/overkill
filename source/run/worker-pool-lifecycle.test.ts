@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { workerLifecycleProbe } from '../test-support/worker-pool-lifecycle-probe.ts';
 import type { WorkerLifecycle } from '../config/types.ts';
 import type { TinypoolInstance } from './tinypool-node-compatibility.ts';
@@ -70,46 +66,26 @@ function assignedUnitCounts(results: readonly WorkerLifecycleProbeResult[]): rea
     });
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-lifecycle.test.ts',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'fresh worker pools release workers between assignments',
-            async body(scope: OverkillScope) {
-                const pool = createLifecycleProbePool('fresh-worker-per-unit');
-                try {
-                    await runWorkerLifecycleProbe(pool);
-                    scope.assert.equal(pool.threads.length, 0);
-                    return scope.assert.collect();
-                } finally {
-                    await pool.destroy();
-                }
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'real Tinypool pools reuse or replace workers based on lifecycle',
-            async body(scope: OverkillScope) {
-                const reused = await realTinypoolWorkerLifecycle('reuse');
-                const fresh = await realTinypoolWorkerLifecycle('fresh-worker-per-unit');
+export const testNode = suite('source/run/worker-pool-lifecycle.test.ts', [
+    test('fresh worker pools release workers between assignments', async function (scope: OverkillScope) {
+        const pool = createLifecycleProbePool('fresh-worker-per-unit');
+        try {
+            await runWorkerLifecycleProbe(pool);
+            scope.assert.equal(pool.threads.length, 0);
+            return scope.assert.collect();
+        } finally {
+            await pool.destroy();
+        }
+    }),
+    test('real Tinypool pools reuse or replace workers based on lifecycle', async function (scope: OverkillScope) {
+        const reused = await realTinypoolWorkerLifecycle('reuse');
+        const fresh = await realTinypoolWorkerLifecycle('fresh-worker-per-unit');
 
-                scope.assert.equal(reused[0].threadId, reused[1].threadId);
-                scope.assert.deepEqual(assignedUnitCounts(reused), [ 1, 2 ]);
-                scope.assert.notEqual(fresh[0].threadId, fresh[1].threadId);
-                scope.assert.deepEqual(assignedUnitCounts(fresh), [ 1, 1 ]);
+        scope.assert.equal(reused[0].threadId, reused[1].threadId);
+        scope.assert.deepEqual(assignedUnitCounts(reused), [ 1, 2 ]);
+        scope.assert.notEqual(fresh[0].threadId, fresh[1].threadId);
+        scope.assert.deepEqual(assignedUnitCounts(fresh), [ 1, 1 ]);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { attachmentRecording } from '../test-support/attachment-recording.ts';
 import { exchangedAttachment } from '../test-support/attachment-exchange.ts';
 import { memoryHistoryAccess, idleHistoryScenario } from '../test-support/history-access.ts';
@@ -8,7 +8,7 @@ import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { inspectDetailedRecordState } from './history-state-access.ts';
 import { historyRecordSchema } from './history-record.ts';
 
-export const testNode = suite('attachment run recording', [
+export const testNode = authoredSuite('attachment run recording', [
     test('classifies persisted attachment records by their replay completeness', async function (scope: TestScope) {
         const fixture = await attachmentRecording(null);
         const record = await createAttachmentRecord(fixture.resolved, fixture.dependencies, null);
@@ -89,4 +89,3 @@ export const testNode = suite('attachment run recording', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

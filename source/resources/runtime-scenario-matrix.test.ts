@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     defineResource,
     defineRuntime,
@@ -75,24 +76,10 @@ function assertRuntimeMatrixScenarios(scope: TestScope): void {
     );
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/resources/runtime-scenario-matrix.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'runtime matrices bind scenarios and require matching slots',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                assertRuntimeMatrixScenarios(scope);
+export const testNode = suite('source/resources/runtime-scenario-matrix.test.ts', [
+    test('runtime matrices bind scenarios and require matching slots', function (scope: TestScope) {
+        assertRuntimeMatrixScenarios(scope);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

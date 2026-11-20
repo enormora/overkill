@@ -1,6 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { testDouble } from '../packages/doubles/doubles.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test, testDouble } from '@overkill-dev/test';
+
 import { observationCase } from '../test-support/observation-lifetime.ts';
 import type { BenchmarkScope } from '../engine/benchmark-node.ts';
 import { defaultMeasurementTarget } from './measurement-target.ts';
@@ -20,7 +19,7 @@ function collectionScope(scope: TestScope): BenchmarkScope {
     };
 }
 const lifecycle = { warmupSamples: 0, cooldown: { mode: 'off' as const }, garbageCollection: 'after-sample' as const };
-export const testNode = suite('garbage collection capability policy', [
+export const testNode = authoredSuite('garbage collection capability policy', [
     test('rejects unavailable collection capability', async function (scope: TestScope) {
         const target = {
             ...defaultMeasurementTarget(),
@@ -65,4 +64,3 @@ export const testNode = suite('garbage collection capability policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

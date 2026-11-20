@@ -1,8 +1,8 @@
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../../packages/test/test.entry-point.ts';
+import { test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { adapterUrl, engineUrl, configUrl } from './stryker-lifecycle-fixture.test.ts';
 import { executeMutationScript } from './stryker-script.test.ts';
 import { strykerDryRunScript } from './stryker-dry-run-scripts.test.ts';
@@ -24,7 +24,7 @@ const modes = ([ 'in-process', 'supervised-process' ] as const).flatMap(function
         }));
 });
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'Stryker structured dry runs',
     modes.map(function scenario(mode) {
         return test(
@@ -54,5 +54,3 @@ export const testNode = suite(
         );
     })
 );
-
-await runIfMain(import.meta, testNode);

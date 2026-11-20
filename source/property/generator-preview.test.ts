@@ -1,5 +1,6 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import type { TestScope } from '../packages/engine/engine.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { sampleGenerator } from './generator-preview.ts';
 import { gen } from './generators.ts';
 
@@ -7,7 +8,7 @@ type PreviewTree = { readonly left: PreviewTree; readonly right: PreviewTree; } 
 
 const request = { seed: 42n, count: 10, size: 3, depth: 0 };
 
-export const testNode = suite('generator previews', [
+export const testNode = authoredSuite('generator previews', [
     test('samples have independent mutable storage', function (scope: TestScope) {
         const values = sampleGenerator(gen.array(gen.boolean()), request);
         const first = values[0];

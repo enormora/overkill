@@ -1,11 +1,9 @@
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import { CaseRunnerError } from '../engine/run-result.ts';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { resourceLifecycleError } from '../resources/resource-lifecycle-error.ts';
-import {
-    runtimeAsyncDisposeSymbol,
-    type ResourceSession
-} from '../resources/resource-session.ts';
+import { runtimeAsyncDisposeSymbol, type ResourceSession } from '../resources/resource-session.ts';
 import {
     defineResource,
     defineRuntime,
@@ -23,14 +21,8 @@ import {
     stepRuntimeGraphs,
     type ComposedResourceSession
 } from './resource-lifecycle-composition.ts';
-import {
-    resourceWrapperErrorFromUnknown,
-    resourceWrapperLifecycleError
-} from './resource-lifecycle-error.ts';
-import {
-    activeManagedLifecycle,
-    currentLifecycleCase
-} from './resource-lifecycle-state.ts';
+import { resourceWrapperErrorFromUnknown, resourceWrapperLifecycleError } from './resource-lifecycle-error.ts';
+import { activeManagedLifecycle, currentLifecycleCase } from './resource-lifecycle-state.ts';
 import { managedResourceSession } from './resource-lifecycle-managed-session.ts';
 
 const databaseResource = defineResource({
@@ -152,235 +144,173 @@ function invalidResourceContextConstructionError(): unknown {
     }
 }
 
-export const testNode = createSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/resource-lifecycle-composition.test.ts',
-    children: [
-        createTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'resource wrapper composition maps mixed direct and runtime steps',
-            async body(scope: TestScope) {
-                const trackedSession = trackedResourceSession();
-                const composed = composedResourceSession(
-                    resourceMapFromEntries(directResourceEntries(steps)),
-                    stepRuntimeGraphs(steps),
-                    trackedSession.session
-                );
+export const testNode = suite('source/run/resource-lifecycle-composition.test.ts', [
+    test('resource wrapper composition maps mixed direct and runtime steps', async function (scope: TestScope) {
+        const trackedSession = trackedResourceSession();
+        const composed = composedResourceSession(
+            resourceMapFromEntries(directResourceEntries(steps)),
+            stepRuntimeGraphs(steps),
+            trackedSession.session
+        );
 
-                scope.assert.deepEqual(Object.keys(combinedResourceEntries(steps)), [
-                    'resource:database',
-                    runtimeDatabaseResourceKey
-                ]);
-                scope.assert.equal(
-                    resourceContextForStep(resources, composed.directResources).database,
-                    'direct handle'
-                );
-                scope.assert.equal(runtimeContextForStep(runtime, composed).database, 'runtime handle');
-                await composed.disposeOnce({ signal: disposalSignal() });
-                scope.assert.equal(trackedSession.isDisposed(), true);
+        scope.assert.deepEqual(Object.keys(combinedResourceEntries(steps)), [
+            'resource:database',
+            runtimeDatabaseResourceKey
+        ]);
+        scope.assert.equal(
+            resourceContextForStep(resources, composed.directResources).database,
+            'direct handle'
+        );
+        scope.assert.equal(runtimeContextForStep(runtime, composed).database, 'runtime handle');
+        await composed.disposeOnce({ signal: disposalSignal() });
+        scope.assert.equal(trackedSession.isDisposed(), true);
 
-                return scope.assert.collect();
+        return scope.assert.collect();
+    }),
+    test('resource wrapper lifecycle messages follow direct resource presence', function (scope: TestScope) {
+        scope.assert.deepEqual(lifecycleMessages(steps), {
+            acquisitionFailure: 'Resource acquisition failed.',
+            disposalFailure: 'Resource disposal failed.'
+        });
+        scope.assert.deepEqual(lifecycleMessages([ { kind: 'runtime', runtime } ]), {
+            acquisitionFailure: 'Runtime resource acquisition failed.',
+            disposalFailure: 'Runtime resource disposal failed.'
+        });
+
+        return scope.assert.collect();
+    }),
+    test('resource wrapper composition rejects invalid resource context construction', function (scope: TestScope) {
+        const thrown = invalidResourceContextConstructionError();
+
+        scope.assert.equal(thrown instanceof CaseRunnerError, true);
+        scope.assert.equal(thrown instanceof Error ? thrown.message : '', 'Resource scope composition failed.');
+
+        return scope.assert.collect();
+    }),
+    test('resource wrapper composition rejects malformed composed sessions', function (scope: TestScope) {
+        const emptyContext = Object.freeze({}) as ResourceContext<RuntimeResourceMap>;
+        const session: ComposedResourceSession = Object.freeze({
+            directResources: emptyContext,
+            async disposeOnce() {
+                return undefined;
+            },
+            runtimeContexts: new Map()
+        });
+        const incompleteSession: ComposedResourceSession = Object.freeze({
+            directResources: emptyContext,
+            async disposeOnce() {
+                return undefined;
+            },
+            runtimeContexts: new Map([ [ runtime, emptyContext ] ])
+        });
+
+        scope.assert.throws(function readMissingRuntimeContext() {
+            runtimeContextForStep(runtime, session);
+        }, { message: 'Runtime scope composition failed.' });
+        scope.assert.throws(function readIncompleteRuntimeContext() {
+            runtimeContextForStep(runtime, incompleteSession);
+        }, { message: 'Runtime scope composition failed.' });
+
+        return scope.assert.collect();
+    }),
+    test('managed resource sessions reject invalid async disposal support', function (scope: TestScope) {
+        const originalReflectGet = Reflect.get;
+        const restore = replaceReflectGet(function hideAsyncDisposeSymbol(...parameters) {
+            const [ target, propertyKey, receiver ] = parameters;
+
+            if (target === Symbol && propertyKey === 'asyncDispose') {
+                return undefined;
             }
-        }),
-        createTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'resource wrapper lifecycle messages follow direct resource presence',
-            body(scope: TestScope) {
-                scope.assert.deepEqual(lifecycleMessages(steps), {
-                    acquisitionFailure: 'Resource acquisition failed.',
-                    disposalFailure: 'Resource disposal failed.'
-                });
-                scope.assert.deepEqual(lifecycleMessages([ { kind: 'runtime', runtime } ]), {
-                    acquisitionFailure: 'Runtime resource acquisition failed.',
-                    disposalFailure: 'Runtime resource disposal failed.'
-                });
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'resource wrapper composition rejects invalid resource context construction',
-            body(scope: TestScope) {
-                const thrown = invalidResourceContextConstructionError();
+            return receiver === undefined
+                ? originalReflectGet(target, propertyKey)
+                : originalReflectGet(target, propertyKey, receiver);
+        });
 
-                scope.assert.equal(thrown instanceof CaseRunnerError, true);
-                scope.assert.equal(thrown instanceof Error ? thrown.message : '', 'Resource scope composition failed.');
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'resource wrapper composition rejects malformed composed sessions',
-            body(scope: TestScope) {
-                const emptyContext = Object.freeze({}) as ResourceContext<RuntimeResourceMap>;
-                const session: ComposedResourceSession = Object.freeze({
-                    directResources: emptyContext,
-                    async disposeOnce() {
-                        return undefined;
-                    },
-                    runtimeContexts: new Map()
-                });
-                const incompleteSession: ComposedResourceSession = Object.freeze({
-                    directResources: emptyContext,
-                    async disposeOnce() {
-                        return undefined;
-                    },
-                    runtimeContexts: new Map([ [ runtime, emptyContext ] ])
-                });
-
-                scope.assert.throws(function readMissingRuntimeContext() {
-                    runtimeContextForStep(runtime, session);
-                }, { message: 'Runtime scope composition failed.' });
-                scope.assert.throws(function readIncompleteRuntimeContext() {
-                    runtimeContextForStep(runtime, incompleteSession);
-                }, { message: 'Runtime scope composition failed.' });
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'managed resource sessions reject invalid async disposal support',
-            body(scope: TestScope) {
-                const originalReflectGet = Reflect.get;
-                const restore = replaceReflectGet(function hideAsyncDisposeSymbol(...parameters) {
-                    const [ target, propertyKey, receiver ] = parameters;
-
-                    if (target === Symbol && propertyKey === 'asyncDispose') {
-                        return undefined;
-                    }
-
-                    return receiver === undefined
-                        ? originalReflectGet(target, propertyKey)
-                        : originalReflectGet(target, propertyKey, receiver);
-                });
-
-                try {
-                    scope.assert.throws(function createInvalidManagedSession() {
-                        managedResourceSession(resources, new Map(), function () {
-                            return [];
-                        });
-                    }, { message: 'Runtime does not provide Symbol.asyncDispose.' });
-                } finally {
-                    restore();
-                }
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'managed resource sessions reject invalid session construction',
-            body(scope: TestScope) {
-                const originalReflectGet = Reflect.get;
-                const restore = replaceReflectGet(function hideSessionDisposeOnce(...parameters) {
-                    const [ target, propertyKey, receiver ] = parameters;
-
-                    if (target !== Symbol && propertyKey === 'disposeOnce') {
-                        return undefined;
-                    }
-
-                    return receiver === undefined
-                        ? originalReflectGet(target, propertyKey)
-                        : originalReflectGet(target, propertyKey, receiver);
-                });
-
-                try {
-                    scope.assert.throws(function createInvalidManagedSession() {
-                        managedResourceSession(resources, new Map(), function () {
-                            return [];
-                        });
-                    }, { message: 'Resource scope composition failed.' });
-                } finally {
-                    restore();
-                }
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'managed resource sessions expose managed handles without disposal',
-            async body(scope: TestScope) {
-                const handles = new Map([ [ databaseResource, 'database handle' ] ]);
-                const session = managedResourceSession(resources, handles, function () {
+        try {
+            scope.assert.throws(function createInvalidManagedSession() {
+                managedResourceSession(resources, new Map(), function () {
                     return [];
                 });
-                const dispose: unknown = Reflect.get(session, runtimeAsyncDisposeSymbol());
+            }, { message: 'Runtime does not provide Symbol.asyncDispose.' });
+        } finally {
+            restore();
+        }
 
-                scope.assert.equal(session.context.database, 'database handle');
-                await session.disposeOnce({ signal: disposalSignal() });
-                scope.assert.equal(typeof dispose, 'function');
-                if (typeof dispose !== 'function') {
-                    throw new TypeError('Managed session is missing async disposal.');
-                }
-                await Reflect.apply(dispose, session, []);
+        return scope.assert.collect();
+    }),
+    test('managed resource sessions reject invalid session construction', function (scope: TestScope) {
+        const originalReflectGet = Reflect.get;
+        const restore = replaceReflectGet(function hideSessionDisposeOnce(...parameters) {
+            const [ target, propertyKey, receiver ] = parameters;
 
-                return scope.assert.collect();
+            if (target !== Symbol && propertyKey === 'disposeOnce') {
+                return undefined;
             }
-        }),
-        createTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'resource wrapper lifecycle context defaults to inactive',
-            body(scope: TestScope) {
-                scope.assert.equal(activeManagedLifecycle(), null);
-                scope.assert.equal(currentLifecycleCase(), null);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'resource wrapper lifecycle errors preserve causes',
-            body(scope: TestScope) {
-                const lifecycleCause = new Error('root cause');
-                const lifecycleError = resourceLifecycleError('Lifecycle failed.', [
-                    { cause: lifecycleCause, phase: 'acquire', resourceName: 'database' }
-                ], lifecycleCause);
-                const wrappedLifecycleError = resourceWrapperLifecycleError('Fixture failed.', lifecycleError);
-                const runnerError = new CaseRunnerError('Already wrapped.', {
-                    cause: lifecycleCause,
-                    subtype: 'fixture'
+            return receiver === undefined
+                ? originalReflectGet(target, propertyKey)
+                : originalReflectGet(target, propertyKey, receiver);
+        });
+
+        try {
+            scope.assert.throws(function createInvalidManagedSession() {
+                managedResourceSession(resources, new Map(), function () {
+                    return [];
                 });
-                const ordinaryCause = new Error('ordinary cause');
+            }, { message: 'Resource scope composition failed.' });
+        } finally {
+            restore();
+        }
 
-                scope.assert.equal(wrappedLifecycleError.cause, lifecycleCause);
-                scope.assert.equal(resourceWrapperErrorFromUnknown('Fixture failed.', runnerError), runnerError);
-                scope.assert.equal(
-                    resourceWrapperErrorFromUnknown('Fixture failed.', lifecycleError).cause,
-                    lifecycleCause
-                );
-                scope.assert.equal(
-                    resourceWrapperErrorFromUnknown('Fixture failed.', ordinaryCause).cause,
-                    ordinaryCause
-                );
+        return scope.assert.collect();
+    }),
+    test('managed resource sessions expose managed handles without disposal', async function (scope: TestScope) {
+        const handles = new Map([ [ databaseResource, 'database handle' ] ]);
+        const session = managedResourceSession(resources, handles, function () {
+            return [];
+        });
+        const dispose: unknown = Reflect.get(session, runtimeAsyncDisposeSymbol());
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+        scope.assert.equal(session.context.database, 'database handle');
+        await session.disposeOnce({ signal: disposalSignal() });
+        scope.assert.equal(typeof dispose, 'function');
+        if (typeof dispose !== 'function') {
+            throw new TypeError('Managed session is missing async disposal.');
+        }
+        await Reflect.apply(dispose, session, []);
 
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    }),
+    test('resource wrapper lifecycle context defaults to inactive', function (scope: TestScope) {
+        scope.assert.equal(activeManagedLifecycle(), null);
+        scope.assert.equal(currentLifecycleCase(), null);
+
+        return scope.assert.collect();
+    }),
+    test('resource wrapper lifecycle errors preserve causes', function (scope: TestScope) {
+        const lifecycleCause = new Error('root cause');
+        const lifecycleError = resourceLifecycleError('Lifecycle failed.', [
+            { cause: lifecycleCause, phase: 'acquire', resourceName: 'database' }
+        ], lifecycleCause);
+        const wrappedLifecycleError = resourceWrapperLifecycleError('Fixture failed.', lifecycleError);
+        const runnerError = new CaseRunnerError('Already wrapped.', {
+            cause: lifecycleCause,
+            subtype: 'fixture'
+        });
+        const ordinaryCause = new Error('ordinary cause');
+
+        scope.assert.equal(wrappedLifecycleError.cause, lifecycleCause);
+        scope.assert.equal(resourceWrapperErrorFromUnknown('Fixture failed.', runnerError), runnerError);
+        scope.assert.equal(
+            resourceWrapperErrorFromUnknown('Fixture failed.', lifecycleError).cause,
+            lifecycleCause
+        );
+        scope.assert.equal(
+            resourceWrapperErrorFromUnknown('Fixture failed.', ordinaryCause).cause,
+            ordinaryCause
+        );
+
+        return scope.assert.collect();
+    })
+]);

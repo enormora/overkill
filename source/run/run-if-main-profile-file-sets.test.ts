@@ -1,13 +1,12 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
-    createTestCase as createDirectTestCase,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
     type TestBody as DirectTestBody,
     type TestNode as DirectTestNode,
     type TestScope as DirectScope,
-    type TestScope as OverkillScope
+    createTestCase as createDirectTestCase
 } from '../packages/engine/engine.entry-point.ts';
+
 import { createDirectRunFixture } from '../test-support/direct-run-fixture.ts';
 
 function passingBody(scope: DirectScope): ReturnType<DirectTestBody> {
@@ -26,74 +25,54 @@ function passingCase(): DirectTestNode {
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-if-main-profile-file-sets.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runIfMain() rejects empty file sets while selecting direct profiles',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const fixture = createDirectRunFixture({
-                    config: {
-                        profiles: {
-                            microtest: {
-                                testFamily: 'microtest',
-                                files: { include: [ 'other.test.ts' ] }
-                            },
-                            focused: {
-                                testFamily: 'microtest',
-                                files: {
-                                    sets: {
-                                        empty: { include: [ 'missing/**/*.test.ts' ] },
-                                        unit: { include: [ 'direct.test.ts' ] }
-                                    }
-                                }
+export const testNode = suite('source/run/run-if-main-profile-file-sets.test.ts', [
+    test('runIfMain() rejects empty file sets while selecting direct profiles', async function (scope: OverkillScope) {
+        const fixture = createDirectRunFixture({
+            config: {
+                profiles: {
+                    microtest: {
+                        testFamily: 'microtest',
+                        files: { include: [ 'other.test.ts' ] }
+                    },
+                    focused: {
+                        testFamily: 'microtest',
+                        files: {
+                            sets: {
+                                empty: { include: [ 'missing/**/*.test.ts' ] },
+                                unit: { include: [ 'direct.test.ts' ] }
                             }
                         }
-                    },
-                    fileName: 'direct.test.ts',
-                    files: [ 'other.test.ts' ]
-                });
+                    }
+                }
+            },
+            fileName: 'direct.test.ts',
+            files: [ 'other.test.ts' ]
+        });
 
-                await scope.assert.rejects(async function runEmptyFileSetProfile() {
-                    await fixture.runIfMain(fixture.project.meta, passingCase(), { reporters: [] });
-                }, { message: 'Profile files.sets.empty matched no test files.' });
+        await scope.assert.rejects(async function runEmptyFileSetProfile() {
+            await fixture.runIfMain(fixture.project.meta, passingCase(), { reporters: [] });
+        }, { message: 'Profile files.sets.empty matched no test files.' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runIfMain() rejects a non-microtest fallback profile named microtest',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const fixture = createDirectRunFixture({
-                    config: {
-                        profiles: {
-                            microtest: {
-                                testFamily: 'integration',
-                                files: { include: [ 'other.test.ts' ] }
-                            }
-                        }
-                    },
-                    fileName: 'direct.test.ts',
-                    files: [ 'other.test.ts' ]
-                });
+        return scope.assert.collect();
+    }),
+    test('runIfMain() rejects a non-microtest fallback profile named microtest', async function (scope: OverkillScope) {
+        const fixture = createDirectRunFixture({
+            config: {
+                profiles: {
+                    microtest: {
+                        testFamily: 'integration',
+                        files: { include: [ 'other.test.ts' ] }
+                    }
+                }
+            },
+            fileName: 'direct.test.ts',
+            files: [ 'other.test.ts' ]
+        });
 
-                await scope.assert.rejects(async function runIntegrationFallbackProfile() {
-                    await fixture.runIfMain(fixture.project.meta, passingCase(), { reporters: [] });
-                }, { message: 'runIfMain() requires the configured "microtest" profile.' });
+        await scope.assert.rejects(async function runIntegrationFallbackProfile() {
+            await fixture.runIfMain(fixture.project.meta, passingCase(), { reporters: [] });
+        }, { message: 'runIfMain() requires the configured "microtest" profile.' });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

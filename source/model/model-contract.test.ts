@@ -1,10 +1,11 @@
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { Random } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
 import type { Writable } from 'type-fest';
 import { generateInput } from '../property/generator-input.ts';
 import { generatorContext, shrinkDescendants } from '../test-support/generator-execution.ts';
 import type { TestScope, PropertyInvocationEvidence } from '../packages/engine/engine.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import {
     gen,
     property,
@@ -109,8 +110,8 @@ function assertConfirmedShrink(scope: TestScope, evidence: PropertyInvocationEvi
     scope.assert.deepEqual(evidence.diagnostics, []);
 }
 
-export const testNode = suite('model contracts', [
-    test('rejects a late disabled operation before system callbacks', async function (scope: TestScope) {
+export const testNode = authoredSuite('model contracts', [
+    authoredTest('rejects a late disabled operation before system callbacks', async function (scope: TestScope) {
         const events: string[] = [];
         const result = await executePropertyNode(
             model({
@@ -139,7 +140,7 @@ export const testNode = suite('model contracts', [
         scope.assert.includes(JSON.stringify(result.perTest), 'Model trace contains a disabled operation at index 2.');
         return scope.assert.collect();
     }),
-    test('preserves enabled transitions through state-dependent shrinking', function (scope: TestScope) {
+    authoredTest('preserves enabled transitions through state-dependent shrinking', function (scope: TestScope) {
         const scenario = modelScenario({
             ...counterDefinition(),
             length: { minLength: 1, maxLength: 8 },
@@ -175,7 +176,7 @@ export const testNode = suite('model contracts', [
         return scope.assert.collect();
     }),
     ...([ 'success', 'require', 'throw' ] as const).map(function (mode) {
-        return test(`orders model callbacks and cleanup after ${mode}`, async function (scope: TestScope) {
+        return authoredTest(`orders model callbacks and cleanup after ${mode}`, async function (scope: TestScope) {
             const events: string[] = [];
             const result = await executePropertyNode(
                 model({
@@ -226,7 +227,7 @@ export const testNode = suite('model contracts', [
         });
     }),
 
-    test('confirms and shrinks the original model mismatch', async function (scope: TestScope) {
+    authoredTest('confirms and shrinks the original model mismatch', async function (scope: TestScope) {
         const result = await executePropertyNode(
             model({
                 ...counterDefinition(),
@@ -260,7 +261,7 @@ export const testNode = suite('model contracts', [
         scope.assert.equal(JSON.stringify(replay).includes('unexpected generation'), false);
         return scope.assert.collect();
     }),
-    test('preserves aliases and separates prediction from system graphs', async function (scope: TestScope) {
+    authoredTest('preserves aliases and separates prediction from system graphs', async function (scope: TestScope) {
         const scenario = modelScenario<readonly TraceOperation[], TraceOperation, TraceOperation[]>({
             initial() {
                 return [];
@@ -307,7 +308,7 @@ export const testNode = suite('model contracts', [
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    test('keeps validated commands stable when a payload mutates its trace', async function (scope: TestScope) {
+    authoredTest('keeps validated commands stable when a payload mutates its trace', async function (scope: TestScope) {
         const scenario = modelScenario<number, TraceOperation, number[]>({
             initial() {
                 return 0;
@@ -344,40 +345,17 @@ export const testNode = suite('model contracts', [
         scope.assert.equal(result.summary.failed, 0);
         return scope.assert.collect();
     }),
-    test('rejects nondeterministic transition callbacks before creating a system', async function (scope: TestScope) {
-        let transitions = 0;
-        let creations = 0;
-        const node = model({
-            ...counterDefinition(),
-            transition(state, operation) {
-                transitions += 1;
-                return transitions % 2 === 1 ? { kind: 'enabled', state: state + operation } : { kind: 'disabled' };
-            },
-            create() {
-                creations += 1;
-                return [];
-            }
-        });
-        const result = await executePropertyNode(node, propertyExecutionDefaults);
-        scope.assert.equal(result.summary.failed, 1);
-        scope.assert.equal(creations, 0);
-        scope.assert.includes(JSON.stringify(result.perTest), 'Model transitions must be deterministic.');
-        return scope.assert.collect();
-    }),
-    ...([ 'longer', 'shorter' ] as const).map(function (direction) {
-        return test(`rejects ${direction} reconstruction before creating a system`, async function (scope: TestScope) {
-            let reconstructions = 0;
+    authoredTest(
+        'rejects nondeterministic transition callbacks before creating a system',
+        async function (scope: TestScope) {
+            let transitions = 0;
             let creations = 0;
             const node = model({
                 ...counterDefinition(),
-                examples: [ function () {
-                    reconstructions += 1;
-                    const firstLength = direction === 'longer' ? 1 : 2;
-                    const length = reconstructions % 2 === 1 ? firstLength : 3 - firstLength;
-                    return Array.from({ length }, function () {
-                        return 1;
-                    });
-                } ],
+                transition(state, operation) {
+                    transitions += 1;
+                    return transitions % 2 === 1 ? { kind: 'enabled', state: state + operation } : { kind: 'disabled' };
+                },
                 create() {
                     creations += 1;
                     return [];
@@ -386,11 +364,40 @@ export const testNode = suite('model contracts', [
             const result = await executePropertyNode(node, propertyExecutionDefaults);
             scope.assert.equal(result.summary.failed, 1);
             scope.assert.equal(creations, 0);
-            scope.assert.includes(JSON.stringify(result.perTest), 'Model reconstruction changed the trace length.');
+            scope.assert.includes(JSON.stringify(result.perTest), 'Model transitions must be deterministic.');
             return scope.assert.collect();
-        });
+        }
+    ),
+    ...([ 'longer', 'shorter' ] as const).map(function (direction) {
+        return authoredTest(
+            `rejects ${direction} reconstruction before creating a system`,
+            async function (scope: TestScope) {
+                let reconstructions = 0;
+                let creations = 0;
+                const node = model({
+                    ...counterDefinition(),
+                    examples: [ function () {
+                        reconstructions += 1;
+                        const firstLength = direction === 'longer' ? 1 : 2;
+                        const length = reconstructions % 2 === 1 ? firstLength : 3 - firstLength;
+                        return Array.from({ length }, function () {
+                            return 1;
+                        });
+                    } ],
+                    create() {
+                        creations += 1;
+                        return [];
+                    }
+                });
+                const result = await executePropertyNode(node, propertyExecutionDefaults);
+                scope.assert.equal(result.summary.failed, 1);
+                scope.assert.equal(creations, 0);
+                scope.assert.includes(JSON.stringify(result.perTest), 'Model reconstruction changed the trace length.');
+                return scope.assert.collect();
+            }
+        );
     }),
-    test('evaluates declared coverage through model checks', async function (scope: TestScope) {
+    authoredTest('evaluates declared coverage through model checks', async function (scope: TestScope) {
         const node = model({
             ...counterDefinition(),
             coverage: [ { label: 'positive', minimumPercent: 100 } ],

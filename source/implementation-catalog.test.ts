@@ -2,24 +2,21 @@ import { mkdtempDisposable, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { runIfMain } from '#test-runner';
-import { suite, test, testDouble, doubleUsage, type TestScope } from './packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { testDouble, doubleUsage } from './packages/test/test.entry-point.ts';
 import {
+    defineBodyReference,
+    type TestPlan,
     createRoot,
     createTestPlan,
-    createTestCase,
-    defineBodyReference,
-    type TestPlan
+    createTestCase
 } from './packages/engine/engine.entry-point.ts';
 import {
     declareImplementations,
     catalogFromDeclarations,
     implementationDeclarations
 } from './engine/body-reference-plan.ts';
-import {
-    implementationCatalogSchema,
-    type ImplementationCatalog
-} from './implementation-catalog.ts';
+import { implementationCatalogSchema, type ImplementationCatalog } from './implementation-catalog.ts';
 import { workIdentityKey } from './engine/identity.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
@@ -74,7 +71,7 @@ async function fixture(scope: TestScope, use: (catalog: ImplementationCatalog) =
     }
     await use(catalog);
 }
-export const testNode = suite('portable implementation catalogs', [
+export const testNode = authoredSuite('portable implementation catalogs', [
     test('retains non-Error parser failures and does not repeat declaration parsing', async function (scope) {
         await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-invalid-catalog-'));
         const body = defineBodyReference({
@@ -120,4 +117,3 @@ export const testNode = suite('portable implementation catalogs', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

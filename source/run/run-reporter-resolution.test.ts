@@ -1,17 +1,9 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { DefinedReporter } from '../engine/reporter.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defineFixedReporter } from '../test-support/reporter-definition.ts';
-import {
-    defaultMicrotestProfile,
-    defaultRunConfig,
-    defaultRunRequest
-} from '../test-support/run-command-factory.ts';
+import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import type { NormalizedConfig } from '../config/types.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
 
@@ -62,75 +54,52 @@ function runConfigWithReporters(
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-reporter-resolution.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() uses profile reporters over global fallback',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const globalReporter = createTerminalReporter('global');
-                const profileReporter = createTerminalReporter('profile');
-                const runOrchestrator = createDeterministicRunOrchestrator();
-                const resolvedRun = await runOrchestrator.resolve(createRunCommand({
-                    config: runConfigWithReporters(globalReporter, [ profileReporter ]),
-                    cwd: process.cwd(),
-                    engine: { kind: 'default' },
-                    request: defaultRequest
-                }));
+export const testNode = suite('source/run/run-reporter-resolution.test.ts', [
+    test('orchestrator.resolve() uses profile reporters over global fallback', async function (scope: OverkillScope) {
+        const globalReporter = createTerminalReporter('global');
+        const profileReporter = createTerminalReporter('profile');
+        const runOrchestrator = createDeterministicRunOrchestrator();
+        const resolvedRun = await runOrchestrator.resolve(createRunCommand({
+            config: runConfigWithReporters(globalReporter, [ profileReporter ]),
+            cwd: process.cwd(),
+            engine: { kind: 'default' },
+            request: defaultRequest
+        }));
 
-                scope.assert.deepEqual(resolvedRun.reporters, [ profileReporter ]);
+        scope.assert.deepEqual(resolvedRun.reporters, [ profileReporter ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() uses global reporters when profile reporters are absent',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const globalReporter = createTerminalReporter('global');
-                const runOrchestrator = createDeterministicRunOrchestrator();
-                const resolvedRun = await runOrchestrator.resolve(createRunCommand({
-                    config: runConfigWithReporters(globalReporter, null),
-                    cwd: process.cwd(),
-                    engine: { kind: 'default' },
-                    request: defaultRequest
-                }));
+        return scope.assert.collect();
+    }),
+    test(
+        'orchestrator.resolve() uses global reporters when profile reporters are absent',
+        async function (scope: OverkillScope) {
+            const globalReporter = createTerminalReporter('global');
+            const runOrchestrator = createDeterministicRunOrchestrator();
+            const resolvedRun = await runOrchestrator.resolve(createRunCommand({
+                config: runConfigWithReporters(globalReporter, null),
+                cwd: process.cwd(),
+                engine: { kind: 'default' },
+                request: defaultRequest
+            }));
 
-                scope.assert.deepEqual(resolvedRun.reporters, [ globalReporter ]);
+            scope.assert.deepEqual(resolvedRun.reporters, [ globalReporter ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() ignores inactive global reporter sink conflicts',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const globalReporter = createTerminalReporter('global');
-                const profileReporter = createTerminalReporter('profile');
-                const runOrchestrator = createDeterministicRunOrchestrator();
-                const result = await runOrchestrator.run(createRunCommand({
-                    config: runConfigWithReporters(globalReporter, [ profileReporter ]),
-                    cwd: process.cwd(),
-                    engine: { kind: 'default' },
-                    request: defaultRequest
-                }));
+            return scope.assert.collect();
+        }
+    ),
+    test('orchestrator.run() ignores inactive global reporter sink conflicts', async function (scope: OverkillScope) {
+        const globalReporter = createTerminalReporter('global');
+        const profileReporter = createTerminalReporter('profile');
+        const runOrchestrator = createDeterministicRunOrchestrator();
+        const result = await runOrchestrator.run(createRunCommand({
+            config: runConfigWithReporters(globalReporter, [ profileReporter ]),
+            cwd: process.cwd(),
+            engine: { kind: 'default' },
+            request: defaultRequest
+        }));
 
-                scope.assert.deepEqual(result.runnerErrors, []);
+        scope.assert.deepEqual(result.runnerErrors, []);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

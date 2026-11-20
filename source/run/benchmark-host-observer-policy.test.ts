@@ -1,8 +1,9 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { hostObservation, hostObservationScenario } from '../test-support/host-observation.ts';
 import { observeBenchmarkHost } from './benchmark-host-observer.ts';
 
-export const testNode = suite('benchmark host observation ownership', [
+export const testNode = authoredSuite('benchmark host observation ownership', [
     test(
         'samples one bounded window and filters garbage collection entries by time',
         async function (scope: TestScope) {

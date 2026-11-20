@@ -1,14 +1,15 @@
 import type { PropertyWitnessFile } from '../engine/witness-file.ts';
 import { emptyPropertyCorpus, type PropertyCorpusSnapshot } from '../engine/property-corpus.ts';
 import {
-    createRoot,
-    createTestPlan,
     type TestNode,
     type DefinedReporter,
     type PropertyPolicy,
     type ExecuteExecution,
-    type RunResult
+    type RunResult,
+    createRoot,
+    createTestPlan
 } from '../packages/engine/engine.entry-point.ts';
+
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import { resolveTestPlanCollectionPolicy } from '../run/run-selection.ts';
 import { createTestEngine } from './create-test-engine.ts';

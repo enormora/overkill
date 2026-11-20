@@ -1,13 +1,13 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { darwinProbe, platformPressure, linuxPressureText } from '../test-support/platform-pressure.ts';
 import { collectDarwinHostPressure } from './benchmark-host-darwin.ts';
 import { collectHostPlatformPressure } from './benchmark-host-platform.ts';
 
 const thermal = 'CPU_Speed_Limit = 80\nCPU_Scheduler_Limit = 90';
-export const testNode = suite('platform pressure collection policy', [
+export const testNode = authoredSuite('platform pressure collection policy', [
     ...([ '1', '2', '4' ] as const).map(function (code) {
-        return test(`parses Darwin memory pressure code ${code}`, async function (scope: TestScope) {
+        return authoredTest(`parses Darwin memory pressure code ${code}`, async function (scope: TestScope) {
             const fixture = darwinProbe(thermal, ` ${code}\n`);
             const result = await collectDarwinHostPressure(scope.signal, fixture.probe);
             scope.assert.partialDeepEqual(result, {
@@ -23,17 +23,20 @@ export const testNode = suite('platform pressure collection policy', [
         });
     }),
     ...([ 'invalid', '0', '3', '8' ] as const).map(function (code) {
-        return test(`marks unsupported Darwin memory pressure ${code} unavailable`, async function (scope: TestScope) {
-            const fixture = darwinProbe(thermal, code);
-            const result = await collectDarwinHostPressure(scope.signal, fixture.probe);
-            scope.assert.partialDeepEqual(result, {
-                CPU_Speed_Limit: { availability: 'available' },
-                darwinMemoryPressureCode: { availability: 'unavailable' }
-            });
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `marks unsupported Darwin memory pressure ${code} unavailable`,
+            async function (scope: TestScope) {
+                const fixture = darwinProbe(thermal, code);
+                const result = await collectDarwinHostPressure(scope.signal, fixture.probe);
+                scope.assert.partialDeepEqual(result, {
+                    CPU_Speed_Limit: { availability: 'available' },
+                    darwinMemoryPressureCode: { availability: 'unavailable' }
+                });
+                return scope.assert.collect();
+            }
+        );
     }),
-    test('retains independent probe failures in unavailable readings', async function (scope: TestScope) {
+    authoredTest('retains independent probe failures in unavailable readings', async function (scope: TestScope) {
         const fixture = darwinProbe(new Error('thermal failed'), new Error('memory failed'));
         const result = await collectDarwinHostPressure(scope.signal, fixture.probe);
         scope.assert.partialDeepEqual(result, {
@@ -43,7 +46,7 @@ export const testNode = suite('platform pressure collection policy', [
         });
         return scope.assert.collect();
     }),
-    test('collects and prefixes Linux CPU, memory, and IO readings', async function (scope: TestScope) {
+    authoredTest('collects and prefixes Linux CPU, memory, and IO readings', async function (scope: TestScope) {
         const fixture = platformPressure(linuxPressureText, null);
         const result = await collectHostPlatformPressure('linux', scope.signal, fixture.runtime);
         scope.assert.deepEqual(fixture.calls, [ '/proc/pressure/cpu', '/proc/pressure/memory', '/proc/pressure/io' ]);
@@ -55,7 +58,7 @@ export const testNode = suite('platform pressure collection policy', [
         return scope.assert.collect();
     }),
     ...([ new Error('read failed'), 'non-error' ] as const).map(function (failure) {
-        return test(`retains Linux probe failure ${String(failure)}`, async function (scope: TestScope) {
+        return authoredTest(`retains Linux probe failure ${String(failure)}`, async function (scope: TestScope) {
             const fixture = platformPressure('', failure);
             const result = await collectHostPlatformPressure('linux', scope.signal, fixture.runtime);
             scope.assert.partialDeepEqual(result, {
@@ -69,7 +72,7 @@ export const testNode = suite('platform pressure collection policy', [
             return scope.assert.collect();
         });
     }),
-    test('rejects oversized Linux pressure output', async function (scope: TestScope) {
+    authoredTest('rejects oversized Linux pressure output', async function (scope: TestScope) {
         const fixture = platformPressure('x'.repeat(65_537), null);
         const result = await collectHostPlatformPressure('linux', scope.signal, fixture.runtime);
         scope.assert.partialDeepEqual(result, {
@@ -77,14 +80,16 @@ export const testNode = suite('platform pressure collection policy', [
         });
         return scope.assert.collect();
     }),
-    test('routes Darwin collection and skips probes on unsupported platforms', async function (scope: TestScope) {
-        const fixture = platformPressure('', null);
-        const darwin = await collectHostPlatformPressure('darwin', scope.signal, fixture.runtime);
-        const unsupported = await collectHostPlatformPressure('win32', scope.signal, fixture.runtime);
-        scope.assert.partialDeepEqual(darwin, { pressure: { value: 42 } });
-        scope.assert.deepEqual(unsupported, {});
-        scope.assert.deepEqual(fixture.calls, [ 'darwin' ]);
-        return scope.assert.collect();
-    })
+    authoredTest(
+        'routes Darwin collection and skips probes on unsupported platforms',
+        async function (scope: TestScope) {
+            const fixture = platformPressure('', null);
+            const darwin = await collectHostPlatformPressure('darwin', scope.signal, fixture.runtime);
+            const unsupported = await collectHostPlatformPressure('win32', scope.signal, fixture.runtime);
+            scope.assert.partialDeepEqual(darwin, { pressure: { value: 42 } });
+            scope.assert.deepEqual(unsupported, {});
+            scope.assert.deepEqual(fixture.calls, [ 'darwin' ]);
+            return scope.assert.collect();
+        }
+    )
 ]);
-await runIfMain(import.meta, testNode);

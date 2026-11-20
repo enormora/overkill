@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     measurementStrategy,
     processCpuCollector,
@@ -12,7 +12,7 @@ import {
 import { referenceResource } from '../test-support/normalized-machine.ts';
 import { normalizationDefinition as definition } from '../test-support/automatic-normalization.ts';
 
-export const testNode = suite('automatic normalization policy', [
+export const testNode = authoredSuite('automatic normalization policy', [
     test('adds CPU references to built-in timing and collector metrics without a wrapper', function (scope: TestScope) {
         const resolved = definition(measurementStrategy([ processCpuCollector() ]));
         scope.assert.deepEqual(
@@ -62,4 +62,3 @@ export const testNode = suite('automatic normalization policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

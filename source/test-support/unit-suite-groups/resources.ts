@@ -1,4 +1,5 @@
-import { createSuite } from '../../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as directResourceLifecycleTestNode } from '../../resources/direct-resource-lifecycle.test.ts';
 import { testNode as resourceLifecycleDisposalTestNode } from '../../resources/resource-lifecycle-disposal.test.ts';
 import { testNode as resourceLifecycleTestNode } from '../../resources/resource-lifecycle.test.ts';
@@ -10,20 +11,14 @@ import { testNode as simulationTestNode } from './simulation.ts';
 
 import { testNode as localServices } from './local-services.ts';
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'resources',
-    annotations: {},
-    controls: {},
-    children: [
-        resourceChecks,
-        localServices,
-        directResourceLifecycleTestNode,
-        resourceLifecycleDisposalTestNode,
-        resourceLifecycleTestNode,
-        resourceLifecycleRunSuiteTestNode,
-        runtimeCompositionTestNode,
-        resourcesTestNode,
-        simulationTestNode
-    ]
-});
+export const testNode = suite('resources', [
+    resourceChecks,
+    localServices,
+    directResourceLifecycleTestNode,
+    resourceLifecycleDisposalTestNode,
+    resourceLifecycleTestNode,
+    resourceLifecycleRunSuiteTestNode,
+    runtimeCompositionTestNode,
+    resourcesTestNode,
+    simulationTestNode
+]);

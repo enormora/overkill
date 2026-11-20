@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { baselineCaseEvent, baselineCaseResult, storedBaseline } from '../test-support/baseline-case-fixture.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import type { OrdinaryBaselinePolicy } from '../baselines/baseline-policy.ts';
@@ -12,7 +13,7 @@ const inventory = {
     existing: [ storedBaseline ],
     participating: []
 };
-export const testNode = suite('ordinary baseline inventories', [
+export const testNode = authoredSuite('ordinary baseline inventories', [
     test('preserves incompatible snapshot codecs and foreign contexts', function (scope) {
         const snapshots = { ...policy, snapshots: true };
         const record = {

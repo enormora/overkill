@@ -1,3 +1,5 @@
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import {
     benchmark,
     processMeasurement,
@@ -12,7 +14,7 @@ import {
     type MeasurementStrategy,
     type MetricNormalization
 } from '../packages/bench/bench.entry-point.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
 import { createCalibrationObservations, type CalibrationObservations } from './calibration-observations.ts';
 import { attachCalibrationResources } from './calibration-resource-body.ts';
@@ -53,14 +55,14 @@ const benchmarkDefinition = {
     diagnosticMetrics: [],
     budgets: { one: { value: { maximum: 200 } } }
 };
-export const testNode = suite('calibration contracts', [
-    test('rejects repeated raw measurement wrappers', function (scope: TestScope) {
+export const testNode = authoredSuite('calibration contracts', [
+    authoredTest('rejects repeated raw measurement wrappers', function (scope: TestScope) {
         scope.assert.throws(function () {
             return rawMeasurement(rawMeasurement(wallClockMeasurement()));
         }, { message: 'Raw measurement requires an uncalibrated strategy.' });
         return scope.assert.collect();
     }),
-    test('rejects normalization rules for undeclared benchmark metrics', function (scope: TestScope) {
+    authoredTest('rejects normalization rules for undeclared benchmark metrics', function (scope: TestScope) {
         const calibration = defineCalibrationResource(referenceDefinition('1', 'ticks'));
         scope.assert.throws(function () {
             benchmark('undeclared metric', {
@@ -72,7 +74,7 @@ export const testNode = suite('calibration contracts', [
         }, { message: 'Normalization references an undeclared metric.' });
         return scope.assert.collect();
     }),
-    test('preserves process strategies in calibrated benchmark definitions', function (scope: TestScope) {
+    authoredTest('preserves process strategies in calibrated benchmark definitions', function (scope: TestScope) {
         const calibration = defineCalibrationResource(referenceDefinition('1', 'ticks'));
         const node = benchmark('normalized process metric', {
             ...benchmarkDefinition,
@@ -89,7 +91,7 @@ export const testNode = suite('calibration contracts', [
         return scope.assert.collect();
     }),
     ...invalidObservations.map(function invalidObservationCase(input) {
-        return test(`rejects ${input.name} without retaining invalid samples`, function (scope: TestScope) {
+        return authoredTest(`rejects ${input.name} without retaining invalid samples`, function (scope: TestScope) {
             const observations = createCalibrationObservations(calibrationSnapshot([ 200, 200 ]));
             scope.assert.throws(function () {
                 observations.observe(input.returned);
@@ -100,7 +102,7 @@ export const testNode = suite('calibration contracts', [
             return scope.assert.collect();
         });
     }),
-    test('rejects changing provenance while retaining earlier samples', function (scope: TestScope) {
+    authoredTest('rejects changing provenance while retaining earlier samples', function (scope: TestScope) {
         const observations = createCalibrationObservations(calibrationSnapshot([ 200, 200 ]));
         observations.observe({ reference: availableMetric(200, provenance) });
         scope.assert.throws(function () {
@@ -111,7 +113,7 @@ export const testNode = suite('calibration contracts', [
         scope.assert.deepEqual(observations.samples(), [ 200 ]);
         return scope.assert.collect();
     }),
-    test('retains scarce samples as non-comparable when precision is unresolved', function (scope: TestScope) {
+    authoredTest('retains scarce samples as non-comparable when precision is unresolved', function (scope: TestScope) {
         const observations = createCalibrationObservations(calibrationSnapshot([ 100, 400 ]));
         scope.assert.deepEqual(observeValues(observations, [ 100, 400 ]), [ false, false ]);
         scope.assert.deepEqual(observations.result(), {
@@ -121,7 +123,7 @@ export const testNode = suite('calibration contracts', [
         });
         return scope.assert.collect();
     }),
-    test('doubles checkpoints until later samples resolve reference precision', function (scope: TestScope) {
+    authoredTest('doubles checkpoints until later samples resolve reference precision', function (scope: TestScope) {
         const samples = Array.from({ length: 64 }, function referenceSample(_value, index) {
             if (index >= 24) {
                 return 200;
@@ -148,7 +150,7 @@ export const testNode = suite('calibration contracts', [
         return scope.assert.collect();
     }),
     ...[ 149, 150 ].map(function absolutePrecisionCase(tolerance) {
-        return test(`uses absolute reference precision of ${tolerance}`, function (scope: TestScope) {
+        return authoredTest(`uses absolute reference precision of ${tolerance}`, function (scope: TestScope) {
             const samples = Array.from({ length: 16 }, function (_value, index) {
                 return index % 2 === 0 ? 100 : 400;
             });
@@ -164,18 +166,21 @@ export const testNode = suite('calibration contracts', [
         });
     }),
     ...[ [ '', 'ticks' ], [ '1', '' ] ].map(function missingIdentityCase([ version, unit ]) {
-        return test(`rejects a blank calibration ${version === '' ? 'version' : 'unit'}`, function (scope: TestScope) {
-            scope.require.defined(version);
-            scope.require.defined(unit);
-            scope.assert.throws(function () {
-                return defineCalibrationResource(referenceDefinition(version, unit));
-            }, {
-                message: 'Calibration requires an explicit version and unit.'
-            });
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `rejects a blank calibration ${version === '' ? 'version' : 'unit'}`,
+            function (scope: TestScope) {
+                scope.require.defined(version);
+                scope.require.defined(unit);
+                scope.assert.throws(function () {
+                    return defineCalibrationResource(referenceDefinition(version, unit));
+                }, {
+                    message: 'Calibration requires an explicit version and unit.'
+                });
+                return scope.assert.collect();
+            }
+        );
     }),
-    test('rejects recursively calibrated reference workloads', function (scope: TestScope) {
+    authoredTest('rejects recursively calibrated reference workloads', function (scope: TestScope) {
         const definition = referenceDefinition('1', 'ticks');
         const calibration = defineCalibrationResource(definition);
         const measurement = calibratedMeasurement(wallClockMeasurement(), {
@@ -188,7 +193,7 @@ export const testNode = suite('calibration contracts', [
         });
         return scope.assert.collect();
     }),
-    test('requires named rules and prevents repeated normalization', function (scope: TestScope) {
+    authoredTest('requires named rules and prevents repeated normalization', function (scope: TestScope) {
         const calibration = defineCalibrationResource(referenceDefinition('1', 'ticks'));
         const rule = { calibration, scaling: 'proportional' } as const;
         const strategy = wallClockMeasurement();
@@ -212,7 +217,7 @@ export const testNode = suite('calibration contracts', [
         );
         return scope.assert.collect();
     }),
-    test('rejects unknown scaling supplied by JavaScript callers', function (scope: TestScope) {
+    authoredTest('rejects unknown scaling supplied by JavaScript callers', function (scope: TestScope) {
         const calibration = defineCalibrationResource(referenceDefinition('1', 'ticks'));
         scope.assert.throws(function () {
             Reflect.apply(calibratedMeasurement, undefined, [ wallClockMeasurement(), {
@@ -221,7 +226,7 @@ export const testNode = suite('calibration contracts', [
         }, { message: 'Normalization requires named metrics and proportional or inverse scaling.' });
         return scope.assert.collect();
     }),
-    test('captures metric rules independently of later caller mutations', function (scope: TestScope) {
+    authoredTest('captures metric rules independently of later caller mutations', function (scope: TestScope) {
         const calibration = defineCalibrationResource(referenceDefinition('1', 'ticks'));
         const rules: Record<string, MetricNormalization> = { value: { calibration, scaling: 'proportional' } };
         const measurement = calibratedMeasurement(wallClockMeasurement(), rules);
@@ -229,7 +234,7 @@ export const testNode = suite('calibration contracts', [
         scope.assert.equal(measurement.normalization.value?.scaling, 'proportional');
         return scope.assert.collect();
     }),
-    test('rejects distinct resource definitions sharing one calibration identity', function (scope: TestScope) {
+    authoredTest('rejects distinct resource definitions sharing one calibration identity', function (scope: TestScope) {
         const first = defineCalibrationResource(referenceDefinition('1', 'ticks'));
         const second = defineCalibrationResource(referenceDefinition('1', 'ticks'));
         scope.assert.throws(function () {

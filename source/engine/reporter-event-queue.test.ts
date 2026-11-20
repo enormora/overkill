@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { ReporterDelivery } from './reporter-dispatcher.ts';
 import type { ReporterEvent } from './reporter.ts';
 import { createReporterEventQueue } from './reporter-event-queue.ts';
@@ -49,37 +45,23 @@ function createRejectingDispatcher(): RejectingDispatcher {
     };
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/engine/reporter-event-queue.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reporter event queue continues after a previous report rejects',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const rejectingDispatcher = createRejectingDispatcher();
-                const queue = createReporterEventQueue(rejectingDispatcher.delivery);
+export const testNode = suite('source/engine/reporter-event-queue.test.ts', [
+    test('reporter event queue continues after a previous report rejects', async function (scope: OverkillScope) {
+        const rejectingDispatcher = createRejectingDispatcher();
+        const queue = createReporterEventQueue(rejectingDispatcher.delivery);
 
-                await scope.assert.rejects(async function reportFirstEvent() {
-                    await queue.reportEvent(suitePath('first'));
-                }, { message: 'first report failed' });
-                await queue.reportEvent(suitePath('second'));
+        await scope.assert.rejects(async function reportFirstEvent() {
+            await queue.reportEvent(suitePath('first'));
+        }, { message: 'first report failed' });
+        await queue.reportEvent(suitePath('second'));
 
-                scope.assert.deepEqual(
-                    rejectingDispatcher.events().map(function toSuiteName(event) {
-                        return event.kind === 'suite-start' ? event.suitePath[0]?.title : null;
-                    }),
-                    [ 'first', 'second' ]
-                );
+        scope.assert.deepEqual(
+            rejectingDispatcher.events().map(function toSuiteName(event) {
+                return event.kind === 'suite-start' ? event.suitePath[0]?.title : null;
+            }),
+            [ 'first', 'second' ]
+        );
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

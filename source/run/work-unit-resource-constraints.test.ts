@@ -1,16 +1,8 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestBodyExecutionRequirementSummary,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import type { TestBodyExecutionRequirementSummary } from '../packages/engine/engine.entry-point.ts';
 import type { WorkId } from '../engine/identity.ts';
-import {
-    emptyWorkUnitResourceConstraints,
-    type CollectedRunCase,
-    type CollectedRunPlan
-} from './run-types.ts';
+import { emptyWorkUnitResourceConstraints, type CollectedRunCase, type CollectedRunPlan } from './run-types.ts';
 import { workResourceConstraints } from './work-unit-resource-constraints.ts';
 
 const annotations = { ownership: [], tags: [] };
@@ -94,203 +86,177 @@ function workId(title: string): WorkId {
     };
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/work-unit-resource-constraints.test.ts',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'workResourceConstraints() combines runtime variants and workload-dependent resources',
-            body(scope: OverkillScope) {
-                const testCase: CollectedRunCase = {
-                    ...collectedCase('runtime requirements', [
+export const testNode = suite('source/run/work-unit-resource-constraints.test.ts', [
+    test(
+        'workResourceConstraints() combines runtime variants and workload-dependent resources',
+        function (scope: OverkillScope) {
+            const testCase: CollectedRunCase = {
+                ...collectedCase('runtime requirements', [
+                    { ...resource('consumer', 'per-suite', []), dependencies: [ 'supplier' ] },
+                    { ...resource('supplier', 'per-case', []), workload: 'required' }
+                ]),
+                resourceAttachments: {
+                    directResources: [],
+                    resourceGraph: [
                         { ...resource('consumer', 'per-suite', []), dependencies: [ 'supplier' ] },
                         { ...resource('supplier', 'per-case', []), workload: 'required' }
-                    ]),
-                    resourceAttachments: {
-                        directResources: [],
-                        resourceGraph: [
-                            { ...resource('consumer', 'per-suite', []), dependencies: [ 'supplier' ] },
-                            { ...resource('supplier', 'per-case', []), workload: 'required' }
-                        ],
-                        runtimeGraphs: [
-                            {
-                                kind: 'runtime',
-                                name: 'plain',
-                                dimensions: {},
-                                resources: [],
-                                scenarioBindings: [],
-                                requirements: [ { kind: 'serial' }, { kind: 'affinity-key', key: 'tenant' }, {
-                                    kind: 'capacity-weight',
-                                    weight: 2
-                                } ]
-                            },
-                            {
-                                kind: 'runtime-matrix',
-                                name: 'matrix',
-                                resources: [],
-                                variants: [ {
-                                    id: 'variant',
-                                    runtime: {
-                                        name: 'inner',
-                                        dimensions: {},
-                                        resources: [],
-                                        scenarioBindings: [],
-                                        requirements: [ { kind: 'fault-domain', key: 'backend' }, {
-                                            kind: 'capacity-weight',
-                                            weight: 3
-                                        } ]
-                                    }
-                                } ]
-                            }
-                        ]
-                    }
-                };
-                scope.assert.deepEqual(
-                    workResourceConstraints([ workId('runtime requirements') ], collectedPlan([ testCase ])),
-                    {
-                        affinityKeys: [ 'tenant' ],
-                        capacityWeight: 6,
-                        duplicateExecution: [],
-                        faultDomains: [ 'backend' ],
-                        serialKeys: [ 'serial:runtime:plain' ],
-                        singleWorkerKeys: [ 'resource:suite:source/api.test.ts:["api"]:consumer:workload:null' ]
-                    }
-                );
-                return scope.assert.collect();
-            }
-        }),
-
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'workResourceConstraints() lowers resource scopes and requirements',
-            body(scope: OverkillScope) {
-                const firstCase = collectedCase('first', [
-                    resource('runScoped', 'per-run', []),
-                    resource('caseScoped', 'per-case', []),
-                    resource('fileScoped', 'per-file', []),
-                    resource('suiteScoped', 'per-suite', []),
-                    resource('workerScoped', 'shared-per-worker', []),
-                    resource('serialBound', 'per-case', [ { kind: 'serial' } ]),
-                    resource('exclusiveBound', 'per-case', [ { kind: 'exclusive-resource', name: 'database' } ]),
-                    resource('singleWorkerBound', 'per-case', [ { kind: 'single-worker' } ]),
-                    resource('affinityBound', 'per-case', [ { kind: 'affinity-key', key: 'tenant-a' } ]),
-                    resource('faultBound', 'per-case', [ { kind: 'fault-domain', key: 'postgres-primary' } ]),
-                    resource('weighted', 'per-case', [ { kind: 'capacity-weight', weight: 5 } ]),
-                    resource('duplicateSafe', 'per-case', [
-                        { kind: 'duplicate-execution', safety: 'disposable-isolated' }
-                    ]),
-                    resource('ignoredRequirements', 'unknown', [
-                        { kind: 'exclusive-resource' },
-                        { kind: 'affinity-key' },
-                        { kind: 'fault-domain' },
-                        { kind: 'capacity-weight', weight: -3 },
-                        { kind: 'capacity-weight', weight: Number.NaN },
-                        { kind: 'unknown' },
-                        { kind: 42 }
-                    ])
-                ]);
-                const secondCase = collectedCase('second', [
-                    resource('duplicateExclusiveBound', 'per-case', [
-                        { kind: 'exclusive-resource', name: 'database' }
-                    ]),
-                    resource('anotherAffinityBound', 'per-case', [ { kind: 'affinity-key', key: 'tenant-b' } ]),
-                    resource('anotherFaultBound', 'per-case', [ { kind: 'fault-domain', key: 'redis-primary' } ]),
-                    resource('anotherWeighted', 'per-case', [ { kind: 'capacity-weight', weight: 2 } ])
-                ]);
-
-                const constraints = workResourceConstraints(
-                    [ workId('first'), workId('second') ],
-                    collectedPlan([ firstCase, secondCase ])
-                );
-
-                scope.assert.deepEqual(
-                    constraints,
-                    {
-                        affinityKeys: [ 'resource:worker:workerScoped', 'tenant-a', 'tenant-b' ],
-                        capacityWeight: 8,
-                        duplicateExecution: [ 'disposable-isolated' ],
-                        faultDomains: [ 'postgres-primary', 'redis-primary' ],
-                        serialKeys: [ 'serial:serialBound', 'database' ],
-                        singleWorkerKeys: [
-                            `resource:file:${filePath}:fileScoped`,
-                            `resource:suite:${filePath}:["api"]:suiteScoped`,
-                            'single-worker:singleWorkerBound'
-                        ]
-                    }
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'workResourceConstraints() lowers duplicate execution controls and forbidden override',
-            body(scope: OverkillScope) {
-                const idempotentCase = collectedCaseWithControls(
-                    'idempotent',
-                    [],
-                    { ...controls, duplicateExecution: 'idempotent' }
-                );
-                const forbiddenCase = collectedCaseWithControls(
-                    'forbidden',
-                    [
-                        resource('duplicateSafe', 'per-case', [
-                            { kind: 'duplicate-execution', safety: 'idempotent' }
-                        ])
                     ],
-                    { ...controls, duplicateExecution: 'forbidden' }
-                );
-
-                scope.assert.deepEqual(
-                    workResourceConstraints([ workId('idempotent') ], collectedPlan([ idempotentCase ]))
-                        .duplicateExecution,
-                    [ 'idempotent' ]
-                );
-                scope.assert.deepEqual(
-                    workResourceConstraints([ workId('forbidden') ], collectedPlan([ forbiddenCase ]))
-                        .duplicateExecution,
-                    []
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'workResourceConstraints() keeps unmatched work empty',
-            body(scope: OverkillScope) {
-                scope.assert.equal(
-                    workResourceConstraints([
+                    runtimeGraphs: [
                         {
-                            familyVariant: null,
-                            case: {
-                                file: null,
-                                params: null,
-                                suite: [ 'api' ],
-                                title: 'first'
-                            },
-                            runtimes: [],
-                            workload: null
+                            kind: 'runtime',
+                            name: 'plain',
+                            dimensions: {},
+                            resources: [],
+                            scenarioBindings: [],
+                            requirements: [ { kind: 'serial' }, { kind: 'affinity-key', key: 'tenant' }, {
+                                kind: 'capacity-weight',
+                                weight: 2
+                            } ]
+                        },
+                        {
+                            kind: 'runtime-matrix',
+                            name: 'matrix',
+                            resources: [],
+                            variants: [ {
+                                id: 'variant',
+                                runtime: {
+                                    name: 'inner',
+                                    dimensions: {},
+                                    resources: [],
+                                    scenarioBindings: [],
+                                    requirements: [ { kind: 'fault-domain', key: 'backend' }, {
+                                        kind: 'capacity-weight',
+                                        weight: 3
+                                    } ]
+                                }
+                            } ]
                         }
-                    ], collectedPlan([ collectedCase('first', []) ])),
-                    emptyWorkUnitResourceConstraints
-                );
+                    ]
+                }
+            };
+            scope.assert.deepEqual(
+                workResourceConstraints([ workId('runtime requirements') ], collectedPlan([ testCase ])),
+                {
+                    affinityKeys: [ 'tenant' ],
+                    capacityWeight: 6,
+                    duplicateExecution: [],
+                    faultDomains: [ 'backend' ],
+                    serialKeys: [ 'serial:runtime:plain' ],
+                    singleWorkerKeys: [ 'resource:suite:source/api.test.ts:["api"]:consumer:workload:null' ]
+                }
+            );
+            return scope.assert.collect();
+        }
+    ),
 
-                return scope.assert.collect();
+    test('workResourceConstraints() lowers resource scopes and requirements', function (scope: OverkillScope) {
+        const firstCase = collectedCase('first', [
+            resource('runScoped', 'per-run', []),
+            resource('caseScoped', 'per-case', []),
+            resource('fileScoped', 'per-file', []),
+            resource('suiteScoped', 'per-suite', []),
+            resource('workerScoped', 'shared-per-worker', []),
+            resource('serialBound', 'per-case', [ { kind: 'serial' } ]),
+            resource('exclusiveBound', 'per-case', [ { kind: 'exclusive-resource', name: 'database' } ]),
+            resource('singleWorkerBound', 'per-case', [ { kind: 'single-worker' } ]),
+            resource('affinityBound', 'per-case', [ { kind: 'affinity-key', key: 'tenant-a' } ]),
+            resource('faultBound', 'per-case', [ { kind: 'fault-domain', key: 'postgres-primary' } ]),
+            resource('weighted', 'per-case', [ { kind: 'capacity-weight', weight: 5 } ]),
+            resource('duplicateSafe', 'per-case', [
+                { kind: 'duplicate-execution', safety: 'disposable-isolated' }
+            ]),
+            resource('ignoredRequirements', 'unknown', [
+                { kind: 'exclusive-resource' },
+                { kind: 'affinity-key' },
+                { kind: 'fault-domain' },
+                { kind: 'capacity-weight', weight: -3 },
+                { kind: 'capacity-weight', weight: Number.NaN },
+                { kind: 'unknown' },
+                { kind: 42 }
+            ])
+        ]);
+        const secondCase = collectedCase('second', [
+            resource('duplicateExclusiveBound', 'per-case', [
+                { kind: 'exclusive-resource', name: 'database' }
+            ]),
+            resource('anotherAffinityBound', 'per-case', [ { kind: 'affinity-key', key: 'tenant-b' } ]),
+            resource('anotherFaultBound', 'per-case', [ { kind: 'fault-domain', key: 'redis-primary' } ]),
+            resource('anotherWeighted', 'per-case', [ { kind: 'capacity-weight', weight: 2 } ])
+        ]);
+
+        const constraints = workResourceConstraints(
+            [ workId('first'), workId('second') ],
+            collectedPlan([ firstCase, secondCase ])
+        );
+
+        scope.assert.deepEqual(
+            constraints,
+            {
+                affinityKeys: [ 'resource:worker:workerScoped', 'tenant-a', 'tenant-b' ],
+                capacityWeight: 8,
+                duplicateExecution: [ 'disposable-isolated' ],
+                faultDomains: [ 'postgres-primary', 'redis-primary' ],
+                serialKeys: [ 'serial:serialBound', 'database' ],
+                singleWorkerKeys: [
+                    `resource:file:${filePath}:fileScoped`,
+                    `resource:suite:${filePath}:["api"]:suiteScoped`,
+                    'single-worker:singleWorkerBound'
+                ]
             }
-        })
-    ]
-});
+        );
 
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    }),
+    test(
+        'workResourceConstraints() lowers duplicate execution controls and forbidden override',
+        function (scope: OverkillScope) {
+            const idempotentCase = collectedCaseWithControls(
+                'idempotent',
+                [],
+                { ...controls, duplicateExecution: 'idempotent' }
+            );
+            const forbiddenCase = collectedCaseWithControls(
+                'forbidden',
+                [
+                    resource('duplicateSafe', 'per-case', [
+                        { kind: 'duplicate-execution', safety: 'idempotent' }
+                    ])
+                ],
+                { ...controls, duplicateExecution: 'forbidden' }
+            );
+
+            scope.assert.deepEqual(
+                workResourceConstraints([ workId('idempotent') ], collectedPlan([ idempotentCase ]))
+                    .duplicateExecution,
+                [ 'idempotent' ]
+            );
+            scope.assert.deepEqual(
+                workResourceConstraints([ workId('forbidden') ], collectedPlan([ forbiddenCase ]))
+                    .duplicateExecution,
+                []
+            );
+
+            return scope.assert.collect();
+        }
+    ),
+    test('workResourceConstraints() keeps unmatched work empty', function (scope: OverkillScope) {
+        scope.assert.equal(
+            workResourceConstraints([
+                {
+                    familyVariant: null,
+                    case: {
+                        file: null,
+                        params: null,
+                        suite: [ 'api' ],
+                        title: 'first'
+                    },
+                    runtimes: [],
+                    workload: null
+                }
+            ], collectedPlan([ collectedCase('first', []) ])),
+            emptyWorkUnitResourceConstraints
+        );
+
+        return scope.assert.collect();
+    })
+]);

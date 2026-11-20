@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 // eslint-disable-next-line node/no-unsupported-features/node-builtins -- Match native V8 offsets.
 import { stripTypeScriptTypes } from 'node:module';
 import type { V8CoverageEntry } from 'monocart-coverage-reports';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { coverageLexemes, coverageTokens, isCoverageToken, type CoverageToken } from './coverage-tokens.ts';
 import { createCoverageMethodNormalizer } from './coverage-method-ranges.ts';
 
@@ -43,7 +44,9 @@ export type CoverageSourceCache = {
 
 function createCoverageSource(source: string, filePath: string): CoverageSource {
     const runtimeSource = isTypeScriptCoverageSource(filePath)
-        ? stripTypeScriptTypes(source, { mode: 'strip' })
+        ? withRunnerInfrastructure(function () {
+            return stripTypeScriptTypes(source, { mode: 'strip' });
+        })
         : source;
     let runtime: boolean | null = null;
     let lexemes: readonly CoverageToken[] | null = null;

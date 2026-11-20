@@ -4,8 +4,7 @@ import { join } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
 import { Worker } from 'node:worker_threads';
 import { fork } from 'node:child_process';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 
 const pollMilliseconds = 25;
 const maximumPolls = 200;
@@ -69,7 +68,7 @@ function startProcessOwner(file: string): ProcessOwner {
     };
 }
 
-export const testNode = suite('process helper ownership', [
+export const testNode = authoredSuite('process helper ownership', [
     test('reaps the target when the owner process group is killed', async function (scope: TestScope) {
         const directory = await mkdtemp(join(tmpdir(), 'overkill-group-owner-'));
         scope.cleanup(async function () {
@@ -110,5 +109,3 @@ export const testNode = suite('process helper ownership', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

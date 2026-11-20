@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { test, suite } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     withMemoryCoverageRecordFixture,
     type CoverageRecordFixture
@@ -117,14 +118,10 @@ async function assertSupervisedAttempt(
     scope.assert.equal(fixture.records.at(-1)?.result?.status, 'failed');
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/run-supervised-coverage.test.ts',
-    annotations: {},
-    controls: {},
-    children: [ false, true ].map(function supervisedCoverageTest(failFacts) {
-        return createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+export const testNode = suite(
+    'source/run/run-supervised-coverage.test.ts',
+    [ false, true ].map(function supervisedCoverageTest(failFacts) {
+        return test({
             title: failFacts
                 ? 'facts persistence gates supervised assignment'
                 : 'supervised report failures retain completed outcomes',
@@ -142,5 +139,4 @@ export const testNode = createSuite({
             }
         });
     })
-});
-await runIfMain(import.meta, testNode);
+);

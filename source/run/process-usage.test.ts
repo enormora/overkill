@@ -1,10 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+
 import type { RunProcessUsageTracker } from '../engine/process-usage.ts';
 import { createProcessUsageTracker } from './process-usage.ts';
 
@@ -59,83 +56,66 @@ function createChangingProcessUsageTracker(
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/process-usage.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'process usage tracker summarizes sampled memory and start/end active resources',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
-                const tracker = createChangingProcessUsageTracker(wallClock);
-                const observedActiveResourceCounts: number[] = [];
+export const testNode = suite('source/run/process-usage.test.ts', [
+    test(
+        'process usage tracker summarizes sampled memory and start/end active resources',
+        function (scope: OverkillScope) {
+            const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+            const tracker = createChangingProcessUsageTracker(wallClock);
+            const observedActiveResourceCounts: number[] = [];
 
-                tracker.start(function recordSample(processUsageSample) {
-                    observedActiveResourceCounts.push(processUsageSample.activeResourceCount);
-                });
-                for (const milliseconds of [ 100, 100 ]) {
-                    wallClock.advanceByMilliseconds(milliseconds);
+            tracker.start(function recordSample(processUsageSample) {
+                observedActiveResourceCounts.push(processUsageSample.activeResourceCount);
+            });
+            for (const milliseconds of [ 100, 100 ]) {
+                wallClock.advanceByMilliseconds(milliseconds);
+            }
+            const processUsage = tracker.finish();
+
+            scope.assert.deepEqual(processUsage, {
+                activeResourceTypes: [ 'TCPServerWrap', 'Timeout', 'TTYWrap' ],
+                end: {
+                    activeResourceCount: 3,
+                    activeResourceTypes: [ 'Timeout', 'TTYWrap' ],
+                    capturedAtMicroseconds: 200_000,
+                    javaScriptEngineHeapBytes: 16,
+                    residentSetBytes: 205
+                },
+                peakActiveResourceCount: 3,
+                peakJavaScriptEngineHeapBytes: 20,
+                peakResidentSetBytes: 210,
+                peakResidentSetGrowthBytesPerSecond: 800,
+                sampleCount: 4,
+                start: {
+                    activeResourceCount: 1,
+                    activeResourceTypes: [ 'TCPServerWrap' ],
+                    capturedAtMicroseconds: 0,
+                    javaScriptEngineHeapBytes: 10,
+                    residentSetBytes: 100
                 }
-                const processUsage = tracker.finish();
+            });
+            scope.assert.deepEqual(observedActiveResourceCounts, [ 1, 3, 3 ]);
 
-                scope.assert.deepEqual(processUsage, {
-                    activeResourceTypes: [ 'TCPServerWrap', 'Timeout', 'TTYWrap' ],
-                    end: {
-                        activeResourceCount: 3,
-                        activeResourceTypes: [ 'Timeout', 'TTYWrap' ],
-                        capturedAtMicroseconds: 200_000,
-                        javaScriptEngineHeapBytes: 16,
-                        residentSetBytes: 205
-                    },
-                    peakActiveResourceCount: 3,
-                    peakJavaScriptEngineHeapBytes: 20,
-                    peakResidentSetBytes: 210,
-                    peakResidentSetGrowthBytesPerSecond: 800,
-                    sampleCount: 4,
-                    start: {
-                        activeResourceCount: 1,
-                        activeResourceTypes: [ 'TCPServerWrap' ],
-                        capturedAtMicroseconds: 0,
-                        javaScriptEngineHeapBytes: 10,
-                        residentSetBytes: 100
-                    }
-                });
-                scope.assert.deepEqual(observedActiveResourceCounts, [ 1, 3, 3 ]);
+            return scope.assert.collect();
+        }
+    ),
+    test('process usage tracker rejects invalid lifecycle calls', function (scope: OverkillScope) {
+        const unfinishedTracker = createEmptyProcessUsageTracker();
+        const startedTracker = createEmptyProcessUsageTracker();
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'process usage tracker rejects invalid lifecycle calls',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const unfinishedTracker = createEmptyProcessUsageTracker();
-                const startedTracker = createEmptyProcessUsageTracker();
+        startedTracker.start();
 
-                startedTracker.start();
+        scope.assert.throws(function finishBeforeStart() {
+            unfinishedTracker.finish();
+        }, {
+            message: 'Process usage tracking must start before it can finish.'
+        });
+        scope.assert.throws(function startTwice() {
+            startedTracker.start();
+        }, {
+            message: 'Process usage tracking already started.'
+        });
 
-                scope.assert.throws(function finishBeforeStart() {
-                    unfinishedTracker.finish();
-                }, {
-                    message: 'Process usage tracking must start before it can finish.'
-                });
-                scope.assert.throws(function startTwice() {
-                    startedTracker.start();
-                }, {
-                    message: 'Process usage tracking already started.'
-                });
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

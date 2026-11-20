@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { test, suite, table, defineMacro, defineParameterizedTestBody } from '../test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
+import { test, table, defineMacro, defineParameterizedTestBody } from '../test/test.entry-point.ts';
 import {
     attachTestBodyOrigin,
     captureTestBodyOrigin,
@@ -15,8 +16,8 @@ function parameterizedBody(scope: Parameters<TestBody>[0], value: number): Retur
     return scope.assert.collect();
 }
 
-export const testNode = suite('checker body ownership', [
-    test('captures low-level engine callbacks without running them', function (scope) {
+export const testNode = authoredSuite('checker body ownership', [
+    authoredTest('captures low-level engine callbacks without running them', function (scope) {
         const source: TestBody = function () {
             throw new Error('Do not invoke');
         };
@@ -30,7 +31,7 @@ export const testNode = suite('checker body ownership', [
         scope.assert.equal(node.bodyOrigin?.body, source);
         return scope.assert.collect();
     }),
-    test('preserves the original callback through macro wrappers without invoking it', function (scope) {
+    authoredTest('preserves the original callback through macro wrappers without invoking it', function (scope) {
         const source: TestBody = function () {
             throw new Error('Source body must not execute during collection.');
         };
@@ -44,7 +45,7 @@ export const testNode = suite('checker body ownership', [
         scope.assert.equal(readTestBodyOrigin(source), null);
         return scope.assert.collect();
     }),
-    test('preserves shared table callback ownership without invoking rows', function (scope) {
+    authoredTest('preserves shared table callback ownership without invoking rows', function (scope) {
         const source: TestBody = function () {
             throw new Error('Source body must not execute during collection.');
         };
@@ -55,7 +56,7 @@ export const testNode = suite('checker body ownership', [
         scope.assert.equal(readTestBodyOrigin(source), null);
         return scope.assert.collect();
     }),
-    test('captures parameterized body declarations before applications', function (scope) {
+    authoredTest('captures parameterized body declarations before applications', function (scope) {
         const factory = defineParameterizedTestBody(parameterizedBody);
         const first = readTestBodyOrigin(factory(1));
         const second = readTestBodyOrigin(factory(2));
@@ -69,7 +70,7 @@ export const testNode = suite('checker body ownership', [
         }
         return scope.assert.collect();
     }),
-    test('keeps ownership immutable and forwarding idempotent', function (scope) {
+    authoredTest('keeps ownership immutable and forwarding idempotent', function (scope) {
         const source: TestBody = function () {
             throw new Error('Do not invoke');
         };
@@ -91,5 +92,3 @@ export const testNode = suite('checker body ownership', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

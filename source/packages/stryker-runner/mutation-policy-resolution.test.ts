@@ -1,13 +1,13 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { ConfigError } from '../run/config.entry-point.ts';
 import { RunResolutionError } from '../run/run.entry-point.ts';
 import { mutationPolicyResolution } from '../../test-support/mutation-policy-resolution.ts';
 import { resolveMutationPolicyRequest } from './mutation-policy-resolver.ts';
 
 const sandbox = { originalRoot: '/project', root: '/sandbox', files: [], sharedRoots: [] };
-export const testNode = suite('mutation policy resolution', [
-    test('freezes selected microtests against the loaded configuration', async function (scope: TestScope) {
+export const testNode = authoredSuite('mutation policy resolution', [
+    authoredTest('freezes selected microtests against the loaded configuration', async function (scope: TestScope) {
         const fixture = await mutationPolicyResolution('/project/overkill.config.js', null);
         const response = await resolveMutationPolicyRequest(fixture.request, fixture.runtime);
         scope.assert.deepEqual(response, { kind: 'policy', policy: fixture.policy });
@@ -17,7 +17,7 @@ export const testNode = suite('mutation policy resolution', [
         scope.assert.deepEqual(fixture.excluded, []);
         return scope.assert.collect();
     }),
-    test('rebases sandbox settings and verifies exclusions around freezing', async function (scope: TestScope) {
+    authoredTest('rebases sandbox settings and verifies exclusions around freezing', async function (scope: TestScope) {
         const fixture = await mutationPolicyResolution('/sandbox/overkill.config.js', null);
         const response = await resolveMutationPolicyRequest({
             ...fixture.request,
@@ -42,7 +42,7 @@ export const testNode = suite('mutation policy resolution', [
         scope.assert.deepEqual(fixture.boundaries, [ { projectRoot: '/sandbox', sharedRoots: [] } ]);
         return scope.assert.collect();
     }),
-    test('checks test definitions when a sandbox has no configuration file', async function (scope: TestScope) {
+    authoredTest('checks test definitions when a sandbox has no configuration file', async function (scope: TestScope) {
         const fixture = await mutationPolicyResolution(null, null);
         await resolveMutationPolicyRequest({ ...fixture.request, sandbox, cwd: '/sandbox' }, fixture.runtime);
         scope.assert.deepEqual(
@@ -53,7 +53,7 @@ export const testNode = suite('mutation policy resolution', [
         );
         return scope.assert.collect();
     }),
-    test(
+    authoredTest(
         'rejects sandbox identities conflicting with the resolver working directory',
         async function (scope: TestScope) {
             const fixture = await mutationPolicyResolution(null, null);
@@ -65,20 +65,23 @@ export const testNode = suite('mutation policy resolution', [
             return scope.assert.collect();
         }
     ),
-    test('serializes configuration errors with their original cause message', async function (scope: TestScope) {
-        const fixture = await mutationPolicyResolution(
-            null,
-            new ConfigError('Configuration failed.', { cause: new Error('Read failed.') })
-        );
-        scope.assert.deepEqual(await resolveMutationPolicyRequest(fixture.request, fixture.runtime), {
-            kind: 'config-error',
-            message: 'Configuration failed.',
-            cause: 'Read failed.'
-        });
-        scope.assert.deepEqual(fixture.frozen, []);
-        return scope.assert.collect();
-    }),
-    test('serializes resolution errors without losing their classification', async function (scope: TestScope) {
+    authoredTest(
+        'serializes configuration errors with their original cause message',
+        async function (scope: TestScope) {
+            const fixture = await mutationPolicyResolution(
+                null,
+                new ConfigError('Configuration failed.', { cause: new Error('Read failed.') })
+            );
+            scope.assert.deepEqual(await resolveMutationPolicyRequest(fixture.request, fixture.runtime), {
+                kind: 'config-error',
+                message: 'Configuration failed.',
+                cause: 'Read failed.'
+            });
+            scope.assert.deepEqual(fixture.frozen, []);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('serializes resolution errors without losing their classification', async function (scope: TestScope) {
         const fixture = await mutationPolicyResolution(
             null,
             new RunResolutionError('Unsupported.', {}, 'unsupported-request')
@@ -91,7 +94,7 @@ export const testNode = suite('mutation policy resolution', [
         return scope.assert.collect();
     }),
     ...[ new Error('Backend failed.'), 'Backend failed.' ].map(function (failure, index) {
-        return test(`serializes unexpected backend failure ${index}`, async function (scope: TestScope) {
+        return authoredTest(`serializes unexpected backend failure ${index}`, async function (scope: TestScope) {
             const fixture = await mutationPolicyResolution(null, failure);
             scope.assert.deepEqual(await resolveMutationPolicyRequest(fixture.request, fixture.runtime), {
                 kind: 'error',
@@ -100,7 +103,7 @@ export const testNode = suite('mutation policy resolution', [
             return scope.assert.collect();
         });
     }),
-    test('rejects malformed settings before loading configuration', async function (scope: TestScope) {
+    authoredTest('rejects malformed settings before loading configuration', async function (scope: TestScope) {
         const fixture = await mutationPolicyResolution(null, null);
         const response = await resolveMutationPolicyRequest(
             { ...fixture.request, settings: { seed: '-1' } },
@@ -111,4 +114,3 @@ export const testNode = suite('mutation policy resolution', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,6 @@
-import { suite } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite } from '@overkill-dev/test';
+
 import { testNode as workflow } from './snapshot-workflow-policy.test.ts';
 import { testNode as runtime } from './snapshot-runtime.test.ts';
 
-export const testNode = suite('content snapshots', [ workflow, runtime ]);
+export const testNode = authoredSuite('content snapshots', [ workflow, runtime ]);

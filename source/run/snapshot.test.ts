@@ -1,5 +1,5 @@
 import { writeFile } from 'node:fs/promises';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import {
     runWithAttachmentContext,
     defaultAttachmentLimits
@@ -42,7 +42,7 @@ async function recordedFileSnapshot(fixture: AttachmentFixture): Promise<void> {
     });
 }
 
-export const testNode = suite('content snapshot boundaries', [
+export const testNode = authoredSuite('content snapshot boundaries', [
     test('captures stable JSON without changing string contents', function (scope) {
         const first = captureSnapshot({ kind: 'value', name: 'json', actual: { b: 'é', a: [ -0, null ] } }, 1024);
         const second = captureSnapshot({ kind: 'value', name: 'json', actual: { a: [ 0, null ], b: 'é' } }, 1024);

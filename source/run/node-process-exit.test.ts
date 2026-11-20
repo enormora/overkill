@@ -1,6 +1,5 @@
 import { execFile } from 'node:child_process';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 type ExitResult = { readonly code: number | string; readonly stderr: string; };
@@ -24,62 +23,45 @@ const observedExits = [ { operation: 'zero', code: 1 }, { operation: 'nonzero', 
     operation: 'natural',
     code: 13
 } ];
-export const testNode = createSuite({
-    title: 'native process exit observation',
-    ...metadata,
-    children: [
-        createTestCase({
-            title: 'exit diagnostics retain available attempt attribution',
-            ...metadata,
-            async body(scope) {
-                const result = await runExitProbe('attributed');
-                scope.assert.equal(result.code, 1);
-                scope.assert.includes(result.stderr, 'Attempt: 3.');
-                return scope.assert.collect();
-            }
-        }),
+export const testNode = suite('native process exit observation', [
+    test('exit diagnostics retain available attempt attribution', async function (scope) {
+        const result = await runExitProbe('attributed');
+        scope.assert.equal(result.code, 1);
+        scope.assert.includes(result.stderr, 'Attempt: 3.');
+        return scope.assert.collect();
+    }),
 
-        ...observedExits.map(function observedExit(scenario) {
-            return createTestCase({
-                title: `${scenario.operation} exit reports unfinished restricted execution`,
-                ...metadata,
-                async body(scope) {
-                    const result = await runExitProbe(scenario.operation);
-                    scope.assert.equal(result.code, scenario.code);
-                    scope.assert.includes(result.stderr, 'process exited before restricted execution completed');
-                    return scope.assert.collect();
-                }
-            });
-        }),
-        createTestCase({
-            title: 'completed execution removes the native exit observer',
+    ...observedExits.map(function observedExit(scenario) {
+        return test({
+            title: `${scenario.operation} exit reports unfinished restricted execution`,
             ...metadata,
             async body(scope) {
-                scope.assert.deepEqual(await runExitProbe('completed'), { code: 0, stderr: '' });
+                const result = await runExitProbe(scenario.operation);
+                scope.assert.equal(result.code, scenario.code);
+                scope.assert.includes(result.stderr, 'process exited before restricted execution completed');
                 return scope.assert.collect();
             }
-        }),
-        ...[ 'record-failure', 'stderr-failure' ].map(function reportingFailure(operation) {
-            return createTestCase({
-                title: `${operation} still makes premature zero exit unsuccessful`,
-                ...metadata,
-                async body(scope) {
-                    scope.assert.deepEqual(await runExitProbe(operation), { code: 1, stderr: '' });
-                    return scope.assert.collect();
-                }
-            });
-        }),
-        createTestCase({
-            title: 'exit attribution cannot create an unbounded stderr diagnostic',
+        });
+    }),
+    test('completed execution removes the native exit observer', async function (scope) {
+        scope.assert.deepEqual(await runExitProbe('completed'), { code: 0, stderr: '' });
+        return scope.assert.collect();
+    }),
+    ...[ 'record-failure', 'stderr-failure' ].map(function reportingFailure(operation) {
+        return test({
+            title: `${operation} still makes premature zero exit unsuccessful`,
             ...metadata,
             async body(scope) {
-                const result = await runExitProbe('bounded');
-                scope.assert.equal(result.code, 1);
-                scope.assert.equal(Buffer.byteLength(result.stderr), 4096);
-                scope.assert.includes(result.stderr, 'fixture.test.ts');
+                scope.assert.deepEqual(await runExitProbe(operation), { code: 1, stderr: '' });
                 return scope.assert.collect();
             }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+        });
+    }),
+    test('exit attribution cannot create an unbounded stderr diagnostic', async function (scope) {
+        const result = await runExitProbe('bounded');
+        scope.assert.equal(result.code, 1);
+        scope.assert.equal(Buffer.byteLength(result.stderr), 4096);
+        scope.assert.includes(result.stderr, 'fixture.test.ts');
+        return scope.assert.collect();
+    })
+]);

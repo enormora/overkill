@@ -1,4 +1,5 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
     ConfigError,
     type LoadedConfig,
@@ -7,11 +8,8 @@ import {
     RunResolutionError
 } from '../packages/run/run.entry-point.ts';
 import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
     defineReporter,
     type Engine as OverkillEngine,
-    type TestScope as OverkillScope,
     ReporterSinkConflictError
 } from '../packages/engine/engine.entry-point.ts';
 
@@ -226,13 +224,11 @@ async function runTests(dependencies: CommandLineRunnerDependencies): Promise<Co
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
+export const testNode = suite({
     title: 'source/run/command-line-runner.test.ts',
     ...emptyTestData,
     children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'commandLineRunner.runTests() accepts empty last-failed selections',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -254,8 +250,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'commandLineRunner.runTests() injects the default reporter when config omits reporters',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -281,8 +276,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'commandLineRunner.runTests() preserves configured reporters',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -317,8 +311,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'commandLineRunner.runTests() maps test failures to exit code 1',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -338,8 +331,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'commandLineRunner.runTests() maps all-skipped runs to exit code 0',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -359,8 +351,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'commandLineRunner.runTests() maps no planned tests to exit code 4',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -380,8 +371,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'commandLineRunner.runTests() maps runner errors to exit code 2 with fallback diagnostics',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -402,8 +392,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'commandLineRunner.runTests() maps config errors to exit code 3',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -421,8 +410,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'commandLineRunner.runTests() maps internal config load errors',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -441,8 +429,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'commandLineRunner.runTests() maps reporter sink conflicts to exit code 3',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -465,8 +452,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'commandLineRunner.runTests() maps aggregate sink conflicts to exit code 3',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -503,8 +489,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+        test({
             title: 'commandLineRunner.runTests() maps request errors to exit code 3',
             ...emptyTestData,
             async body(scope: OverkillScope) {
@@ -530,5 +515,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     sandboxPaths,
     sandboxInput,
@@ -13,7 +13,7 @@ import {
     validateProtectedMutationFiles
 } from './mutation-sandbox.ts';
 
-export const testNode = suite('mutation sandbox origin policy', [
+export const testNode = authoredSuite('mutation sandbox origin policy', [
     test('preserves original file roles and discovers external module roots', async function (scope: TestScope) {
         const result = await prepareMutationSandbox(
             sandboxInput,
@@ -116,4 +116,3 @@ export const testNode = suite('mutation sandbox origin policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

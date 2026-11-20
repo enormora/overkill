@@ -1,13 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite } from '../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as resultTestNode } from './run-record-result.test.ts';
 import { testNode as recordTestNode } from './run-record.test.ts';
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/run-record-suite.test.ts',
-    annotations: {},
-    controls: {},
-    children: [ resultTestNode, recordTestNode ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/run-record-suite.test.ts', [ resultTestNode, recordTestNode ]);

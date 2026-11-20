@@ -2,8 +2,7 @@ import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { executeProcessCommand, type ProcessExecutionInput } from '../../bench/process-execution.ts';
 import { parseProcessRequest } from '../../bench/process-command.ts';
 import type { ProcessExecution } from '../../bench/process-protocol.ts';
@@ -53,7 +52,7 @@ async function assertStopped(scope: TestScope, pid: number): Promise<void> {
     scope.assert.false(processExists(pid));
 }
 
-export const testNode = suite('external-process ownership', [
+export const testNode = authoredSuite('external-process ownership', [
     test('retains Node telemetry when a ready child exits before a snapshot reply', async function (scope: TestScope) {
         const input = command(scope, 'process.stdout.write("Ready");process.exit(0)');
         const result = measured(
@@ -241,5 +240,3 @@ export const testNode = suite('external-process ownership', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

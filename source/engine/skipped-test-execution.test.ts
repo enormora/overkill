@@ -1,12 +1,6 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    defineReporter,
-    type DefinedReporter,
-    type ReporterEvent,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import { defineReporter, type DefinedReporter, type ReporterEvent } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { TestRuntimePolicy } from './case-execution-context.ts';
 import type { Engine } from './engine.ts';
@@ -161,50 +155,36 @@ function assertSkippedExecutionResult(scope: OverkillScope, result: RunResult): 
     });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/engine/skipped-test-execution.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() records skipped cases without running body infrastructure',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const engine = createEngine();
-                const lifecycle = createLifecycleRecorder();
-                const probe = createRuntimePolicyProbe();
-                const testPlan = createSkippedExecutionPlan(engine);
-                const result = await engine.execute(testPlan, {
-                    debug: { mode: 'off' },
-                    retryPolicy: null,
-                    execution: { mode: 'serial-in-process' },
-                    reporters: [ lifecycle.reporter ],
-                    runFacts: {},
-                    runtimePolicy: probe.runtimePolicy,
-                    startedAt: epochStart
-                });
+export const testNode = suite('source/engine/skipped-test-execution.test.ts', [
+    test('execute() records skipped cases without running body infrastructure', async function (scope: OverkillScope) {
+        const engine = createEngine();
+        const lifecycle = createLifecycleRecorder();
+        const probe = createRuntimePolicyProbe();
+        const testPlan = createSkippedExecutionPlan(engine);
+        const result = await engine.execute(testPlan, {
+            debug: { mode: 'off' },
+            retryPolicy: null,
+            execution: { mode: 'serial-in-process' },
+            reporters: [ lifecycle.reporter ],
+            runFacts: {},
+            runtimePolicy: probe.runtimePolicy,
+            startedAt: epochStart
+        });
 
-                assertSkippedExecutionResult(scope, result);
-                scope.assert.deepEqual(lifecycle.events(), [
-                    'run-start',
-                    'suite-start',
-                    'test-start',
-                    'test-end',
-                    'suite-end',
-                    'run-end'
-                ]);
-                scope.assert.deepEqual(
-                    { caseErrorReads: probe.caseErrorReads(), caseRuns: probe.caseRuns() },
-                    { caseErrorReads: 0, caseRuns: 0 }
-                );
+        assertSkippedExecutionResult(scope, result);
+        scope.assert.deepEqual(lifecycle.events(), [
+            'run-start',
+            'suite-start',
+            'test-start',
+            'test-end',
+            'suite-end',
+            'run-end'
+        ]);
+        scope.assert.deepEqual(
+            { caseErrorReads: probe.caseErrorReads(), caseRuns: probe.caseRuns() },
+            { caseErrorReads: 0, caseRuns: 0 }
+        );
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

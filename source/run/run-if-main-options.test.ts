@@ -1,15 +1,13 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
 import {
     type TestPlan,
     defaultFailureArtifactPolicy,
-    createTestCase as createDirectTestCase,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
     type TestBody as DirectTestBody,
     type TestScope as DirectScope,
-    type TestScope as OverkillScope
+    createTestCase as createDirectTestCase
 } from '../packages/engine/engine.entry-point.ts';
+
 import { createReportingContext } from '../engine/reporting-context.ts';
 import {
     defineFixedOutputRenderer,
@@ -20,10 +18,7 @@ import { normalizeConfig } from '../config/config.ts';
 import type { LoadedConfig } from '../config/config-loader.ts';
 import type { MicrotestProfileConfig } from '../config/types.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
-import {
-    directRunFacts,
-    runConfig
-} from './run-if-main-facts.ts';
+import { directRunFacts, runConfig } from './run-if-main-facts.ts';
 import {
     rootAnnotations,
     rootControls,
@@ -192,47 +187,27 @@ function assertOutputAndRootOptions(scope: OverkillScope): void {
     );
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-if-main-options.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runIfMain() resolves direct execution options',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                await assertReporterSelection(scope);
-                assertOutputAndRootOptions(scope);
+export const testNode = suite('source/run/run-if-main-options.test.ts', [
+    test('runIfMain() resolves direct execution options', async function (scope: OverkillScope) {
+        await assertReporterSelection(scope);
+        assertOutputAndRootOptions(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'directRunFacts() rejects unknown direct profiles',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                scope.assert.throws(function readMissingDirectProfileFacts() {
-                    directRunFacts({
-                        config: runConfig(loadedConfig(null), []),
-                        fileSet: null,
-                        profileName: 'missing',
-                        projectRoot: '/project',
-                        seed: { value: 42n },
-                        testPlan: directTestPlan()
-                    });
-                }, {
-                    message: 'Unknown direct run profile: missing.'
-                });
+        return scope.assert.collect();
+    }),
+    test('directRunFacts() rejects unknown direct profiles', function (scope: OverkillScope) {
+        scope.assert.throws(function readMissingDirectProfileFacts() {
+            directRunFacts({
+                config: runConfig(loadedConfig(null), []),
+                fileSet: null,
+                profileName: 'missing',
+                projectRoot: '/project',
+                seed: { value: 42n },
+                testPlan: directTestPlan()
+            });
+        }, {
+            message: 'Unknown direct run profile: missing.'
+        });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

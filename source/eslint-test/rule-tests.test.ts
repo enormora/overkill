@@ -1,12 +1,13 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import type { Rule } from 'eslint';
 import {
+    type RunResult,
+    type Suite,
     createRoot,
     createTestPlan,
-    execute,
-    type RunResult,
-    type Suite
+    execute
 } from '../packages/engine/engine.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { defineRuleTests } from '../packages/eslint-test/eslint-test.entry-point.ts';
 
 async function run(node: Suite): Promise<RunResult> {
@@ -35,7 +36,7 @@ const noFoo = {
     }
 };
 
-export const testNode = suite('ESLint rule testing', [
+export const testNode = authoredSuite('ESLint rule testing', [
     test('expands shared configurations with per-case restrictions', async function (scope) {
         const rules = defineRuleTests({
             name: 'no-foo',

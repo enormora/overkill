@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
 import { expandRuntimeMatrices } from '../engine/runtime-matrix-expansion.ts';
@@ -221,189 +222,145 @@ function assertScenarioRuntimeIdentities(
     scope.assert.deepEqual(selectedRuntime.scenarios, { api: 'payments-500' });
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ definitionLocation ],
-    title: 'source/run/runtime-matrix-expansion.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ definitionLocation ],
-            title: 'expands one matrix into work identities and selected resources',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                const expanded = expandRuntimeMatrices(
-                    testPlan(testCaseWithRuntimeGraphs([ matrixRuntimeGraph('node'), sidecarRuntimeGraph() ]))
-                );
+export const testNode = suite('source/run/runtime-matrix-expansion.test.ts', [
+    test('expands one matrix into work identities and selected resources', function (scope: TestScope) {
+        const expanded = expandRuntimeMatrices(
+            testPlan(testCaseWithRuntimeGraphs([ matrixRuntimeGraph('node'), sidecarRuntimeGraph() ]))
+        );
 
-                scope.assert.equal(expanded.cases.length, 2);
-                scope.assert.deepEqual(
-                    expanded.cases.map(function variantId(testCase) {
-                        return testCase.workId.runtimes.map(function runtime(runtimeId) {
-                            return runtimeId.variantId;
+        scope.assert.equal(expanded.cases.length, 2);
+        scope.assert.deepEqual(
+            expanded.cases.map(function variantId(testCase) {
+                return testCase.workId.runtimes.map(function runtime(runtimeId) {
+                    return runtimeId.variantId;
+                });
+            }),
+            [ [ 'node-26', null ], [ 'node-27', null ] ]
+        );
+        scope.assert.deepEqual(
+            expanded.cases.map(function resourceNames(testCase) {
+                return testCase.resourceAttachments.resourceGraph.map(function resourceName(resource) {
+                    return resource.name;
+                });
+            }),
+            [
+                [ 'scratch', 'scratch-root', 'database-26', 'sidecar' ],
+                [ 'scratch', 'scratch-root', 'database-27', 'sidecar' ]
+            ]
+        );
+        scope.assert.deepEqual(
+            expanded.discoveredCases.map(function variantId(testCase) {
+                return testCase.workId.runtimes.map(function runtime(runtimeId) {
+                    return runtimeId.variantId;
+                });
+            }),
+            [ [ 'node-26', null ], [ 'node-27', null ] ]
+        );
+        scope.assert.deepEqual(
+            expanded.cases.map(function runtimeResources(testCase) {
+                return testCase.resourceAttachments.runtimeGraphs.map(
+                    function runtimeGraphResources(runtimeGraph) {
+                        return runtimeGraph.resources.map(function runtimeResource(resource) {
+                            return resource.resourceName;
                         });
-                    }),
-                    [ [ 'node-26', null ], [ 'node-27', null ] ]
-                );
-                scope.assert.deepEqual(
-                    expanded.cases.map(function resourceNames(testCase) {
-                        return testCase.resourceAttachments.resourceGraph.map(function resourceName(resource) {
-                            return resource.name;
-                        });
-                    }),
-                    [
-                        [ 'scratch', 'scratch-root', 'database-26', 'sidecar' ],
-                        [ 'scratch', 'scratch-root', 'database-27', 'sidecar' ]
-                    ]
-                );
-                scope.assert.deepEqual(
-                    expanded.discoveredCases.map(function variantId(testCase) {
-                        return testCase.workId.runtimes.map(function runtime(runtimeId) {
-                            return runtimeId.variantId;
-                        });
-                    }),
-                    [ [ 'node-26', null ], [ 'node-27', null ] ]
-                );
-                scope.assert.deepEqual(
-                    expanded.cases.map(function runtimeResources(testCase) {
-                        return testCase.resourceAttachments.runtimeGraphs.map(
-                            function runtimeGraphResources(runtimeGraph) {
-                                return runtimeGraph.resources.map(function runtimeResource(resource) {
-                                    return resource.resourceName;
-                                });
-                            }
-                        );
-                    }),
-                    [ [ [ 'database-26' ], [ 'sidecar' ] ], [ [ 'database-27' ], [ 'sidecar' ] ] ]
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ definitionLocation ],
-            title: 'preserves cases without matrices',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                const testCase = testCaseWithRuntimeGraphs([]);
-                const expanded = expandRuntimeMatrices(testPlan(testCase));
-
-                scope.assert.equal(expanded.cases[0], testCase);
-                scope.assert.equal(expanded.discoveredCases[0], testCase);
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ definitionLocation ],
-            title: 'expands leaf runtimes into fixed work identities',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                const expanded = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([ sidecarRuntimeGraph() ])));
-                const firstCase = expanded.cases[0];
-
-                scope.assert.equal(expanded.cases.length, 1);
-                scope.require.defined(firstCase);
-                scope.assert.deepEqual(firstCase.workId.runtimes, [
-                    {
-                        dimensions: { service: 'sidecar' },
-                        name: 'sidecar',
-                        scenarios: {},
-                        variantId: null
                     }
-                ]);
-                scope.assert.deepEqual(
-                    firstCase.resourceAttachments.resourceGraph.map(function resourceName(resource) {
-                        return resource.name;
-                    }),
-                    [ 'scratch', 'scratch-root', 'sidecar' ]
                 );
+            }),
+            [ [ [ 'database-26' ], [ 'sidecar' ] ], [ [ 'database-27' ], [ 'sidecar' ] ] ]
+        );
 
-                return scope.assert.collect();
+        return scope.assert.collect();
+    }),
+    test('preserves cases without matrices', function (scope: TestScope) {
+        const testCase = testCaseWithRuntimeGraphs([]);
+        const expanded = expandRuntimeMatrices(testPlan(testCase));
+
+        scope.assert.equal(expanded.cases[0], testCase);
+        scope.assert.equal(expanded.discoveredCases[0], testCase);
+
+        return scope.assert.collect();
+    }),
+    test('expands leaf runtimes into fixed work identities', function (scope: TestScope) {
+        const expanded = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([ sidecarRuntimeGraph() ])));
+        const firstCase = expanded.cases[0];
+
+        scope.assert.equal(expanded.cases.length, 1);
+        scope.require.defined(firstCase);
+        scope.assert.deepEqual(firstCase.workId.runtimes, [
+            {
+                dimensions: { service: 'sidecar' },
+                name: 'sidecar',
+                scenarios: {},
+                variantId: null
             }
-        }),
-        createTestCase({
-            definitionLocations: [ definitionLocation ],
-            title: 'expands multiple matrices as a cartesian product',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                const expanded = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
-                    browserRuntimeGraph(),
-                    matrixRuntimeGraph('node')
-                ])));
+        ]);
+        scope.assert.deepEqual(
+            firstCase.resourceAttachments.resourceGraph.map(function resourceName(resource) {
+                return resource.name;
+            }),
+            [ 'scratch', 'scratch-root', 'sidecar' ]
+        );
 
-                scope.assert.equal(expanded.cases.length, 4);
-                scope.assert.deepEqual(
-                    expanded.cases.map(function runtimeVariants(testCase) {
-                        return testCase.workId.runtimes.map(function runtime(runtimeId) {
-                            return [ runtimeId.name, runtimeId.variantId ];
-                        });
-                    }),
-                    [
-                        [ [ 'browser', 'chromium' ], [ 'node', 'node-26' ] ],
-                        [ [ 'browser', 'chromium' ], [ 'node', 'node-27' ] ],
-                        [ [ 'browser', 'firefox' ], [ 'node', 'node-26' ] ],
-                        [ [ 'browser', 'firefox' ], [ 'node', 'node-27' ] ]
-                    ]
-                );
-                scope.assert.deepEqual(
-                    expanded.cases.map(function resourceNames(testCase) {
-                        return testCase.resourceAttachments.resourceGraph.map(function resourceName(resource) {
-                            return resource.name;
-                        });
-                    }),
-                    [
-                        [ 'scratch', 'scratch-root', 'database-26', 'browser-chromium' ],
-                        [ 'scratch', 'scratch-root', 'database-27', 'browser-chromium' ],
-                        [ 'scratch', 'scratch-root', 'database-26', 'browser-firefox' ],
-                        [ 'scratch', 'scratch-root', 'database-27', 'browser-firefox' ]
-                    ]
-                );
+        return scope.assert.collect();
+    }),
+    test('expands multiple matrices as a cartesian product', function (scope: TestScope) {
+        const expanded = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
+            browserRuntimeGraph(),
+            matrixRuntimeGraph('node')
+        ])));
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ definitionLocation ],
-            title: 'records scenario bindings without expanding scenario catalogs',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                const defaultExpansion = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
-                    scenarioSidecarRuntimeGraph('default')
-                ])));
-                const selectedExpansion = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
-                    scenarioSidecarRuntimeGraph('payments-500')
-                ])));
+        scope.assert.equal(expanded.cases.length, 4);
+        scope.assert.deepEqual(
+            expanded.cases.map(function runtimeVariants(testCase) {
+                return testCase.workId.runtimes.map(function runtime(runtimeId) {
+                    return [ runtimeId.name, runtimeId.variantId ];
+                });
+            }),
+            [
+                [ [ 'browser', 'chromium' ], [ 'node', 'node-26' ] ],
+                [ [ 'browser', 'chromium' ], [ 'node', 'node-27' ] ],
+                [ [ 'browser', 'firefox' ], [ 'node', 'node-26' ] ],
+                [ [ 'browser', 'firefox' ], [ 'node', 'node-27' ] ]
+            ]
+        );
+        scope.assert.deepEqual(
+            expanded.cases.map(function resourceNames(testCase) {
+                return testCase.resourceAttachments.resourceGraph.map(function resourceName(resource) {
+                    return resource.name;
+                });
+            }),
+            [
+                [ 'scratch', 'scratch-root', 'database-26', 'browser-chromium' ],
+                [ 'scratch', 'scratch-root', 'database-27', 'browser-chromium' ],
+                [ 'scratch', 'scratch-root', 'database-26', 'browser-firefox' ],
+                [ 'scratch', 'scratch-root', 'database-27', 'browser-firefox' ]
+            ]
+        );
 
-                scope.assert.equal(defaultExpansion.cases.length, 1);
-                scope.assert.equal(selectedExpansion.cases.length, 1);
-                assertScenarioRuntimeIdentities(scope, defaultExpansion, selectedExpansion);
+        return scope.assert.collect();
+    }),
+    test('records scenario bindings without expanding scenario catalogs', function (scope: TestScope) {
+        const defaultExpansion = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
+            scenarioSidecarRuntimeGraph('default')
+        ])));
+        const selectedExpansion = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
+            scenarioSidecarRuntimeGraph('payments-500')
+        ])));
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ definitionLocation ],
-            title: 'expands separate matrix wrappers as a cartesian product',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                const expanded = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
-                    matrixRuntimeGraph('node'),
-                    browserRuntimeGraph()
-                ])));
+        scope.assert.equal(defaultExpansion.cases.length, 1);
+        scope.assert.equal(selectedExpansion.cases.length, 1);
+        assertScenarioRuntimeIdentities(scope, defaultExpansion, selectedExpansion);
 
-                scope.assert.equal(expanded.cases.length, 4);
+        return scope.assert.collect();
+    }),
+    test('expands separate matrix wrappers as a cartesian product', function (scope: TestScope) {
+        const expanded = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
+            matrixRuntimeGraph('node'),
+            browserRuntimeGraph()
+        ])));
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+        scope.assert.equal(expanded.cases.length, 4);
 
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

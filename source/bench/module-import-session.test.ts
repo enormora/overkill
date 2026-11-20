@@ -1,7 +1,7 @@
 import { once } from 'node:events';
 import { connect, type Socket } from 'node:net';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createModuleImportSession, type ModuleImportSession } from './module-import-session.ts';
 import { withinProcessDeadline } from './process-deadline.ts';
 
@@ -54,8 +54,8 @@ const invalidFrames: readonly InvalidFrame[] = [
     }
 ];
 
-export const testNode = suite('module import control protocol', [
-    test('closing a session releases its frame-reader promises', async function (scope: TestScope) {
+export const testNode = authoredSuite('module import control protocol', [
+    authoredTest('closing a session releases its frame-reader promises', async function (scope: TestScope) {
         const engine = createTestEngine();
         const nested = engine.createTestCase({
             annotations: {},
@@ -81,7 +81,7 @@ export const testNode = suite('module import control protocol', [
         scope.assert.deepEqual(result.runnerErrors, []);
         return scope.assert.collect();
     }),
-    test('releases a pending report when its owner closes', async function (scope: TestScope) {
+    authoredTest('releases a pending report when its owner closes', async function (scope: TestScope) {
         const session = await createModuleImportSession();
         await using disposal = new AsyncDisposableStack();
         disposal.defer(session.close);
@@ -93,20 +93,27 @@ export const testNode = suite('module import control protocol', [
         await checked;
         return scope.assert.collect();
     }),
-    test('starts import only after readiness and returns authenticated metadata', async function (scope: TestScope) {
-        const peer = await modulePeer(scope);
-        peer.socket.write(`${JSON.stringify({ kind: 'ready', token: peer.token })}\n`);
-        const commandEvent = await once(peer.socket, 'data');
-        const command: unknown = commandEvent[0];
-        scope.assert.equal(String(command), 'import\n');
-        peer.socket.end(`${JSON.stringify(importedMessage(peer.token))}\n`);
-        const report = await peer.session.report();
-        scope.assert.partialDeepEqual(report, { url: 'file:///fixture.mjs', durationMicroseconds: 7, failure: null });
-        scope.assert.true(peer.session.startupMilliseconds() >= 0);
-        return scope.assert.collect();
-    }),
+    authoredTest(
+        'starts import only after readiness and returns authenticated metadata',
+        async function (scope: TestScope) {
+            const peer = await modulePeer(scope);
+            peer.socket.write(`${JSON.stringify({ kind: 'ready', token: peer.token })}\n`);
+            const commandEvent = await once(peer.socket, 'data');
+            const command: unknown = commandEvent[0];
+            scope.assert.equal(String(command), 'import\n');
+            peer.socket.end(`${JSON.stringify(importedMessage(peer.token))}\n`);
+            const report = await peer.session.report();
+            scope.assert.partialDeepEqual(report, {
+                url: 'file:///fixture.mjs',
+                durationMicroseconds: 7,
+                failure: null
+            });
+            scope.assert.true(peer.session.startupMilliseconds() >= 0);
+            return scope.assert.collect();
+        }
+    ),
     ...invalidFrames.map(function rejectedFrame(frame) {
-        return test(frame.title, async function (scope: TestScope) {
+        return authoredTest(frame.title, async function (scope: TestScope) {
             const peer = await modulePeer(scope);
             peer.socket.end(`${frame.frame(peer.token)}\n`);
             await scope.assert.rejects(async function rejectedReport() {
@@ -115,7 +122,7 @@ export const testNode = suite('module import control protocol', [
             return scope.assert.collect();
         });
     }),
-    test('rejects a second readiness command', async function (scope: TestScope) {
+    authoredTest('rejects a second readiness command', async function (scope: TestScope) {
         const peer = await modulePeer(scope);
         const message = `${JSON.stringify({ kind: 'ready', token: peer.token })}\n`;
         peer.socket.write(message);
@@ -126,7 +133,7 @@ export const testNode = suite('module import control protocol', [
         }, { message: 'Module import became ready more than once.' });
         return scope.assert.collect();
     }),
-    test('rejects malformed JSON without an unhandled owner rejection', async function (scope: TestScope) {
+    authoredTest('rejects malformed JSON without an unhandled owner rejection', async function (scope: TestScope) {
         const peer = await modulePeer(scope);
         peer.socket.end('not-json\n');
         await scope.assert.rejects(async function rejectedReport() {
@@ -134,7 +141,7 @@ export const testNode = suite('module import control protocol', [
         }, { type: SyntaxError });
         return scope.assert.collect();
     }),
-    test('bounds a frame before JSON parsing', async function (scope: TestScope) {
+    authoredTest('bounds a frame before JSON parsing', async function (scope: TestScope) {
         const peer = await modulePeer(scope);
         peer.socket.end('x'.repeat(65_537));
         await scope.assert.rejects(async function rejectedReport() {

@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { testNode as shutdown } from './worker-pool-shutdown-policy.test.ts';
 import { createPool } from './worker-pool-creation.ts';
 
-export const testNode = suite('idle fresh-worker pool policy', [
+export const testNode = authoredSuite('idle fresh-worker pool policy', [
     shutdown,
     test('keeps fresh-worker pools idle until work is assigned', async function (scope: TestScope) {
         const pool = createPool({
@@ -24,4 +24,3 @@ export const testNode = suite('idle fresh-worker pool policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

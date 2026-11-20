@@ -1,29 +1,32 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { workerPoolOrchestration, workerOrchestrationFaults } from '../test-support/worker-pool-orchestration.ts';
 import { testNode as idle } from './idle-worker-runtime-policy.test.ts';
 import { testNode as isolated } from './isolated-worker-run-policy.test.ts';
 import { testNode as placement } from './worker-placement-execution-policy.test.ts';
 import { executeWorkerPoolRun, collectWorkerPoolRun, runWorkerPoolCommand } from './worker-pool-run.ts';
 
-export const testNode = suite('memory worker-pool orchestration', [
+export const testNode = authoredSuite('memory worker-pool orchestration', [
     idle,
     placement,
     isolated,
     ...([ false, true ] as const).map(function (timed) {
-        return test(`executes and releases a newly owned pool with timing ${timed}`, async function (scope: TestScope) {
-            const fixture = workerPoolOrchestration(workerOrchestrationFaults, timed);
-            const result = await executeWorkerPoolRun(fixture.resolved, fixture.dependencies, fixture.options);
-            scope.assert.equal(result.status, 'passed');
-            scope.assert.equal(result.perTest[0]?.verdict, 'pass');
-            scope.assert.equal(fixture.created.length, 1);
-            scope.assert.deepEqual(fixture.events, [ 'output:observe', 'run', 'output:clear', 'destroy' ]);
-            scope.assert.equal(fixture.completions.length, 1);
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `executes and releases a newly owned pool with timing ${timed}`,
+            async function (scope: TestScope) {
+                const fixture = workerPoolOrchestration(workerOrchestrationFaults, timed);
+                const result = await executeWorkerPoolRun(fixture.resolved, fixture.dependencies, fixture.options);
+                scope.assert.equal(result.status, 'passed');
+                scope.assert.equal(result.perTest[0]?.verdict, 'pass');
+                scope.assert.equal(fixture.created.length, 1);
+                scope.assert.deepEqual(fixture.events, [ 'output:observe', 'run', 'output:clear', 'destroy' ]);
+                scope.assert.equal(fixture.completions.length, 1);
+                return scope.assert.collect();
+            }
+        );
     }),
     ...([ false, true ] as const).map(function (timed) {
-        return test(
+        return authoredTest(
             `collects and releases a separate collection pool with timing ${timed}`,
             async function (scope: TestScope) {
                 const fixture = workerPoolOrchestration(workerOrchestrationFaults, timed);
@@ -42,7 +45,7 @@ export const testNode = suite('memory worker-pool orchestration', [
     }),
     ...([ false, true ] as const).flatMap(function (timed) {
         return ([ 'direct', 'child' ] as const).map(function (host) {
-            return test(
+            return authoredTest(
                 `owns ${host} collection and execution pools with timing ${timed}`,
                 async function (scope: TestScope) {
                     const fixture = workerPoolOrchestration(workerOrchestrationFaults, timed);
@@ -75,7 +78,7 @@ export const testNode = suite('memory worker-pool orchestration', [
             );
         });
     }),
-    test('releases a collection pool when collection fails', async function (scope: TestScope) {
+    authoredTest('releases a collection pool when collection fails', async function (scope: TestScope) {
         const fixture = workerPoolOrchestration({
             ...workerOrchestrationFaults,
             collection: new Error('import failed')
@@ -86,29 +89,32 @@ export const testNode = suite('memory worker-pool orchestration', [
         scope.assert.deepEqual(fixture.events, [ 'output:observe', 'collect', 'output:clear', 'destroy' ]);
         return scope.assert.collect();
     }),
-    test('stops after repeated worker crashes and still releases its owned pool', async function (scope: TestScope) {
-        const fixture = workerPoolOrchestration(
-            { ...workerOrchestrationFaults, execution: new Error('worker failed') },
-            false
-        );
-        const result = await executeWorkerPoolRun(fixture.resolved, fixture.dependencies, fixture.options);
-        scope.assert.equal(result.status, 'failed');
-        scope.assert.true(result.runnerErrors.some(function (error) {
-            return error.message === 'Worker-pool stopped after 3 worker crashes.';
-        }));
-        scope.assert.equal(
-            fixture
-                .events
-                .filter(function (value) {
-                    return value === 'run';
-                })
-                .length,
-            3
-        );
-        scope.assert.equal(fixture.events.at(-1), 'destroy');
-        return scope.assert.collect();
-    }),
-    test('releases its pool after finalization fails', async function (scope: TestScope) {
+    authoredTest(
+        'stops after repeated worker crashes and still releases its owned pool',
+        async function (scope: TestScope) {
+            const fixture = workerPoolOrchestration(
+                { ...workerOrchestrationFaults, execution: new Error('worker failed') },
+                false
+            );
+            const result = await executeWorkerPoolRun(fixture.resolved, fixture.dependencies, fixture.options);
+            scope.assert.equal(result.status, 'failed');
+            scope.assert.true(result.runnerErrors.some(function (error) {
+                return error.message === 'Worker-pool stopped after 3 worker crashes.';
+            }));
+            scope.assert.equal(
+                fixture
+                    .events
+                    .filter(function (value) {
+                        return value === 'run';
+                    })
+                    .length,
+                3
+            );
+            scope.assert.equal(fixture.events.at(-1), 'destroy');
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('releases its pool after finalization fails', async function (scope: TestScope) {
         const error = new Error('finalization failed');
         const fixture = workerPoolOrchestration({ ...workerOrchestrationFaults, finalization: error }, false);
         await scope.assert.rejects(async function () {
@@ -117,7 +123,7 @@ export const testNode = suite('memory worker-pool orchestration', [
         scope.assert.equal(fixture.events.at(-1), 'destroy');
         return scope.assert.collect();
     }),
-    test('preserves owned pool destruction failures', async function (scope: TestScope) {
+    authoredTest('preserves owned pool destruction failures', async function (scope: TestScope) {
         const error = new Error('destruction failed');
         const fixture = workerPoolOrchestration({ ...workerOrchestrationFaults, destruction: error }, false);
         await scope.assert.rejects(async function () {
@@ -127,4 +133,3 @@ export const testNode = suite('memory worker-pool orchestration', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

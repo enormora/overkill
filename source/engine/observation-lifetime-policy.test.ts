@@ -1,8 +1,7 @@
 import { AsyncResource } from 'node:async_hooks';
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { testNode as processPolicy } from '../run/process-boundary-observation-policy.test.ts';
 import { observationCase, observationError } from '../test-support/observation-lifetime.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { registerExecutionDisposal } from '../execution-ownership.ts';
 import type { RunnerError } from './run-result.ts';
 import { createExecutionObservation, withExecutionObservation } from './execution-observation.ts';
@@ -16,7 +15,7 @@ async function rejectedObservationValue(operation: Promise<unknown>): Promise<un
     }
 }
 
-export const testNode = suite('execution observation lifetime policy', [
+export const testNode = authoredSuite('execution observation lifetime policy', [
     processPolicy,
     test(
         'retains origin attribution for callbacks observed after their attempt closes',
@@ -101,4 +100,3 @@ export const testNode = suite('execution observation lifetime policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

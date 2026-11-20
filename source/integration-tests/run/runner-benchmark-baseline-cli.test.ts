@@ -1,7 +1,6 @@
 import { writeFile } from 'node:fs/promises';
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import type { CommandLineBenchmarkCommands } from '../../packages/run/command-line.entry-point.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import { createBenchmarkCommands } from '../../run/benchmark-commands.ts';
 import {
@@ -84,7 +83,7 @@ async function assertListExitCodes(scope: TestScope, fixture: BaselineFixture): 
     await assertInvalidList(scope, commands);
 }
 
-export const testNode = suite('benchmark baseline CLI results', [
+export const testNode = authoredSuite('benchmark baseline CLI results', [
     test('diff returns failure for changes while preserving baseline files', async function (scope: TestScope) {
         await assertDiffExitCodes(scope, await createBenchmarkBaselineFixture(scope, execution));
         return scope.assert.collect();
@@ -94,4 +93,3 @@ export const testNode = suite('benchmark baseline CLI results', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,10 +1,6 @@
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
-    createRoot,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    createTestPlan,
-    execute,
-    ownsTestNode,
     resolveSourceLocation,
     type SourceLocation,
     type Suite,
@@ -13,13 +9,14 @@ import {
     type TestNode,
     type TestPlan,
     type TestScope,
-    type TestScope as OverkillScope
+    createRoot,
+    createTestPlan,
+    execute,
+    ownsTestNode
 } from '../engine/engine.entry-point.ts';
+
 import { testNode as validation } from './authoring-data-validation.test.ts';
-import {
-    createTestFacade,
-    type TestFacade
-} from './test.entry-point.ts';
+import { createTestFacade, type TestFacade } from './test.entry-point.ts';
 import * as resourcesSubpath from './resources.entry-point.ts';
 
 type FacadeAuthoringExecution = {
@@ -331,193 +328,163 @@ function assertFacadeScopeMappingCollision(
     );
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/packages/test/test-facade-entry-point.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        validation,
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test createTestFacade() returns a narrow authoring surface',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const facade = createTestFacade();
+export const testNode = suite('source/packages/test/test-facade-entry-point.test.ts', [
+    validation,
+    test('@overkill-dev/test createTestFacade() returns a narrow authoring surface', function (scope: OverkillScope) {
+        const facade = createTestFacade();
 
-                assertNarrowFacadeSurface(scope, facade);
-                scope.assert.throws(function createUnknownFacade() {
-                    invokeCreateTestFacade({ unknown: true });
-                }, {
-                    message:
-                        'createTestFacade() requires no arguments or ({ annotations?, controls?, runtime?, resources?, mapScope? }).'
-                });
-                scope.assert.throws(function createFamilyFacade() {
-                    invokeCreateTestFacade({ testFamily: 'microtest' });
-                }, {
-                    message:
-                        'createTestFacade() requires no arguments or ({ annotations?, controls?, runtime?, resources?, mapScope? }).'
-                });
+        assertNarrowFacadeSurface(scope, facade);
+        scope.assert.throws(function createUnknownFacade() {
+            invokeCreateTestFacade({ unknown: true });
+        }, {
+            message:
+                'createTestFacade() requires no arguments or ({ annotations?, controls?, runtime?, resources?, mapScope? }).'
+        });
+        scope.assert.throws(function createFamilyFacade() {
+            invokeCreateTestFacade({ testFamily: 'microtest' });
+        }, {
+            message:
+                'createTestFacade() requires no arguments or ({ annotations?, controls?, runtime?, resources?, mapScope? }).'
+        });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test createTestFacade() composes neutral authoring helpers',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const execution = await executeFacadeAuthoredNode();
+        return scope.assert.collect();
+    }),
+    test(
+        '@overkill-dev/test createTestFacade() composes neutral authoring helpers',
+        async function (scope: OverkillScope) {
+            const execution = await executeFacadeAuthoredNode();
 
-                scope.assert.equal(ownsTestNode(execution.testCase), true);
-                scope.assert.equal(ownsTestNode(execution.testNode), true);
-                assertFacadeAuthoredCase(scope, execution.plannedCase);
-                assertPassingSummary(scope, execution.result.summary);
+            scope.assert.equal(ownsTestNode(execution.testCase), true);
+            scope.assert.equal(ownsTestNode(execution.testNode), true);
+            assertFacadeAuthoredCase(scope, execution.plannedCase);
+            assertPassingSummary(scope, execution.result.summary);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test createTestFacade() binds facade runtime resources and scope mapping',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const { acquisitions, execution } = await executeFacadeRuntimeBinding();
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        '@overkill-dev/test createTestFacade() binds facade runtime resources and scope mapping',
+        async function (scope: OverkillScope) {
+            const { acquisitions, execution } = await executeFacadeRuntimeBinding();
 
-                assertFacadeRuntimePlan(scope, execution.plan);
-                assertPassingSummary(scope, execution.result.summary);
-                scope.assert.equal(acquisitions, 2);
+            assertFacadeRuntimePlan(scope, execution.plan);
+            assertPassingSummary(scope, execution.result.summary);
+            scope.assert.equal(acquisitions, 2);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test createTestFacade() rejects reserved scope keys from dynamic mappings',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                for (const key of [ 'assert', 'resources', 'parameters' ]) {
-                    assertFacadeScopeMappingCollision(
-                        scope,
-                        await executeFacadeScopeMappingCollision(key),
-                        key
-                    );
-                }
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test createTestFacade() rejects duplicate facade and body resource scopes',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const database = countedDatabaseResource(function recordAcquisition(): void {
-                    return undefined;
-                });
-                const runtime = resourcesSubpath.defineRuntime({
-                    name: 'api',
-                    dimensions: {},
-                    resources: { database },
-                    requirements: []
-                });
-                const duplicateRuntime = resourcesSubpath.defineRuntime({
-                    name: 'api',
-                    dimensions: {},
-                    resources: {},
-                    requirements: []
-                });
-                const resourceFacade = createTestFacade({
-                    resources: { store: database }
-                });
-                const runtimeFacade = createTestFacade({ runtime });
-
-                scope.assert.throws(function createDuplicateResourceCase() {
-                    resourceFacade.test(
-                        'duplicates store',
-                        resourcesSubpath.withResources({ store: database }, passingBody)
-                    );
-                }, { message: 'Resource scope "store" is attached multiple times.' });
-                scope.assert.throws(function createDuplicateRuntimeCase() {
-                    runtimeFacade.test(
-                        'duplicates api',
-                        resourcesSubpath.withRuntime(duplicateRuntime, passingBody)
-                    );
-                }, { message: 'Runtime scope "api" is attached multiple times.' });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test createTestFacade() maps table scope before row parameters and body resources',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const database = countedDatabaseResource(function recordAcquisition(): void {
-                    return undefined;
-                });
-                const facade = createTestFacade({
-                    resources: { store: database },
-                    mapScope(facadeScope) {
-                        return {
-                            databaseUrl: facadeScope.resources.store.url,
-                            mappedParameters: { value: 0 }
-                        };
-                    }
-                });
-                const table = facade.table({
-                    cases: [ { value: 1 }, { value: 2 } ],
-                    test(facadeScope) {
-                        facadeScope.assert.equal(facadeScope.databaseUrl, 'postgres://localhost');
-                        facadeScope.assert.equal(facadeScope.mappedParameters.value, 0);
-                        facadeScope.assert.true(facadeScope.parameters.value > 0);
-
-                        return facadeScope.assert.collect();
-                    },
-                    title: 'rows'
-                });
-                const execution = await executeFacadeNode(table);
-
-                scope.assert.equal(execution.result.summary.passed, 2);
-                scope.assert.equal(execution.result.summary.failed, 0);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test facade helpers forward definition and assertion source locations',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const facade = createTestFacade();
-                const checkMissingName = facade.defineMacro(function createFacadeMissingNameTest(title: string) {
-                    return facade.test(title, function checkName(testScope) {
-                        testScope.assert.equal('', 'Ada', { message: 'missing name' });
-                        return testScope.assert.collect();
-                    });
-                });
-                const checkName = facade.defineParameterizedTestBody(checkParameterizedName);
-                const macroCase = checkMissingName('requires name');
-                const parameterizedCase = facade.test('checks name', checkName({ name: 'Grace' }));
-                const macroResult = await executeAuthoredNode(macroCase);
-                const parameterizedResult = await executeAuthoredNode(parameterizedCase);
-
-                assertMacroLocationForwarding(scope, macroCase, firstFailedCheckSourceLocations(macroResult));
-                assertParameterizedBodyLocationForwarding(
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        '@overkill-dev/test createTestFacade() rejects reserved scope keys from dynamic mappings',
+        async function (scope: OverkillScope) {
+            for (const key of [ 'assert', 'resources', 'parameters' ]) {
+                assertFacadeScopeMappingCollision(
                     scope,
-                    parameterizedCase,
-                    firstFailedCheckSourceLocations(parameterizedResult)
+                    await executeFacadeScopeMappingCollision(key),
+                    key
                 );
-
-                return scope.assert.collect();
             }
-        })
-    ]
-});
+
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        '@overkill-dev/test createTestFacade() rejects duplicate facade and body resource scopes',
+        function (scope: OverkillScope) {
+            const database = countedDatabaseResource(function recordAcquisition(): void {
+                return undefined;
+            });
+            const runtime = resourcesSubpath.defineRuntime({
+                name: 'api',
+                dimensions: {},
+                resources: { database },
+                requirements: []
+            });
+            const duplicateRuntime = resourcesSubpath.defineRuntime({
+                name: 'api',
+                dimensions: {},
+                resources: {},
+                requirements: []
+            });
+            const resourceFacade = createTestFacade({
+                resources: { store: database }
+            });
+            const runtimeFacade = createTestFacade({ runtime });
+
+            scope.assert.throws(function createDuplicateResourceCase() {
+                resourceFacade.test(
+                    'duplicates store',
+                    resourcesSubpath.withResources({ store: database }, passingBody)
+                );
+            }, { message: 'Resource scope "store" is attached multiple times.' });
+            scope.assert.throws(function createDuplicateRuntimeCase() {
+                runtimeFacade.test(
+                    'duplicates api',
+                    resourcesSubpath.withRuntime(duplicateRuntime, passingBody)
+                );
+            }, { message: 'Runtime scope "api" is attached multiple times.' });
+
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        '@overkill-dev/test createTestFacade() maps table scope before row parameters and body resources',
+        async function (scope: OverkillScope) {
+            const database = countedDatabaseResource(function recordAcquisition(): void {
+                return undefined;
+            });
+            const facade = createTestFacade({
+                resources: { store: database },
+                mapScope(facadeScope) {
+                    return {
+                        databaseUrl: facadeScope.resources.store.url,
+                        mappedParameters: { value: 0 }
+                    };
+                }
+            });
+            const table = facade.table({
+                cases: [ { value: 1 }, { value: 2 } ],
+                test(facadeScope) {
+                    facadeScope.assert.equal(facadeScope.databaseUrl, 'postgres://localhost');
+                    facadeScope.assert.equal(facadeScope.mappedParameters.value, 0);
+                    facadeScope.assert.true(facadeScope.parameters.value > 0);
+
+                    return facadeScope.assert.collect();
+                },
+                title: 'rows'
+            });
+            const execution = await executeFacadeNode(table);
+
+            scope.assert.equal(execution.result.summary.passed, 2);
+            scope.assert.equal(execution.result.summary.failed, 0);
+
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        '@overkill-dev/test facade helpers forward definition and assertion source locations',
+        async function (scope: OverkillScope) {
+            const facade = createTestFacade();
+            const checkMissingName = facade.defineMacro(function createFacadeMissingNameTest(title: string) {
+                return facade.test(title, function checkName(testScope) {
+                    testScope.assert.equal('', 'Ada', { message: 'missing name' });
+                    return testScope.assert.collect();
+                });
+            });
+            const checkName = facade.defineParameterizedTestBody(checkParameterizedName);
+            const macroCase = checkMissingName('requires name');
+            const parameterizedCase = facade.test('checks name', checkName({ name: 'Grace' }));
+            const macroResult = await executeAuthoredNode(macroCase);
+            const parameterizedResult = await executeAuthoredNode(parameterizedCase);
+
+            assertMacroLocationForwarding(scope, macroCase, firstFailedCheckSourceLocations(macroResult));
+            assertParameterizedBodyLocationForwarding(
+                scope,
+                parameterizedCase,
+                firstFailedCheckSourceLocations(parameterizedResult)
+            );
+
+            return scope.assert.collect();
+        }
+    )
+]);

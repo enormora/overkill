@@ -1,5 +1,6 @@
+import { suite } from '@overkill-dev/test';
 import { testNode as argumentMatcherTestNode } from '../../doubles/argument-matcher.test.ts';
-import { createSuite } from '../../packages/engine/engine.entry-point.ts';
+
 import { testNode as doubleHistoryEmptyTestNode } from '../../doubles/double-history-empty.test.ts';
 import { testNode as testDoubleCallbackTestNode } from '../../doubles/test-double-callback.test.ts';
 import { testNode as testDoubleConfigurationTestNode } from '../../doubles/test-double-configuration.test.ts';
@@ -9,20 +10,14 @@ import { testNode as testDoubleHistoryTestNode } from '../../doubles/test-double
 import { testNode as testDoubleHistoryRuntimeTestNode } from '../../doubles/test-double-history-runtime.test.ts';
 import { testNode as testDoubleTestNode } from '../../doubles/test-double.test.ts';
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/test-support/unit-suite-groups/test-double-runtime.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        argumentMatcherTestNode,
-        doubleHistoryEmptyTestNode,
-        testDoubleCallbackTestNode,
-        testDoubleConfigurationTestNode,
-        testDoubleConstructionTestNode,
-        testDoubleGeneratorTestNode,
-        testDoubleHistoryRuntimeTestNode,
-        testDoubleHistoryTestNode,
-        testDoubleTestNode
-    ]
-});
+export const testNode = suite('source/test-support/unit-suite-groups/test-double-runtime.ts', [
+    argumentMatcherTestNode,
+    doubleHistoryEmptyTestNode,
+    testDoubleCallbackTestNode,
+    testDoubleConfigurationTestNode,
+    testDoubleConstructionTestNode,
+    testDoubleGeneratorTestNode,
+    testDoubleHistoryRuntimeTestNode,
+    testDoubleHistoryTestNode,
+    testDoubleTestNode
+]);

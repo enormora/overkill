@@ -1,9 +1,10 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { defineConfigTests } from '../packages/eslint-test/eslint-test.entry-point.ts';
 import { configDefinition, emptyConfigProject } from '../test-support/eslint-config.ts';
 
-export const testNode = suite('config definition validation', [
-    test('rejects inventory exclusions for rules outside the catalog', function (scope: TestScope) {
+export const testNode = authoredSuite('config definition validation', [
+    authoredTest('rejects inventory exclusions for rules outside the catalog', function (scope: TestScope) {
         scope.assert.throws(function () {
             defineConfigTests({
                 ...configDefinition([]),
@@ -20,7 +21,7 @@ export const testNode = suite('config definition validation', [
         }, { message: 'Inventory exclusions must name catalog rules.' });
         return scope.assert.collect();
     }),
-    test('validates effective inventory paths after admitting known exclusions', function (scope: TestScope) {
+    authoredTest('validates effective inventory paths after admitting known exclusions', function (scope: TestScope) {
         scope.assert.throws(function () {
             defineConfigTests({
                 ...configDefinition([]),
@@ -37,7 +38,7 @@ export const testNode = suite('config definition validation', [
         }, { message: 'Project filenames must stay inside the project root.' });
         return scope.assert.collect();
     }),
-    test('validates expected fixed-output paths before creating fixture tests', function (scope: TestScope) {
+    authoredTest('validates expected fixed-output paths before creating fixture tests', function (scope: TestScope) {
         scope.assert.throws(function () {
             defineConfigTests({
                 ...configDefinition([]),
@@ -56,7 +57,7 @@ export const testNode = suite('config definition validation', [
         return scope.assert.collect();
     }),
     ...[ [], [ 'missing' ], [ 'basic', 'basic' ] ].map(function selection(configs) {
-        return test(`rejects invalid selection ${JSON.stringify(configs)}`, function (scope) {
+        return authoredTest(`rejects invalid selection ${JSON.stringify(configs)}`, function (scope) {
             const input: unknown = configs;
             scope.assert.throws(function invalid() {
                 Reflect.apply(defineConfigTests, undefined, [ {
@@ -67,7 +68,7 @@ export const testNode = suite('config definition validation', [
             return scope.assert.collect();
         });
     }),
-    test('rejects empty configuration maps and relative existing roots', function (scope) {
+    authoredTest('rejects empty configuration maps and relative existing roots', function (scope) {
         scope.assert.throws(function noConfigs() {
             defineConfigTests<string>({ ...configDefinition([]), configs: {} });
         }, { message: /at least one/ });
@@ -76,7 +77,7 @@ export const testNode = suite('config definition validation', [
         }, { message: /absolute/ });
         return scope.assert.collect();
     }),
-    test('rejects fake generators and empty or repeated contracts', function (scope) {
+    authoredTest('rejects fake generators and empty or repeated contracts', function (scope) {
         const base = { title: 'generated', configs: 'all', project: emptyConfigProject };
         scope.assert.throws(function fakeGenerator() {
             Reflect.apply(defineConfigTests, undefined, [ {

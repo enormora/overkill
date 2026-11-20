@@ -3,8 +3,7 @@ import { mkdtemp, rm, mkdir, writeFile, realpath } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
 
 type CommandOptions = { readonly cwd: string; };
@@ -52,7 +51,7 @@ async function prepareRuns(cwd: string): Promise<string> {
     );
     return record.startedAt;
 }
-export const testNode = suite('history CLI', [
+export const testNode = authoredSuite('history CLI', [
     test('replay dispatch rejects nonterminals and forwards explicit ids', async function (scope: TestScope) {
         await inProject(async function replayCommands(cwd) {
             const missing = await execute(process.execPath, [ binary, 'replay' ], { cwd });
@@ -113,4 +112,3 @@ export const testNode = suite('history CLI', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

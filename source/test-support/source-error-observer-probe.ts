@@ -1,13 +1,14 @@
 import { extname } from 'node:path';
 
 export function sourceErrorObserverProbe(testModuleUrl: string): string {
+    const engineUrl = new URL(`../packages/engine/engine.entry-point${extname(import.meta.url)}`, import.meta.url);
     const observerUrl = new URL(
         `../engine/execution-global-error-observer${extname(import.meta.url)}`,
         import.meta.url
     );
     return `
         import assert from 'node:assert/strict';
-        const { createRoot, createTestPlan, execute } = await import('@overkill-dev/engine');
+        const { createRoot, createTestPlan, execute } = await import(${JSON.stringify(engineUrl.href)});
         const { globalErrorObserverTestNode } = await import(${JSON.stringify(testModuleUrl)});
         const { createExecutionGlobalErrorObserver } = await import(${JSON.stringify(observerUrl.href)});
         const observer = createExecutionGlobalErrorObserver('in-process');

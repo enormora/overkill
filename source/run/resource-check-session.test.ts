@@ -1,6 +1,8 @@
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
-import { runIfMain } from '#test-runner';
-import { suite, test, testDouble, type TestScope } from '../packages/test/test.entry-point.ts';
+
+import { testDouble } from '../packages/test/test.entry-point.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import { createStoredValue } from '../stored-value.ts';
 import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
@@ -55,8 +57,8 @@ function scenario(): Scenario {
     });
     return { session, clock, connection, sent };
 }
-export const testNode = suite('resource observation session policy', [
-    test('matches acknowledgements to pending requests', async function (scope: TestScope) {
+export const testNode = authoredSuite('resource observation session policy', [
+    authoredTest('matches acknowledgements to pending requests', async function (scope: TestScope) {
         const fixture = scenario();
         const pending = fixture.session.exchange({ kind: 'flush', request: 'request' });
         await fixture.session.receive({ kind: 'result', request: 'unrelated', snapshots: [], errors: [] });
@@ -66,7 +68,7 @@ export const testNode = suite('resource observation session policy', [
         scope.assert.deepEqual(fixture.sent, [ { kind: 'flush', request: 'request' } ]);
         return scope.assert.collect();
     }),
-    test('bounds missing acknowledgements with the supplied clock', async function (scope: TestScope) {
+    authoredTest('bounds missing acknowledgements with the supplied clock', async function (scope: TestScope) {
         const fixture = scenario();
         const pending = fixture.session.exchange({ kind: 'flush', request: 'request' });
         const rejection = scope.assert.rejects(async function () {
@@ -80,7 +82,7 @@ export const testNode = suite('resource observation session policy', [
         scope.assert.deepEqual(retried.errors, []);
         return scope.assert.collect();
     }),
-    test('rejects requests on destroyed or disconnected channels', async function (scope: TestScope) {
+    authoredTest('rejects requests on destroyed or disconnected channels', async function (scope: TestScope) {
         const fixture = scenario();
         fixture.connection.destroy();
         await scope.assert.rejects(async function () {
@@ -92,7 +94,7 @@ export const testNode = suite('resource observation session policy', [
         }, { message: /not connected/u });
         return scope.assert.collect();
     }),
-    test('cancels active consumers and pending requests when disconnected', async function (scope: TestScope) {
+    authoredTest('cancels active consumers and pending requests when disconnected', async function (scope: TestScope) {
         const fixture = scenario();
         const causes: unknown[] = [];
         const release = fixture.session.delivery.active(interval, function cancel(cause) {
@@ -110,7 +112,7 @@ export const testNode = suite('resource observation session policy', [
         );
         return scope.assert.collect();
     }),
-    test('cancels matching attempts and lifetime consumers only', async function (scope: TestScope) {
+    authoredTest('cancels matching attempts and lifetime consumers only', async function (scope: TestScope) {
         const fixture = scenario();
         const causes: unknown[] = [];
         const release = fixture.session.delivery.active(interval, function cancel(cause) {
@@ -132,7 +134,7 @@ export const testNode = suite('resource observation session policy', [
         scope.assert.deepEqual(causes, [ 'attempt', 'lifetime' ]);
         return scope.assert.collect();
     }),
-    test('registers owners and acknowledges successful finalization', async function (scope: TestScope) {
+    authoredTest('registers owners and acknowledges successful finalization', async function (scope: TestScope) {
         const fixture = scenario();
         const finalized: unknown[] = [];
         fixture.session.delivery.register(owner, 'service', [ work ], async function finish(value) {
@@ -147,7 +149,7 @@ export const testNode = suite('resource observation session policy', [
         } ]);
         return scope.assert.collect();
     }),
-    test('reports unavailable owners instead of acknowledging success', async function (scope: TestScope) {
+    authoredTest('reports unavailable owners instead of acknowledging success', async function (scope: TestScope) {
         const fixture = scenario();
         await fixture.session.receive({ kind: 'finalize-owner', request: 'finish', owner, interval });
         scope.assert.deepEqual(fixture.sent, [ {
@@ -158,7 +160,7 @@ export const testNode = suite('resource observation session policy', [
         return scope.assert.collect();
     }),
     ...[ new Error('finalization failed'), 42 ].map(function (failure, index) {
-        return test(`retains owner finalization failure ${index}`, async function (scope: TestScope) {
+        return authoredTest(`retains owner finalization failure ${index}`, async function (scope: TestScope) {
             const fixture = scenario();
             fixture.session.delivery.register(owner, 'service', [ work ], async function finish() {
                 testDouble.throws<() => void>(failure)();
@@ -172,16 +174,19 @@ export const testNode = suite('resource observation session policy', [
             return scope.assert.collect();
         });
     }),
-    test('destroys the channel if finalization acknowledgement cannot be sent', async function (scope: TestScope) {
-        const fixture = scenario();
-        fixture.session.connect(function send() {
-            throw new Error('send failed');
-        });
-        await fixture.session.receive({ kind: 'finalize-owner', request: 'finish', owner, interval });
-        scope.assert.true(fixture.connection.destroyed);
-        return scope.assert.collect();
-    }),
-    test('publishes portable checkpoints and serialized stop causes', function (scope: TestScope) {
+    authoredTest(
+        'destroys the channel if finalization acknowledgement cannot be sent',
+        async function (scope: TestScope) {
+            const fixture = scenario();
+            fixture.session.connect(function send() {
+                throw new Error('send failed');
+            });
+            await fixture.session.receive({ kind: 'finalize-owner', request: 'finish', owner, interval });
+            scope.assert.true(fixture.connection.destroyed);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('publishes portable checkpoints and serialized stop causes', function (scope: TestScope) {
         const fixture = scenario();
         fixture.session.delivery.checkpoint(snapshot);
         fixture.session.delivery.stop(owner, interval, 'stop');
@@ -193,7 +198,7 @@ export const testNode = suite('resource observation session policy', [
         } ]);
         return scope.assert.collect();
     }),
-    test('destroys the channel when checkpoint delivery fails', function (scope: TestScope) {
+    authoredTest('destroys the channel when checkpoint delivery fails', function (scope: TestScope) {
         const fixture = scenario();
         fixture.session.connect(function send() {
             throw new Error('send failed');
@@ -202,14 +207,14 @@ export const testNode = suite('resource observation session policy', [
         scope.assert.true(fixture.connection.destroyed);
         return scope.assert.collect();
     }),
-    test('ignores server-inapplicable frames', async function (scope: TestScope) {
+    authoredTest('ignores server-inapplicable frames', async function (scope: TestScope) {
         const fixture = scenario();
         await fixture.session.receive({ kind: 'flush', request: 'ignored' });
         scope.assert.deepEqual(fixture.sent, []);
         scope.assert.false(fixture.connection.destroyed);
         return scope.assert.collect();
     }),
-    test('flush waits for its acknowledgement', async function (scope: TestScope) {
+    authoredTest('flush waits for its acknowledgement', async function (scope: TestScope) {
         const fixture = scenario();
         const pending = fixture.session.delivery.flush();
         const frame = fixture.sent[0];
@@ -222,4 +227,3 @@ export const testNode = suite('resource observation session policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

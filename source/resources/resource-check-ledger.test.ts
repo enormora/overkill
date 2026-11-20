@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { DiffPathSegment } from '../diff/diff-shape.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import type { ResourceCheckInterval } from '../resource-check-protocol.ts';
 import { createResourceCheckLedger, type ResourceCheckLedger } from './resource-check-ledger.ts';
@@ -41,7 +42,7 @@ function ledger(): ResourceCheckLedger {
         publish
     );
 }
-export const testNode = suite('resource observation ledger', [
+export const testNode = authoredSuite('resource observation ledger', [
     test('opens each observation interval once', function (scope: TestScope) {
         const checks = ledger();
         checks.open(lifetime);
@@ -165,4 +166,3 @@ export const testNode = suite('resource observation ledger', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

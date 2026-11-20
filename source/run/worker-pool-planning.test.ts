@@ -1,12 +1,7 @@
 import { setImmediate as scheduleImmediate } from 'node:timers';
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type CaseId,
-    type TestPlan,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import type { CaseId, TestPlan } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import { emptyWorkUnitResourceConstraints } from './run-types.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
@@ -14,9 +9,7 @@ import {
     collectedRunCaseEntriesFromWorkUnits,
     createWorkerPoolPlacementPlan
 } from './worker-pool-placement-planning.ts';
-import {
-    workUnitsFromCollectedPlan
-} from './work-unit-planning.ts';
+import { workUnitsFromCollectedPlan } from './work-unit-planning.ts';
 import {
     createEmptyAssignmentResult,
     runObservedWorkerCollection,
@@ -334,60 +327,34 @@ function emitUnhandledRejection(message: string): void {
     process.emit('unhandledRejection', new Error(message), Promise.resolve());
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-planning.test.ts',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool planning helpers preserve selected cases and empty assignments',
-            body(scope: OverkillScope) {
-                const testPlan = createPlanningTestPlan();
+export const testNode = suite('source/run/worker-pool-planning.test.ts', [
+    test('worker-pool planning helpers preserve selected cases and empty assignments', function (scope: OverkillScope) {
+        const testPlan = createPlanningTestPlan();
 
-                assertPlanningHelpers(scope, testPlan);
-                scope.assert.throws(function selectMissingCase() {
-                    selectedAssignedCases(testPlan, [
-                        { file: integrationPath, params: null, suite: [], title: 'missing' }
-                    ]);
-                }, { message: 'Worker-pool test plan did not match assigned work identities.' });
+        assertPlanningHelpers(scope, testPlan);
+        scope.assert.throws(function selectMissingCase() {
+            selectedAssignedCases(testPlan, [
+                { file: integrationPath, params: null, suite: [], title: 'missing' }
+            ]);
+        }, { message: 'Worker-pool test plan did not match assigned work identities.' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool planning covers empty files, worker limits, and stale work',
-            body(scope: OverkillScope) {
-                assertEmptyCollectedFiles(scope);
-                assertWorkerCountBounds(scope);
-                assertUnknownWorkReferences(scope);
+        return scope.assert.collect();
+    }),
+    test('worker-pool planning covers empty files, worker limits, and stale work', function (scope: OverkillScope) {
+        assertEmptyCollectedFiles(scope);
+        assertWorkerCountBounds(scope);
+        assertUnknownWorkReferences(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool worker collection surfaces global hook failures',
-            async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function collectWithGlobalFailure() {
-                    await runObservedWorkerCollection(async function collectWorkerPlan() {
-                        emitUnhandledRejection('worker collection failed');
-                        await yieldToImmediate();
-                    });
-                }, { message: 'Unhandled rejection: worker collection failed' });
+        return scope.assert.collect();
+    }),
+    test('worker-pool worker collection surfaces global hook failures', async function (scope: OverkillScope) {
+        await scope.assert.rejects(async function collectWithGlobalFailure() {
+            await runObservedWorkerCollection(async function collectWorkerPlan() {
+                emitUnhandledRejection('worker collection failed');
+                await yieldToImmediate();
+            });
+        }, { message: 'Unhandled rejection: worker collection failed' });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

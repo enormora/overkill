@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createLocalProcessOutput, type LocalProcessOutputWriters } from './local-process-output.ts';
 
 type CapturedProcessOutput = LocalProcessOutputWriters & {
@@ -29,7 +29,7 @@ function capturedOutput(maximumBytes: number): CapturedProcessOutput {
     });
     return { ...output, stdout, stderr };
 }
-export const testNode = suite('bounded process output', [
+export const testNode = authoredSuite('bounded process output', [
     test('retains only the newest bytes independently for each stream', function (scope: TestScope) {
         const output = createLocalProcessOutput(5, { stdout: null, stderr: null });
         output.appendStdout(Buffer.from('remake'));
@@ -98,4 +98,3 @@ export const testNode = suite('bounded process output', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

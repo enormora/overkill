@@ -1,24 +1,14 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type CaseId,
-    type RunResult,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy, type CaseId, type RunResult } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { createRunResultFromCollectedPlan } from './collected-run-plan.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import type { CreatedWorkerPool } from './run-orchestrator-dependencies.ts';
 import { createStoredRunValue, createSupervisedRunState } from './supervised-run-state.ts';
 import { executeWorkerPoolUnits } from './worker-pool-execution.ts';
-import {
-    createWorkerPoolPlacementTraceRecorder,
-    type WorkerPoolRunRuntime
-} from './worker-pool-runtime.ts';
+import { createWorkerPoolPlacementTraceRecorder, type WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 
 const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
@@ -428,11 +418,11 @@ function runtimeWithInstanceEngine(): WorkerPoolRunRuntime {
     };
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-placement-validation.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool execution rejects placement assignments for missing units',
             async body(scope: OverkillScope) {
@@ -442,7 +432,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool execution rejects placement assignments for missing lanes',
             async body(scope: OverkillScope) {
@@ -452,7 +442,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool execution rejects mixed lifecycle placement lanes',
             async body(scope: OverkillScope) {
@@ -466,7 +456,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool execution reports instance engines as crashes',
             async body(scope: OverkillScope) {
@@ -480,5 +470,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

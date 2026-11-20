@@ -1,7 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
 import { mergeRecordFixture } from '../test-support/merge-record-fixture.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { finalizedResourceCheckResult } from '../engine/resource-check-result.ts';
 import { historyRecordSchema } from './history-record.ts';
@@ -20,7 +21,7 @@ const snapshot = {
     errors: [],
     status: { kind: 'complete' }
 } as const;
-export const testNode = suite('resource check records', [
+export const testNode = authoredSuite('resource check records', [
     test('round trips owner attribution and bounded observation errors', function (scope) {
         const cause: Record<string, unknown> = { detail: 'observation failed' };
         cause.cycle = cause;
@@ -115,4 +116,3 @@ export const testNode = suite('resource check records', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

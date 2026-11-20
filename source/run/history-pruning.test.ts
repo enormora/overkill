@@ -1,8 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { createHistory, normalizeConfig, type History } from '../packages/run/run.entry-point.ts';
 import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
 import { createNodeHistoryStorage } from './node-history-storage.ts';
@@ -24,7 +23,7 @@ async function withPruningProject(operation: (project: PruningProject) => Promis
     }
 }
 
-export const testNode = suite('history pruning repair boundaries', [
+export const testNode = authoredSuite('history pruning repair boundaries', [
     test('pruning preserves records with incomplete history commits', async function (scope: TestScope) {
         await withPruningProject(async function pendingCommit({ directory, history, store }) {
             const now = new Date();
@@ -62,4 +61,3 @@ export const testNode = suite('history pruning repair boundaries', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

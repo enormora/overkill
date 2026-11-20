@@ -8,22 +8,14 @@ import type {
     RunReporterDeliveryResult,
     RunOperations as CommandOperations
 } from './run-types.ts';
-import {
-    readResolvedRunInput,
-    type RunInvocation
-} from './run-input-resolution.ts';
-import {
-    createIsolatedResolvedRun
-} from './run-isolated-process.ts';
+import { readResolvedRunInput, resolveRunRequestSeed, type RunInvocation } from './run-input-resolution.ts';
+import { createIsolatedResolvedRun } from './run-isolated-process.ts';
 import { executeRunCommand, type RunExecutionInvocation } from './run-execution.ts';
 import { prepareRunCommand, withRunCommandModuleBoundary } from './frozen-run-command.ts';
 import { readRunCancellation } from './run-cancellation.ts';
 import { inspectLocalResolvedRun } from './run-local-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type {
-    CollectionSource,
-    DirectEntrypointCollectionSource
-} from './run-collection-source.ts';
+import type { CollectionSource, DirectEntrypointCollectionSource } from './run-collection-source.ts';
 import {
     createRunTimingMeasurement,
     emptyTimingSpanMetadata,
@@ -40,27 +32,16 @@ export type DirectEntrypointRunner = (
     options?: RunInvocationTimingOptions
 ) => Promise<RunReporterDeliveryResult>;
 
-function commandWithResolvedSeed(command: RunCommand, dependencies: RunOrchestratorDependencies): RunCommand {
-    if (command.request.seed.value !== null) {
-        return command;
-    }
-
-    return {
-        ...command,
-        request: {
-            ...command.request,
-            seed: { value: dependencies.createSeed() }
-        }
-    };
-}
-
 async function createResolvedRun(
     invocation: RunInvocation,
     dependencies: RunOrchestratorDependencies,
     timing: RunTimingMeasurement | null,
     source: RunCollectionSource
 ): Promise<ResolvedRun> {
-    const seededCommand = commandWithResolvedSeed(invocation.command, dependencies);
+    const seededCommand = {
+        ...invocation.command,
+        request: resolveRunRequestSeed(invocation.command.request, dependencies.createSeed)
+    };
     const input = await (timing?.measureAsync(
         'profile.resolve',
         emptyTimingSpanMetadata(),
@@ -106,7 +87,10 @@ async function runCommand(
     return await executeRunCommand(
         {
             ...invocation,
-            command: commandWithResolvedSeed(invocation.command, dependencies)
+            command: {
+                ...invocation.command,
+                request: resolveRunRequestSeed(invocation.command.request, dependencies.createSeed)
+            }
         },
         dependencies,
         timing,

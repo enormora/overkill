@@ -1,16 +1,16 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { mutationDiagnosticStorage } from '../../test-support/mutation-diagnostic-storage.ts';
 
-export const testNode = suite('mutation diagnostic file retention', [
-    test('retains inline evidence without file operations', async function (scope: TestScope) {
+export const testNode = authoredSuite('mutation diagnostic file retention', [
+    authoredTest('retains inline evidence without file operations', async function (scope: TestScope) {
         const fixture = mutationDiagnosticStorage('pass');
         await fixture.save(false);
         scope.assert.deepEqual(fixture.calls, [ 'write:/project/diagnostics/campaign/invocation/diagnostics.json' ]);
         scope.assert.equal(fixture.writes.length, 1);
         return scope.assert.collect();
     }),
-    test('copies file evidence and rewrites the portable document path', async function (scope: TestScope) {
+    authoredTest('copies file evidence and rewrites the portable document path', async function (scope: TestScope) {
         const fixture = mutationDiagnosticStorage('pass');
         await fixture.save(true);
         scope.assert.deepEqual(fixture.calls, [
@@ -25,17 +25,20 @@ export const testNode = suite('mutation diagnostic file retention', [
         return scope.assert.collect();
     }),
     ...([ 'source-size', 'destination-size' ] as const).map(function (scenario) {
-        return test(`rejects ${scenario} mismatches before publishing diagnostics`, async function (scope: TestScope) {
-            const fixture = mutationDiagnosticStorage(scenario);
-            await scope.assert.rejects(async function () {
-                await fixture.save(true);
-            }, { message: 'Diagnostic attachment size differs from its delivered metadata.' });
-            scope.assert.deepEqual(fixture.writes, []);
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `rejects ${scenario} mismatches before publishing diagnostics`,
+            async function (scope: TestScope) {
+                const fixture = mutationDiagnosticStorage(scenario);
+                await scope.assert.rejects(async function () {
+                    await fixture.save(true);
+                }, { message: 'Diagnostic attachment size differs from its delivered metadata.' });
+                scope.assert.deepEqual(fixture.writes, []);
+                return scope.assert.collect();
+            }
+        );
     }),
     ...([ 'copy-error', 'write-error' ] as const).map(function (scenario) {
-        return test(`preserves ${scenario} failures`, async function (scope: TestScope) {
+        return authoredTest(`preserves ${scenario} failures`, async function (scope: TestScope) {
             const fixture = mutationDiagnosticStorage(scenario);
             await scope.assert.rejects(async function () {
                 await fixture.save(true);
@@ -45,4 +48,3 @@ export const testNode = suite('mutation diagnostic file retention', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

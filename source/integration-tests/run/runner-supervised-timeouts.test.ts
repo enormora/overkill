@@ -1,9 +1,6 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite,
-    createTestCase,
-    type TestScope
-} from '../../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import {
     defaultMicrotestProfile,
@@ -50,13 +47,11 @@ function plainData(value: unknown): unknown {
     return structuredClone(value);
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
+export const testNode = suite({
     title: 'source/integration-tests/run/runner-supervised-timeouts.test.ts',
     ...emptyTestData,
     children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'runner gives each admitted supervised microtest its full hard timeout',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -79,8 +74,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'runner kills a supervised microtest that blocks past hard timeout',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -121,5 +115,3 @@ export const testNode = createSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

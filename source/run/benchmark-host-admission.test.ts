@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { normalizeConfig } from '../config/config.ts';
 import { benchmarkHostSnapshot } from '../test-support/benchmark-host-snapshot.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
@@ -151,7 +152,7 @@ function acceptedCommand(): RunCommand {
     };
 }
 
-export const testNode = suite('benchmark host admission', [
+export const testNode = authoredSuite('benchmark host admission', [
     test(
         'reports host observation failure before collection without inventing evidence',
         async function (scope: TestScope) {

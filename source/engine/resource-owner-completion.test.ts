@@ -1,14 +1,16 @@
 import { AsyncResource } from 'node:async_hooks';
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { createDeterministicClock } from '@enormora/clock';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import {
+    type RunResult,
+    type TestScope,
     createRoot,
     createTestPlan,
-    createTestCase,
-    type RunResult,
-    type TestScope
+    createTestCase
 } from '../packages/engine/engine.entry-point.ts';
+
 import { defineResource, withResource, withResourceChecks } from '../packages/test/resources.entry-point.ts';
 import { createResourceLifecycleRuntimePolicy } from '../run/resource-lifecycle.ts';
 import { withRunnerInfrastructure } from '../execution-ownership.ts';
@@ -118,15 +120,15 @@ async function executeOwnedFixture(disposal: ResourceFixtureMode, owner: TestSco
     });
 }
 
-export const testNode = suite('resource owner completion', [
-    test('keeps shared observer infrastructure with its resource owner', async function (scope) {
+export const testNode = authoredSuite('resource owner completion', [
+    authoredTest('keeps shared observer infrastructure with its resource owner', async function (scope) {
         const result = await executeOwnedFixture('observer', scope);
         scope.assert.equal(result.status, 'passed');
         scope.assert.deepEqual(result.runnerErrors, []);
         return scope.assert.collect();
     }),
     ...([ 'uncertain-body', 'uncertain-cleanup' ] as const).map(function uncertainFixture(mode) {
-        return test(`${mode} growth fails the run without changing the case verdict`, async function (scope) {
+        return authoredTest(`${mode} growth fails the run without changing the case verdict`, async function (scope) {
             const result = await executeOwnedFixture(mode, scope);
             scope.assert.equal(result.status, 'failed');
             scope.assert.equal(result.perTest[0]?.verdict, 'pass');
@@ -140,13 +142,13 @@ export const testNode = suite('resource owner completion', [
             return scope.assert.collect();
         });
     }),
-    test('permits shared native handles until successful disposal', async function (scope) {
+    authoredTest('permits shared native handles until successful disposal', async function (scope) {
         const result = await executeOwnedFixture('clean', scope);
         scope.assert.equal(result.status, 'passed');
         scope.assert.deepEqual(result.runnerErrors, []);
         return scope.assert.collect();
     }),
-    test('reports shared native handles left alive after disposal', async function (scope) {
+    authoredTest('reports shared native handles left alive after disposal', async function (scope) {
         const result = await executeOwnedFixture('retain', scope);
         scope.assert.equal(result.status, 'failed');
         scope.assert.partialDeepEqual(result.runnerErrors, [ {
@@ -155,21 +157,22 @@ export const testNode = suite('resource owner completion', [
         } ]);
         return scope.assert.collect();
     }),
-    test('attributes resources leaked during logical completion to the completed attempt', async function (scope) {
-        const result = await executeOwnedFixture('leak', scope);
-        const completed = result.perTest[0];
-        if (completed === undefined) {
-            throw new Error('Missing completed resource case.');
+    authoredTest(
+        'attributes resources leaked during logical completion to the completed attempt',
+        async function (scope) {
+            const result = await executeOwnedFixture('leak', scope);
+            const completed = result.perTest[0];
+            if (completed === undefined) {
+                throw new Error('Missing completed resource case.');
+            }
+            scope.assert.partialDeepEqual(result.runnerErrors, [ {
+                attributedTo: completed.id,
+                attributedToWork: completed.workId,
+                attributedToAttempt: { index: 0 },
+                subtype: 'runtime-policy',
+                cause: { capability: 'async-leak', resourceTypes: [ 'leaked socket' ] }
+            } ]);
+            return scope.assert.collect();
         }
-        scope.assert.partialDeepEqual(result.runnerErrors, [ {
-            attributedTo: completed.id,
-            attributedToWork: completed.workId,
-            attributedToAttempt: { index: 0 },
-            subtype: 'runtime-policy',
-            cause: { capability: 'async-leak', resourceTypes: [ 'leaked socket' ] }
-        } ]);
-        return scope.assert.collect();
-    })
+    )
 ]);
-
-await runIfMain(import.meta, testNode);

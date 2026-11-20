@@ -1,10 +1,11 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { processMeasurement, processMeasurementScenario } from '../test-support/process-measurement.ts';
 import { testNode as processOwnership } from './process-helper-ownership.test.ts';
 import { testNode as invocation } from './process-invocation-policy.test.ts';
 import { measureProcessCommand } from './process-execution.ts';
 
-export const testNode = suite('process measurement ownership', [
+export const testNode = authoredSuite('process measurement ownership', [
     processOwnership,
     invocation,
     test('measures command output and releases the child once', async (scope: TestScope) => {

@@ -1,7 +1,8 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { processProbeChannel, probeChannelScenario } from '../test-support/process-probe-channel.ts';
 
-export const testNode = suite('node process probe ownership', [
+export const testNode = authoredSuite('node process probe ownership', [
     test('authenticates the child and requests a live checkpoint', async function (scope: TestScope) {
         const fixture = await processProbeChannel(scope, probeChannelScenario);
         fixture.probe.identify(42);

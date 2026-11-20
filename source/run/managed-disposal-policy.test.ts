@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { managedDisposal } from '../test-support/managed-disposal.ts';
 import {
     disposeBoundary,
@@ -8,7 +8,7 @@ import {
     freshDisposalSignal
 } from './resource-lifecycle-disposal.ts';
 
-export const testNode = suite('managed resource cleanup policy', [
+export const testNode = authoredSuite('managed resource cleanup policy', [
     ...[ false, true ].flatMap(function (observed) {
         return [ false, true ].map(function (fails) {
             return test(
@@ -50,4 +50,3 @@ export const testNode = suite('managed resource cleanup policy', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

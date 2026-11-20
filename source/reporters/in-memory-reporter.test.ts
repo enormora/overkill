@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { RunResult } from '../engine/run-result.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
@@ -22,119 +18,90 @@ const runStartEvent = {
     startedAt: '2026-07-15T00:00:00.000Z'
 } as const;
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/reporters/in-memory-reporter.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'in-memory real-time reporter records events and final result notification',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const reporter = createInMemoryRealTimeReporter();
-                const runtimeReporter = reporter(reportingContext);
-                const runResult: RunResult = runResultFactory.build();
-                const { onFinish } = runtimeReporter;
+export const testNode = suite('source/reporters/in-memory-reporter.test.ts', [
+    test(
+        'in-memory real-time reporter records events and final result notification',
+        async function (scope: OverkillScope) {
+            const reporter = createInMemoryRealTimeReporter();
+            const runtimeReporter = reporter(reportingContext);
+            const runResult: RunResult = runResultFactory.build();
+            const { onFinish } = runtimeReporter;
 
-                if (onFinish === null) {
-                    throw new TypeError('Expected in-memory reporter to expose onFinish.');
-                }
-
-                await runtimeReporter.onEvent(runStartEvent);
-                await onFinish({ context: { id: null, startedAt: null, facts: null }, result: runResult });
-
-                scope.assert.deepEqual(reporter.getRecordedEntries(), [
-                    { event: runStartEvent, result: null, type: 'event' },
-                    { event: null, result: runResult, type: 'finish' }
-                ]);
-
-                return scope.assert.collect();
+            if (onFinish === null) {
+                throw new TypeError('Expected in-memory reporter to expose onFinish.');
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'in-memory final-result reporter records final results',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const reporter = createInMemoryFinalResultReporter();
-                const runtimeReporter = reporter(reportingContext);
-                const runResult: RunResult = runResultFactory.build();
 
-                await runtimeReporter.onResult({
-                    context: {
-                        id: null,
-                        startedAt: null,
-                        facts: null
-                    },
-                    result: runResult
-                });
+            await runtimeReporter.onEvent(runStartEvent);
+            await onFinish({ context: { id: null, startedAt: null, facts: null }, result: runResult });
 
-                scope.assert.deepEqual(reporter.getRecordedEntries(), [ {
-                    event: null,
-                    result: runResult,
-                    type: 'result'
-                } ]);
+            scope.assert.deepEqual(reporter.getRecordedEntries(), [
+                { event: runStartEvent, result: null, type: 'event' },
+                { event: null, result: runResult, type: 'finish' }
+            ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'in-memory configurable reporter creates a real-time reporter',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const reporter = createInMemoryReporter({ mode: 'real-time' });
-                const runtimeReporter = reporter(reportingContext);
-                const event = {
-                    facts: {},
-                    kind: 'run-start',
-                    root: { annotations: resolveRootTestAnnotations({}), title: 'root' },
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                } as const;
+            return scope.assert.collect();
+        }
+    ),
+    test('in-memory final-result reporter records final results', async function (scope: OverkillScope) {
+        const reporter = createInMemoryFinalResultReporter();
+        const runtimeReporter = reporter(reportingContext);
+        const runResult: RunResult = runResultFactory.build();
 
-                await runtimeReporter.onEvent(event);
+        await runtimeReporter.onResult({
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            },
+            result: runResult
+        });
 
-                scope.assert.equal(runtimeReporter.kind, 'real-time');
-                scope.assert.deepEqual(reporter.getRecordedEntries(), [ { event, result: null, type: 'event' } ]);
+        scope.assert.deepEqual(reporter.getRecordedEntries(), [ {
+            event: null,
+            result: runResult,
+            type: 'result'
+        } ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'in-memory configurable reporter creates a final-result reporter',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const reporter = createInMemoryReporter({ mode: 'final-result' });
-                const runtimeReporter = reporter(reportingContext);
-                const runResult: RunResult = runResultFactory.build();
+        return scope.assert.collect();
+    }),
+    test('in-memory configurable reporter creates a real-time reporter', async function (scope: OverkillScope) {
+        const reporter = createInMemoryReporter({ mode: 'real-time' });
+        const runtimeReporter = reporter(reportingContext);
+        const event = {
+            facts: {},
+            kind: 'run-start',
+            root: { annotations: resolveRootTestAnnotations({}), title: 'root' },
+            startedAt: '2026-07-15T00:00:00.000Z'
+        } as const;
 
-                await runtimeReporter.onResult({
-                    context: {
-                        id: null,
-                        startedAt: null,
-                        facts: null
-                    },
-                    result: runResult
-                });
+        await runtimeReporter.onEvent(event);
 
-                scope.assert.equal(runtimeReporter.kind, 'final-result');
-                scope.assert.deepEqual(reporter.getRecordedEntries(), [ {
-                    event: null,
-                    result: runResult,
-                    type: 'result'
-                } ]);
+        scope.assert.equal(runtimeReporter.kind, 'real-time');
+        scope.assert.deepEqual(reporter.getRecordedEntries(), [ { event, result: null, type: 'event' } ]);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+        return scope.assert.collect();
+    }),
+    test('in-memory configurable reporter creates a final-result reporter', async function (scope: OverkillScope) {
+        const reporter = createInMemoryReporter({ mode: 'final-result' });
+        const runtimeReporter = reporter(reportingContext);
+        const runResult: RunResult = runResultFactory.build();
 
-await runIfMain(import.meta, testNode);
+        await runtimeReporter.onResult({
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            },
+            result: runResult
+        });
+
+        scope.assert.equal(runtimeReporter.kind, 'final-result');
+        scope.assert.deepEqual(reporter.getRecordedEntries(), [ {
+            event: null,
+            result: runResult,
+            type: 'result'
+        } ]);
+
+        return scope.assert.collect();
+    })
+]);

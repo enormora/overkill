@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as runPlanConstructionTestNode } from './run-plan-construction-suite.test.ts';
 import { testNode as runDiscoveryTestNode } from './run-discovery.test.ts';
 import { testNode as runFilterGrammarTestNode } from './run-filter-grammar.test.ts';
@@ -9,21 +9,13 @@ import { testNode as runSelectionTestNode } from './run-selection-suite.test.ts'
 import { testNode as runSupportTestNode } from './run-support.test.ts';
 import { testNode as runTestModulesTestNode } from './run-test-modules.test.ts';
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-planning-suite.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        runPlanConstructionTestNode,
-        runDiscoveryTestNode,
-        runFilterGrammarTestNode,
-        runProfileFileSetsTestNode,
-        runProfileDiscriminatorTestNode,
-        runSelectionTestNode,
-        runSupportTestNode,
-        runTestModulesTestNode
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/run-planning-suite.test.ts', [
+    runPlanConstructionTestNode,
+    runDiscoveryTestNode,
+    runFilterGrammarTestNode,
+    runProfileFileSetsTestNode,
+    runProfileDiscriminatorTestNode,
+    runSelectionTestNode,
+    runSupportTestNode,
+    runTestModulesTestNode
+]);

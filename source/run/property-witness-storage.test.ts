@@ -1,7 +1,6 @@
 import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import {
     defineReporter,
     parseWitnessFile,
@@ -142,9 +141,9 @@ function witnessReport(): WitnessReport {
     };
 }
 
-export const testNode = suite('property witness storage', [
+export const testNode = authoredSuite('property witness storage', [
     ...([ 'in-process', 'supervised-process' ] as const).map(function executionModel(processModel) {
-        return test(
+        return authoredTest(
             `${processModel} retains replayable witnesses and records without an explicit request`,
             async function (scope: TestScope) {
                 const project = await witnessProject(scope, processModel, false);
@@ -162,7 +161,7 @@ export const testNode = suite('property witness storage', [
             }
         );
     }),
-    test('passing properties retain compact records without witness files', async function (scope: TestScope) {
+    authoredTest('passing properties retain compact records without witness files', async function (scope: TestScope) {
         const project = await witnessProject(scope, 'in-process', true);
         const result = await orchestrator.run(project.command);
         scope.assert.equal(result.summary.passed, 1);
@@ -172,18 +171,19 @@ export const testNode = suite('property witness storage', [
         scope.assert.false(files.includes('witnesses'));
         return scope.assert.collect();
     }),
-    test('witness write failures preserve confirmed evidence and fail the run', async function (scope: TestScope) {
-        const project = await witnessProject(scope, 'in-process', false);
-        await mkdir(path.join(project.cwd, '.overkill'), { recursive: true });
-        await writeFile(path.join(project.cwd, '.overkill', 'witnesses'), 'blocked');
-        const result = await orchestrator.run(project.command);
-        scope.assert.equal(result.summary.failed, 1);
-        scope.assert.true(result.runnerErrors.some(function artifactFailure(error) {
-            return error.subtype === 'artifact';
-        }));
-        scope.assert.notNull(result.perTest[0]?.property?.invocations[0]?.confirmedWitness);
-        return scope.assert.collect();
-    })
+    authoredTest(
+        'witness write failures preserve confirmed evidence and fail the run',
+        async function (scope: TestScope) {
+            const project = await witnessProject(scope, 'in-process', false);
+            await mkdir(path.join(project.cwd, '.overkill'), { recursive: true });
+            await writeFile(path.join(project.cwd, '.overkill', 'witnesses'), 'blocked');
+            const result = await orchestrator.run(project.command);
+            scope.assert.equal(result.summary.failed, 1);
+            scope.assert.true(result.runnerErrors.some(function artifactFailure(error) {
+                return error.subtype === 'artifact';
+            }));
+            scope.assert.notNull(result.perTest[0]?.property?.invocations[0]?.confirmedWitness);
+            return scope.assert.collect();
+        }
+    )
 ]);
-
-await runIfMain(import.meta, testNode);

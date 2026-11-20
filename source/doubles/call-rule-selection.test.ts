@@ -1,11 +1,11 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
 
 type Lookup = (key: string) => string;
 type Load = (key: string) => Promise<string>;
-export const testNode = suite('call argument rule selection', [
+export const testNode = authoredSuite('call argument rule selection', [
     test('invokes the selected answer with the original arguments', function (scope: TestScope) {
         const lookup = testDouble<Lookup>({
             rules: [
@@ -53,4 +53,3 @@ export const testNode = suite('call argument rule selection', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

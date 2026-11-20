@@ -1,11 +1,10 @@
 import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
+import { test, suite } from '@overkill-dev/test';
+
 import {
     canonicalIdentityJson,
-    createSuite,
-    createTestCase,
     defineReporter,
     type TestScope,
     type DefinedReporter,
@@ -270,11 +269,10 @@ async function assertBenchmarkScenario(
     return scope.assert.collect();
 }
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'benchmark runner integration',
-    children: executions.map(function executionScenario(execution) {
-        return createTestCase({
+export const testNode = suite(
+    'benchmark runner integration',
+    executions.map(function executionScenario(execution) {
+        return test({
             ...metadata,
             title: executionTitle(execution),
             async body(scope: TestScope) {
@@ -292,6 +290,4 @@ export const testNode = createSuite({
             }
         });
     })
-});
-
-await runIfMain(import.meta, testNode);
+);

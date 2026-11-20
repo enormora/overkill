@@ -1,10 +1,10 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { projectedResourceLifecycle } from '../test-support/projected-resource-lifecycle.ts';
 import { managedCase } from '../test-support/managed-resource-acquisition.ts';
 import { createResourceLifecycleSession, acquireResourceLifecycleScopes } from './resource-lifecycle.ts';
 
-export const testNode = suite('projected resource session ownership', [
+export const testNode = authoredSuite('projected resource session ownership', [
     test('merges later projections by owner boundary before acquisition', async function (scope: TestScope) {
         const fixture = projectedResourceLifecycle();
         fixture.session.updateProjectedResources({
@@ -84,4 +84,3 @@ export const testNode = suite('projected resource session ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

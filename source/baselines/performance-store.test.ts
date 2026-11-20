@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import { createPerformanceBaselineStore, performanceBaselineKey } from './performance-store.ts';
 import { performanceBaselineIdentity, type StoredPerformanceBaseline } from './performance-baseline.ts';
@@ -72,7 +72,7 @@ async function assertPersistedBaseline(
     scope.assert.deepEqual(persisted, expected);
 }
 
-export const testNode = suite('performance baseline storage', [
+export const testNode = authoredSuite('performance baseline storage', [
     test('lists an absent store without creating files', async function (scope: TestScope) {
         await withStore(async function inspectAbsentStore({ directory, store }) {
             scope.assert.deepEqual(await store.list(), []);

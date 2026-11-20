@@ -1,21 +1,13 @@
-import { runIfMain } from '#test-runner';
-import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as workerPoolDistributionTestNode } from './worker-pool-distribution-suite.test.ts';
 import { testNode as workerPoolExecutionSuiteTestNode } from './worker-pool-execution-suite.test.ts';
 import { testNode as workerPoolPlacementValidationTestNode } from './worker-pool-placement-validation.test.ts';
 import { testNode as workerPoolRuntimeTestNode } from './worker-pool-runtime-suite.test.ts';
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-core-suite.test.ts',
-    children: [
-        workerPoolDistributionTestNode,
-        workerPoolExecutionSuiteTestNode,
-        workerPoolPlacementValidationTestNode,
-        workerPoolRuntimeTestNode
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/worker-pool-core-suite.test.ts', [
+    workerPoolDistributionTestNode,
+    workerPoolExecutionSuiteTestNode,
+    workerPoolPlacementValidationTestNode,
+    workerPoolRuntimeTestNode
+]);

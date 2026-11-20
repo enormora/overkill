@@ -1,12 +1,10 @@
 import { resolve } from 'node:path';
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { normalizeConfig } from '../packages/run/config.entry-point.ts';
-import {
-    parseFrozenMicrotestPolicy,
-    type FrozenMicrotestPolicy
-} from '../packages/run/run.entry-point.ts';
+import { parseFrozenMicrotestPolicy, type FrozenMicrotestPolicy } from '../packages/run/run.entry-point.ts';
 import { createMutationRunCommand } from '../packages/stryker-runner/mutation-execution-policy.ts';
 import { policyBaselineCommand } from './frozen-run-policy.ts';
 import { createSupervisedCollectCommand } from './run-isolated-command.ts';
@@ -27,7 +25,7 @@ async function freezePolicy(): Promise<FrozenMicrotestPolicy> {
     });
 }
 
-export const testNode = suite('frozen policy transport', [
+export const testNode = authoredSuite('frozen policy transport', [
     test('transports module boundaries and accepts older unbounded policies', async function (scope) {
         const policy = await freezePolicy();
         const bounded = parseFrozenMicrotestPolicy({
@@ -139,5 +137,3 @@ export const testNode = suite('frozen policy transport', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

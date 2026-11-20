@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../engine/engine.entry-point.ts';
 import * as simulationSubpath from './simulation.entry-point.ts';
 
 function sortedKeys(value: Readonly<Record<string, unknown>>): readonly string[] {
@@ -18,24 +19,10 @@ function assertSimulationSubpathExports(scope: TestScope): void {
     scope.assert.equal(typeof simulationSubpath.defineSimulation, 'function');
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/packages/test/simulation-subpath.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test/simulation re-exports simulation descriptors',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                assertSimulationSubpathExports(scope);
+export const testNode = suite('source/packages/test/simulation-subpath.test.ts', [
+    test('@overkill-dev/test/simulation re-exports simulation descriptors', function (scope: TestScope) {
+        assertSimulationSubpathExports(scope);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

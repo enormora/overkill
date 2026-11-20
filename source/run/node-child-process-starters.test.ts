@@ -1,10 +1,10 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { executeMutationScript as executeNodeScript } from '../integration-tests/run/stryker-script.test.ts';
 
 const startersUrl = new URL('./node-child-process-starters.ts', import.meta.url);
 
-export const testNode = suite('runner child process shutdown', [
+export const testNode = authoredSuite('runner child process shutdown', [
     test('closing transport releases the child process handle before native close delivery', async function (scope) {
         const script = `
             import assert from 'node:assert/strict';
@@ -30,5 +30,3 @@ export const testNode = suite('runner child process shutdown', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

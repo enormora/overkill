@@ -1,13 +1,14 @@
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import type { TestScope } from '../packages/engine/engine.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { propertyEvidenceSchema } from '../run/property-evidence-schema.ts';
 import { formatPropertyDiagnostics } from '../reporters/failure-summary.ts';
 import { property } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
-export const testNode = suite('property reporting', [
+export const testNode = authoredSuite('property reporting', [
     test('reports passing exploration without manufacturing a failure', async function (scope: TestScope) {
         const result = await executePropertyNode(
             property({
@@ -75,5 +76,3 @@ export const testNode = suite('property reporting', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

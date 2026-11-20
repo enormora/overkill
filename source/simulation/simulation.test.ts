@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     defineSimulatedHttpServer,
     defineSimulation,
@@ -108,46 +109,20 @@ function assertSimulationValidation(scope: TestScope): void {
     }, { message: 'Simulated HTTP server requires a handler function.' });
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/simulation/simulation.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'simulation descriptors preserve finite typed scenario catalogs',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                assertSimulationDescriptor(scope);
+export const testNode = suite('source/simulation/simulation.test.ts', [
+    test('simulation descriptors preserve finite typed scenario catalogs', function (scope: TestScope) {
+        assertSimulationDescriptor(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'simulated HTTP server descriptors expose typed handlers',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                assertSimulatedHttpDescriptor(scope);
+        return scope.assert.collect();
+    }),
+    test('simulated HTTP server descriptors expose typed handlers', function (scope: TestScope) {
+        assertSimulatedHttpDescriptor(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'simulation descriptors reject invalid catalogs',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                assertSimulationValidation(scope);
+        return scope.assert.collect();
+    }),
+    test('simulation descriptors reject invalid catalogs', function (scope: TestScope) {
+        assertSimulationValidation(scope);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

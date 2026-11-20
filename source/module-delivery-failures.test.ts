@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from './packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { moduleLoadingRuntime } from './test-support/module-loading-runtime.ts';
 import { createModuleLoading, type DeliveredModule } from './module-delivery.ts';
 
@@ -14,8 +14,8 @@ const modules: readonly DeliveredModule[] = [ {
     dependencies: {}
 }, { url: dependency, format: 'module', source: 'export const dependency = true;', dependencies: {} } ];
 const delivery = { build: 'build', modules, builtins: [] };
-export const testNode = suite('frozen module delivery failure boundaries', [
-    test('retains a rejected graph edge even when the operation catches it', async function (scope: TestScope) {
+export const testNode = authoredSuite('frozen module delivery failure boundaries', [
+    authoredTest('retains a rejected graph edge even when the operation catches it', async function (scope: TestScope) {
         const fixture = moduleLoadingRuntime();
         await scope.assert.rejects(async function () {
             await createModuleLoading(fixture.runtime).withModuleDelivery(delivery, async function () {
@@ -32,7 +32,7 @@ export const testNode = suite('frozen module delivery failure boundaries', [
         message: 'Implementation namespace is outside the frozen graph.'
     } ] as const)
         .map(function (scenario) {
-            return test(
+            return authoredTest(
                 `retains frozen source rejection for namespace ${scenario.suffix}`,
                 async function (scope: TestScope) {
                     const fixture = moduleLoadingRuntime();
@@ -50,7 +50,7 @@ export const testNode = suite('frozen module delivery failure boundaries', [
             );
         }),
     ...([ null, 42, {}, { namespace: {} } ] as const).map(function (value, index) {
-        return test(`rejects non-native module namespace ${index}`, async function (scope: TestScope) {
+        return authoredTest(`rejects non-native module namespace ${index}`, async function (scope: TestScope) {
             const fixture = moduleLoadingRuntime();
             await scope.assert.rejects(async function () {
                 await createModuleLoading({
@@ -67,7 +67,7 @@ export const testNode = suite('frozen module delivery failure boundaries', [
             return scope.assert.collect();
         });
     }),
-    test('rejects resolution redirected after graph preparation', async function (scope: TestScope) {
+    authoredTest('rejects resolution redirected after graph preparation', async function (scope: TestScope) {
         const fixture = moduleLoadingRuntime();
         const redirect = fixture.runtime.register({
             resolve(specifier, context, next) {
@@ -83,7 +83,7 @@ export const testNode = suite('frozen module delivery failure boundaries', [
         }, { message: 'Implementation module resolution changed after preparation.' });
         return scope.assert.collect();
     }),
-    test('normalizes already tagged declared graph edges', async function (scope: TestScope) {
+    authoredTest('normalizes already tagged declared graph edges', async function (scope: TestScope) {
         const fixture = moduleLoadingRuntime();
         const first = modules[0];
         scope.require.defined(first);
@@ -96,18 +96,20 @@ export const testNode = suite('frozen module delivery failure boundaries', [
         scope.assert.equal(fixture.registrations.length, 1);
         return scope.assert.collect();
     }),
-    test('passes unrelated requests through temporary parent-aware resolution hooks', function (scope: TestScope) {
-        const fixture = moduleLoadingRuntime();
-        const loading = createModuleLoading({
-            ...fixture.runtime,
-            resolve(specifier) {
-                scope.assert.equal(fixture.resolve('node:path', undefined).url, 'node:path');
-                return fixture.runtime.resolve(specifier);
-            }
-        });
-        scope.assert.equal(loading.resolveModuleUrl('./dependency.ts', entry), dependency);
-        scope.assert.equal(fixture.registrations.length, 0);
-        return scope.assert.collect();
-    })
+    authoredTest(
+        'passes unrelated requests through temporary parent-aware resolution hooks',
+        function (scope: TestScope) {
+            const fixture = moduleLoadingRuntime();
+            const loading = createModuleLoading({
+                ...fixture.runtime,
+                resolve(specifier) {
+                    scope.assert.equal(fixture.resolve('node:path', undefined).url, 'node:path');
+                    return fixture.runtime.resolve(specifier);
+                }
+            });
+            scope.assert.equal(loading.resolveModuleUrl('./dependency.ts', entry), dependency);
+            scope.assert.equal(fixture.registrations.length, 0);
+            return scope.assert.collect();
+        }
+    )
 ]);
-await runIfMain(import.meta, testNode);

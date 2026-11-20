@@ -1,9 +1,8 @@
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { isTestDebugArtifact } from '../../packages/engine/engine.entry-point.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import type { IntegrationExecution } from '../../config/types.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import {
@@ -100,9 +99,9 @@ async function assertPersistedDebug(scope: TestScope, root: string): Promise<voi
     scope.assert.equal(parseRunArtifacts([ stored ])[0]?.payload.kind, 'debug');
 }
 
-export const testNode = suite('debug execution boundaries', [
+export const testNode = authoredSuite('debug execution boundaries', [
     ...executions.map(function boundary(execution) {
-        return test(
+        return authoredTest(
             `retains scoped diagnostics in ${execution.processModel}${
                 execution.processModel === 'worker-pool'
                     ? `/${execution.workerLifecycle}/${execution.hostProcess.kind}`
@@ -117,7 +116,7 @@ export const testNode = suite('debug execution boundaries', [
             }
         );
     }),
-    test('retains partial debug evidence when a child exits abruptly', async function (scope: TestScope) {
+    authoredTest('retains partial debug evidence when a child exits abruptly', async function (scope: TestScope) {
         const root = await directory(scope);
         const result = await runFixture(executions[0] ?? worker, root, crashFixture);
         scope.assert.equal(result.status, 'failed');
@@ -135,4 +134,3 @@ export const testNode = suite('debug execution boundaries', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

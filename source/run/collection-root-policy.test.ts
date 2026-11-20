@@ -1,11 +1,11 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { observationPlan } from '../test-support/observation-lifetime.ts';
 import { createCollectedPlan, workerPoolResolvedRun } from '../test-support/worker-pool-execution-state.ts';
 import { runCollectionRootFromResolvedPlan, emptyRunPlanStatus } from './collected-run-plan.ts';
 
-export const testNode = suite('collection root and empty selection transport', [
-    test('preserves explicitly authored root controls in local collection', function (scope: TestScope) {
+export const testNode = authoredSuite('collection root and empty selection transport', [
+    authoredTest('preserves explicitly authored root controls in local collection', function (scope: TestScope) {
         const original = observationPlan();
         const controls = { capture: 'buffered', duplicateExecution: 'idempotent', timeoutMilliseconds: 42 } as const;
         const testPlan = { ...original, root: { ...original.root, controls } };
@@ -17,7 +17,7 @@ export const testNode = suite('collection root and empty selection transport', [
         return scope.assert.collect();
     }),
     ...[ false, true ].map(function (lastFailed) {
-        return test(`classifies absent selection with last-failed ${lastFailed}`, function (scope: TestScope) {
+        return authoredTest(`classifies absent selection with last-failed ${lastFailed}`, function (scope: TestScope) {
             const original = createCollectedPlan();
             const plan = { ...original, discoveredFiles: original.files };
             const run = workerPoolResolvedRun(plan);
@@ -31,4 +31,3 @@ export const testNode = suite('collection root and empty selection transport', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,9 +1,28 @@
+import { runIfMain, suite, test } from '#tests';
 import { P } from 'ts-pattern';
 import { createFactory } from '@enormora/objectory';
-import { defineCompositeAssertion } from '@overkill-dev/assert';
-import * as doublesPackage from '@overkill-dev/doubles';
-import { matches } from '@overkill-dev/doubles';
-import {
+import type * as EnginePackage from '../../packages/engine/engine.entry-point.ts';
+import type * as DoublesPackage from '../../packages/doubles/doubles.entry-point.ts';
+import type * as AssertionPackage from '../../packages/assert/assert.entry-point.ts';
+import type {
+    Engine,
+    RunResult,
+    SourceLocation,
+    TestCase,
+    TestNode,
+    TestRoot,
+    TestScope
+} from '../../packages/engine/engine.entry-point.ts';
+import { resolvePackagedExport } from './packaged-module.test.ts';
+
+const { defineCompositeAssertion } = await import(
+    await resolvePackagedExport('@overkill-dev/assert')
+) as typeof AssertionPackage;
+const doublesPackage = await import(
+    await resolvePackagedExport('@overkill-dev/doubles')
+) as typeof DoublesPackage;
+const { matches } = doublesPackage;
+const {
     createEngine,
     parseWitnessFile,
     createPropertyTestCase,
@@ -22,16 +41,10 @@ import {
     formatCaseId,
     ownsTestNode,
     prepareFamily,
-    serializeValue,
-    type Engine,
-    type RunResult,
-    type SourceLocation,
-    type TestCase,
-    type TestNode,
-    type TestRoot,
-    type TestScope
-} from '@overkill-dev/engine';
-import { runIfMain } from '#test-runner';
+    serializeValue
+} = await import(
+    await resolvePackagedExport('@overkill-dev/engine')
+) as typeof EnginePackage;
 
 type SmokeCaseDefinition = {
     readonly name: string;
@@ -239,232 +252,188 @@ const smokeRuntimeFamily = defineTestFamily({
     }
 });
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'package smoke',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            title: 'packaged engine prepares and executes a family through top-level exports',
+export const testNode = suite('package smoke', [
+    test('packaged engine prepares and executes a family through top-level exports', async function (scope) {
+        const testPlan = createTestPlan(createSmokeRoot([ createSkippedTestCase({
+            title: 'planned skip',
             annotations: {},
             controls: {},
             definitionLocations: [ { kind: 'unknown' } ],
-            async body(scope) {
-                const testPlan = createTestPlan(createSmokeRoot([ createSkippedTestCase({
-                    title: 'planned skip',
-                    annotations: {},
-                    controls: {},
-                    definitionLocations: [ { kind: 'unknown' } ],
-                    reason: 'smoke case'
-                }) ]));
-                const controller = new AbortController();
-                const { signal } = controller;
-                await using prepared = await prepareFamily({
-                    testPlan,
-                    testFamily: smokeRuntimeFamily,
-                    settings: null,
-                    projectRoot: process.cwd(),
-                    signal
-                });
-                const collected = await prepared.collect({ workIds: [ prepared.testPlan.cases[0].workId ], signal });
-                const result = await execute(collected, {
-                    debug: { mode: 'off' },
-                    signal,
-                    execution: { mode: 'serial-in-process' },
-                    retryPolicy: null,
-                    reporters: [],
-                    runFacts: {},
-                    startedAt: '2026-01-01T00:00:00.000Z'
-                });
-                scope.assert.equal(result.summary.skipped, 1);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            title: 'packaged engine parses simulation witnesses',
+            reason: 'smoke case'
+        }) ]));
+        const controller = new AbortController();
+        const { signal } = controller;
+        await using prepared = await prepareFamily({
+            testPlan,
+            testFamily: smokeRuntimeFamily,
+            settings: null,
+            projectRoot: process.cwd(),
+            signal
+        });
+        const collected = await prepared.collect({ workIds: [ prepared.testPlan.cases[0].workId ], signal });
+        const result = await execute(collected, {
+            debug: { mode: 'off' },
+            signal,
+            execution: { mode: 'serial-in-process' },
+            retryPolicy: null,
+            reporters: [],
+            runFacts: {},
+            startedAt: '2026-01-01T00:00:00.000Z'
+        });
+        scope.assert.equal(result.summary.skipped, 1);
+        return scope.assert.collect();
+    }),
+    test('packaged engine parses simulation witnesses', function (scope) {
+        const witness = parseWitnessFile({
+            version: 1,
+            kind: 'simulation',
+            producedBy: { library: 'simulator', libraryVersion: '1' },
+            case: { file: null, params: null, suite: [], title: 'scenario' },
+            seed: null,
+            simulation: { name: 'backend', payload: {} },
+            resource: null,
+            scenario: null,
+            runtimeSnapshot: null,
+            faultConfiguration: null
+        });
+        scope.assert.equal(witness.kind, 'simulation');
+        return scope.assert.collect();
+    }),
+    test(
+        'consumer imports top-level @overkill-dev/engine exports and executes a TestPlan',
+        async function (scope: TestScope) {
+            const topLevelEngine: Engine = {
+                createPropertyTestCase,
+                createBenchmarkTestCase,
+                createSuite,
+                createSkippedTestCase,
+                createTable,
+                createTestCase,
+                createThrowingTestCase,
+                createWorkloadTestCase,
+                createRoot,
+                createTestPlan,
+                createTestPlanFromTestFiles,
+                execute,
+                formatCaseId,
+                ownsTestNode,
+                prepareFamily
+            };
+
+            const definedBefore = createTestPlan(createSmokeRoot([ testNode ])).defined;
+            scope.assert(smokeResult, await executeSmokePlan(topLevelEngine), definedBefore + 2);
+
+            return scope.assert.collect();
+        }
+    ),
+    test('integration launcher returns for imported metadata', async function (scope: TestScope) {
+        const testCase = createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            body(testContext: TestScope) {
+                testContext.assert.true(true, { message: 'passes' });
+                return testContext.assert.collect();
+            },
             annotations: {},
             controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            body(scope) {
-                const witness = parseWitnessFile({
-                    version: 1,
-                    kind: 'simulation',
-                    producedBy: { library: 'simulator', libraryVersion: '1' },
-                    case: { file: null, params: null, suite: [], title: 'scenario' },
-                    seed: null,
-                    simulation: { name: 'backend', payload: {} },
-                    resource: null,
-                    scenario: null,
-                    runtimeSnapshot: null,
-                    faultConfiguration: null
-                });
-                scope.assert.equal(witness.kind, 'simulation');
-                return scope.assert.collect();
+            title: 'passes'
+        });
+
+        await runIfMain({ main: false } as ImportMeta, testCase, { reporters: [] });
+        scope.assert.true(true, { message: 'runIfMain returned' });
+
+        return scope.assert.collect();
+    }),
+    test('consumer imports createEngine() and executes a TestPlan', async function (scope: TestScope) {
+        scope.assert(smokeResult, await executeSmokePlan(createEngine()), 2);
+
+        return scope.assert.collect();
+    }),
+    test(
+        'consumer imports @overkill-dev/assert reference and executes it through @overkill-dev/engine',
+        async function (scope: TestScope) {
+            const testCase = createTestCase({
+                definitionLocations: [ { kind: 'unknown' } ],
+                body(testScope: TestScope) {
+                    testScope.assert(resultOk, { ok: true });
+                    return testScope.assert.collect();
+                },
+                annotations: {},
+                controls: {},
+                title: 'uses assert package'
+            });
+            const result = await execute(createTestPlan(createSmokeRoot([ testCase ])));
+
+            scope.assert.equal(result.summary.passed, 1);
+            scope.assert.equal(result.summary.failed, 0);
+
+            return scope.assert.collect();
+        }
+    ),
+    test('consumer imports top-level @overkill-dev/doubles facade', async function (scope: TestScope) {
+        scope.assert.deepEqual(Object.keys(doublesPackage), [
+            'doubleUsage',
+            'matches',
+            'rule',
+            'testAsyncDisposable',
+            'testAsyncIterable',
+            'testAsyncIterator',
+            'testDisposable',
+            'testDouble',
+            'testIterable',
+            'testIterator'
+        ]);
+        const patterned = doublesPackage.testDouble<(id: string) => string>({
+            rules: [ doublesPackage.rule.when(matches(P.string)).returns('matched') ]
+        });
+        scope.assert.equal(patterned('id'), 'matched');
+        scope.assert(doublesPackage.doubleUsage.calledOnceWith, patterned, [
+            matches(P.string)
+        ]);
+        const loadValue = doublesPackage.testDouble.returns('value');
+
+        scope.assert.deepEqual(
+            {
+                returned: loadValue(),
+                interactionCount: loadValue.interactionCount,
+                status: loadValue.lastResult?.status,
+                sequenced: doublesPackage.testDouble({
+                    fallback: doublesPackage.rule.sequence([ 'first', 'second' ])
+                })()
+            },
+            {
+                returned: 'value',
+                interactionCount: 1,
+                status: 'returned',
+                sequenced: 'first'
             }
-        }),
-        createTestCase({
+        );
+
+        const testCase = createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            title: 'consumer imports top-level @overkill-dev/engine exports and executes a TestPlan',
+            body(testScope: TestScope) {
+                const saveValue = doublesPackage.testDouble.returns('saved');
+
+                saveValue('id');
+                testScope.assert(doublesPackage.doubleUsage.calledOnceWith, saveValue, [ 'id' ]);
+                return testScope.assert.collect();
+            },
             annotations: {},
             controls: {},
-            async body(scope: TestScope) {
-                const topLevelEngine: Engine = {
-                    createPropertyTestCase,
-                    createBenchmarkTestCase,
-                    createSuite,
-                    createSkippedTestCase,
-                    createTable,
-                    createTestCase,
-                    createThrowingTestCase,
-                    createWorkloadTestCase,
-                    createRoot,
-                    createTestPlan,
-                    createTestPlanFromTestFiles,
-                    execute,
-                    formatCaseId,
-                    ownsTestNode,
-                    prepareFamily
-                };
+            title: 'uses doubles assertions'
+        });
+        const result = await execute(createTestPlan(createSmokeRoot([ testCase ])));
 
-                const definedBefore = createTestPlan(createSmokeRoot([ testNode ])).defined;
-                scope.assert(smokeResult, await executeSmokePlan(topLevelEngine), definedBefore + 2);
-
-                return scope.assert.collect();
+        scope.assert.deepEqual(
+            {
+                failed: result.summary.failed,
+                passed: result.summary.passed
+            },
+            {
+                failed: 0,
+                passed: 1
             }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'integration launcher returns for imported metadata',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const testCase = createTestCase({
-                    definitionLocations: [ { kind: 'unknown' } ],
-                    body(testContext: TestScope) {
-                        testContext.assert.true(true, { message: 'passes' });
-                        return testContext.assert.collect();
-                    },
-                    annotations: {},
-                    controls: {},
-                    title: 'passes'
-                });
+        );
 
-                await runIfMain({ main: false } as ImportMeta, testCase, { reporters: [] });
-                scope.assert.true(true, { message: 'runIfMain returned' });
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'consumer imports createEngine() and executes a TestPlan',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                scope.assert(smokeResult, await executeSmokePlan(createEngine()), 2);
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'consumer imports @overkill-dev/assert reference and executes it through @overkill-dev/engine',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const testCase = createTestCase({
-                    definitionLocations: [ { kind: 'unknown' } ],
-                    body(testScope: TestScope) {
-                        testScope.assert(resultOk, { ok: true });
-                        return testScope.assert.collect();
-                    },
-                    annotations: {},
-                    controls: {},
-                    title: 'uses assert package'
-                });
-                const result = await execute(createTestPlan(createSmokeRoot([ testCase ])));
-
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(result.summary.failed, 0);
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'consumer imports top-level @overkill-dev/doubles facade',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                scope.assert.deepEqual(Object.keys(doublesPackage), [
-                    'doubleUsage',
-                    'matches',
-                    'rule',
-                    'testAsyncDisposable',
-                    'testAsyncIterable',
-                    'testAsyncIterator',
-                    'testDisposable',
-                    'testDouble',
-                    'testIterable',
-                    'testIterator'
-                ]);
-                const patterned = doublesPackage.testDouble<(id: string) => string>({
-                    rules: [ doublesPackage.rule.when(matches(P.string)).returns('matched') ]
-                });
-                scope.assert.equal(patterned('id'), 'matched');
-                scope.assert(doublesPackage.doubleUsage.calledOnceWith, patterned, [
-                    matches(P.string)
-                ]);
-                const loadValue = doublesPackage.testDouble.returns('value');
-
-                scope.assert.deepEqual(
-                    {
-                        returned: loadValue(),
-                        interactionCount: loadValue.interactionCount,
-                        status: loadValue.lastResult?.status,
-                        sequenced: doublesPackage.testDouble({
-                            fallback: doublesPackage.rule.sequence([ 'first', 'second' ])
-                        })()
-                    },
-                    {
-                        returned: 'value',
-                        interactionCount: 1,
-                        status: 'returned',
-                        sequenced: 'first'
-                    }
-                );
-
-                const testCase = createTestCase({
-                    definitionLocations: [ { kind: 'unknown' } ],
-                    body(testScope: TestScope) {
-                        const saveValue = doublesPackage.testDouble.returns('saved');
-
-                        saveValue('id');
-                        testScope.assert(doublesPackage.doubleUsage.calledOnceWith, saveValue, [ 'id' ]);
-                        return testScope.assert.collect();
-                    },
-                    annotations: {},
-                    controls: {},
-                    title: 'uses doubles assertions'
-                });
-                const result = await execute(createTestPlan(createSmokeRoot([ testCase ])));
-
-                scope.assert.deepEqual(
-                    {
-                        failed: result.summary.failed,
-                        passed: result.summary.passed
-                    },
-                    {
-                        failed: 0,
-                        passed: 1
-                    }
-                );
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

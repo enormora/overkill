@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { ulid } from 'ulid';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { currentReplayWitness } from './replay-context.ts';
 import { resolveRunRecordPersistence } from './run-profile-facts.ts';
 import { currentRunRecordVersion } from './run-record-format.ts';
@@ -126,7 +127,9 @@ export async function createRunRecordDependencies(
             path.resolve(input.projectRoot, input.config.runtimeStateDir),
             input.config.history
         ),
-        createId: ulid,
+        createId() {
+            return withRunnerInfrastructure(ulid);
+        },
         node: dependencies.node,
         store: dependencies.runtimeStateStore,
         versions: await dependencies.readRunVersions(input.engine, dependencies.node.version),

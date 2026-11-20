@@ -1,12 +1,13 @@
-import { runIfMain } from '#test-runner';
-
-import { doubleUsage, testDouble, type TestDouble } from '../packages/doubles/doubles.entry-point.ts';
 import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+    type TestScope as OverkillScope,
+    suite,
+    test,
+    doubleUsage,
+    testDouble,
+    type TestDouble
+} from '@overkill-dev/test';
+
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { serializedValueDiff } from '../compare/comparison.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { CaseId } from '../engine/identity.ts';
@@ -117,251 +118,213 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
     await reporter.onEvent({ kind: 'run-end', result: runResultFactory.build({ summary: { planned: 2 } }) });
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/reporters/tap-console-reporter.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reports the final result without any test cases formatted as TAP',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = tapConsoleReporterWithLog(log);
+export const testNode = suite('source/reporters/tap-console-reporter.test.ts', [
+    test('reports the final result without any test cases formatted as TAP', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = tapConsoleReporterWithLog(log);
 
-                await reporter.onResult(
-                    {
-                        context: { id: null, startedAt: null, facts: null },
-                        result: runResultFactory.build({
-                            perTest: [],
-                            summary: {
-                                defined: 0,
-                                discovered: 0,
-                                failed: 0,
-                                inconclusive: 0,
-                                passed: 0,
-                                planned: 0,
-                                skipped: 0
-                            }
-                        })
+        await reporter.onResult(
+            {
+                context: { id: null, startedAt: null, facts: null },
+                result: runResultFactory.build({
+                    perTest: [],
+                    summary: {
+                        defined: 0,
+                        discovered: 0,
+                        failed: 0,
+                        inconclusive: 0,
+                        passed: 0,
+                        planned: 0,
+                        skipped: 0
                     }
-                );
-
-                scope.assert(doubleUsage.callCount, log, 1);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ 'TAP version 14\n1..0\n\n' ]);
-
-                return scope.assert.collect();
+                })
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reports the final result with passed and failed test cases formatted as TAP',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = tapConsoleReporterWithLog(log);
+        );
 
-                await reporter.onResult(
-                    {
-                        context: { id: null, startedAt: null, facts: null },
-                        result: runResultFactory.build({
-                            perTest: [
-                                {
-                                    id: failingCaseId,
-                                    outcome: {
-                                        failures: [ { checks: [ { summary: 'the-reason' } ], kind: 'assertion' } ],
-                                        kind: 'fail'
-                                    },
-                                    verdict: 'fail'
+        scope.assert(doubleUsage.callCount, log, 1);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ 'TAP version 14\n1..0\n\n' ]);
+
+        return scope.assert.collect();
+    }),
+    test(
+        'reports the final result with passed and failed test cases formatted as TAP',
+        async function (scope: OverkillScope) {
+            const log = testDouble<LogFunction>();
+            const reporter = tapConsoleReporterWithLog(log);
+
+            await reporter.onResult(
+                {
+                    context: { id: null, startedAt: null, facts: null },
+                    result: runResultFactory.build({
+                        perTest: [
+                            {
+                                id: failingCaseId,
+                                outcome: {
+                                    failures: [ { checks: [ { summary: 'the-reason' } ], kind: 'assertion' } ],
+                                    kind: 'fail'
                                 },
-                                {
-                                    id: passingCaseId,
-                                    verdict: 'pass'
-                                }
-                            ],
-                            summary: {
-                                defined: 2,
-                                discovered: 4,
-                                failed: 1,
-                                inconclusive: 0,
-                                passed: 1,
-                                planned: 2,
-                                skipped: 0
+                                verdict: 'fail'
+                            },
+                            {
+                                id: passingCaseId,
+                                verdict: 'pass'
                             }
-                        })
+                        ],
+                        summary: {
+                            defined: 2,
+                            discovered: 4,
+                            failed: 1,
+                            inconclusive: 0,
+                            passed: 1,
+                            planned: 2,
+                            skipped: 0
+                        }
+                    })
+                }
+            );
+
+            scope.assert(doubleUsage.callCount, log, 1);
+            scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+                'TAP version 14\n1..2\nnot ok 1 - root > bar\n  ---\n  reason: the-reason\n  ...\nok 2 - root > foo\n'
+            ]);
+
+            return scope.assert.collect();
+        }
+    ),
+    test('reports a failed TAP test point with a fallback diagnostic reason', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = tapConsoleReporterWithLog(log);
+
+        await reporter.onResult(
+            {
+                context: { id: null, startedAt: null, facts: null },
+                result: runResultFactory.build({
+                    perTest: [
+                        {
+                            id: fallbackCaseId,
+                            outcome: {
+                                failures: [
+                                    {
+                                        actual: 0,
+                                        code: 'no-assertions',
+                                        expected: 'at least one assertion',
+                                        kind: 'test-contract',
+                                        summary: 'Expected at least one assertion.'
+                                    }
+                                ],
+                                kind: 'fail'
+                            },
+                            verdict: 'fail'
+                        }
+                    ],
+                    summary: {
+                        defined: 1,
+                        discovered: 1,
+                        failed: 1,
+                        inconclusive: 0,
+                        passed: 0,
+                        planned: 1,
+                        skipped: 0
                     }
-                );
-
-                scope.assert(doubleUsage.callCount, log, 1);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    'TAP version 14\n1..2\nnot ok 1 - root > bar\n  ---\n  reason: the-reason\n  ...\nok 2 - root > foo\n'
-                ]);
-
-                return scope.assert.collect();
+                })
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reports a failed TAP test point with a fallback diagnostic reason',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = tapConsoleReporterWithLog(log);
+        );
 
-                await reporter.onResult(
-                    {
-                        context: { id: null, startedAt: null, facts: null },
-                        result: runResultFactory.build({
-                            perTest: [
-                                {
-                                    id: fallbackCaseId,
-                                    outcome: {
-                                        failures: [
-                                            {
-                                                actual: 0,
-                                                code: 'no-assertions',
-                                                expected: 'at least one assertion',
-                                                kind: 'test-contract',
-                                                summary: 'Expected at least one assertion.'
-                                            }
-                                        ],
-                                        kind: 'fail'
-                                    },
-                                    verdict: 'fail'
-                                }
-                            ],
-                            summary: {
-                                defined: 1,
-                                discovered: 1,
-                                failed: 1,
-                                inconclusive: 0,
-                                passed: 0,
-                                planned: 1,
-                                skipped: 0
+        scope.assert(doubleUsage.callCount, log, 1);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+            'TAP version 14\n1..1\nnot ok 1 - root > fails\n  ---\n  reason: Expected at least one assertion.\n  ...\n'
+        ]);
+
+        return scope.assert.collect();
+    }),
+    test(
+        'reports skip and inconclusive outcomes as TAP directives and diagnostics',
+        async function (scope: OverkillScope) {
+            const log = testDouble<LogFunction>();
+            const reporter = tapConsoleReporterWithLog(log);
+
+            await reporter.onResult(
+                {
+                    context: { id: null, startedAt: null, facts: null },
+                    result: runResultFactory.build({
+                        perTest: [
+                            {
+                                id: skippedCaseId,
+                                outcome: { kind: 'skip', reason: 'not selected' },
+                                verdict: 'skip'
+                            },
+                            {
+                                id: inconclusiveCaseId,
+                                outcome: { kind: 'inconclusive', reason: 'lost signal' },
+                                verdict: 'inconclusive'
                             }
-                        })
-                    }
-                );
+                        ],
+                        summary: {
+                            defined: 2,
+                            discovered: 2,
+                            failed: 0,
+                            inconclusive: 1,
+                            passed: 0,
+                            planned: 2,
+                            skipped: 1
+                        }
+                    })
+                }
+            );
 
-                scope.assert(doubleUsage.callCount, log, 1);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    'TAP version 14\n1..1\nnot ok 1 - root > fails\n  ---\n  reason: Expected at least one assertion.\n  ...\n'
-                ]);
+            const expectedOutput = [
+                'TAP version 14',
+                '1..2',
+                'ok 1 - root > skip me # SKIP not selected',
+                'not ok 2 - root > unknown',
+                '  ---',
+                '  reason: lost signal',
+                '  ...',
+                ''
+            ]
+                .join('\n');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reports skip and inconclusive outcomes as TAP directives and diagnostics',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = tapConsoleReporterWithLog(log);
+            scope.assert(doubleUsage.callCount, log, 1);
+            scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ expectedOutput ]);
 
-                await reporter.onResult(
-                    {
-                        context: { id: null, startedAt: null, facts: null },
-                        result: runResultFactory.build({
-                            perTest: [
-                                {
-                                    id: skippedCaseId,
-                                    outcome: { kind: 'skip', reason: 'not selected' },
-                                    verdict: 'skip'
-                                },
-                                {
-                                    id: inconclusiveCaseId,
-                                    outcome: { kind: 'inconclusive', reason: 'lost signal' },
-                                    verdict: 'inconclusive'
-                                }
-                            ],
-                            summary: {
-                                defined: 2,
-                                discovered: 2,
-                                failed: 0,
-                                inconclusive: 1,
-                                passed: 0,
-                                planned: 2,
-                                skipped: 1
-                            }
-                        })
-                    }
-                );
+            return scope.assert.collect();
+        }
+    ),
+    test('real-time TAP reporter streams test points before the final plan', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = tapConsoleRealTimeReporterWithLog(log);
 
-                const expectedOutput = [
-                    'TAP version 14',
-                    '1..2',
-                    'ok 1 - root > skip me # SKIP not selected',
-                    'not ok 2 - root > unknown',
-                    '  ---',
-                    '  reason: lost signal',
-                    '  ...',
-                    ''
-                ]
-                    .join('\n');
+        await reportRealTimeTapRun(reporter);
 
-                scope.assert(doubleUsage.callCount, log, 1);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ expectedOutput ]);
+        scope.assert(doubleUsage.callCount, log, 4);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ 'TAP version 14' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ 'ok 1 - root > foo' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 2, [
+            'not ok 2 - root > bar\n  ---\n  reason: the-reason\n  ...'
+        ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 3, [ '1..2' ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'real-time TAP reporter streams test points before the final plan',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = tapConsoleRealTimeReporterWithLog(log);
+        return scope.assert.collect();
+    }),
+    test('real-time TAP reporter writes runner errors as bail out', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = tapConsoleRealTimeReporterWithLog(log);
 
-                await reportRealTimeTapRun(reporter);
+        await reporter.onEvent({
+            error: {
+                attributedToAttempt: null,
+                attributedTo: null,
+                cause: new Error('reporter broke'),
+                diagnostics: [],
+                message: 'line: reporter broke',
+                subtype: 'reporter'
+            },
+            kind: 'runner-error'
+        });
 
-                scope.assert(doubleUsage.callCount, log, 4);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ 'TAP version 14' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ 'ok 1 - root > foo' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [
-                    'not ok 2 - root > bar\n  ---\n  reason: the-reason\n  ...'
-                ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 3, [ '1..2' ]);
+        scope.assert(doubleUsage.callCount, log, 1);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ 'Bail out! line: reporter broke' ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'real-time TAP reporter writes runner errors as bail out',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = tapConsoleRealTimeReporterWithLog(log);
-
-                await reporter.onEvent({
-                    error: {
-                        attributedToAttempt: null,
-                        attributedTo: null,
-                        cause: new Error('reporter broke'),
-                        diagnostics: [],
-                        message: 'line: reporter broke',
-                        subtype: 'reporter'
-                    },
-                    kind: 'runner-error'
-                });
-
-                scope.assert(doubleUsage.callCount, log, 1);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ 'Bail out! line: reporter broke' ]);
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

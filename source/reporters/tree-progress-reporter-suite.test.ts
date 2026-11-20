@@ -1,17 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { createSuite } from '../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as progressReporterTestNode } from './progress-reporter.test.ts';
 import { testNode as treeReporterTestNode } from './tree-reporter.test.ts';
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/reporters/tree-progress-reporter-suite.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        progressReporterTestNode,
-        treeReporterTestNode
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/reporters/tree-progress-reporter-suite.test.ts', [
+    progressReporterTestNode,
+    treeReporterTestNode
+]);

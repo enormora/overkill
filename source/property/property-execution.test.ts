@@ -1,7 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { propertyErrorInputCodec } from '../test-support/property-error-input.ts';
 import { readPropertyExecutionHost, type TestScope } from '../packages/engine/engine.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property, withProperties } from './property-authoring.ts';
 import { testNode as exploration } from './property-exploration.test.ts';
@@ -9,9 +10,9 @@ import { gen } from './generators.ts';
 import { executeProperty } from './property-execution.ts';
 import type { PropertyExecutionResult } from './property-execution-result.ts';
 
-export const testNode = suite('property trial execution', [
+export const testNode = authoredSuite('property trial execution', [
     exploration,
-    test('executes all five phases in order with independent accounting', async function (scope: TestScope) {
+    authoredTest('executes all five phases in order with independent accounting', async function (scope: TestScope) {
         const observed: number[] = [];
         const captured: PropertyExecutionResult<number>[] = [];
         const node = test(
@@ -71,7 +72,7 @@ export const testNode = suite('property trial execution', [
         );
         return scope.assert.collect();
     }),
-    test('reconstructs examples and generated inputs before sequential cleanup', async function (scope) {
+    authoredTest('reconstructs examples and generated inputs before sequential cleanup', async function (scope) {
         const log: string[] = [];
         const node = property({
             title: 'fresh graphs',
@@ -101,7 +102,7 @@ export const testNode = suite('property trial execution', [
         scope.assert.deepEqual(log, [ 'body', 'cleanup', 'body', 'cleanup', 'body', 'cleanup', 'body', 'cleanup' ]);
         return scope.assert.collect();
     }),
-    test('stops every later phase at the first failed example', async function (scope) {
+    authoredTest('stops every later phase at the first failed example', async function (scope) {
         const seen: number[] = [];
         const node = property({
             title: 'first failure',
@@ -124,7 +125,7 @@ export const testNode = suite('property trial execution', [
         scope.assert.equal(result.perTest.length, 1);
         return scope.assert.collect();
     }),
-    test('reports unfinished required examples as inconclusive', async function (scope) {
+    authoredTest('reports unfinished required examples as inconclusive', async function (scope) {
         const seen: number[] = [];
         const node = property({
             title: 'bounded examples',
@@ -147,7 +148,7 @@ export const testNode = suite('property trial execution', [
         scope.assert.includes(JSON.stringify(result.perTest), 'work budget exhausted');
         return scope.assert.collect();
     }),
-    test('bounds impossible filters without treating rejection as a pass', async function (scope) {
+    authoredTest('bounds impossible filters without treating rejection as a pass', async function (scope) {
         let evaluated = 0;
         const node = property({
             title: 'impossible',
@@ -166,7 +167,7 @@ export const testNode = suite('property trial execution', [
         scope.assert.equal(evaluated, 0);
         return scope.assert.collect();
     }),
-    test('accepts exactly completed work without charging an extra exploration pull', async function (scope) {
+    authoredTest('accepts exactly completed work without charging an extra exploration pull', async function (scope) {
         let evaluations = 0;
         const node = property({
             title: 'exact budget',
@@ -183,7 +184,7 @@ export const testNode = suite('property trial execution', [
         scope.assert.equal(evaluations, 1);
         return scope.assert.collect();
     }),
-    test('distinguishes an exhausted domain from an exhausted work budget', async function (scope) {
+    authoredTest('distinguishes an exhausted domain from an exhausted work budget', async function (scope) {
         let evaluations = 0;
         const node = property({
             title: 'empty active domain',
@@ -204,7 +205,7 @@ export const testNode = suite('property trial execution', [
         scope.assert.includes(JSON.stringify(result.perTest), 'generation exhausted');
         return scope.assert.collect();
     }),
-    test('keeps generator callback exceptions as errors instead of rejections', async function (scope) {
+    authoredTest('keeps generator callback exceptions as errors instead of rejections', async function (scope) {
         const node = property({
             title: 'broken callback',
             generator: gen.constant(1).map<number>(function brokenMapping() {
@@ -221,7 +222,7 @@ export const testNode = suite('property trial execution', [
         scope.assert.includes(JSON.stringify(result.perTest), 'mapping failed');
         return scope.assert.collect();
     }),
-    test('counts repeated values as accepted exploration', async function (scope) {
+    authoredTest('counts repeated values as accepted exploration', async function (scope) {
         let evaluated = 0;
         const node = property({
             title: 'singleton',
@@ -238,5 +239,3 @@ export const testNode = suite('property trial execution', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

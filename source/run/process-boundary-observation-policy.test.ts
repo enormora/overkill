@@ -1,11 +1,11 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { processPolicyObservation } from '../test-support/process-policy-observation.ts';
 import { testNode as injectedObservation } from './capability-observation-policy.test.ts';
 
-export const testNode = suite('process boundary policy observation', [
+export const testNode = authoredSuite('process boundary policy observation', [
     injectedObservation,
-    test('reports foreign IPC listeners and releases only its own observation', function (scope: TestScope) {
+    authoredTest('reports foreign IPC listeners and releases only its own observation', function (scope: TestScope) {
         const fixture = processPolicyObservation(null, false);
         fixture.events.on('message', fixture.owned);
         fixture.events.on('unrelated', fixture.owned);
@@ -29,7 +29,7 @@ export const testNode = suite('process boundary policy observation', [
     }),
     ...([ 0, 1 ] as const).flatMap(function (code) {
         return [ false, true ].map(function (attributed) {
-            return test(`reports exit ${code} with attribution ${attributed}`, function (scope: TestScope) {
+            return authoredTest(`reports exit ${code} with attribution ${attributed}`, function (scope: TestScope) {
                 const fixture = processPolicyObservation(null, attributed);
                 fixture.events.emit('exit', code);
                 scope.assert.equal(fixture.failed(), code === 0);
@@ -43,7 +43,7 @@ export const testNode = suite('process boundary policy observation', [
             });
         });
     }),
-    test('contains observer failures during IPC registration and process exit', function (scope: TestScope) {
+    authoredTest('contains observer failures during IPC registration and process exit', function (scope: TestScope) {
         const fixture = processPolicyObservation(new Error('Reporter failed.'), false);
         fixture.events.on('message', fixture.owned);
         fixture.events.on('message', function () {
@@ -57,4 +57,3 @@ export const testNode = suite('process boundary policy observation', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

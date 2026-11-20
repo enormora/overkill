@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../engine/engine.entry-point.ts';
 import type {
     CommandLineExitCode,
     CommandLineListTestsRequest,
@@ -138,47 +139,27 @@ async function runCommandLine(args: readonly string[]): Promise<{
     };
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/packages/test/command-line-runner-capture.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'overkill wrapper parses no-capture for run',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const result = await runCommandLine([ 'run', '--no-capture', 'source/a.test.ts' ]);
-                const [ commandLineRequest ] = result.runRequests;
+export const testNode = suite('source/packages/test/command-line-runner-capture.test.ts', [
+    test('overkill wrapper parses no-capture for run', async function (scope: TestScope) {
+        const result = await runCommandLine([ 'run', '--no-capture', 'source/a.test.ts' ]);
+        const [ commandLineRequest ] = result.runRequests;
 
-                scope.assert.deepEqual(result.exitCodes, [ 0 ]);
-                scope.require.defined(commandLineRequest);
-                scope.assert.equal(commandLineRequest.runRequest.capture, 'live');
-                scope.assert.deepEqual(commandLineRequest.runRequest.paths, [ 'source/a.test.ts' ]);
+        scope.assert.deepEqual(result.exitCodes, [ 0 ]);
+        scope.require.defined(commandLineRequest);
+        scope.assert.equal(commandLineRequest.runRequest.capture, 'live');
+        scope.assert.deepEqual(commandLineRequest.runRequest.paths, [ 'source/a.test.ts' ]);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'overkill wrapper maps no-capture on list to an argument error',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const result = await runCommandLine([ 'list', '--no-capture', 'source/a.test.ts' ]);
+        return scope.assert.collect();
+    }),
+    test('overkill wrapper maps no-capture on list to an argument error', async function (scope: TestScope) {
+        const result = await runCommandLine([ 'list', '--no-capture', 'source/a.test.ts' ]);
 
-                scope.assert.deepEqual(result.exitCodes, [ 3 ]);
-                scope.assert.equal(result.listRequests.length, 0);
-                scope.assert.equal(result.stdout, '');
-                scope.assert.true(result.stderr.includes('Unknown arguments'));
-                scope.assert.true(result.stderr.includes('--no-capture'));
+        scope.assert.deepEqual(result.exitCodes, [ 3 ]);
+        scope.assert.equal(result.listRequests.length, 0);
+        scope.assert.equal(result.stdout, '');
+        scope.assert.true(result.stderr.includes('Unknown arguments'));
+        scope.assert.true(result.stderr.includes('--no-capture'));
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

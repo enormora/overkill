@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     createAsyncControlState,
     registerCleanup,
@@ -16,7 +16,7 @@ async function settleRecords(state: AsyncControlState): Promise<void> {
         })
     );
 }
-export const testNode = suite('asynchronous task ownership', [
+export const testNode = authoredSuite('asynchronous task ownership', [
     test('runs registered cleanups once in reverse registration order', async function (scope: TestScope) {
         const state = createAsyncControlState();
         const calls: number[] = [];
@@ -126,4 +126,3 @@ export const testNode = suite('asynchronous task ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,6 @@
 import type { Linter } from 'eslint';
-import { createRoot, createTestPlan, execute, type TestNode } from '../packages/engine/engine.entry-point.ts';
+import { type TestNode, createRoot, createTestPlan, execute } from '../packages/engine/engine.entry-point.ts';
+
 import type { ConfigDefinition, VirtualConfigProject } from '../packages/eslint-test/eslint-test.entry-point.ts';
 
 export const emptyConfigProject: VirtualConfigProject = { kind: 'virtual', files: {}, dependencies: { kind: 'none' } };

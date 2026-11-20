@@ -1,8 +1,8 @@
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../../packages/test/test.entry-point.ts';
+import { test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { adapterUrl, engineUrl, configUrl } from './stryker-lifecycle-fixture.test.ts';
 import { executeMutationScript } from './stryker-script.test.ts';
 import { strykerTerminationScript, strykerTerminationCampaignScript } from './stryker-termination-scripts.test.ts';
@@ -36,7 +36,7 @@ const scenarios = [
     }
 ];
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'Stryker native termination',
     scenarios.map(function terminationScenario(scenario) {
         const { processModel, freshState, operation, phase, invocation } = scenario;
@@ -69,5 +69,3 @@ export const testNode = suite(
         );
     })
 );
-
-await runIfMain(import.meta, testNode);

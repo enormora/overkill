@@ -1,9 +1,10 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { propertyCorpusStorage, corpusStorageScenario } from '../test-support/property-corpus-storage.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { loadPropertyCorpus, persistPropertyCorpus } from './property-corpus-storage.ts';
 
-export const testNode = suite('property corpus storage policy', [
+export const testNode = authoredSuite('property corpus storage policy', [
     test(
         'discovers deduplicated checked-in JSON witnesses recursively in stable path order',
         async function (scope: TestScope) {

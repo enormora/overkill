@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
 import { createMemoryHistoryStorage } from '../test-support/memory-history-storage.ts';
@@ -33,7 +33,7 @@ async function leavePendingCompletion(scope: TestScope, store: HistoryStorage): 
     }, { message: 'History unavailable' });
 }
 
-export const testNode = suite('history reader', [
+export const testNode = authoredSuite('history reader', [
     test('required history rejects older indexes without overwriting them', async function (scope: TestScope) {
         const store = await committedStore();
         const indexPath = `${directory}/history/index.json`;
@@ -100,4 +100,3 @@ export const testNode = suite('history reader', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

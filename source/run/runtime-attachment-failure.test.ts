@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { inlineAttachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -151,70 +152,41 @@ function assertFailureIdentity(scope: TestScope): void {
     scope.assert.equal(result.runnerErrors.length, 1);
 }
 
-export const testNode = createSuite({
-    ...definition,
-    title: 'source/run/runtime-attachment-failure.test.ts',
-    children: [
-        createTestCase({
-            ...definition,
-            title: 'reported operation errors are consumed before final collection',
-            async body(scope: TestScope) {
-                await assertReportedError(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'closing a run invalidates its active attempt capability',
-            async body(scope: TestScope) {
-                await assertClosedActiveAttempt(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'JSON reflection failures become attributed attachment errors',
-            async body(scope: TestScope) {
-                await assertHostileJson(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'invalid protocol replies fail instead of accepting missing artifacts',
-            async body(scope: TestScope) {
-                await assertInvalidReplies(scope);
-                return scope.assert.collect();
-            }
-        }),
-        ...([ [ new Error('disconnected'), 'disconnected' ], [ null, 'Attachment transport failed.' ] ] as const).map(
-            function transportCase([ cause, message ]) {
-                return createTestCase({
-                    ...definition,
-                    title: `transport failure: ${message}`,
-                    async body(scope: TestScope) {
-                        await assertTransportFailure(scope, cause, message);
-                        return scope.assert.collect();
-                    }
-                });
-            }
-        ),
-        createTestCase({
-            ...definition,
-            title: 'consumed errors preserve attempt attribution and drift remains run owned',
-            async body(scope: TestScope) {
-                await assertConsumedError(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...definition,
-            title: 'failure identity rejects malformed causes and deduplicates retained errors',
-            body(scope: TestScope) {
-                assertFailureIdentity(scope);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/runtime-attachment-failure.test.ts', [
+    test('reported operation errors are consumed before final collection', async function (scope: TestScope) {
+        await assertReportedError(scope);
+        return scope.assert.collect();
+    }),
+    test('closing a run invalidates its active attempt capability', async function (scope: TestScope) {
+        await assertClosedActiveAttempt(scope);
+        return scope.assert.collect();
+    }),
+    test('JSON reflection failures become attributed attachment errors', async function (scope: TestScope) {
+        await assertHostileJson(scope);
+        return scope.assert.collect();
+    }),
+    test('invalid protocol replies fail instead of accepting missing artifacts', async function (scope: TestScope) {
+        await assertInvalidReplies(scope);
+        return scope.assert.collect();
+    }),
+    ...([ [ new Error('disconnected'), 'disconnected' ], [ null, 'Attachment transport failed.' ] ] as const).map(
+        function transportCase([ cause, message ]) {
+            return test({
+                ...definition,
+                title: `transport failure: ${message}`,
+                async body(scope: TestScope) {
+                    await assertTransportFailure(scope, cause, message);
+                    return scope.assert.collect();
+                }
+            });
+        }
+    ),
+    test('consumed errors preserve attempt attribution and drift remains run owned', async function (scope: TestScope) {
+        await assertConsumedError(scope);
+        return scope.assert.collect();
+    }),
+    test('failure identity rejects malformed causes and deduplicates retained errors', function (scope: TestScope) {
+        assertFailureIdentity(scope);
+        return scope.assert.collect();
+    })
+]);

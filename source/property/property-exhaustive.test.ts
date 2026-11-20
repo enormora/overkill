@@ -1,5 +1,6 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
+import { test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property, withProperties } from './property-authoring.ts';
 import { createCoverage, coverageRequirements } from './property-coverage.ts';
@@ -8,8 +9,8 @@ import { createPropertyWork } from './property-work.ts';
 import { propertyLabels } from './property-targets.ts';
 import { gen } from './generators.ts';
 
-export const testNode = suite('exhaustive input coverage', [
-    test('accepts exact percentage boundaries without rounding the observed ratio', function (scope) {
+export const testNode = authoredSuite('exhaustive input coverage', [
+    authoredTest('accepts exact percentage boundaries without rounding the observed ratio', function (scope) {
         const coverage = createCoverage([ { label: 'hit', minimumPercent: 29 } ], propertyLabels(1));
         for (let index = 0; index < 100; index += 1) {
             const trial = coverage.trial('exploration');
@@ -19,7 +20,7 @@ export const testNode = suite('exhaustive input coverage', [
         scope.assert.deepEqual(coverage.unmet(), []);
         return scope.assert.collect();
     }),
-    test('checks coverage independently for nested invocations', async function (scope) {
+    authoredTest('checks coverage independently for nested invocations', async function (scope) {
         const node = test(
             'nested coverage',
             withProperties(async function (parent) {
@@ -47,7 +48,7 @@ export const testNode = suite('exhaustive input coverage', [
         scope.assert.equal(result.summary.inconclusive, 1);
         return scope.assert.collect();
     }),
-    test('enumerates bounded recursive composition', function (scope) {
+    authoredTest('enumerates bounded recursive composition', function (scope) {
         const work = createPropertyWork(propertyExecutionDefaults.policy, AbortSignal.any([]));
         const generator = gen.recursive<number>({
             leaf: gen.constant<number>(0),
@@ -67,7 +68,7 @@ export const testNode = suite('exhaustive input coverage', [
         );
         return scope.assert.collect();
     }),
-    test('validates requirements and bounds trial observers', function (scope) {
+    authoredTest('validates requirements and bounds trial observers', function (scope) {
         scope.assert.throws(function () {
             return coverageRequirements([ { label: 'same', minimumPercent: 1 }, { label: 'same', minimumPercent: 2 } ]);
         }, { name: 'ZodError' });
@@ -86,7 +87,7 @@ export const testNode = suite('exhaustive input coverage', [
         }, { name: 'TestContractSignalError', message: /outlived/ });
         return scope.assert.collect();
     }),
-    test('enumerates exact numeric domains including both signed zeros', function (scope) {
+    authoredTest('enumerates exact numeric domains including both signed zeros', function (scope) {
         const work = createPropertyWork(propertyExecutionDefaults.policy, AbortSignal.any([]));
         const inputs = enumerateDomain(gen.number({ min: -0, max: 0 }), work.context, 2);
         scope.assert.deepEqual(
@@ -111,7 +112,7 @@ export const testNode = suite('exhaustive input coverage', [
         );
         return scope.assert.collect();
     }),
-    test('enumerates dependent domains under fresh source constraints', function (scope) {
+    authoredTest('enumerates dependent domains under fresh source constraints', function (scope) {
         const work = createPropertyWork(propertyExecutionDefaults.policy, AbortSignal.any([]));
         const generator = gen.integer({ min: 0, max: 1 }).flatMap(function (length) {
             return gen.array(gen.boolean(), { minLength: length, maxLength: length });
@@ -125,7 +126,7 @@ export const testNode = suite('exhaustive input coverage', [
         );
         return scope.assert.collect();
     }),
-    test('recognizes empty structural singleton domains', function (scope) {
+    authoredTest('recognizes empty structural singleton domains', function (scope) {
         const work = createPropertyWork(propertyExecutionDefaults.policy, AbortSignal.any([]));
         scope.assert.deepEqual(
             (enumerateDomain(gen.record({}), work.context, 1) ?? []).map(function (input) {
@@ -147,7 +148,7 @@ export const testNode = suite('exhaustive input coverage', [
         );
         return scope.assert.collect();
     }),
-    test('reports an empty filtered domain as inconclusive', async function (scope) {
+    authoredTest('reports an empty filtered domain as inconclusive', async function (scope) {
         const result = await executePropertyNode(
             property({
                 title: 'empty',
@@ -165,7 +166,7 @@ export const testNode = suite('exhaustive input coverage', [
         scope.assert.equal(result.summary.inconclusive, 1);
         return scope.assert.collect();
     }),
-    test('does not let examples satisfy sampled coverage', async function (scope) {
+    authoredTest('does not let examples satisfy sampled coverage', async function (scope) {
         const result = await executePropertyNode(
             property({
                 title: 'sample coverage',
@@ -185,29 +186,32 @@ export const testNode = suite('exhaustive input coverage', [
         scope.assert.equal(result.summary.inconclusive, 1);
         return scope.assert.collect();
     }),
-    test('deduplicates exhaustive outputs and checks percentages over the complete domain', async function (scope) {
-        const seen: number[] = [];
-        const result = await executePropertyNode(
-            property({
-                title: 'distinct domain',
-                generator: gen.choice(gen.constant(0), gen.constant(0), gen.constant(1)),
-                settings: { maxExhaustiveValues: 10 },
-                coverage: [ { label: 'positive', minimumPercent: 50 } ],
-                test(value, sample) {
-                    seen.push(value);
-                    sample.cover('positive', value > 0);
-                    sample.cover('positive', false);
-                    sample.assert.true(value >= 0);
-                    return sample.assert.collect();
-                }
-            }),
-            propertyExecutionDefaults
-        );
-        scope.assert.equal(result.summary.passed, 1);
-        scope.assert.deepEqual(seen, [ 0, 1 ]);
-        return scope.assert.collect();
-    }),
-    test('keeps unmet exhaustive coverage inconclusive despite successful examples', async function (scope) {
+    authoredTest(
+        'deduplicates exhaustive outputs and checks percentages over the complete domain',
+        async function (scope) {
+            const seen: number[] = [];
+            const result = await executePropertyNode(
+                property({
+                    title: 'distinct domain',
+                    generator: gen.choice(gen.constant(0), gen.constant(0), gen.constant(1)),
+                    settings: { maxExhaustiveValues: 10 },
+                    coverage: [ { label: 'positive', minimumPercent: 50 } ],
+                    test(value, sample) {
+                        seen.push(value);
+                        sample.cover('positive', value > 0);
+                        sample.cover('positive', false);
+                        sample.assert.true(value >= 0);
+                        return sample.assert.collect();
+                    }
+                }),
+                propertyExecutionDefaults
+            );
+            scope.assert.equal(result.summary.passed, 1);
+            scope.assert.deepEqual(seen, [ 0, 1 ]);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('keeps unmet exhaustive coverage inconclusive despite successful examples', async function (scope) {
         const result = await executePropertyNode(
             property({
                 title: 'unmet',
@@ -228,7 +232,7 @@ export const testNode = suite('exhaustive input coverage', [
         scope.assert.equal(result.summary.inconclusive, 1);
         return scope.assert.collect();
     }),
-    test('reconstructs mapped products without retaining body mutations', async function (scope) {
+    authoredTest('reconstructs mapped products without retaining body mutations', async function (scope) {
         const seen: number[][] = [];
         const result = await executePropertyNode(
             property({
@@ -250,7 +254,7 @@ export const testNode = suite('exhaustive input coverage', [
         scope.assert.deepEqual(seen, [ [ 0, 0 ], [ 0, 1 ], [ 1, 0 ], [ 1, 1 ] ]);
         return scope.assert.collect();
     }),
-    test('falls back to sampling when discovery exceeds its candidate limit', async function (scope) {
+    authoredTest('falls back to sampling when discovery exceeds its candidate limit', async function (scope) {
         let count = 0;
         const result = await executePropertyNode(
             property({
@@ -272,4 +276,3 @@ export const testNode = suite('exhaustive input coverage', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

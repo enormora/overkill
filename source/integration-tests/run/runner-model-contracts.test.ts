@@ -1,8 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { type TestScope, test as authoredTest, suite as authoredSuite } from '@overkill-dev/test';
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import {
     type ReplayProject,
@@ -139,11 +138,11 @@ async function verifyInvalidTrace(
     scope.assert.equal(JSON.stringify(invalid).includes('incorrect executed trace'), false);
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'runner model contracts',
     ([ 'in-process', 'supervised-process' ] as const).flatMap(function executionMode(processModel) {
         return [ false, true ].map(function composition(nested) {
-            return test(
+            return authoredTest(
                 `${processModel} replays ${nested ? 'nested' : 'direct'} model traces`,
                 async function (scope: TestScope) {
                     const project = await replayProject(scope, {
@@ -164,4 +163,3 @@ export const testNode = suite(
         });
     })
 );
-await runIfMain(import.meta, testNode);

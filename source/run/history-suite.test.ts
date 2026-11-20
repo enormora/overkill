@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { createSuite } from '../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as storagePolicy } from './history-storage-policy.test.ts';
 import { testNode as operations } from './history-command-suite.test.ts';
 import { testNode as reader } from './history-reader.test.ts';
@@ -9,11 +9,13 @@ import { testNode as outcomes } from './history-outcomes.test.ts';
 import { testNode as retention } from './history-retention-suite.test.ts';
 import { testNode as access } from './history-access-policy.test.ts';
 
-export const testNode = createSuite({
-    title: 'compact history',
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    children: [ storagePolicy, access, operations, reader, repair, storage, outcomes, retention ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('compact history', [
+    storagePolicy,
+    access,
+    operations,
+    reader,
+    repair,
+    storage,
+    outcomes,
+    retention
+]);

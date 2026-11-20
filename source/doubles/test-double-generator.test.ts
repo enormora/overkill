@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { testNode as callRules } from './call-rule-selection.test.ts';
 import { testNode as argumentRules } from './generator-rule-selection.test.ts';
 import { testNode as fallback } from './iterator-fallback.test.ts';
@@ -13,240 +9,187 @@ import { testDouble } from './test-double.ts';
 type LoadNumbers = (prefix: string) => Generator<string, string, number>;
 type LoadAsyncNumbers = (prefix: string) => AsyncGenerator<string, string, number>;
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/doubles/test-double-generator.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        callRules,
-        argumentRules,
-        fallback,
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'testDouble.yields() returns fresh tracked iterators',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const loadNumbers = testDouble.yields<LoadNumbers>([ 'a', 'b' ], 'done');
-                const first = loadNumbers('first');
-                const second = loadNumbers('second');
+export const testNode = suite('source/doubles/test-double-generator.test.ts', [
+    callRules,
+    argumentRules,
+    fallback,
+    test('testDouble.yields() returns fresh tracked iterators', function (scope: OverkillScope) {
+        const loadNumbers = testDouble.yields<LoadNumbers>([ 'a', 'b' ], 'done');
+        const first = loadNumbers('first');
+        const second = loadNumbers('second');
 
-                scope.assert.deepEqual(
-                    {
-                        callCount: loadNumbers.callCount,
-                        results: [ first.next(1), first.next(2), first.next(3), second.next(4) ],
-                        eventCount: loadNumbers.iteratorEventCount
-                    },
-                    {
-                        callCount: 2,
-                        results: [
-                            { done: false, value: 'a' },
-                            { done: false, value: 'b' },
-                            { done: true, value: 'done' },
-                            { done: false, value: 'a' }
-                        ],
-                        eventCount: 4
-                    }
-                );
-                scope.assert.deepEqual(
-                    loadNumbers.iteratorEvents.map(function eventSummary(event) {
-                        return {
-                            arguments: event.arguments,
-                            callIndex: event.callIndex,
-                            kind: event.kind,
-                            method: event.method,
-                            value: event.kind === 'throw' ? null : event.value
-                        };
-                    }),
-                    [
-                        { arguments: [ 1 ], callIndex: 0, kind: 'yield', method: 'next', value: 'a' },
-                        { arguments: [ 2 ], callIndex: 0, kind: 'yield', method: 'next', value: 'b' },
-                        { arguments: [ 3 ], callIndex: 0, kind: 'return', method: 'next', value: 'done' },
-                        { arguments: [ 4 ], callIndex: 1, kind: 'yield', method: 'next', value: 'a' }
-                    ]
-                );
-
-                return scope.assert.collect();
+        scope.assert.deepEqual(
+            {
+                callCount: loadNumbers.callCount,
+                results: [ first.next(1), first.next(2), first.next(3), second.next(4) ],
+                eventCount: loadNumbers.iteratorEventCount
+            },
+            {
+                callCount: 2,
+                results: [
+                    { done: false, value: 'a' },
+                    { done: false, value: 'b' },
+                    { done: true, value: 'done' },
+                    { done: false, value: 'a' }
+                ],
+                eventCount: 4
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'rule.yieldsFrom() delegates lazily with invocation arguments',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                type LoadValues = (prefix: string) => Generator<string, string, unknown>;
+        );
+        scope.assert.deepEqual(
+            loadNumbers.iteratorEvents.map(function eventSummary(event) {
+                return {
+                    arguments: event.arguments,
+                    callIndex: event.callIndex,
+                    kind: event.kind,
+                    method: event.method,
+                    value: event.kind === 'throw' ? null : event.value
+                };
+            }),
+            [
+                { arguments: [ 1 ], callIndex: 0, kind: 'yield', method: 'next', value: 'a' },
+                { arguments: [ 2 ], callIndex: 0, kind: 'yield', method: 'next', value: 'b' },
+                { arguments: [ 3 ], callIndex: 0, kind: 'return', method: 'next', value: 'done' },
+                { arguments: [ 4 ], callIndex: 1, kind: 'yield', method: 'next', value: 'a' }
+            ]
+        );
 
-                const seen: string[] = [];
-                const loadValues = testDouble<LoadValues>({
-                    fallback: rule.yieldsFrom<LoadValues>(function* loadSource(prefix) {
-                        seen.push(prefix);
-                        yield `${prefix}:a`;
-                        yield `${prefix}:b`;
-                        return `${prefix}:done`;
-                    })
-                });
-                const values = loadValues('item');
+        return scope.assert.collect();
+    }),
+    test('rule.yieldsFrom() delegates lazily with invocation arguments', function (scope: OverkillScope) {
+        type LoadValues = (prefix: string) => Generator<string, string, unknown>;
 
-                scope.assert.deepEqual(Array.from(seen), []);
-                scope.assert.deepEqual(values.next(), { done: false, value: 'item:a' });
-                scope.assert.deepEqual(values.next(), { done: false, value: 'item:b' });
-                scope.assert.deepEqual(values.next(), { done: true, value: 'item:done' });
-                scope.assert.deepEqual(Array.from(seen), [ 'item' ]);
+        const seen: string[] = [];
+        const loadValues = testDouble<LoadValues>({
+            fallback: rule.yieldsFrom<LoadValues>(function* loadSource(prefix) {
+                seen.push(prefix);
+                yield `${prefix}:a`;
+                yield `${prefix}:b`;
+                return `${prefix}:done`;
+            })
+        });
+        const values = loadValues('item');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'tracked iterators record return protocol events',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const returned = testDouble.yields<() => Generator<string, string, unknown>>([ 'a', 'b' ], 'done');
+        scope.assert.deepEqual(Array.from(seen), []);
+        scope.assert.deepEqual(values.next(), { done: false, value: 'item:a' });
+        scope.assert.deepEqual(values.next(), { done: false, value: 'item:b' });
+        scope.assert.deepEqual(values.next(), { done: true, value: 'item:done' });
+        scope.assert.deepEqual(Array.from(seen), [ 'item' ]);
 
-                scope.assert.deepEqual(returned().return('early'), { done: true, value: 'early' });
-                scope.assert.deepEqual(
-                    returned.iteratorEvents.map(function eventKind(event) {
-                        return event.kind;
-                    }),
-                    [ 'return' ]
-                );
+        return scope.assert.collect();
+    }),
+    test('tracked iterators record return protocol events', function (scope: OverkillScope) {
+        const returned = testDouble.yields<() => Generator<string, string, unknown>>([ 'a', 'b' ], 'done');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'tracked iterators record throw protocol events',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const expected = new Error('expected');
-                const thrown = testDouble.yieldsFrom(function* values() {
-                    yield 'a';
-                });
+        scope.assert.deepEqual(returned().return('early'), { done: true, value: 'early' });
+        scope.assert.deepEqual(
+            returned.iteratorEvents.map(function eventKind(event) {
+                return event.kind;
+            }),
+            [ 'return' ]
+        );
 
-                scope.assert.throws(function throwIntoIterator() {
-                    thrown().throw(expected);
-                }, { exact: expected });
-                const thrownEvent = thrown.firstIteratorEvent;
+        return scope.assert.collect();
+    }),
+    test('tracked iterators record throw protocol events', function (scope: OverkillScope) {
+        const expected = new Error('expected');
+        const thrown = testDouble.yieldsFrom(function* values() {
+            yield 'a';
+        });
 
-                if (thrownEvent === null) {
-                    throw new Error('Expected iterator event.');
-                }
+        scope.assert.throws(function throwIntoIterator() {
+            thrown().throw(expected);
+        }, { exact: expected });
+        const thrownEvent = thrown.firstIteratorEvent;
 
-                scope.assert.equal(thrownEvent.kind, 'throw');
-                scope.assert.equal(thrownEvent.method, 'throw');
+        if (thrownEvent === null) {
+            throw new Error('Expected iterator event.');
+        }
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'tracked iterators record calls after completion',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const loadValue = testDouble.yields([ 'a' ]);
-                const values = loadValue();
+        scope.assert.equal(thrownEvent.kind, 'throw');
+        scope.assert.equal(thrownEvent.method, 'throw');
 
-                scope.assert.deepEqual(values.next(), { done: false, value: 'a' });
-                scope.assert.deepEqual(values.next(), { done: true, value: undefined });
-                scope.assert.deepEqual(values.next(), { done: true, value: undefined });
-                scope.assert.equal(loadValue.iteratorEventCount, 3);
-                scope.assert.deepEqual(
-                    loadValue.iteratorEvents.map(function eventKind(event) {
-                        return event.kind;
-                    }),
-                    [ 'yield', 'return', 'return' ]
-                );
+        return scope.assert.collect();
+    }),
+    test('tracked iterators record calls after completion', function (scope: OverkillScope) {
+        const loadValue = testDouble.yields([ 'a' ]);
+        const values = loadValue();
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'reset detaches existing tracked iterators from history',
-            annotations: {},
-            controls: {},
-            body(scope: OverkillScope) {
-                const loadValue = testDouble.yields([ 'a', 'b' ]);
-                const values = loadValue();
+        scope.assert.deepEqual(values.next(), { done: false, value: 'a' });
+        scope.assert.deepEqual(values.next(), { done: true, value: undefined });
+        scope.assert.deepEqual(values.next(), { done: true, value: undefined });
+        scope.assert.equal(loadValue.iteratorEventCount, 3);
+        scope.assert.deepEqual(
+            loadValue.iteratorEvents.map(function eventKind(event) {
+                return event.kind;
+            }),
+            [ 'yield', 'return', 'return' ]
+        );
 
-                scope.assert.deepEqual(values.next(), { done: false, value: 'a' });
-                loadValue.reset();
-                scope.assert.deepEqual(values.next(), { done: false, value: 'b' });
-                scope.assert.equal(loadValue.iteratorEventCount, 0);
-                scope.assert.deepEqual(loadValue().next(), { done: false, value: 'a' });
-                scope.assert.equal(loadValue.iteratorEventCount, 1);
+        return scope.assert.collect();
+    }),
+    test('reset detaches existing tracked iterators from history', function (scope: OverkillScope) {
+        const loadValue = testDouble.yields([ 'a', 'b' ]);
+        const values = loadValue();
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'testDouble.yieldsAsync() records async iterator events after settlement',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const loadValues = testDouble.yieldsAsync<LoadAsyncNumbers>([ 'a', 'b' ], 'done');
-                const values = loadValues('scope');
-                const pending = values.next(1);
+        scope.assert.deepEqual(values.next(), { done: false, value: 'a' });
+        loadValue.reset();
+        scope.assert.deepEqual(values.next(), { done: false, value: 'b' });
+        scope.assert.equal(loadValue.iteratorEventCount, 0);
+        scope.assert.deepEqual(loadValue().next(), { done: false, value: 'a' });
+        scope.assert.equal(loadValue.iteratorEventCount, 1);
 
-                scope.assert.equal(loadValues.iteratorEventCount, 0);
-                scope.assert.deepEqual(await pending, { done: false, value: 'a' });
-                scope.assert.equal(loadValues.iteratorEventCount, 1);
-                scope.assert.deepEqual(await values.next(2), { done: false, value: 'b' });
-                scope.assert.deepEqual(await values.return('early'), { done: true, value: 'early' });
-                scope.assert.deepEqual(
-                    loadValues.iteratorEvents.map(function eventSummary(event) {
-                        return {
-                            arguments: event.arguments,
-                            kind: event.kind,
-                            method: event.method,
-                            protocol: event.protocol
-                        };
-                    }),
-                    [
-                        { arguments: [ 1 ], kind: 'yield', method: 'next', protocol: 'async' },
-                        { arguments: [ 2 ], kind: 'yield', method: 'next', protocol: 'async' },
-                        { arguments: [ 'early' ], kind: 'return', method: 'return', protocol: 'async' }
-                    ]
-                );
+        return scope.assert.collect();
+    }),
+    test(
+        'testDouble.yieldsAsync() records async iterator events after settlement',
+        async function (scope: OverkillScope) {
+            const loadValues = testDouble.yieldsAsync<LoadAsyncNumbers>([ 'a', 'b' ], 'done');
+            const values = loadValues('scope');
+            const pending = values.next(1);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'rule.yieldsAsyncFrom() delegates to sync and async sources',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                type LoadValues = (label: string) => AsyncGenerator<string, string, unknown>;
+            scope.assert.equal(loadValues.iteratorEventCount, 0);
+            scope.assert.deepEqual(await pending, { done: false, value: 'a' });
+            scope.assert.equal(loadValues.iteratorEventCount, 1);
+            scope.assert.deepEqual(await values.next(2), { done: false, value: 'b' });
+            scope.assert.deepEqual(await values.return('early'), { done: true, value: 'early' });
+            scope.assert.deepEqual(
+                loadValues.iteratorEvents.map(function eventSummary(event) {
+                    return {
+                        arguments: event.arguments,
+                        kind: event.kind,
+                        method: event.method,
+                        protocol: event.protocol
+                    };
+                }),
+                [
+                    { arguments: [ 1 ], kind: 'yield', method: 'next', protocol: 'async' },
+                    { arguments: [ 2 ], kind: 'yield', method: 'next', protocol: 'async' },
+                    { arguments: [ 'early' ], kind: 'return', method: 'return', protocol: 'async' }
+                ]
+            );
 
-                const loadSyncValues = testDouble<LoadValues>({
-                    fallback: rule.yieldsAsyncFrom<LoadValues>(function* loadSource(label) {
-                        yield `${label}:sync`;
-                        return `${label}:done`;
-                    })
-                });
-                const loadAsyncValues = testDouble<LoadValues>({
-                    fallback: rule.yieldsAsyncFrom<LoadValues>(async function* loadSource(label) {
-                        yield `${label}:async`;
-                        return `${label}:done`;
-                    })
-                });
+            return scope.assert.collect();
+        }
+    ),
+    test('rule.yieldsAsyncFrom() delegates to sync and async sources', async function (scope: OverkillScope) {
+        type LoadValues = (label: string) => AsyncGenerator<string, string, unknown>;
 
-                scope.assert.deepEqual(await loadSyncValues('a').next(), { done: false, value: 'a:sync' });
-                scope.assert.deepEqual(await loadAsyncValues('b').next(), { done: false, value: 'b:async' });
+        const loadSyncValues = testDouble<LoadValues>({
+            fallback: rule.yieldsAsyncFrom<LoadValues>(function* loadSource(label) {
+                yield `${label}:sync`;
+                return `${label}:done`;
+            })
+        });
+        const loadAsyncValues = testDouble<LoadValues>({
+            fallback: rule.yieldsAsyncFrom<LoadValues>(async function* loadSource(label) {
+                yield `${label}:async`;
+                return `${label}:done`;
+            })
+        });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+        scope.assert.deepEqual(await loadSyncValues('a').next(), { done: false, value: 'a:sync' });
+        scope.assert.deepEqual(await loadAsyncValues('b').next(), { done: false, value: 'b:async' });
 
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

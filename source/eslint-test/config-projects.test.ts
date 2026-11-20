@@ -1,8 +1,9 @@
 import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import * as parser from '@typescript-eslint/parser';
 import { ESLintUtils } from '@typescript-eslint/utils';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { gen } from '../packages/property/property.entry-point.ts';
 import { defineConfigTests, type ConfigInput } from '../packages/eslint-test/eslint-test.entry-point.ts';
 import { configDefinition, emptyConfigProject, executeConfigNode } from '../test-support/eslint-config.ts';
@@ -26,8 +27,8 @@ const typedRule = ESLintUtils.RuleCreator.withoutDocs({
     }
 });
 
-export const testNode = suite('config project contexts', [
-    test('uses generated source and companion files in a real TypeScript project', async function (scope) {
+export const testNode = authoredSuite('config project contexts', [
+    authoredTest('uses generated source and companion files in a real TypeScript project', async function (scope) {
         const roots: string[] = [];
         const definitions = defineConfigTests({
             ...configDefinition([]),
@@ -84,7 +85,7 @@ export const testNode = suite('config project contexts', [
         }
         return scope.assert.collect();
     }),
-    test('reads existing projects without altering authored files', async function (scope) {
+    authoredTest('reads existing projects without altering authored files', async function (scope) {
         const root = process.cwd();
         const filename = 'package.json';
         const before = await readFile(path.join(root, filename), 'utf8');
@@ -116,7 +117,7 @@ export const testNode = suite('config project contexts', [
         return scope.assert.collect();
     }),
     ...[ '/absolute.js', '../escape.js', 'a/../../escape.js', 'a\\b.js', '' ].map(function filename(value) {
-        return test(`rejects unsafe project filename ${JSON.stringify(value)}`, function (scope) {
+        return authoredTest(`rejects unsafe project filename ${JSON.stringify(value)}`, function (scope) {
             scope.assert.throws(function invalid() {
                 defineConfigTests({
                     ...configDefinition([]),
@@ -131,7 +132,7 @@ export const testNode = suite('config project contexts', [
     } ]
         .map(
             function files(value) {
-                return test(`rejects conflicting project files ${JSON.stringify(value)}`, function (scope) {
+                return authoredTest(`rejects conflicting project files ${JSON.stringify(value)}`, function (scope) {
                     scope.assert.throws(function invalid() {
                         defineConfigTests({
                             ...configDefinition([]),

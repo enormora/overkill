@@ -1,13 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import { executeMutationScript as executeNodeScript } from '../integration-tests/run/stryker-script.test.ts';
 import type * as SerializationModule from '../compare/serialization-context.ts';
-import {
-    createSuite,
-    createTestCase,
-    defaultFailureArtifactPolicy,
-    serializeValue,
-    type TestScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy, serializeValue, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import type * as ObservationModule from './execution-observation.ts';
 import { currentFailureArtifactPolicy } from './execution-observation.ts';
 import { createDefaultWorkId } from './identity.ts';
@@ -20,7 +15,6 @@ import {
 type ExecutionObservation = Readonly<typeof ObservationModule>;
 type SerializationContext = Readonly<typeof SerializationModule>;
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const work = createDefaultWorkId({ file: 'example.test.ts', suite: [], title: 'owned', params: null });
 const attempt = { index: 0 };
 const text = 'abcdefgh';
@@ -49,44 +43,34 @@ function crashEvidence(activeWork: readonly ActiveBoundaryWork[]): BoundaryFailu
     );
 }
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'failure artifact contexts',
-    children: [
-        createTestCase({
-            ...metadata,
-            title: 'module copies share execution and serialization budgets',
-            async body(scope: TestScope) {
-                const observation = await import(copiedObservationUrl.href) as ExecutionObservation;
-                const serialization = await import(copiedSerializationUrl.href) as SerializationContext;
-                const policy = {
-                    ...defaultFailureArtifactPolicy,
-                    serialization: { ...defaultFailureArtifactPolicy.serialization, stringBytes: 4 }
-                };
-                const observed = observation.withFailureArtifactContext(policy, function captureSharedPolicy() {
-                    return { policy: currentFailureArtifactPolicy(), value: serializeValue(text) };
-                }, null);
-                scope.assert.deepEqual(observed.policy, policy);
-                scope.assert.partialDeepEqual(observed.value, { kind: 'string', value: 'abcd' });
-                scope.assert.partialDeepEqual(
-                    serialization.withSerializationBudget(
-                        { ...policy.serialization, stringBytes: 2 },
-                        function captureSharedSerialization() {
-                            return serializeValue(text);
-                        }
-                    ),
-                    { kind: 'string', value: 'ab' }
-                );
-                scope.assert.partialDeepEqual(serializeValue(text), { kind: 'string', value: text });
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'out-of-execution capture ignores evidence and uses default budgets',
-            async body(scope: TestScope) {
-                const artifact = crashEvidence([ { work, attempt } ]);
-                const script = `
+export const testNode = suite('failure artifact contexts', [
+    test('module copies share execution and serialization budgets', async function (scope: TestScope) {
+        const observation = await import(copiedObservationUrl.href) as ExecutionObservation;
+        const serialization = await import(copiedSerializationUrl.href) as SerializationContext;
+        const policy = {
+            ...defaultFailureArtifactPolicy,
+            serialization: { ...defaultFailureArtifactPolicy.serialization, stringBytes: 4 }
+        };
+        const observed = observation.withFailureArtifactContext(policy, function captureSharedPolicy() {
+            return { policy: currentFailureArtifactPolicy(), value: serializeValue(text) };
+        }, null);
+        scope.assert.deepEqual(observed.policy, policy);
+        scope.assert.partialDeepEqual(observed.value, { kind: 'string', value: 'abcd' });
+        scope.assert.partialDeepEqual(
+            serialization.withSerializationBudget(
+                { ...policy.serialization, stringBytes: 2 },
+                function captureSharedSerialization() {
+                    return serializeValue(text);
+                }
+            ),
+            { kind: 'string', value: 'ab' }
+        );
+        scope.assert.partialDeepEqual(serializeValue(text), { kind: 'string', value: text });
+        return scope.assert.collect();
+    }),
+    test('out-of-execution capture ignores evidence and uses default budgets', async function (scope: TestScope) {
+        const artifact = crashEvidence([ { work, attempt } ]);
+        const script = `
                     import assert from 'node:assert/strict';
                     const {
                         recordBoundaryArtifact,boundaryArtifacts,
@@ -100,12 +84,8 @@ export const testNode = createSuite({
                     assert.equal(currentSerializationBudget().stringBytes,8192);
                     console.log('unowned capture ignored');
                 `;
-                const output = await executeNodeScript(script, [ JSON.stringify(artifact) ], process.cwd());
-                scope.assert.equal(output, 'unowned capture ignored\n');
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        const output = await executeNodeScript(script, [ JSON.stringify(artifact) ], process.cwd());
+        scope.assert.equal(output, 'unowned capture ignored\n');
+        return scope.assert.collect();
+    })
+]);

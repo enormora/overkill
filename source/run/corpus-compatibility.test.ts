@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { writeCorpusIndex } from '../test-support/corpus-index.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { capturePropertyInput } from '../property/property-graph.ts';
@@ -57,7 +57,7 @@ async function cachedWitness(scope: TestScope): Promise<CachedWitness> {
         request: { cwd, source: { kind: 'path' as const, path: 'cache.json' }, codec: { kind: 'built-in' as const } }
     };
 }
-export const testNode = suite('corpus compatibility', [
+export const testNode = authoredSuite('corpus compatibility', [
     test(
         'promotion retains historical versions while migration writes the current codec',
         async function (scope: TestScope) {

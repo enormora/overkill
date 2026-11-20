@@ -1,4 +1,5 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { defineConfigTests, type ConfigInventory } from '../packages/eslint-test/eslint-test.entry-point.ts';
 import { configDefinition, executeConfigNode } from '../test-support/eslint-config.ts';
 
@@ -28,8 +29,8 @@ const cases = [
     }
 ] as const;
 
-export const testNode = suite('config inventories', [
-    test('allows retained deprecated entries and can require their absence', async function (scope) {
+export const testNode = authoredSuite('config inventories', [
+    authoredTest('allows retained deprecated entries and can require their absence', async function (scope) {
         const definition = defineConfigTests({
             ...configDefinition([]),
             configs: {
@@ -55,7 +56,7 @@ export const testNode = suite('config inventories', [
         scope.assert.deepEqual([ result.summary.passed, result.summary.failed ], [ 1, 1 ]);
         return scope.assert.collect();
     }),
-    test('rejects effective inventories for ignored files', async function (scope) {
+    authoredTest('rejects effective inventories for ignored files', async function (scope) {
         const definition = defineConfigTests({
             ...configDefinition([ { ignores: [ '**/ignored.js' ] } ]),
             inventories: [ { ...inventory, target: { kind: 'effective', filename: 'ignored.js' } } ]
@@ -65,7 +66,7 @@ export const testNode = suite('config inventories', [
         return scope.assert.collect();
     }),
     ...cases.map(function contract(entry) {
-        return test(entry.title, async function (scope) {
+        return authoredTest(entry.title, async function (scope) {
             const definition = defineConfigTests({
                 ...configDefinition([ { rules: entry.rules } ]),
                 inventories: [ inventory ]
@@ -76,7 +77,7 @@ export const testNode = suite('config inventories', [
             return scope.assert.collect();
         });
     }),
-    test('uses plugin aliases and recognizes deprecated metadata', async function (scope) {
+    authoredTest('uses plugin aliases and recognizes deprecated metadata', async function (scope) {
         const catalog = {
             kind: 'plugin',
             namespace: 'alias',
@@ -109,44 +110,50 @@ export const testNode = suite('config inventories', [
         scope.assert.equal(result2.summary.failed, 1);
         return scope.assert.collect();
     }),
-    test('validates exclusions and distinguishes declaration from filename applicability', async function (scope) {
-        const base = configDefinition([ { files: [ '**/*.js' ], rules: { 'no-debugger': 'off' } }, {
-            files: [ '**/*.ts' ],
-            rules: { 'no-alert': 'off' }
-        } ]);
-        const definitions = defineConfigTests({
-            ...base,
-            inventories: [ inventory, {
-                ...inventory,
-                title: 'effective',
-                target: { kind: 'effective', filename: 'test.js' }
-            } ]
-        });
-        const result = await executeConfigNode(definitions.checks());
-        scope.assert.deepEqual([ result.summary.passed, result.summary.failed ], [ 1, 1 ]);
-        scope.assert.throws(function invalidExclusion() {
-            defineConfigTests({
+    authoredTest(
+        'validates exclusions and distinguishes declaration from filename applicability',
+        async function (scope) {
+            const base = configDefinition([ { files: [ '**/*.js' ], rules: { 'no-debugger': 'off' } }, {
+                files: [ '**/*.ts' ],
+                rules: { 'no-alert': 'off' }
+            } ]);
+            const definitions = defineConfigTests({
                 ...base,
-                inventories: [ { ...inventory, exclusions: [ { ruleId: 'no-alert', reason: '' } ] } ]
-            });
-        }, { message: /Too small/ });
-        return scope.assert.collect();
-    }),
-    test('known-only permits intentionally partial inventories and justified exclusions', async function (scope) {
-        const base = configDefinition([ { rules: { 'no-debugger': 'off' } } ]);
-        const definitions = defineConfigTests({
-            ...base,
-            inventories: [
-                { ...inventory, completeness: 'known-only' },
-                {
+                inventories: [ inventory, {
                     ...inventory,
-                    title: 'excluded',
-                    exclusions: [ { ruleId: 'no-alert', reason: 'Browser-only policy.' } ]
-                }
-            ]
-        });
-        const result3 = await executeConfigNode(definitions.checks());
-        scope.assert.equal(result3.summary.passed, 2);
-        return scope.assert.collect();
-    })
+                    title: 'effective',
+                    target: { kind: 'effective', filename: 'test.js' }
+                } ]
+            });
+            const result = await executeConfigNode(definitions.checks());
+            scope.assert.deepEqual([ result.summary.passed, result.summary.failed ], [ 1, 1 ]);
+            scope.assert.throws(function invalidExclusion() {
+                defineConfigTests({
+                    ...base,
+                    inventories: [ { ...inventory, exclusions: [ { ruleId: 'no-alert', reason: '' } ] } ]
+                });
+            }, { message: /Too small/ });
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest(
+        'known-only permits intentionally partial inventories and justified exclusions',
+        async function (scope) {
+            const base = configDefinition([ { rules: { 'no-debugger': 'off' } } ]);
+            const definitions = defineConfigTests({
+                ...base,
+                inventories: [
+                    { ...inventory, completeness: 'known-only' },
+                    {
+                        ...inventory,
+                        title: 'excluded',
+                        exclusions: [ { ruleId: 'no-alert', reason: 'Browser-only policy.' } ]
+                    }
+                ]
+            });
+            const result3 = await executeConfigNode(definitions.checks());
+            scope.assert.equal(result3.summary.passed, 2);
+            return scope.assert.collect();
+        }
+    )
 ]);

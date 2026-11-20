@@ -1,8 +1,9 @@
 import diagnosticsChannel from 'node:diagnostics_channel';
 import { createServer, request as createRequest, type ServerResponse } from 'node:http';
 import { connect } from 'node:net';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     httpTranscriptBodyByteLimit,
     type HttpTranscript,
@@ -385,68 +386,30 @@ async function assertMalformedResponseDiagnostics(scope: TestScope): Promise<voi
     await session.disposeOnce({ signal: testSignal });
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/resources/local-http-transcript.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'local HTTP resources record external request metadata and bounded bodies',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertExternalRequest(scope);
+export const testNode = suite('source/resources/local-http-transcript.test.ts', [
+    test('local HTTP resources record external request metadata and bounded bodies', async function (scope: TestScope) {
+        await assertExternalRequest(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'local HTTP resources record requests outside instrumented clients',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertRawRequest(scope);
+        return scope.assert.collect();
+    }),
+    test('local HTTP resources record requests outside instrumented clients', async function (scope: TestScope) {
+        await assertRawRequest(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'local HTTP resources support transcript policies',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertTranscriptPolicies(scope);
+        return scope.assert.collect();
+    }),
+    test('local HTTP resources support transcript policies', async function (scope: TestScope) {
+        await assertTranscriptPolicies(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'local HTTP transcript diagnostics contain malformed lifecycle events',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                assertDiagnosticFailuresAreContained(scope);
+        return scope.assert.collect();
+    }),
+    test('local HTTP transcript diagnostics contain malformed lifecycle events', function (scope: TestScope) {
+        assertDiagnosticFailuresAreContained(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'local HTTP transcripts contain malformed response diagnostics',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertMalformedResponseDiagnostics(scope);
+        return scope.assert.collect();
+    }),
+    test('local HTTP transcripts contain malformed response diagnostics', async function (scope: TestScope) {
+        await assertMalformedResponseDiagnostics(scope);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

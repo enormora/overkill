@@ -1,11 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { resourceAttachments } from '../attachments/attachment-context.ts';
 import type { RuntimeAttachments } from '../engine/runtime-attachment.ts';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+
 import { defineResource, type AnyResourceDefinition, type ExecutionRequirement } from '../resources/resources.ts';
 import { acquireResourceWithStartupBudget } from './resource-lifecycle-startup-budget.ts';
 
@@ -59,11 +56,11 @@ async function neverResolvingResource(context: ResourceCreationContext): Promise
     });
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/resource-lifecycle-startup-budget.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'resource startup budget delegates resources without budget requirements',
             async body(scope: OverkillScope) {
@@ -84,7 +81,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'resource startup budget ignores invalid budget requirements',
             async body(scope: OverkillScope) {
@@ -109,7 +106,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'resource startup budget passes an isolated child signal',
             async body(scope: OverkillScope) {
@@ -131,7 +128,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'resource startup budget aborts resources that exceed the budget',
             async body(scope: OverkillScope) {
@@ -147,7 +144,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'resource startup budget forwards parent aborts to the child signal',
             async body(scope: OverkillScope) {
@@ -168,5 +165,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

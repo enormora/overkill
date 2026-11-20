@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { CaseRunnerError } from '../engine/run-result.ts';
 import type { MeasurementEvidence, MeasurementInvocationEvidence } from '../engine/measurement-evidence.ts';
 import type { BenchmarkScope } from '../engine/benchmark-node.ts';
@@ -31,14 +32,14 @@ export function createMeasurementRecording(
             })
             : []
     };
-    const execution = randomUUID();
+    const execution = withRunnerInfrastructure(randomUUID);
     const invocations: MeasurementInvocationEvidence[] = [];
     const counts = { warmup: 0, measured: 0 };
     let omitted = 0;
     return {
         begin(phase) {
             const invocationTarget = strategy.mode === 'process' || strategy.mode === 'module'
-                ? { ...target, identity: { ...target.identity, instance: randomUUID() } }
+                ? { ...target, identity: { ...target.identity, instance: withRunnerInfrastructure(randomUUID) } }
                 : target;
             const invocation = { execution, work: scope.workId, attempt: scope.attemptId, phase, index: counts[phase] };
             counts[phase] += 1;

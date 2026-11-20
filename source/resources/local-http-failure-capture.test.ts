@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import { runWithTranscriptScope } from '../transcript/transcript-store.ts';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { inlineAttachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
@@ -8,7 +9,6 @@ import { runWithResourceFailureContext } from '../attachments/resource-failure-c
 import { createHttpTranscriptRecorder, type HttpInteraction } from '../transcript/http-transcript.ts';
 import { observeHttpFailureArtifacts } from './local-http-failure-capture.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const context = { name: 'service', condition: { kind: 'attempt', work, attempt: { index: 0 } } } as const;
 function invalidInteraction(): HttpInteraction<null> {
     return {
@@ -85,51 +85,36 @@ async function assertUnknownTranscriptScope(scope: TestScope): Promise<void> {
     scope.assert.equal(fixture.store.artifacts().length, 1);
     scope.assert.equal(fixture.store.artifacts()[0]?.id.scope.kind, 'run');
 }
-export const testNode = createSuite({
-    ...metadata,
-    title: 'source/resources/local-http-failure-capture.test.ts',
-    children: [
-        createTestCase({
-            ...metadata,
-            title: 'unknown transcript scopes retain shared resource attribution despite an active case',
-            async body(scope: TestScope) {
-                await assertUnknownTranscriptScope(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'HTTP serialization errors surface when capture closes and stop observation',
-            async body(scope: TestScope) {
-                await assertSerializationFailure(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'HTTP capture diagnostics append to the same bounded stream',
-            async body(scope: TestScope) {
-                await assertCaptureErrors(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'unmanaged transcript observation records no failure artifacts',
-            async body(scope: TestScope) {
-                const recorder = createHttpTranscriptRecorder<null>();
-                await runWithResourceFailureContext(context, async function unmanagedCapture() {
-                    const capture = observeHttpFailureArtifacts('service', recorder.transcript);
-                    scope.require.defined(capture);
-                    recorder.recordCaptureError('custom', 'outside runner', null);
-                    await capture.close();
-                });
-                await runWithTranscriptScope(null, async function assertUnmanagedEvidence() {
-                    scope.assert.equal(recorder.transcript.entryCount, 1);
-                });
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/resources/local-http-failure-capture.test.ts', [
+    test(
+        'unknown transcript scopes retain shared resource attribution despite an active case',
+        async function (scope: TestScope) {
+            await assertUnknownTranscriptScope(scope);
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'HTTP serialization errors surface when capture closes and stop observation',
+        async function (scope: TestScope) {
+            await assertSerializationFailure(scope);
+            return scope.assert.collect();
+        }
+    ),
+    test('HTTP capture diagnostics append to the same bounded stream', async function (scope: TestScope) {
+        await assertCaptureErrors(scope);
+        return scope.assert.collect();
+    }),
+    test('unmanaged transcript observation records no failure artifacts', async function (scope: TestScope) {
+        const recorder = createHttpTranscriptRecorder<null>();
+        await runWithResourceFailureContext(context, async function unmanagedCapture() {
+            const capture = observeHttpFailureArtifacts('service', recorder.transcript);
+            scope.require.defined(capture);
+            recorder.recordCaptureError('custom', 'outside runner', null);
+            await capture.close();
+        });
+        await runWithTranscriptScope(null, async function assertUnmanagedEvidence() {
+            scope.assert.equal(recorder.transcript.entryCount, 1);
+        });
+        return scope.assert.collect();
+    })
+]);

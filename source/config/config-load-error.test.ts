@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createConfigLoader } from './config-loader.ts';
 import { ConfigError } from './config-error.ts';
 
@@ -16,29 +12,15 @@ const loadConfig = createConfigLoader({
     }
 });
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/config/config-load-error.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadConfig() reports explicit config import failures',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function loadMissingConfig() {
-                    await loadConfig({ configPath: 'missing.config.js', cwd: '/project' });
-                }, {
-                    type: ConfigError,
-                    message: /Failed to load config file/
-                });
+export const testNode = suite('source/config/config-load-error.test.ts', [
+    test('loadConfig() reports explicit config import failures', async function (scope: OverkillScope) {
+        await scope.assert.rejects(async function loadMissingConfig() {
+            await loadConfig({ configPath: 'missing.config.js', cwd: '/project' });
+        }, {
+            type: ConfigError,
+            message: /Failed to load config file/
+        });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

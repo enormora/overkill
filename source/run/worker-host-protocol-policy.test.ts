@@ -1,24 +1,11 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { z } from 'zod/v4';
 
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
-import {
-    childProcessEnvelope,
-    envelopeMessage
-} from './child-process-protocol.ts';
-import {
-    childRoleArgument,
-    workerPoolHostRole
-} from './child-process-roles.ts';
+import { childProcessEnvelope, envelopeMessage } from './child-process-protocol.ts';
+import { childRoleArgument, workerPoolHostRole } from './child-process-roles.ts';
 import type { SupervisedChildProcess } from './supervised-child-process.ts';
-import {
-    createWorkerPoolMessageChannel,
-    type WorkerPoolMessage
-} from './worker-pool-protocol.ts';
+import { createWorkerPoolMessageChannel, type WorkerPoolMessage } from './worker-pool-protocol.ts';
 import {
     deserializeError,
     deserializeWorkerPoolMessage,
@@ -142,126 +129,104 @@ function assertWorkerMessageProtocol(scope: OverkillScope, fixture: ProtocolFixt
     );
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'worker host protocol',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'closing a worker channel settles completion without a terminal message',
-            async body(scope: OverkillScope) {
-                const channel = createWorkerPoolMessageChannel(function () {
-                    return undefined;
-                });
-                scope.cleanup(channel.close);
-                channel.close();
-                scope.assert.equal(
-                    await Promise.race([ channel.messagesCompleted, Promise.resolve('pending') ]),
-                    undefined
-                );
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'createWorkerPoolHostProcessStarter() forks the shared child host entrypoint',
-            body(scope: OverkillScope) {
-                const child = createChildProcess();
-                const forkCalls: {
-                    readonly childArguments: readonly string[];
-                    readonly modulePath: string;
-                    readonly options: unknown;
-                }[] = [];
-                const startWorkerPoolHost = createWorkerPoolHostProcessStarter({
-                    childProcessEntryPoint: '/package/source/run/child-process.entry-point.ts',
-                    fork(modulePath, childArguments, options) {
-                        forkCalls.push({ childArguments, modulePath, options });
+export const testNode = suite('worker host protocol', [
+    test(
+        'closing a worker channel settles completion without a terminal message',
+        async function (scope: OverkillScope) {
+            const channel = createWorkerPoolMessageChannel(function () {
+                return undefined;
+            });
+            scope.cleanup(channel.close);
+            channel.close();
+            scope.assert.equal(
+                await Promise.race([ channel.messagesCompleted, Promise.resolve('pending') ]),
+                undefined
+            );
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'createWorkerPoolHostProcessStarter() forks the shared child host entrypoint',
+        function (scope: OverkillScope) {
+            const child = createChildProcess();
+            const forkCalls: {
+                readonly childArguments: readonly string[];
+                readonly modulePath: string;
+                readonly options: unknown;
+            }[] = [];
+            const startWorkerPoolHost = createWorkerPoolHostProcessStarter({
+                childProcessEntryPoint: '/package/source/run/child-process.entry-point.ts',
+                fork(modulePath, childArguments, options) {
+                    forkCalls.push({ childArguments, modulePath, options });
 
-                        return child;
-                    }
-                });
-
-                scope.assert.equal(
-                    startWorkerPoolHost({
-                        cwd: '/project',
-                        environmentVariables: {
-                            KEEP: '1',
-                            NODE_OPTIONS: '--inspect',
-                            NODE_V8_COVERAGE: '/coverage',
-                            OMIT: undefined
-                        },
-                        nodeArguments: [ '--expose-gc' ],
-                        testFamily: 'integration'
-                    }),
-                    child
-                );
-                scope.assert.deepEqual(forkCalls, [ {
-                    childArguments: [ childRoleArgument(workerPoolHostRole) ],
-                    modulePath: '/package/source/run/child-process.entry-point.ts',
-                    options: {
-                        cwd: '/project',
-                        env: {
-                            KEEP: '1',
-                            NODE_OPTIONS: '--inspect',
-                            NODE_V8_COVERAGE: '/coverage'
-                        },
-                        execArgv: [ '--expose-gc' ],
-                        stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
-                    }
-                } ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool host protocol preserves errors and worker messages',
-            body(scope: OverkillScope) {
-                const fixture = createProtocolFixture();
-
-                assertErrorProtocol(scope, fixture);
-                assertFallbackErrorProtocol(scope, fixture);
-                assertWorkerMessageProtocol(scope, fixture);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool message channels deliver queued messages before completion',
-            async body(scope: OverkillScope) {
-                const receivedKinds: string[] = [];
-                const channel = createWorkerPoolMessageChannel(function recordMessage(message) {
-                    receivedKinds.push(message.kind);
-                });
-
-                try {
-                    channel.port.postMessage({
-                        capturedAtMicroseconds: 1,
-                        chunk: Buffer.from('output'),
-                        kind: 'output',
-                        stream: 'stdout'
-                    }, []);
-                    channel.port.postMessage({ kind: 'task-messages-completed' }, []);
-                    await channel.messagesCompleted;
-                    scope.assert.deepEqual(receivedKinds, [ 'output', 'task-messages-completed' ]);
-                } finally {
-                    channel.close();
+                    return child;
                 }
+            });
 
-                return scope.assert.collect();
+            scope.assert.equal(
+                startWorkerPoolHost({
+                    cwd: '/project',
+                    environmentVariables: {
+                        KEEP: '1',
+                        NODE_OPTIONS: '--inspect',
+                        NODE_V8_COVERAGE: '/coverage',
+                        OMIT: undefined
+                    },
+                    nodeArguments: [ '--expose-gc' ],
+                    testFamily: 'integration'
+                }),
+                child
+            );
+            scope.assert.deepEqual(forkCalls, [ {
+                childArguments: [ childRoleArgument(workerPoolHostRole) ],
+                modulePath: '/package/source/run/child-process.entry-point.ts',
+                options: {
+                    cwd: '/project',
+                    env: {
+                        KEEP: '1',
+                        NODE_OPTIONS: '--inspect',
+                        NODE_V8_COVERAGE: '/coverage'
+                    },
+                    execArgv: [ '--expose-gc' ],
+                    stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
+                }
+            } ]);
+
+            return scope.assert.collect();
+        }
+    ),
+    test('worker-pool host protocol preserves errors and worker messages', function (scope: OverkillScope) {
+        const fixture = createProtocolFixture();
+
+        assertErrorProtocol(scope, fixture);
+        assertFallbackErrorProtocol(scope, fixture);
+        assertWorkerMessageProtocol(scope, fixture);
+
+        return scope.assert.collect();
+    }),
+    test(
+        'worker-pool message channels deliver queued messages before completion',
+        async function (scope: OverkillScope) {
+            const receivedKinds: string[] = [];
+            const channel = createWorkerPoolMessageChannel(function recordMessage(message) {
+                receivedKinds.push(message.kind);
+            });
+
+            try {
+                channel.port.postMessage({
+                    capturedAtMicroseconds: 1,
+                    chunk: Buffer.from('output'),
+                    kind: 'output',
+                    stream: 'stdout'
+                }, []);
+                channel.port.postMessage({ kind: 'task-messages-completed' }, []);
+                await channel.messagesCompleted;
+                scope.assert.deepEqual(receivedKinds, [ 'output', 'task-messages-completed' ]);
+            } finally {
+                channel.close();
             }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+
+            return scope.assert.collect();
+        }
+    )
+]);

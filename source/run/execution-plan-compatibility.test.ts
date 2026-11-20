@@ -1,15 +1,8 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestNode,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import type { TestNode } from '../packages/engine/engine.entry-point.ts';
 import { defineResource } from '../packages/resources/resources.entry-point.ts';
-import {
-    assertResourceDependencyScopes,
-    resourceDependencyScopeAllowed
-} from '../resources/resource-graph.ts';
+import { assertResourceDependencyScopes, resourceDependencyScopeAllowed } from '../resources/resource-graph.ts';
 import type { WorkerLifecycle } from '../config/types.ts';
 import { collectedRunCaseEntries } from './collected-run-plan.ts';
 import {
@@ -451,10 +444,7 @@ function assertErrorDescriptions(scope: OverkillScope): void {
 }
 
 function compatibilityTest(title: string, assertion: (scope: OverkillScope) => void): TestNode {
-    return createOverkillTestCase({
-        annotations: {},
-        controls: {},
-        definitionLocations: [ { kind: 'unknown' as const } ],
+    return test({
         title,
         body(scope: OverkillScope) {
             assertion(scope);
@@ -464,27 +454,19 @@ function compatibilityTest(title: string, assertion: (scope: OverkillScope) => v
     });
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/execution-plan-compatibility.test.ts',
-    children: [
-        compatibilityTest('resource dependency scopes follow ownership nesting', function assertScopes(scope) {
-            assertDependencyScopes(scope);
-            assertDependencyGraphs(scope);
-        }),
-        compatibilityTest(
-            'collected compatibility reports resource and runtime identity conflicts',
-            assertIdentityConflicts
-        ),
-        compatibilityTest(
-            'execution compatibility reports lifecycle and worker capacity conflicts',
-            assertExecutionConflicts
-        ),
-        compatibilityTest('resource ownership selects lane and unit placements', assertOwnershipPlacements),
-        compatibilityTest('execution plan errors describe every incompatibility', assertErrorDescriptions)
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/execution-plan-compatibility.test.ts', [
+    compatibilityTest('resource dependency scopes follow ownership nesting', function assertScopes(scope) {
+        assertDependencyScopes(scope);
+        assertDependencyGraphs(scope);
+    }),
+    compatibilityTest(
+        'collected compatibility reports resource and runtime identity conflicts',
+        assertIdentityConflicts
+    ),
+    compatibilityTest(
+        'execution compatibility reports lifecycle and worker capacity conflicts',
+        assertExecutionConflicts
+    ),
+    compatibilityTest('resource ownership selects lane and unit placements', assertOwnershipPlacements),
+    compatibilityTest('execution plan errors describe every incompatibility', assertErrorDescriptions)
+]);

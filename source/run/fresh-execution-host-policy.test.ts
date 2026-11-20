@@ -1,10 +1,10 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { freshExecutionHost } from '../test-support/fresh-execution-host.ts';
 import { executeFreshSession } from './execution-session-process.ts';
 
-export const testNode = suite('fresh execution host transport and cleanup', [
-    test(
+export const testNode = authoredSuite('fresh execution host transport and cleanup', [
+    authoredTest(
         'sends the frozen invocation and closes the child after receiving its result',
         async function (scope: TestScope) {
             const fixture = await freshExecutionHost('none');
@@ -20,14 +20,17 @@ export const testNode = suite('fresh execution host transport and cleanup', [
             return scope.assert.collect();
         }
     ),
-    test('delivers checkpoints and waits for their completion before returning', async function (scope: TestScope) {
-        const fixture = await freshExecutionHost('checkpoint');
-        const result = await executeFreshSession(fixture.request, fixture.start);
-        scope.assert.equal(result.kind, 'result');
-        scope.assert.deepEqual(fixture.events, [ 'start', 'send', 'checkpoint', 'SIGKILL' ]);
-        return scope.assert.collect();
-    }),
-    test('rejects failed checkpoint delivery and still closes the child', async function (scope: TestScope) {
+    authoredTest(
+        'delivers checkpoints and waits for their completion before returning',
+        async function (scope: TestScope) {
+            const fixture = await freshExecutionHost('checkpoint');
+            const result = await executeFreshSession(fixture.request, fixture.start);
+            scope.assert.equal(result.kind, 'result');
+            scope.assert.deepEqual(fixture.events, [ 'start', 'send', 'checkpoint', 'SIGKILL' ]);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('rejects failed checkpoint delivery and still closes the child', async function (scope: TestScope) {
         const fixture = await freshExecutionHost('checkpoint-failure');
         await scope.assert.rejects(async function () {
             return await executeFreshSession(fixture.request, fixture.start);
@@ -35,7 +38,7 @@ export const testNode = suite('fresh execution host transport and cleanup', [
         scope.assert.deepEqual(fixture.events, [ 'start', 'send', 'checkpoint', 'SIGKILL' ]);
         return scope.assert.collect();
     }),
-    test('reports premature host exits with their exit status', async function (scope: TestScope) {
+    authoredTest('reports premature host exits with their exit status', async function (scope: TestScope) {
         const fixture = await freshExecutionHost('exit');
         await scope.assert.rejects(async function () {
             return await executeFreshSession(fixture.request, fixture.start);
@@ -44,7 +47,7 @@ export const testNode = suite('fresh execution host transport and cleanup', [
         return scope.assert.collect();
     }),
     ...([ 'error', 'send' ] as const).map(function (fault) {
-        return test(`preserves ${fault} failures while closing the child`, async function (scope: TestScope) {
+        return authoredTest(`preserves ${fault} failures while closing the child`, async function (scope: TestScope) {
             const fixture = await freshExecutionHost(fault);
             await scope.assert.rejects(async function () {
                 return await executeFreshSession(fixture.request, fixture.start);
@@ -53,7 +56,7 @@ export const testNode = suite('fresh execution host transport and cleanup', [
             return scope.assert.collect();
         });
     }),
-    test('rejects malformed replies and closes their host', async function (scope: TestScope) {
+    authoredTest('rejects malformed replies and closes their host', async function (scope: TestScope) {
         const fixture = await freshExecutionHost('invalid');
         await scope.assert.rejects(async function () {
             return await executeFreshSession(fixture.request, fixture.start);
@@ -61,7 +64,7 @@ export const testNode = suite('fresh execution host transport and cleanup', [
         scope.assert.equal(fixture.events.at(-1), 'SIGKILL');
         return scope.assert.collect();
     }),
-    test('rejects cancellation before allocating a host', async function (scope: TestScope) {
+    authoredTest('rejects cancellation before allocating a host', async function (scope: TestScope) {
         const fixture = await freshExecutionHost('none');
         const failure = new Error('cancelled');
         const controller = new AbortController();
@@ -76,4 +79,3 @@ export const testNode = suite('fresh execution host transport and cleanup', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

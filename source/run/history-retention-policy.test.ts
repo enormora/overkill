@@ -1,9 +1,10 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { historyRetention, historyRetentionScenario } from '../test-support/history-retention.ts';
 import { applyHistoryRetention } from './history-pruning.ts';
 import { readCompactHistory } from './history-storage.ts';
 
-export const testNode = suite('history retention publication', [
+export const testNode = authoredSuite('history retention publication', [
     test('previews record and artifact removals without changing storage', async function (scope: TestScope) {
         const fixture = await historyRetention(historyRetentionScenario);
         const result = await applyHistoryRetention(fixture.context, { dryRun: true }, fixture.runtime);

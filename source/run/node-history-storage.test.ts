@@ -2,8 +2,7 @@ import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { createNodeHistoryStorage } from './node-history-storage.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
@@ -62,7 +61,7 @@ async function assertRecordEnumeration(scope: TestScope, store: HistoryStorage, 
     }, { code: 'ENOTDIR' });
 }
 
-export const testNode = suite('history locking', [
+export const testNode = authoredSuite('history locking', [
     test('failed lease acquisition removes its provisional ownership metadata', async function (scope: TestScope) {
         const directory = await mkdtemp(path.join(os.tmpdir(), 'overkill-history-'));
         const store = createNodeHistoryStorage(directory, defaultHistoryPolicy);
@@ -116,4 +115,3 @@ export const testNode = suite('history locking', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { createDefaultWorkId } from '../engine/identity.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import type { FailedCheck, RunResult, TestOutcome } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import type { RunRecordTestOutcome } from './run-record-outcomes.ts';
@@ -99,7 +100,7 @@ function outcomeFindings(outcome: RunRecordTestOutcome | null | undefined): Outc
         })
     };
 }
-export const testNode = suite('recorded nested findings', [
+export const testNode = authoredSuite('recorded nested findings', [
     test('preserves every composite child, assertion check, and resource finding', function (scope: TestScope) {
         const live = nestedFindings();
         const recorded = recordedRunResult(live);
@@ -125,4 +126,3 @@ export const testNode = suite('recorded nested findings', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

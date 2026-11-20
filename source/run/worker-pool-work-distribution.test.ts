@@ -1,21 +1,12 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type CaseId,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
+import type { CaseId } from '../packages/engine/engine.entry-point.ts';
 import { caseIdentityKey } from '../engine/identity.ts';
 import type { WorkDistribution, WorkGroup } from '../config/types.ts';
 import { invalidWorkDistributionConfigMessage } from '../config/work-distribution.ts';
 import { emptyWorkUnitResourceConstraints, type CollectedRunPlan, type WorkUnit } from './run-types.ts';
-import {
-    createWorkerPoolPlacementPlan
-} from './worker-pool-placement-planning.ts';
-import {
-    type WorkUnitPlanningInput,
-    workUnitsFromCollectedPlan
-} from './work-unit-planning.ts';
+import { createWorkerPoolPlacementPlan } from './worker-pool-placement-planning.ts';
+import { type WorkUnitPlanningInput, workUnitsFromCollectedPlan } from './work-unit-planning.ts';
 
 const firstPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const secondPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
@@ -244,294 +235,232 @@ function planningInput(
     };
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-work-distribution.test.ts',
-    children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool planning creates case work units',
-            body(scope: OverkillScope) {
-                scope.assert.deepEqual(
-                    workUnitsFromCollectedPlan(planningInput(collectedPlan(), { mode: 'case' }, fileSetForFile)),
-                    [ caseWorkUnit(firstCaseId()), caseWorkUnit(secondCaseId()) ]
-                );
+export const testNode = suite('source/run/worker-pool-work-distribution.test.ts', [
+    test('worker-pool planning creates case work units', function (scope: OverkillScope) {
+        scope.assert.deepEqual(
+            workUnitsFromCollectedPlan(planningInput(collectedPlan(), { mode: 'case' }, fileSetForFile)),
+            [ caseWorkUnit(firstCaseId()), caseWorkUnit(secondCaseId()) ]
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool planning applies group overrides with unmatched file fallback',
-            body(scope: OverkillScope) {
-                const fastFileUnit = {
-                    ...fileWorkUnit(firstCaseId(), 'fast-files'),
-                    scheduling: 'serial',
-                    workerLifecycle: 'fresh-worker-per-unit'
-                } as const;
+        return scope.assert.collect();
+    }),
+    test('worker-pool planning applies group overrides with unmatched file fallback', function (scope: OverkillScope) {
+        const fastFileUnit = {
+            ...fileWorkUnit(firstCaseId(), 'fast-files'),
+            scheduling: 'serial',
+            workerLifecycle: 'fresh-worker-per-unit'
+        } as const;
 
-                scope.assert.deepEqual(
-                    workUnitsFromCollectedPlan(planningInput(
-                        collectedPlanWithEmptyFile(),
-                        {
-                            groups: [
-                                workGroup('empty-group', [ 'empty' ]),
-                                workGroupWithPolicyOverrides('fast-files', [ 'fast' ])
-                            ],
-                            mode: 'group',
-                            unmatched: 'file'
-                        },
-                        fileSetForFile
-                    )),
-                    [
-                        fastFileUnit,
-                        fileWorkUnit(secondCaseId(), null)
-                    ]
-                );
+        scope.assert.deepEqual(
+            workUnitsFromCollectedPlan(planningInput(
+                collectedPlanWithEmptyFile(),
+                {
+                    groups: [
+                        workGroup('empty-group', [ 'empty' ]),
+                        workGroupWithPolicyOverrides('fast-files', [ 'fast' ])
+                    ],
+                    mode: 'group',
+                    unmatched: 'file'
+                },
+                fileSetForFile
+            )),
+            [
+                fastFileUnit,
+                fileWorkUnit(secondCaseId(), null)
+            ]
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool planning creates grouped work units',
-            body(scope: OverkillScope) {
-                scope.assert.deepEqual(
-                    workUnitsFromCollectedPlan(planningInput(
-                        collectedPlan(),
-                        {
-                            groups: [
-                                workGroup('fast', [ 'fast' ]),
-                                workGroup('slow', [ 'slow' ])
-                            ],
-                            mode: 'group',
-                            unmatched: 'reject'
-                        },
-                        fileSetForFile
-                    )),
-                    [
-                        groupWorkUnit('fast', [ firstCaseId() ]),
-                        groupWorkUnit('slow', [ secondCaseId() ])
-                    ]
-                );
-                scope.assert.throws(function planUnmatchedGroup() {
-                    workUnitsFromCollectedPlan(planningInput(
-                        collectedPlan(),
-                        {
-                            groups: [ workGroup('fast', [ 'fast' ]) ],
-                            mode: 'group',
-                            unmatched: 'reject'
-                        },
-                        fileSetForFile
-                    ));
-                }, { message: /no group for file set "slow"/ });
+        return scope.assert.collect();
+    }),
+    test('worker-pool planning creates grouped work units', function (scope: OverkillScope) {
+        scope.assert.deepEqual(
+            workUnitsFromCollectedPlan(planningInput(
+                collectedPlan(),
+                {
+                    groups: [
+                        workGroup('fast', [ 'fast' ]),
+                        workGroup('slow', [ 'slow' ])
+                    ],
+                    mode: 'group',
+                    unmatched: 'reject'
+                },
+                fileSetForFile
+            )),
+            [
+                groupWorkUnit('fast', [ firstCaseId() ]),
+                groupWorkUnit('slow', [ secondCaseId() ])
+            ]
+        );
+        scope.assert.throws(function planUnmatchedGroup() {
+            workUnitsFromCollectedPlan(planningInput(
+                collectedPlan(),
+                {
+                    groups: [ workGroup('fast', [ 'fast' ]) ],
+                    mode: 'group',
+                    unmatched: 'reject'
+                },
+                fileSetForFile
+            ));
+        }, { message: /no group for file set "slow"/ });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool planning applies named group granularity',
-            body(scope: OverkillScope) {
-                scope.assert.deepEqual(
-                    workUnitsFromCollectedPlan(planningInput(
-                        collectedPlan(),
-                        {
-                            groups: [
-                                workGroupWithGranularity('fast-files', [ 'fast' ], 'file'),
-                                workGroupWithGranularity('slow-cases', [ 'slow' ], 'case')
-                            ],
-                            mode: 'group',
-                            unmatched: 'reject'
-                        },
-                        fileSetForFile
-                    )),
-                    [
-                        fileWorkUnit(firstCaseId(), 'fast-files'),
-                        groupedCaseWorkUnit(secondCaseId(), 'slow-cases')
-                    ]
-                );
+        return scope.assert.collect();
+    }),
+    test('worker-pool planning applies named group granularity', function (scope: OverkillScope) {
+        scope.assert.deepEqual(
+            workUnitsFromCollectedPlan(planningInput(
+                collectedPlan(),
+                {
+                    groups: [
+                        workGroupWithGranularity('fast-files', [ 'fast' ], 'file'),
+                        workGroupWithGranularity('slow-cases', [ 'slow' ], 'case')
+                    ],
+                    mode: 'group',
+                    unmatched: 'reject'
+                },
+                fileSetForFile
+            )),
+            [
+                fileWorkUnit(firstCaseId(), 'fast-files'),
+                groupedCaseWorkUnit(secondCaseId(), 'slow-cases')
+            ]
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool planning falls back to file units for unmatched sets',
-            body(scope: OverkillScope) {
-                scope.assert.deepEqual(
-                    workUnitsFromCollectedPlan(planningInput(
-                        collectedPlan(),
-                        {
-                            groups: [ workGroup('fast', [ 'fast' ]) ],
-                            mode: 'group',
-                            unmatched: 'file'
-                        },
-                        fileSetForFile
-                    )),
-                    [
-                        groupWorkUnit('fast', [ firstCaseId() ]),
-                        fileWorkUnit(secondCaseId(), null)
-                    ]
-                );
+        return scope.assert.collect();
+    }),
+    test('worker-pool planning falls back to file units for unmatched sets', function (scope: OverkillScope) {
+        scope.assert.deepEqual(
+            workUnitsFromCollectedPlan(planningInput(
+                collectedPlan(),
+                {
+                    groups: [ workGroup('fast', [ 'fast' ]) ],
+                    mode: 'group',
+                    unmatched: 'file'
+                },
+                fileSetForFile
+            )),
+            [
+                groupWorkUnit('fast', [ firstCaseId() ]),
+                fileWorkUnit(secondCaseId(), null)
+            ]
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool planning applies group-local order inside profile order slots',
-            body(scope: OverkillScope) {
-                const units = workUnitsFromCollectedPlan(planningInput(
-                    collectedPlanWithRepeatedFastSet(),
-                    {
-                        groups: [
-                            workGroupWithOrder('fast-cases', [ 'fast' ], 'case', 'seeded'),
-                            workGroupWithGranularity('slow-cases', [ 'slow' ], 'case')
-                        ],
+        return scope.assert.collect();
+    }),
+    test('worker-pool planning applies group-local order inside profile order slots', function (scope: OverkillScope) {
+        const units = workUnitsFromCollectedPlan(planningInput(
+            collectedPlanWithRepeatedFastSet(),
+            {
+                groups: [
+                    workGroupWithOrder('fast-cases', [ 'fast' ], 'case', 'seeded'),
+                    workGroupWithGranularity('slow-cases', [ 'slow' ], 'case')
+                ],
+                mode: 'group',
+                unmatched: 'reject'
+            },
+            fileSetForFile
+        ));
+
+        scope.assert.deepEqual(
+            units.map(function toUnitKey(unit) {
+                return unit.id.key;
+            }),
+            [
+                caseIdentityKey(thirdCaseId()),
+                caseIdentityKey(secondCaseId()),
+                caseIdentityKey(firstCaseId())
+            ]
+        );
+
+        return scope.assert.collect();
+    }),
+    test('worker-pool planning rejects grouped work without file-set ownership', function (scope: OverkillScope) {
+        scope.assert.throws(function planWithoutFileSetLookup() {
+            workUnitsFromCollectedPlan(planningInput(
+                collectedPlan(),
+                {
+                    groups: [ workGroup('fast', [ 'fast' ]) ],
+                    mode: 'group',
+                    unmatched: 'reject'
+                },
+                function noFileSet() {
+                    return null;
+                }
+            ));
+        }, { message: /requires a file set/ });
+        scope.assert.deepEqual(
+            workUnitsFromCollectedPlan(planningInput(
+                collectedPlanWithEmptyFile(),
+                {
+                    groups: [
+                        workGroup('fast', [ 'fast' ]),
+                        workGroup('slow', [ 'slow' ])
+                    ],
+                    mode: 'group',
+                    unmatched: 'reject'
+                },
+                fileSetForFile
+            )),
+            [
+                groupWorkUnit('fast', [ firstCaseId() ]),
+                groupWorkUnit('slow', [ secondCaseId() ])
+            ]
+        );
+
+        return scope.assert.collect();
+    }),
+    test('worker-pool placement rejects invalid available parallelism', function (scope: OverkillScope) {
+        for (const availableParallelism of [ Number.NaN, 0 ]) {
+            scope.assert.throws(function rejectInvalidParallelism() {
+                createWorkerPoolPlacementPlan({
+                    runConstraints: emptyWorkUnitResourceConstraints,
+                    assignmentPolicy: 'case-count-balanced',
+                    availableParallelism,
+                    profileMaximumWorkers: null,
+                    requestedWorkers: null,
+                    fileSetForFile,
+                    order: 'plan',
+                    seed: { value: 1n },
+                    selectedPlan: collectedPlan(),
+                    scheduling: 'concurrent',
+                    workDistribution: { mode: 'file' },
+                    workerLifecycle: 'reuse'
+                });
+            }, { message: 'Available parallelism must be a positive safe integer.' });
+        }
+
+        return scope.assert.collect();
+    }),
+    test('worker-pool distribution config rejects invalid group names', function (scope: OverkillScope) {
+        scope.assert.equal(
+            invalidWorkDistributionConfigMessage(
+                {
+                    assignmentPolicy: 'case-count-balanced',
+                    dispatchPolicy: 'dynamic-lease',
+                    hedging: { mode: 'off' },
+                    hostProcess: { kind: 'direct' },
+                    maxConcurrency: 5,
+                    maxWorkers: null,
+                    processModel: 'worker-pool',
+                    scheduling: 'concurrent',
+                    workDistribution: {
+                        groups: [ workGroup('invalid/group', [ 'fast' ]) ],
                         mode: 'group',
                         unmatched: 'reject'
                     },
-                    fileSetForFile
-                ));
-
-                scope.assert.deepEqual(
-                    units.map(function toUnitKey(unit) {
-                        return unit.id.key;
-                    }),
-                    [
-                        caseIdentityKey(thirdCaseId()),
-                        caseIdentityKey(secondCaseId()),
-                        caseIdentityKey(firstCaseId())
-                    ]
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool planning rejects grouped work without file-set ownership',
-            body(scope: OverkillScope) {
-                scope.assert.throws(function planWithoutFileSetLookup() {
-                    workUnitsFromCollectedPlan(planningInput(
-                        collectedPlan(),
-                        {
-                            groups: [ workGroup('fast', [ 'fast' ]) ],
-                            mode: 'group',
-                            unmatched: 'reject'
-                        },
-                        function noFileSet() {
-                            return null;
+                    workerLifecycle: 'reuse'
+                },
+                {
+                    sets: {
+                        fast: {
+                            exclude: [],
+                            include: [ firstPath ]
                         }
-                    ));
-                }, { message: /requires a file set/ });
-                scope.assert.deepEqual(
-                    workUnitsFromCollectedPlan(planningInput(
-                        collectedPlanWithEmptyFile(),
-                        {
-                            groups: [
-                                workGroup('fast', [ 'fast' ]),
-                                workGroup('slow', [ 'slow' ])
-                            ],
-                            mode: 'group',
-                            unmatched: 'reject'
-                        },
-                        fileSetForFile
-                    )),
-                    [
-                        groupWorkUnit('fast', [ firstCaseId() ]),
-                        groupWorkUnit('slow', [ secondCaseId() ])
-                    ]
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool placement rejects invalid available parallelism',
-            body(scope: OverkillScope) {
-                for (const availableParallelism of [ Number.NaN, 0 ]) {
-                    scope.assert.throws(function rejectInvalidParallelism() {
-                        createWorkerPoolPlacementPlan({
-                            runConstraints: emptyWorkUnitResourceConstraints,
-                            assignmentPolicy: 'case-count-balanced',
-                            availableParallelism,
-                            profileMaximumWorkers: null,
-                            requestedWorkers: null,
-                            fileSetForFile,
-                            order: 'plan',
-                            seed: { value: 1n },
-                            selectedPlan: collectedPlan(),
-                            scheduling: 'concurrent',
-                            workDistribution: { mode: 'file' },
-                            workerLifecycle: 'reuse'
-                        });
-                    }, { message: 'Available parallelism must be a positive safe integer.' });
+                    }
                 }
+            ),
+            invalidGroupNameMessage
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool distribution config rejects invalid group names',
-            body(scope: OverkillScope) {
-                scope.assert.equal(
-                    invalidWorkDistributionConfigMessage(
-                        {
-                            assignmentPolicy: 'case-count-balanced',
-                            dispatchPolicy: 'dynamic-lease',
-                            hedging: { mode: 'off' },
-                            hostProcess: { kind: 'direct' },
-                            maxConcurrency: 5,
-                            maxWorkers: null,
-                            processModel: 'worker-pool',
-                            scheduling: 'concurrent',
-                            workDistribution: {
-                                groups: [ workGroup('invalid/group', [ 'fast' ]) ],
-                                mode: 'group',
-                                unmatched: 'reject'
-                            },
-                            workerLifecycle: 'reuse'
-                        },
-                        {
-                            sets: {
-                                fast: {
-                                    exclude: [],
-                                    include: [ firstPath ]
-                                }
-                            }
-                        }
-                    ),
-                    invalidGroupNameMessage
-                );
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

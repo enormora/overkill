@@ -1,6 +1,5 @@
 import { execFile } from 'node:child_process';
-import { createSuite, createTestCase } from '@overkill-dev/engine';
-import { runIfMain } from '#test-runner';
+import { suite, test } from '#tests';
 
 async function execute(script: string): Promise<string> {
     return new Promise(function executeConsumer(resolve, reject) {
@@ -18,7 +17,7 @@ async function execute(script: string): Promise<string> {
         );
     });
 }
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
 const script = `
 import { model, modelScenario } from '@overkill-dev/model';
 import { gen, sampleGenerator } from '@overkill-dev/property';
@@ -39,18 +38,10 @@ if (node.title !== 'packaged model') throw new Error('Invalid model node');
 console.log('model package loaded');
 `;
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'packaged model authoring',
-    children: [ createTestCase({
-        ...metadata,
-        title: 'shares property generators across package copies',
-        async body(scope) {
-            const result = await execute(script);
-            scope.assert.equal(result.trim(), 'model package loaded');
-            return scope.assert.collect();
-        }
-    }) ]
-});
-
-await runIfMain(import.meta, testNode);
+export const testNode = suite('packaged model authoring', [
+    test('shares property generators across package copies', async function (scope) {
+        const result = await execute(script);
+        scope.assert.equal(result.trim(), 'model package loaded');
+        return scope.assert.collect();
+    })
+]);

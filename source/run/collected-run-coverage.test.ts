@@ -1,8 +1,5 @@
 import { execFile } from 'node:child_process';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
-
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+import { suite, test } from '@overkill-dev/test';
 
 async function verifyCoveredInvocations(): Promise<string> {
     return new Promise(function launchCoverageProbe(resolve, reject) {
@@ -19,17 +16,14 @@ async function verifyCoveredInvocations(): Promise<string> {
     });
 }
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'collected plan coverage',
-    children: [ createTestCase({
-        ...metadata,
-        title: 'explicit ordinary coverage creates a fresh session and completed record for each invocation',
-        async body(scope) {
-            scope.assert.equal(await verifyCoveredInvocations(), 'collected coverage sessions passed\n');
+export const testNode = suite('collected plan coverage', [
+    test(
+        'explicit ordinary coverage creates a fresh session and completed record for each invocation',
+        async function (scope) {
+            scope
+                .assert
+                .equal(await verifyCoveredInvocations(), 'collected coverage sessions passed\n');
             return scope.assert.collect();
         }
-    }) ]
-});
-
-await runIfMain(import.meta, testNode);
+    )
+]);

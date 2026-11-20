@@ -1,10 +1,10 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type RunnerError } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { RunnerError } from '../packages/engine/engine.entry-point.ts';
 import { createRuntimeCapabilityPolicy, type RuntimeCapabilityPolicy } from './capability-policy.ts';
 import { observeProcessExit, observeProcessIpcListeners } from './node-process-policy-observation.ts';
 import { readProcessEnvironment } from './node-host-readers.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const registrationMethods = [ 'on', 'once', 'addListener', 'prependListener', 'prependOnceListener' ] as const;
 type NativePolicyState = { readonly methods: readonly unknown[]; readonly listeners: readonly number[]; };
 function nativePolicyState(): NativePolicyState {
@@ -68,90 +68,69 @@ async function observeAllRegistrationMethods(): Promise<ListenerObservations> {
         }
     }
 }
-export const testNode = createSuite({
-    title: 'process policy observation',
-    ...metadata,
-    children: [
-        createTestCase({
-            title: 'observation failures do not interfere with native user registration',
-            ...metadata,
-            body(scope) {
-                const stop = observeProcessIpcListeners(process, function unavailableDiagnostics(): void {
-                    throw new Error('diagnostics unavailable');
-                }, new WeakSet());
-                try {
-                    process.on('message', ignoredMessage);
-                    scope.assert.true(process.listeners('message').includes(ignoredMessage));
-                } finally {
-                    stop();
-                    process.removeListener('message', ignoredMessage);
-                }
-                return scope.assert.collect();
-            }
-        }),
+export const testNode = suite('process policy observation', [
+    test('observation failures do not interfere with native user registration', function (scope) {
+        const stop = observeProcessIpcListeners(process, function unavailableDiagnostics(): void {
+            throw new Error('diagnostics unavailable');
+        }, new WeakSet());
+        try {
+            process.on('message', ignoredMessage);
+            scope.assert.true(process.listeners('message').includes(ignoredMessage));
+        } finally {
+            stop();
+            process.removeListener('message', ignoredMessage);
+        }
+        return scope.assert.collect();
+    }),
 
-        createTestCase({
-            title: 'restricted policy preserves native methods and removes its own observers',
-            ...metadata,
-            async body(scope) {
-                const before = nativePolicyState();
-                const policy = createPolicy();
-                try {
-                    await policy.runLoad(async function checkNativeMethods() {
-                        scope.assert.deepEqual(nativePolicyState().methods, before.methods);
-                    });
-                } finally {
-                    policy.takeRunErrors();
-                }
-                scope.assert.deepEqual(nativePolicyState(), before);
-                scope.assert.deepEqual(policy.takeRunErrors(), []);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            title: 'all native IPC registration methods remain effective and are observed',
-            ...metadata,
-            async body(scope) {
-                const observations = await observeAllRegistrationMethods();
-                scope.assert.equal(observations.registered, registrationMethods.length);
-                scope.assert.deepEqual(
-                    observations.errors.map(function observed(error) {
-                        return {
-                            subtype: error.subtype,
-                            strictness: error
-                                .diagnostics
-                                .find(function strictness(diagnostic) {
-                                    return diagnostic.label === 'strictness';
-                                })
-                                ?.value
-                        };
-                    }),
-                    registrationMethods.map(function expectedObservation() {
-                        return { subtype: 'runtime-policy', strictness: 'observed' };
-                    })
-                );
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            title: 'owned IPC listener identity is exempt without suppressing user observations',
-            ...metadata,
-            body(scope) {
-                const owned = new WeakSet([ ignoredMessage ]);
-                const messages: string[] = [];
-                const stop = observeProcessIpcListeners(process, function record(message) {
-                    messages.push(message);
-                }, owned);
-                try {
-                    process.on('message', ignoredMessage);
-                } finally {
-                    stop();
-                    process.removeListener('message', ignoredMessage);
-                }
-                scope.assert.deepEqual(messages, []);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+    test('restricted policy preserves native methods and removes its own observers', async function (scope) {
+        const before = nativePolicyState();
+        const policy = createPolicy();
+        try {
+            await policy.runLoad(async function checkNativeMethods() {
+                scope.assert.deepEqual(nativePolicyState().methods, before.methods);
+            });
+        } finally {
+            policy.takeRunErrors();
+        }
+        scope.assert.deepEqual(nativePolicyState(), before);
+        scope.assert.deepEqual(policy.takeRunErrors(), []);
+        return scope.assert.collect();
+    }),
+    test('all native IPC registration methods remain effective and are observed', async function (scope) {
+        const observations = await observeAllRegistrationMethods();
+        scope.assert.equal(observations.registered, registrationMethods.length);
+        scope.assert.deepEqual(
+            observations.errors.map(function observed(error) {
+                return {
+                    subtype: error.subtype,
+                    strictness: error
+                        .diagnostics
+                        .find(function strictness(diagnostic) {
+                            return diagnostic.label === 'strictness';
+                        })
+                        ?.value
+                };
+            }),
+            registrationMethods.map(function expectedObservation() {
+                return { subtype: 'runtime-policy', strictness: 'observed' };
+            })
+        );
+        return scope.assert.collect();
+    }),
+    test('owned IPC listener identity is exempt without suppressing user observations', function (scope) {
+        const owned = new WeakSet([ ignoredMessage ]);
+        const messages: string[] = [];
+        const stop = observeProcessIpcListeners(process, function record(message) {
+            messages.push(message);
+        }, owned);
+        try {
+            process.on('message', ignoredMessage);
+        } finally {
+            stop();
+            process.removeListener('message', ignoredMessage);
+        }
+        scope.assert.deepEqual(messages, []);
+        return scope.assert.collect();
+    })
+]);

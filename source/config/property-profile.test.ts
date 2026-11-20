@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import { normalizeConfig } from './config.ts';
 import { propertyProfileSchema } from './schema.ts';
@@ -17,7 +17,7 @@ function integrationProfile(config: NormalizedConfig): IntegrationProfileConfig 
     return profile;
 }
 
-export const testNode = suite('property profile', [
+export const testNode = authoredSuite('property profile', [
     test(
         'integration profiles resolve explicit property budgets and copy them independently',
         function (scope: TestScope) {
@@ -160,5 +160,3 @@ export const testNode = suite('property profile', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

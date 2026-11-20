@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { workerOutput } from '../test-support/worker-output.ts';
 import { testNode as workerTasks } from './worker-task-policy.test.ts';
 
-export const testNode = suite('worker output capture', [
+export const testNode = authoredSuite('worker output capture', [
     workerTasks,
     test('forwards stream bytes and monotonic timestamps to the worker port', function (scope: TestScope) {
         const fixture = workerOutput(scope);
@@ -81,4 +81,3 @@ export const testNode = suite('worker output capture', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

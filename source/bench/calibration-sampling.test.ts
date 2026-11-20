@@ -1,4 +1,5 @@
 import { getEventListeners } from 'node:events';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import type { BenchmarkScope } from '../engine/test-node.ts';
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import {
@@ -13,7 +14,6 @@ import {
     type MetricReading
 } from '../packages/bench/bench.entry-point.ts';
 import { startResources } from '../packages/resources/resources.entry-point.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
 import { sampleCalibration, createCalibrationSampler, type CalibrationSamplingInput } from './calibration-sampling.ts';
 import { calibrationResourceKey, collectBenchmarkNormalization } from './benchmark-normalization.ts';
@@ -129,8 +129,8 @@ function referenceExecution(input: CalibrationSamplingInput, executionId: string
         }
     };
 }
-export const testNode = suite('calibration sampling lifetimes', [
-    test('reads historical normalization contexts without an execution ID', function (scope: TestScope) {
+export const testNode = authoredSuite('calibration sampling lifetimes', [
+    authoredTest('reads historical normalization contexts without an execution ID', function (scope: TestScope) {
         const environment = calibrationScope(scope).benchmarkEnvironment;
         scope.require.defined(environment);
         const { normalization } = environment;
@@ -140,7 +140,7 @@ export const testNode = suite('calibration sampling lifetimes', [
         scope.assert.equal(restored.executionId, null);
         return scope.assert.collect();
     }),
-    test(
+    authoredTest(
         'reuses calibration across worker messages and refreshes it for a new execution',
         async function (scope: TestScope) {
             let samples = 0;
@@ -160,7 +160,7 @@ export const testNode = suite('calibration sampling lifetimes', [
             return scope.assert.collect();
         }
     ),
-    test(
+    authoredTest(
         'caches reference samples within a context and refreshes them for a new run',
         async function (scope: TestScope) {
             let samples = 0;
@@ -178,7 +178,7 @@ export const testNode = suite('calibration sampling lifetimes', [
         }
     ),
     ...[ false, true ].map(function missingContextCase(missingEnvironment) {
-        return test(
+        return authoredTest(
             `rejects missing ${missingEnvironment ? 'execution environment' : 'normalization context'}`,
             async function (scope: TestScope) {
                 const original = calibrationScope(scope);
@@ -202,46 +202,55 @@ export const testNode = suite('calibration sampling lifetimes', [
             }
         );
     }),
-    test('excludes warmup readings and cleans up every calibration invocation', async function (scope: TestScope) {
-        let calls = 0;
-        let cleaned = 0;
-        const input = samplingInput(calibrationScope(scope), function collectReference(context: ReferenceContext) {
-            calls += 1;
-            context.sample.cleanup(function () {
-                cleaned += 1;
+    authoredTest(
+        'excludes warmup readings and cleans up every calibration invocation',
+        async function (scope: TestScope) {
+            let calls = 0;
+            let cleaned = 0;
+            const input = samplingInput(calibrationScope(scope), function collectReference(context: ReferenceContext) {
+                calls += 1;
+                context.sample.cleanup(function () {
+                    cleaned += 1;
+                });
+                return measuredReference(context);
+            }, 16);
+            const result = await sampleCalibration(reference.identity, {
+                ...input,
+                lifecycle: { ...input.lifecycle, warmupSamples: 2 }
             });
-            return measuredReference(context);
-        }, 16);
-        const result = await sampleCalibration(reference.identity, {
-            ...input,
-            lifecycle: { ...input.lifecycle, warmupSamples: 2 }
-        });
-        scope.assert.equal(result.kind, 'comparable');
-        scope.assert.equal(calls, 18);
-        scope.assert.equal(cleaned, 18);
-        if (result.kind === 'comparable') {
-            scope.assert.deepEqual(
-                result.snapshot.samples,
-                Array.from({ length: 16 }, function () {
-                    return 200;
-                })
-            );
-        }
-        return scope.assert.collect();
-    }),
-    test('stops with retained samples when the precision limit is exhausted', async function (scope: TestScope) {
-        scope.assert.deepEqual(
-            await sampleCalibration(reference.identity, samplingInput(calibrationScope(scope), measuredReference, 2)),
-            {
-                kind: 'non-comparable',
-                reason: 'Calibration sampling limit reached before reference precision.',
-                samples: [ 200, 200 ]
+            scope.assert.equal(result.kind, 'comparable');
+            scope.assert.equal(calls, 18);
+            scope.assert.equal(cleaned, 18);
+            if (result.kind === 'comparable') {
+                scope.assert.deepEqual(
+                    result.snapshot.samples,
+                    Array.from({ length: 16 }, function () {
+                        return 200;
+                    })
+                );
             }
-        );
-        return scope.assert.collect();
-    }),
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest(
+        'stops with retained samples when the precision limit is exhausted',
+        async function (scope: TestScope) {
+            scope.assert.deepEqual(
+                await sampleCalibration(
+                    reference.identity,
+                    samplingInput(calibrationScope(scope), measuredReference, 2)
+                ),
+                {
+                    kind: 'non-comparable',
+                    reason: 'Calibration sampling limit reached before reference precision.',
+                    samples: [ 200, 200 ]
+                }
+            );
+            return scope.assert.collect();
+        }
+    ),
     ...[ 0, 2 ].map(function failedPhaseCase(warmupSamples) {
-        return test(
+        return authoredTest(
             `retains only measured evidence after a ${warmupSamples === 0 ? 'measurement' : 'warmup'} failure`,
             async function (scope: TestScope) {
                 let calls = 0;
@@ -274,7 +283,7 @@ export const testNode = suite('calibration sampling lifetimes', [
             }
         );
     }),
-    test('honors cancellation before taking a reference sample', async function (scope: TestScope) {
+    authoredTest('honors cancellation before taking a reference sample', async function (scope: TestScope) {
         const controller = new AbortController();
         const input = samplingInput({ ...calibrationScope(scope), signal: controller.signal }, measuredReference, 16);
         controller.abort('calibration cancelled');
@@ -285,7 +294,7 @@ export const testNode = suite('calibration sampling lifetimes', [
         });
         return scope.assert.collect();
     }),
-    test('disposes process sessions when a reference callback fails', async function (scope: TestScope) {
+    authoredTest('disposes process sessions when a reference callback fails', async function (scope: TestScope) {
         const controller = new AbortController();
         const input = samplingInput(
             { ...calibrationScope(scope), signal: controller.signal },
@@ -309,7 +318,7 @@ export const testNode = suite('calibration sampling lifetimes', [
         scope.assert.equal(getEventListeners(controller.signal, 'abort').length, listeners);
         return scope.assert.collect();
     }),
-    test('rejects unavailable requested garbage collection before sampling', async function (scope: TestScope) {
+    authoredTest('rejects unavailable requested garbage collection before sampling', async function (scope: TestScope) {
         const input = samplingInput(calibrationScope(scope), measuredReference, 16);
         scope.assert.deepEqual(
             await sampleCalibration(reference.identity, {
@@ -320,7 +329,7 @@ export const testNode = suite('calibration sampling lifetimes', [
         );
         return scope.assert.collect();
     }),
-    test('retains non-Error cancellation reasons from calibration sessions', async function (scope: TestScope) {
+    authoredTest('retains non-Error cancellation reasons from calibration sessions', async function (scope: TestScope) {
         const calibration = referenceResource();
         const rules = { value: { calibration, scaling: 'proportional' as const } };
         const cancellation = AbortSignal.abort('reference cancelled');
@@ -355,7 +364,7 @@ export const testNode = suite('calibration sampling lifetimes', [
         return scope.assert.collect();
     }),
     ...[ false, true ].map(function failedContextCase(cached) {
-        return test(
+        return authoredTest(
             `retains calibration evidence when a ${cached ? 'cached' : 'new'} resource loses its runner context`,
             async function (scope: TestScope) {
                 const calibration = referenceResource();

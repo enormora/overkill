@@ -1,12 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
 import { selectTestProfile } from '../run/test-profile.ts';
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
 import { defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
 import {
@@ -19,8 +14,6 @@ import { defineConfig } from './profile-config.ts';
 import type { LoadedConfig } from './config-loader.ts';
 import { normalizeCoveragePolicy } from './profile-normalization.ts';
 import type { MicrotestProfileConfig, ProfileConfig } from './types.ts';
-
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
 type ConfigModule = {
     readonly config: unknown;
@@ -70,473 +63,357 @@ function requireMicrotestProfile(
     return profile;
 }
 
-export const testNode = createOverkillSuite({
-    ...metadata,
+export const testNode = suite('source/config/config.test.ts', [
+    test('defineConfig() returns the project config unchanged', function (scope: OverkillScope) {
+        const projectConfig = { runtimeStateDir: 'target/overkill-state' };
 
-    title: 'source/config/config.test.ts',
+        scope.assert.equal(defineConfig(projectConfig), projectConfig);
 
-    children: [
-        createOverkillTestCase({
-            ...metadata,
+        return scope.assert.collect();
+    }),
+    test('loadConfig() returns defaults when no config exists', async function (scope: OverkillScope) {
+        const config = await createConfigModuleLoader({})({ configPath: null, cwd: configFixtureCwd });
 
-            title: 'defineConfig() returns the project config unchanged',
+        scope.assert.equal(config.configPath, null);
+        scope.assert.deepEqual(config.loader, { sourceMaps: false, stripMode: 'strip-only' });
+        scope.assert.equal(
+            typeof config.outputRenderer(createReportingContext({ projectRoot: null })).render,
+            'function'
+        );
+        scope.assert.deepEqual(config.profiles, {
+            microtest: defaultMicrotestProfile()
+        });
+        scope.assert.equal(config.reporters, null);
+        scope.assert.equal(config.runtimeStateDir, '.overkill');
 
-            body(scope: OverkillScope) {
-                const projectConfig = { runtimeStateDir: 'target/overkill-state' };
-
-                scope.assert.equal(defineConfig(projectConfig), projectConfig);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'loadConfig() returns defaults when no config exists',
-
-            async body(scope: OverkillScope) {
-                const config = await createConfigModuleLoader({})({ configPath: null, cwd: configFixtureCwd });
-
-                scope.assert.equal(config.configPath, null);
-                scope.assert.deepEqual(config.loader, { sourceMaps: false, stripMode: 'strip-only' });
-                scope.assert.equal(
-                    typeof config.outputRenderer(createReportingContext({ projectRoot: null })).render,
-                    'function'
-                );
-                scope.assert.deepEqual(config.profiles, {
-                    microtest: defaultMicrotestProfile()
-                });
-                scope.assert.equal(config.reporters, null);
-                scope.assert.equal(config.runtimeStateDir, '.overkill');
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'loadConfig() normalizes microtest coverage policy',
-
-            async body(scope: OverkillScope) {
-                const config = await loadConfigValue({
-                    profiles: {
-                        microtest: {
-                            coverage: {
-                                outputDir: 'target/coverage',
-                                outputs: [ 'text', 'json', 'text' ],
-                                sources: {
-                                    exclude: [ '**/*.generated.ts' ],
-                                    include: [ 'source/**/*.ts' ],
-                                    mode: 'all'
-                                },
-                                thresholds: { branches: 70, functions: 80, lines: 90 }
-                            },
-                            testFamily: 'microtest'
+        return scope.assert.collect();
+    }),
+    test('loadConfig() normalizes microtest coverage policy', async function (scope: OverkillScope) {
+        const config = await loadConfigValue({
+            profiles: {
+                microtest: {
+                    coverage: {
+                        outputDir: 'target/coverage',
+                        outputs: [ 'text', 'json', 'text' ],
+                        sources: {
+                            exclude: [ '**/*.generated.ts' ],
+                            include: [ 'source/**/*.ts' ],
+                            mode: 'all'
                         },
-                        loaded: {
-                            coverage: {
-                                outputDir: '/overkill-project/absolute-coverage',
-                                sources: { mode: 'loaded' }
-                            },
-                            testFamily: 'microtest'
-                        },
-                        raw: {
-                            coverage: { outputs: [] },
-                            testFamily: 'microtest'
-                        }
-                    }
-                });
-                const microtestProfile = requireMicrotestProfile(scope, config.profiles.microtest);
-                const loadedProfile = requireMicrotestProfile(scope, config.profiles.loaded);
-                const rawProfile = requireMicrotestProfile(scope, config.profiles.raw);
-
-                scope.assert.deepEqual(microtestProfile.coverage, {
-                    outputDirectory: resolvedConfigFixturePath('target/coverage'),
-                    outputs: [ 'text', 'json' ],
-                    sources: {
-                        exclude: [ '**/*.generated.ts' ],
-                        include: [ 'source/**/*.ts' ],
-                        mode: 'all'
+                        thresholds: { branches: 70, functions: 80, lines: 90 }
                     },
-                    thresholds: { branches: 70, functions: 80, lines: 90 }
-                });
-                scope.assert.deepEqual(rawProfile.coverage, {
-                    outputDirectory: null,
-                    outputs: [],
-                    sources: { exclude: [], mode: 'loaded' },
-                    thresholds: { branches: null, functions: null, lines: null }
-                });
-                scope.assert.deepEqual(loadedProfile.coverage, {
-                    outputDirectory: '/overkill-project/absolute-coverage',
-                    outputs: [ 'v8', 'lcov' ],
-                    sources: { exclude: [], mode: 'loaded' },
-                    thresholds: { branches: null, functions: null, lines: null }
-                });
-
-                return scope.assert.collect();
+                    testFamily: 'microtest'
+                },
+                loaded: {
+                    coverage: {
+                        outputDir: '/overkill-project/absolute-coverage',
+                        sources: { mode: 'loaded' }
+                    },
+                    testFamily: 'microtest'
+                },
+                raw: {
+                    coverage: { outputs: [] },
+                    testFamily: 'microtest'
+                }
             }
-        }),
-        createOverkillTestCase({
-            ...metadata,
+        });
+        const microtestProfile = requireMicrotestProfile(scope, config.profiles.microtest);
+        const loadedProfile = requireMicrotestProfile(scope, config.profiles.loaded);
+        const rawProfile = requireMicrotestProfile(scope, config.profiles.raw);
 
-            title: 'coverage output directories require a loaded config file',
+        scope.assert.deepEqual(microtestProfile.coverage, {
+            outputDirectory: resolvedConfigFixturePath('target/coverage'),
+            outputs: [ 'text', 'json' ],
+            sources: {
+                exclude: [ '**/*.generated.ts' ],
+                include: [ 'source/**/*.ts' ],
+                mode: 'all'
+            },
+            thresholds: { branches: 70, functions: 80, lines: 90 }
+        });
+        scope.assert.deepEqual(rawProfile.coverage, {
+            outputDirectory: null,
+            outputs: [],
+            sources: { exclude: [], mode: 'loaded' },
+            thresholds: { branches: null, functions: null, lines: null }
+        });
+        scope.assert.deepEqual(loadedProfile.coverage, {
+            outputDirectory: '/overkill-project/absolute-coverage',
+            outputs: [ 'v8', 'lcov' ],
+            sources: { exclude: [], mode: 'loaded' },
+            thresholds: { branches: null, functions: null, lines: null }
+        });
 
-            body(scope: OverkillScope) {
-                scope.assert.throws(function normalizeOutputWithoutConfig() {
-                    normalizeCoveragePolicy({ outputDir: 'coverage' }, null);
-                }, { message: 'Coverage outputDir requires a loaded config file.' });
+        return scope.assert.collect();
+    }),
+    test('coverage output directories require a loaded config file', function (scope: OverkillScope) {
+        scope.assert.throws(function normalizeOutputWithoutConfig() {
+            normalizeCoveragePolicy({ outputDir: 'coverage' }, null);
+        }, { message: 'Coverage outputDir requires a loaded config file.' });
 
-                return scope.assert.collect();
+        return scope.assert.collect();
+    }),
+    test('loadConfig() normalizes timing policies', async function (scope: OverkillScope) {
+        const config = await loadConfigValue({
+            profiles: {
+                precise: {
+                    failureArtifacts: defaultFailureArtifactPolicy,
+                    testFamily: 'microtest',
+                    timings: { collection: 'precise' }
+                },
+                summary: {
+                    failureArtifacts: defaultFailureArtifactPolicy,
+                    testFamily: 'microtest',
+                    timings: { collection: 'summary' }
+                }
             }
-        }),
-        createOverkillTestCase({
-            ...metadata,
+        });
+        assertProfileTiming(scope, config, 'microtest', 'summary');
+        assertProfileTiming(scope, config, 'precise', 'precise');
+        assertProfileTiming(scope, config, 'summary', 'summary');
 
-            title: 'loadConfig() normalizes timing policies',
+        return scope.assert.collect();
+    }),
+    test('loadConfig() discovers a native TypeScript named config export', async function (scope: OverkillScope) {
+        const config = await loadConfigFromModule(
+            'overkill.config.ts',
+            configModule({
+                loader: { sourceMaps: true, stripMode: 'strip-only' },
+                runtimeStateDir: 'target/overkill-state'
+            })
+        );
 
-            async body(scope: OverkillScope) {
-                const config = await loadConfigValue({
-                    profiles: {
-                        precise: {
-                            failureArtifacts: defaultFailureArtifactPolicy,
-                            testFamily: 'microtest',
-                            timings: { collection: 'precise' }
+        scope.assert.equal(config.configPath, resolvedConfigFixturePath('overkill.config.ts'));
+        scope.assert.deepEqual(config.loader, { sourceMaps: true, stripMode: 'strip-only' });
+        assertDefaultMicrotestProcessUsage(scope, config);
+        scope.assert.equal(config.reporters, null);
+        scope.assert.equal(config.runtimeStateDir, 'target/overkill-state');
+
+        return scope.assert.collect();
+    }),
+    test('loadConfig() discovers a JavaScript named config export', async function (scope: OverkillScope) {
+        const config = await loadConfigValue({ runtimeStateDir: 'target/js-config-state' });
+
+        scope.assert.equal(config.configPath, resolvedConfigFixturePath('overkill.config.js'));
+        scope.assert.equal(config.runtimeStateDir, 'target/js-config-state');
+
+        return scope.assert.collect();
+    }),
+    test('loadConfig() loads microtest process usage policy', async function (scope: OverkillScope) {
+        const config = await loadConfigValue({
+            profiles: {
+                microtest: {
+                    testFamily: 'microtest',
+                    processUsage: {
+                        measure: true,
+                        budgets: {
+                            activeResourceCount: 4,
+                            javaScriptEngineHeapBytes: 100,
+                            residentSetBytes: 200,
+                            residentSetGrowthBytesPerSecond: 50
                         },
-                        summary: {
-                            failureArtifacts: defaultFailureArtifactPolicy,
-                            testFamily: 'microtest',
-                            timings: { collection: 'summary' }
-                        }
+                        samplingIntervalMilliseconds: 25
                     }
-                });
-                assertProfileTiming(scope, config, 'microtest', 'summary');
-                assertProfileTiming(scope, config, 'precise', 'precise');
-                assertProfileTiming(scope, config, 'summary', 'summary');
-
-                return scope.assert.collect();
+                }
             }
-        }),
-        createOverkillTestCase({
-            ...metadata,
+        });
+        const profile = selectTestProfile('microtest', config);
 
-            title: 'loadConfig() discovers a native TypeScript named config export',
+        scope.require.defined(profile);
+        scope.assert.deepEqual(
+            profile,
+            defaultMicrotestProfile({
+                processUsage: {
+                    budgets: {
+                        activeResourceCount: 4,
+                        javaScriptEngineHeapBytes: 100,
+                        residentSetBytes: 200,
+                        residentSetGrowthBytesPerSecond: 50
+                    },
+                    measure: true,
+                    samplingIntervalMilliseconds: 25
+                }
+            })
+        );
 
-            async body(scope: OverkillScope) {
-                const config = await loadConfigFromModule(
-                    'overkill.config.ts',
-                    configModule({
-                        loader: { sourceMaps: true, stripMode: 'strip-only' },
-                        runtimeStateDir: 'target/overkill-state'
-                    })
-                );
-
-                scope.assert.equal(config.configPath, resolvedConfigFixturePath('overkill.config.ts'));
-                scope.assert.deepEqual(config.loader, { sourceMaps: true, stripMode: 'strip-only' });
-                assertDefaultMicrotestProcessUsage(scope, config);
-                scope.assert.equal(config.reporters, null);
-                scope.assert.equal(config.runtimeStateDir, 'target/overkill-state');
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'loadConfig() discovers a JavaScript named config export',
-
-            async body(scope: OverkillScope) {
-                const config = await loadConfigValue({ runtimeStateDir: 'target/js-config-state' });
-
-                scope.assert.equal(config.configPath, resolvedConfigFixturePath('overkill.config.js'));
-                scope.assert.equal(config.runtimeStateDir, 'target/js-config-state');
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'loadConfig() loads microtest process usage policy',
-
-            async body(scope: OverkillScope) {
-                const config = await loadConfigValue({
-                    profiles: {
-                        microtest: {
-                            testFamily: 'microtest',
-                            processUsage: {
-                                measure: true,
-                                budgets: {
-                                    activeResourceCount: 4,
-                                    javaScriptEngineHeapBytes: 100,
-                                    residentSetBytes: 200,
-                                    residentSetGrowthBytesPerSecond: 50
-                                },
-                                samplingIntervalMilliseconds: 25
-                            }
-                        }
+        return scope.assert.collect();
+    }),
+    test('loadConfig() normalizes named profile overrides', async function (scope: OverkillScope) {
+        const config = await loadConfigValue({
+            profiles: {
+                microtest: {
+                    testFamily: 'microtest',
+                    processUsage: {
+                        measure: true,
+                        samplingIntervalMilliseconds: 25
                     }
-                });
-                const profile = selectTestProfile('microtest', config);
+                },
+                safe: {
+                    testFamily: 'microtest',
+                    execution: {
+                        maxConcurrency: 'unlimited',
+                        processModel: 'in-process',
+                        scheduling: 'serial'
+                    },
+                    processUsage: {
+                        measure: true,
+                        budgets: { residentSetBytes: null }
+                    },
+                    timeouts: { hardMilliseconds: 2000 }
+                }
+            }
+        });
+        const profile = selectTestProfile('safe', config);
 
-                scope.require.defined(profile);
-                scope.assert.deepEqual(
-                    profile,
-                    defaultMicrotestProfile({
+        scope.require.defined(profile);
+        scope.assert.deepEqual(
+            profile,
+            defaultMicrotestProfile({
+                execution: {
+                    maxConcurrency: 'unlimited',
+                    processModel: 'in-process',
+                    scheduling: 'serial'
+                },
+                processUsage: {
+                    budgets: { residentSetBytes: null },
+                    measure: true
+                },
+                timeouts: { hardMilliseconds: 2000 }
+            })
+        );
+
+        return scope.assert.collect();
+    }),
+    test('loadConfig() normalizes unmeasured named profile overrides', async function (scope: OverkillScope) {
+        const config = await loadConfigValue({
+            profiles: {
+                safe: {
+                    testFamily: 'microtest',
+                    timeouts: {
+                        hardMilliseconds: 2000,
+                        softMilliseconds: 300
+                    }
+                }
+            }
+        });
+        const profile = selectTestProfile('safe', config);
+
+        scope.require.defined(profile);
+        scope.assert.deepEqual(
+            profile,
+            defaultMicrotestProfile({
+                timeouts: {
+                    hardMilliseconds: 2000,
+                    softMilliseconds: 300
+                }
+            })
+        );
+
+        return scope.assert.collect();
+    }),
+    test('loadConfig() inherits unmeasured named profile defaults', async function (scope: OverkillScope) {
+        const config = await loadConfigValue({
+            profiles: {
+                safe: {
+                    testFamily: 'microtest',
+                    processUsage: { measure: false }
+                }
+            }
+        });
+        const profile = selectTestProfile('safe', config);
+
+        scope.require.defined(profile);
+        scope.assert.deepEqual(profile, defaultMicrotestProfile());
+
+        return scope.assert.collect();
+    }),
+    test('loadConfig() rejects unknown config keys', async function (scope: OverkillScope) {
+        await scope.assert.rejects(async function loadInvalidConfig() {
+            await loadConfigValue({ include: [ 'source' ] });
+        }, { message: /unexpected additional property: "include"/ });
+
+        return scope.assert.collect();
+    }),
+    test('loadConfig() rejects profiles without a test family', async function (scope: OverkillScope) {
+        await scope.assert.rejects(async function loadInvalidConfig() {
+            await loadConfigValue({
+                profiles: { microtest: {} }
+            });
+        }, { message: /testFamily/ });
+
+        return scope.assert.collect();
+    }),
+    test('loadConfig() rejects unsupported profile test families', async function (scope: OverkillScope) {
+        await scope.assert.rejects(async function loadInvalidConfig() {
+            await loadConfigValue({
+                profiles: {
+                    backend: { testFamily: 'unknown-family' }
+                }
+            });
+        }, { message: /testFamily/ });
+
+        return scope.assert.collect();
+    }),
+    test('loadConfig() rejects process budgets without measurement', async function (scope: OverkillScope) {
+        await scope.assert.rejects(async function loadInvalidConfig() {
+            await loadConfigValue({
+                profiles: {
+                    microtest: {
+                        testFamily: 'microtest',
                         processUsage: {
-                            budgets: {
-                                activeResourceCount: 4,
-                                javaScriptEngineHeapBytes: 100,
-                                residentSetBytes: 200,
-                                residentSetGrowthBytesPerSecond: 50
-                            },
+                            budgets: { residentSetBytes: 200 }
+                        }
+                    }
+                }
+            });
+        }, { message: /Invalid config file/ });
+
+        return scope.assert.collect();
+    }),
+    test('loadConfig() rejects invalid process usage numbers', async function (scope: OverkillScope) {
+        await scope.assert.rejects(async function loadInvalidConfig() {
+            await loadConfigValue({
+                profiles: {
+                    microtest: {
+                        testFamily: 'microtest',
+                        processUsage: {
                             measure: true,
-                            samplingIntervalMilliseconds: 25
-                        }
-                    })
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'loadConfig() normalizes named profile overrides',
-
-            async body(scope: OverkillScope) {
-                const config = await loadConfigValue({
-                    profiles: {
-                        microtest: {
-                            testFamily: 'microtest',
-                            processUsage: {
-                                measure: true,
-                                samplingIntervalMilliseconds: 25
-                            }
-                        },
-                        safe: {
-                            testFamily: 'microtest',
-                            execution: {
-                                maxConcurrency: 'unlimited',
-                                processModel: 'in-process',
-                                scheduling: 'serial'
-                            },
-                            processUsage: {
-                                measure: true,
-                                budgets: { residentSetBytes: null }
-                            },
-                            timeouts: { hardMilliseconds: 2000 }
+                            samplingIntervalMilliseconds: 0
                         }
                     }
-                });
-                const profile = selectTestProfile('safe', config);
+                }
+            });
+        }, { message: /positive safe integer/ });
 
-                scope.require.defined(profile);
-                scope.assert.deepEqual(
-                    profile,
-                    defaultMicrotestProfile({
-                        execution: {
-                            maxConcurrency: 'unlimited',
-                            processModel: 'in-process',
-                            scheduling: 'serial'
-                        },
+        return scope.assert.collect();
+    }),
+    test('loadConfig() rejects unknown microtest profile keys', async function (scope: OverkillScope) {
+        await scope.assert.rejects(async function loadInvalidConfig() {
+            await loadConfigValue({
+                profiles: {
+                    microtest: {
+                        testFamily: 'microtest',
                         processUsage: {
-                            budgets: { residentSetBytes: null },
-                            measure: true
+                            measure: true,
+                            budgets: {}
                         },
-                        timeouts: { hardMilliseconds: 2000 }
-                    })
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'loadConfig() normalizes unmeasured named profile overrides',
-
-            async body(scope: OverkillScope) {
-                const config = await loadConfigValue({
-                    profiles: {
-                        safe: {
-                            testFamily: 'microtest',
-                            timeouts: {
-                                hardMilliseconds: 2000,
-                                softMilliseconds: 300
-                            }
-                        }
+                        unknownPolicy: true
                     }
-                });
-                const profile = selectTestProfile('safe', config);
+                }
+            });
+        }, { message: /unexpected additional property/ });
 
-                scope.require.defined(profile);
-                scope.assert.deepEqual(
-                    profile,
-                    defaultMicrotestProfile({
-                        timeouts: {
-                            hardMilliseconds: 2000,
-                            softMilliseconds: 300
-                        }
-                    })
-                );
+        return scope.assert.collect();
+    }),
+    test('loadConfig() rejects invalid profile names', async function (scope: OverkillScope) {
+        await scope.assert.rejects(async function loadInvalidConfig() {
+            await loadConfigValue({
+                profiles: {
+                    'backend/http': { testFamily: 'microtest' }
+                }
+            });
+        }, { message: /Invalid profile name "backend\/http"/ });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'loadConfig() inherits unmeasured named profile defaults',
-
-            async body(scope: OverkillScope) {
-                const config = await loadConfigValue({
-                    profiles: {
-                        safe: {
-                            testFamily: 'microtest',
-                            processUsage: { measure: false }
-                        }
-                    }
-                });
-                const profile = selectTestProfile('safe', config);
-
-                scope.require.defined(profile);
-                scope.assert.deepEqual(profile, defaultMicrotestProfile());
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'loadConfig() rejects unknown config keys',
-
-            async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadConfigValue({ include: [ 'source' ] });
-                }, { message: /unexpected additional property: "include"/ });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'loadConfig() rejects profiles without a test family',
-
-            async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadConfigValue({
-                        profiles: { microtest: {} }
-                    });
-                }, { message: /testFamily/ });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'loadConfig() rejects unsupported profile test families',
-
-            async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadConfigValue({
-                        profiles: {
-                            backend: { testFamily: 'unknown-family' }
-                        }
-                    });
-                }, { message: /testFamily/ });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'loadConfig() rejects process budgets without measurement',
-
-            async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadConfigValue({
-                        profiles: {
-                            microtest: {
-                                testFamily: 'microtest',
-                                processUsage: {
-                                    budgets: { residentSetBytes: 200 }
-                                }
-                            }
-                        }
-                    });
-                }, { message: /Invalid config file/ });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'loadConfig() rejects invalid process usage numbers',
-
-            async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadConfigValue({
-                        profiles: {
-                            microtest: {
-                                testFamily: 'microtest',
-                                processUsage: {
-                                    measure: true,
-                                    samplingIntervalMilliseconds: 0
-                                }
-                            }
-                        }
-                    });
-                }, { message: /positive safe integer/ });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'loadConfig() rejects unknown microtest profile keys',
-
-            async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadConfigValue({
-                        profiles: {
-                            microtest: {
-                                testFamily: 'microtest',
-                                processUsage: {
-                                    measure: true,
-                                    budgets: {}
-                                },
-                                unknownPolicy: true
-                            }
-                        }
-                    });
-                }, { message: /unexpected additional property/ });
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            ...metadata,
-
-            title: 'loadConfig() rejects invalid profile names',
-
-            async body(scope: OverkillScope) {
-                await scope.assert.rejects(async function loadInvalidConfig() {
-                    await loadConfigValue({
-                        profiles: {
-                            'backend/http': { testFamily: 'microtest' }
-                        }
-                    });
-                }, { message: /Invalid profile name "backend\/http"/ });
-
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

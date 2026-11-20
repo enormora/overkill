@@ -1,10 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { PlacementPlan } from './run-types.ts';
 import { executeWorkerPoolUnits } from './worker-pool-execution.ts';
 import {
@@ -380,11 +376,11 @@ async function assertRetainedHardKeyLease(scope: OverkillScope, controlledPool: 
     scope.assert.equal(controlledPool.pendingCount(), 1);
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-placement-tasks.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool execution accepts group units',
             async body(scope: OverkillScope) {
@@ -408,7 +404,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool execution applies unit scheduling and lifecycle',
             async body(scope: OverkillScope) {
@@ -428,7 +424,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool static dispatch runs only units assigned to each lane',
             async body(scope: OverkillScope) {
@@ -447,7 +443,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatch leases compatible pending work to idle lanes',
             async body(scope: OverkillScope) {
@@ -462,7 +458,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatch preserves frozen fault-domain quotas',
             async body(scope: OverkillScope) {
@@ -478,7 +474,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatch prioritizes duration-history load',
             async body(scope: OverkillScope) {
@@ -491,7 +487,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatch releases failed hard and fault reservations',
             async body(scope: OverkillScope) {
@@ -511,7 +507,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool dynamic dispatch keeps hard-key leases on their lane',
             async body(scope: OverkillScope) {
@@ -529,5 +525,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

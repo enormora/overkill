@@ -1,8 +1,7 @@
 import { readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { type TestScope, test as authoredTest, suite as authoredSuite } from '@overkill-dev/test';
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import {
     type ReplayProject,
@@ -132,12 +131,12 @@ async function assertUnconfirmedInputs(scope: TestScope, result: RunResult, proj
     }));
 }
 
-export const testNode = suite(
+export const testNode = authoredSuite(
     'runner linearizability contracts',
     [
         ...([ 'in-process', 'supervised-process' ] as const).flatMap(function executionMode(processModel) {
             return [ false, true ].map(function composition(nested) {
-                return test(
+                return authoredTest(
                     `${processModel} replays ${nested ? 'nested' : 'direct'} linearizability inputs`,
                     async function (scope: TestScope) {
                         const project = await replayProject(scope, {
@@ -163,22 +162,24 @@ export const testNode = suite(
             });
         }),
         ...([ 'in-process', 'supervised-process' ] as const).map(function unstable(processModel) {
-            return test(`${processModel} does not persist unconfirmed inputs`, async function (scope: TestScope) {
-                const project = await replayProject(scope, {
-                    testFamily: 'property',
-                    files: { include: [ 'case.test.ts' ] },
-                    execution: { processModel, scheduling: 'serial' },
-                    property: { newTrials: 1, maxAutomaticEdges: 0, maxExhaustiveValues: 0 },
-                    timeouts: { collectionMilliseconds: 30_000, softMilliseconds: 5000, hardMilliseconds: 10_000 }
-                });
-                await writeReplayCase(project, linearizabilitySource(false, 'unstable'));
-                const result = await orchestrator.run(project.command);
-                scope.assert.equal(result.summary.failed, 1);
-                scope.assert.deepEqual(result.runnerErrors, []);
-                await assertUnconfirmedInputs(scope, result, project);
-                return scope.assert.collect();
-            });
+            return authoredTest(
+                `${processModel} does not persist unconfirmed inputs`,
+                async function (scope: TestScope) {
+                    const project = await replayProject(scope, {
+                        testFamily: 'property',
+                        files: { include: [ 'case.test.ts' ] },
+                        execution: { processModel, scheduling: 'serial' },
+                        property: { newTrials: 1, maxAutomaticEdges: 0, maxExhaustiveValues: 0 },
+                        timeouts: { collectionMilliseconds: 30_000, softMilliseconds: 5000, hardMilliseconds: 10_000 }
+                    });
+                    await writeReplayCase(project, linearizabilitySource(false, 'unstable'));
+                    const result = await orchestrator.run(project.command);
+                    scope.assert.equal(result.summary.failed, 1);
+                    scope.assert.deepEqual(result.runnerErrors, []);
+                    await assertUnconfirmedInputs(scope, result, project);
+                    return scope.assert.collect();
+                }
+            );
         })
     ]
 );
-await runIfMain(import.meta, testNode);

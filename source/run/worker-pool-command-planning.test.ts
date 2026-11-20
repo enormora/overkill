@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
     defaultIntegrationProfile,
     defaultMicrotestProfile,
@@ -15,10 +11,7 @@ import { testNode as hostPlans } from './host-plan-policy.test.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import type { RunCommand } from './run-types.ts';
 import { configuredFilesRunCollectionSource } from './run-collection-source.ts';
-import {
-    createSupervisedCollectCommand,
-    createWorkerPoolCommand
-} from './run-isolated-command.ts';
+import { createSupervisedCollectCommand, createWorkerPoolCommand } from './run-isolated-command.ts';
 
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const secondIntegrationPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
@@ -65,118 +58,95 @@ function discoveredFiles(): DiscoveredFiles {
     ];
 }
 
-export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-command-planning.test.ts',
-    children: [
-        hostPlans,
-        transport,
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'isolated command builders map integration profiles to worker commands',
-            body(scope: OverkillScope) {
-                const profile = defaultIntegrationProfile({
-                    execution: { processModel: 'worker-pool', scheduling: 'serial' },
-                    files: { exclude: [], include: [ integrationPath ] },
-                    timeouts: { collectionMilliseconds: 17, hardMilliseconds: 23, softMilliseconds: 19 }
-                });
-                const command = createRunCommand(profile);
+export const testNode = suite('source/run/worker-pool-command-planning.test.ts', [
+    hostPlans,
+    transport,
+    test('isolated command builders map integration profiles to worker commands', function (scope: OverkillScope) {
+        const profile = defaultIntegrationProfile({
+            execution: { processModel: 'worker-pool', scheduling: 'serial' },
+            files: { exclude: [], include: [ integrationPath ] },
+            timeouts: { collectionMilliseconds: 17, hardMilliseconds: 23, softMilliseconds: 19 }
+        });
+        const command = createRunCommand(profile);
 
-                scope.assert.deepEqual(
-                    createSupervisedCollectCommand(command, profile, discoveredFiles(), {
-                        projectRoot: process.cwd(),
-                        source: configuredFilesRunCollectionSource,
-                        normalization: null
-                    })
-                        .capabilityRestrictions,
-                    { mode: 'disabled' }
-                );
-                scope.assert.deepEqual(
-                    createWorkerPoolCommand({
-                        projectRoot: process.cwd(),
-                        benchmarkNormalization: null,
-                        command,
-                        definitionLocationCapture: 'enabled',
-                        files: discoveredFiles(),
-                        profile,
-                        source: configuredFilesRunCollectionSource
-                    })
-                        .paths,
-                    [
-                        integrationPath,
-                        secondIntegrationPath
-                    ]
-                );
+        scope.assert.deepEqual(
+            createSupervisedCollectCommand(command, profile, discoveredFiles(), {
+                projectRoot: process.cwd(),
+                source: configuredFilesRunCollectionSource,
+                normalization: null
+            })
+                .capabilityRestrictions,
+            { mode: 'disabled' }
+        );
+        scope.assert.deepEqual(
+            createWorkerPoolCommand({
+                projectRoot: process.cwd(),
+                benchmarkNormalization: null,
+                command,
+                definitionLocationCapture: 'enabled',
+                files: discoveredFiles(),
+                profile,
+                source: configuredFilesRunCollectionSource
+            })
+                .paths,
+            [
+                integrationPath,
+                secondIntegrationPath
+            ]
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker pool command builders preserve non-worker-pool integration execution',
-            body(scope: OverkillScope) {
-                const profile = defaultIntegrationProfile({
-                    execution: { processModel: 'supervised-process', scheduling: 'serial' },
-                    files: { exclude: [], include: [ integrationPath ] },
-                    timeouts: { collectionMilliseconds: 17, hardMilliseconds: 23, softMilliseconds: 19 }
-                });
-                const command = createRunCommand(profile);
-                const workerCommand = createWorkerPoolCommand({
-                    projectRoot: process.cwd(),
-                    benchmarkNormalization: null,
-                    command,
-                    definitionLocationCapture: 'disabled',
-                    files: discoveredFiles(),
-                    profile,
-                    source: configuredFilesRunCollectionSource
-                });
+        return scope.assert.collect();
+    }),
+    test(
+        'worker pool command builders preserve non-worker-pool integration execution',
+        function (scope: OverkillScope) {
+            const profile = defaultIntegrationProfile({
+                execution: { processModel: 'supervised-process', scheduling: 'serial' },
+                files: { exclude: [], include: [ integrationPath ] },
+                timeouts: { collectionMilliseconds: 17, hardMilliseconds: 23, softMilliseconds: 19 }
+            });
+            const command = createRunCommand(profile);
+            const workerCommand = createWorkerPoolCommand({
+                projectRoot: process.cwd(),
+                benchmarkNormalization: null,
+                command,
+                definitionLocationCapture: 'disabled',
+                files: discoveredFiles(),
+                profile,
+                source: configuredFilesRunCollectionSource
+            });
 
-                scope.assert.deepEqual(workerCommand.hostProcess, { kind: 'direct' });
-                scope.assert.equal(workerCommand.workerLifecycle, 'reuse');
-                scope.assert.equal(workerCommand.definitionLocationCapture, 'disabled');
+            scope.assert.deepEqual(workerCommand.hostProcess, { kind: 'direct' });
+            scope.assert.equal(workerCommand.workerLifecycle, 'reuse');
+            scope.assert.equal(workerCommand.definitionLocationCapture, 'disabled');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'isolated command builders reject in-process engine instances',
-            body(scope: OverkillScope) {
-                const profile = defaultIntegrationProfile({
-                    execution: { processModel: 'worker-pool', scheduling: 'serial' },
-                    files: { exclude: [], include: [ integrationPath ] }
-                });
-                const command: RunCommand = {
-                    ...createRunCommand(profile),
-                    engine: { engine: defaultRunEngine, kind: 'instance' }
-                };
+            return scope.assert.collect();
+        }
+    ),
+    test('isolated command builders reject in-process engine instances', function (scope: OverkillScope) {
+        const profile = defaultIntegrationProfile({
+            execution: { processModel: 'worker-pool', scheduling: 'serial' },
+            files: { exclude: [], include: [ integrationPath ] }
+        });
+        const command: RunCommand = {
+            ...createRunCommand(profile),
+            engine: { engine: defaultRunEngine, kind: 'instance' }
+        };
 
-                scope.assert.throws(function createCommandForInstanceEngine() {
-                    createWorkerPoolCommand({
-                        projectRoot: process.cwd(),
-                        benchmarkNormalization: null,
-                        command,
-                        definitionLocationCapture: 'enabled',
-                        files: discoveredFiles(),
-                        profile,
-                        source: configuredFilesRunCollectionSource
-                    });
-                }, {
-                    message: 'Instance engines cannot run in supervised children.'
-                });
+        scope.assert.throws(function createCommandForInstanceEngine() {
+            createWorkerPoolCommand({
+                projectRoot: process.cwd(),
+                benchmarkNormalization: null,
+                command,
+                definitionLocationCapture: 'enabled',
+                files: discoveredFiles(),
+                profile,
+                source: configuredFilesRunCollectionSource
+            });
+        }, {
+            message: 'Instance engines cannot run in supervised children.'
+        });
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

@@ -1,4 +1,5 @@
-import { suite } from '../test/test.entry-point.ts';
+import { suite as authoredSuite } from '@overkill-dev/test';
+
 import { testNode as sandbox } from './mutation-sandbox-policy.test.ts';
 import { testNode as profileTestNode } from './microtest-profile.test.ts';
 import { testNode as instrumentationTestNode } from './instrumentation-context.test.ts';
@@ -12,7 +13,7 @@ import { testNode as campaignClient } from './campaign-client.test.ts';
 
 import { testNode as campaignWorker } from './campaign-worker.test.ts';
 
-export const testNode = suite('Stryker runner', [
+export const testNode = authoredSuite('Stryker runner', [
     sandbox,
     profileTestNode,
     instrumentationTestNode,

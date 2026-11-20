@@ -1,4 +1,5 @@
-import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import type { TestScope } from '../engine/engine.entry-point.ts';
 import { passingResult, runCommandLine } from '../../test-support/command-line-test-driver.ts';
 
 const emptyTestData = {
@@ -6,14 +7,10 @@ const emptyTestData = {
     controls: {}
 };
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
+export const testNode = suite({
     title: 'source/packages/test/command-line-runner-timings.test.ts',
-    annotations: {},
-    controls: {},
     children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper parses run timings flag',
             ...emptyTestData,
             async body(scope: TestScope) {
@@ -29,8 +26,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+        test({
             title: 'overkill wrapper rejects timings flag for list',
             ...emptyTestData,
             async body(scope: TestScope) {

@@ -1,8 +1,7 @@
 import { mkdtemp, readFile, writeFile, rm, mkdir, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { test, suite, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import { propertyCorpusPolicySchema } from '../config/property-corpus.ts';
 import { propertyCorpusEntry as entry } from '../test-support/property-corpus.ts';
 import { readPropertyCorpus, savePropertyCorpus } from './property-corpus-storage.ts';
@@ -51,7 +50,7 @@ async function damageCachedInput(directory: string, content: string | null): Pro
     }
 }
 
-export const testNode = suite('property corpus storage', [
+export const testNode = authoredSuite('property corpus storage', [
     ...[ {
         name: 'missing',
         content: null,
@@ -62,19 +61,22 @@ export const testNode = suite('property corpus storage', [
         reason: 'identity differs'
     } ]
         .map(function damagedReference(input) {
-            return test(`diagnoses ${input.name} referenced inputs without scheduling them`, async function (scope) {
-                const directory = await corpusDirectory(scope);
-                const policy = propertyCorpusPolicySchema.parse({});
-                await savePropertyCorpus(directory, 'laws', policy, [ entry ]);
-                await damageCachedInput(directory, input.content);
-                const snapshot = await readPropertyCorpus(directory, directory, 'laws', policy);
-                scope.assert.deepEqual(snapshot.localCache, []);
-                scope.assert.equal(snapshot.diagnostics.length, 1);
-                scope.assert.equal(snapshot.diagnostics[0]?.reason.includes(input.reason), true);
-                return scope.assert.collect();
-            });
+            return authoredTest(
+                `diagnoses ${input.name} referenced inputs without scheduling them`,
+                async function (scope) {
+                    const directory = await corpusDirectory(scope);
+                    const policy = propertyCorpusPolicySchema.parse({});
+                    await savePropertyCorpus(directory, 'laws', policy, [ entry ]);
+                    await damageCachedInput(directory, input.content);
+                    const snapshot = await readPropertyCorpus(directory, directory, 'laws', policy);
+                    scope.assert.deepEqual(snapshot.localCache, []);
+                    scope.assert.equal(snapshot.diagnostics.length, 1);
+                    scope.assert.equal(snapshot.diagnostics[0]?.reason.includes(input.reason), true);
+                    return scope.assert.collect();
+                }
+            );
         }),
-    test('prunes superseded supported input files after publishing the bounded index', async function (scope) {
+    authoredTest('prunes superseded supported input files after publishing the bounded index', async function (scope) {
         const directory = await corpusDirectory(scope);
         const policy = propertyCorpusPolicySchema.parse({ localCache: { maxEntries: 1 } });
         await savePropertyCorpus(directory, 'laws', policy, [ entry ]);
@@ -94,7 +96,7 @@ export const testNode = suite('property corpus storage', [
         );
         return scope.assert.collect();
     }),
-    test('rejects unreadable input directories instead of replacing their index', async function (scope) {
+    authoredTest('rejects unreadable input directories instead of replacing their index', async function (scope) {
         const directory = await corpusDirectory(scope);
         const policy = propertyCorpusPolicySchema.parse({});
         await savePropertyCorpus(directory, 'laws', policy, [ entry ]);
@@ -107,7 +109,7 @@ export const testNode = suite('property corpus storage', [
         }, { code: 'ENOTDIR' });
         return scope.assert.collect();
     }),
-    test('recovers a corrupt local cache on the next save', async function (scope) {
+    authoredTest('recovers a corrupt local cache on the next save', async function (scope) {
         const directory = await corruptCorpus(scope);
         const policy = propertyCorpusPolicySchema.parse({});
         const corrupt = await readPropertyCorpus(directory, directory, 'laws', policy);
@@ -119,7 +121,7 @@ export const testNode = suite('property corpus storage', [
         scope.assert.deepEqual(recovered.localCache, [ entry ]);
         return scope.assert.collect();
     }),
-    test('rebuilds a missing index from saved inputs', async function (scope) {
+    authoredTest('rebuilds a missing index from saved inputs', async function (scope) {
         const directory = await corpusDirectory(scope);
         const policy = propertyCorpusPolicySchema.parse({});
         await savePropertyCorpus(directory, 'laws', policy, [ entry ]);
@@ -129,14 +131,14 @@ export const testNode = suite('property corpus storage', [
         scope.assert.deepEqual(recovered.diagnostics, []);
         return scope.assert.collect();
     }),
-    test('discovers nested checked-in directories and deduplicates named paths', async function (scope) {
+    authoredTest('discovers nested checked-in directories and deduplicates named paths', async function (scope) {
         const directory = await checkedInDirectory(scope);
         const policy = propertyCorpusPolicySchema.parse({ checkedIn: [ 'regressions', 'regressions/a.json' ] });
         const snapshot = await readPropertyCorpus(directory, directory, 'laws', policy);
         scope.assert.deepEqual(snapshot.checkedIn, [ entry, { ...structuredClone(entry), seed: '7' } ]);
         return scope.assert.collect();
     }),
-    test('preserves both inputs from concurrent cache writers', async function (scope) {
+    authoredTest('preserves both inputs from concurrent cache writers', async function (scope) {
         const directory = await corpusDirectory(scope);
         const policy = propertyCorpusPolicySchema.parse({});
         const other = { ...entry, counterexample: { ...entry.counterexample, payload: [ 43 ] } };
@@ -154,7 +156,7 @@ export const testNode = suite('property corpus storage', [
         }));
         return scope.assert.collect();
     }),
-    test('deduplicates entries and keeps profiles separate', async function (scope) {
+    authoredTest('deduplicates entries and keeps profiles separate', async function (scope) {
         const directory = await corpusDirectory(scope);
         const policy = propertyCorpusPolicySchema.parse({});
         await savePropertyCorpus(directory, 'laws', policy, [ entry, entry ]);
@@ -164,7 +166,7 @@ export const testNode = suite('property corpus storage', [
         scope.assert.deepEqual(other.localCache, []);
         return scope.assert.collect();
     }),
-    test('preserves checked-in files', async function (scope) {
+    authoredTest('preserves checked-in files', async function (scope) {
         const directory = await corpusDirectory(scope);
         const file = path.join(directory, 'law.json');
         const text = JSON.stringify(entry);
@@ -175,7 +177,7 @@ export const testNode = suite('property corpus storage', [
         scope.assert.equal(await readFile(file, 'utf8'), text);
         return scope.assert.collect();
     }),
-    test('rejects malformed checked-in entries', async function (scope) {
+    authoredTest('rejects malformed checked-in entries', async function (scope) {
         const directory = await corpusDirectory(scope);
         await writeFile(path.join(directory, 'law.json'), '{}');
         const policy = propertyCorpusPolicySchema.parse({ checkedIn: [ 'law.json' ] });
@@ -184,7 +186,7 @@ export const testNode = suite('property corpus storage', [
         }, { message: /Cannot read checked-in corpus entry/ });
         return scope.assert.collect();
     }),
-    test('enforces count limits', async function (scope) {
+    authoredTest('enforces count limits', async function (scope) {
         const directory = await corpusDirectory(scope);
         const policy = propertyCorpusPolicySchema.parse({ localCache: { maxEntries: 1 } });
         await savePropertyCorpus(directory, 'laws', policy, [ entry, {
@@ -195,7 +197,7 @@ export const testNode = suite('property corpus storage', [
         scope.assert.equal(snapshot.localCache.length, 1);
         return scope.assert.collect();
     }),
-    test('retention preserves inputs with unsupported formats', async function (scope) {
+    authoredTest('retention preserves inputs with unsupported formats', async function (scope) {
         const directory = await corpusDirectory(scope);
         const policy = propertyCorpusPolicySchema.parse({});
         await savePropertyCorpus(directory, 'laws', policy, [ entry ]);
@@ -206,7 +208,7 @@ export const testNode = suite('property corpus storage', [
         scope.assert.equal(await readFile(input, 'utf8'), future);
         return scope.assert.collect();
     }),
-    test('preserves unsupported cache indexes on save', async function (scope) {
+    authoredTest('preserves unsupported cache indexes on save', async function (scope) {
         const directory = await corpusDirectory(scope);
         const policy = propertyCorpusPolicySchema.parse({});
         await savePropertyCorpus(directory, 'laws', policy, [ entry ]);
@@ -219,7 +221,7 @@ export const testNode = suite('property corpus storage', [
         scope.assert.equal(await readFile(file, 'utf8'), source);
         return scope.assert.collect();
     }),
-    test('diagnoses oversized inputs', async function (scope) {
+    authoredTest('diagnoses oversized inputs', async function (scope) {
         const directory = await corpusDirectory(scope);
         const bounded = propertyCorpusPolicySchema.parse({ localCache: { maxEntryBytes: 1 } });
         const diagnostics = await savePropertyCorpus(directory, 'small', bounded, [ entry ]);
@@ -229,5 +231,3 @@ export const testNode = suite('property corpus storage', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

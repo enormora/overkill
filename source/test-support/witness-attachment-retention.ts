@@ -1,4 +1,4 @@
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 import type { RunResult, PropertyCaseEvidence, PerTestResult } from '../engine/run-result.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createAttachmentExecution, type AttachmentExecution } from '../run/attachment-execution.ts';

@@ -1,11 +1,8 @@
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import type { HttpTranscript, HttpTranscriptEntry } from '../transcript/http-transcript.ts';
-import {
-    defineSimulatedHttpServer,
-    defineSimulation,
-    type SimulatedHttpServerDefinition
-} from './simulation.ts';
+import { defineSimulatedHttpServer, defineSimulation, type SimulatedHttpServerDefinition } from './simulation.ts';
 import { startSimulatedHttpServer } from './simulated-http-server.ts';
 
 type CompletionOrderScenarios = {
@@ -262,90 +259,43 @@ async function assertInvalidSimulationRejected(scope: TestScope): Promise<void> 
     );
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/simulation/simulated-http-server.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'simulated HTTP server routes default and URL-selected scenarios',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertScenarioRouting(scope);
+export const testNode = suite('source/simulation/simulated-http-server.test.ts', [
+    test('simulated HTTP server routes default and URL-selected scenarios', async function (scope: TestScope) {
+        await assertScenarioRouting(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'simulated HTTP transcripts append by completion with request-start sequence numbers',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertCompletionOrder(scope);
+        return scope.assert.collect();
+    }),
+    test(
+        'simulated HTTP transcripts append by completion with request-start sequence numbers',
+        async function (scope: TestScope) {
+            await assertCompletionOrder(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'simulated HTTP server disposal closes the listener',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertDisposalClosesServer(scope);
+            return scope.assert.collect();
+        }
+    ),
+    test('simulated HTTP server disposal closes the listener', async function (scope: TestScope) {
+        await assertDisposalClosesServer(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'simulated HTTP server forwards request bodies',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertPostRequestBody(scope);
+        return scope.assert.collect();
+    }),
+    test('simulated HTTP server forwards request bodies', async function (scope: TestScope) {
+        await assertPostRequestBody(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'simulated HTTP server surfaces handler errors on disposal',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertHandlerErrorsFailDisposal(scope);
+        return scope.assert.collect();
+    }),
+    test('simulated HTTP server surfaces handler errors on disposal', async function (scope: TestScope) {
+        await assertHandlerErrorsFailDisposal(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'simulated HTTP server wraps non-error handler failures on disposal',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertNonErrorHandlerFailuresFailDisposal(scope);
+        return scope.assert.collect();
+    }),
+    test('simulated HTTP server wraps non-error handler failures on disposal', async function (scope: TestScope) {
+        await assertNonErrorHandlerFailuresFailDisposal(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'simulated HTTP server rejects unbranded descriptors',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertInvalidSimulationRejected(scope);
+        return scope.assert.collect();
+    }),
+    test('simulated HTTP server rejects unbranded descriptors', async function (scope: TestScope) {
+        await assertInvalidSimulationRejected(scope);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

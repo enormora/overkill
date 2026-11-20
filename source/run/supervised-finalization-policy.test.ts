@@ -1,10 +1,10 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { supervisedMessageRuntime } from '../test-support/supervised-message-runtime.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { finishSupervisedRuntime } from './supervised-run-runtime.ts';
 
-export const testNode = suite('supervised result finalization', [
+export const testNode = authoredSuite('supervised result finalization', [
     ...[ false, true ].flatMap(function (collected) {
         return [ false, true ].map(function (completed) {
             return test(
@@ -62,4 +62,3 @@ export const testNode = suite('supervised result finalization', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

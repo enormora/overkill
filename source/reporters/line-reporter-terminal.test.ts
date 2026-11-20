@@ -1,12 +1,15 @@
-import { runIfMain } from '#test-runner';
+import {
+    type TestScope as OverkillScope,
+    suite,
+    test,
+    doubleUsage,
+    testDouble,
+    type TestDouble
+} from '@overkill-dev/test';
+
 import figures from 'figures';
 import colors from 'yoctocolors';
-import { doubleUsage, testDouble, type TestDouble } from '../packages/doubles/doubles.entry-point.ts';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+
 import { createReportingContext } from '../engine/reporting-context.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import { createLineReporter, type LineReporterDependencies } from './line-reporter.ts';
@@ -43,71 +46,57 @@ function assertTerminalOutput(scope: OverkillScope, log: Log): void {
     ]);
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/reporters/line-reporter-terminal.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter renders terminal test results and empty suite names',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
+export const testNode = suite('source/reporters/line-reporter-terminal.test.ts', [
+    test('line reporter renders terminal test results and empty suite names', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
 
-                await reporter.onEvent({ kind: 'suite-start', suitePath: [] });
-                await reporter.onEvent({
-                    property: null,
-                    benchmark: null,
-                    completion: 'final',
-                    attempt: 0,
-                    case: failingCaseId,
-                    definitionLocations: [ definitionLocation ],
-                    artifacts: [],
-                    kind: 'test-end',
-                    outcome: null,
-                    suitePath: [],
-                    verdict: 'process-exhausted',
-                    durationMicroseconds: 12_000
-                });
-                await reporter.onEvent({
-                    property: null,
-                    benchmark: null,
-                    completion: 'final',
-                    attempt: 0,
-                    case: failingCaseId,
-                    definitionLocations: [ definitionLocation ],
-                    artifacts: [],
-                    kind: 'test-end',
-                    outcome: null,
-                    suitePath: [],
-                    verdict: 'crashed',
-                    durationMicroseconds: 13_000
-                });
-                await reporter.onEvent({
-                    property: null,
-                    benchmark: null,
-                    completion: 'final',
-                    attempt: 0,
-                    case: nestedFailingCaseId,
-                    definitionLocations: [ definitionLocation ],
-                    artifacts: [],
-                    kind: 'test-end',
-                    outcome: null,
-                    suitePath: [],
-                    verdict: 'crashed',
-                    durationMicroseconds: 14_000
-                });
+        await reporter.onEvent({ kind: 'suite-start', suitePath: [] });
+        await reporter.onEvent({
+            property: null,
+            benchmark: null,
+            completion: 'final',
+            attempt: 0,
+            case: failingCaseId,
+            definitionLocations: [ definitionLocation ],
+            artifacts: [],
+            kind: 'test-end',
+            outcome: null,
+            suitePath: [],
+            verdict: 'process-exhausted',
+            durationMicroseconds: 12_000
+        });
+        await reporter.onEvent({
+            property: null,
+            benchmark: null,
+            completion: 'final',
+            attempt: 0,
+            case: failingCaseId,
+            definitionLocations: [ definitionLocation ],
+            artifacts: [],
+            kind: 'test-end',
+            outcome: null,
+            suitePath: [],
+            verdict: 'crashed',
+            durationMicroseconds: 13_000
+        });
+        await reporter.onEvent({
+            property: null,
+            benchmark: null,
+            completion: 'final',
+            attempt: 0,
+            case: nestedFailingCaseId,
+            definitionLocations: [ definitionLocation ],
+            artifacts: [],
+            kind: 'test-end',
+            outcome: null,
+            suitePath: [],
+            verdict: 'crashed',
+            durationMicroseconds: 14_000
+        });
 
-                assertTerminalOutput(scope, log);
+        assertTerminalOutput(scope, log);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

@@ -1,7 +1,8 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import { Linter, type Rule } from 'eslint';
 import * as tsParser from '@typescript-eslint/parser';
 import { gen, sampleGenerator } from '../packages/property/property.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { defineRuleTests } from '../packages/eslint-test/eslint-test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { createRoot, createTestPlan, execute } from '../packages/engine/engine.entry-point.ts';
@@ -16,7 +17,7 @@ const noOp: Rule.RuleModule = {
 };
 const typedGeneration = { syntax: 'typescript', filename: 'rule-test.ts', convergence: { kind: 'disabled' } } as const;
 
-export const testNode = suite('ESLint parser and configuration composition', [
+export const testNode = authoredSuite('ESLint parser and configuration composition', [
     test('merges base, named and case layers identically for examples and property seeds', async function (scope) {
         const observed: unknown[] = [];
         const rule: Rule.RuleModule = {

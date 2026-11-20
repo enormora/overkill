@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { orchestrator, type BaselineRunResult } from '../../packages/run/run.entry-point.ts';
 import {
     createOrdinaryBaselineFixture,
@@ -94,8 +94,8 @@ async function assertEntryCount(scope: TestScope, store: OrdinaryBaselineStore, 
     const entries = await store.list();
     scope.assert.equal(entries.length, expected);
 }
-export const testNode = suite('ordinary baseline workflows', [
-    test('reconciles ordinary baselines under in-process coverage', async function (scope: TestScope) {
+export const testNode = authoredSuite('ordinary baseline workflows', [
+    authoredTest('reconciles ordinary baselines under in-process coverage', async function (scope: TestScope) {
         const data = await createOrdinaryBaselineFixture(scope, 'in-process', 'text');
         const command = { ...data.command, request: { ...data.command.request, coverage: true } };
         assertWritten(scope, await orchestrator.baseline.update(command, { timing: null }), 2);
@@ -107,7 +107,7 @@ export const testNode = suite('ordinary baseline workflows', [
         return scope.assert.collect();
     }),
     ...([ 'in-process', 'supervised-process', 'worker-pool' ] as const).map(function executionCase(execution) {
-        return test(`reconciles ordinary baselines with ${execution}`, async function (scope: TestScope) {
+        return authoredTest(`reconciles ordinary baselines with ${execution}`, async function (scope: TestScope) {
             const data = await createOrdinaryBaselineFixture(
                 scope,
                 execution,
@@ -121,7 +121,7 @@ export const testNode = suite('ordinary baseline workflows', [
             return scope.assert.collect();
         });
     }),
-    test(
+    authoredTest(
         'cleans only complete selected inventories and preserves skipped and foreign entries',
         async function (scope: TestScope) {
             const data = await createOrdinaryBaselineFixture(scope, 'in-process', 'text');
@@ -136,4 +136,3 @@ export const testNode = suite('ordinary baseline workflows', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

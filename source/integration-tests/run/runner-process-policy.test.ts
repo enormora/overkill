@@ -1,7 +1,8 @@
 import { execFile } from 'node:child_process';
+import { suite, test } from '@overkill-dev/test';
 import { z } from 'zod/v4';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../../packages/engine/engine.entry-point.ts';
+
+import type { TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { parseRunnerResult } from '../../packages/run/run.entry-point.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
@@ -33,104 +34,98 @@ async function runProcess(
 }
 const fatalOperations = [ 'exit', 'exit-nonzero', 'abort', 'signal' ];
 const ipcOperations = [ 'send', 'forged-result', 'load-send' ];
-export const testNode = createSuite({
-    title: 'process policy without monkey patches',
-    ...metadata,
-    children: [
-        ...fatalOperations.map(function fatalSupervisedOperation(operation) {
-            return createTestCase({
-                title: `supervision survives native ${operation} and crashes interrupted work`,
-                ...metadata,
-                async body(scope: TestScope) {
-                    const processResult = await runProcess(operation, 'supervised-process');
-                    scope.assert.equal(processResult.code, 0, { message: processResult.stderr });
-                    const result = parseRunnerResult(JSON.parse(processResult.stdout));
-                    scope.assert.equal(result.status, 'failed');
-                    scope.assert.equal(result.summary.crashed, 1);
-                    scope.assert.true(result.runnerErrors.some(function reportsCrash(error) {
-                        return error.subtype === 'crash';
-                    }));
-                    return scope.assert.collect();
-                }
-            });
-        }),
-        ...[ 'load-exit', 'load-abort' ].map(function fatalLoadOperation(operation) {
-            return createTestCase({
-                title: `supervision survives native ${operation} before collection completes`,
-                ...metadata,
-                async body(scope: TestScope) {
-                    const processResult = await runProcess(operation, 'supervised-process');
-                    scope.assert.equal(processResult.code, 0, { message: processResult.stderr });
-                    const result = parseRunnerResult(JSON.parse(processResult.stdout));
-                    scope.assert.equal(result.status, 'failed');
-                    scope.assert.true(result.runnerErrors.some(function reportsCrash(error) {
-                        return error.subtype === 'crash';
-                    }));
-                    return scope.assert.collect();
-                }
-            });
-        }),
-        ...ipcOperations.map(function unexpectedIpc(operation) {
-            return createTestCase({
-                title: `supervision rejects ${operation} without inventing sender attribution`,
-                ...metadata,
-                async body(scope: TestScope) {
-                    const processResult = await runProcess(operation, 'supervised-process');
-                    scope.assert.equal(processResult.code, 0, { message: processResult.stderr });
-                    const result = parseRunnerResult(JSON.parse(processResult.stdout));
-                    const error = result.runnerErrors.find(function reportsPolicy(candidate) {
-                        return candidate.subtype === 'runtime-policy';
-                    });
-                    scope.require.defined(error);
-                    scope.assert.deepEqual([ error.attributedTo, error.attributedToWork, error.attributedToAttempt ], [
-                        null,
-                        null,
-                        null
-                    ]);
-                    scope.assert.equal(result.status, 'failed');
-                    scope.assert.true(
-                        z
-                            .strictObject({
-                                activeAttempts: z.array(z.unknown()),
-                                capability: z.literal('child-process'),
-                                reason: z.string(),
-                                strictness: z.literal('observed')
-                            })
-                            .safeParse(error.cause)
-                            .success
-                    );
-                    return scope.assert.collect();
-                }
-            });
-        }),
-        createTestCase({
-            title: 'native process execution remains denied even when user code catches the error',
+export const testNode = suite('process policy without monkey patches', [
+    ...fatalOperations.map(function fatalSupervisedOperation(operation) {
+        return test({
+            title: `supervision survives native ${operation} and crashes interrupted work`,
             ...metadata,
             async body(scope: TestScope) {
-                const processResult = await runProcess('caught-execution', 'supervised-process');
+                const processResult = await runProcess(operation, 'supervised-process');
                 scope.assert.equal(processResult.code, 0, { message: processResult.stderr });
                 const result = parseRunnerResult(JSON.parse(processResult.stdout));
-                scope.assert.equal(result.summary.runtimePolicy, 1);
+                scope.assert.equal(result.status, 'failed');
+                scope.assert.equal(result.summary.crashed, 1);
+                scope.assert.true(result.runnerErrors.some(function reportsCrash(error) {
+                    return error.subtype === 'crash';
+                }));
                 return scope.assert.collect();
             }
-        }),
-        ...[ { operation: 'exit', code: 1 }, { operation: 'exit-nonzero', code: 7 }, {
-            operation: 'load-exit',
-            code: 1
-        } ]
-            .map(function inProcessExit(scenario) {
-                return createTestCase({
-                    title: `in-process ${scenario.operation} writes a diagnostic and exits ${scenario.code}`,
-                    ...metadata,
-                    async body(scope: TestScope) {
-                        const result = await runProcess(scenario.operation, 'in-process');
-                        scope.assert.equal(result.code, scenario.code);
-                        scope.assert.includes(result.stderr, 'process exited before restricted execution completed');
-                        scope.assert.equal(result.stdout, '');
-                        return scope.assert.collect();
-                    }
+        });
+    }),
+    ...[ 'load-exit', 'load-abort' ].map(function fatalLoadOperation(operation) {
+        return test({
+            title: `supervision survives native ${operation} before collection completes`,
+            ...metadata,
+            async body(scope: TestScope) {
+                const processResult = await runProcess(operation, 'supervised-process');
+                scope.assert.equal(processResult.code, 0, { message: processResult.stderr });
+                const result = parseRunnerResult(JSON.parse(processResult.stdout));
+                scope.assert.equal(result.status, 'failed');
+                scope.assert.true(result.runnerErrors.some(function reportsCrash(error) {
+                    return error.subtype === 'crash';
+                }));
+                return scope.assert.collect();
+            }
+        });
+    }),
+    ...ipcOperations.map(function unexpectedIpc(operation) {
+        return test({
+            title: `supervision rejects ${operation} without inventing sender attribution`,
+            ...metadata,
+            async body(scope: TestScope) {
+                const processResult = await runProcess(operation, 'supervised-process');
+                scope.assert.equal(processResult.code, 0, { message: processResult.stderr });
+                const result = parseRunnerResult(JSON.parse(processResult.stdout));
+                const error = result.runnerErrors.find(function reportsPolicy(candidate) {
+                    return candidate.subtype === 'runtime-policy';
                 });
-            })
-    ]
-});
-await runIfMain(import.meta, testNode);
+                scope.require.defined(error);
+                scope.assert.deepEqual([ error.attributedTo, error.attributedToWork, error.attributedToAttempt ], [
+                    null,
+                    null,
+                    null
+                ]);
+                scope.assert.equal(result.status, 'failed');
+                scope.assert.true(
+                    z
+                        .strictObject({
+                            activeAttempts: z.array(z.unknown()),
+                            capability: z.literal('child-process'),
+                            reason: z.string(),
+                            strictness: z.literal('observed')
+                        })
+                        .safeParse(error.cause)
+                        .success
+                );
+                return scope.assert.collect();
+            }
+        });
+    }),
+    test(
+        'native process execution remains denied even when user code catches the error',
+        async function (scope: TestScope) {
+            const processResult = await runProcess('caught-execution', 'supervised-process');
+            scope.assert.equal(processResult.code, 0, { message: processResult.stderr });
+            const result = parseRunnerResult(JSON.parse(processResult.stdout));
+            scope.assert.equal(result.summary.runtimePolicy, 1);
+            return scope.assert.collect();
+        }
+    ),
+    ...[ { operation: 'exit', code: 1 }, { operation: 'exit-nonzero', code: 7 }, {
+        operation: 'load-exit',
+        code: 1
+    } ]
+        .map(function inProcessExit(scenario) {
+            return test({
+                title: `in-process ${scenario.operation} writes a diagnostic and exits ${scenario.code}`,
+                ...metadata,
+                async body(scope: TestScope) {
+                    const result = await runProcess(scenario.operation, 'in-process');
+                    scope.assert.equal(result.code, scenario.code);
+                    scope.assert.includes(result.stderr, 'process exited before restricted execution completed');
+                    scope.assert.equal(result.stdout, '');
+                    return scope.assert.collect();
+                }
+            });
+        })
+]);

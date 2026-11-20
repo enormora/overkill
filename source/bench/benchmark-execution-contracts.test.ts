@@ -1,12 +1,14 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { processMeasurement } from '../packages/bench/bench.entry-point.ts';
+import { benchmarkDefinitionSchema } from '../run/benchmark-definition-schema.ts';
 import {
+    type TestPlanCase,
     createRoot,
     createTestPlan,
     createSkippedTestCase,
     createThrowingTestCase,
-    createBenchmarkTestCase,
-    type TestPlanCase
+    createBenchmarkTestCase
 } from '../packages/engine/engine.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
 import { builderBodyForAttempt, createBenchmarkAttempt } from '../engine/benchmark-attempt.ts';
 import { benchmark } from './benchmark-authoring.ts';
 import { wallClockMeasurement } from './measurement-strategy.ts';
@@ -39,7 +41,26 @@ function benchmarkCase(): TestPlanCase {
     return createTestPlan(createRoot({ ...metadata, children: [ node ] })).cases[0];
 }
 
-export const testNode = suite('benchmark execution contracts', [
+export const testNode = authoredSuite('benchmark execution contracts', [
+    test('accepts process strategies in serialized benchmark definitions', function (scope) {
+        const result = benchmarkDefinitionSchema.safeParse({
+            kind: 'startup',
+            lifecycle: null,
+            workloads: [],
+            diagnostics: [],
+            budgets: {},
+            measurement: processMeasurement({ instrumentation: 'node' }),
+            policy: {
+                confidenceLevel: 0.95,
+                relativePrecision: 0.1,
+                absolutePrecision: {},
+                minimumSamples: 2,
+                maximumSamples: 2
+            }
+        });
+        scope.assert.true(result.success);
+        return scope.assert.collect();
+    }),
     test('rejects missing workload metadata at the engine boundary', function (scope) {
         const selected = benchmarkCase();
         const { execution } = selected;

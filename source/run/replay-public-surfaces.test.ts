@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite } from '@overkill-dev/test';
+
 import { testNode as cancellation } from './replay-cancellation-policy.test.ts';
 
 import { testNode as resources } from './replay-resource.test.ts';
@@ -8,10 +8,9 @@ import { testNode as selection } from './replay-selection.test.ts';
 
 import { testNode as dispatcher } from './replay-dispatcher.test.ts';
 
-export const testNode = suite('replay public surfaces', [
+export const testNode = authoredSuite('replay public surfaces', [
     cancellation,
     resources,
     selection,
     dispatcher
 ]);
-await runIfMain(import.meta, testNode);

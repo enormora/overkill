@@ -1,7 +1,9 @@
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 import type { Rule } from 'eslint';
 import { createRoot, createTestPlan, execute, type TestScope } from '../packages/engine/engine.entry-point.ts';
+
 import { gen } from '../packages/property/property.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { test } from '../packages/test/test.entry-point.ts';
 import { defineRuleTests } from '../packages/eslint-test/eslint-test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { observeRule } from './rule-observation.ts';
@@ -17,8 +19,8 @@ const generation = {
     input
 } as const;
 
-export const testNode = suite('ESLint control and fixer contracts', [
-    test('does not resume rule evaluation after a required assertion halts it', async function (scope) {
+export const testNode = authoredSuite('ESLint control and fixer contracts', [
+    authoredTest('does not resume rule evaluation after a required assertion halts it', async function (scope) {
         let continued = false;
         const result = await execute(createTestPlan(createRoot({
             title: 'required control',
@@ -36,7 +38,7 @@ export const testNode = suite('ESLint control and fixer contracts', [
         scope.assert.false(continued);
         return scope.assert.collect();
     }),
-    test('fails oscillating fixes only when convergence is requested', async function (scope) {
+    authoredTest('fails oscillating fixes only when convergence is requested', async function (scope) {
         const rule: Rule.RuleModule = {
             meta: { schema: [], fixable: 'code', messages: { change: 'change' } },
             create(context) {
@@ -74,7 +76,7 @@ export const testNode = suite('ESLint control and fixer contracts', [
         scope.assert.equal(passed.summary.passed, 1);
         return scope.assert.collect();
     }),
-    test('checks each suggestion in isolation', async function (scope) {
+    authoredTest('checks each suggestion in isolation', async function (scope) {
         const rule: Rule.RuleModule = {
             meta: { schema: [], hasSuggestions: true, messages: { change: 'change' } },
             create(context) {
@@ -102,7 +104,7 @@ export const testNode = suite('ESLint control and fixer contracts', [
         scope.assert.includes(JSON.stringify(result), 'Fixes preserve syntax');
         return scope.assert.collect();
     }),
-    test('propagates permission failures without turning them into assertions', function (scope) {
+    authoredTest('propagates permission failures without turning them into assertions', function (scope) {
         const error = Object.assign(new Error('denied'), { code: 'ERR_ACCESS_DENIED' });
         const controller = new AbortController();
         scope.assert.throws(function permission() {
@@ -112,7 +114,7 @@ export const testNode = suite('ESLint control and fixer contracts', [
         }, { message: 'denied' });
         return scope.assert.collect();
     }),
-    test('does not admit a cancelled rule invocation', function (scope) {
+    authoredTest('does not admit a cancelled rule invocation', function (scope) {
         const controller = new AbortController();
         controller.abort(new Error('cancelled'));
         let admitted = false;

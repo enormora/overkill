@@ -1,8 +1,7 @@
 import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { normalizeConfig } from '../packages/run/run.entry-point.ts';
 import { createMemoryHistoryStorage } from '../test-support/memory-history-storage.ts';
 import { createHistoryAccess, detailedRecordState } from './history-state-access.ts';
@@ -15,7 +14,7 @@ async function stateDirectory(scope: TestScope): Promise<string> {
     return directory;
 }
 
-export const testNode = suite('retained history access', [
+export const testNode = authoredSuite('retained history access', [
     test('classifies invalid records and directories as unavailable', async function (scope) {
         const directory = await stateDirectory(scope);
         const file = path.join(directory, 'record.json');
@@ -50,4 +49,3 @@ export const testNode = suite('retained history access', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

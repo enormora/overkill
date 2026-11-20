@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
+import { test, suite } from '@overkill-dev/test';
+
 import { z } from 'zod/v4';
-import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
+
 import { collectCoverageScript, withCoverageSources } from '../test-support/coverage-source-fixture.ts';
 import { generateCoverageReports } from './coverage-reporting.ts';
 
@@ -70,16 +71,12 @@ async function coverageSnapshot(header: string, extension: string): Promise<{
     return snapshot;
 }
 
-export const testNode = createSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/coverage-conformance.test.ts',
-    children: [ 'ts', 'mts', 'cts' ].map(function nativeExtension(extension) {
-        return createTestCase({
+export const testNode = suite(
+    'source/run/coverage-conformance.test.ts',
+    [ 'ts', 'mts', 'cts' ].map(function nativeExtension(extension) {
+        return test({
             annotations: {},
             controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
             title: `native ${extension} preserves JavaScript coverage for nested branches and control flow`,
             async body(scope) {
                 const javascript = await coverageSnapshot('pick(value = 0) {', 'mjs');
@@ -93,6 +90,4 @@ export const testNode = createSuite({
             }
         });
     })
-});
-
-await runIfMain(import.meta, testNode);
+);

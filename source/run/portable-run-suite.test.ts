@@ -1,6 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite } from '@overkill-dev/test';
+
 import { testNode as recordTests } from './implementation-record.test.ts';
 
-export const testNode = suite('portable implementation runs', [ recordTests ]);
-await runIfMain(import.meta, testNode);
+export const testNode = authoredSuite('portable implementation runs', [ recordTests ]);

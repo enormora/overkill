@@ -1,10 +1,13 @@
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
+    type TestCase,
+    type RunResult,
     createRoot,
     createTestPlan,
-    execute,
-    type TestCase,
-    type RunResult
+    execute
 } from '../packages/engine/engine.entry-point.ts';
+
 import {
     benchmark,
     asyncMeasurementStrategy,
@@ -16,7 +19,7 @@ import {
     type BenchmarkMeasureContext
 } from '../packages/bench/bench.entry-point.ts';
 import { defineResource, withResource } from '../packages/test/resources.entry-point.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { testNode as rawEvidence } from './benchmark-raw-evidence.test.ts';
 import { testNode as benchmarkEvidenceTestNode } from './benchmark-evidence.test.ts';
 import { testNode as measurementRuntimePolicyTestNode } from './measurement-runtime-policy.test.ts';
@@ -60,7 +63,7 @@ function assertCompletedCooldown(scope: TestScope, result: RunResult): void {
     scope.assert.equal(cooldown.outcome, 'settled');
 }
 
-export const testNode = suite('benchmark authoring and sampling', [
+export const testNode = authoredSuite('benchmark authoring and sampling', [
     rawEvidence,
     test('bounds lifecycle traces without changing warmup, cleanup, or budgets', async function (scope) {
         let cleanups = 0;

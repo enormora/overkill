@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import {
     serializeValue,
     type TestOutcome,
@@ -32,7 +32,7 @@ function assertOriginalTarget(scope: TestScope, outcome: TestOutcome | null): vo
     }
 }
 
-export const testNode = suite('first failure shrinking', [
+export const testNode = authoredSuite('first failure shrinking', [
     failurePaths,
     lifecycle,
     confirmation,
@@ -369,5 +369,3 @@ export const testNode = suite('first failure shrinking', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

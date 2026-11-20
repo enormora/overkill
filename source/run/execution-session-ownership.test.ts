@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { executionSessionRuntime } from '../test-support/execution-session-runtime.ts';
 import { testNode as collected } from './collected-session-policy.test.ts';
 import { testNode as fresh } from './fresh-execution-host-policy.test.ts';
@@ -10,7 +10,7 @@ import type { RunExecutionReply } from './execution-session-types.ts';
 import type { ExecutionSessionCall } from './execution-session-runtime-types.ts';
 
 const invocation = { data: { value: 42 }, timeoutMilliseconds: 50, signal: null };
-export const testNode = suite('execution session ownership', [
+export const testNode = authoredSuite('execution session ownership', [
     collected,
     host,
     fresh,
@@ -222,4 +222,3 @@ export const testNode = suite('execution session ownership', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

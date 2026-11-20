@@ -1,11 +1,6 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
-import {
-    defaultFailureArtifactPolicy,
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import { createDotReporter } from './dot-reporter.ts';
 import type { TerminalOutput } from './terminal.ts';
@@ -37,45 +32,31 @@ function createFakeTerminal(columns: number): FakeTerminal {
     };
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/reporters/dot-reporter-ordering.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'dot reporter prints order and seed on run start',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(80);
-                const reporter = createDotReporter({
-                    interactive: false,
-                    stdout: terminal.output
-                })({
-                    failureArtifacts: defaultFailureArtifactPolicy,
-                    relativizeLocationPath(location) {
-                        return location.file;
-                    }
-                });
-
-                await reporter.onEvent({
-                    facts: {
-                        execution: { order: 'seeded' },
-                        reproducibility: { seed: '123' }
-                    },
-                    kind: 'run-start',
-                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
-
-                scope.assert.equal(terminal.text(), 'order=seeded seed=123\n');
-
-                return scope.assert.collect();
+export const testNode = suite('source/reporters/dot-reporter-ordering.test.ts', [
+    test('dot reporter prints order and seed on run start', async function (scope: OverkillScope) {
+        const terminal = createFakeTerminal(80);
+        const reporter = createDotReporter({
+            interactive: false,
+            stdout: terminal.output
+        })({
+            failureArtifacts: defaultFailureArtifactPolicy,
+            relativizeLocationPath(location) {
+                return location.file;
             }
-        })
-    ]
-});
+        });
 
-await runIfMain(import.meta, testNode);
+        await reporter.onEvent({
+            facts: {
+                execution: { order: 'seeded' },
+                reproducibility: { seed: '123' }
+            },
+            kind: 'run-start',
+            root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
+            startedAt: '2026-07-15T00:00:00.000Z'
+        });
+
+        scope.assert.equal(terminal.text(), 'order=seeded seed=123\n');
+
+        return scope.assert.collect();
+    })
+]);

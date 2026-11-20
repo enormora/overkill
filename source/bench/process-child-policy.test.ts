@@ -1,11 +1,12 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, testDouble, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
+import { testDouble } from '../packages/test/test.entry-point.ts';
 import { pipeProcess, terminalProcess, processLaunch, stoppedProcess } from '../test-support/process-child-runtime.ts';
 import { launchPipeProcess, launchTerminalProcess, sendProcessGroupSignal, stopProcessChild } from './process-child.ts';
 import { ProcessDeadlineError } from './process-deadline.ts';
 
-export const testNode = suite('process transport ownership', [
-    test('captures separate pipe streams and waits for output closure', async function (scope: TestScope) {
+export const testNode = authoredSuite('process transport ownership', [
+    authoredTest('captures separate pipe streams and waits for output closure', async function (scope: TestScope) {
         const fixture = pipeProcess(null, 42);
         fixture.receive('output', 'warning');
         await fixture.child.write('input');
@@ -24,7 +25,7 @@ export const testNode = suite('process transport ownership', [
         });
         return scope.assert.collect();
     }),
-    test('rejects resizing a pipe process', function (scope: TestScope) {
+    authoredTest('rejects resizing a pipe process', function (scope: TestScope) {
         const fixture = pipeProcess(null, 42);
         fixture.finish(0, null);
         scope.assert.throws(function () {
@@ -32,7 +33,7 @@ export const testNode = suite('process transport ownership', [
         }, { message: 'Pipe commands cannot resize a terminal.' });
         return scope.assert.collect();
     }),
-    test('retains missing process ids and signal termination', async function (scope: TestScope) {
+    authoredTest('retains missing process ids and signal termination', async function (scope: TestScope) {
         const fixture = pipeProcess(null, undefined);
         fixture.events.emit('exit', null, 'SIGTERM');
         fixture.events.emit('close');
@@ -42,7 +43,7 @@ export const testNode = suite('process transport ownership', [
         return scope.assert.collect();
     }),
     ...([ 'child', 'input', 'write' ] as const).map(function (failure) {
-        return test(`propagates ${failure} failures`, async function (scope: TestScope) {
+        return authoredTest(`propagates ${failure} failures`, async function (scope: TestScope) {
             const error = new Error(failure);
             const fixture = pipeProcess(failure === 'write' ? error : null, 42);
             const exit = scope.assert.rejects(async function () {
@@ -62,54 +63,60 @@ export const testNode = suite('process transport ownership', [
             return scope.assert.collect();
         });
     }),
-    test('propagates synchronous launcher failures before creating pending observations', function (scope: TestScope) {
-        const error = new Error('spawn failed');
-        scope.assert.throws(function () {
-            launchPipeProcess(processLaunch('pipes'), {
-                now() {
-                    return 0n;
-                },
-                spawn() {
-                    throw error;
-                }
-            });
-        }, { exact: error });
-        scope.assert.throws(function () {
-            launchTerminalProcess(processLaunch('pty'), {
-                now() {
-                    return 0n;
-                },
-                spawn() {
-                    throw error;
-                }
-            });
-        }, { exact: error });
-        return scope.assert.collect();
-    }),
-    ...([ undefined, 0, 15 ] as const).map(function (signal) {
-        return test(`captures terminal output and exit signal ${String(signal)}`, async function (scope: TestScope) {
-            const fixture = terminalProcess();
-            fixture.data('ready');
-            await fixture.child.write('answer');
-            fixture.child.resize(90, 30);
-            fixture.exit(7, signal);
-            scope.assert.deepEqual(await fixture.child.exit, {
-                code: signal === 15 ? null : 7,
-                signal: signal === 15 ? '15' : null,
-                time: 1234n
-            });
-            await fixture.child.closed;
-            scope.assert.partialDeepEqual({ calls: fixture.calls, output: fixture.output.snapshot() }, {
-                calls: [ 'write:answer', 'resize:90:30' ],
-                output: { terminal: { text: 'ready' } }
-            });
+    authoredTest(
+        'propagates synchronous launcher failures before creating pending observations',
+        function (scope: TestScope) {
+            const error = new Error('spawn failed');
             scope.assert.throws(function () {
-                fixture.child.closeInput();
-            }, { message: 'PTY commands cannot close only their input.' });
+                launchPipeProcess(processLaunch('pipes'), {
+                    now() {
+                        return 0n;
+                    },
+                    spawn() {
+                        throw error;
+                    }
+                });
+            }, { exact: error });
+            scope.assert.throws(function () {
+                launchTerminalProcess(processLaunch('pty'), {
+                    now() {
+                        return 0n;
+                    },
+                    spawn() {
+                        throw error;
+                    }
+                });
+            }, { exact: error });
             return scope.assert.collect();
-        });
+        }
+    ),
+    ...([ undefined, 0, 15 ] as const).map(function (signal) {
+        return authoredTest(
+            `captures terminal output and exit signal ${String(signal)}`,
+            async function (scope: TestScope) {
+                const fixture = terminalProcess();
+                fixture.data('ready');
+                await fixture.child.write('answer');
+                fixture.child.resize(90, 30);
+                fixture.exit(7, signal);
+                scope.assert.deepEqual(await fixture.child.exit, {
+                    code: signal === 15 ? null : 7,
+                    signal: signal === 15 ? '15' : null,
+                    time: 1234n
+                });
+                await fixture.child.closed;
+                scope.assert.partialDeepEqual({ calls: fixture.calls, output: fixture.output.snapshot() }, {
+                    calls: [ 'write:answer', 'resize:90:30' ],
+                    output: { terminal: { text: 'ready' } }
+                });
+                scope.assert.throws(function () {
+                    fixture.child.closeInput();
+                }, { message: 'PTY commands cannot close only their input.' });
+                return scope.assert.collect();
+            }
+        );
     }),
-    test('rejects pipe input at the terminal boundary', function (scope: TestScope) {
+    authoredTest('rejects pipe input at the terminal boundary', function (scope: TestScope) {
         scope.assert.throws(function () {
             launchTerminalProcess(processLaunch('pipes'), {
                 now() {
@@ -122,7 +129,7 @@ export const testNode = suite('process transport ownership', [
         }, { message: 'Terminal execution requires PTY options.' });
         return scope.assert.collect();
     }),
-    test('signals the process group and ignores a missing process', function (scope: TestScope) {
+    authoredTest('signals the process group and ignores a missing process', function (scope: TestScope) {
         const sent: unknown[] = [];
         function send(pid: number, signal: string): void {
             sent.push({ pid, signal });
@@ -136,7 +143,7 @@ export const testNode = suite('process transport ownership', [
         return scope.assert.collect();
     }),
     ...([ new Error('permission'), 'invalid' ] as const).map(function (error) {
-        return test(`preserves signal failure ${String(error)}`, function (scope: TestScope) {
+        return authoredTest(`preserves signal failure ${String(error)}`, function (scope: TestScope) {
             scope.assert.throws(function () {
                 sendProcessGroupSignal(42, 'SIGTERM', function () {
                     testDouble.throws<() => void>(error)();
@@ -146,7 +153,7 @@ export const testNode = suite('process transport ownership', [
         });
     }),
     ...([ 'graceful', 'deadline', 'error', 'close-error' ] as const).map(function (kind) {
-        return test(`owns ${kind} shutdown`, async function (scope: TestScope) {
+        return authoredTest(`owns ${kind} shutdown`, async function (scope: TestScope) {
             const calls: string[] = [];
             const error = new Error('shutdown failure');
             let deadlines = 0;
@@ -184,4 +191,3 @@ export const testNode = suite('process transport ownership', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

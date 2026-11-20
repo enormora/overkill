@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { normalizeConfig } from '../packages/run/config.entry-point.ts';
 import { orchestrator, parseFrozenMicrotestPolicy, type RunCommand } from '../packages/run/run.entry-point.ts';
 import { createMutationRunCommand } from '../packages/stryker-runner/mutation-execution-policy.ts';
@@ -18,7 +18,7 @@ function command(): RunCommand {
     });
 }
 
-export const testNode = suite('frozen microtest policy', [
+export const testNode = authoredSuite('frozen microtest policy', [
     test('transports the invocation seed independently of frozen policy', async function (scope) {
         const policy = await orchestrator.freezePolicy({
             moduleBoundary: null,
@@ -212,5 +212,3 @@ export const testNode = suite('frozen microtest policy', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

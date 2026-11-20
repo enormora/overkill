@@ -1,22 +1,16 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
     isTestDebugArtifact,
     type PerTestResult,
     type HedgedConflictArtifactPayload,
     type TestOutcome,
-    type RunResult,
-    type TestScope as OverkillScope
+    type RunResult
 } from '../packages/engine/engine.entry-point.ts';
 import { workIdentityKey } from '../engine/identity.ts';
 import { summaryRunTimings } from '../engine/run-timings.ts';
 import { debugArtifactFixture } from '../test-support/debug-artifact-fixture.ts';
-import {
-    createCollectedPlan,
-    createTaskRun,
-    fakeWorkerRuntime
-} from '../test-support/worker-pool-execution-state.ts';
+import { createCollectedPlan, createTaskRun, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import {
     recordCancelledHedgedTaskRun,
@@ -409,11 +403,11 @@ function assertRetriedConflict(scope: OverkillScope, runtime: WorkerPoolRunRunti
     assertConflictArtifactIdentity(scope, runtime, result);
 }
 
-export const testNode = createOverkillSuite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-hedged-arbitration.test.ts',
     children: [
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'hedged conflicts retain debug evidence from both placements',
             async body(scope: OverkillScope) {
@@ -435,7 +429,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'hedged conflicts preserve both retry chains while overriding the logical verdict',
             async body(scope: OverkillScope) {
@@ -445,7 +439,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool hedged arbitration finalizes the winner after cancelling a peer',
             async body(scope: OverkillScope) {
@@ -464,7 +458,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool hedged arbitration fails conflicting duplicate outcomes',
             async body(scope: OverkillScope) {
@@ -486,7 +480,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool hedged arbitration finalizes a lone first authority',
             async body(scope: OverkillScope) {
@@ -495,7 +489,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool hedged arbitration ignores conflicts without comparable results',
             async body(scope: OverkillScope) {
@@ -507,7 +501,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool hedged arbitration discards matching duplicate outcomes',
             async body(scope: OverkillScope) {
@@ -525,7 +519,7 @@ export const testNode = createOverkillSuite({
                 return scope.assert.collect();
             }
         }),
-        createOverkillTestCase({
+        test({
             ...testCaseMetadata,
             title: 'worker-pool hedged arbitration buffers only safe single-work units',
             body(scope: OverkillScope) {
@@ -545,5 +539,3 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-await runIfMain(import.meta, testNode);

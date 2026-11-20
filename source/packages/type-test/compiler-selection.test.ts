@@ -1,8 +1,7 @@
 import { cp, mkdir, symlink, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
 import { frozenTypeProject } from '../../test-support/frozen-type-project.ts';
 import { createEngine } from '../engine/engine.entry-point.ts';
 import { resolveInstalledCompiler, verifyInstalledCompiler } from './installed-compiler.ts';
@@ -21,7 +20,7 @@ async function project(scope: TestScope): Promise<string> {
     }
     return root;
 }
-export const testNode = suite('installed compiler selection', [
+export const testNode = authoredSuite('installed compiler selection', [
     test('resolves local and package aliases from the explicit root', async function (scope) {
         const root = await project(scope);
         const local = await resolveInstalledCompiler(root, { kind: 'local' });
@@ -127,4 +126,3 @@ export const testNode = suite('installed compiler selection', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

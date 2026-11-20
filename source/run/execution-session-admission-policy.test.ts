@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { executionSessionRuntime } from '../test-support/execution-session-runtime.ts';
 import { normalizeExecutionSessionOptions } from './execution-session-schema.ts';
 
-export const testNode = suite('memory execution session admission', [
+export const testNode = authoredSuite('memory execution session admission', [
     ...[
         { change: { lastFailed: true }, message: 'Memory execution sessions do not support last-failed recording.' },
         {
@@ -20,7 +20,7 @@ export const testNode = suite('memory execution session admission', [
         }
     ]
         .map(function (scenario, index) {
-            return test(`rejects persisted session policy ${index}`, async function (scope: TestScope) {
+            return authoredTest(`rejects persisted session policy ${index}`, async function (scope: TestScope) {
                 const fixture = await executionSessionRuntime();
                 const { command } = fixture.options;
                 const supplied = {
@@ -36,7 +36,7 @@ export const testNode = suite('memory execution session admission', [
                 return scope.assert.collect();
             });
         }),
-    test('generates a seed when invocation does not supply one', async function (scope: TestScope) {
+    authoredTest('generates a seed when invocation does not supply one', async function (scope: TestScope) {
         const fixture = await executionSessionRuntime();
         const { command } = fixture.options;
         const supplied = {
@@ -49,4 +49,3 @@ export const testNode = suite('memory execution session admission', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { createMutationBaseline } from './mutation-baseline.ts';
 import type { CampaignClient } from './campaign-client.ts';
@@ -18,7 +18,7 @@ function respondingClient(response: CampaignResponse): CampaignClient {
         }
     };
 }
-export const testNode = suite(
+export const testNode = authoredSuite(
     'mutation baseline protocol failures',
     [ false, true ].flatMap(function (publish) {
         return [ false, true ].map(function (timeout) {
@@ -62,4 +62,3 @@ export const testNode = suite(
         });
     })
 );
-await runIfMain(import.meta, testNode);

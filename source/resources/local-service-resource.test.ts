@@ -1,26 +1,18 @@
 import { createServer } from 'node:http';
 import { setTimeout as wait } from 'node:timers/promises';
-import { runIfMain } from '#test-runner';
+import { suite, test } from '@overkill-dev/test';
+
 import { resourceAttachments } from '../attachments/attachment-context.ts';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { ResourceLifecycleError, startResources } from '../packages/resources/resources.entry-point.ts';
 import {
     createLocalHttpServiceResource,
     type LocalHttpResourceHandle,
     type LocalHttpServiceHandle
 } from './local-http-service-resource.ts';
-import {
-    createLocalProcessServiceResource,
-    type LocalProcessOwner
-} from './local-process-service-resource.ts';
-import {
-    defineLocalServiceResource
-} from './local-service-resource.ts';
-import {
-    defineResource,
-    type EmptyResourceDependencies,
-    type ResourceDefinition
-} from './resources.ts';
+import { createLocalProcessServiceResource, type LocalProcessOwner } from './local-process-service-resource.ts';
+import { defineLocalServiceResource } from './local-service-resource.ts';
+import { defineResource, type EmptyResourceDependencies, type ResourceDefinition } from './resources.ts';
 
 type Database = {
     readonly query: (sql: string) => string;
@@ -389,90 +381,43 @@ async function assertProcessEarlyExit(scope: TestScope): Promise<void> {
     scope.assert.match(String(error.failures()[0]?.cause), /startup failed/u);
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/resources/local-service-resource.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'local-service resources preserve lifecycle metadata',
-            annotations: {},
-            controls: {},
-            body(scope: TestScope) {
-                assertLocalServiceDescriptor(scope);
+export const testNode = suite('source/resources/local-service-resource.test.ts', [
+    test('local-service resources preserve lifecycle metadata', function (scope: TestScope) {
+        assertLocalServiceDescriptor(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'local-service resources hide owner handles and dispose once',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertOwnerCleanup(scope);
+        return scope.assert.collect();
+    }),
+    test('local-service resources hide owner handles and dispose once', async function (scope: TestScope) {
+        await assertOwnerCleanup(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'local-service resources clean up after readiness failures',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertReadinessFailureCleanup(scope);
+        return scope.assert.collect();
+    }),
+    test('local-service resources clean up after readiness failures', async function (scope: TestScope) {
+        await assertReadinessFailureCleanup(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'local-service resources support projected scopes',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertProjectedLocalService(scope);
+        return scope.assert.collect();
+    }),
+    test('local-service resources support projected scopes', async function (scope: TestScope) {
+        await assertProjectedLocalService(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'local HTTP service resources expose ready loopback endpoints',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertLocalHttpService(scope);
+        return scope.assert.collect();
+    }),
+    test('local HTTP service resources expose ready loopback endpoints', async function (scope: TestScope) {
+        await assertLocalHttpService(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'local process service resources expose readiness handles',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertLocalProcessService(scope);
+        return scope.assert.collect();
+    }),
+    test('local process service resources expose readiness handles', async function (scope: TestScope) {
+        await assertLocalProcessService(scope);
 
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'local process service resources fail when processes exit before readiness',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                await assertProcessEarlyExit(scope);
+        return scope.assert.collect();
+    }),
+    test(
+        'local process service resources fail when processes exit before readiness',
+        async function (scope: TestScope) {
+            await assertProcessEarlyExit(scope);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

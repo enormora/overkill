@@ -1,11 +1,6 @@
-import { createSuite } from '../../../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as coverageSources } from './coverage-sources.test.ts';
 import { testNode as failureEvidence } from './failure-evidence.test.ts';
 
-export const testNode = createSuite({
-    title: 'source and artifact persistence',
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    children: [ coverageSources, failureEvidence ]
-});
+export const testNode = suite('source and artifact persistence', [ coverageSources, failureEvidence ]);

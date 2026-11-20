@@ -1,7 +1,8 @@
 import { connect, createServer, type Server, type Socket } from 'node:net';
 import { once } from 'node:events';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { test, suite } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { attachmentFixture, type AttachmentFixture } from '../test-support/attachment-fixture.ts';
@@ -289,10 +290,9 @@ async function assertPendingLimit(scope: TestScope): Promise<void> {
         });
     });
 }
-export const testNode = createSuite({
-    ...definition,
-    title: 'source/run/runtime-attachment-protocol.test.ts',
-    children: ([
+export const testNode = suite(
+    'source/run/runtime-attachment-protocol.test.ts',
+    ([
         [ 'server request floods disconnect and keep allocation bounded', assertServerQueueLimit ],
         [ 'oversized request frames disconnect without creating artifacts', assertOversizedRequest ],
         [ 'writer channels isolate ownership and interruption', assertWriterIsolation ],
@@ -301,7 +301,7 @@ export const testNode = createSuite({
         [ 'pending request limits reject excess work and settle on disconnect', assertPendingLimit ]
     ] as const)
         .map(function protocolCase([ title, check ]) {
-            return createTestCase({
+            return test({
                 ...definition,
                 title,
                 async body(scope: TestScope) {
@@ -311,7 +311,7 @@ export const testNode = createSuite({
             });
         })
         .concat([
-            createTestCase({
+            test({
                 ...definition,
                 title: 'invalid reply JSON fails pending attachment operations',
                 async body(scope: TestScope) {
@@ -323,7 +323,7 @@ export const testNode = createSuite({
                     return scope.assert.collect();
                 }
             }),
-            createTestCase({
+            test({
                 ...definition,
                 title: 'oversized reply frames fail pending attachment operations',
                 async body(scope: TestScope) {
@@ -336,5 +336,4 @@ export const testNode = createSuite({
                 }
             })
         ])
-});
-await runIfMain(import.meta, testNode);
+);

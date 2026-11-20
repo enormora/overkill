@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from './packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import {
     memoryImplementationGraph,
     memoryImplementationModule,
@@ -21,32 +21,35 @@ const main = memoryImplementationModule(mainImplementationUrl, {
     path: 'node:path'
 });
 const dependency = memoryImplementationModule(dependencyImplementationUrl, {});
-export const testNode = suite('implementation graph preparation policy', [
-    test('freezes and verifies builtin-only graphs without reading project files', async function (scope: TestScope) {
-        const facts = {
-            ...implementationFacts,
-            module: { moduleUrl: 'node:fs', exportName: 'readFile' },
-            dynamicModules: [ { moduleUrl: 'node:path', exportName: 'resolve' }, {
-                moduleUrl: 'node:buffer',
-                exportName: 'Buffer'
-            } ]
-        };
-        const graph = await prepareImplementationGraph([ facts ]);
-        scope.assert.deepEqual(graph.modules, []);
-        scope.assert.deepEqual(graph.builtins, [ 'node:buffer', 'node:fs', 'node:path' ]);
-        await verifyImplementationGraph(graph, [ facts ]);
-        await scope.assert.rejects(async function () {
-            await verifyImplementationGraph({ ...graph, builtins: [] }, [ facts ]);
-        }, { message: 'Implementation graph changed; prepare and collect a new run.' });
-        return scope.assert.collect();
-    }),
+export const testNode = authoredSuite('implementation graph preparation policy', [
+    authoredTest(
+        'freezes and verifies builtin-only graphs without reading project files',
+        async function (scope: TestScope) {
+            const facts = {
+                ...implementationFacts,
+                module: { moduleUrl: 'node:fs', exportName: 'readFile' },
+                dynamicModules: [ { moduleUrl: 'node:path', exportName: 'resolve' }, {
+                    moduleUrl: 'node:buffer',
+                    exportName: 'Buffer'
+                } ]
+            };
+            const graph = await prepareImplementationGraph([ facts ]);
+            scope.assert.deepEqual(graph.modules, []);
+            scope.assert.deepEqual(graph.builtins, [ 'node:buffer', 'node:fs', 'node:path' ]);
+            await verifyImplementationGraph(graph, [ facts ]);
+            await scope.assert.rejects(async function () {
+                await verifyImplementationGraph({ ...graph, builtins: [] }, [ facts ]);
+            }, { message: 'Implementation graph changed; prepare and collect a new run.' });
+            return scope.assert.collect();
+        }
+    ),
     ...([
         'https://example.com/source.ts',
         'file:///project/source.ts?query',
         'file:///project/source.ts#fragment'
     ] as const)
         .map(function (url) {
-            return test(`rejects unsupported native graph entry ${url}`, async function (scope: TestScope) {
+            return authoredTest(`rejects unsupported native graph entry ${url}`, async function (scope: TestScope) {
                 await scope.assert.rejects(async function () {
                     await prepareImplementationGraph([ {
                         ...implementationFacts,
@@ -57,7 +60,7 @@ export const testNode = suite('implementation graph preparation policy', [
             });
         }),
 
-    test(
+    authoredTest(
         'collects and sorts the transitive graph while preserving canonical entries',
         async function (scope: TestScope) {
             const fixture = memoryImplementationGraph([ main, dependency ]);
@@ -79,31 +82,37 @@ export const testNode = suite('implementation graph preparation policy', [
             return scope.assert.collect();
         }
     ),
-    test('reads each module once across shared roots and repeated preparation', async function (scope: TestScope) {
-        const fixture = memoryImplementationGraph([ main, dependency ]);
-        const first = await fixture.preparation.prepare([ implementationFacts, implementationFacts ]);
-        scope.assert.deepEqual(await fixture.preparation.prepare([ implementationFacts ]), first);
-        scope.assert.equal(
-            fixture
-                .calls
-                .filter(function (call) {
-                    return call.startsWith('read:');
-                })
-                .length,
-            2
-        );
-        return scope.assert.collect();
-    }),
-    test('terminates cyclic dependency traversal without duplicating modules', async function (scope: TestScope) {
-        const fixture = memoryImplementationGraph([ main, {
-            ...dependency,
-            dependencies: { './main.ts': mainImplementationUrl }
-        } ]);
-        const graph = await fixture.preparation.prepare([ implementationFacts ]);
-        scope.assert.equal(graph.modules.length, 2);
-        return scope.assert.collect();
-    }),
-    test('collects explicitly declared dynamic modules', async function (scope: TestScope) {
+    authoredTest(
+        'reads each module once across shared roots and repeated preparation',
+        async function (scope: TestScope) {
+            const fixture = memoryImplementationGraph([ main, dependency ]);
+            const first = await fixture.preparation.prepare([ implementationFacts, implementationFacts ]);
+            scope.assert.deepEqual(await fixture.preparation.prepare([ implementationFacts ]), first);
+            scope.assert.equal(
+                fixture
+                    .calls
+                    .filter(function (call) {
+                        return call.startsWith('read:');
+                    })
+                    .length,
+                2
+            );
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest(
+        'terminates cyclic dependency traversal without duplicating modules',
+        async function (scope: TestScope) {
+            const fixture = memoryImplementationGraph([ main, {
+                ...dependency,
+                dependencies: { './main.ts': mainImplementationUrl }
+            } ]);
+            const graph = await fixture.preparation.prepare([ implementationFacts ]);
+            scope.assert.equal(graph.modules.length, 2);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('collects explicitly declared dynamic modules', async function (scope: TestScope) {
         const fixture = memoryImplementationGraph([ dependency ]);
         const graph = await fixture.preparation.prepare([ {
             ...implementationFacts,
@@ -114,7 +123,7 @@ export const testNode = suite('implementation graph preparation policy', [
         scope.assert.deepEqual(graph.builtins, [ 'node:path' ]);
         return scope.assert.collect();
     }),
-    test('rejects unsupported browser realms before reading modules', async function (scope: TestScope) {
+    authoredTest('rejects unsupported browser realms before reading modules', async function (scope: TestScope) {
         const fixture = memoryImplementationGraph([]);
         await scope.assert.rejects(async function () {
             await fixture.preparation.prepare([ { ...implementationFacts, realm: 'browser' } ]);
@@ -122,26 +131,29 @@ export const testNode = suite('implementation graph preparation policy', [
         scope.assert.deepEqual(fixture.calls, []);
         return scope.assert.collect();
     }),
-    test('retains failed source reads consistently within a preparation session', async function (scope: TestScope) {
-        const fixture = memoryImplementationGraph([]);
-        await scope.assert.rejects(async function () {
-            await fixture.preparation.prepare([ implementationFacts ]);
-        }, { message: `Unknown implementation module: ${mainImplementationUrl}` });
-        await scope.assert.rejects(async function () {
-            await fixture.preparation.prepare([ implementationFacts ]);
-        }, { message: `Unknown implementation module: ${mainImplementationUrl}` });
-        scope.assert.equal(
-            fixture
-                .calls
-                .filter(function (call) {
-                    return call.startsWith('read:');
-                })
-                .length,
-            1
-        );
-        return scope.assert.collect();
-    }),
-    test('rejects changes to previously frozen graph identity', async function (scope: TestScope) {
+    authoredTest(
+        'retains failed source reads consistently within a preparation session',
+        async function (scope: TestScope) {
+            const fixture = memoryImplementationGraph([]);
+            await scope.assert.rejects(async function () {
+                await fixture.preparation.prepare([ implementationFacts ]);
+            }, { message: `Unknown implementation module: ${mainImplementationUrl}` });
+            await scope.assert.rejects(async function () {
+                await fixture.preparation.prepare([ implementationFacts ]);
+            }, { message: `Unknown implementation module: ${mainImplementationUrl}` });
+            scope.assert.equal(
+                fixture
+                    .calls
+                    .filter(function (call) {
+                        return call.startsWith('read:');
+                    })
+                    .length,
+                1
+            );
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest('rejects changes to previously frozen graph identity', async function (scope: TestScope) {
         const fixture = memoryImplementationGraph([ main, dependency ]);
         const graph = await fixture.preparation.prepare([ implementationFacts ]);
         assertImplementationGraph(graph, graph);
@@ -150,7 +162,7 @@ export const testNode = suite('implementation graph preparation policy', [
         }, { message: 'Implementation graph changed; prepare and collect a new run.' });
         return scope.assert.collect();
     }),
-    test('delivers only declared canonical graph entries', async function (scope: TestScope) {
+    authoredTest('delivers only declared canonical graph entries', async function (scope: TestScope) {
         const fixture = memoryImplementationGraph([ main, dependency ]);
         const graph = await fixture.preparation.prepare([ implementationFacts ]);
         const delivery = moduleLoadingRuntime();
@@ -165,7 +177,7 @@ export const testNode = suite('implementation graph preparation policy', [
         }, { message: 'Implementation entry is outside the frozen graph.' });
         return scope.assert.collect();
     }),
-    test('rejects forged graphs before invoking module delivery', async function (scope: TestScope) {
+    authoredTest('rejects forged graphs before invoking module delivery', async function (scope: TestScope) {
         const fixture = memoryImplementationGraph([ main, dependency ]);
         const graph = await fixture.preparation.prepare([ implementationFacts ]);
         const delivery = moduleLoadingRuntime();
@@ -178,4 +190,3 @@ export const testNode = suite('implementation graph preparation policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
 import { createBenchmarkHtmlReport } from './benchmark-html-model.ts';
 import { renderBenchmarkHtml } from './benchmark-html-document.ts';
@@ -29,7 +30,7 @@ function budgetHtml(scope: TestScope): string {
         ''
     );
 }
-export const testNode = suite('benchmark budget deltas', [
+export const testNode = authoredSuite('benchmark budget deltas', [
     test('renders both bound deltas beside the recorded decision', function (scope: TestScope) {
         const html = budgetHtml(scope);
         scope.assert.includes(html, '<td>2</td><td>10</td><td>3</td><td>150</td><td>-5</td><td>-50</td>');

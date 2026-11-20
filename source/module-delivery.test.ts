@@ -1,6 +1,7 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { testNode as failures } from './module-delivery-failures.test.ts';
-import { suite, test, type TestScope } from './packages/test/test.entry-point.ts';
+
 import { moduleLoadingRuntime } from './test-support/module-loading-runtime.ts';
 import { createModuleLoading, type DeliveredModule } from './module-delivery.ts';
 
@@ -19,7 +20,7 @@ const delivery = { build: 'build', modules, builtins: [ 'node:path' ] };
 const builtEntry = `${entry}?overkill-build=build%3A0`;
 const builtDependency = `${dependency}?overkill-build=build%3A0`;
 
-export const testNode = suite('frozen module delivery', [
+export const testNode = authoredSuite('frozen module delivery', [
     failures,
     test('returns the native namespace through a generated facade', async function (scope: TestScope) {
         const fixture = moduleLoadingRuntime();
@@ -143,4 +144,3 @@ export const testNode = suite('frozen module delivery', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

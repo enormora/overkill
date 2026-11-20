@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import type { RunResult, TestScope } from '../packages/engine/engine.entry-point.ts';
 import { property } from './property-authoring.ts';
@@ -16,9 +16,9 @@ function assertConfirmedRecipe(scope: TestScope, result: RunResult, phase: strin
     scope.assert.notNull(evidence.confirmedWitness);
 }
 
-export const testNode = suite('input recipe confirmation', [
+export const testNode = authoredSuite('input recipe confirmation', [
     ...([ 'examples', 'automatic-edges', 'exhaustive' ] as const).map(function recipePhase(phase) {
-        return test(`confirms fresh ${phase} inputs without shrink state`, async function (scope: TestScope) {
+        return authoredTest(`confirms fresh ${phase} inputs without shrink state`, async function (scope: TestScope) {
             const seen: number[] = [];
             const result = await executePropertyNode(
                 property({
@@ -53,7 +53,7 @@ export const testNode = suite('input recipe confirmation', [
             return scope.assert.collect();
         });
     }),
-    test('detects non-reproducible examples before requiring shrink state', async function (scope: TestScope) {
+    authoredTest('detects non-reproducible examples before requiring shrink state', async function (scope: TestScope) {
         let calls = 0;
         const result = await executePropertyNode(
             property({
@@ -85,5 +85,3 @@ export const testNode = suite('input recipe confirmation', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

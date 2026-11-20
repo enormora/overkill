@@ -1,13 +1,16 @@
-import { runIfMain } from '#test-runner';
+import {
+    type TestScope as OverkillScope,
+    suite,
+    test,
+    doubleUsage,
+    testDouble,
+    type TestDouble
+} from '@overkill-dev/test';
+
 import figures from 'figures';
 import colors from 'yoctocolors';
-import { doubleUsage, testDouble, type TestDouble } from '../packages/doubles/doubles.entry-point.ts';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type RealTimeReporter,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+
+import type { RealTimeReporter } from '../packages/engine/engine.entry-point.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createLineReporter, type LineReporterDependencies } from './line-reporter.ts';
@@ -49,59 +52,45 @@ function assertOrphanOutput(scope: OverkillScope, log: Log): void {
     ]);
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/reporters/line-reporter-orphan.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints orphan details once the run finishes',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
-                const { onFinish } = reporter;
+export const testNode = suite('source/reporters/line-reporter-orphan.test.ts', [
+    test('line reporter prints orphan details once the run finishes', async function (scope: OverkillScope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log);
+        const { onFinish } = reporter;
 
-                if (onFinish === null) {
-                    throw new TypeError('Expected line reporter to expose onFinish.');
-                }
+        if (onFinish === null) {
+            throw new TypeError('Expected line reporter to expose onFinish.');
+        }
 
-                await onFinish({
-                    context: { id: null, startedAt: null, facts: null },
-                    result: runResultFactory.build({
-                        orphans: [
-                            {
-                                definitionLocations: [
-                                    { column: null, file: 'source/macro.test.ts', kind: 'known' as const, line: 10 },
-                                    { column: null, file: 'source/example.test.ts', kind: 'known' as const, line: 20 }
-                                ],
-                                file: null,
-                                kind: 'test',
-                                title: 'unused'
-                            },
-                            {
-                                definitionLocations: [ { kind: 'unknown' as const } ],
-                                file: 'source/detached.test.ts',
-                                kind: 'suite',
-                                title: 'detached'
-                            }
+        await onFinish({
+            context: { id: null, startedAt: null, facts: null },
+            result: runResultFactory.build({
+                orphans: [
+                    {
+                        definitionLocations: [
+                            { column: null, file: 'source/macro.test.ts', kind: 'known' as const, line: 10 },
+                            { column: null, file: 'source/example.test.ts', kind: 'known' as const, line: 20 }
                         ],
-                        summary: {
-                            discovered: 0,
-                            planned: 0
-                        }
-                    })
-                });
+                        file: null,
+                        kind: 'test',
+                        title: 'unused'
+                    },
+                    {
+                        definitionLocations: [ { kind: 'unknown' as const } ],
+                        file: 'source/detached.test.ts',
+                        kind: 'suite',
+                        title: 'detached'
+                    }
+                ],
+                summary: {
+                    discovered: 0,
+                    planned: 0
+                }
+            })
+        });
 
-                assertOrphanOutput(scope, log);
+        assertOrphanOutput(scope, log);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

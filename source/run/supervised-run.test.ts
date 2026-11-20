@@ -1,18 +1,10 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    defineOutputRenderer,
-    defineReporter,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defineOutputRenderer, defineReporter } from '../packages/engine/engine.entry-point.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
-import {
-    defaultMicrotestProfile,
-    defaultRunRequest
-} from '../test-support/run-command-factory.ts';
+import { defaultMicrotestProfile, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { NormalizedConfig, MicrotestProfileConfig } from '../config/types.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
@@ -152,209 +144,171 @@ function runnerErrorCapabilityCount(result: Awaited<ReturnType<RunOrchestrator['
         .length;
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/supervised-run.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() reports hard-timeout crashes from the supervised child',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
-                const result = await runOrchestrator.run(createRunCommand(endlessLoopFixturePath, {
-                    ...microtestProfile,
-                    timeouts: {
-                        collectionMilliseconds: 5000,
-                        hardMilliseconds: hardTimeoutMilliseconds,
-                        softMilliseconds: softTimeoutMilliseconds
-                    }
-                }));
-                const error = result.runnerErrors[0];
+export const testNode = suite('source/run/supervised-run.test.ts', [
+    test(
+        'orchestrator.run() reports hard-timeout crashes from the supervised child',
+        async function (scope: OverkillScope) {
+            const runOrchestrator = createDeterministicRunOrchestrator();
+            const result = await runOrchestrator.run(createRunCommand(endlessLoopFixturePath, {
+                ...microtestProfile,
+                timeouts: {
+                    collectionMilliseconds: 5000,
+                    hardMilliseconds: hardTimeoutMilliseconds,
+                    softMilliseconds: softTimeoutMilliseconds
+                }
+            }));
+            const error = result.runnerErrors[0];
 
-                scope.require.defined(error);
-                scope.require.defined(error.attributedTo);
-                scope.assert.equal(error.subtype, 'crash');
-                scope.assert.equal(error.attributedTo.title, 'loops');
-                scope.assert.equal(result.summary.crashed, 1);
-                scope.assert.equal(result.summary.processExhausted, 0);
+            scope.require.defined(error);
+            scope.require.defined(error.attributedTo);
+            scope.assert.equal(error.subtype, 'crash');
+            scope.assert.equal(error.attributedTo.title, 'loops');
+            scope.assert.equal(result.summary.crashed, 1);
+            scope.assert.equal(result.summary.processExhausted, 0);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() reports sampled process exhaustion from the supervised child',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
-                const result = await runOrchestrator.run(createRunCommand(delayedPassFixturePath, {
-                    ...microtestProfile,
-                    processUsage: {
-                        budgets: {
-                            activeResourceCount: null,
-                            javaScriptEngineHeapBytes: null,
-                            residentSetBytes: null,
-                            residentSetGrowthBytesPerSecond: resourceGrowthBudgetBytesPerSecond
-                        },
-                        measure: true,
-                        samplingIntervalMilliseconds
-                    }
-                }));
-                const error = result.runnerErrors[0];
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'orchestrator.run() reports sampled process exhaustion from the supervised child',
+        async function (scope: OverkillScope) {
+            const runOrchestrator = createDeterministicRunOrchestrator();
+            const result = await runOrchestrator.run(createRunCommand(delayedPassFixturePath, {
+                ...microtestProfile,
+                processUsage: {
+                    budgets: {
+                        activeResourceCount: null,
+                        javaScriptEngineHeapBytes: null,
+                        residentSetBytes: null,
+                        residentSetGrowthBytesPerSecond: resourceGrowthBudgetBytesPerSecond
+                    },
+                    measure: true,
+                    samplingIntervalMilliseconds
+                }
+            }));
+            const error = result.runnerErrors[0];
 
-                scope.require.defined(error);
-                scope.require.defined(error.attributedTo);
-                scope.assert.equal(error.subtype, 'process-exhaustion');
-                scope.assert.equal(error.attributedTo.title, 'delays');
-                scope.assert.equal(result.summary.crashed, 0);
-                scope.assert.equal(result.summary.processExhausted, 1);
+            scope.require.defined(error);
+            scope.require.defined(error.attributedTo);
+            scope.assert.equal(error.subtype, 'process-exhaustion');
+            scope.assert.equal(error.attributedTo.title, 'delays');
+            scope.assert.equal(result.summary.crashed, 0);
+            scope.assert.equal(result.summary.processExhausted, 1);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() reports supervised active Node resource count exhaustion',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
-                const result = await runOrchestrator.run(createRunCommand(delayedPassFixturePath, {
-                    ...microtestProfile,
-                    processUsage: {
-                        budgets: {
-                            activeResourceCount: 1,
-                            javaScriptEngineHeapBytes: null,
-                            residentSetBytes: null,
-                            residentSetGrowthBytesPerSecond: null
-                        },
-                        measure: true,
-                        samplingIntervalMilliseconds
-                    }
-                }));
-                const error = result.runnerErrors.find(function isProcessExhaustion(runnerError) {
-                    return runnerError.subtype === 'process-exhaustion';
-                });
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'orchestrator.run() reports supervised active Node resource count exhaustion',
+        async function (scope: OverkillScope) {
+            const runOrchestrator = createDeterministicRunOrchestrator();
+            const result = await runOrchestrator.run(createRunCommand(delayedPassFixturePath, {
+                ...microtestProfile,
+                processUsage: {
+                    budgets: {
+                        activeResourceCount: 1,
+                        javaScriptEngineHeapBytes: null,
+                        residentSetBytes: null,
+                        residentSetGrowthBytesPerSecond: null
+                    },
+                    measure: true,
+                    samplingIntervalMilliseconds
+                }
+            }));
+            const error = result.runnerErrors.find(function isProcessExhaustion(runnerError) {
+                return runnerError.subtype === 'process-exhaustion';
+            });
 
-                scope.require.defined(error);
-                scope.require.defined(error.attributedTo);
-                scope.assert.equal(error.attributedTo.title, 'delays');
+            scope.require.defined(error);
+            scope.require.defined(error.attributedTo);
+            scope.assert.equal(error.attributedTo.title, 'delays');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() accepts measured supervised execution within budgets',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
-                const result = await runOrchestrator.run(createRunCommand(
-                    delayedPassFixturePath,
-                    generousMeasuredProfile
-                ));
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'orchestrator.run() accepts measured supervised execution within budgets',
+        async function (scope: OverkillScope) {
+            const runOrchestrator = createDeterministicRunOrchestrator();
+            const result = await runOrchestrator.run(createRunCommand(
+                delayedPassFixturePath,
+                generousMeasuredProfile
+            ));
 
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(result.summary.processExhausted, 0);
-                scope.assert.equal(result.runnerErrors.length, 0);
+            scope.assert.equal(result.summary.passed, 1);
+            scope.assert.equal(result.summary.processExhausted, 0);
+            scope.assert.equal(result.runnerErrors.length, 0);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() records supervised reporter event failures',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
-                const result = await runOrchestrator.run({
-                    config: createRunConfigWithReporters(generousMeasuredProfile, [ failingEventReporter ]),
-                    cwd: process.cwd(),
-                    engine: { kind: 'default' },
-                    request: createRunRequest(delayedPassFixturePath)
-                });
+            return scope.assert.collect();
+        }
+    ),
+    test('orchestrator.run() records supervised reporter event failures', async function (scope: OverkillScope) {
+        const runOrchestrator = createDeterministicRunOrchestrator();
+        const result = await runOrchestrator.run({
+            config: createRunConfigWithReporters(generousMeasuredProfile, [ failingEventReporter ]),
+            cwd: process.cwd(),
+            engine: { kind: 'default' },
+            request: createRunRequest(delayedPassFixturePath)
+        });
 
-                const error = result.runnerErrors[0];
+        const error = result.runnerErrors[0];
 
-                scope.require.defined(error);
-                scope.assert.equal(error.subtype, 'reporter');
+        scope.require.defined(error);
+        scope.assert.equal(error.subtype, 'reporter');
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() consolidates supervised process.env policy errors',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
-                const result = await runOrchestrator.run(
-                    createRunCommand(envPolicyFixturePath, restrictedMicrotestProfile, {
-                        ...createRunRequest(envPolicyFixturePath),
-                        capabilityRestrictions: { mode: 'enabled' }
-                    })
-                );
+        return scope.assert.collect();
+    }),
+    test('orchestrator.run() consolidates supervised process.env policy errors', async function (scope: OverkillScope) {
+        const runOrchestrator = createDeterministicRunOrchestrator();
+        const result = await runOrchestrator.run(
+            createRunCommand(envPolicyFixturePath, restrictedMicrotestProfile, {
+                ...createRunRequest(envPolicyFixturePath),
+                capabilityRestrictions: { mode: 'enabled' }
+            })
+        );
 
-                scope.assert.equal(result.summary.runtimePolicy, 1);
-                scope.assert.equal(runnerErrorCapabilityCount(result, 'process-env'), 1);
+        scope.assert.equal(result.summary.runtimePolicy, 1);
+        scope.assert.equal(runnerErrorCapabilityCount(result, 'process-env'), 1);
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() does not report supervised parent orchestration as runtime policy',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
-                const result = await runOrchestrator.run({
-                    config: createRunConfigWithReporters(restrictedMicrotestProfile, [ createConsoleReporter() ]),
-                    cwd: process.cwd(),
-                    engine: { kind: 'default' },
-                    request: {
-                        ...createRunRequest(passingFixturePath),
-                        capabilityRestrictions: { mode: 'enabled' },
-                        seed: { value: null }
-                    }
-                });
-
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.deepEqual(result.runnerErrors, []);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() records supervised process usage from injected dependencies',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
-                const result = await runOrchestrator.run(createRunCommand(delayedPassFixturePath, microtestProfile, {
-                    ...createRunRequest(delayedPassFixturePath),
-                    measureProcessUsage: true,
-                    profile: 'microtest',
+        return scope.assert.collect();
+    }),
+    test(
+        'orchestrator.run() does not report supervised parent orchestration as runtime policy',
+        async function (scope: OverkillScope) {
+            const runOrchestrator = createDeterministicRunOrchestrator();
+            const result = await runOrchestrator.run({
+                config: createRunConfigWithReporters(restrictedMicrotestProfile, [ createConsoleReporter() ]),
+                cwd: process.cwd(),
+                engine: { kind: 'default' },
+                request: {
+                    ...createRunRequest(passingFixturePath),
+                    capabilityRestrictions: { mode: 'enabled' },
                     seed: { value: null }
-                }));
+                }
+            });
 
-                scope.require.defined(result.processUsage);
-                scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(result.runnerErrors.length, 0);
+            scope.assert.equal(result.summary.passed, 1);
+            scope.assert.deepEqual(result.runnerErrors, []);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'orchestrator.run() records supervised process usage from injected dependencies',
+        async function (scope: OverkillScope) {
+            const runOrchestrator = createDeterministicRunOrchestrator();
+            const result = await runOrchestrator.run(createRunCommand(delayedPassFixturePath, microtestProfile, {
+                ...createRunRequest(delayedPassFixturePath),
+                measureProcessUsage: true,
+                profile: 'microtest',
+                seed: { value: null }
+            }));
 
-await runIfMain(import.meta, testNode);
+            scope.require.defined(result.processUsage);
+            scope.assert.equal(result.summary.passed, 1);
+            scope.assert.equal(result.runnerErrors.length, 0);
+
+            return scope.assert.collect();
+        }
+    )
+]);

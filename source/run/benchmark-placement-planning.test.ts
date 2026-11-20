@@ -1,4 +1,5 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { definition } from '../test-support/benchmark-placement-fixture.ts';
 import { planningInput, mixedMeasurements, mixedLifecycleInput } from '../test-support/benchmark-plan-input.ts';
 import { collectedPlanning as createCollectedExecutionPlan } from '../test-support/collected-planning.ts';
@@ -20,7 +21,7 @@ async function shardPlans(input: PlanningInput): Promise<readonly CollectedExecu
     }));
 }
 
-export const testNode = suite('adaptive benchmark planning', [
+export const testNode = authoredSuite('adaptive benchmark planning', [
     profileDefaults,
     test('caps lanes without rewriting request, host or profile facts', async function (scope) {
         const plan = await createCollectedExecutionPlan(planningInput());

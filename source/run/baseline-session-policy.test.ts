@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { ordinaryBaselineSessionFixture } from '../test-support/ordinary-baseline-session.ts';
 import { baselineCaseEvent, baselineCaseResult, storedBaseline } from '../test-support/baseline-case-fixture.ts';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
@@ -9,25 +9,28 @@ import { baselineRunnerError } from './baseline-outcomes.ts';
 import { readOrdinaryBaselineReport } from './baseline-report.ts';
 
 const maxBytes = 65_536;
-export const testNode = suite('ordinary baseline session policy', [
+export const testNode = authoredSuite('ordinary baseline session policy', [
     ...([ 'none', 'diff' ] as const).map(function (mode) {
-        return test(`${mode} validates proposals and returns a read-only report`, async function (scope: TestScope) {
-            const fixture = ordinaryBaselineSessionFixture();
-            const session = createOrdinaryBaselineSession({
-                mode,
-                maxBytes,
-                workflow: fixture.workflow,
-                dispatcher: fixture.dispatcher
-            });
-            const result = await session.finalize(baselineCaseResult);
-            scope.assert.equal(readOrdinaryBaselineReport(result)?.writeOutcome.kind, 'read-only');
-            scope.assert.deepEqual(fixture.calls, [ 'validate:1' ]);
-            scope.assert.deepEqual(await fixture.store.list(), []);
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `${mode} validates proposals and returns a read-only report`,
+            async function (scope: TestScope) {
+                const fixture = ordinaryBaselineSessionFixture();
+                const session = createOrdinaryBaselineSession({
+                    mode,
+                    maxBytes,
+                    workflow: fixture.workflow,
+                    dispatcher: fixture.dispatcher
+                });
+                const result = await session.finalize(baselineCaseResult);
+                scope.assert.equal(readOrdinaryBaselineReport(result)?.writeOutcome.kind, 'read-only');
+                scope.assert.deepEqual(fixture.calls, [ 'validate:1' ]);
+                scope.assert.deepEqual(await fixture.store.list(), []);
+                return scope.assert.collect();
+            }
+        );
     }),
     ...([ 'update', 'apply' ] as const).map(function (mode) {
-        return test(
+        return authoredTest(
             `${mode} publishes successful proposals and retains their report`,
             async function (scope: TestScope) {
                 const fixture = ordinaryBaselineSessionFixture();
@@ -52,7 +55,7 @@ export const testNode = suite('ordinary baseline session policy', [
             }
         );
     }),
-    test('blocks publication after an unsuccessful execution', async function (scope: TestScope) {
+    authoredTest('blocks publication after an unsuccessful execution', async function (scope: TestScope) {
         const fixture = ordinaryBaselineSessionFixture();
         const session = createOrdinaryBaselineSession({
             mode: 'update',
@@ -71,7 +74,7 @@ export const testNode = suite('ordinary baseline session policy', [
         scope.assert.deepEqual(await fixture.store.list(), []);
         return scope.assert.collect();
     }),
-    test('rejects an oversized report before publishing proposals', async function (scope: TestScope) {
+    authoredTest('rejects an oversized report before publishing proposals', async function (scope: TestScope) {
         const fixture = ordinaryBaselineSessionFixture();
         const session = createOrdinaryBaselineSession({
             mode: 'update',
@@ -89,7 +92,7 @@ export const testNode = suite('ordinary baseline session policy', [
         scope.assert.deepEqual(fixture.calls, []);
         return scope.assert.collect();
     }),
-    test(
+    authoredTest(
         'notifies reporters about evaluation errors before delivering the evaluated event',
         async function (scope: TestScope) {
             const fixture = ordinaryBaselineSessionFixture();
@@ -123,7 +126,7 @@ export const testNode = suite('ordinary baseline session policy', [
             return scope.assert.collect();
         }
     ),
-    test(
+    authoredTest(
         'reports inventory errors collected during result preparation exactly once',
         async function (scope: TestScope) {
             const fixture = ordinaryBaselineSessionFixture();
@@ -159,4 +162,3 @@ export const testNode = suite('ordinary baseline session policy', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

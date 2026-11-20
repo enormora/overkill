@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { attachmentListener, attachmentListenerScenario } from '../test-support/attachment-listener.ts';
 import { listenForAttachments } from './attachment-server.ts';
@@ -8,8 +8,8 @@ import { attachmentMaxFrameBytes, attachmentMaxPendingRequests } from './attachm
 function request(token: string, id: number): string {
     return JSON.stringify({ token, request: id, operation: { kind: 'write', writer: id, data: 'YQ==' } });
 }
-export const testNode = suite('attachment listener protocol and shutdown', [
-    test('authenticates requests and acknowledges their original sequence', async function (scope: TestScope) {
+export const testNode = authoredSuite('attachment listener protocol and shutdown', [
+    authoredTest('authenticates requests and acknowledges their original sequence', async function (scope: TestScope) {
         const fixture = attachmentListener(scope, attachmentListenerScenario);
         const server = await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
         const channel = fixture.connect();
@@ -20,7 +20,7 @@ export const testNode = suite('attachment listener protocol and shutdown', [
         scope.assert.deepEqual(await server.finish(), []);
         return scope.assert.collect();
     }),
-    test('finishes the listener only once', async function (scope: TestScope) {
+    authoredTest('finishes the listener only once', async function (scope: TestScope) {
         const fixture = attachmentListener(scope, attachmentListenerScenario);
         const server = await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
         await Promise.all([ server.finish(), server.finish() ]);
@@ -29,7 +29,7 @@ export const testNode = suite('attachment listener protocol and shutdown', [
         return scope.assert.collect();
     }),
     ...([ 'invalid-token', 'malformed-json', 'invalid-schema' ] as const).map(function (kind) {
-        return test(`closes ${kind} requests without calling storage`, async function (scope: TestScope) {
+        return authoredTest(`closes ${kind} requests without calling storage`, async function (scope: TestScope) {
             const fixture = attachmentListener(scope, attachmentListenerScenario);
             const server = await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
             const channel = fixture.connect();
@@ -43,7 +43,7 @@ export const testNode = suite('attachment listener protocol and shutdown', [
         });
     }),
     ...([ 'exchange', 'write' ] as const).map(function (stage) {
-        return test(`closes channels after ${stage} failures`, async function (scope: TestScope) {
+        return authoredTest(`closes channels after ${stage} failures`, async function (scope: TestScope) {
             const failure = new Error('attachment failed');
             const fixture = attachmentListener(scope, { ...attachmentListenerScenario, [stage]: failure });
             const server = await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
@@ -55,7 +55,7 @@ export const testNode = suite('attachment listener protocol and shutdown', [
             return scope.assert.collect();
         });
     }),
-    test('retains abandoned owners when a client disconnects', async function (scope: TestScope) {
+    authoredTest('retains abandoned owners when a client disconnects', async function (scope: TestScope) {
         const fixture = attachmentListener(scope, { ...attachmentListenerScenario, abandoned: true });
         const server = await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
         const channel = fixture.connect();
@@ -67,7 +67,7 @@ export const testNode = suite('attachment listener protocol and shutdown', [
         }));
         return scope.assert.collect();
     }),
-    test('rejects startup and shutdown failures', async function (scope: TestScope) {
+    authoredTest('rejects startup and shutdown failures', async function (scope: TestScope) {
         const failure = new Error('listener failed');
         const fixture = attachmentListener(scope, { ...attachmentListenerScenario, start: failure });
         await scope.assert.rejects(async function () {
@@ -79,7 +79,7 @@ export const testNode = suite('attachment listener protocol and shutdown', [
         return scope.assert.collect();
     }),
     ...([ 'missing', 'path' ] as const).map(function (address) {
-        return test(`rejects an execution address of kind ${address}`, async function (scope: TestScope) {
+        return authoredTest(`rejects an execution address of kind ${address}`, async function (scope: TestScope) {
             const fixture = attachmentListener(scope, { ...attachmentListenerScenario, address });
             await scope.assert.rejects(async function () {
                 return await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
@@ -87,7 +87,7 @@ export const testNode = suite('attachment listener protocol and shutdown', [
             return scope.assert.collect();
         });
     }),
-    test('closes channels exceeding the frame byte limit', async function (scope: TestScope) {
+    authoredTest('closes channels exceeding the frame byte limit', async function (scope: TestScope) {
         const fixture = attachmentListener(scope, attachmentListenerScenario);
         const server = await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
         const channel = fixture.connect();
@@ -97,7 +97,7 @@ export const testNode = suite('attachment listener protocol and shutdown', [
         await server.finish();
         return scope.assert.collect();
     }),
-    test('limits pending requests while preserving queued storage order', async function (scope: TestScope) {
+    authoredTest('limits pending requests while preserving queued storage order', async function (scope: TestScope) {
         const fixture = attachmentListener(scope, attachmentListenerScenario);
         const server = await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
         const channel = fixture.connect();
@@ -122,4 +122,3 @@ export const testNode = suite('attachment listener protocol and shutdown', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,7 +1,8 @@
-import { runIfMain } from '#test-runner';
+import { suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { Random } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
-import { suite, test, type TestNode } from '../packages/test/test.entry-point.ts';
+import type { TestNode } from '../packages/test/test.entry-point.ts';
 import { generatorContext } from '../test-support/generator-execution.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property, gen } from '../packages/test/property.entry-point.ts';
@@ -23,7 +24,7 @@ function searchSequence(direction: number): number[] {
     });
 }
 
-export const testNode = suite('property targeting', [
+export const testNode = authoredSuite('property targeting', [
     test('score stagnation completes and coverage remains independent', async function (scope) {
         const make = function (minimumPercent: number): TestNode {
             return property({
@@ -144,4 +145,3 @@ export const testNode = suite('property targeting', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

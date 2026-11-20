@@ -1,9 +1,9 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { processProbeReportStorage, processProbeReport } from '../test-support/process-probe-report.ts';
 
-export const testNode = suite('bounded process probe reports', [
-    test('combines partial reads and releases file and directory ownership', async function (scope: TestScope) {
+export const testNode = authoredSuite('bounded process probe reports', [
+    authoredTest('combines partial reads and releases file and directory ownership', async function (scope: TestScope) {
         const fixture = processProbeReportStorage('pass');
         const storage = await fixture.prepare();
         scope.assert.equal(storage.path, '/reports/report.json');
@@ -18,7 +18,7 @@ export const testNode = suite('bounded process probe reports', [
         return scope.assert.collect();
     }),
     ...([ 'invalid-json', 'invalid-report', 'oversized', 'read-error' ] as const).map(function (scenario) {
-        return test(`rejects ${scenario} reports and closes the file`, async function (scope: TestScope) {
+        return authoredTest(`rejects ${scenario} reports and closes the file`, async function (scope: TestScope) {
             const fixture = processProbeReportStorage(scenario);
             const storage = await fixture.prepare();
             if (scenario === 'read-error') {
@@ -37,4 +37,3 @@ export const testNode = suite('bounded process probe reports', [
         });
     })
 ]);
-await runIfMain(import.meta, testNode);

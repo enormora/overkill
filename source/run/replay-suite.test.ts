@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite } from '../packages/test/test.entry-point.ts';
+import { suite as authoredSuite } from '@overkill-dev/test';
+
 import { testNode as records } from './replay-record-validation.test.ts';
 import { testNode as hedging } from './replay-hedging.test.ts';
 import { testNode as publicSurfaces } from './replay-public-surfaces.test.ts';
@@ -8,7 +8,7 @@ import { testNode as binding } from './replay-binding.test.ts';
 import { testNode as decisions } from './replay-trace-decisions.test.ts';
 import { testNode as trace } from './replay-trace.test.ts';
 
-export const testNode = suite('replay commands', [
+export const testNode = authoredSuite('replay commands', [
     trace,
     binding,
     decisions,
@@ -17,4 +17,3 @@ export const testNode = suite('replay commands', [
     hedging,
     records
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,4 +1,5 @@
-import { createSuite } from '../../../packages/engine/engine.entry-point.ts';
+import { suite } from '@overkill-dev/test';
+
 import { testNode as replayTerminalTestNode } from '../../../run/replay-terminal.test.ts';
 import { testNode as replayCommandTestNode } from '../../../run/replay-command.test.ts';
 import { testNode as replayOperandsTestNode } from '../../../run/replay-operands.test.ts';
@@ -8,19 +9,13 @@ import { testNode as runnerReplaySimulationTestNode } from '../../run/runner-rep
 import { testNode as runnerDebugReplayTestNode } from '../../run/runner-debug-replay.test.ts';
 import { testNode as runnerReplayCoverageTestNode } from '../../run/runner-replay-coverage.test.ts';
 
-export const testNode = createSuite({
-    title: 'persistence replay integration',
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    children: [
-        replayTerminalTestNode,
-        replayCommandTestNode,
-        replayOperandsTestNode,
-        runnerReplayCompatibilityTestNode,
-        runnerReplayTestNode,
-        runnerReplaySimulationTestNode,
-        runnerDebugReplayTestNode,
-        runnerReplayCoverageTestNode
-    ]
-});
+export const testNode = suite('persistence replay integration', [
+    replayTerminalTestNode,
+    replayCommandTestNode,
+    replayOperandsTestNode,
+    runnerReplayCompatibilityTestNode,
+    runnerReplayTestNode,
+    runnerReplaySimulationTestNode,
+    runnerDebugReplayTestNode,
+    runnerReplayCoverageTestNode
+]);

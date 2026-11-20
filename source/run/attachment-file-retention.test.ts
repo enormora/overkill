@@ -1,8 +1,9 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { attachmentFile, attachmentFileScenario } from '../test-support/attachment-file.ts';
 import { createFileAttachmentRetention } from './attachment-retention.ts';
 
-export const testNode = suite('attachment file retention', [
+export const testNode = authoredSuite('attachment file retention', [
     test('handles partial writes and closes a completed attachment exactly once', async function (scope: TestScope) {
         const fixture = attachmentFile({ ...attachmentFileScenario, maximumWrite: 2 });
         const retention = createFileAttachmentRetention(fixture.file, 'artifacts/data.bin', 1024);

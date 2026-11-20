@@ -1,9 +1,5 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
@@ -12,8 +8,6 @@ import type { RealTimeReporter, ReporterEvent, RunFacts } from '../engine/report
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createBriefReporter, type BriefReporterSinks } from '../packages/reporter-brief/reporter-brief.entry-point.ts';
 import { formatRunFactSummary } from './run-summary-rendering.ts';
-
-const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
 const caseId = {
     file: 'source/users.test.ts',
@@ -159,396 +153,333 @@ function assertRunnerErrorOutput(scope: OverkillScope, errorOutput: readonly Out
     scope.assert.equal(annotation.title, 'Runner error');
 }
 
-export const testNode = createOverkillSuite({
-    title: 'source/reporters/brief-reporter.test.ts',
-    ...testMetadata,
-    children: [
-        createOverkillTestCase({
-            ...testMetadata,
-
-            title: 'retry failures do not create annotations or increment completion counts',
-            async body(scope: OverkillScope) {
-                const reporter = createBriefRuntimeReporter();
-                const output = await readOutput(reporter.onEvent({ ...failEvent(), completion: 'retry' }));
-                scope.assert.equal(output[0]?.annotation, null);
-                scope.assert.deepEqual(
-                    output.map(function text(intent) {
-                        return intent.text;
-                    }),
-                    [ 'retry 1: creates profile' ]
-                );
-                for (let index = 0; index < 99; index += 1) {
-                    await reporter.onEvent(passEvent());
-                }
-                const final = await readOutput(reporter.onEvent({ ...passEvent(), attempt: 1 }));
-                scope.assert.deepEqual(
-                    final.map(function text(intent) {
-                        return intent.text;
-                    }),
-                    [ 'progress 100/? failed=0' ]
-                );
-                return scope.assert.collect();
+export const testNode = suite('source/reporters/brief-reporter.test.ts', [
+    test(
+        'retry failures do not create annotations or increment completion counts',
+        async function (scope: OverkillScope) {
+            const reporter = createBriefRuntimeReporter();
+            const output = await readOutput(reporter.onEvent({ ...failEvent(), completion: 'retry' }));
+            scope.assert.equal(output[0]?.annotation, null);
+            scope.assert.deepEqual(
+                output.map(function text(intent) {
+                    return intent.text;
+                }),
+                [ 'retry 1: creates profile' ]
+            );
+            for (let index = 0; index < 99; index += 1) {
+                await reporter.onEvent(passEvent());
             }
-        }),
-        createOverkillTestCase({
-            title: 'brief reporter declares managed primary stdout',
-            ...testMetadata,
+            const final = await readOutput(reporter.onEvent({ ...passEvent(), attempt: 1 }));
+            scope.assert.deepEqual(
+                final.map(function text(intent) {
+                    return intent.text;
+                }),
+                [ 'progress 100/? failed=0' ]
+            );
+            return scope.assert.collect();
+        }
+    ),
+    test('brief reporter declares managed primary stdout', function (scope: OverkillScope) {
+        const reporter = createBriefRuntimeReporter();
 
-            body(scope: OverkillScope) {
-                const reporter = createBriefRuntimeReporter();
+        scope.assert.deepEqual(reporter.sinks, [ { kind: 'stdout-managed-primary' } ]);
 
-                scope.assert.deepEqual(reporter.sinks, [ { kind: 'stdout-managed-primary' } ]);
+        return scope.assert.collect();
+    }),
+    test('brief reporter prints run start and omits passing test lines', async function (scope: OverkillScope) {
+        const reporter = createBriefRuntimeReporter();
+        const startOutput = await readOutput(reporter.onEvent({
+            facts: { cases: [ { annotations: {}, controls: {}, id: caseId } ] },
+            kind: 'run-start',
+            root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
+            startedAt: '2026-07-15T00:00:00.000Z'
+        }));
+        const passOutput = await readOutput(reporter.onEvent(passEvent()));
 
-                return scope.assert.collect();
+        scope.assert.deepEqual(
+            startOutput.map(function toText(intent) {
+                return intent.text;
+            }),
+            [ 'run source' ]
+        );
+        scope.assert.deepEqual(passOutput, []);
+
+        return scope.assert.collect();
+    }),
+    test('brief reporter includes order and seed on run start', async function (scope: OverkillScope) {
+        const reporter = createBriefRuntimeReporter();
+        const startOutput = await readOutput(reporter.onEvent({
+            facts: {
+                cases: [ { annotations: {}, controls: {}, id: caseId } ],
+                execution: { order: 'seeded' },
+                reproducibility: { seed: '123' }
+            },
+            kind: 'run-start',
+            root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
+            startedAt: '2026-07-15T00:00:00.000Z'
+        }));
+
+        scope.assert.deepEqual(
+            startOutput.map(function toText(intent) {
+                return intent.text;
+            }),
+            [ 'run source order=seeded seed=123' ]
+        );
+
+        return scope.assert.collect();
+    }),
+    test('brief reporter ignores incomplete ordering facts', async function (scope: OverkillScope) {
+        const reporter = createBriefRuntimeReporter();
+        const missingSeed = await readOutput(reporter.onEvent({
+            facts: {
+                cases: [ { annotations: {}, controls: {}, id: caseId } ],
+                execution: { order: 'seeded' }
+            },
+            kind: 'run-start',
+            root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
+            startedAt: '2026-07-15T00:00:00.000Z'
+        }));
+        const missingOrder = await readOutput(reporter.onEvent({
+            facts: {
+                cases: [ { annotations: {}, controls: {}, id: caseId } ],
+                reproducibility: { seed: '123' }
+            },
+            kind: 'run-start',
+            root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
+            startedAt: '2026-07-15T00:00:00.000Z'
+        }));
+        const missingOrderingFacts = await readOutput(reporter.onEvent({
+            facts: {
+                cases: [ { annotations: {}, controls: {}, id: caseId } ]
+            },
+            kind: 'run-start',
+            root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
+            startedAt: '2026-07-15T00:00:00.000Z'
+        }));
+
+        scope.assert.deepEqual(
+            missingSeed.map(function toText(intent) {
+                return intent.text;
+            }),
+            [ 'run source' ]
+        );
+        scope.assert.deepEqual(
+            missingOrder.map(function toText(intent) {
+                return intent.text;
+            }),
+            [ 'run source' ]
+        );
+        scope.assert.deepEqual(
+            missingOrderingFacts.map(function toText(intent) {
+                return intent.text;
+            }),
+            [ 'run source' ]
+        );
+
+        return scope.assert.collect();
+    }),
+    test('brief run fact summary rejects malformed ordering facts', function (scope: OverkillScope) {
+        scope.assert.equal(formatRunFactSummary(runFacts(null, { seed: '123' })), null);
+        scope.assert.equal(formatRunFactSummary(runFacts({ order: 'seeded' }, null)), null);
+        scope.assert.equal(formatRunFactSummary(runFacts({}, { seed: '123' })), null);
+        scope.assert.equal(formatRunFactSummary(runFacts({ order: 'seeded' }, {})), null);
+
+        return scope.assert.collect();
+    }),
+    test('brief reporter prints progress every one hundred completed tests', async function (scope: OverkillScope) {
+        const reporter = createBriefRuntimeReporter();
+
+        await reporter.onEvent({
+            facts: { cases: Array.from({ length: 250 }) },
+            kind: 'run-start',
+            root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
+            startedAt: '2026-07-15T00:00:00.000Z'
+        });
+
+        for (let index = 0; index < 99; index += 1) {
+            scope.assert.deepEqual(await readOutput(reporter.onEvent(passEvent())), []);
+        }
+
+        const progressOutput = await readOutput(reporter.onEvent(passEvent()));
+
+        scope.assert.deepEqual(
+            progressOutput.map(function toText(intent) {
+                return intent.text;
+            }),
+            [ 'progress 100/250 failed=0' ]
+        );
+
+        return scope.assert.collect();
+    }),
+    test(
+        'brief reporter uses an unknown progress denominator without run facts',
+        async function (scope: OverkillScope) {
+            const reporter = createBriefRuntimeReporter();
+
+            for (let index = 0; index < 99; index += 1) {
+                await reporter.onEvent(passEvent());
             }
-        }),
-        createOverkillTestCase({
-            title: 'brief reporter prints run start and omits passing test lines',
-            ...testMetadata,
 
-            async body(scope: OverkillScope) {
-                const reporter = createBriefRuntimeReporter();
-                const startOutput = await readOutput(reporter.onEvent({
-                    facts: { cases: [ { annotations: {}, controls: {}, id: caseId } ] },
-                    kind: 'run-start',
-                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                }));
-                const passOutput = await readOutput(reporter.onEvent(passEvent()));
+            const progressOutput = await readOutput(reporter.onEvent(passEvent()));
 
-                scope.assert.deepEqual(
-                    startOutput.map(function toText(intent) {
-                        return intent.text;
-                    }),
-                    [ 'run source' ]
-                );
-                scope.assert.deepEqual(passOutput, []);
+            scope.assert.deepEqual(
+                progressOutput.map(function toText(intent) {
+                    return intent.text;
+                }),
+                [ 'progress 100/? failed=0' ]
+            );
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'brief reporter includes order and seed on run start',
-            ...testMetadata,
+            return scope.assert.collect();
+        }
+    ),
+    test('brief reporter suppresses final progress at the planned count', async function (scope: OverkillScope) {
+        const reporter = createBriefRuntimeReporter();
 
-            async body(scope: OverkillScope) {
-                const reporter = createBriefRuntimeReporter();
-                const startOutput = await readOutput(reporter.onEvent({
-                    facts: {
-                        cases: [ { annotations: {}, controls: {}, id: caseId } ],
-                        execution: { order: 'seeded' },
-                        reproducibility: { seed: '123' }
-                    },
-                    kind: 'run-start',
-                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                }));
+        await reporter.onEvent({
+            facts: { cases: Array.from({ length: 100 }) },
+            kind: 'run-start',
+            root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
+            startedAt: '2026-07-15T00:00:00.000Z'
+        });
 
-                scope.assert.deepEqual(
-                    startOutput.map(function toText(intent) {
-                        return intent.text;
-                    }),
-                    [ 'run source order=seeded seed=123' ]
-                );
+        for (let index = 0; index < 99; index += 1) {
+            await reporter.onEvent(passEvent());
+        }
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'brief reporter ignores incomplete ordering facts',
-            ...testMetadata,
+        const finalPassOutput = await readOutput(reporter.onEvent(passEvent()));
 
-            async body(scope: OverkillScope) {
-                const reporter = createBriefRuntimeReporter();
-                const missingSeed = await readOutput(reporter.onEvent({
-                    facts: {
-                        cases: [ { annotations: {}, controls: {}, id: caseId } ],
-                        execution: { order: 'seeded' }
-                    },
-                    kind: 'run-start',
-                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                }));
-                const missingOrder = await readOutput(reporter.onEvent({
-                    facts: {
-                        cases: [ { annotations: {}, controls: {}, id: caseId } ],
-                        reproducibility: { seed: '123' }
-                    },
-                    kind: 'run-start',
-                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                }));
-                const missingOrderingFacts = await readOutput(reporter.onEvent({
-                    facts: {
-                        cases: [ { annotations: {}, controls: {}, id: caseId } ]
-                    },
-                    kind: 'run-start',
-                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                }));
+        scope.assert.deepEqual(finalPassOutput, []);
 
-                scope.assert.deepEqual(
-                    missingSeed.map(function toText(intent) {
-                        return intent.text;
-                    }),
-                    [ 'run source' ]
-                );
-                scope.assert.deepEqual(
-                    missingOrder.map(function toText(intent) {
-                        return intent.text;
-                    }),
-                    [ 'run source' ]
-                );
-                scope.assert.deepEqual(
-                    missingOrderingFacts.map(function toText(intent) {
-                        return intent.text;
-                    }),
-                    [ 'run source' ]
-                );
+        return scope.assert.collect();
+    }),
+    test('brief reporter prints one diagnostic line per failure cause', async function (scope: OverkillScope) {
+        const reporter = createBriefRuntimeReporter();
+        const failureOutput = await readOutput(reporter.onEvent(failEvent()));
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'brief run fact summary rejects malformed ordering facts',
-            ...testMetadata,
+        scope.assert.deepEqual(
+            failureOutput.map(function toText(intent) {
+                return intent.text;
+            }),
+            [
+                'fail source/users.test.ts:10:5 source/users.test.ts: users > creates profile: expected true, actual false',
+                'fail source/users.test.ts: users > creates profile: boom'
+            ]
+        );
+        assertFailureAnnotations(scope, failureOutput);
 
-            body(scope: OverkillScope) {
-                scope.assert.equal(formatRunFactSummary(runFacts(null, { seed: '123' })), null);
-                scope.assert.equal(formatRunFactSummary(runFacts({ order: 'seeded' }, null)), null);
-                scope.assert.equal(formatRunFactSummary(runFacts({}, { seed: '123' })), null);
-                scope.assert.equal(formatRunFactSummary(runFacts({ order: 'seeded' }, {})), null);
+        return scope.assert.collect();
+    }),
+    test('brief reporter prints runner errors and ignores suite events', async function (scope: OverkillScope) {
+        const reporter = createBriefRuntimeReporter();
+        const suiteOutput = await readOutput(reporter.onEvent({
+            kind: 'suite-start',
+            suitePath: [ { definitionLocations: [ definitionLocation ], title: 'source' } ]
+        }));
+        const errorOutput = await readOutput(reporter.onEvent(runnerErrorEvent()));
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'brief reporter prints progress every one hundred completed tests',
-            ...testMetadata,
+        scope.assert.deepEqual(suiteOutput, []);
+        assertRunnerErrorOutput(scope, errorOutput);
 
-            async body(scope: OverkillScope) {
-                const reporter = createBriefRuntimeReporter();
-
-                await reporter.onEvent({
-                    facts: { cases: Array.from({ length: 250 }) },
-                    kind: 'run-start',
-                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
-
-                for (let index = 0; index < 99; index += 1) {
-                    scope.assert.deepEqual(await readOutput(reporter.onEvent(passEvent())), []);
-                }
-
-                const progressOutput = await readOutput(reporter.onEvent(passEvent()));
-
-                scope.assert.deepEqual(
-                    progressOutput.map(function toText(intent) {
-                        return intent.text;
-                    }),
-                    [ 'progress 100/250 failed=0' ]
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'brief reporter uses an unknown progress denominator without run facts',
-            ...testMetadata,
-
-            async body(scope: OverkillScope) {
-                const reporter = createBriefRuntimeReporter();
-
-                for (let index = 0; index < 99; index += 1) {
-                    await reporter.onEvent(passEvent());
-                }
-
-                const progressOutput = await readOutput(reporter.onEvent(passEvent()));
-
-                scope.assert.deepEqual(
-                    progressOutput.map(function toText(intent) {
-                        return intent.text;
-                    }),
-                    [ 'progress 100/? failed=0' ]
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'brief reporter suppresses final progress at the planned count',
-            ...testMetadata,
-
-            async body(scope: OverkillScope) {
-                const reporter = createBriefRuntimeReporter();
-
-                await reporter.onEvent({
-                    facts: { cases: Array.from({ length: 100 }) },
-                    kind: 'run-start',
-                    root: { annotations: resolveRootTestAnnotations({}), title: 'source' },
-                    startedAt: '2026-07-15T00:00:00.000Z'
-                });
-
-                for (let index = 0; index < 99; index += 1) {
-                    await reporter.onEvent(passEvent());
-                }
-
-                const finalPassOutput = await readOutput(reporter.onEvent(passEvent()));
-
-                scope.assert.deepEqual(finalPassOutput, []);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'brief reporter prints one diagnostic line per failure cause',
-            ...testMetadata,
-            async body(scope: OverkillScope) {
-                const reporter = createBriefRuntimeReporter();
-                const failureOutput = await readOutput(reporter.onEvent(failEvent()));
-
-                scope.assert.deepEqual(
-                    failureOutput.map(function toText(intent) {
-                        return intent.text;
-                    }),
-                    [
-                        'fail source/users.test.ts:10:5 source/users.test.ts: users > creates profile: expected true, actual false',
-                        'fail source/users.test.ts: users > creates profile: boom'
-                    ]
-                );
-                assertFailureAnnotations(scope, failureOutput);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'brief reporter prints runner errors and ignores suite events',
-            ...testMetadata,
-
-            async body(scope: OverkillScope) {
-                const reporter = createBriefRuntimeReporter();
-                const suiteOutput = await readOutput(reporter.onEvent({
-                    kind: 'suite-start',
-                    suitePath: [ { definitionLocations: [ definitionLocation ], title: 'source' } ]
-                }));
-                const errorOutput = await readOutput(reporter.onEvent(runnerErrorEvent()));
-
-                scope.assert.deepEqual(suiteOutput, []);
-                assertRunnerErrorOutput(scope, errorOutput);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'brief reporter emits slow runner overhead as managed output',
-            ...testMetadata,
-
-            async body(scope: OverkillScope) {
-                const reporter = createBriefRuntimeReporter();
-                scope.require.notNull(reporter.onFinish);
-                const finishOutput = await readOutput(reporter.onFinish({
-                    context: {
-                        id: null,
-                        startedAt: null,
-                        facts: null
-                    },
-                    result: runResultFactory.build({
-                        timings: {
-                            precise: {
-                                aggregates: [ { count: 1, durationMicroseconds: 750_000, kind: 'config.load' } ],
-                                ambientNoise: 'unknown',
-                                droppedSpanCount: 0,
-                                overhead: {
-                                    aggregationMicroseconds: 0,
-                                    recordingMicroseconds: 0,
-                                    renderingMicroseconds: 0,
-                                    serializationMicroseconds: 0
-                                },
-                                observationWindow: { durationMicroseconds: 750_000, startTimeUnixMicroseconds: 0 },
-                                slowestSpanLimit: 50,
-                                slowestSpans: [ {
-                                    durationMicroseconds: 750_000,
-                                    kind: 'config.load',
-                                    label: null,
-                                    processId: null,
-                                    resource: null,
-                                    startOffsetMicroseconds: 0,
-                                    startTimeUnixMicroseconds: 0,
-                                    status: 'success',
-                                    workerId: null
-                                } ],
-                                spanLimit: 5000,
-                                spans: [ {
-                                    durationMicroseconds: 750_000,
-                                    kind: 'config.load',
-                                    label: null,
-                                    processId: null,
-                                    resource: null,
-                                    startOffsetMicroseconds: 0,
-                                    startTimeUnixMicroseconds: 0,
-                                    status: 'success',
-                                    workerId: null
-                                } ],
-                                truncated: false
-                            },
-                            summary: {
-                                runnerOverheadWallTimeMicroseconds: 1_000_000,
-                                testExecutionWallTimeMicroseconds: 1_000_000,
-                                totalWallTimeMicroseconds: 2_000_000
-                            }
-                        }
-                    })
-                }));
-
-                scope.assert.deepEqual(
-                    finishOutput.slice(1).map(function toText(intent) {
-                        return intent.text;
-                    }),
-                    [ 'Slow runner overhead:', '  config load: 750 ms' ]
-                );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            title: 'brief reporter prints final counts',
-            ...testMetadata,
-            async body(scope: OverkillScope) {
-                const reporter = createBriefRuntimeReporter();
-                scope.require.notNull(reporter.onFinish);
-
-                const finishOutput = await readOutput(reporter.onFinish({
-                    context: {
-                        id: null,
-                        startedAt: null,
-                        facts: null
-                    },
-                    result: runResultFactory.build({
-                        summary: {
-                            discovered: 5,
-                            failed: 1,
-                            inconclusive: 1,
-                            passed: 2,
-                            planned: 5,
-                            skipped: 1
+        return scope.assert.collect();
+    }),
+    test('brief reporter emits slow runner overhead as managed output', async function (scope: OverkillScope) {
+        const reporter = createBriefRuntimeReporter();
+        scope.require.notNull(reporter.onFinish);
+        const finishOutput = await readOutput(reporter.onFinish({
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            },
+            result: runResultFactory.build({
+                timings: {
+                    precise: {
+                        aggregates: [ { count: 1, durationMicroseconds: 750_000, kind: 'config.load' } ],
+                        ambientNoise: 'unknown',
+                        droppedSpanCount: 0,
+                        overhead: {
+                            aggregationMicroseconds: 0,
+                            recordingMicroseconds: 0,
+                            renderingMicroseconds: 0,
+                            serializationMicroseconds: 0
                         },
-                        totalWallTimeMicroseconds: 42_000
-                    })
-                }));
+                        observationWindow: { durationMicroseconds: 750_000, startTimeUnixMicroseconds: 0 },
+                        slowestSpanLimit: 50,
+                        slowestSpans: [ {
+                            durationMicroseconds: 750_000,
+                            kind: 'config.load',
+                            label: null,
+                            processId: null,
+                            resource: null,
+                            startOffsetMicroseconds: 0,
+                            startTimeUnixMicroseconds: 0,
+                            status: 'success',
+                            workerId: null
+                        } ],
+                        spanLimit: 5000,
+                        spans: [ {
+                            durationMicroseconds: 750_000,
+                            kind: 'config.load',
+                            label: null,
+                            processId: null,
+                            resource: null,
+                            startOffsetMicroseconds: 0,
+                            startTimeUnixMicroseconds: 0,
+                            status: 'success',
+                            workerId: null
+                        } ],
+                        truncated: false
+                    },
+                    summary: {
+                        runnerOverheadWallTimeMicroseconds: 1_000_000,
+                        testExecutionWallTimeMicroseconds: 1_000_000,
+                        totalWallTimeMicroseconds: 2_000_000
+                    }
+                }
+            })
+        }));
 
-                scope.assert.deepEqual(
-                    finishOutput.map(function toText(intent) {
-                        return intent.text;
-                    }),
-                    [
-                        'done status=failed discovered=5 planned=5 executed=5 passed=2 failed=1 skipped=1 inconclusive=1 processExhausted=0 runtimePolicy=0 crashed=0 ms=42 timing="total 42 ms, execution 0 ms, overhead 42 ms"'
-                    ]
-                );
+        scope.assert.deepEqual(
+            finishOutput.slice(1).map(function toText(intent) {
+                return intent.text;
+            }),
+            [ 'Slow runner overhead:', '  config load: 750 ms' ]
+        );
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+        return scope.assert.collect();
+    }),
+    test('brief reporter prints final counts', async function (scope: OverkillScope) {
+        const reporter = createBriefRuntimeReporter();
+        scope.require.notNull(reporter.onFinish);
 
-await runIfMain(import.meta, testNode);
+        const finishOutput = await readOutput(reporter.onFinish({
+            context: {
+                id: null,
+                startedAt: null,
+                facts: null
+            },
+            result: runResultFactory.build({
+                summary: {
+                    discovered: 5,
+                    failed: 1,
+                    inconclusive: 1,
+                    passed: 2,
+                    planned: 5,
+                    skipped: 1
+                },
+                totalWallTimeMicroseconds: 42_000
+            })
+        }));
+
+        scope.assert.deepEqual(
+            finishOutput.map(function toText(intent) {
+                return intent.text;
+            }),
+            [
+                'done status=failed discovered=5 planned=5 executed=5 passed=2 failed=1 skipped=1 inconclusive=1 processExhausted=0 runtimePolicy=0 crashed=0 ms=42 timing="total 42 ms, execution 0 ms, overhead 42 ms"'
+            ]
+        );
+
+        return scope.assert.collect();
+    })
+]);

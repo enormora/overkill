@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { observationPlan } from '../test-support/observation-lifetime.ts';
 import { supervisedChildCommand } from '../test-support/supervised-child-fixture.ts';
 import {
@@ -20,7 +20,7 @@ function assignment(): SupervisedAssignmentCommand {
         corpus: { checkedIn: [], localCache: [], diagnostics: [] }
     };
 }
-export const testNode = suite('supervised assignment admission', [
+export const testNode = authoredSuite('supervised assignment admission', [
     test('preserves the assigned property corpus', function (scope: TestScope) {
         const input = assignment();
         scope.assert.deepEqual(assignedPropertyCorpus(input), { checkedIn: [], localCache: [], diagnostics: [] });
@@ -59,4 +59,3 @@ export const testNode = suite('supervised assignment admission', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

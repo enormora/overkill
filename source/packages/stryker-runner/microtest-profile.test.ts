@@ -1,10 +1,7 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import { defaultFailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
-import { suite, test } from '../test/test.entry-point.ts';
-import {
-    normalizeConfig,
-    RunResolutionError,
-    type ProjectProfilesConfig
-} from '../run/run.entry-point.ts';
+
+import { normalizeConfig, RunResolutionError, type ProjectProfilesConfig } from '../run/run.entry-point.ts';
 import { analysisFixture } from '../../test-support/family-analysis-fixture.ts';
 import { selectMicrotestProfile } from './microtest-profile.ts';
 
@@ -31,7 +28,7 @@ const rejectedSelections: readonly RejectedSelection[] = [
     }
 ];
 
-export const testNode = suite('mutation microtest profile selection', [
+export const testNode = authoredSuite('mutation microtest profile selection', [
     test('reports imported family identity without loading its backend', function (scope) {
         const events: string[] = [];
         const config = normalizeConfig({

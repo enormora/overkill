@@ -1,6 +1,5 @@
 import { execFile } from 'node:child_process';
-import { createTestCase } from '@overkill-dev/engine';
-import { runIfMain } from '#test-runner';
+import { test } from '#tests';
 
 const script = `
 import { defineRuleTests, defineConfigTests } from '@overkill-dev/eslint-test';
@@ -36,29 +35,21 @@ if (configExploration?.executed !== policy.newTrials) throw new Error('Packed co
 console.log('ESLint testing package passed');
 `;
 
-export const testNode = createTestCase({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'runs packed ESLint examples and generated properties',
-    async body(scope) {
-        const output = await new Promise<string>(function runConsumer(resolve, reject) {
-            execFile(
-                process.execPath,
-                [ '--input-type=module', '--eval', script ],
-                { cwd: import.meta.dirname },
-                function completed(error, stdout, stderr) {
-                    if (error === null) {
-                        resolve(stdout);
-                    } else {
-                        reject(new Error(stderr, { cause: error }));
-                    }
+export const testNode = test('runs packed ESLint examples and generated properties', async function (scope) {
+    const output = await new Promise<string>(function runConsumer(resolve, reject) {
+        execFile(
+            process.execPath,
+            [ '--input-type=module', '--eval', script ],
+            { cwd: import.meta.dirname },
+            function completed(error, stdout, stderr) {
+                if (error === null) {
+                    resolve(stdout);
+                } else {
+                    reject(new Error(stderr, { cause: error }));
                 }
-            );
-        });
-        scope.assert.equal(output.trim(), 'ESLint testing package passed');
-        return scope.assert.collect();
-    }
+            }
+        );
+    });
+    scope.assert.equal(output.trim(), 'ESLint testing package passed');
+    return scope.assert.collect();
 });
-
-await runIfMain(import.meta, testNode);

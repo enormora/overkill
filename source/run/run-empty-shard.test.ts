@@ -1,15 +1,7 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite as createOverkillSuite,
-    createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
-} from '../packages/engine/engine.entry-point.ts';
+import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
-import {
-    defaultMicrotestProfile,
-    defaultRunConfig,
-    defaultRunRequest
-} from '../test-support/run-command-factory.ts';
+import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import type { NormalizedConfig } from '../config/types.ts';
 import { executeEmptyShardRun } from './run-empty-shard.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -71,63 +63,43 @@ async function emptyShardResult(
     return emptyShard;
 }
 
-export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-empty-shard.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() reports in-process empty shards as passing',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const runOrchestrator = createDeterministicRunOrchestrator();
-                const emptyShard = await emptyShardResult(runOrchestrator, { mode: 'enabled' });
-                const resolvedRun = await runOrchestrator.resolve(createRunCommand({
-                    config: inProcessMicrotestConfig(),
-                    cwd: process.cwd(),
-                    engine: { kind: 'default' },
-                    request: defaultRunRequest({ paths: [ passingFixturePath ] })
-                }));
+export const testNode = suite('source/run/run-empty-shard.test.ts', [
+    test('orchestrator.run() reports in-process empty shards as passing', async function (scope: OverkillScope) {
+        const runOrchestrator = createDeterministicRunOrchestrator();
+        const emptyShard = await emptyShardResult(runOrchestrator, { mode: 'enabled' });
+        const resolvedRun = await runOrchestrator.resolve(createRunCommand({
+            config: inProcessMicrotestConfig(),
+            cwd: process.cwd(),
+            engine: { kind: 'default' },
+            request: defaultRunRequest({ paths: [ passingFixturePath ] })
+        }));
 
-                scope.assert.equal(emptyShard.status, 'passed');
-                scope.assert.equal(emptyShard.summary.planned, 0);
-                scope.assert.deepEqual(emptyShard.runnerErrors, []);
-                await scope.assert.rejects(async function executeNonEmptyShardPlan() {
-                    await executeEmptyShardRun(
-                        resolvedRun,
-                        {} as unknown as RunOrchestratorDependencies,
-                        async function keepResult(_run, result) {
-                            return result;
-                        },
-                        null
-                    );
-                }, { message: 'Empty shard execution requires an empty-shard collected plan.' });
+        scope.assert.equal(emptyShard.status, 'passed');
+        scope.assert.equal(emptyShard.summary.planned, 0);
+        scope.assert.deepEqual(emptyShard.runnerErrors, []);
+        await scope.assert.rejects(async function executeNonEmptyShardPlan() {
+            await executeEmptyShardRun(
+                resolvedRun,
+                {} as unknown as RunOrchestratorDependencies,
+                async function keepResult(_run, result) {
+                    return result;
+                },
+                null
+            );
+        }, { message: 'Empty shard execution requires an empty-shard collected plan.' });
 
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() reports empty shards without a runtime policy',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const emptyShard = await emptyShardResult(
-                    createDeterministicRunOrchestrator(),
-                    { mode: 'disabled' }
-                );
+        return scope.assert.collect();
+    }),
+    test('orchestrator.run() reports empty shards without a runtime policy', async function (scope: OverkillScope) {
+        const emptyShard = await emptyShardResult(
+            createDeterministicRunOrchestrator(),
+            { mode: 'disabled' }
+        );
 
-                scope.assert.equal(emptyShard.status, 'passed');
-                scope.assert.equal(emptyShard.summary.planned, 0);
-                scope.assert.deepEqual(emptyShard.runnerErrors, []);
+        scope.assert.equal(emptyShard.status, 'passed');
+        scope.assert.equal(emptyShard.summary.planned, 0);
+        scope.assert.deepEqual(emptyShard.runnerErrors, []);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+        return scope.assert.collect();
+    })
+]);

@@ -1,9 +1,10 @@
-import { runIfMain } from '#test-runner';
+import { type TestScope, suite as authoredSuite, test as authoredTest, testDouble } from '@overkill-dev/test';
+
 import { defineReporter } from '../packages/engine/engine.entry-point.ts';
-import { testDouble } from '../packages/doubles/doubles.entry-point.ts';
+
 import { createInMemoryFinalResultReporter } from '../reporters/in-memory-reporter.ts';
 import { normalizeConfig } from '../config/config.ts';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+
 import { defaultRunConfig, defaultRunRequest, defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
 import { testNode as support } from './run-support-policy.test.ts';
 import { validateRunInput, assertProfileRequestSupported } from './run-validation.ts';
@@ -14,8 +15,8 @@ const propertyProfile = normalizeConfig({
 })
     .profiles
     .laws;
-export const testNode = suite('run request validation boundaries', [
-    test('rejects ordinary recording combined with merge recording', function (scope: TestScope) {
+export const testNode = authoredSuite('run request validation boundaries', [
+    authoredTest('rejects ordinary recording combined with merge recording', function (scope: TestScope) {
         scope.assert.throws(function () {
             validateRunInput({
                 ...command,
@@ -25,7 +26,7 @@ export const testNode = suite('run request validation boundaries', [
         return scope.assert.collect();
     }),
     ...[ new Error('Reporter requirements failed.'), 'Reporter requirements failed.' ].map(function (failure, index) {
-        return test(
+        return authoredTest(
             `classifies reporter requirement failure ${index} as an invalid request`,
             function (scope: TestScope) {
                 const reporter = createInMemoryFinalResultReporter();
@@ -46,13 +47,13 @@ export const testNode = suite('run request validation boundaries', [
     }),
 
     support,
-    test('rejects merge recording without multiple shards', function (scope: TestScope) {
+    authoredTest('rejects merge recording without multiple shards', function (scope: TestScope) {
         scope.assert.throws(function () {
             validateRunInput({ ...command, request: defaultRunRequest({ recordForMerge: true }) });
         }, { message: '--record-for-merge requires more than one shard.' });
         return scope.assert.collect();
     }),
-    test('rejects non-boolean recording input', function (scope: TestScope) {
+    authoredTest('rejects non-boolean recording input', function (scope: TestScope) {
         scope.assert.throws(function () {
             Reflect.apply(validateRunInput, undefined, [ {
                 ...command,
@@ -62,7 +63,7 @@ export const testNode = suite('run request validation boundaries', [
         return scope.assert.collect();
     }),
     ...([ 'test', 'bench-calibrate' ] as const).map(function (namespace) {
-        return test(`rejects baseline updates in the ${namespace} namespace`, function (scope: TestScope) {
+        return authoredTest(`rejects baseline updates in the ${namespace} namespace`, function (scope: TestScope) {
             scope.assert.throws(function () {
                 assertProfileRequestSupported(
                     defaultRunRequest({ baselineUpdateMode: 'update' }),
@@ -74,7 +75,7 @@ export const testNode = suite('run request validation boundaries', [
             return scope.assert.collect();
         });
     }),
-    test('rejects live capture for property profiles', function (scope: TestScope) {
+    authoredTest('rejects live capture for property profiles', function (scope: TestScope) {
         scope.require.defined(propertyProfile);
         scope.assert.throws(function () {
             assertProfileRequestSupported(defaultRunRequest({ capture: 'live' }), propertyProfile, 'test', null);
@@ -82,4 +83,3 @@ export const testNode = suite('run request validation boundaries', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,8 +1,9 @@
 import { chmod, mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createNodeFileStore } from '../file-store.ts';
 
 async function assertBlockedReplacement(scope: TestScope, directory: string): Promise<void> {
@@ -51,48 +52,31 @@ async function assertDeniedStorageErrors(scope: TestScope, directory: string): P
     }
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/node-runtime-state-store.test.ts',
-    annotations: {},
-    controls: {},
-    children: [
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'preserves write and cleanup errors when storage access is denied',
-            annotations: {},
-            controls: {},
-            async body(scope: TestScope) {
-                const directory = await mkdtemp(path.join(os.tmpdir(), 'overkill-record-'));
-                try {
-                    await assertDeniedStorageErrors(scope, directory);
-                } finally {
-                    await rm(directory, { force: true, recursive: true });
-                }
-                return scope.assert.collect();
+export const testNode = suite('source/run/node-runtime-state-store.test.ts', [
+    test('preserves write and cleanup errors when storage access is denied', async function (scope: TestScope) {
+        const directory = await mkdtemp(path.join(os.tmpdir(), 'overkill-record-'));
+        try {
+            await assertDeniedStorageErrors(scope, directory);
+        } finally {
+            await rm(directory, { force: true, recursive: true });
+        }
+        return scope.assert.collect();
+    }),
+    test(
+        'atomically replaces records and removes sibling temporary files after a failed rename',
+        async function (scope) {
+            const directory = await mkdtemp(path.join(os.tmpdir(), 'overkill-record-'));
+            const filePath = path.join(directory, 'runs', 'record.json');
+            try {
+                scope.assert.equal(await createNodeFileStore().read(filePath), null);
+                await createNodeFileStore().write(filePath, '{"status":"started"}');
+                await createNodeFileStore().write(filePath, '{"status":"completed"}');
+                scope.assert.equal(await createNodeFileStore().read(filePath), '{"status":"completed"}');
+                await assertBlockedReplacement(scope, directory);
+            } finally {
+                await rm(directory, { force: true, recursive: true });
             }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'atomically replaces records and removes sibling temporary files after a failed rename',
-            annotations: {},
-            controls: {},
-            async body(scope) {
-                const directory = await mkdtemp(path.join(os.tmpdir(), 'overkill-record-'));
-                const filePath = path.join(directory, 'runs', 'record.json');
-                try {
-                    scope.assert.equal(await createNodeFileStore().read(filePath), null);
-                    await createNodeFileStore().write(filePath, '{"status":"started"}');
-                    await createNodeFileStore().write(filePath, '{"status":"completed"}');
-                    scope.assert.equal(await createNodeFileStore().read(filePath), '{"status":"completed"}');
-                    await assertBlockedReplacement(scope, directory);
-                } finally {
-                    await rm(directory, { force: true, recursive: true });
-                }
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-
-await runIfMain(import.meta, testNode);
+            return scope.assert.collect();
+        }
+    )
+]);

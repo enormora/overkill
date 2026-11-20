@@ -1,12 +1,8 @@
 import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import {
-    createSuite,
-    createTestCase,
-    type RunResult,
-    type TestScope
-} from '../../packages/engine/engine.entry-point.ts';
+import { test, suite } from '@overkill-dev/test';
+
+import type { RunResult, TestScope } from '../../packages/engine/engine.entry-point.ts';
 import {
     orchestrator,
     type SingleRunRecord,
@@ -66,15 +62,11 @@ async function withRecordedResult<Value>(
     }
 }
 
-export const testNode = createSuite({
-    definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/integration-tests/run/runner-coverage-records.test.ts',
-    annotations: {},
-    controls: {},
-    children: processModels.flatMap(function coverageRecordTests(processModel) {
+export const testNode = suite(
+    'source/integration-tests/run/runner-coverage-records.test.ts',
+    processModels.flatMap(function coverageRecordTests(processModel) {
         return [
-            createTestCase({
-                definitionLocations: [ { kind: 'unknown' } ],
+            test({
                 title: `${processModel} raw-only coverage records custom paths and artifact references`,
                 annotations: {},
                 controls: {},
@@ -100,8 +92,7 @@ export const testNode = createSuite({
                     );
                 }
             }),
-            createTestCase({
-                definitionLocations: [ { kind: 'unknown' } ],
+            test({
                 title: `${processModel} filtered empty selections retain complete empty facts`,
                 annotations: {},
                 controls: {},
@@ -123,8 +114,7 @@ export const testNode = createSuite({
                     });
                 }
             }),
-            createTestCase({
-                definitionLocations: [ { kind: 'unknown' } ],
+            test({
                 title: `${processModel} covered merge inputs retain complete facts and returned outcomes`,
                 annotations: {},
                 controls: {},
@@ -165,8 +155,7 @@ export const testNode = createSuite({
                     return scope.assert.collect();
                 }
             }),
-            createTestCase({
-                definitionLocations: [ { kind: 'unknown' } ],
+            test({
                 title: `${processModel} import failures retain an attempt without invented facts`,
                 annotations: {},
                 controls: {},
@@ -186,5 +175,4 @@ export const testNode = createSuite({
             })
         ];
     })
-});
-await runIfMain(import.meta, testNode);
+);

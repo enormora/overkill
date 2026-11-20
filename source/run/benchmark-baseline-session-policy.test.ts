@@ -1,4 +1,5 @@
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import {
     benchmarkBaselineSessionFixture,
     benchmarkSessionScenario
@@ -9,8 +10,8 @@ import { performanceBaselineError } from '../baselines/performance-evaluation.ts
 import { readPerformanceBaselineReport } from '../baselines/performance-report.ts';
 import { openBenchmarkBaselineSession } from './benchmark-baseline-session.ts';
 
-export const testNode = suite('benchmark baseline session ownership', [
-    test('preserves prepared results and attaches the baseline report', async function (scope: TestScope) {
+export const testNode = authoredSuite('benchmark baseline session ownership', [
+    authoredTest('preserves prepared results and attaches the baseline report', async function (scope: TestScope) {
         const fixture = benchmarkBaselineSessionFixture(benchmarkSessionScenario);
         const session = await openBenchmarkBaselineSession(fixture.input, fixture.store);
         scope.assert.equal(session.prepareResult(baselineCaseResult), baselineCaseResult);
@@ -19,60 +20,72 @@ export const testNode = suite('benchmark baseline session ownership', [
         scope.assert.equal(readPerformanceBaselineReport(result)?.writeOutcome.kind, 'read-only');
         return scope.assert.collect();
     }),
-    test('forwards case events and reporter disposal through the baseline delivery', async function (scope: TestScope) {
-        const fixture = benchmarkBaselineSessionFixture(benchmarkSessionScenario);
-        const session = await openBenchmarkBaselineSession(fixture.input, fixture.store);
-        const delivery = await session.reporterDispatcher.createDelivery(
-            [ fixture.reporter ],
-            createPlainOutputRenderer()
-        );
-        scope.assert.deepEqual(await delivery.reportEvent(baselineCaseEvent), []);
-        scope.assert.deepEqual(await delivery.reportResult(baselineCaseResult), []);
-        scope.assert.deepEqual(await delivery.disposeReporters(), []);
-        scope.assert.deepEqual(fixture.events, [ baselineCaseEvent ]);
-        return scope.assert.collect();
-    }),
-    test('forwards runner errors without evaluating them as benchmark outcomes', async function (scope: TestScope) {
-        const fixture = benchmarkBaselineSessionFixture(benchmarkSessionScenario);
-        const session = await openBenchmarkBaselineSession(fixture.input, fixture.store);
-        const delivery = await session.reporterDispatcher.createDelivery(
-            [ fixture.reporter ],
-            createPlainOutputRenderer()
-        );
-        const event = {
-            kind: 'runner-error',
-            error: performanceBaselineError(new Error('External failure.'), null)
-        } as const;
-        scope.assert.deepEqual(await delivery.reportEvent(event), []);
-        await delivery.disposeReporters();
-        scope.assert.deepEqual(fixture.events, [ event ]);
-        return scope.assert.collect();
-    }),
-    test('retains report publication errors before reporter delivery starts', async function (scope: TestScope) {
-        const fixture = benchmarkBaselineSessionFixture({ ...benchmarkSessionScenario, maxBytes: 1 });
-        const session = await openBenchmarkBaselineSession(fixture.input, fixture.store);
-        const result = await session.finalize(baselineCaseResult);
-        scope.assert.true(result.runnerErrors.length > 0);
-        scope.assert.deepEqual(fixture.events, []);
-        return scope.assert.collect();
-    }),
-    test('notifies the active reporter when baseline report publication fails', async function (scope: TestScope) {
-        const fixture = benchmarkBaselineSessionFixture({ ...benchmarkSessionScenario, maxBytes: 1 });
-        const session = await openBenchmarkBaselineSession(fixture.input, fixture.store);
-        const delivery = await session.reporterDispatcher.createDelivery(
-            [ fixture.reporter ],
-            createPlainOutputRenderer()
-        );
-        const result = await session.finalize(baselineCaseResult);
-        scope.assert.true(result.runnerErrors.length > 0);
-        scope.assert.true(fixture.events.some(function (event) {
-            return event.kind === 'runner-error';
-        }));
-        await delivery.disposeReporters();
-        return scope.assert.collect();
-    }),
+    authoredTest(
+        'forwards case events and reporter disposal through the baseline delivery',
+        async function (scope: TestScope) {
+            const fixture = benchmarkBaselineSessionFixture(benchmarkSessionScenario);
+            const session = await openBenchmarkBaselineSession(fixture.input, fixture.store);
+            const delivery = await session.reporterDispatcher.createDelivery(
+                [ fixture.reporter ],
+                createPlainOutputRenderer()
+            );
+            scope.assert.deepEqual(await delivery.reportEvent(baselineCaseEvent), []);
+            scope.assert.deepEqual(await delivery.reportResult(baselineCaseResult), []);
+            scope.assert.deepEqual(await delivery.disposeReporters(), []);
+            scope.assert.deepEqual(fixture.events, [ baselineCaseEvent ]);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest(
+        'forwards runner errors without evaluating them as benchmark outcomes',
+        async function (scope: TestScope) {
+            const fixture = benchmarkBaselineSessionFixture(benchmarkSessionScenario);
+            const session = await openBenchmarkBaselineSession(fixture.input, fixture.store);
+            const delivery = await session.reporterDispatcher.createDelivery(
+                [ fixture.reporter ],
+                createPlainOutputRenderer()
+            );
+            const event = {
+                kind: 'runner-error',
+                error: performanceBaselineError(new Error('External failure.'), null)
+            } as const;
+            scope.assert.deepEqual(await delivery.reportEvent(event), []);
+            await delivery.disposeReporters();
+            scope.assert.deepEqual(fixture.events, [ event ]);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest(
+        'retains report publication errors before reporter delivery starts',
+        async function (scope: TestScope) {
+            const fixture = benchmarkBaselineSessionFixture({ ...benchmarkSessionScenario, maxBytes: 1 });
+            const session = await openBenchmarkBaselineSession(fixture.input, fixture.store);
+            const result = await session.finalize(baselineCaseResult);
+            scope.assert.true(result.runnerErrors.length > 0);
+            scope.assert.deepEqual(fixture.events, []);
+            return scope.assert.collect();
+        }
+    ),
+    authoredTest(
+        'notifies the active reporter when baseline report publication fails',
+        async function (scope: TestScope) {
+            const fixture = benchmarkBaselineSessionFixture({ ...benchmarkSessionScenario, maxBytes: 1 });
+            const session = await openBenchmarkBaselineSession(fixture.input, fixture.store);
+            const delivery = await session.reporterDispatcher.createDelivery(
+                [ fixture.reporter ],
+                createPlainOutputRenderer()
+            );
+            const result = await session.finalize(baselineCaseResult);
+            scope.assert.true(result.runnerErrors.length > 0);
+            scope.assert.true(fixture.events.some(function (event) {
+                return event.kind === 'runner-error';
+            }));
+            await delivery.disposeReporters();
+            return scope.assert.collect();
+        }
+    ),
     ...([ 'complete', 'paths', 'selection', 'shard' ] as const).map(function (selection) {
-        return test(
+        return authoredTest(
             `prunes stale baselines only with ${selection} inventory admission`,
             async function (scope: TestScope) {
                 const fixture = benchmarkBaselineSessionFixture({

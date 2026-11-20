@@ -1,6 +1,7 @@
 import path from 'node:path';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { attachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runWithAttachmentContext } from '../attachments/attachment-context.ts';
@@ -17,7 +18,6 @@ import {
 import { createHttpTranscriptRecorder } from '../transcript/http-transcript.ts';
 import type { runWithTranscriptScope } from '../transcript/transcript-store.ts';
 
-const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 type FailureContextCopy = {
     readonly currentResourceFailureContext: typeof currentResourceFailureContext;
     readonly createTranscriptAttemptScope: typeof createTranscriptAttemptScope;
@@ -109,34 +109,20 @@ async function assertSharedTranscriptScopes(scope: TestScope): Promise<void> {
         scope.assert.equal(recorder.transcript.entryCount, 1);
     });
 }
-export const testNode = createSuite({
-    ...metadata,
-    title: 'source/run/failure-artifact-sharing.test.ts',
-    children: [
-        createTestCase({
-            ...metadata,
-            title: 'copied resource packages share owner context and attempt scope identities',
-            async body(scope: TestScope) {
-                await assertSharedFailureContext(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'attempt cleanup drains streams created by a copied package',
-            async body(scope: TestScope) {
-                await assertSharedStreamRegistry(scope);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...metadata,
-            title: 'copied transcript packages preserve attempt isolation',
-            async body(scope: TestScope) {
-                await assertSharedTranscriptScopes(scope);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('source/run/failure-artifact-sharing.test.ts', [
+    test(
+        'copied resource packages share owner context and attempt scope identities',
+        async function (scope: TestScope) {
+            await assertSharedFailureContext(scope);
+            return scope.assert.collect();
+        }
+    ),
+    test('attempt cleanup drains streams created by a copied package', async function (scope: TestScope) {
+        await assertSharedStreamRegistry(scope);
+        return scope.assert.collect();
+    }),
+    test('copied transcript packages preserve attempt isolation', async function (scope: TestScope) {
+        await assertSharedTranscriptScopes(scope);
+        return scope.assert.collect();
+    })
+]);

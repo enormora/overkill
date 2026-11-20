@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import {
     createRunResult,
     type ExecuteOptions,
@@ -116,9 +116,9 @@ const executionOptions: ExecuteOptions = {
     propertyRun: { seed: 0n, projectRoot: null }
 };
 
-export const testNode = suite('host family catalogs', [
+export const testNode = authoredSuite('host family catalogs', [
     ...[ runtimeFamily, analysisFamily ].map(function executionAdmission(family) {
-        return test(
+        return authoredTest(
             `admits selected ${family.features.execution} work to the host driver`,
             async function (scope: TestScope) {
                 const context = await prepareHost(family);
@@ -158,7 +158,7 @@ export const testNode = suite('host family catalogs', [
             }
         );
     }),
-    test('rejects imported identities registered as built-in host families', function (scope) {
+    authoredTest('rejects imported identities registered as built-in host families', function (scope) {
         const context = hostScenario(runtimeFamily);
         scope.assert.throws(function () {
             registerHostFamilyPlan(context.source, context.engine, runtimeFamily.id, '/project');
@@ -167,23 +167,28 @@ export const testNode = suite('host family catalogs', [
     }),
     recordPlanTestNode,
     ...[ runtimeFamily, analysisFamily ].map(function familyCollection(family) {
-        return test(`collects exact selected facts for ${family.id} without invoking bodies`, async function (scope) {
-            const context = await prepareHost(family);
-            const initial = catalogFacts(context.catalog);
-            const selected = await registerImportedHostFamilyPlan(context.source, context.engine, context.binding, {
-                ...initial.definition,
-                selection: [ context.catalog.cases[0].workId ]
-            });
-            scope.assert.equal(initial.facts.collection, null);
-            scope.assert.equal(catalogFacts(selected).facts.id, family.id);
-            scope.assert.deepEqual(structuredClone<unknown>(catalogFacts(selected).facts.collection), { selected: 1 });
-            scope.assert.equal(selected.cases.length, context.catalog.cases.length);
-            scope.assert.equal(catalogFacts(selected).definition.selection, null);
-            return scope.assert.collect();
-        });
+        return authoredTest(
+            `collects exact selected facts for ${family.id} without invoking bodies`,
+            async function (scope) {
+                const context = await prepareHost(family);
+                const initial = catalogFacts(context.catalog);
+                const selected = await registerImportedHostFamilyPlan(context.source, context.engine, context.binding, {
+                    ...initial.definition,
+                    selection: [ context.catalog.cases[0].workId ]
+                });
+                scope.assert.equal(initial.facts.collection, null);
+                scope.assert.equal(catalogFacts(selected).facts.id, family.id);
+                scope.assert.deepEqual(structuredClone<unknown>(catalogFacts(selected).facts.collection), {
+                    selected: 1
+                });
+                scope.assert.equal(selected.cases.length, context.catalog.cases.length);
+                scope.assert.equal(catalogFacts(selected).definition.selection, null);
+                return scope.assert.collect();
+            }
+        );
     }),
     ...([ 'preparation', 'catalog' ] as const).map(function changedCheckpoint(field) {
-        return test(`rejects changed frozen ${field} before collecting selected work`, async function (scope) {
+        return authoredTest(`rejects changed frozen ${field} before collecting selected work`, async function (scope) {
             const events: string[] = [];
             const context = await prepareHost(observedRuntimeCollection(function recordCollection(event) {
                 events.push(event);
@@ -207,7 +212,7 @@ export const testNode = suite('host family catalogs', [
             return scope.assert.collect();
         });
     }),
-    test('retains catalog provenance when a replay plan replaces the prepared plan', async function (scope) {
+    authoredTest('retains catalog provenance when a replay plan replaces the prepared plan', async function (scope) {
         const { catalog } = await prepareHost(runtimeFamily);
         const replay = { ...catalog };
         scope.assert.equal(familyCatalog(replay), null);
@@ -215,7 +220,7 @@ export const testNode = suite('host family catalogs', [
         scope.assert.equal(familyCatalog(replay), familyCatalog(catalog));
         return scope.assert.collect();
     }),
-    test('leaves ordinary source plans without imported family metadata', function (scope) {
+    authoredTest('leaves ordinary source plans without imported family metadata', function (scope) {
         const { source } = hostScenario(runtimeFamily);
         const selected = { ...source };
         scope.assert.equal(transferHostFamilyPlan(source, selected), selected);
@@ -223,5 +228,3 @@ export const testNode = suite('host family catalogs', [
         return scope.assert.collect();
     })
 ]);
-
-await runIfMain(import.meta, testNode);

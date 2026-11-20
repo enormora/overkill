@@ -1,5 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+
 import { campaignFrameChannel } from '../../test-support/campaign-frame-channel.ts';
 
 const expectedMessages = {
@@ -9,7 +9,7 @@ const expectedMessages = {
     'receiver-failure': 'Invalid campaign frame.',
     'zero-header': 'Invalid campaign frame size.'
 };
-export const testNode = suite(
+export const testNode = authoredSuite(
     'campaign frame admission',
     ([ 'body-string', 'header-string', 'large-header', 'receiver-failure', 'zero-header' ] as const).map(
         function (scenario) {
@@ -25,4 +25,3 @@ export const testNode = suite(
         }
     )
 );
-await runIfMain(import.meta, testNode);

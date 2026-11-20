@@ -1,8 +1,9 @@
 import { readFile, mkdtempDisposable, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, defineReporter, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+
+import { defineReporter, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { mergeResults, type MergeResultsCommand, type MergedRunRecord } from '../packages/run/run.entry-point.ts';
 import { mergeRecordFixture } from '../test-support/merge-record-fixture.ts';
 import { defaultRunConfig } from '../test-support/run-command-factory.ts';
@@ -57,59 +58,40 @@ async function assertDiscovery(scope: TestScope, command: MergeResultsCommand, m
     });
     scope.assert.equal(explicit.result.status, 'failed');
 }
-export const testNode = createSuite({
-    title: 'merged record sessions',
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' } ],
-    children: [
-        createTestCase({
-            title: 'persists aggregate history and skips derived directory records',
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            async body(scope) {
-                await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-merged-session-'));
-                const command = await prepare(directory.path);
-                const merged = await mergeResults(command);
-                await assertRetained(scope, command, merged);
-                await assertDiscovery(scope, command, merged);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            title: 'retains final reporter failures after exactly one delivery and disposal',
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            async body(scope) {
-                await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-merged-reporters-'));
-                const command = await prepare(directory.path);
-                const counts = { delivered: 0, disposed: 0 };
-                const reporter = defineReporter(function () {
-                    return {
-                        kind: 'final-result',
-                        name: 'failing',
-                        sinks: [],
-                        onResult() {
-                            counts.delivered += 1;
-                            throw new Error('report failed');
-                        },
-                        dispose() {
-                            counts.disposed += 1;
-                        }
-                    };
-                });
-                const merged = await mergeResults({
-                    ...command,
-                    config: { ...command.config, reporters: [ reporter ] }
-                });
-                scope.assert.deepEqual(counts, { delivered: 1, disposed: 1 });
-                scope.assert.equal(merged.result.status, 'failed');
-                await assertRetained(scope, command, merged);
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
-await runIfMain(import.meta, testNode);
+export const testNode = suite('merged record sessions', [
+    test('persists aggregate history and skips derived directory records', async function (scope) {
+        await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-merged-session-'));
+        const command = await prepare(directory.path);
+        const merged = await mergeResults(command);
+        await assertRetained(scope, command, merged);
+        await assertDiscovery(scope, command, merged);
+        return scope.assert.collect();
+    }),
+    test('retains final reporter failures after exactly one delivery and disposal', async function (scope) {
+        await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-merged-reporters-'));
+        const command = await prepare(directory.path);
+        const counts = { delivered: 0, disposed: 0 };
+        const reporter = defineReporter(function () {
+            return {
+                kind: 'final-result',
+                name: 'failing',
+                sinks: [],
+                onResult() {
+                    counts.delivered += 1;
+                    throw new Error('report failed');
+                },
+                dispose() {
+                    counts.disposed += 1;
+                }
+            };
+        });
+        const merged = await mergeResults({
+            ...command,
+            config: { ...command.config, reporters: [ reporter ] }
+        });
+        scope.assert.deepEqual(counts, { delivered: 1, disposed: 1 });
+        scope.assert.equal(merged.result.status, 'failed');
+        await assertRetained(scope, command, merged);
+        return scope.assert.collect();
+    })
+]);

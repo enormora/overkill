@@ -1,7 +1,8 @@
+import { suite as authoredSuite, test } from '@overkill-dev/test';
 import type { Rule } from 'eslint';
 import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { gen, sampleGenerator } from '../packages/property/property.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+
 import { defineRuleTests } from '../packages/eslint-test/eslint-test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import type { RuleInput } from './rule-definition.ts';
@@ -23,7 +24,7 @@ const generation = {
     input: fixedInput
 } as const;
 
-export const testNode = suite('ESLint generated properties', [
+export const testNode = authoredSuite('ESLint generated properties', [
     test('filters schema-invalid options without executing the rule or changing generated defaults', function (scope) {
         const rule: Rule.RuleModule = {
             meta: {

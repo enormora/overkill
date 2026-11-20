@@ -1,11 +1,11 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { debugArtifactFixture } from '../test-support/debug-artifact-fixture.ts';
 import { formatDebugSummary, contextPrefix } from './human-reporter-rendering.ts';
 
-export const testNode = suite('human debug evidence rendering', [
+export const testNode = authoredSuite('human debug evidence rendering', [
     ...([ null, 0, 42, -42 ] as const).map(function (growth) {
-        return test(`formats ${String(growth)} heap growth`, async function (scope: TestScope) {
+        return authoredTest(`formats ${String(growth)} heap growth`, async function (scope: TestScope) {
             const { artifact } = await debugArtifactFixture('debug case');
             const debug = {
                 ...artifact,
@@ -21,7 +21,7 @@ export const testNode = suite('human debug evidence rendering', [
             return scope.assert.collect();
         });
     }),
-    test('sorts multiple runtime dimensions before rendering context', function (scope: TestScope) {
+    authoredTest('sorts multiple runtime dimensions before rendering context', function (scope: TestScope) {
         scope.assert.equal(
             contextPrefix(
                 [ {
@@ -39,4 +39,3 @@ export const testNode = suite('human debug evidence rendering', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);

@@ -1,10 +1,6 @@
-import { runIfMain } from '#test-runner';
-import {
-    createSuite,
-    createTestCase,
-    type TestScope,
-    type TestPlanCase
-} from '../packages/engine/engine.entry-point.ts';
+import { test, suite } from '@overkill-dev/test';
+
+import type { TestScope, TestPlanCase } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createAsyncLeakMonitor, type AsyncLeakMonitor } from './async-leak-diagnostics.ts';
 
@@ -50,11 +46,10 @@ async function assertPromiseWindows(
     }
 }
 
-export const testNode = createSuite({
-    ...metadata,
-    title: 'source/engine/retry-promise-attribution.test.ts',
-    children: [ 'retry', 'runtime-variant' ].map(function attributionBoundary(kind) {
-        return createTestCase({
+export const testNode = suite(
+    'source/engine/retry-promise-attribution.test.ts',
+    [ 'retry', 'runtime-variant' ].map(function attributionBoundary(kind) {
+        return test({
             ...metadata,
             title: `promise leak evidence does not move into a later ${kind} window`,
             async body(scope: TestScope) {
@@ -71,5 +66,4 @@ export const testNode = createSuite({
             }
         });
     })
-});
-await runIfMain(import.meta, testNode);
+);

@@ -1,12 +1,12 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { managedCase } from '../test-support/managed-resource-acquisition.ts';
 import { testNode as cases } from './case-leak-policy.test.ts';
 import { activeResourceLeakError, createDisabledAsyncLeakMonitor } from './async-leak-diagnostics.ts';
 
-export const testNode = suite('async leak diagnostic policy', [
+export const testNode = authoredSuite('async leak diagnostic policy', [
     cases,
-    test('reports sorted increases while ignoring pipe handles', function (scope: TestScope) {
+    authoredTest('reports sorted increases while ignoring pipe handles', function (scope: TestScope) {
         const testCase = managedCase();
         const error = activeResourceLeakError({
             before: [ 'TCPWRAP' ],
@@ -29,7 +29,7 @@ export const testNode = suite('async leak diagnostic policy', [
         after: [ 'TCPWRAP' ]
     } ] as const)
         .map(function (input, index) {
-            return test(`ignores unchanged and released resources ${index}`, function (scope: TestScope) {
+            return authoredTest(`ignores unchanged and released resources ${index}`, function (scope: TestScope) {
                 scope.assert.equal(
                     activeResourceLeakError({ ...input, attributedTo: null, attributedToWork: null, phase: 'run' }),
                     null
@@ -37,7 +37,7 @@ export const testNode = suite('async leak diagnostic policy', [
                 return scope.assert.collect();
             });
         }),
-    test('disabled observation preserves outside-case results and errors', async function (scope: TestScope) {
+    authoredTest('disabled observation preserves outside-case results and errors', async function (scope: TestScope) {
         const monitor = createDisabledAsyncLeakMonitor();
         scope.assert.equal(
             await monitor.runOutsideCase(async function () {
@@ -55,4 +55,3 @@ export const testNode = suite('async leak diagnostic policy', [
         return scope.assert.collect();
     })
 ]);
-await runIfMain(import.meta, testNode);
