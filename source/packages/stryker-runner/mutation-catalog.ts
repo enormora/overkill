@@ -152,15 +152,47 @@ export function sameMutationCatalog(left: MutationCatalog, right: MutationCatalo
     });
 }
 
-export function mutationCatalog(root: string, plan: CollectedRunPlan): MutationCatalog {
+type EligibleMutationCatalog = {
+    readonly catalog: MutationCatalog;
+    readonly workById: ReadonlyMap<string, WorkId>;
+};
+
+function restrictCatalogToFiles(
+    root: string,
+    catalog: MutationCatalog,
+    files: readonly string[] | null
+): MutationCatalog {
+    if (files === null) {
+        return catalog;
+    }
+    const eligible = new Set(files.map(function (file) {
+        return projectFile(root, file);
+    }));
+    const restricted = catalog.filter(function (entry) {
+        return entry.work.case.file !== null && eligible.has(entry.work.case.file);
+    });
+    if (restricted.length === 0) {
+        throw new Error('Stryker test files matched no eligible tests.');
+    }
+    return restricted;
+}
+
+export function eligibleMutationCatalog(
+    root: string,
+    plan: CollectedRunPlan,
+    files: readonly string[] | null
+): EligibleMutationCatalog {
+    const workById = new Map<string, WorkId>();
     const catalog = plan.files.flatMap(function (file) {
         return file.cases.map(function (testCase) {
             if (testCase.workId === undefined) {
                 throw new Error('Collected test has no work identity.');
             }
             const work = canonicalWork(root, testCase.workId);
+            const id = workIdentityKey(work);
+            workById.set(id, testCase.workId);
             return {
-                id: workIdentityKey(work),
+                id,
                 work,
                 annotations: testCase.annotations,
                 controls: testCase.controls,
@@ -168,56 +200,30 @@ export function mutationCatalog(root: string, plan: CollectedRunPlan): MutationC
             };
         });
     });
-    const identities = new Set(catalog.map(function testIdentity(entry) {
-        return entry.id;
-    }));
-    if (catalog.length === 0 || identities.size !== catalog.length) {
+    if (catalog.length === 0 || workById.size !== catalog.length) {
         throw new Error('Mutation catalog must contain unique eligible tests.');
     }
-    return mutationCatalogSchema.parse(catalog.toSorted(function (left, right) {
+    const sorted = mutationCatalogSchema.parse(catalog.toSorted(function (left, right) {
         return left.id.localeCompare(right.id);
     }));
-}
-export function eligibleMutationCatalog(
-    root: string,
-    plan: CollectedRunPlan,
-    files: readonly string[] | null
-): MutationCatalog {
-    const catalog = mutationCatalog(root, plan);
-    if (files === null) {
-        return catalog;
-    }
-    const eligible = new Set(files.map(function (file) {
-        return projectFile(root, file);
-    }));
-    if (
-        catalog.every(function (entry) {
-            return entry.work.case.file === null || !eligible.has(entry.work.case.file);
-        })
-    ) {
-        throw new Error('Stryker test files matched no eligible tests.');
-    }
-    return catalog.filter(function (entry) {
-        return entry.work.case.file !== null && eligible.has(entry.work.case.file);
-    });
+    return { catalog: restrictCatalogToFiles(root, sorted, files), workById };
 }
 
-export function exactMutationSelection(root: string, plan: CollectedRunPlan, ids: readonly string[]): RunSelection {
+export function exactMutationSelection(workById: ReadonlyMap<string, WorkId>, ids: readonly string[]): RunSelection {
     const selected = new Set(ids);
     if (selected.size !== ids.length) {
         throw new Error('Stryker requested a duplicate test identity.');
     }
-    const filters = plan.files.flatMap(function (file) {
-        return file.cases.flatMap(function (testCase) {
-            const work = testCase.workId;
-            return work !== undefined && selected.has(workIdentityKey(canonicalWork(root, work)))
-                ? [ { kind: 'work-id' as const, id: work } ]
-                : [];
-        });
+    const filters = ids.map(function nativeSelection(id) {
+        const work = workById.get(id);
+        if (work === undefined) {
+            throw new Error('Mutant selection contains missing or empty test identities.');
+        }
+        return { kind: 'work-id' as const, id: work };
     });
-    const first = filters[0];
-    if (first === undefined || filters.length !== selected.size) {
+    const [ first, ...rest ] = filters;
+    if (first === undefined) {
         throw new Error('Mutant selection contains missing or empty test identities.');
     }
-    return { kind: 'filter', filter: { kind: 'any', filters: [ first, ...filters.slice(1) ] } };
+    return { kind: 'filter', filter: { kind: 'any', filters: [ first, ...rest ] } };
 }

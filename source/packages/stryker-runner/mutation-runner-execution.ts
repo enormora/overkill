@@ -26,25 +26,32 @@ export type MutationRunnerExecutionInput = {
     readonly signal: AbortSignal;
 };
 export type MutationExecutionSessionFactory = (options: RunExecutionSessionOptions) => RunExecutionSession;
-export function createCampaignMutationExecution(
-    input: MutationRunnerExecutionInput,
-    createSession: MutationExecutionSessionFactory
-): MutationRunnerExecution {
-    const { policy, seed, freshState, client, signal } = input;
-    let loaded: 'pristine' | 'runtime' | 'static' = 'pristine';
-    const lifecycle = { moduleUrl: mutationLifecycleUrl, exportName: 'createMutationLifecycle' };
-    const fresh = freshState || policy.profile.execution.processModel === 'supervised-process';
+export function mutationSessionOptions(
+    policy: FrozenMicrotestPolicy,
+    seed: string,
+    environment: RunExecutionSessionOptions['environment']
+): RunExecutionSessionOptions {
     const { outputRenderer } = normalizeConfig({});
-    const local = fresh ? null : createSession({
+    return {
         command: {
             kind: 'frozen-policy',
             policy,
             invocation: { seed: { value: BigInt(seed) }, selection: { kind: 'all' } },
             reporting: { outputRenderer, reporters: [] }
         },
-        lifecycle,
-        environment: 'profile-default'
-    });
+        lifecycle: { moduleUrl: mutationLifecycleUrl, exportName: 'createMutationLifecycle' },
+        environment
+    };
+}
+
+export function createCampaignMutationExecution(
+    input: MutationRunnerExecutionInput,
+    createSession: MutationExecutionSessionFactory
+): MutationRunnerExecution {
+    const { policy, seed, freshState, client, signal } = input;
+    let loaded: 'pristine' | 'runtime' | 'static' = 'pristine';
+    const fresh = freshState || policy.profile.execution.processModel === 'supervised-process';
+    const local = fresh ? null : createSession(mutationSessionOptions(policy, seed, 'profile-default'));
     return {
         admitEnvironment(mode, reload) {
             const replacement = reload || [ loaded, mode ].includes('static');
@@ -67,7 +74,6 @@ export function createCampaignMutationExecution(
             }
             const reply = await client.request({
                 kind: 'invoke',
-                session: { policy, seed, lifecycle },
                 data
             }, budget);
             if (reply.kind !== 'result' && reply.kind !== 'failure' && reply.kind !== 'timeout') {

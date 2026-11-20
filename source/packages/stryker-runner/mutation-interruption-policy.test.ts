@@ -22,7 +22,7 @@ export const testNode = authoredSuite('interrupted mutation adapter replies', [
                 const result = interruptedMutantResult('/project', { kind: 'timeout', artifacts: [], data }, {
                     ...fixture.expectation,
                     disableBail: false
-                });
+                }, mutationLifecycleDataSchema.safeParse(data));
                 scope.assert.equal(result.status, confirmedKill ? MutantRunStatus.Timeout : MutantRunStatus.Error);
                 if (result.status === MutantRunStatus.Error) {
                     scope.assert.includes(
@@ -55,7 +55,7 @@ export const testNode = authoredSuite('interrupted mutation adapter replies', [
                     } ]
                 }
             };
-            scope.assert.deepEqual<unknown, unknown>({ kind: hitLimitCollectionReply(guarded)?.kind ?? null }, {
+            scope.assert.deepEqual<unknown, unknown>({ kind: hitLimitCollectionReply(guarded, data)?.kind ?? null }, {
                 kind: kind === 'loader' ? 'timeout' : null
             });
             return scope.assert.collect();

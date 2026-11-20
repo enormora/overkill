@@ -69,14 +69,25 @@ const sessionMetrics = [
     'initialInvocationMicroseconds',
     'subsequentInvocationMicroseconds',
     'freshHostEntryToLifecycleMicroseconds',
-    'disposalMicroseconds'
+    'disposalMicroseconds',
+    'testHosts',
+    'collections'
 ];
 function microseconds(value: number) {
     return availableMetric(value, { collector: 'mutation-validation-v1', scope: 'process', unit: 'microseconds' });
 }
+function count(value: number) {
+    return availableMetric(value, { collector: 'mutation-validation-v1', scope: 'process', unit: 'count' });
+}
 function phaseMetrics(evidence: MutationCostEvidence): BenchmarkMetrics {
     if (evidence.tier === 'campaign') {
-        return { campaignMicroseconds: microseconds(evidence.campaignMicroseconds) };
+        return {
+            campaignMicroseconds: microseconds(evidence.campaignMicroseconds),
+            workers: count(evidence.workers),
+            configResolutions: count(evidence.configResolutions),
+            reloadRequests: count(evidence.reloadRequests),
+            executedCases: count(evidence.executedCases)
+        };
     }
     const [ initial, ...subsequent ] = evidence.observations;
     if (initial === undefined) {
@@ -97,6 +108,8 @@ function phaseMetrics(evidence: MutationCostEvidence): BenchmarkMetrics {
         initialInvocationMicroseconds: microseconds(initial.invocationMicroseconds),
         subsequentInvocationMicroseconds: microseconds(mean('invocationMicroseconds')),
         disposalMicroseconds: microseconds(evidence.disposalMicroseconds),
+        testHosts: count(new Set(evidence.observations.map(observation => observation.processId)).size),
+        collections: count(new Set(evidence.observations.map(observation => observation.graphIdentity)).size),
         freshHostEntryToLifecycleMicroseconds: evidence.environmentLifetime === 'fresh'
             ? microseconds(mean('processEntryToLifecycleMicroseconds'))
             : unavailableMetric('No fresh invocation host was created.', {
@@ -151,20 +164,20 @@ const measure = withResource<typeof project, Context, BenchmarkMetrics>(project,
 export const createMutationCostSuite = defineMacro(
     (samples: number, includeLarge: boolean, modes: readonly MutationMode[]) => {
         const sizes = includeLarge ?
-            [ { name: 'small', files: 1, casesPerFile: 2 }, { name: 'large', files: 2, casesPerFile: 4 } ]
+            [ { name: 'small', files: 1, casesPerFile: 2 }, { name: 'large', files: 3, casesPerFile: 4 } ]
             : [ { name: 'small', files: 1, casesPerFile: 2 } ];
         const parameters = sizes.flatMap((size) =>
             modes.flatMap((mode) => [
-                ...([ 'perTest', 'off' ] as const).map((coverage) =>
-                    mutationCostParametersSchema.parse({
-                        ...mode,
-                        files: size.files,
-                        casesPerFile: size.casesPerFile,
-                        tier: 'campaign',
-                        coverage,
-                        mutants: 1
-                    })
-                ),
+                ...([ 'perTest', 'off' ] as const).flatMap((coverage) => {
+                    const comparison = size.files > 1 && coverage === 'off' &&
+                        mode.processModel === 'in-process' && mode.freshState;
+                    return (comparison ? [ false, true ] : [ false ]).map(workerReplacement =>
+                        mutationCostParametersSchema.parse({
+                            ...mode, files: size.files, casesPerFile: size.casesPerFile, tier: 'campaign',
+                            coverage, mutants: size.files, workerReplacement
+                        })
+                    );
+                }),
                 mutationCostParametersSchema.parse({
                     ...mode,
                     files: size.files,
@@ -175,38 +188,54 @@ export const createMutationCostSuite = defineMacro(
             ])
         );
         const build = extension === 'ts' ? 'source' : 'compiled';
+        const caseGroups = sizes.flatMap(function fileCounts(size) {
+            return ([ 'campaign', 'execution-session' ] as const).flatMap(function tiers(tier) {
+                if (size.name === 'small') {
+                    return [ { title: tier, tier, files: size.files, sampleCount: samples } ];
+                }
+                const batches = samples >= 4 ? [ 2, samples - 2 ] : [ samples ];
+                return batches.map(function observations(sampleCount, index) {
+                    return { title: `${tier} multi-file batch ${index + 1}`, tier, files: size.files, sampleCount };
+                });
+            });
+        });
         return suite(
             `mutation costs: ${build} checkout, raw measurements`,
-            ([ 'campaign', 'execution-session' ] as const).map((tier) => {
-                const workloads = parameters.filter((parameters) => parameters.tier === tier).map((parameters) =>
+            caseGroups.map(({ title, tier, files, sampleCount }) => {
+                const tierParameters = parameters.filter(parameters => parameters.tier === tier && parameters.files === files);
+                const workloads = tierParameters.map((parameters) =>
                     workload(
                         `${parameters.files}-files-${parameters.casesPerFile}-cases-${parameters.processModel}-${
                             String(parameters.freshState)
-                        }-${parameters.coverage}`,
+                        }-${parameters.coverage}${parameters.tier === 'campaign' && parameters.workerReplacement
+                            ? '-replace-worker' : ''}`,
                         parameters
                     )
                 );
-                const expected = tier === 'campaign' ? 1 : 2;
-                return benchmark(tier, {
+                return benchmark(title, {
                     kind: 'runtime',
                     workloads,
                     measurement: rawMeasurement(processMeasurement({ instrumentation: 'off' })),
                     measure,
                     diagnosticMetrics: [
                         ...commonMetrics,
-                        ...(tier === 'campaign' ? [ 'campaignMicroseconds' ] : sessionMetrics)
+                        ...(tier === 'campaign' ? [ 'campaignMicroseconds', 'workers', 'configResolutions', 'reloadRequests', 'executedCases' ] : sessionMetrics)
                     ],
                     budgets: Object.fromEntries(workloads
-                        .map((workload) => [ workload.name, {
-                            completedInvocations: [
-                                { minimum: expected, statistic: { kind: 'observed-minimum' as const } },
-                                { maximum: expected, statistic: { kind: 'observed-maximum' as const } }
-                            ]
-                        } ]))
+                        .map((workload, index) => {
+                            const parameter = tierParameters[index];
+                            const expected = parameter?.tier === 'campaign' ? parameter.mutants : 2;
+                            return [ workload.name, {
+                                completedInvocations: [
+                                    { minimum: expected, statistic: { kind: 'observed-minimum' as const } },
+                                    { maximum: expected, statistic: { kind: 'observed-maximum' as const } }
+                                ]
+                            } ];
+                        }))
                 }, {
                     annotations: {},
                     controls: {},
-                    sampling: { ...defaultSamplingPolicy, minimumSamples: samples, maximumSamples: samples },
+                    sampling: { ...defaultSamplingPolicy, minimumSamples: sampleCount, maximumSamples: sampleCount },
                     lifecycle: { warmupSamples: 0, garbageCollection: 'off', cooldown: { mode: 'off' } }
                 });
             })
