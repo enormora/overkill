@@ -129,10 +129,7 @@ const smokeResult = defineCompositeAssertion({
             check.equal(result.summary.passed, 1),
             check.equal(result.summary.failed, 1),
             check.equal(rootCounts, null),
-            check.match(
-                packagedFile,
-                /target\/build\/source\/integration-tests\/package-smoke\/engine-direct-execution\.test\.js$/u
-            ),
+            check.equal(packagedFile, import.meta.filename.replaceAll('\\', '/')),
             check.equal(locationLineType(location), 'number'),
             check.equal(locationColumnType(location), 'number'),
             check.deepEqual(
