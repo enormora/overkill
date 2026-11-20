@@ -6,7 +6,7 @@ import { workIdentityKey, type PerTestResult } from '../run/run.entry-point.ts';
 import { runResultFactory } from '../../test-support/run-result-factory.ts';
 import { collectedMutationPlan } from '../../test-support/mutation-plan-fixture.ts';
 import { createMutationLifecycle } from './mutation-lifecycle.ts';
-import { mutationCatalog } from './mutation-catalog.ts';
+import { eligibleMutationCatalog } from './mutation-catalog.ts';
 
 const root = '/project';
 const input = {
@@ -195,7 +195,7 @@ export const testNode: TestNode = suite('mutation case admission', [
                 z.json().parse({
                     ...input,
                     mode: 'runtime',
-                    baseline: mutationCatalog(root, original),
+                    baseline: eligibleMutationCatalog(root, original, null).catalog,
                     files: [ 'case.ts', 'empty.ts' ],
                     selected: [ workIdentityKey(result.workId) ]
                 })

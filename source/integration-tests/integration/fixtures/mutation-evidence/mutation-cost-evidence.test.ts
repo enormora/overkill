@@ -14,12 +14,8 @@ const dimensions = {
     casesPerFile: z.number().int().positive()
 };
 export const mutationCostParametersSchema = z.discriminatedUnion('tier', [
-    z.strictObject({
-        ...dimensions,
-        tier: z.literal('campaign'),
-        coverage: z.enum([ 'perTest', 'off' ]),
-        mutants: z.literal(1)
-    }),
+    z.strictObject({ ...dimensions, tier: z.literal('campaign'), coverage: z.enum([ 'perTest', 'off' ]), mutants: z.number().int().positive(),
+        workerReplacement: z.boolean() }),
     z.strictObject({ ...dimensions, tier: z.literal('execution-session'), coverage: z.literal('none') })
 ]);
 export type MutationCostParameters = z.infer<typeof mutationCostParametersSchema>;
@@ -34,18 +30,13 @@ export const sessionObservationSchema = z.strictObject({
     executionMicroseconds: duration
 });
 export const mutationCostEvidenceSchema = z.discriminatedUnion('tier', [
-    z.strictObject({
-        tier: z.literal('campaign'),
-        completedInvocations: z.number().int().positive(),
-        campaignMicroseconds: duration
-    }),
-    z.strictObject({
-        tier: z.literal('execution-session'),
-        completedInvocations: z.literal(2),
-        observations: z.array(sessionObservationSchema).length(2),
-        disposalMicroseconds: duration,
-        environmentLifetime: z.enum([ 'fresh', 'reused' ])
-    })
+    z.strictObject({ tier: z.literal('campaign'), completedInvocations: z.number().int().positive(),
+        campaignMicroseconds: duration, workers: z.number().int().nonnegative(),
+        configResolutions: z.number().int().nonnegative(), reloadRequests: z.number().int().nonnegative(),
+        executedCases: z.number().int().nonnegative() }),
+    z.strictObject({ tier: z.literal('execution-session'), completedInvocations: z.literal(2),
+        observations: z.array(sessionObservationSchema).length(2), disposalMicroseconds: duration,
+        environmentLifetime: z.enum([ 'fresh', 'reused' ]) })
 ]);
 export type MutationCostEvidence = z.infer<typeof mutationCostEvidenceSchema>;
 
@@ -168,17 +159,21 @@ export async function measureMutationCosts(
     modules: MutationModuleUrls,
     parameters: MutationCostParameters
 ): Promise<MutationCostEvidence> {
-    if (parameters.tier === 'execution-session') {
-        return await measureExecutionSession(modules, parameters);
+    if (parameters.tier === 'execution-session') return await measureExecutionSession(modules, parameters);
+    const targets = Array.from({ length: parameters.mutants }, (_, index) => `subject-${index}.mjs`);
+    const request = {
+        modules, mode: parameters, seed: '42', coverage: parameters.coverage, catalog: false, targets
+    };
+    const reload = parameters.workerReplacement ? 'replace-worker' : parameters.mutants > 1 ? 'native' : 'unchanged';
+    const campaign = await runMutationCampaign({ ...request, reload });
+    if (parameters.workerReplacement) {
+        assert.ok(campaign.workers > 1, 'Expected Stryker to replace the plugin worker.');
+    } else if (
+        parameters.mutants > 1 && parameters.processModel === 'in-process' && parameters.freshState &&
+        parameters.coverage === 'off'
+    ) {
+        assert.ok(campaign.reloadRequests > 0, 'Expected Stryker to request a reload.');
     }
-    const campaign = await runMutationCampaign({
-        modules,
-        mode: parameters,
-        seed: '42',
-        coverage: parameters.coverage,
-        catalog: false,
-        targets: [ 'subject-0.mjs' ]
-    });
     assert.equal(campaign.results.length, parameters.mutants);
     for (const mutant of campaign.results) {
         assert.equal(mutant.status, 'Survived', JSON.stringify(mutant));
@@ -191,8 +186,8 @@ export async function measureMutationCosts(
         );
     }
     return {
-        tier: 'campaign',
-        completedInvocations: campaign.results.length,
-        campaignMicroseconds: campaign.durationMicroseconds
+        tier: 'campaign', completedInvocations: campaign.results.length, campaignMicroseconds: campaign.durationMicroseconds,
+        workers: campaign.workers, configResolutions: campaign.configResolutions, reloadRequests: campaign.reloadRequests,
+        executedCases: campaign.results.reduce((total, mutant) => total + mutant.testsCompleted, 0)
     };
 }

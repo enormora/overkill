@@ -1,26 +1,26 @@
 import { inspect } from 'node:util';
 import { MutantRunStatus, type MutantRunResult } from '@stryker-mutator/api/test-runner';
 import { executionTermination, workIdentityKey, type RunExecutionReply } from '../run/run.entry-point.ts';
-import { canonicalWork, mutationLifecycleDataSchema } from './mutation-catalog.ts';
-import { mutationDiagnostics, hasMutationExecutionError } from './mutation-diagnostics.ts';
+import { canonicalWork, type mutationLifecycleDataSchema } from './mutation-catalog.ts';
+import { mutationDiagnostics, hasMutationExecutionError, observeMutationCases } from './mutation-diagnostics.ts';
 import { mutationSnapshotError, type MutationInvocationExpectation } from './mutation-observation.ts';
 import { hitLimitGuardMessage, isHitLimitGuard, isWrappedHitLimitGuard } from './mutation-hit-limit.ts';
 
-import { classifyMutationCase } from './mutation-case-classification.ts';
 import { isTimeoutInterruption } from './mutation-timeout.ts';
 
 type InterruptedReply = Exclude<RunExecutionReply, { readonly kind: 'result'; }>;
+type ParsedLifecycle = ReturnType<typeof mutationLifecycleDataSchema.safeParse>;
 type LifecycleData = Readonly<ReturnType<typeof mutationLifecycleDataSchema.parse>>;
 
 export function hitLimitCollectionReply(
-    reply: Extract<RunExecutionReply, { readonly kind: 'result'; }>
+    reply: Extract<RunExecutionReply, { readonly kind: 'result'; }>,
+    data: LifecycleData | null
 ): Extract<RunExecutionReply, { readonly kind: 'timeout'; }> | null {
-    const parsed = mutationLifecycleDataSchema.safeParse(reply.data);
     const errors = reply.result.runnerErrors;
     const guardOnly = errors.length > 0 && errors.every(function collectionGuard(error) {
         return error.subtype === 'loader' && isWrappedHitLimitGuard(error.cause);
     });
-    return parsed.data?.hitLimitExceeded === true && reply.result.perTest.length === 0 && guardOnly
+    return data?.hitLimitExceeded === true && reply.result.perTest.length === 0 && guardOnly
         ? { kind: 'timeout', artifacts: reply.result.artifacts, data: reply.data }
         : null;
 }
@@ -120,12 +120,12 @@ function interruptedSnapshotResult(
 export function interruptedMutantResult(
     root: string,
     reply: InterruptedReply,
-    expectation: Extract<MutationInvocationExpectation, { readonly kind: 'mutant'; }>
+    expectation: Extract<MutationInvocationExpectation, { readonly kind: 'mutant'; }>,
+    parsed: ParsedLifecycle
 ): MutantRunResult {
     if (reply.data === null) {
         return interruptedSnapshotResult(root, reply, null, expectation);
     }
-    const parsed = mutationLifecycleDataSchema.safeParse(reply.data);
     if (!parsed.success) {
         return {
             status: MutantRunStatus.Error,
@@ -138,48 +138,46 @@ export function interruptedMutantResult(
 export function interruptedCompletedMutant(
     root: string,
     reply: Extract<RunExecutionReply, { readonly kind: 'result'; }>,
-    expectation: Extract<MutationInvocationExpectation, { readonly kind: 'mutant'; }>
+    expectation: Extract<MutationInvocationExpectation, { readonly kind: 'mutant'; }>,
+    parsed: ParsedLifecycle
 ): MutantRunResult {
     const errors = reply.result.runnerErrors.filter(function independentFailure(error) {
         return !isTimeoutInterruption(error) ||
             !reply.deadlineExceeded && executionTermination(error.cause) !== 'hard-timeout';
     });
-    const parsed = mutationLifecycleDataSchema.safeParse(reply.data);
     const completed = new Set(parsed.data?.completed);
     const cases = reply.result.perTest.filter(function completedCase(result) {
         return completed.has(workIdentityKey(canonicalWork(root, result.workId)));
     });
     const diagnostics = mutationDiagnostics(
-        cases.map(function observedCase(result) {
-            return {
-                id: workIdentityKey(canonicalWork(root, result.workId)),
-                classification: classifyMutationCase(
-                    root,
-                    result,
-                    reply.result.runnerErrors,
-                    parsed.data?.hitLimitExceeded === true
-                )
-            };
+        observeMutationCases(root, cases, reply.result.runnerErrors, function hitLimit() {
+            return parsed.data?.hitLimitExceeded === true;
         }),
         errors
     );
     if (hasMutationExecutionError(diagnostics)) {
-        return interruptedMutantResult(root, {
-            kind: 'failure',
-            artifacts: reply.result.artifacts,
-            data: reply.data,
-            failure: {
-                kind: 'error',
-                name: 'Error',
-                stack: null,
-                cause: null,
-                message: diagnostics.infrastructureErrors.join('\n')
-            }
-        }, expectation);
+        return interruptedMutantResult(
+            root,
+            {
+                kind: 'failure',
+                artifacts: reply.result.artifacts,
+                data: reply.data,
+                failure: {
+                    kind: 'error',
+                    name: 'Error',
+                    stack: null,
+                    cause: null,
+                    message: diagnostics.infrastructureErrors.join('\n')
+                }
+            },
+            expectation,
+            parsed
+        );
     }
     return interruptedMutantResult(
         root,
         { kind: 'timeout', artifacts: reply.result.artifacts, data: reply.data },
-        expectation
+        expectation,
+        parsed
     );
 }

@@ -1,12 +1,12 @@
 import { realpath } from 'node:fs/promises';
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
-
 import { z } from 'zod/v4';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { mutationCoverageFixture } from '../../../../test-support/mutation-coverage-fixture.ts';
 import { createMutationBaseline } from '../../../../packages/stryker-runner/mutation-baseline.ts';
 import { createCampaignWorker, type CampaignWorker } from '../../../../packages/stryker-runner/campaign-worker.ts';
 import {
+    campaignProtocolVersion,
     campaignRequestSchema,
     campaignResponseSchema
 } from '../../../../packages/stryker-runner/campaign-protocol.ts';
@@ -77,12 +77,12 @@ export const testNode: TestNode = suite('mutation baseline evidence', [
         return scope.assert.collect();
     }),
     test('retains initially empty eligible files across worker replacement', async function (scope) {
-        const { reply, baseline } = mutationCoverageFixture('perTest');
+        const { baseline } = mutationCoverageFixture('perTest');
         const { client, replacement, signal } = await registeredCampaign(scope);
         const original = createMutationBaseline();
         scope.assert.equal(await original.read(client, null), null);
         const files = [ 'empty.test.ts', 'first.test.ts', 'second.test.ts', 'unrelated.test.ts' ];
-        await original.publish(client, reply, { coverageAnalysis: 'perTest', testFiles: files, budget: null });
+        await original.publish(client, { ...baseline, testFiles: files }, null);
         scope.assert.deepEqual(await replacement.respond({ kind: 'fetch' }, signal, null), {
             kind: 'baseline',
             baseline: { ...baseline, testFiles: files }
@@ -96,13 +96,9 @@ export const testNode: TestNode = suite('mutation baseline evidence', [
             return mode;
         },
         async test(scope) {
-            const { baseline, reply } = mutationCoverageFixture(scope.parameters);
+            const { baseline } = mutationCoverageFixture(scope.parameters);
             const { client, replacement, signal } = await registeredCampaign(scope);
-            await createMutationBaseline().publish(client, reply, {
-                coverageAnalysis: scope.parameters,
-                testFiles: null,
-                budget: null
-            });
+            await createMutationBaseline().publish(client, baseline, null);
             scope.assert.deepEqual(await replacement.respond({ kind: 'fetch' }, signal, null), {
                 kind: 'baseline',
                 baseline
@@ -113,11 +109,10 @@ export const testNode: TestNode = suite('mutation baseline evidence', [
             }
             scope.assert.deepEqual(fetched, baseline);
             await scope.assert.rejects(async function conflictingMode() {
-                await createMutationBaseline().publish(client, reply, {
-                    coverageAnalysis: scope.parameters === 'off' ? 'perTest' : 'off',
-                    testFiles: null,
-                    budget: null
-                });
+                await createMutationBaseline().publish(client, {
+                    ...baseline,
+                    coverageAnalysis: scope.parameters === 'off' ? 'perTest' : 'off'
+                }, null);
             }, { message: 'Conflicting campaign baseline publication.' });
             return scope.assert.collect();
         }
@@ -142,29 +137,22 @@ export const testNode: TestNode = suite('mutation baseline evidence', [
         }, { message: 'Campaign IPC disconnected.' });
         return scope.assert.collect();
     }),
-    test(
-        'requires publication acknowledgement before retaining the dry-run baseline',
-        async function (scope) {
-            const { reply } = mutationCoverageFixture('perTest');
-            const client: CampaignClient = {
-                expireRequests: expireNoRequests,
-                async request() {
-                    return { artifacts: [], kind: 'timeout', data: null };
-                },
-                dispose() {
-                    return undefined;
-                }
-            };
-            await scope.assert.rejects(async function publishWithoutAcknowledgement() {
-                await createMutationBaseline().publish(client, reply, {
-                    coverageAnalysis: 'perTest',
-                    testFiles: null,
-                    budget: null
-                });
-            }, { message: 'Invocation deadline exceeded.' });
-            return scope.assert.collect();
-        }
-    ),
+    test('requires publication acknowledgement before retaining the dry-run baseline', async function (scope) {
+        const { baseline } = mutationCoverageFixture('perTest');
+        const client: CampaignClient = {
+            expireRequests: expireNoRequests,
+            async request() {
+                return { artifacts: [], kind: 'timeout', data: null };
+            },
+            dispose() {
+                return undefined;
+            }
+        };
+        await scope.assert.rejects(async function publishWithoutAcknowledgement() {
+            await createMutationBaseline().publish(client, baseline, null);
+        }, { message: 'Invocation deadline exceeded.' });
+        return scope.assert.collect();
+    }),
     test('rejects incompatible campaign frames and baselines missing their evidence', function (scope) {
         const { baseline } = mutationCoverageFixture('perTest');
         const missingMode = { ...baseline };
@@ -186,9 +174,10 @@ export const testNode: TestNode = suite('mutation baseline evidence', [
             campaignRequestSchema
                 .safeParse({
                     kind: 'request',
-                    version: 2,
+                    version: campaignProtocolVersion - 1,
                     id: 0,
                     token: '00000000-0000-4000-8000-000000000000',
+                    timeoutMilliseconds: null,
                     request: { kind: 'fetch' }
                 })
                 .success,
@@ -197,7 +186,7 @@ export const testNode: TestNode = suite('mutation baseline evidence', [
         scope.assert.equal(
             campaignResponseSchema
                 .safeParse({
-                    version: 2,
+                    version: campaignProtocolVersion - 1,
                     id: 0,
                     response: { kind: 'baseline', baseline }
                 })

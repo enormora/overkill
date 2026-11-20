@@ -15,6 +15,7 @@ type CampaignWorkerFixture = {
     readonly runtime: CampaignWorkerRuntime;
     readonly policy: FrozenMicrotestPolicy;
     readonly calls: readonly string[];
+    readonly authorities: readonly Parameters<CampaignWorkerRuntime['execution']>[0][];
     readonly invocations: readonly RunExecutionInvocation[];
     readonly baselines: ReadonlyMap<string, CampaignBaseline>;
     readonly campaigns: ReadonlyMap<string, string>;
@@ -27,6 +28,7 @@ export const memoryCampaignWorker = defineHarness({
 }, async function ({ policyFailure }): Promise<CampaignWorkerFixture> {
     const policy = await frozenMicrotestPolicy();
     const calls: string[] = [];
+    const authorities: Parameters<CampaignWorkerRuntime['execution']>[0][] = [];
     const invocations: RunExecutionInvocation[] = [];
     const baselines = new Map<string, CampaignBaseline>();
     const campaigns = new Map<string, string>();
@@ -46,7 +48,8 @@ export const memoryCampaignWorker = defineHarness({
             }
             return policy;
         },
-        execution() {
+        execution(authority) {
+            authorities.push(authority);
             calls.push('execution');
             return {
                 environmentLifetime: 'fresh',
@@ -62,5 +65,5 @@ export const memoryCampaignWorker = defineHarness({
     };
     const worker = createCampaignSession({ baselines, campaigns }, runtime);
     const sandbox = { originalRoot: '/project', root: '/project', sharedRoots: [], files: [] };
-    return { worker, runtime, policy, calls, invocations, baselines, campaigns, sandbox };
+    return { worker, runtime, policy, calls, authorities, invocations, baselines, campaigns, sandbox };
 });

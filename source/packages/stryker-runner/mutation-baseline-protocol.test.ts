@@ -42,14 +42,10 @@ export const testNode: TestNode = suite(
             const client = respondingClient(
                 timeout ? { kind: 'timeout', artifacts: [], data: null } : unexpected
             );
-            const { reply } = mutationCoverageFixture('off');
+            const { baseline: published } = mutationCoverageFixture('off');
             await scope.assert.rejects(async function () {
                 if (publish) {
-                    await baseline.publish(client, reply, {
-                        coverageAnalysis: 'off',
-                        testFiles: null,
-                        budget: null
-                    });
+                    await baseline.publish(client, published, null);
                 } else {
                     await baseline.read(client, null);
                 }

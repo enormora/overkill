@@ -172,7 +172,7 @@ export const testNode: TestNode = suite('Stryker result ownership', [
     }),
     test('matches result aliases to canonical coverage owners and killing IDs', function (scope) {
         const reply = originAliasReply();
-        const dry = dryMutationResult(root, reply, 'perTest', { kind: 'dry', baseline: null, testFiles: null });
+        const dry = dryMutationResult(root, reply, 'perTest', { kind: 'dry', baseline: null, testFiles: null }).result;
         const mutant = mutantExecutionResult(root, reply, mutantExpectation(reply));
         if (
             dry.status !== DryRunStatus.Complete || mutant.status !== MutantRunStatus.Killed ||
@@ -198,7 +198,7 @@ export const testNode: TestNode = suite('Stryker result ownership', [
     test('excludes intentional skips from the number of executed mutant tests', function (scope) {
         const reply = includeIntentionalSkip(failedReply([], false, false));
         const mutant = mutantExecutionResult(root, reply, mutantExpectation(reply));
-        const dry = dryMutationResult(root, reply, 'off', { kind: 'dry', baseline: null, testFiles: null });
+        const dry = dryMutationResult(root, reply, 'off', { kind: 'dry', baseline: null, testFiles: null }).result;
         if (mutant.status !== MutantRunStatus.Killed || dry.status !== DryRunStatus.Complete) {
             throw new Error('Expected a confirmed kill and complete dry run.');
         }
@@ -318,7 +318,7 @@ export const testNode: TestNode = suite('Stryker result ownership', [
     }),
     test('reports failed baseline tests without discarding their stable dry-run identity', function (scope) {
         const reply = failedReply([], false, false);
-        const result = dryMutationResult(root, reply, 'off', { kind: 'dry', baseline: null, testFiles: null });
+        const { result } = dryMutationResult(root, reply, 'off', { kind: 'dry', baseline: null, testFiles: null });
         if (result.status !== DryRunStatus.Complete) {
             throw new Error('Expected a complete dry run.');
         }

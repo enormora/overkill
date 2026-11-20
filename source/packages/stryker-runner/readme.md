@@ -411,8 +411,11 @@ An automatic IPC receiver in Stryker's main process retains the original dry-run
 catalog and coverage across workers and replacements. No additional dry run,
 reporter, launcher, or disk manifest is required. Fresh invocation hosts and
 supervised children belong to that main process. Worker disconnects cancel
-their execution and reap the children. The receiver uses Stryker `10.0.0`'s
-worker marker and generated schema defaults; its sockets do not keep Node alive.
+their execution and reap the children. The receiver stores the frozen execution
+policy and seed for each connection. Invocation requests carry the test selection
+and execution data. Overkill starts and stops test children through its execution
+session. The receiver uses Stryker `10.0.0`'s worker marker and generated schema
+defaults; its sockets do not keep Node alive.
 
 ### Instrumentation And Observation
 

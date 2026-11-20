@@ -5,7 +5,6 @@ import { collectedMutationPlan } from '../../test-support/mutation-plan-fixture.
 import {
     campaignBaselineSchema,
     mutationLifecycleDataSchema,
-    mutationCatalog,
     eligibleMutationCatalog
 } from './mutation-catalog.ts';
 
@@ -37,7 +36,7 @@ export const testNode: TestNode = suite('mutation adapter evidence validation', 
         scope.require.defined(testCase);
         Reflect.deleteProperty(testCase, 'workId');
         scope.assert.throws(function () {
-            mutationCatalog('/project', plan);
+            eligibleMutationCatalog('/project', plan, null);
         }, { message: 'Collected test has no work identity.' });
         return scope.assert.collect();
     }),

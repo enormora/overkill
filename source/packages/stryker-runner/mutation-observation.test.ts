@@ -111,6 +111,7 @@ export const testNode: TestNode = suite('mutation invocation observations', [
                 'perTest',
                 { kind: 'dry', baseline: null, testFiles: null }
             )
+                .result
                 .status,
             'error'
         );

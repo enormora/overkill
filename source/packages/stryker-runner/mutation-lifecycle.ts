@@ -67,7 +67,7 @@ function validateSelectedCases(
 }
 
 function selectMutationCases(input: MutationLifecycleInput, plan: CollectedRunPlan): MutationCaseSelection {
-    const catalog = eligibleMutationCatalog(input.root, plan, input.files);
+    const { catalog, workById } = eligibleMutationCatalog(input.root, plan, input.files);
     if (input.baseline !== null && !sameMutationCatalog(catalog, input.baseline)) {
         throw new Error('Eligible test catalog changed under mutation.');
     }
@@ -83,7 +83,7 @@ function selectMutationCases(input: MutationLifecycleInput, plan: CollectedRunPl
         selected,
         ids: new Set(selected),
         byId,
-        filter: exactMutationSelection(input.root, plan, selected)
+        filter: exactMutationSelection(workById, selected)
     };
 }
 

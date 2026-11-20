@@ -45,14 +45,18 @@ export function createMutationRunnerInvocations(
     ): Promise<DryRunResult> {
         const { input, expectation, budget } = invocation;
         const coverage = input.coverageAnalysis;
-        const result = dryMutationResult(runner.root, reply, coverage, expectation);
+        const { result, data } = dryMutationResult(runner.root, reply, coverage, expectation);
         await invocation.persist(result);
-        if (result.status === DryRunStatus.Complete && expectation.baseline === null && !budget.expired()) {
-            await baseline.publish(runner.client, reply, {
+        if (
+            result.status === DryRunStatus.Complete && data !== null && expectation.baseline === null &&
+            !budget.expired()
+        ) {
+            await baseline.publish(runner.client, {
                 coverageAnalysis: coverage,
-                testFiles: expectation.testFiles,
-                budget
-            });
+                testFiles: expectation.testFiles === null ? null : Array.from(expectation.testFiles),
+                catalog: data.catalog,
+                coverage: data.coverage
+            }, budget);
         }
         return result;
     }

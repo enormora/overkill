@@ -20,11 +20,16 @@ export const testNode: TestNode = suite('mutation coverage delivery', [
             const { reply, baseline } = mutationCoverageFixture(scope.parameters);
             const data = mutationLifecycleDataSchema.parse(reply.data);
             const coverage = { ...baseline.coverage, static: { mutant: 4, unloaded: 0 } };
-            const result = dryMutationResult('/project', { ...reply, data: { ...data, coverage } }, scope.parameters, {
-                kind: 'dry',
-                baseline: null,
-                testFiles: null
-            });
+            const { result } = dryMutationResult(
+                '/project',
+                { ...reply, data: { ...data, coverage } },
+                scope.parameters,
+                {
+                    kind: 'dry',
+                    baseline: null,
+                    testFiles: null
+                }
+            );
             if (result.status !== DryRunStatus.Complete || result.mutantCoverage === undefined) {
                 throw new Error('Expected complete coverage results.');
             }
@@ -50,7 +55,7 @@ export const testNode: TestNode = suite('mutation coverage delivery', [
 
             const { reply } = mutationCoverageFixture(mode);
             const data = mutationLifecycleDataSchema.parse(reply.data);
-            const result = dryMutationResult(
+            const { result } = dryMutationResult(
                 '/project',
                 {
                     ...reply,
@@ -79,6 +84,7 @@ export const testNode: TestNode = suite('mutation coverage delivery', [
             };
             scope.assert.equal(
                 dryMutationResult('/project', partial, 'perTest', { kind: 'dry', baseline: null, testFiles: null })
+                    .result
                     .status,
                 'error'
             );
@@ -92,6 +98,7 @@ export const testNode: TestNode = suite('mutation coverage delivery', [
                     'perTest',
                     { kind: 'dry', baseline: null, testFiles: null }
                 )
+                    .result
                     .status,
                 'error'
             );
@@ -101,7 +108,7 @@ export const testNode: TestNode = suite('mutation coverage delivery', [
     test('rejects unknown owners rather than allowing Stryker to discard their coverage', function (scope) {
         const { reply } = mutationCoverageFixture('perTest');
         const data = mutationLifecycleDataSchema.parse(reply.data);
-        const result = dryMutationResult(
+        const { result } = dryMutationResult(
             '/project',
             {
                 ...reply,
