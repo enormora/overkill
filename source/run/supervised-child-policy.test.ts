@@ -28,6 +28,12 @@ export const testNode = authoredSuite(
                         scope.assert.equal(fixture.exitCode(), 0);
                         scope.assert.equal(fixture.disconnected(), true);
                         scope.assert.deepEqual(
+                            fixture.completion(),
+                            mode === 'run'
+                                ? [ 'coverage', 'result', 'disconnect' ]
+                                : [ 'disconnect' ]
+                        );
+                        scope.assert.deepEqual(
                             fixture.messages().filter(isRunnerError),
                             []
                         );

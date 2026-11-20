@@ -23,9 +23,8 @@ const overkillBinEntryPointPath = path.join(
 async function runPackagedCoverage(): Promise<{ readonly stderr: string; readonly stdout: string; }> {
     return await new Promise(function executeCoverage(resolve, reject) {
         execFile(
-            process.execPath,
+            overkillBinEntryPointPath,
             [
-                overkillBinEntryPointPath,
                 'run',
                 '--coverage',
                 '--config',

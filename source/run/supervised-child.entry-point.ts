@@ -1,18 +1,11 @@
+import { stopCoverage } from 'node:v8';
 import { createClock } from '@enormora/clock';
 import { createChildProcessOutbox } from './child-process-outbox.ts';
 import { supervisedParentMessageSchema } from './supervised-parent-message-schema.ts';
-import {
-    envelopeMessage
-} from './child-process-protocol.ts';
+import { envelopeMessage } from './child-process-protocol.ts';
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
-import {
-    loadRunEngineModule,
-    loadRunTestModules,
-    runDiscovery
-} from './node-run-dependencies.entry-point.ts';
-import {
-    observeProcessIpcListeners
-} from './node-process-policy-observation.ts';
+import { loadRunEngineModule, loadRunTestModules, runDiscovery } from './node-run-dependencies.entry-point.ts';
+import { observeProcessIpcListeners } from './node-process-policy-observation.ts';
 import { createNodeProcessUsageTracker } from './process-usage.ts';
 import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
 import {
@@ -103,6 +96,7 @@ await runSupervisedChild(
     {
         disconnect,
         flush: outbox.flush,
+        finishCoverage: stopCoverage,
         discoverRunFiles: runDiscovery.discoverRunFiles,
         dropBodyReadPermission,
         observeIpcListeners(record) {

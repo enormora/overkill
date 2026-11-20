@@ -1,15 +1,7 @@
 import type { Clock } from '@enormora/clock';
 import { resolveDebugSelection } from './run-debug.ts';
-import {
-    completeSupervisedExecutionSession,
-    type ExecutionSessionPlanSelection
-} from './execution-session-child.ts';
-import type {
-    RunResult,
-    RunnerError,
-    RunProcessUsageTracker,
-    TestPlan
-} from './run-engine-primitives.ts';
+import { completeSupervisedExecutionSession, type ExecutionSessionPlanSelection } from './execution-session-child.ts';
+import type { RunResult, RunnerError, RunProcessUsageTracker, TestPlan } from './run-engine-primitives.ts';
 import {
     resolvedTestPlanDefinitionLocations,
     collectedRunPlanFromTestPlan,
@@ -80,6 +72,7 @@ export type SupervisedChildHost = RuntimeCapabilityPolicyDependencies & {
     readonly receiveCommand: () => Promise<SupervisedChildCommand>;
     readonly send: (message: SupervisedChildMessage) => void;
     readonly flush: () => Promise<void>;
+    readonly finishCoverage: () => void;
     readonly setExitCode: (code: number) => void;
     readonly validatePermissionHost: (command: SupervisedChildCommand) => void;
 };
@@ -232,6 +225,7 @@ async function collect(command: SupervisedChildCommand, host: SupervisedChildHos
 }
 
 function sendRunResult(host: SupervisedChildHost, result: RunResult): void {
+    host.finishCoverage();
     host.send({
         kind: 'result',
         result
@@ -381,6 +375,7 @@ async function runReceivedCommand(
             await completeReceivedCommand(command, host, dependencies, stopObserving);
         });
     } catch (error: unknown) {
+        host.finishCoverage();
         sendFailure(error, host);
         host.setExitCode(1);
     } finally {
