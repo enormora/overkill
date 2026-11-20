@@ -122,7 +122,7 @@ function applyTestStartEvent(
     cases: ReadonlyMap<string, SupervisedCase>,
     observedAtMicroseconds: number
 ): void {
-    const workId = event.workId;
+    const { workId } = event;
     const key = workIdentityKey(workId);
     const testCase = cases.get(key);
 
