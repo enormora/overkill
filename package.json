@@ -74,7 +74,7 @@
         "@types/proper-lockfile": "4.1.4",
         "@typescript-eslint/parser": "8.72.2",
         "@typescript-eslint/utils": "8.72.2",
-        "dependency-cruiser": "18.7.2",
+        "dependency-cruiser": "18.8.0",
         "jscpd": "5.4.3",
         "knip": "6.45.1",
         "rust-just": "1.59.0",
