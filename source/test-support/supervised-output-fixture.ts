@@ -67,7 +67,7 @@ function runFakeIntegrationOutputChild(context: FakeSupervisedChildRunContext): 
             case: work.case,
             definitionLocations: [ { kind: 'unknown' } ],
             kind: 'test-end',
-            outcome: null,
+            outcome: { kind: 'pass' },
             suitePath: [],
             verdict: 'pass',
             durationMicroseconds: 0,

@@ -24,7 +24,7 @@ function completeAssignedRun(context: FakeSupervisedChildRunContext): void {
         context.emitMessage({
             kind: 'event',
             event: {
-                attempt: 1,
+                attempt: 0,
                 case: workId.case,
                 definitionLocations: [ { kind: 'unknown' } ],
                 kind: 'test-start',
@@ -37,7 +37,7 @@ function completeAssignedRun(context: FakeSupervisedChildRunContext): void {
             event: {
                 property: null,
                 benchmark: null,
-                attempt: 1,
+                attempt: 0,
                 artifacts: [],
                 completion: 'final',
                 case: workId.case,
