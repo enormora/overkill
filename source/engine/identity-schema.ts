@@ -14,14 +14,14 @@ export const runtimeIdSchema = z.strictObject({
 });
 export const workloadIdSchema = z.strictObject({ name: z.string(), params: z.record(z.string(), z.string()) });
 export const familyVariantSchema = z.strictObject({ family: z.string().min(1), key: z.string().min(1) }).nullable();
-const currentWorkIdSchema = z.strictObject({
+export const executableWorkIdSchema = z.strictObject({
     case: caseIdSchema,
     runtimes: z.array(runtimeIdSchema),
     workload: workloadIdSchema.nullable(),
-    familyVariant: familyVariantSchema.default(null)
+    familyVariant: familyVariantSchema
 });
 export const workIdSchema = z.union([
-    currentWorkIdSchema,
+    executableWorkIdSchema.extend({ familyVariant: familyVariantSchema.default(null) }),
     z
         .strictObject({
             case: caseIdSchema,

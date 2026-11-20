@@ -80,6 +80,7 @@ async function executeProtocolPhase(phase: Phase): Promise<RunResult> {
                         kind: 'test-start',
                         attempt: 0,
                         case: result.perTest[0]?.id ?? { file, params: null, suite: [], title: 'missing' },
+                        workId: { familyVariant: null, case: result.perTest[0]?.id ?? { file, params: null, suite: [], title: 'missing' }, runtimes: [], workload: null },
                         definitionLocations: metadata.definitionLocations,
                         suitePath: []
                     }

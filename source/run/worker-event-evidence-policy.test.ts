@@ -52,9 +52,17 @@ export const testNode = authoredSuite('worker event evidence ownership', [
         const source = fakeWorkerRuntime(createCollectedPlan());
         const task = { ...createTaskRun(source.runState), reporterEventsBuffered: true };
         const work = task.members[0].unit.work[0];
+        const attachment = { ...exchangedAttachment, id: {
+            ...exchangedAttachment.id, scope: { kind: 'case' as const, case: work.case, activeCases: [ work.case ], confidence: 'active-case' as const },
+            attempt: { index: 0 }, familyVariant: work.familyVariant, runtimes: work.runtimes, workload: work.workload
+        } };
         const attachments = attachmentCoordinationForWork(null, [ work ]);
         scope.cleanup(attachments.coordinator.close);
         const runtime = { ...source, attachments: attachments.coordinator };
+        handleWorkerMessage({ kind: 'event', event: {
+            kind: 'test-start', case: work.case, workId: work, attempt: 0,
+            definitionLocations: [ { kind: 'unknown' } ], suitePath: []
+        } }, task, runtime);
         handleWorkerMessage(
             {
                 kind: 'event',
@@ -65,7 +73,7 @@ export const testNode = authoredSuite('worker event evidence ownership', [
                     attempt: 0,
                     definitionLocations: [ { kind: 'unknown' } ],
                     suitePath: [],
-                    artifacts: [ exchangedAttachment ],
+                    artifacts: [ attachment ],
                     outcome: { kind: 'pass' },
                     verdict: 'pass',
                     durationMicroseconds: 0,
@@ -81,7 +89,7 @@ export const testNode = authoredSuite('worker event evidence ownership', [
             return candidate.kind === 'test-end';
         });
         scope.assert.deepEqual<unknown, unknown>({ artifacts: event?.artifacts }, {
-            artifacts: [ exchangedAttachment ]
+            artifacts: [ attachment ]
         });
         return scope.assert.collect();
     })

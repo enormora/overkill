@@ -146,7 +146,7 @@ type TestStartReporterEvent = {
     readonly definitionLocations: TestPlanCase['definitionLocations'];
     readonly kind: 'test-start';
     readonly suitePath: TestPlanCase['suitePath'];
-    readonly workId?: WorkId;
+    readonly workId: WorkId;
 };
 
 type TestProgressReporterEvent = {
@@ -156,7 +156,7 @@ type TestProgressReporterEvent = {
     readonly kind: 'test-progress';
     readonly note: string;
     readonly suitePath: TestPlanCase['suitePath'];
-    readonly workId?: WorkId;
+    readonly workId: WorkId;
 };
 
 type TestEndReporterEvent = {
@@ -172,7 +172,7 @@ type TestEndReporterEvent = {
     readonly suitePath: TestPlanCase['suitePath'];
     readonly verdict: TestVerdict;
     readonly durationMicroseconds: number;
-    readonly workId?: WorkId;
+    readonly workId: WorkId;
 };
 
 type BenchmarkProgressReporterEvent = {

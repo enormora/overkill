@@ -13,6 +13,7 @@ function caseCompletion(work: WorkId, artifacts: readonly RunArtifact[]): CaseCo
     return {
         kind: 'test-end',
         case: work.case,
+        workId: work,
         attempt: 0,
         definitionLocations: [ { kind: 'unknown' } ],
         suitePath: [],
@@ -99,6 +100,10 @@ export const testNode = authoredSuite('supervised child message policy', [
                 const fixture = supervisedMessageRuntime(scope, false, true);
                 const checkpoint = await debugArtifactForWork(fixture.work);
                 const completed = { ...checkpoint, payload: { ...checkpoint.payload, durationMicroseconds: 10 } };
+                fixture.receive({ kind: 'event', event: {
+                    kind: 'test-start', case: fixture.work.case, workId: fixture.work, attempt: 0,
+                    definitionLocations: [ { kind: 'unknown' } ], suitePath: []
+                } });
                 fixture.runtime.state.recordArtifact(checkpoint);
                 fixture.receive({
                     kind: 'event',
@@ -161,6 +166,7 @@ export const testNode = authoredSuite('supervised child message policy', [
                 event: {
                     kind: 'test-start',
                     case: fixture.work.case,
+                    workId: fixture.work,
                     attempt: 0,
                     definitionLocations: [ { kind: 'unknown' } ],
                     suitePath: []
@@ -172,6 +178,7 @@ export const testNode = authoredSuite('supervised child message policy', [
                 event: {
                     kind: 'test-end',
                     case: fixture.work.case,
+                    workId: fixture.work,
                     attempt: 0,
                     definitionLocations: [ { kind: 'unknown' } ],
                     suitePath: [],

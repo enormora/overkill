@@ -4,6 +4,7 @@ import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import { createBoundaryFailureArtifact, type BoundaryFailure } from '../engine/run-artifact.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import type { RunArtifact, RunResult } from './run-engine-primitives.ts';
+import { createCollectedPlan } from '../test-support/worker-pool-execution-state.ts';
 import { runningSupervisedRuntime } from './supervised-run-runtime.test.ts';
 import { handleChildMessage } from './supervised-run-runtime.ts';
 
@@ -91,6 +92,16 @@ export const testNode = authoredSuite('supervised native completion evidence', [
                     0,
                     { index: 0 }
                 );
+                const plan = createCollectedPlan();
+                const file = plan.files[0];
+                scope.require.defined(file);
+                const testCase = file.cases[0];
+                scope.require.defined(testCase);
+                runtime.collectedPlan.write({ ...plan, files: [ {
+                    file: 'example.test.ts', cases: [ { ...testCase,
+                        workId: work, title: work.case.title, params: null, suitePath: []
+                    } ]
+                } ] });
                 const result = nativeCompletion(failure);
                 runtime.state.removeActiveCase(workIdentityKey(work));
                 handleChildMessage({ kind: 'result', result }, runtime);

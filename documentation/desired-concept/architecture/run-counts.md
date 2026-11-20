@@ -75,6 +75,10 @@ runtime orphan. ESLint does not duplicate this runtime check; see
 [Higher Test Layers § Static Authoring Rules](../authoring/higher-test-layers.md#static-authoring-rules).
 An unevaluated module does not establish that any test node was constructed.
 
+Final executor results reconcile accepted attempt evidence without publishing
+completion a second time. Duplicate work identities and contradictory completion
+evidence are runner errors.
+
 Collection owns one authoritative catalog and constructed/reached snapshot.
 Browser/worker execution re-import validates frozen selected work; it does not
 add discovered/planned/defined counts or merge execution-realm orphan sets into

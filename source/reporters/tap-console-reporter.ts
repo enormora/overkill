@@ -140,7 +140,7 @@ export function createTapConsoleRealTimeReporter(
             async onEvent(event) {
                 if (event.kind === 'run-start') {
                     stdoutConsole.log('TAP version 14');
-                } else if (event.kind === 'test-end') {
+                } else if (event.kind === 'test-end' && event.completion === 'final') {
                     stdoutConsole.log(formatEventAsTapPoint(event, nextTestPointIndex));
                     nextTestPointIndex += 1;
                 } else if (event.kind === 'runner-error') {

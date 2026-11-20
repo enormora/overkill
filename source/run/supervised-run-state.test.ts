@@ -25,7 +25,7 @@ function caseId(title: string): CaseId {
 }
 
 function addActiveCase(state: SupervisedRunState, testCase: CaseId): void {
-    state.addActiveCase(caseIdentityKey(testCase), { capture: null, id: testCase }, 0, { index: 0 });
+    state.addActiveCase(caseIdentityKey(testCase), { capture: null, id: testCase, workId: { familyVariant: null, case: testCase, runtimes: [], workload: null } }, 0, { index: 0 });
 }
 
 function isCapturedOutputArtifact(artifact: RunArtifact): artifact is CapturedOutputArtifact {
@@ -142,10 +142,52 @@ function assertInterruptedProperty(
 }
 
 export const testNode = suite('source/run/supervised-run-state.test.ts', [
+    test('rejects stale and duplicate completion without changing accepted history', function (scope: OverkillScope) {
+        const state = createSupervisedRunState('first-failure-and-final');
+        const id = caseId('accepted');
+        const workId = createDefaultWorkId(id);
+        const key = workIdentityKey(workId);
+        const selected = new Map([ [ key, { capture: null, id, workId } ] ]);
+        const start = { kind: 'test-start' as const, case: id, workId, attempt: 0,
+            definitionLocations: [ { kind: 'unknown' as const } ], suitePath: [] };
+        const end = { ...start, kind: 'test-end' as const, completion: 'final' as const,
+            outcome: { kind: 'pass' as const }, verdict: 'pass' as const, artifacts: [],
+            property: null, benchmark: null, durationMicroseconds: 1 };
+        applyEvent(start, state, selected, 0);
+        scope.assert.throws(() => applyEvent(start, state, selected, 0), { message: 'Runtime start is duplicate or out of order.' });
+        scope.assert.throws(() => applyEvent({ ...end, attempt: 1 }, state, selected, 1), { message: 'Runtime evidence does not belong to the active attempt.' });
+        applyEvent(end, state, selected, 1);
+        scope.assert.throws(() => applyEvent(end, state, selected, 2), { message: 'Runtime evidence does not belong to the active attempt.' });
+        scope.assert.equal(state.perTestResults().length, 1);
+        scope.assert.equal(state.perTestResults()[0]?.attempts.length, 1);
+        scope.assert.equal(state.perTestResults()[0]?.durationMicroseconds, 1);
+        state.assertResults(state.perTestResults(), selected);
+        scope.assert.throws(() => state.assertResults([ ...state.perTestResults(), ...state.perTestResults() ], selected), { message: 'Runtime results contain foreign or duplicate work identities.' });
+        return scope.assert.collect();
+    }),
+    test('rejects variant substitution and contradictory final snapshots', function (scope: OverkillScope) {
+        const state = createSupervisedRunState('first-failure-and-final');
+        const result = runResultFactory.build({ perTest: [ { id: caseId('snapshot'), verdict: 'pass' } ] }).perTest[0];
+        scope.require.defined(result);
+        const { workId, id } = result;
+        const key = workIdentityKey(workId);
+        const selected = new Map([ [ key, { capture: null, id, workId } ] ]);
+        const start = { kind: 'test-start' as const, case: id, workId, attempt: 0,
+            definitionLocations: [ { kind: 'unknown' as const } ], suitePath: [] };
+        scope.assert.throws(() => state.assertEvent({ ...start, workId: {
+            ...workId, familyVariant: { family: 'other', key: 'compiler' }
+        } }, selected), { message: 'Runtime evidence does not identify selected work.' });
+        state.recordPerTestResult(key, result, 1);
+        scope.assert.throws(() => state.assertResults([ { ...result, verdict: 'inconclusive' } ], selected),
+            { message: 'Runtime result contradicts accepted completion evidence.' });
+        scope.assert.equal(state.activeCases.size, 0);
+        scope.assert.equal(state.perTestResults()[0]?.verdict, result.verdict);
+        return scope.assert.collect();
+    }),
     test('selects authored live capture only for a single active case', function (scope: OverkillScope) {
         const state = createSupervisedRunState('first-failure-and-final');
         scope.assert.equal(state.captureMode('buffered'), 'buffered');
-        state.addActiveCase('live', { capture: 'live', id: caseId('live') }, 0, { index: 0 });
+        state.addActiveCase('live', { capture: 'live', id: caseId('live'), workId: createDefaultWorkId(caseId('live')) }, 0, { index: 0 });
         scope.assert.equal(state.captureMode('buffered'), 'live');
         addActiveCase(state, caseId('concurrent'));
         scope.assert.equal(state.captureMode('buffered'), 'buffered');
@@ -182,7 +224,7 @@ export const testNode = suite('source/run/supervised-run-state.test.ts', [
                 suitePath: []
             },
             state,
-            new Map(),
+            new Map([ [ key, { capture: null, id, workId } ] ]),
             1
         );
         state.recordTerminalActiveCases('crashed', 10);

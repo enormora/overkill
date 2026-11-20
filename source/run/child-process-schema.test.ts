@@ -95,23 +95,24 @@ export const testNode = suite('child process payload schemas', [
         );
         return scope.assert.collect();
     }),
-    test('legacy reporter events receive a complete default work identity', function (scope) {
-        const caseId = { file: null, params: null, suite: [], title: 'legacy' };
-        const event = reporterEventSchema.parse({
-            attempt: 0,
-            case: caseId,
-            definitionLocations,
-            kind: 'test-start',
-            suitePath: []
-        });
-        scope.assert.deepEqual(event, {
-            attempt: 0,
-            case: caseId,
-            definitionLocations,
-            kind: 'test-start',
-            suitePath: [],
-            workId: createDefaultWorkId(caseId)
-        });
+    test('retains executable variants and rejects incomplete live identity', function (scope) {
+        const caseId = { file: null, params: null, suite: [], title: 'variant' };
+        const workId = { case: caseId, runtimes: [], workload: { name: 'large', params: {} },
+            familyVariant: { family: 'analysis', key: 'compiler-a' } };
+        const event = { attempt: 0, case: caseId, workId, definitionLocations, kind: 'test-start', suitePath: [] };
+        scope.assert.deepEqual(reporterEventSchema.parse(event), structuredClone({ ...event, case: { ...caseId } }));
+        scope.assert.false(reporterEventSchema.safeParse({ ...event, attempt: -1 }).success);
+        scope.assert.false(reporterEventSchema.safeParse({ ...event, attempt: 0.5 }).success);
+        const { familyVariant, ...incomplete } = workId;
+        scope.assert.false(reporterEventSchema.safeParse({ ...event, workId: incomplete }).success);
+        scope.assert.deepEqual(familyVariant, { family: 'analysis', key: 'compiler-a' });
+        return scope.assert.collect();
+    }),
+    test('rejects reporter events without executable identity', function (scope) {
+        const caseId = { file: null, params: null, suite: [], title: 'missing identity' };
+        scope.assert.false(reporterEventSchema.safeParse({
+            attempt: 0, case: caseId, definitionLocations, kind: 'test-start', suitePath: []
+        }).success);
         return scope.assert.collect();
     }),
 

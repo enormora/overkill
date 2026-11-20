@@ -117,6 +117,11 @@ export function selectedAssignedWork(
     const casesByIdentity = new Map(testPlan.cases.map(function toCaseEntry(testCase) {
         return [ workIdentityKey(testCase.workId), testCase ];
     }));
+    const assignedKeys = new Set(assignedWork.map(workIdentityKey));
+    if (casesByIdentity.size !== testPlan.cases.length ||
+        assignedKeys.size !== assignedWork.length) {
+        throw new Error('Worker-pool catalog or assignment contains duplicate work identities.');
+    }
     const cases = assignedWork.flatMap(function toAssignedCase(work) {
         const matchedCase = casesByIdentity.get(workIdentityKey(work));
 

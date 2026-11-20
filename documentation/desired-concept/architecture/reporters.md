@@ -174,6 +174,11 @@ a final failure annotation. Only `completion: 'final'` contributes to final
 progress. Recovered cases remain visible through attempt history and retry
 summaries; reporter errors still independently fail the run.
 
+Live test events require explicit work identity and a nonnegative, zero-based
+attempt index. Missing identity is rejected before reporter delivery. Runtime
+completion must match active selected work; duplicate or stale completion is a
+runner protocol error and cannot settle attachments or advance progress.
+
 Every test/evidence event identifies the executable `WorkId`, not only its
 logical `CaseId`. Runtime, workload, family, and body-placement variants may
 share a case. Reporters retain that identity through progress, retries, artifacts,

@@ -1,13 +1,12 @@
 import { z } from 'zod/v4';
 import { runnerErrorSchema } from '../engine/runner-error-schema.ts';
-import { createDefaultWorkId } from '../engine/identity.ts';
 import type { ReporterEvent } from '../engine/reporter.ts';
 import {
     annotationsSchema,
     caseIdSchema,
     sourceLocationsSchema,
     suitePathSchema,
-    workIdSchema
+    executableWorkIdSchema
 } from '../engine/identity-schema.ts';
 import { resourceCheckSnapshotSchema, testOutcomeSchema } from '../engine/assertion-result-schema.ts';
 import { propertyEvidenceSchema } from './property-evidence-schema.ts';
@@ -16,11 +15,11 @@ import { debugArtifactSchema, runArtifactSchema, verdictSchema } from './run-art
 import { benchmarkResultSchema } from './benchmark-result-schema.ts';
 
 const testFields = {
-    attempt: z.number(),
+    attempt: z.number().int().nonnegative(),
     case: caseIdSchema,
     definitionLocations: sourceLocationsSchema,
     suitePath: suitePathSchema,
-    workId: workIdSchema.optional()
+    workId: executableWorkIdSchema
 };
 const eventSchema = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('resource-check-progress'), snapshot: resourceCheckSnapshotSchema }),
@@ -50,13 +49,4 @@ const eventSchema = z.discriminatedUnion('kind', [
         durationMicroseconds: z.number()
     })
 ]);
-function hasCaseIdentity(
-    event: z.infer<typeof eventSchema>
-): event is Extract<z.infer<typeof eventSchema>, { readonly case: unknown; }> {
-    return Object.hasOwn(event, 'case');
-}
-export const reporterEventSchema: z.ZodType<ReporterEvent> = eventSchema.transform(
-    function normalizeWorkIdentity(event) {
-        return hasCaseIdentity(event) ? { ...event, workId: event.workId ?? createDefaultWorkId(event.case) } : event;
-    }
-);
+export const reporterEventSchema: z.ZodType<ReporterEvent> = eventSchema;

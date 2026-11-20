@@ -83,11 +83,11 @@ function hedgedBudgetRuntime(): HedgedBudgetRun {
     const activeTask = createTaskRun(createSupervisedRunState('first-failure-and-final'));
     const hedge = createTaskRun(createSupervisedRunState('first-failure-and-final'));
     const runtime = { ...budgetedRuntime(activeTask), activeTasks: new Set([ activeTask, hedge ]) };
-    hedge.state.addActiveCase(firstCaseIdentityKey(), { capture: null, id: firstCaseId() }, 0, {
+    hedge.state.addActiveCase(firstCaseIdentityKey(), { capture: null, id: firstCaseId(), workId: { familyVariant: null, case: firstCaseId(), runtimes: [], workload: null } }, 0, {
         index: 1
     });
 
-    activeTask.state.addActiveCase(firstCaseIdentityKey(), { capture: null, id: firstCaseId() }, 0, {
+    activeTask.state.addActiveCase(firstCaseIdentityKey(), { capture: null, id: firstCaseId(), workId: { familyVariant: null, case: firstCaseId(), runtimes: [], workload: null } }, 0, {
         index: 0
     });
     activeTask.timeout.write(runtime.dependencies.wallClock.setTimeout(
