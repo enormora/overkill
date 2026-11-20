@@ -1,5 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import path from 'node:path';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { attachmentFixture, attachmentWork as work } from '../../../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
@@ -49,7 +49,7 @@ function assertAttemptScope(scope: TestScope, identity: ReturnType<typeof transc
     scope.assert.deepEqual(identity, { work, attempt: { index } });
 }
 async function assertSharedFailureContext(scope: TestScope): Promise<void> {
-    const copy = await copyModule('../attachments/resource-failure-context');
+    const copy = await copyModule('../../../attachments/resource-failure-context');
     if (!isFailureContextCopy(copy)) {
         throw new Error('Expected resource failure context exports.');
     }
@@ -64,7 +64,7 @@ async function assertSharedFailureContext(scope: TestScope): Promise<void> {
     scope.assert.equal(copy.currentResourceFailureContext(), null);
 }
 async function assertSharedStreamRegistry(scope: TestScope): Promise<void> {
-    const copy = await copyModule('../attachments/failure-artifact-stream');
+    const copy = await copyModule('../../../attachments/failure-artifact-stream');
     if (!isStreamCopy(copy)) {
         throw new Error('Expected failure stream exports.');
     }
@@ -91,7 +91,7 @@ async function assertSharedStreamRegistry(scope: TestScope): Promise<void> {
     });
 }
 async function assertSharedTranscriptScopes(scope: TestScope): Promise<void> {
-    const copy = await copyModule('../transcript/transcript-store');
+    const copy = await copyModule('../../../transcript/transcript-store');
     if (!isTranscriptCopy(copy)) {
         throw new Error('Expected transcript scope exports.');
     }

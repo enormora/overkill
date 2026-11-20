@@ -1,6 +1,6 @@
 import { appendFile } from 'node:fs/promises';
-import { suite, test, skippedTest } from '@overkill-dev/test/bench';
-import { defineResource, defineRuntime, withRuntime } from '@overkill-dev/test/resources';
+import { suite, test, skippedTest } from '../../../packages/bench/bench.entry-point.ts';
+import { defineResource, defineRuntime, withRuntime } from '../../../packages/test/resources.entry-point.ts';
 
 const lifecycleFile = 'target/benchmark-lifecycle.txt';
 const resource = defineResource({

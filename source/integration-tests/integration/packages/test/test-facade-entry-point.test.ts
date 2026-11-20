@@ -17,6 +17,8 @@ import {
 import { createTestFacade, type TestFacade } from '../../../../packages/test/test.entry-point.ts';
 import * as resourcesSubpath from '../../../../packages/test/resources.entry-point.ts';
 
+type CheckParameterizedNameAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'equal'>; };
+
 type FacadeAuthoringExecution = {
     readonly plannedCase: TestPlan['discoveredCases'][number] | undefined;
     readonly result: Awaited<ReturnType<typeof execute>>;
@@ -35,13 +37,13 @@ type EmptyResourceDependencies = Readonly<Record<PropertyKey, never>>;
 
 const invokeCreateTestFacade = createTestFacade as (...parameters: readonly unknown[]) => unknown;
 
-const passingBody: EngineCaseBody = (scope) => {
+const passingBody: EngineCaseBody = function (scope) {
     scope.assert.true(true);
     return scope.assert.collect();
 };
 
 function checkParameterizedName(
-    testScope: { readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>; },
+    testScope: CheckParameterizedNameAssertions,
     data: NameData
 ): ReturnType<EngineCaseBody> {
     testScope.assert.equal(data.name, 'Ada', { message: 'wrong name' });
@@ -141,7 +143,7 @@ function assertSourceLocationInThisFile(scope: TestScope, location: SourceLocati
 
     scope.assert.match(
         location.file.replaceAll('\\', '/'),
-        /source\/packages\/test\/test-facade-entry-point\.test\.[cm]?[jt]s$/u
+        /source\/integration-tests\/integration\/packages\/test\/test-facade-entry-point\.test\.[cm]?[jt]s$/u
     );
 }
 

@@ -4,8 +4,9 @@ import { writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
-import { type TestScope, createTestFacade } from '@overkill-dev/test';
-import { createTemporaryDirectoryResource } from '@overkill-dev/test/resources';
+import type { TestScope } from '@overkill-dev/test';
+import { createTestFacade } from '../../../packages/test/test.entry-point.ts';
+import { createTemporaryDirectoryResource } from '../../../packages/test/resources.entry-point.ts';
 
 const integration = createTestFacade({
     annotations: {},
@@ -43,7 +44,8 @@ function close(server: Server): Promise<void> {
     });
 }
 
-async function exerciseTemporaryDirectoryResource(scope: TestScope): Promise<void> {
+type FixtureAssertions = { readonly assert: Pick<TestScope['assert'], 'equal'>; };
+async function exerciseTemporaryDirectoryResource(scope: FixtureAssertions): Promise<void> {
     const temporaryDirectory = await temporaryDirectoryResource.acquire({
         workload: null,
         attachments: resourceAttachments('test'),

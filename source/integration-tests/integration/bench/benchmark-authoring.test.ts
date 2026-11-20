@@ -1,4 +1,5 @@
 import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { runWithAttachmentContext } from '../../../attachments/attachment-context.ts';
 
 import {
     type TestCase,
@@ -21,9 +22,11 @@ import {
 import { defineResource, withResource } from '../../../packages/test/resources.entry-point.ts';
 
 async function executeBenchmark(node: TestCase): Promise<RunResult> {
-    return await execute(
-        createTestPlan(createRoot({ annotations: {}, controls: {}, title: 'root', children: [ node ] }))
-    );
+    return await runWithAttachmentContext(null, async function executeWithoutArtifacts() {
+        return await execute(
+            createTestPlan(createRoot({ annotations: {}, controls: {}, title: 'root', children: [ node ] }))
+        );
+    });
 }
 
 function assertFirstWorkload(scope: TestScope, result: RunResult): void {

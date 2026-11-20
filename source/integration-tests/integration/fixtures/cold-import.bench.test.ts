@@ -6,7 +6,7 @@ import {
     timelineMeasurement,
     rawMeasurement,
     workload
-} from '@overkill-dev/test/bench';
+} from '../../../packages/bench/bench.entry-point.ts';
 
 export const testNode = benchmark('cold module graph', {
     kind: 'startup',

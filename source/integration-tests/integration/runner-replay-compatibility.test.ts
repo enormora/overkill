@@ -1,7 +1,7 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
-import { watch } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineReporter } from '../../packages/engine/engine.entry-point.ts';
 
 import { orchestrator, type ReplayRunCommand } from '../../packages/run/run.entry-point.ts';
 import type { ReplayRunRecord } from '../../run/replay-record-types.ts';
@@ -19,7 +19,8 @@ type RecordedProject = { readonly project: ReplayProject; readonly record: Repla
 async function recordedProject(scope: TestScope, workers: boolean): Promise<RecordedProject> {
     const project = await replayProject(scope, replayProfile(workers ? 'worker-pool' : 'in-process'));
     await writeReplayCase(project, replayPassingCase('retained case', true));
-    await orchestrator.run(project.command);
+    const original = await orchestrator.run(project.command);
+    scope.assert.equal(original.status, 'passed', { message: JSON.stringify(original.runnerErrors) });
     const [ record ] = await replayRecords(project);
     scope.require.defined(record);
     return { project, record };
@@ -76,27 +77,36 @@ async function verifyActiveCancellation(scope: TestScope): Promise<void> {
     const saved = await recordedProject(scope, true);
     await writeReplayCase(
         saved.project,
-        `import {writeFile} from 'node:fs/promises';
-import {test} from ${JSON.stringify(replayAuthoringUrl)};
+        `import {test} from ${JSON.stringify(replayAuthoringUrl)};
 export const testNode=test('retained case',async scope=>{
-    await writeFile(new URL('./started.txt',import.meta.url),'started');
     await new Promise(resolve=>setTimeout(resolve,30000));
     scope.assert.true(true);return scope.assert.collect();
 });`
     );
     const controller = new AbortController();
-    const started = watch(saved.project.cwd, function cancelStartedReplay(_event, name) {
-        if (name === 'started.txt') {
-            controller.abort();
-        }
+    const reporter = defineReporter(function cancelActiveReplay() {
+        return {
+            name: 'cancel-active-replay',
+            kind: 'real-time',
+            sinks: [],
+            dispose: null,
+            onFinish: null,
+            onEvent(event) {
+                if (event.kind === 'test-start') {
+                    controller.abort();
+                }
+            }
+        };
     });
-    try {
-        const result = await orchestrator.replay({ ...input(saved), signal: controller.signal });
-        scope.assert.equal(result.status, 'failed');
-        scope.assert.includes(JSON.stringify(result.runnerErrors), 'Replay was cancelled');
-    } finally {
-        started.close();
-    }
+    const command = input(saved);
+    const result = await orchestrator.replay({
+        ...command,
+        config: { ...command.config, reporters: [ reporter ] },
+        signal: controller.signal
+    });
+    scope.assert.true(controller.signal.aborted);
+    scope.assert.equal(result.status, 'failed');
+    scope.assert.includes(JSON.stringify(result.runnerErrors), 'Replay was cancelled');
 }
 export const testNode: TestNode = suite('replay compatibility and cancellation', [
     test('rejects incompatible records before importing source', async function (scope) {

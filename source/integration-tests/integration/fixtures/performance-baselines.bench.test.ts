@@ -1,5 +1,5 @@
-import { suite, test, skippedTest } from '@overkill-dev/test/bench';
-import { defineRuntime, withRuntime } from '@overkill-dev/test/resources';
+import { suite, test, skippedTest } from '../../../packages/bench/bench.entry-point.ts';
+import { defineRuntime, withRuntime } from '../../../packages/test/resources.entry-point.ts';
 
 const runtime = defineRuntime({ dimensions: {}, name: 'reference', requirements: [], resources: {} });
 

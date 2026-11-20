@@ -6,14 +6,14 @@ import {
     type BenchmarkMeasureContext,
     type BenchmarkMetrics,
     type WorkloadParameters
-} from '@overkill-dev/test/bench';
+} from '../../../packages/bench/bench.entry-point.ts';
 import {
     defineResource,
     defineRuntime,
     defineRuntimeMatrix,
     withResource,
     withRuntime
-} from '@overkill-dev/test/resources';
+} from '../../../packages/test/resources.entry-point.ts';
 
 type FixtureHandle = { readonly size: number; active: boolean; };
 function fixtureHandle(size: number): FixtureHandle {

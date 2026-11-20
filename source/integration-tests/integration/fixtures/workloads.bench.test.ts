@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { createWorkloadTestCase, type WorkloadTestCaseVariant } from '../../../packages/engine/engine.entry-point.ts';
-import { workload, type Workload } from '@overkill-dev/test/bench';
+import { workload, type Workload } from '../../../packages/bench/bench.entry-point.ts';
 import {
     createLocalHttpServiceResource,
     defineResource,
@@ -12,8 +12,7 @@ import {
     withResource,
     withRuntime,
     type WorkloadParameters,
-    type RuntimeDefinition,
-    type RuntimeTestScope
+    type RuntimeDefinition
 } from '../../../packages/test/resources.entry-point.ts';
 
 type PackageParameters = { readonly packages: number; };
@@ -102,13 +101,25 @@ const variants: Readonly<Record<string, RuntimeDefinition>> = {
 };
 const runtime = defineRuntimeMatrix({ name: 'node', variants });
 
+type WorkloadCaseBody = Extract<WorkloadTestCaseVariant['body'], (...args: never[]) => unknown>;
+type FixtureRuntimeBody = Extract<
+    Parameters<
+        typeof withRuntime<
+            typeof runtime,
+            Parameters<WorkloadCaseBody>[0],
+            ReturnType<WorkloadCaseBody>
+        >
+    >[1],
+    (...args: never[]) => unknown
+>;
+
 function workloadBody(input: Workload<string, PackageParameters>): WorkloadTestCaseVariant {
     return {
         id: input.id,
         parameters: input.parameters,
         body: withRuntime(
             runtime,
-            withResource<typeof fixture, RuntimeTestScope<typeof runtime>>(fixture, async (scope) => {
+            withResource<typeof fixture, Parameters<FixtureRuntimeBody>[0]>(fixture, async (scope) => {
                 scope.assert.equal(scope.resources['publish-fixture'].packages, input.parameters.packages);
                 scope.assert.equal(
                     await readFile(join(scope.resources['publish-fixture'].cwd, 'packages.json'), 'utf8'),

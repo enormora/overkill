@@ -1,6 +1,6 @@
-import { type TestNode, test } from '@overkill-dev/test';
 import { extname } from 'node:path';
 import { execFile } from 'node:child_process';
+import { type TestNode, test } from '@overkill-dev/test';
 
 const extension = extname(import.meta.url);
 const adapterModule = new URL(
@@ -49,6 +49,7 @@ export const testNode: TestNode = test(
         const output = await new Promise<string>(function restrictedChild(resolve, reject) {
             execFile(process.execPath, [
                 '--permission',
+                '--no-permission-audit',
                 '--allow-fs-read=*',
                 '--input-type=module',
                 '--eval',

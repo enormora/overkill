@@ -1,9 +1,9 @@
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '../../../packages/test/test.entry-point.ts';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import { defineResource, withResource } from '@overkill-dev/test/resources';
+import { defineResource, withResource } from '../../../packages/test/resources.entry-point.ts';
 
 const fixture = defineResource({
     async acquire({ attachments }) {

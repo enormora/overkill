@@ -5,7 +5,7 @@ import {
     workload,
     suite,
     type BenchmarkGarbageCollectionRequest
-} from '@overkill-dev/test/bench';
+} from '../../../packages/bench/bench.entry-point.ts';
 
 function definition(garbageCollection: BenchmarkGarbageCollectionRequest) {
     return benchmark(garbageCollection, {

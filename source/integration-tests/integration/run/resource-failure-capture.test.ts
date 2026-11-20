@@ -1,4 +1,5 @@
 import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { runWithAttachmentContext } from '../../../attachments/attachment-context.ts';
 
 import {
     defineResource,
@@ -167,7 +168,9 @@ async function assertExpiredWitness(scope: TestScope): Promise<void> {
 }
 export const testNode: TestNode = suite('Resource failure capture', [
     test('witness sinks reject calls outside their integration run', async function (scope) {
-        await assertExpiredWitness(scope);
+        await runWithAttachmentContext(null, async function verifyExpiredWitness() {
+            await assertExpiredWitness(scope);
+        });
         return scope.assert.collect();
     }),
     test('all lifetime collectors and disposal run after combined failures', async function (scope) {

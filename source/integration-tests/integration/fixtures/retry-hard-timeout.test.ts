@@ -1,6 +1,6 @@
-import { test } from '@overkill-dev/test';
+import { test } from '../../../packages/test/test.entry-point.ts';
 
-import { defineResource, withResource } from '@overkill-dev/test/resources';
+import { defineResource, withResource } from '../../../packages/test/resources.entry-point.ts';
 
 const retry = defineResource({
     acquire() {

@@ -1,6 +1,11 @@
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '../../../packages/test/test.entry-point.ts';
 
-import { defineResource, withResource, withResourceChecks, withFailureArtifacts } from '@overkill-dev/test/resources';
+import {
+    defineResource,
+    withResource,
+    withResourceChecks,
+    withFailureArtifacts
+} from '../../../packages/test/resources.entry-point.ts';
 
 function acquireService() {
     return { secret: 'owner-only', url: 'http://localhost' };

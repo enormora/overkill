@@ -1,8 +1,8 @@
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '../../../packages/test/test.entry-point.ts';
 import { setTimeout as wait } from 'node:timers/promises';
 
-import { createSimulatedHttpServerResource, withResource } from '@overkill-dev/test/resources';
-import { defineSimulatedHttpServer } from '@overkill-dev/test/simulation';
+import { createSimulatedHttpServerResource, withResource } from '../../../packages/test/resources.entry-point.ts';
+import { defineSimulatedHttpServer } from '../../../packages/simulation/simulation.entry-point.ts';
 const api = createSimulatedHttpServerResource({
     simulation: defineSimulatedHttpServer({
         name: 'api',

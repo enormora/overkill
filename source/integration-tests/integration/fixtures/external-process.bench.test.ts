@@ -6,7 +6,7 @@ import {
     suite,
     workload,
     type BenchmarkOptions
-} from '@overkill-dev/test/bench';
+} from '../../../packages/bench/bench.entry-point.ts';
 
 const options: BenchmarkOptions = {
     annotations: {},

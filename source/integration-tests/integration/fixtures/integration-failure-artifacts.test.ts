@@ -1,4 +1,4 @@
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '../../../packages/test/test.entry-point.ts';
 import { setTimeout as wait } from 'node:timers/promises';
 
 import {
@@ -7,8 +7,8 @@ import {
     withResources,
     createSimulatedHttpServerResource,
     createLocalProcessServiceResource
-} from '@overkill-dev/test/resources';
-import { defineSimulatedHttpServer } from '@overkill-dev/test/simulation';
+} from '../../../packages/test/resources.entry-point.ts';
+import { defineSimulatedHttpServer } from '../../../packages/simulation/simulation.entry-point.ts';
 
 const owner = withFailureArtifacts(
     defineResource({

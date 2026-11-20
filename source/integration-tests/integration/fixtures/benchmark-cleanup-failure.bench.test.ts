@@ -1,4 +1,9 @@
-import { benchmark, defaultSamplingPolicy, wallClockMeasurement, workload } from '@overkill-dev/test/bench';
+import {
+    benchmark,
+    defaultSamplingPolicy,
+    wallClockMeasurement,
+    workload
+} from '../../../packages/bench/bench.entry-point.ts';
 
 export const testNode = benchmark('sample cleanup fails', {
     kind: 'runtime',

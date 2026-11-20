@@ -9,8 +9,8 @@ import {
     type BenchmarkMeasureContext,
     type BenchmarkMetrics,
     type WorkloadParameters
-} from '@overkill-dev/test/bench';
-import { defineResource, withResource } from '@overkill-dev/test/resources';
+} from '../../../packages/bench/bench.entry-point.ts';
+import { defineResource, withResource } from '../../../packages/test/resources.entry-point.ts';
 
 const barrier = defineResource({
     name: 'placementBarrier',
