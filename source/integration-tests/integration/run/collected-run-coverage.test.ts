@@ -1,11 +1,11 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
 import { execFile } from 'node:child_process';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 async function verifyCoveredInvocations(): Promise<string> {
     return new Promise(function launchCoverageProbe(resolve, reject) {
         execFile(
             process.execPath,
-            [ 'source/integration-tests/integration/fixtures/collected-coverage-probe.test.ts' ],
+            [ '--allow-inspector', 'source/integration-tests/integration/fixtures/collected-coverage-probe.test.ts' ],
             {
                 cwd: process.cwd(),
                 timeout: 30_000

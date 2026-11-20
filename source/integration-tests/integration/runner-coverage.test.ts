@@ -1,6 +1,6 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { mkdtemp, readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../../config/history-policy.ts';
 import {
@@ -23,6 +23,7 @@ import {
 
 import { generateCoverageReports } from '../../run/coverage-reporting.ts';
 import { defaultCoveragePolicy } from '../../config/defaults.ts';
+import { coverageSubject } from './support/coverage-subject.ts';
 import { loadCoverageFixtures } from './fixtures/coverage-files.ts';
 
 const coverageFixturePath = 'source/integration-tests/integration/fixtures/coverage.test.ts';
@@ -175,8 +176,8 @@ async function assertCoverageRecord(
     scope.assert.equal(record.coverage?.rawDataDirectory, artifact.payload.rawDataDirectory);
     scope.assert.deepEqual(
         record.identities,
-        result.perTest.map(function workIdentity(test) {
-            return test.workId;
+        result.perTest.map(function workIdentity(testResult) {
+            return testResult.workId;
         })
     );
     scope.assert.deepEqual<unknown, unknown>(record.result?.artifacts, result.artifacts);
@@ -188,7 +189,7 @@ async function assertCoverageRun(
     processModel: MicrotestExecution['processModel'],
     scheduling: Scheduling
 ): Promise<CoverageArtifact> {
-    const result = await orchestrator.run({
+    const result = await coverageSubject.run({
         config: coverageConfig(processModel, 10_000, defaultCoveragePolicy, scheduling),
         cwd: process.cwd(),
         engine: { kind: 'default' },
@@ -240,7 +241,7 @@ async function assertCompactRunWithoutCoverage(scope: TestScope): Promise<void> 
     await scope.assert.rejects(async function readResolveState() {
         await stat(path.join(config.runtimeStateDir, 'runs'));
     }, { code: 'ENOENT' });
-    const result = await orchestrator.run({ ...command, request: { ...command.request, coverage: false } });
+    const result = await coverageSubject.run({ ...command, request: { ...command.request, coverage: false } });
     await assertCompactOutcomeWithoutCoverage(scope, config.runtimeStateDir, result);
 }
 
@@ -294,7 +295,7 @@ async function assertCompletedCrashRecord(scope: TestScope, rawDirectory: string
 }
 
 async function assertCrashedCoverageRun(scope: TestScope): Promise<void> {
-    const result = await orchestrator.run({
+    const result = await coverageSubject.run({
         config: {
             ...coverageConfig('supervised-process', 100, defaultCoveragePolicy, 'concurrent'),
             runtimeStateDir: 'target/coverage-crash-integration'
@@ -320,7 +321,7 @@ async function assertCrashedCoverageRun(scope: TestScope): Promise<void> {
 }
 
 async function assertCoverageThresholdFailure(scope: TestScope): Promise<void> {
-    const result = await orchestrator.run({
+    const result = await coverageSubject.run({
         config: coverageConfig('in-process', 10_000, {
             ...defaultCoveragePolicy,
             thresholds: { branches: null, functions: 100, lines: null }
@@ -350,12 +351,10 @@ export const testNode: TestNode = suite('Runner coverage', [
         return scope.assert.collect();
     }),
     table({
-        annotations: {},
-        controls: {},
         title: 'serial coverage preserves scheduling in its record',
         cases: [ 'in-process', 'supervised-process' ],
         caseTitle(processModel) {
-            return `${processModel}`;
+            return processModel;
         },
         async test(scope) {
             const processModel = scope.parameters;

@@ -25,7 +25,9 @@ singletons are scoped to compatible execution protocols, so the checkout can
 exercise its implementation alongside the published distribution.
 Fixture programs under `source/integration-tests/integration/fixtures` provide
 inputs to the source runner under test. Repository suite hosting and verification
-come from the published package.
+come from the published package. Coverage integration checks execute source APIs
+in a separate SUT process. CLI coverage checks exercise both execution modes through
+the same source TypeScript entry point.
 Tests of unmanaged engine execution use `runWithAttachmentContext(null, ...)`
 to isolate it from the integration runner's attachment context.
 

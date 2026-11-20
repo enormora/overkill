@@ -92,16 +92,11 @@ export function createObservationAdapter(payloadKind: 'binary' | 'text'): Observ
         }
     };
 }
-export async function createOrdinaryBaselineFixture(
-    scope: TestScope,
+export async function ordinaryBaselineProject(
+    directory: string,
     execution: Execution,
     payloadKind: 'binary' | 'text'
 ): Promise<OrdinaryBaselineFixture> {
-    await mkdir('target', { recursive: true });
-    const directory = await mkdtemp('target/ordinary-baselines-');
-    scope.cleanup(async function () {
-        await rm(directory, { recursive: true, force: true });
-    });
     const control = createObservationAdapter(payloadKind);
     const baselines = { directory, adapters: [ control.adapter ] };
     const files: ProjectProfileFiles = { include: [ ordinaryBaselineFixtureFile ] };
@@ -142,4 +137,17 @@ export async function createOrdinaryBaselineFixture(
             return await createOrdinaryBaselineStore({ directory, projectRoot: process.cwd(), maxBytes: 1_048_576 });
         }
     };
+}
+
+export async function createOrdinaryBaselineFixture(
+    scope: TestScope,
+    execution: Execution,
+    payloadKind: 'binary' | 'text'
+): Promise<OrdinaryBaselineFixture> {
+    await mkdir('target', { recursive: true });
+    const directory = await mkdtemp('target/ordinary-baselines-');
+    scope.cleanup(async function () {
+        await rm(directory, { recursive: true, force: true });
+    });
+    return await ordinaryBaselineProject(directory, execution, payloadKind);
 }

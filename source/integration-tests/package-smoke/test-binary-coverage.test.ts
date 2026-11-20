@@ -1,8 +1,8 @@
-import { table, type TestNode, suite, type TestScope } from '#tests';
 import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { table, type TestNode, suite, type TestScope } from '#tests';
 
 import {
     createCoverageConfigScript,
@@ -21,11 +21,11 @@ const overkillBinEntryPointPath = path.join(
 );
 
 async function runPackagedCoverage(): Promise<{ readonly stderr: string; readonly stdout: string; }> {
+    await fs.chmod(overkillBinEntryPointPath, 0o700);
     return await new Promise(function executeCoverage(resolve, reject) {
         execFile(
-            process.execPath,
+            overkillBinEntryPointPath,
             [
-                overkillBinEntryPointPath,
                 'run',
                 '--coverage',
                 '--config',
@@ -84,15 +84,15 @@ const processModels = [ 'in-process', 'supervised-process' ] as const;
 export const testNode: TestNode = suite(
     'packaged overkill generates coverage reports for consumer source',
     [ table({
-        annotations: {},
-        controls: {},
-        title: 'test binary coverage scenarios',
+        title: 'reports consumer source coverage across execution boundaries',
         cases: processModels.flatMap(function coverageProcess(processModel) {
             return ([ 'javascript', 'mapped', 'native', 'unloaded' ] as const).map(function coverageTest(sourceKind) {
-                return ({ caseDescription: `${processModel} ${sourceKind}`, processModel, sourceKind });
+                return { processModel, sourceKind };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ processModel, sourceKind }) {
+            return [ processModel, sourceKind ].map(String).join(', ');
+        },
         async test(scope) {
             const { processModel, sourceKind } = scope.parameters;
 

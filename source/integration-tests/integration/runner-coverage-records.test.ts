@@ -1,20 +1,16 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
 import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
 
-import {
-    orchestrator,
-    type SingleRunRecord,
-    type RunRequest,
-    type MicrotestExecution
-} from '../../packages/run/run.entry-point.ts';
+import type { SingleRunRecord, RunRequest, MicrotestExecution } from '../../packages/run/run.entry-point.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
+import { coverageSubject } from './support/coverage-subject.ts';
 
 const coverageFile = 'source/integration-tests/integration/fixtures/coverage.test.ts';
 type MicrotestProcessModel = MicrotestExecution['processModel'];
@@ -51,7 +47,7 @@ async function withRecordedResult<Value>(
         runtimeStateDir: directory
     });
     try {
-        const result = await orchestrator.run({
+        const result = await coverageSubject.run({
             config,
             cwd: process.cwd(),
             engine: { kind: 'default' },
@@ -67,16 +63,13 @@ export const testNode: TestNode = suite(
     'Runner coverage records',
     [
         table({
-            annotations: {},
-            controls: {},
             title: 'raw-only coverage records custom paths and artifact references',
             cases: processModels.flatMap(function coverageRecordTests(processModel) {
-                return ({
-                    caseDescription: `${processModel} raw-only coverage records custom paths and artifact references`,
-                    processModel
-                });
+                return { processModel };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ processModel }) {
+                return [ processModel ].map(String).join(', ');
+            },
             async test(scope) {
                 const { processModel } = scope.parameters;
 
@@ -104,16 +97,13 @@ export const testNode: TestNode = suite(
             }
         }),
         table({
-            annotations: {},
-            controls: {},
             title: 'filtered empty selections retain complete empty facts',
             cases: processModels.flatMap(function coverageRecordTests(processModel) {
-                return ({
-                    caseDescription: `${processModel} filtered empty selections retain complete empty facts`,
-                    processModel
-                });
+                return { processModel };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ processModel }) {
+                return [ processModel ].map(String).join(', ');
+            },
             async test(scope) {
                 const { processModel } = scope.parameters;
 
@@ -137,16 +127,13 @@ export const testNode: TestNode = suite(
             }
         }),
         table({
-            annotations: {},
-            controls: {},
             title: 'covered merge inputs retain complete facts and returned outcomes',
             cases: processModels.flatMap(function coverageRecordTests(processModel) {
-                return ({
-                    caseDescription: `${processModel} covered merge inputs retain complete facts and returned outcomes`,
-                    processModel
-                });
+                return { processModel };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ processModel }) {
+                return [ processModel ].map(String).join(', ');
+            },
             async test(scope) {
                 const { processModel } = scope.parameters;
 
@@ -189,16 +176,13 @@ export const testNode: TestNode = suite(
             }
         }),
         table({
-            annotations: {},
-            controls: {},
             title: 'import failures retain an attempt without invented facts',
             cases: processModels.flatMap(function coverageRecordTests(processModel) {
-                return ({
-                    caseDescription: `${processModel} import failures retain an attempt without invented facts`,
-                    processModel
-                });
+                return { processModel };
             }),
-            caseTitle: (row) => row.caseDescription,
+            caseTitle({ processModel }) {
+                return [ processModel ].map(String).join(', ');
+            },
             async test(scope) {
                 const { processModel } = scope.parameters;
 

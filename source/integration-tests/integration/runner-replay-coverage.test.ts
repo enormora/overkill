@@ -1,8 +1,7 @@
-import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 import { readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 
-import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import type { ReplayRunRecord } from '../../run/replay-record-types.ts';
 import {
     replayProject,
@@ -11,6 +10,7 @@ import {
     replayRecords,
     type ReplayProject
 } from '../../test-support/replay-project-fixture.ts';
+import { coverageSubject } from './support/coverage-subject.ts';
 
 type CoveredProject = { readonly project: ReplayProject; readonly source: ReplayRunRecord; };
 async function coverageProject(scope: TestScope): Promise<ReplayProject> {
@@ -33,10 +33,10 @@ export const testNode=test('covered case',scope=>{scope.assert.equal(answer(),42
 async function recordedCoverageProject(scope: TestScope, empty: boolean): Promise<CoveredProject> {
     const project = await coverageProject(scope);
     const command = { ...project.command, request: { ...project.command.request, coverage: true } };
-    const original = await orchestrator.run(command);
+    const original = await coverageSubject.run(command);
     scope.assert.equal(original.status, 'passed');
     if (empty) {
-        await orchestrator.run({ ...command, request: { ...command.request, lastFailed: true } });
+        await coverageSubject.run({ ...command, request: { ...command.request, lastFailed: true } });
     }
     const records = await replayRecords(project);
     const source = records.find(function matching(record) {
@@ -71,7 +71,7 @@ async function verifyCoverageReplay(scope: TestScope, empty: boolean): Promise<v
     if (empty) {
         await unlink(path.join(project.cwd, 'case.test.ts'));
     }
-    const result = await orchestrator.replay({
+    const result = await coverageSubject.replay({
         debug: { mode: 'off', selectors: [] },
         cwd: project.cwd,
         config: project.command.config,
@@ -87,7 +87,7 @@ async function verifyCoverageReplay(scope: TestScope, empty: boolean): Promise<v
 export const testNode: TestNode = suite(
     'recorded coverage replay',
     [ table({
-        title: 'runner replay coverage scenarios',
+        title: 'records fresh coverage when replaying saved runs',
         cases: [ false, true ],
         caseTitle(empty) {
             return empty

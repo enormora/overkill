@@ -1,24 +1,25 @@
-import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
-import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 
 import type { RunResult, CoverageRunnerError } from '../../packages/engine/engine.entry-point.ts';
 
-import { orchestrator, type CoveragePolicy, type SingleRunRecord } from '../../packages/run/run.entry-point.ts';
+import type { CoveragePolicy, SingleRunRecord } from '../../packages/run/run.entry-point.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
+import { coverageSubject } from './support/coverage-subject.ts';
 
 const fixtureRoot = 'source/integration-tests/integration/fixtures/';
 const scenarios = [ 'unloaded', 'threshold', 'types-only', 'missing-sources', 'broken-map' ] as const;
 type CoverageScenario = typeof scenarios[number];
 type RecordedCoverageResult = { readonly record: SingleRunRecord; readonly result: RunResult; };
 
-function scenarioCoverage(scenario: CoverageScenario): Partial<CoveragePolicy> {
+function scenarioCoverage(scenario: CoverageScenario, directory: string): Partial<CoveragePolicy> {
     if (scenario === 'broken-map') {
-        return {};
+        return { sources: { mode: 'all', include: [ path.resolve(directory, 'broken-source.mjs') ], exclude: [] } };
     }
     const files = {
         'missing-sources': 'coverage-missing-source.ts',
@@ -45,17 +46,43 @@ async function readCompletedRecord(directory: string): Promise<SingleRunRecord> 
     return JSON.parse(await readFile(path.join(directory, 'runs', file), 'utf8')) as SingleRunRecord;
 }
 
+async function brokenMapFixture(directory: string): Promise<string> {
+    const file = path.resolve(directory, 'broken-map.test.ts');
+    const engine = new URL('../../packages/engine/engine.entry-point.ts', import.meta.url);
+    await writeFile(
+        path.join(directory, 'broken-source.mjs'),
+        [
+            'export function coveredValue() { return 42; }',
+            '//# sourceMappingURL=coverage-missing.map'
+        ]
+            .join('\n')
+    );
+    await writeFile(
+        file,
+        [
+            `import { createTestCase } from ${JSON.stringify(engine.href)};`,
+            "import { coveredValue } from './broken-source.mjs';",
+            "export const testNode = createTestCase({ annotations: {}, controls: {}, definitionLocations: [{ kind: 'unknown' }],",
+            "title: 'covers a source with a broken map', body(scope) {",
+            'scope.assert.equal(coveredValue(), 42); return scope.assert.collect(); } });'
+        ]
+            .join('\n')
+    );
+    return file;
+}
+
 async function executeCoverageScenario(
     directory: string,
     processModel: 'in-process' | 'supervised-process',
     scenario: CoverageScenario
 ): Promise<RecordedCoverageResult> {
-    const result = await orchestrator.run({
+    const file = scenario === 'broken-map' ? await brokenMapFixture(directory) : `${fixtureRoot}coverage.test.ts`;
+    const result = await coverageSubject.run({
         config: defaultRunConfig({
             profiles: {
                 microtest: defaultMicrotestProfile({
                     coverage: {
-                        ...scenarioCoverage(scenario),
+                        ...scenarioCoverage(scenario, directory),
                         outputDirectory: path.resolve(directory, 'report'),
                         outputs: [ 'lcov' ]
                     },
@@ -69,7 +96,7 @@ async function executeCoverageScenario(
         engine: { kind: 'default' },
         request: defaultRunRequest({
             coverage: true,
-            paths: [ `${fixtureRoot}${scenario === 'broken-map' ? 'coverage-broken-map.test.ts' : 'coverage.test.ts'}` ]
+            paths: [ file ]
         })
     });
 
@@ -140,15 +167,15 @@ function assertCoverageOutcome(scope: TestScope, scenario: CoverageScenario, res
 export const testNode: TestNode = suite(
     'Runner coverage sources',
     [ table({
-        annotations: {},
-        controls: {},
         title: 'coverage records source selection',
         cases: ([ 'in-process', 'supervised-process' ] as const).flatMap(function processModelCases(model) {
             return scenarios.map(function sourceScenario(scenario) {
-                return ({ caseDescription: `${model} coverage records ${scenario} source selection`, model, scenario });
+                return { model, scenario };
             });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ model, scenario }) {
+            return [ model, scenario ].map(String).join(', ');
+        },
         async test(scope) {
             const { model, scenario } = scope.parameters;
 

@@ -1,9 +1,9 @@
-import { table, type TestNode, suite, type TestScope } from '#tests';
 import { spawn } from 'node:child_process';
 import { chmod, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { text } from 'node:stream/consumers';
 import { fileURLToPath } from 'node:url';
+import { table, type TestNode, suite, type TestScope } from '#tests';
 
 import { readProcessEnvironment } from '../../run/node-host-readers.ts';
 
@@ -162,12 +162,10 @@ async function assertPermissionOutcome(
 
 export const testNode: TestNode = suite('shipped CLI permission policies', [
     table({
-        annotations: {},
-        controls: {},
         title: 'pure microtests pass through the executable shebang',
         cases: [ 'microtest', 'observed' ],
         caseTitle(profile) {
-            return `${profile}`;
+            return profile;
         },
         async test(scope) {
             const profile = scope.parameters;
@@ -180,8 +178,6 @@ export const testNode: TestNode = suite('shipped CLI permission policies', [
         }
     }),
     table({
-        annotations: {},
-        controls: {},
         title: 'enforces permissions through the executable shebang',
         cases: [ 'integration', 'microtest', 'observed' ].flatMap(function profileTests(profile) {
             return [
@@ -189,22 +185,19 @@ export const testNode: TestNode = suite('shipped CLI permission policies', [
                 { file: 'subprocess.test.mjs', permission: 'ChildProcess' }
             ]
                 .map(function operationTest({ file, permission }) {
-                    return ({
-                        caseDescription: `${profile}, ${permission}`,
-                        profile,
-                        file,
-                        permission
-                    });
+                    return { profile, file, permission };
                 });
         }),
-        caseTitle: (row) => row.caseDescription,
+        caseTitle({ profile, permission }) {
+            return [ profile, permission ].map(String).join(', ');
+        },
         async test(scope) {
             const { profile, file, permission } = scope.parameters;
 
             const binarySource = await readFile(binaryPath, 'utf8');
             scope.assert.equal(
                 binarySource.split('\n', 1)[0],
-                '#!/usr/bin/env -S node --permission-audit'
+                '#!/usr/bin/env -S node --permission-audit --allow-inspector --disable-warning=PERM0004'
             );
             await assertPermissionOutcome(scope, profile, file, permission);
             return scope.assert.collect();

@@ -1,3 +1,6 @@
+import { execFile } from 'node:child_process';
+import { deserialize } from 'node:v8';
+import { fileURLToPath } from 'node:url';
 import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { orchestrator, type BaselineRunResult } from '../../packages/run/run.entry-point.ts';
@@ -7,6 +10,7 @@ import {
     type OrdinaryBaselineFixture
 } from '../../test-support/ordinary-baseline-fixture.ts';
 import type { OrdinaryBaselineStore } from '../../run/baseline-store.ts';
+import type { CoveredBaselineResult } from './support/baseline-coverage-subject.ts';
 
 type BaselineEntries = Awaited<ReturnType<OrdinaryBaselineFixture['entries']>>;
 function assertWritten(scope: TestScope, result: BaselineRunResult, changes: number): void {
@@ -94,23 +98,42 @@ async function assertEntryCount(scope: TestScope, store: OrdinaryBaselineStore, 
     const entries = await store.list();
     scope.assert.equal(entries.length, expected);
 }
+async function coveredBaselines(directory: string): Promise<CoveredBaselineResult> {
+    const output = await new Promise<string>(function executeCoverage(resolve, reject) {
+        execFile(
+            process.execPath,
+            [
+                '--allow-inspector',
+                fileURLToPath(new URL('./support/baseline-coverage-subject.ts', import.meta.url)),
+                directory
+            ],
+            { timeout: 60_000, maxBuffer: 16 * 1024 * 1024 },
+            function collectResult(error, stdout, stderr) {
+                if (error === null) {
+                    resolve(stdout);
+                } else {
+                    reject(new Error(stderr, { cause: error }));
+                }
+            }
+        );
+    });
+    return deserialize(Buffer.from(output, 'base64')) as CoveredBaselineResult;
+}
+
 export const testNode: TestNode = suite('ordinary baseline workflows', [
     test('reconciles ordinary baselines under in-process coverage', async function (scope) {
         const data = await createOrdinaryBaselineFixture(scope, 'in-process', 'text');
-        const command = { ...data.command, request: { ...data.command.request, coverage: true } };
-        assertWritten(scope, await orchestrator.baseline.update(command, { timing: null }), 2);
-        const original = await data.entries();
-        data.setActual(43);
-        const compared = await orchestrator.run(command, { timing: null });
-        scope.assert.equal(compared.summary.failed, 2);
-        scope.assert.deepEqual(await data.entries(), original);
+        const result = await coveredBaselines(data.directory);
+        assertWritten(scope, result.updated, 2);
+        scope.assert.equal(result.compared.summary.failed, 2);
+        scope.assert.deepEqual(result.retained, result.original);
         return scope.assert.collect();
     }),
     table({
         title: 'reconciles ordinary baselines across execution placements',
         cases: [ 'in-process', 'supervised-process', 'worker-pool' ] as const,
         caseTitle(execution) {
-            return `${execution}`;
+            return execution;
         },
         async test(scope) {
             const execution = scope.parameters;

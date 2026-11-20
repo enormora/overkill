@@ -1,17 +1,17 @@
-import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
 
-import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
+import { coverageSubject } from './support/coverage-subject.ts';
 
 const fixtureRoot = 'source/integration-tests/integration/fixtures';
 const branchReportSchema = z.record(
@@ -23,7 +23,7 @@ const branchReportSchema = z.record(
 );
 
 async function executeGenericCoverage(processModel: 'in-process' | 'supervised-process'): Promise<RunResult> {
-    return await orchestrator.run({
+    return await coverageSubject.run({
         config: defaultRunConfig({
             profiles: {
                 microtest: defaultMicrotestProfile({
@@ -79,26 +79,17 @@ async function assertGenericCoverageReports(scope: TestScope, reportDirectory: s
 export const testNode: TestNode = suite(
     'Runner coverage branches',
     [ table({
-        annotations: {},
-        controls: {},
         title: 'coverage preserves generic method branch counts',
         cases: [ 'in-process', 'supervised-process' ] as const,
-        caseTitle(processModel) {
-            return `${processModel} coverage preserves generic method branch counts`;
-        },
+        caseTitle: String,
         async test(scope) {
-            const processModel = scope.parameters;
-
-            const require: typeof scope.require = scope.require;
-
-            const result = await executeGenericCoverage(processModel);
+            const result = await executeGenericCoverage(scope.parameters);
             scope.assert.equal(result.status, 'passed', { message: JSON.stringify(result.runnerErrors) });
             scope.assert.equal(result.summary.passed, 3);
             const artifact = result.artifacts.find(function isCoverage(candidate) {
                 return candidate.payload.kind === 'coverage';
             });
-            require.defined(artifact);
-            if (artifact.payload.kind !== 'coverage') {
+            if (artifact?.payload.kind !== 'coverage') {
                 throw new Error('Expected a coverage artifact.');
             }
             scope.assert.deepEqual({
