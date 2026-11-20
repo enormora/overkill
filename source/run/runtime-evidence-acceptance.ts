@@ -82,12 +82,22 @@ function assertResultIdentity(
     }
 }
 
+function reportedAttemptEvidence(
+    result: PerTestResult,
+    accepted: PerTestResult
+): readonly PerTestResult['attempts'][number][] {
+    return result.attempts.map(function reportedAttempt(attempt, index) {
+        return accepted.attempts[index]?.outcome === null ? { ...attempt, outcome: null } : attempt;
+    });
+}
+
 function assertMatchingCompletion(result: PerTestResult, accepted: PerTestResult | undefined): void {
     if (accepted === undefined) {
         return;
     }
     if (
-        !isDeepStrictEqual(accepted.attempts, result.attempts) || accepted.verdict !== result.verdict ||
+        !isDeepStrictEqual(accepted.attempts, reportedAttemptEvidence(result, accepted)) ||
+        accepted.verdict !== result.verdict ||
         !isDeepStrictEqual(accepted.outcome, result.outcome)
     ) {
         throw new TypeError('Runtime result contradicts accepted completion evidence.');

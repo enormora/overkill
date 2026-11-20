@@ -256,6 +256,25 @@ export const testNode = suite('source/run/supervised-run-state.test.ts', [
         scope.assert.equal(state.perTestResults()[0]?.verdict, result.verdict);
         return scope.assert.collect();
     }),
+    test('reconciles retained body outcomes after a policy failure', function (scope: OverkillScope) {
+        const fixture = variantFixture(scope);
+        const final: PerTestResult = {
+            ...fixture.result,
+            outcome: null,
+            verdict: 'runtime-policy',
+            attempts: [ {
+                ...fixture.result.attempts[0],
+                verdict: 'runtime-policy'
+            } ]
+        };
+        const reported: PerTestResult = { ...final, attempts: [ { ...final.attempts[0], outcome: null } ] };
+        fixture.state.recordPerTestResult(fixture.key, reported, 1);
+        fixture.state.assertResults([ final ], fixture.selected);
+        scope.assert.equal(final.attempts[0].outcome?.kind, 'pass');
+        scope.assert.equal(fixture.state.perTestResults().length, 1);
+        scope.assert.equal(fixture.state.perTestResults()[0]?.verdict, 'runtime-policy');
+        return scope.assert.collect();
+    }),
     test('selects authored live capture only for a single active case', function (scope: OverkillScope) {
         const state = createSupervisedRunState('first-failure-and-final');
         scope.assert.equal(state.captureMode('buffered'), 'buffered');
