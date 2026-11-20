@@ -9,8 +9,8 @@ import {
 } from '../run/run.entry-point.ts';
 import { canonicalWork, mutationLifecycleDataSchema } from './mutation-catalog.ts';
 import { mutationObservationError, type MutationInvocationExpectation } from './mutation-observation.ts';
-import { classifyMutationCase, type MutationCaseClassification } from './mutation-case-classification.ts';
-import { mutationDiagnostics, hasMutationExecutionError } from './mutation-diagnostics.ts';
+import type { MutationCaseClassification } from './mutation-case-classification.ts';
+import { mutationDiagnostics, hasMutationExecutionError, observeMutationCases } from './mutation-diagnostics.ts';
 import {
     interruptedMutantResult,
     interruptedCompletedMutant,
@@ -115,48 +115,61 @@ function completedMutantResult(root: string, reply: ResultReply, evidence: Compl
     return killingResult(root, reply, evidence.classifications);
 }
 
-function observedMutantResult(
+function completedResult(
     root: string,
-    reply: RunExecutionReply,
-    expectation: Extract<MutationInvocationExpectation, { readonly kind: 'mutant'; }>
+    reply: ResultReply,
+    expectation: Extract<MutationInvocationExpectation, { readonly kind: 'mutant'; }>,
+    data: CompletedEvidence['data']
 ): MutantRunResult {
-    if (reply.kind !== 'result') {
-        return interruptedMutantResult(root, reply, expectation);
-    }
-    const collection = hitLimitCollectionReply(reply);
-    if (collection !== null) {
-        return interruptedMutantResult(root, collection, expectation);
-    }
-    if (isInterruptedExecution(reply)) {
-        return interruptedCompletedMutant(root, reply, expectation);
-    }
-    const parsed = mutationLifecycleDataSchema.safeParse(reply.data);
-    const observations = reply.result.perTest.map(function observeCase(result) {
-        const id = workIdentityKey(canonicalWork(root, result.workId));
-        const hitLimitExceeded = parsed.data?.hitLimitExceeded === true &&
-            parsed.data.caseFailures.some(function verifiedTimeout(failure) {
-                return failure.id === id && failure.kind === 'timeout';
-            });
-        return {
-            id,
-            classification: classifyMutationCase(
-                root,
-                result,
-                reply.result.runnerErrors,
-                hitLimitExceeded
-            )
-        };
-    });
+    const hitLimitCases = new Set(
+        data?.hitLimitExceeded === true
+            ? data
+                .caseFailures
+                .filter(function (failure) {
+                    return failure.kind === 'timeout';
+                })
+                .map(function (failure) {
+                    return failure.id;
+                })
+            : []
+    );
+    const observations = observeMutationCases(
+        root,
+        reply.result.perTest,
+        reply.result.runnerErrors,
+        function hitLimit(id) {
+            return hitLimitCases.has(id);
+        }
+    );
     return completedMutantResult(root, reply, {
-        data: parsed.data ?? null,
-        observation: parsed.success
-            ? mutationObservationError(root, reply, expectation)
+        data,
+        observation: data !== null
+            ? mutationObservationError(root, reply, expectation, data)
             : 'Invalid mutation lifecycle data.',
         diagnostics: mutationDiagnostics(observations, reply.result.runnerErrors),
         classifications: observations.map(function caseClassification(observed) {
             return observed.classification;
         })
     });
+}
+
+function observedMutantResult(
+    root: string,
+    reply: RunExecutionReply,
+    expectation: Extract<MutationInvocationExpectation, { readonly kind: 'mutant'; }>
+): MutantRunResult {
+    const parsed = mutationLifecycleDataSchema.safeParse(reply.data);
+    if (reply.kind !== 'result') {
+        return interruptedMutantResult(root, reply, expectation, parsed);
+    }
+    const collection = hitLimitCollectionReply(reply, parsed.data ?? null);
+    if (collection !== null) {
+        return interruptedMutantResult(root, collection, expectation, parsed);
+    }
+    if (isInterruptedExecution(reply)) {
+        return interruptedCompletedMutant(root, reply, expectation, parsed);
+    }
+    return completedResult(root, reply, expectation, parsed.data ?? null);
 }
 
 function invalidMutantResult(reply: RunExecutionReply, cause: unknown): MutantRunResult {

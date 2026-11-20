@@ -60,9 +60,10 @@ function mutationTestResult(root: string, result: PerTestResult): TestResult {
 function dryRunDiagnostic(
     root: string,
     reply: ResultReply,
-    expectation: DryRunExpectation
+    expectation: DryRunExpectation,
+    data: LifecycleData
 ): string | null {
-    const observation = mutationObservationError(root, reply, expectation);
+    const observation = mutationObservationError(root, reply, expectation, data);
     if (observation !== null) {
         return observation;
     }
@@ -143,26 +144,35 @@ function reportedCoverage(
     return { mutantCoverage: mode === 'all' ? fullSuiteCoverage(coverage) : coverage };
 }
 
+type DryRunCoverage = {
+    readonly mode: DryRunOptions['coverageAnalysis'];
+    readonly data: LifecycleData;
+};
+
+type ObservedDryRun = {
+    readonly result: DryRunResult;
+    readonly data: LifecycleData | null;
+};
+
 function completeDryRun(
     root: string,
     reply: ResultReply,
-    coverage: DryRunOptions['coverageAnalysis'],
-    expectation: DryRunExpectation
+    expectation: DryRunExpectation,
+    coverage: DryRunCoverage
 ): DryRunResult {
-    const diagnostic = dryRunDiagnostic(root, reply, expectation);
+    const diagnostic = dryRunDiagnostic(root, reply, expectation, coverage.data);
     if (diagnostic !== null) {
         return { status: DryRunStatus.Error, errorMessage: diagnostic };
     }
     if (reply.deadlineExceeded || reply.result.perTest.some(timedOut)) {
         return { status: DryRunStatus.Timeout, reason: 'Dry run exceeded its deadline or test timeout.' };
     }
-    const data = mutationLifecycleDataSchema.parse(reply.data);
     return {
         status: DryRunStatus.Complete,
         tests: reply.result.perTest.map(function (result) {
             return mutationTestResult(root, result);
         }),
-        ...reportedCoverage(coverage, data, expectation)
+        ...reportedCoverage(coverage.mode, coverage.data, expectation)
     };
 }
 
@@ -171,15 +181,16 @@ export function dryMutationResult(
     reply: RunExecutionReply,
     coverage: DryRunOptions['coverageAnalysis'],
     expectation: DryRunExpectation
-): DryRunResult {
+): ObservedDryRun {
     if (reply.kind === 'failure') {
-        return { status: DryRunStatus.Error, errorMessage: reply.failure.message };
+        return { result: { status: DryRunStatus.Error, errorMessage: reply.failure.message }, data: null };
     }
     if (reply.kind === 'timeout') {
-        return timedOutDryRun(reply);
+        return { result: timedOutDryRun(reply), data: null };
     }
     if (isInterruptedExecution(reply)) {
-        return interruptedDryRun(reply);
+        return { result: interruptedDryRun(reply), data: null };
     }
-    return completeDryRun(root, reply, coverage, expectation);
+    const data = mutationLifecycleDataSchema.parse(reply.data);
+    return { result: completeDryRun(root, reply, expectation, { mode: coverage, data }), data };
 }

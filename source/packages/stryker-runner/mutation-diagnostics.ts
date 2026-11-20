@@ -23,6 +23,18 @@ type MutationDiagnosticRecorder = {
     readonly snapshot: () => Pick<LifecycleData, 'caseFailures' | 'diagnostics' | 'infrastructureErrors'>;
 };
 
+export function observeMutationCases(
+    root: string,
+    results: readonly PerTestResult[],
+    errors: readonly RunnerError[],
+    hitLimitExceeded: (id: string) => boolean
+): readonly MutationCaseObservation[] {
+    return results.map(function observeCase(result) {
+        const id = workIdentityKey(canonicalWork(root, result.workId));
+        return { id, classification: classifyMutationCase(root, result, errors, hitLimitExceeded(id)) };
+    });
+}
+
 export function mutationDiagnostics(
     observations: readonly MutationCaseObservation[],
     errors: readonly RunnerError[]
