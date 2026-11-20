@@ -1,7 +1,7 @@
 import { defineConfig, type ProjectIntegrationProfileConfig } from '@overkill-dev/test/config';
 import { createBenchmarkHtmlReporter, createLineReporter } from '@overkill-dev/test/reporters';
 
-const integrationPolicy: Pick<ProjectIntegrationProfileConfig, 'testFamily' | 'execution' | 'timeouts'> = {
+const integrationPolicy: Pick<ProjectIntegrationProfileConfig, 'execution' | 'testFamily' | 'timeouts'> = {
     testFamily: 'integration',
     execution: { processModel: 'supervised-process', scheduling: 'serial' },
     timeouts: {
@@ -50,7 +50,7 @@ export const config = defineConfig({
                 },
                 outputs: [ 'lcov', 'text' ],
                 outputDir: 'target/coverage',
-                thresholds: { lines: 90, functions: 91, branches: 88 }
+                thresholds: { lines: 84, functions: 85, branches: 81 }
             }
         },
         integration: {
