@@ -1,14 +1,14 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
-import { test } from '../packages/test/test.entry-point.ts';
 import {
     defineReporter,
     readPropertyExecutionHost,
     type PropertyCaseEvidence,
     type RunResult,
-    type TestScope,
-    type TestNode
+    type TestNode as SubjectTestNode
 } from '../packages/engine/engine.entry-point.ts';
+
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { formatPropertyDiagnostics } from '../reporters/failure-summary.ts';
 import { propertyEvidenceSchema } from '../run/property-evidence-schema.ts';
@@ -25,7 +25,7 @@ function casePropertyEvidence(result: RunResult): PropertyCaseEvidence {
     return evidence;
 }
 
-function diagnosticProperty(expected: number): TestNode {
+function diagnosticProperty(expected: number): SubjectTestNode {
     return property({
         title: 'diagnostic failure',
         generator: gen.constant(1),
@@ -36,10 +36,10 @@ function diagnosticProperty(expected: number): TestNode {
     });
 }
 
-export const testNode = authoredSuite('property diagnostic rendering', [
-    authoredTest(
+export const testNode: TestNode = suite('property diagnostic rendering', [
+    test(
         'reports unavailable coverage when the work budget prevents body evaluation',
-        async function (scope: TestScope) {
+        async function (scope) {
             const result = await executePropertyNode(
                 property({
                     title: 'unavailable coverage',
@@ -62,7 +62,7 @@ export const testNode = authoredSuite('property diagnostic rendering', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('reports completed exhaustive traversal and eligible coverage', async function (scope: TestScope) {
+    test('reports completed exhaustive traversal and eligible coverage', async function (scope) {
         const result = await executePropertyNode(
             property({
                 title: 'exhaustive coverage',
@@ -82,7 +82,7 @@ export const testNode = authoredSuite('property diagnostic rendering', [
         scope.assert.includes(lines, 'Required input coverage positive: 1/2 (50%), minimum 50%');
         return scope.assert.collect();
     }),
-    authoredTest('exhaustive completion does not hide unmet input coverage', async function (scope: TestScope) {
+    test('exhaustive completion does not hide unmet input coverage', async function (scope) {
         const result = await executePropertyNode(
             property({
                 title: 'unmet exhaustive coverage',
@@ -104,9 +104,9 @@ export const testNode = authoredSuite('property diagnostic rendering', [
         scope.assert.includes(lines, 'Required input coverage positive: 0/1 (0%), minimum 100%');
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'historical evidence renders diagnostics without inventing a summary',
-        async function (scope: TestScope) {
+        async function (scope) {
             const evidence = casePropertyEvidence(
                 await executePropertyNode(diagnosticProperty(0), propertyExecutionDefaults)
             );
@@ -127,7 +127,7 @@ export const testNode = authoredSuite('property diagnostic rendering', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'renders the original witness seed separately during direct replay',
         async function (scope: TestScope) {
             const node = diagnosticProperty(0);
@@ -142,7 +142,7 @@ export const testNode = authoredSuite('property diagnostic rendering', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'successful witness replay has no failure observations or counterexample diagnostic',
         async function (scope: TestScope) {
             const failure = casePropertyEvidence(
@@ -162,7 +162,7 @@ export const testNode = authoredSuite('property diagnostic rendering', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'replay keeps cleanup failures native and marks the invocation interrupted',
         async function (scope: TestScope) {
             let cleanupFailure: Error | null = null;
@@ -191,7 +191,7 @@ export const testNode = authoredSuite('property diagnostic rendering', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'incompatible or foreign replay input records an execution error without evaluating a trial',
         async function (scope: TestScope) {
             const witness = casePropertyEvidence(
@@ -225,7 +225,7 @@ export const testNode = authoredSuite('property diagnostic rendering', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('canceled replay records interruption before admitting a trial', async function (scope: TestScope) {
+    test('canceled replay records interruption before admitting a trial', async function (scope: TestScope) {
         const controller = new AbortController();
         let calls = 0;
         const witness = casePropertyEvidence(
@@ -234,7 +234,7 @@ export const testNode = authoredSuite('property diagnostic rendering', [
             .invocations[0]
             ?.confirmedWitness;
         scope.require.defined(witness);
-        const node = test(
+        const node = subjectTest(
             'diagnostic failure',
             withProperties(async function (parent) {
                 const invocation = normalizePropertyInvocation({
@@ -285,7 +285,7 @@ export const testNode = authoredSuite('property diagnostic rendering', [
         );
         return scope.assert.collect();
     }),
-    authoredTest('rejects evidence with only one failure observation', async function (scope: TestScope) {
+    test('rejects evidence with only one failure observation', async function (scope) {
         const evidence = casePropertyEvidence(
             await executePropertyNode(diagnosticProperty(0), propertyExecutionDefaults)
         );

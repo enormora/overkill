@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { PlacementTraceEntry } from './placement-trace.ts';
 import type { PlacementPlan } from './run-types.ts';
@@ -158,7 +158,7 @@ function warmAffinityTraceEntry(entry: PlacementTraceEntry | undefined): WarmAff
 }
 
 function assertWarmAffinitySelection(
-    scope: OverkillScope,
+    scope: TestScope,
     runtime: WorkerPoolRunRuntime,
     plan: PlacementPlan,
     selected: WorkerPoolUnitLease
@@ -178,14 +178,14 @@ function assertWarmAffinitySelection(
     scope.assert.equal(trace.score, 5);
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-warm-lane-dispatch.test.ts',
+    title: 'Worker pool warm lane dispatch',
     children: [
         test({
             ...testCaseMetadata,
-            title: 'worker-pool dynamic dispatcher prefers warm reusable lanes within equal load',
-            body(scope: OverkillScope) {
+            title: 'prefers warm reusable lanes within equal load',
+            body(scope) {
                 const plan = warmAffinityPlan('reuse');
                 const runtime = fakeWorkerRuntime(plan);
                 const dispatcher = createWorkDispatcher(runtime, plan);
@@ -201,8 +201,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool dynamic dispatcher ignores warm data for fresh-worker units',
-            body(scope: OverkillScope) {
+            title: 'ignores warm data for fresh-worker units',
+            body(scope) {
                 const plan = warmAffinityPlan('fresh-worker-per-unit');
                 const runtime = fakeWorkerRuntime(plan);
                 const dispatcher = createWorkDispatcher(runtime, plan);
@@ -224,8 +224,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool dynamic dispatcher clears warm data after worker crashes',
-            body(scope: OverkillScope) {
+            title: 'clears warm data after worker crashes',
+            body(scope) {
                 const plan = warmAffinityCrashPlan();
                 const runtime = fakeWorkerRuntime(plan);
                 const dispatcher = createWorkDispatcher(runtime, plan);

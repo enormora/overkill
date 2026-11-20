@@ -6,7 +6,7 @@ import { typescriptConfig } from '@enormora/eslint-config-typescript';
 
 export default [
     {
-        ignores: [ 'source/integration-tests/run/fixtures/**/*.test.ts', 'target/**/*' ]
+        ignores: [ 'source/integration-tests/integration/fixtures/**/*.test.ts', 'target/**/*' ]
     },
     ...baseConfig,
     {
@@ -36,7 +36,45 @@ export default [
     },
     {
         ...testSupportConfig,
-        files: [ '**/*.test.ts' ]
+        files: [ '**/*.test.ts', 'source/integration-tests/*/support/**/*.ts' ]
+    },
+    {
+        files: [ 'source/**/*.test.ts', 'source/test-support/**/*.ts', 'source/integration-tests/*/support/**/*.ts' ],
+        ignores: [ '**/*.type-test.ts' ],
+        rules: {
+            '@typescript-eslint/no-restricted-imports': [ 'error', {
+                patterns: [ {
+                    group: [ './**', '../**' ],
+                    importNames: [
+                        'TestScope',
+                        'ParameterizedTestScope',
+                        'TestScopeAssertContext',
+                        'TestRandom',
+                        'TestBody',
+                        'ThrowingTestScope',
+                        'ThrowingTestBody'
+                    ],
+                    message: 'Import test framework types from @overkill-dev/test or its compatibility subpath.'
+                } ]
+            } ],
+            'no-restricted-syntax': [ 'error', {
+                selector:
+                    'ImportDeclaration[source.value="@overkill-dev/test"] > ImportSpecifier[imported.name="suite"]:not([local.name="suite"])',
+                message: 'Use the published suite author without an alias.'
+            }, {
+                selector:
+                    'ImportDeclaration[source.value="@overkill-dev/test"] > ImportSpecifier[imported.name="test"]:not([local.name="test"])',
+                message: 'Use the published test author without an alias.'
+            }, {
+                selector:
+                    'ImportDeclaration[source.value="#tests"] > ImportSpecifier[imported.name="suite"]:not([local.name="suite"])',
+                message: 'Use the published suite author without an alias.'
+            }, {
+                selector:
+                    'ImportDeclaration[source.value="#tests"] > ImportSpecifier[imported.name="test"]:not([local.name="test"])',
+                message: 'Use the published test author without an alias.'
+            } ]
+        }
     },
     {
         files: [ 'source/**/*.ts' ],
@@ -59,7 +97,7 @@ export default [
     },
     {
         ...nodeConfigFileConfig,
-        files: [ 'dependency-cruiser.config.js', 'eslint.config.js', 'overkill.config.js' ]
+        files: [ 'dependency-cruiser.config.js', 'eslint.config.js', 'overkill.config.ts' ]
     },
     {
         ...nodeEntryPointFileConfig,

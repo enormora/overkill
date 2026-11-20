@@ -1,11 +1,11 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { fileModuleBoundary } from '../test-support/file-module-boundary.ts';
 import { withModuleBoundary } from './file-module-boundary.ts';
 
 const boundary = { projectRoot: '/project', sharedRoots: [ '/shared' ] };
-export const testNode = authoredSuite('file module boundary policy', [
-    test('leaves unrestricted operations untouched', async function (scope: TestScope) {
+export const testNode: TestNode = suite('file module boundary policy', [
+    test('leaves unrestricted operations untouched', async function (scope) {
         const fixture = fileModuleBoundary({});
         scope.assert.equal(
             await withModuleBoundary(null, async function () {
@@ -17,7 +17,7 @@ export const testNode = authoredSuite('file module boundary policy', [
         scope.assert.deepEqual(fixture.registrations, []);
         return scope.assert.collect();
     }),
-    test('admits project and shared-root files during resolution and loading', async function (scope: TestScope) {
+    test('admits project and shared-root files during resolution and loading', async function (scope) {
         const fixture = fileModuleBoundary({});
         await withModuleBoundary(boundary, async function () {
             scope.assert.equal(
@@ -32,7 +32,7 @@ export const testNode = authoredSuite('file module boundary policy', [
     }),
     test(
         'rejects explicit relative absolute and file-URL escapes before resolving them',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = fileModuleBoundary({});
             await withModuleBoundary(boundary, async function () {
                 for (const specifier of [ '../outside.ts', '/outside.ts', 'file:///outside.ts' ]) {
@@ -46,7 +46,7 @@ export const testNode = authoredSuite('file module boundary policy', [
             return scope.assert.collect();
         }
     ),
-    test('rejects canonical symlink escapes during resolution and direct loading', async function (scope: TestScope) {
+    test('rejects canonical symlink escapes during resolution and direct loading', async function (scope) {
         const fixture = fileModuleBoundary({ '/project/link.ts': '/outside/subject.ts' });
         await withModuleBoundary(boundary, async function () {
             scope.assert.throws(function () {
@@ -62,7 +62,7 @@ export const testNode = authoredSuite('file module boundary policy', [
         }, fixture.access);
         return scope.assert.collect();
     }),
-    test('admits requested root aliases that canonicalize inside the physical root', async function (scope: TestScope) {
+    test('admits requested root aliases that canonicalize inside the physical root', async function (scope) {
         const fixture = fileModuleBoundary({ '/alias': '/project', '/alias/input.ts': '/project/input.ts' });
         await withModuleBoundary({ projectRoot: '/alias', sharedRoots: [] }, async function () {
             scope.assert.equal(fixture.resolve('file:///alias/input.ts', undefined).url, 'file:///alias/input.ts');
@@ -70,7 +70,7 @@ export const testNode = authoredSuite('file module boundary policy', [
         }, fixture.access);
         return scope.assert.collect();
     }),
-    test('validates physical shared roots before registering hooks', async function (scope: TestScope) {
+    test('validates physical shared roots before registering hooks', async function (scope) {
         const fixture = fileModuleBoundary({ '/linked-shared': '/' });
         await scope.assert.rejects(
             async function () {
@@ -87,7 +87,7 @@ export const testNode = authoredSuite('file module boundary policy', [
         scope.assert.deepEqual(fixture.registrations, []);
         return scope.assert.collect();
     }),
-    test('validates absolute boundary roots before touching the filesystem', async function (scope: TestScope) {
+    test('validates absolute boundary roots before touching the filesystem', async function (scope) {
         const fixture = fileModuleBoundary({});
         await scope.assert.rejects(
             async function () {
@@ -100,7 +100,7 @@ export const testNode = authoredSuite('file module boundary policy', [
         scope.assert.deepEqual(fixture.canonicalized, []);
         return scope.assert.collect();
     }),
-    test('allows builtin modules through file-only boundaries', async function (scope: TestScope) {
+    test('allows builtin modules through file-only boundaries', async function (scope) {
         const fixture = fileModuleBoundary({});
         await withModuleBoundary(boundary, async function () {
             scope.assert.equal(fixture.resolve('node:path', undefined).url, 'node:path');
@@ -108,7 +108,7 @@ export const testNode = authoredSuite('file module boundary policy', [
         }, fixture.access);
         return scope.assert.collect();
     }),
-    test('restores enclosing boundary hooks after a nested scope completes', async function (scope: TestScope) {
+    test('restores enclosing boundary hooks after a nested scope completes', async function (scope) {
         const fixture = fileModuleBoundary({});
         await withModuleBoundary(boundary, async function () {
             await withModuleBoundary({ projectRoot: '/project/nested', sharedRoots: [] }, async function () {
@@ -123,7 +123,7 @@ export const testNode = authoredSuite('file module boundary policy', [
         scope.assert.deepEqual(fixture.registrations, []);
         return scope.assert.collect();
     }),
-    test('unregisters boundary hooks after execution failures', async function (scope: TestScope) {
+    test('unregisters boundary hooks after execution failures', async function (scope) {
         const fixture = fileModuleBoundary({});
         const failure = new Error('Bounded operation failed.');
         await scope.assert.rejects(async function () {

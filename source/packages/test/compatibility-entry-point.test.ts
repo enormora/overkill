@@ -1,5 +1,5 @@
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import assert from 'node:assert/strict';
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
 import {
     type TestCase,
@@ -41,7 +41,7 @@ function firstFailedOutcome(result: Awaited<ReturnType<typeof execute>>): FailOu
     return testResult.outcome;
 }
 
-function assertThrowingTestCase(scope: OverkillScope, testCase: TestCase): void {
+function assertThrowingTestCase(scope: TestScope, testCase: TestCase): void {
     scope.assert.equal(ownsTestNode(testCase), true);
     scope.assert.equal(testCase.execution.kind, 'body');
 
@@ -50,14 +50,14 @@ function assertThrowingTestCase(scope: OverkillScope, testCase: TestCase): void 
     }
 }
 
-function assertPlannedCompatibilityCase(scope: OverkillScope, plannedCase: PlannedCase): void {
+function assertPlannedCompatibilityCase(scope: TestScope, plannedCase: PlannedCase): void {
     scope.assert.equal(plannedCase.testFamily, null);
     scope.assert.deepEqual(plannedCase.annotations.tags, [ 'compatibility' ]);
     scope.assert.equal(plannedCase.controls.timeoutMilliseconds, 50);
 }
 
-export const testNode = suite('source/packages/test/compatibility-entry-point.test.ts', [
-    test('@overkill-dev/test/compatibility exposes throwingTest only', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Compatibility entry point', [
+    test('@overkill-dev/test/compatibility exposes throwingTest only', function (scope) {
         scope.assert.deepEqual(Object.keys(compatibilitySubpath), [ 'throwingTest' ]);
         scope.assert.equal(Object.hasOwn(rootSubpath, 'throwingTest'), false);
 
@@ -65,7 +65,7 @@ export const testNode = suite('source/packages/test/compatibility-entry-point.te
     }),
     test(
         '@overkill-dev/test/compatibility throwingTest() creates neutral tests',
-        async function (scope: OverkillScope) {
+        async function (scope: TestScope) {
             const testCase = throwingTest({
                 annotations: { tags: [ 'compatibility' ] },
                 body(testScope) {
@@ -91,7 +91,7 @@ export const testNode = suite('source/packages/test/compatibility-entry-point.te
             return scope.assert.collect();
         }
     ),
-    test('@overkill-dev/test/compatibility treats normal completion as success', async function (scope: OverkillScope) {
+    test('@overkill-dev/test/compatibility treats normal completion as success', async function (scope) {
         const result = await executeAuthoredNode(throwingTest('passes', function noAssertions() {
             return undefined;
         }));
@@ -103,7 +103,7 @@ export const testNode = suite('source/packages/test/compatibility-entry-point.te
     }),
     test(
         '@overkill-dev/test/compatibility reports Node AssertionError as an assertion failure',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const result = await executeAuthoredNode(throwingTest('fails', function fails() {
                 assert.equal(1, 2, 'wrong count');
             }));
@@ -115,7 +115,7 @@ export const testNode = suite('source/packages/test/compatibility-entry-point.te
             return scope.assert.collect();
         }
     ),
-    test('@overkill-dev/test/compatibility validates unsupported authoring forms', function (scope: OverkillScope) {
+    test('@overkill-dev/test/compatibility validates unsupported authoring forms', function (scope) {
         scope.assert.throws(function createThrowingTestWithWrongArity() {
             invokeThrowingTest();
         }, {

@@ -1,13 +1,14 @@
-import { suite, test } from '@overkill-dev/test';
-import type { TestScope } from '../engine/engine.entry-point.ts';
 import {
-    defineHarness,
+    type TestNode,
+    suite,
+    test,
+    type TestScope,
     doubleUsage,
-    type DefinedHarness,
-    type HarnessOverrides,
     type TestDouble,
     testDouble
-} from './test.entry-point.ts';
+} from '@overkill-dev/test';
+
+import { defineHarness, type DefinedHarness, type HarnessOverrides } from './test.entry-point.ts';
 
 type HarnessLoadValue = (id: string) => string;
 
@@ -109,8 +110,8 @@ function assertFreshHarnesses(
     scope.assert(doubleUsage.calledOnceWith, first.loadValue, [ 'id' ]);
 }
 
-export const testNode = suite('source/packages/test/harness-authoring.test.ts', [
-    test('@overkill-dev/test defineHarness() creates fresh object-form harnesses', function (scope: TestScope) {
+export const testNode: TestNode = suite('Harness authoring', [
+    test('creates fresh object-form harnesses', function (scope) {
         let loadFactoryCalls = 0;
         const runnerHarness = createFreshRunnerHarness(function recordLoadFactoryCall() {
             loadFactoryCalls += 1;
@@ -124,7 +125,7 @@ export const testNode = suite('source/packages/test/harness-authoring.test.ts', 
 
         return scope.assert.collect();
     }),
-    test('@overkill-dev/test defineHarness() replaces overridden object-form parts', function (scope: TestScope) {
+    test('replaces overridden object-form parts', function (scope) {
         let defaultFactoryCalls = 0;
         const replacementLoadValue = createHarnessLoadValue('replacement');
         const runnerHarness = createOverrideRunnerHarness(function recordDefaultFactoryCall() {
@@ -140,8 +141,8 @@ export const testNode = suite('source/packages/test/harness-authoring.test.ts', 
         return scope.assert.collect();
     }),
     test(
-        '@overkill-dev/test defineHarness() supports sync and async function forms',
-        async function (scope: TestScope) {
+        'supports sync and async function forms',
+        async function (scope) {
             const syncHarness = createSyncLabelHarness();
             const asyncHarness = createAsyncLabelHarness();
 

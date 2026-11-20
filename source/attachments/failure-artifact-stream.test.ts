@@ -1,6 +1,5 @@
-import { suite, test } from '@overkill-dev/test';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { inlineAttachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createAttachmentExecution } from '../run/attachment-execution.ts';
@@ -122,15 +121,15 @@ async function assertLateClosedCapture(scope: TestScope): Promise<void> {
         completion: { kind: 'complete' }
     });
 }
-export const testNode = suite('source/attachments/failure-artifact-stream.test.ts', [
+export const testNode: TestNode = suite('Failure artifact stream', [
     test(
         'late output reports a closed writer failure while preserving captured evidence',
-        async function (scope: TestScope) {
+        async function (scope) {
             await assertLateClosedCapture(scope);
             return scope.assert.collect();
         }
     ),
-    test('attempt cleanup reports failed stream drains as an aggregate error', async function (scope: TestScope) {
+    test('attempt cleanup reports failed stream drains as an aggregate error', async function (scope) {
         await assertCaptureFailure(scope, new Error('disconnected'), 'prepare', true);
         return scope.assert.collect();
     }),
@@ -147,24 +146,35 @@ export const testNode = suite('source/attachments/failure-artifact-stream.test.t
         await closeAttemptFailureStreams(work, { index: 0 });
         return scope.assert.collect();
     }),
-    test('capture limits preserve complete UTF-8 characters and discard subsequent output', async function (scope) {
-        await assertBoundedUnicode(scope);
-        return scope.assert.collect();
-    }),
+    test(
+        'capture limits preserve complete UTF-8 characters and discard subsequent output',
+        async function (scope) {
+            await assertBoundedUnicode(scope);
+            return scope.assert.collect();
+        }
+    ),
     test('closed empty captures report late output once without creating evidence', async function (scope) {
         await assertLateEmptyCapture(scope);
         return scope.assert.collect();
     }),
-    ...([ 'prepare', 'write', 'close' ] as const).flatMap(function failedOperation(operation) {
-        return [ new Error('disconnected'), null ].map(function failedCause(cause) {
-            return test({
-                ...metadata,
-                title: `${operation} failure preserves capture errors: ${String(cause)}`,
-                async body(scope) {
-                    await assertCaptureFailure(scope, cause, operation, false);
-                    return scope.assert.collect();
-                }
+    table({
+        ...metadata,
+        title: 'preserves capture errors after transport failures',
+        cases: ([ 'prepare', 'write', 'close' ] as const).flatMap(function failedOperation(operation) {
+            return [ new Error('disconnected'), null ].map(function failedCause(cause) {
+                return ({
+                    caseDescription: `${operation}, ${String(cause)}`,
+                    operation,
+                    cause
+                });
             });
-        });
+        }),
+        caseTitle: (row) => row.caseDescription,
+        async test(scope) {
+            const { operation, cause } = scope.parameters;
+
+            await assertCaptureFailure(scope, cause, operation, false);
+            return scope.assert.collect();
+        }
     })
 ]);

@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     shardBySecondPath,
@@ -28,7 +28,7 @@ import {
 import { runStartTimeFromMilliseconds, workerPoolCollectedPlan } from './worker-pool-runtime.ts';
 import { workUnitsFromCollectedPlan } from './work-unit-planning.ts';
 
-function assertWorkerPoolPlanHelpers(scope: OverkillScope, collectedPlan: CollectedRunPlan): void {
+function assertWorkerPoolPlanHelpers(scope: TestScope, collectedPlan: CollectedRunPlan): void {
     scope.assert.equal(runStartTimeFromMilliseconds(0), '1970-01-01T00:00:00.000Z');
     scope.assert.equal(workerPoolCollectedPlan(workerPoolResolvedRun(collectedPlan)), collectedPlan);
     scope.assert.throws(function readLocalPlan() {
@@ -36,7 +36,7 @@ function assertWorkerPoolPlanHelpers(scope: OverkillScope, collectedPlan: Collec
     }, { message: 'Worker-pool execution requires a worker-pool collected plan.' });
 }
 
-function assertWorkUnitPlanning(scope: OverkillScope, collectedPlan: CollectedRunPlan): void {
+function assertWorkUnitPlanning(scope: TestScope, collectedPlan: CollectedRunPlan): void {
     scope.assert.deepEqual(
         workUnitsFromCollectedPlan({
             runConstraints: emptyWorkUnitResourceConstraints,
@@ -67,7 +67,7 @@ function assertWorkUnitPlanning(scope: OverkillScope, collectedPlan: CollectedRu
     );
 }
 
-function assertPlacementPlanning(scope: OverkillScope, collectedPlan: CollectedRunPlan): void {
+function assertPlacementPlanning(scope: TestScope, collectedPlan: CollectedRunPlan): void {
     const input: WorkerPoolPlacementPlanInput = {
         runConstraints: emptyWorkUnitResourceConstraints,
         assignmentPolicy: 'case-count-balanced',
@@ -108,8 +108,8 @@ function assertPlacementPlanning(scope: OverkillScope, collectedPlan: CollectedR
     );
 }
 
-export const testNode = suite('source/run/worker-pool-placement-planning.test.ts', [
-    test('worker-pool placement planning creates file units and placements', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Worker pool placement planning', [
+    test('worker-pool placement planning creates file units and placements', function (scope) {
         const collectedPlan = createCollectedPlan();
 
         assertWorkerPoolPlanHelpers(scope, collectedPlan);
@@ -118,7 +118,7 @@ export const testNode = suite('source/run/worker-pool-placement-planning.test.ts
 
         return scope.assert.collect();
     }),
-    test('supervised planning resolves serial resource requirements', async function (scope: OverkillScope) {
+    test('supervised planning resolves serial resource requirements', async function (scope) {
         const dependencies = fakeWorkerPoolRuntimeDependencies();
         const profile = defaultIntegrationProfile({
             execution: { processModel: 'supervised-process', scheduling: 'concurrent' }
@@ -152,7 +152,7 @@ export const testNode = suite('source/run/worker-pool-placement-planning.test.ts
 
         return scope.assert.collect();
     }),
-    test('resource constraints resolve containing work-unit scheduling', function (scope: OverkillScope) {
+    test('resource constraints resolve containing work-unit scheduling', function (scope) {
         const serialUnits = workUnitsFromCollectedPlan({
             runConstraints: emptyWorkUnitResourceConstraints,
             fileSetForFile,

@@ -1,15 +1,15 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defaultRunRequest, defaultIntegrationProfile, defaultRunConfig } from '../test-support/run-command-factory.ts';
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
+
 import type { RunCommand } from '../run/run-types.ts';
 import { validateRunInput } from '../run/run-validation.ts';
 import { integrationProfileSchema, microtestProfileSchema } from './schema.ts';
 import { attachmentLimitsSchema } from './evidence-policy.ts';
 
 const files = { include: [ 'source/**/*.integration.test.ts' ] };
-export const testNode = suite('source/config/config-attachments.test.ts', [
-    test('normalized integration profiles reject unbounded attachment limits', function (scope: TestScope) {
+export const testNode: TestNode = suite('Configuration attachments', [
+    test('normalized integration profiles reject unbounded attachment limits', function (scope) {
         const profile = {
             ...defaultIntegrationProfile({}),
             attachments: {
@@ -32,7 +32,7 @@ export const testNode = suite('source/config/config-attachments.test.ts', [
     }),
     test(
         'integration attachment limits default independently and preserve explicit overrides',
-        function (scope: TestScope) {
+        function (scope) {
             const profile = integrationProfileSchema.parse({ testFamily: 'integration', files });
             scope.assert.deepEqual(profile.attachments, {
                 maxArtifactBytes: 10_485_760,
@@ -52,7 +52,7 @@ export const testNode = suite('source/config/config-attachments.test.ts', [
     ),
     test(
         'attachment budgets reject invalid values and microtest profiles reject attachments',
-        function (scope: TestScope) {
+        function (scope) {
             for (const value of [ 0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1 ]) {
                 for (
                     const field of [ 'maxInlineBytes', 'maxArtifactBytes', 'maxScopeBytes', 'maxScopeAttachments' ]

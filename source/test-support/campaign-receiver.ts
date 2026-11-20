@@ -2,7 +2,7 @@ import { createDeterministicClock, type DeterministicClock } from '@enormora/clo
 import { serveCampaignWorker } from '../packages/stryker-runner/campaign-receiver.ts';
 import { campaignProtocolVersion, type CampaignResponse } from '../packages/stryker-runner/campaign-protocol.ts';
 import type { CampaignWorker } from '../packages/stryker-runner/campaign-worker.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 import {
     memoryCampaignSocket,
     memoryCampaignEndpoint,

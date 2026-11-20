@@ -1,10 +1,10 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { parseRunnerResult, runnerResult } from './runner-result.ts';
 
-export const testNode = authoredSuite('runner maintenance diagnostics', [
-    test('preserves engine verdicts and diagnostic messages', function (scope: TestScope) {
+export const testNode: TestNode = suite('runner maintenance diagnostics', [
+    test('preserves engine verdicts and diagnostic messages', function (scope) {
         const result = {
             context: { id: null, startedAt: null, facts: null },
             ...runResultFactory.build(),
@@ -17,11 +17,11 @@ export const testNode = authoredSuite('runner maintenance diagnostics', [
         scope.assert.deepEqual(parseRunnerResult(returned).maintenanceDiagnostics, result.maintenanceDiagnostics);
         return scope.assert.collect();
     }),
-    test('unrecorded engine results receive empty maintenance diagnostics', function (scope: TestScope) {
+    test('unrecorded engine results receive empty maintenance diagnostics', function (scope) {
         scope.assert.deepEqual(runnerResult(runResultFactory.build()).maintenanceDiagnostics, []);
         return scope.assert.collect();
     }),
-    test('rejects invalid returned diagnostic payloads', function (scope: TestScope) {
+    test('rejects invalid returned diagnostic payloads', function (scope) {
         scope.assert.throws(function () {
             return parseRunnerResult({
                 context: {

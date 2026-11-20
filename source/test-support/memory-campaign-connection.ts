@@ -6,7 +6,6 @@ import { type CampaignClient, attachCampaignClient } from '../packages/stryker-r
 import type { CampaignSocket } from '../packages/stryker-runner/campaign-transport.ts';
 
 import { campaignProtocolVersion, type CampaignResponse } from '../packages/stryker-runner/campaign-protocol.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
 
 export const memoryCampaignEndpoint = { port: 4321, token: '00000000-0000-4000-8000-000000000000' };
 export type MemoryCampaignSocket = {
@@ -64,13 +63,12 @@ export function memoryCampaignSocket(): MemoryCampaignSocket {
         }
     };
 }
-export async function memoryCampaignClient(scope: TestScope): Promise<MemoryCampaignClient> {
+export async function memoryCampaignClient(): Promise<MemoryCampaignClient> {
     const fixture = memoryCampaignSocket();
     const controller = new AbortController();
     const connection = attachCampaignClient(memoryCampaignEndpoint, controller.signal, fixture.socket);
     fixture.socket.emit('connect');
     const client = await connection;
-    scope.cleanup(client.dispose);
     return {
         ...fixture,
         clock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),

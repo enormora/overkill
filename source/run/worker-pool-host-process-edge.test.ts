@@ -1,11 +1,11 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
 import { createHostedWorkerPool } from './worker-pool-host-process.ts';
 
-export const testNode = suite('source/run/worker-pool-host-process-edge.test.ts', [
-    test('createHostedWorkerPool() rejects invalid tasks', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Worker pool host process edge', [
+    test('createHostedWorkerPool() rejects invalid tasks', async function (scope) {
         const controller = new AbortController();
         const pool = createHostedWorkerPool({
             wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),

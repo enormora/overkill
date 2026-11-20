@@ -1,11 +1,11 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { debugArtifactForWork } from '../test-support/debug-artifact-fixture.ts';
 
 import { supervisedMessageRuntime } from '../test-support/supervised-message-runtime.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
-import { testNode as assignmentPolicy } from './supervised-assignment-policy.test.ts';
+
 import type { WorkId, ReporterEvent, RunArtifact } from './run-engine-primitives.ts';
 
 type CaseCompletionEvent = Extract<ReporterEvent, { readonly kind: 'test-end'; }>;
@@ -25,8 +25,8 @@ function caseCompletion(work: WorkId, artifacts: readonly RunArtifact[]): CaseCo
         durationMicroseconds: 1
     };
 }
-export const testNode = authoredSuite('supervised child message policy', [
-    authoredTest('retains resource observation progress before final results', async function (scope: TestScope) {
+export const testNode: TestNode = suite('supervised child message policy', [
+    test('retains resource observation progress before final results', async function (scope) {
         const fixture = supervisedMessageRuntime(scope, false, true);
         const snapshot: Extract<ReporterEvent, { readonly kind: 'resource-check-progress'; }>['snapshot'] = {
             owner: { run: 'run', id: 'owner', scope: 'per-run' },
@@ -44,7 +44,7 @@ export const testNode = authoredSuite('supervised child message policy', [
         scope.assert.deepEqual(fixture.reported, [ { kind: 'resource-check-progress', snapshot } ]);
         return scope.assert.collect();
     }),
-    authoredTest('retains measurement progress for an active child case', async function (scope: TestScope) {
+    test('retains measurement progress for an active child case', async function (scope: TestScope) {
         const fixture = supervisedMessageRuntime(scope, false, true);
         const benchmark = benchmarkHtmlFixture('progress').perTest[0]?.benchmark;
         scope.require.defined(benchmark);
@@ -74,7 +74,7 @@ export const testNode = authoredSuite('supervised child message policy', [
         scope.assert.true(fixture.reported.includes(event));
         return scope.assert.collect();
     }),
-    authoredTest('ignores process samples after terminal failure', function (scope: TestScope) {
+    test('ignores process samples after terminal failure', function (scope) {
         const fixture = supervisedMessageRuntime(scope, false, true);
         fixture.runtime.terminalFailure.write(true);
         fixture.receive({
@@ -91,36 +91,40 @@ export const testNode = authoredSuite('supervised child message policy', [
         scope.assert.deepEqual(fixture.reported, []);
         return scope.assert.collect();
     }),
-    assignmentPolicy,
-    ...[ false, true ].map(function (completedDebug) {
-        return authoredTest(
-            `prefers completed debug evidence with final debug ${completedDebug}`,
-            async function (scope: TestScope) {
-                const fixture = supervisedMessageRuntime(scope, false, true);
-                const checkpoint = await debugArtifactForWork(fixture.work);
-                const completed = { ...checkpoint, payload: { ...checkpoint.payload, durationMicroseconds: 10 } };
-                fixture.runtime.state.recordArtifact(checkpoint);
-                fixture.receive({
-                    kind: 'event',
-                    event: caseCompletion(fixture.work, completedDebug ? [ completed ] : [])
-                });
-                await fixture.runtime.reporterEvents.wait();
-                const event = fixture.reported.find(function (value) {
-                    return value.kind === 'test-end';
-                });
-                scope.require.defined(event);
-                scope.assert.deepEqual(
-                    event.artifacts.map(function (artifact) {
-                        return artifact.payload.kind === 'debug' ? artifact.payload.durationMicroseconds : null;
-                    }),
-                    [ completedDebug ? 10 : 5 ]
-                );
-                return scope.assert.collect();
-            }
-        );
-    }),
+    table({
+        title: 'prefers completed debug evidence',
+        cases: [ false, true ],
+        caseTitle(completedDebug) {
+            return `${completedDebug}`;
+        },
+        async test(scope) {
+            const require: typeof scope.require = scope.require;
 
-    authoredTest('ignores session transport updates during ordinary result aggregation', function (scope: TestScope) {
+            const completedDebug = scope.parameters;
+
+            const fixture = supervisedMessageRuntime(scope, false, true);
+            const checkpoint = await debugArtifactForWork(fixture.work);
+            const completed = { ...checkpoint, payload: { ...checkpoint.payload, durationMicroseconds: 10 } };
+            fixture.runtime.state.recordArtifact(checkpoint);
+            fixture.receive({
+                kind: 'event',
+                event: caseCompletion(fixture.work, completedDebug ? [ completed ] : [])
+            });
+            await fixture.runtime.reporterEvents.wait();
+            const event = fixture.reported.find(function (value) {
+                return value.kind === 'test-end';
+            });
+            require.defined(event);
+            scope.assert.deepEqual(
+                event.artifacts.map(function (artifact) {
+                    return artifact.payload.kind === 'debug' ? artifact.payload.durationMicroseconds : null;
+                }),
+                [ completedDebug ? 10 : 5 ]
+            );
+            return scope.assert.collect();
+        }
+    }),
+    test('ignores session transport updates during ordinary result aggregation', function (scope) {
         const fixture = supervisedMessageRuntime(scope, false, true);
         fixture.receive({ kind: 'execution-data', data: null });
         fixture.receive({ kind: 'execution-checkpoint', data: null });
@@ -128,7 +132,7 @@ export const testNode = authoredSuite('supervised child message policy', [
         scope.assert.deepEqual(fixture.reported, []);
         return scope.assert.collect();
     }),
-    authoredTest('retains collection errors alongside the delivered plan', function (scope: TestScope) {
+    test('retains collection errors alongside the delivered plan', function (scope) {
         const fixture = supervisedMessageRuntime(scope, false, false);
         const errors = runResultFactory.build({ runnerErrors: [ { message: 'Collection failed.' } ] }).runnerErrors;
         fixture.receive({ kind: 'collected', collectedPlan: fixture.plan, runnerErrors: errors });
@@ -136,11 +140,20 @@ export const testNode = authoredSuite('supervised child message policy', [
         scope.assert.deepEqual(fixture.runtime.state.runnerErrors(), errors);
         return scope.assert.collect();
     }),
-    ...[ false, true ].map(function (collected) {
-        return authoredTest(`retains reporter errors with collection ${collected}`, async function (scope: TestScope) {
+    table({
+        title: 'retains reporter errors across collection outcomes',
+        cases: [ false, true ],
+        caseTitle(collected) {
+            return `${collected}`;
+        },
+        async test(scope) {
+            const require: typeof scope.require = scope.require;
+
+            const collected = scope.parameters;
+
             const fixture = supervisedMessageRuntime(scope, true, collected);
             const error = runResultFactory.build({ runnerErrors: [ { message: 'Child failed.' } ] }).runnerErrors[0];
-            scope.require.defined(error);
+            require.defined(error);
             fixture.receive({ kind: 'event', event: { kind: 'runner-error', error } });
             await fixture.runtime.reporterEvents.wait();
             scope.assert.deepEqual(
@@ -150,9 +163,9 @@ export const testNode = authoredSuite('supervised child message policy', [
                 collected ? [ 'Child failed.', 'Reporter delivery failed.' ] : [ 'Reporter delivery failed.' ]
             );
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest(
+    test(
         'settles and reports coordinated attachments for legacy case completion events',
         async function (scope: TestScope) {
             const fixture = supervisedMessageRuntime(scope, false, true);

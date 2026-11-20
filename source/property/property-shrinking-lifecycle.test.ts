@@ -1,4 +1,5 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+
 import { createDeterministicClock } from '@enormora/clock';
 
 import { createTimedTestEngine } from '../test-support/create-test-engine.ts';
@@ -7,7 +8,6 @@ import {
     serializeValue,
     type ExecuteOptions,
     type RunResult,
-    type TestScope,
     createRoot,
     createTestPlan
 } from '../packages/engine/engine.entry-point.ts';
@@ -69,7 +69,7 @@ function assertDeadlineEvidence(scope: TestScope, result: RunResult): void {
     scope.assert.includes(JSON.stringify(evidence.retained?.failure), 'original failure before deadline');
 }
 
-export const testNode = authoredSuite('shrink lifecycle', [
+export const testNode: TestNode = suite('shrink lifecycle', [
     test('retains confirmed evidence when an engine deadline interrupts shrinking', async function (scope) {
         const result = await executeShrinkDeadline({ timeoutMilliseconds: 100, hardTimeoutMilliseconds: 10 });
         scope.assert.equal(result.summary.crashed, 1);

@@ -1,10 +1,5 @@
-import { suite } from '@overkill-dev/test';
+import { type TestNode, defineMacro, test, suite, type TestScope } from '@overkill-dev/test';
 
-import { type TestNode, type TestScope, createTestCase } from '../packages/engine/engine.entry-point.ts';
-
-import { testNode as checkSessions } from './resource-check-session.test.ts';
-import { testNode as checkLedger } from './resource-check-ledger.test.ts';
-import { testNode as checkDeadlines } from './resource-check-supervision.test.ts';
 import {
     defineResource,
     type EmptyResourceDependencies,
@@ -355,24 +350,20 @@ async function assertScopeValidation(scope: TestScope): Promise<void> {
     scope.assert.equal(error.failures()[0]?.resourceName, 'scoped');
 }
 
-function lifecycleTestCase(title: string, assertion: (scope: TestScope) => Promise<void>): TestNode {
-    return createTestCase({
-        definitionLocations: [ { kind: 'unknown' } ],
+const lifecycleTestCase = defineMacro(function (title: string, assertion: (scope: TestScope) => Promise<void>) {
+    return test({
         title,
         annotations: {},
         controls: {},
-        async body(scope: TestScope) {
+        async body(scope) {
             await assertion(scope);
 
             return scope.assert.collect();
         }
     });
-}
+});
 
-export const testNode = suite('source/resources/direct-resource-lifecycle.test.ts', [
-    checkSessions,
-    checkLedger,
-    checkDeadlines,
+export const testNode: TestNode = suite('Direct resource lifecycle', [
     lifecycleTestCase(
         'startResources exposes direct handles and disposes them once in reverse order',
         assertDirectResourceLifecycle

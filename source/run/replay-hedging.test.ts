@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { withRecordedWorkerTrace } from '../test-support/replay-record-fixture.ts';
@@ -105,10 +105,10 @@ async function assertAuthority(scope: TestScope, matching: boolean): Promise<voi
     scope.assert.equal(results.at(-1)?.verdict, matching ? 'pass' : 'fail');
     scope.assert.equal(fixture.runtime.runState.artifacts().length, matching ? 0 : 1);
 }
-export const testNode = authoredSuite('recorded hedge result authority', [
-    authoredTest(
+export const testNode: TestNode = suite('recorded hedge result authority', [
+    test(
         'keeps results without inventing an authority when the source has no trace',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = hedgeFixture();
             const result = taskResult(fixture.primary, true);
             await withRecordedWorkerTrace(fixture.runtime, null, async function untracedSource() {
@@ -119,18 +119,22 @@ export const testNode = authoredSuite('recorded hedge result authority', [
             return scope.assert.collect();
         }
     ),
-    ...[ true, false ].map(function duplicateOutcome(matching) {
-        return authoredTest(
-            matching
+    table({
+        title: 'replay hedging scenarios',
+        cases: [ true, false ],
+        caseTitle(matching) {
+            return matching
                 ? 'retains saved authority when its duplicate finishes first'
-                : 'retains conflicts from an earlier duplicate',
-            async function (scope: TestScope) {
-                await assertAuthority(scope, matching);
-                return scope.assert.collect();
-            }
-        );
+                : 'retains conflicts from an earlier duplicate';
+        },
+        async test(scope) {
+            const matching = scope.parameters;
+
+            await assertAuthority(scope, matching);
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('falls back to the recorded completion and assignment order', async function (scope: TestScope) {
+    test('falls back to the recorded completion and assignment order', async function (scope) {
         const fixture = hedgeFixture();
         const entries = Array.from(fixture.runtime.placementTrace.entries());
         await withSource(fixture, entries, async function assignmentFallback() {
@@ -151,7 +155,7 @@ export const testNode = authoredSuite('recorded hedge result authority', [
         });
         return scope.assert.collect();
     }),
-    authoredTest('releases deferred duplicates without affecting unrelated work', async function (scope: TestScope) {
+    test('releases deferred duplicates without affecting unrelated work', async function (scope) {
         const fixture = hedgeFixture();
         const completion = { taskRun: fixture.duplicate, result: taskResult(fixture.duplicate, true) };
         await withSource(fixture, sourceDecisions(fixture), async function pendingDuplicate() {
@@ -162,7 +166,7 @@ export const testNode = authoredSuite('recorded hedge result authority', [
         });
         return scope.assert.collect();
     }),
-    authoredTest('drops superseded recovery results and keeps the final assignment', async function (scope: TestScope) {
+    test('drops superseded recovery results and keeps the final assignment', async function (scope: TestScope) {
         const fixture = hedgeFixture();
         const initial = fixture.runtime.placementTrace.entries()[0];
         scope.require.defined(initial);

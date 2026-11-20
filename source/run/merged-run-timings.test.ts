@@ -1,4 +1,4 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { preciseTimingReport, type RunTimingSpan } from '../engine/run-timings.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -46,7 +46,7 @@ function source(id: string, span: RunTimingSpan): MergeSource {
         })
     };
 }
-export const testNode = suite('merged timing evidence', [
+export const testNode: TestNode = suite('merged timing evidence', [
     test('preserves aggregate totals and slowest evidence from truncated shards', function (scope) {
         const { precise } = mergedRunTimings([ source('first', cleanupSpan), source('second', cleanupSpan) ]);
         if (precise === null) {

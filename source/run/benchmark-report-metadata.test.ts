@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { normalizeConfig } from '../config/config.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -54,7 +54,7 @@ function metadataFacts(command: RunCommand): ResolvedRun['facts'] {
         workerCount: { hostMaximum: 4, profileMaximum: null, requested: null, resolved: 2 }
     });
 }
-export const testNode = authoredSuite('benchmark reporting context', [
+export const testNode: TestNode = suite('benchmark reporting context', [
     test('reads canonical process facts without creating metadata attachments', function (scope: TestScope) {
         for (const model of [ 'supervised-process', 'worker-pool' ] as const) {
             const facts = metadataFacts(metadataCommand(model));
@@ -88,7 +88,7 @@ export const testNode = authoredSuite('benchmark reporting context', [
         scope.assert.equal(result.artifacts.length, 0);
         return scope.assert.collect();
     }),
-    test('missing or unrelated facts do not fabricate benchmark context', function (scope: TestScope) {
+    test('missing or unrelated facts do not fabricate benchmark context', function (scope) {
         scope.assert.equal(readBenchmarkRunMetadata(null), null);
         scope.assert.equal(readBenchmarkRunMetadata({}), null);
         const command = metadataCommand('supervised-process');

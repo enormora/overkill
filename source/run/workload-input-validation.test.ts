@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { workload } from '../packages/bench/bench.entry-point.ts';
 import { defineResource, withResource } from '../packages/test/resources.entry-point.ts';
@@ -92,26 +92,29 @@ function resourceBoundaryKey(testCase: TestPlan['cases'][number], name: string):
     return boundary.key;
 }
 
-export const testNode = authoredSuite('workload input validation', [
-    test('splits every shared scope by full workload identity and preserves independent sharing', function (scope) {
-        for (const lifetime of [ 'per-file', 'per-run', 'per-suite', 'shared-per-worker' ] as const) {
-            const plan = fixturePlan(lifetime, [
-                workload('small', { packages: 5 }),
-                workload('large', { packages: 5 })
-            ]);
-            for (const name of [ 'fixture', 'consumer', 'registry' ]) {
-                const keys = plan.cases.map(function boundaryKey(testCase) {
-                    return resourceBoundaryKey(testCase, name);
-                });
-                if (name === 'registry') {
-                    scope.assert.equal(keys[0], keys[1]);
-                } else {
-                    scope.assert.notEqual(keys[0], keys[1]);
+export const testNode: TestNode = suite('workload input validation', [
+    test(
+        'splits every shared scope by full workload identity and preserves independent sharing',
+        function (scope) {
+            for (const lifetime of [ 'per-file', 'per-run', 'per-suite', 'shared-per-worker' ] as const) {
+                const plan = fixturePlan(lifetime, [
+                    workload('small', { packages: 5 }),
+                    workload('large', { packages: 5 })
+                ]);
+                for (const name of [ 'fixture', 'consumer', 'registry' ]) {
+                    const keys = plan.cases.map(function boundaryKey(testCase) {
+                        return resourceBoundaryKey(testCase, name);
+                    });
+                    if (name === 'registry') {
+                        scope.assert.equal(keys[0], keys[1]);
+                    } else {
+                        scope.assert.notEqual(keys[0], keys[1]);
+                    }
                 }
             }
+            return scope.assert.collect();
         }
-        return scope.assert.collect();
-    }),
+    ),
     test('rejects original parameter changes even when canonical identities agree', function (scope) {
         const original = fixturePlan('per-run', [ workload('text', { text: 'e\u{301}' }) ]);
         const recollected = fixturePlan('per-run', [ workload('text', { text: '\u{E9}' }) ]);

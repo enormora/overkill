@@ -1,11 +1,11 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { trackRunnerErrorDelivery } from '../engine/reporter-error-delivery-tracking.ts';
 
 import { createMemoryHistoryStorage } from '../test-support/memory-history-storage.ts';
 import { runRecordPolicyFixture } from '../test-support/run-record-policy-fixture.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { testNode as compactEvidence } from './compact-run-record.test.ts';
+
 import { runnerResult } from './runner-result.ts';
 import { executeRecordedRun } from './recorded-run.ts';
 import { readCompactHistory } from './history-storage.ts';
@@ -31,9 +31,8 @@ async function assertPolicy(scope: TestScope, persist: 'always' | 'on-demand', r
     scope.assert.equal(fixture.writes.at(-1)?.status, 'completed');
 }
 
-export const testNode = authoredSuite('run record policy', [
-    compactEvidence,
-    authoredTest('maintenance startup failures remain non-fatal', async function (scope: TestScope) {
+export const testNode: TestNode = suite('run record policy', [
+    test('maintenance startup failures remain non-fatal', async function (scope) {
         const fixture = runRecordPolicyFixture('always', false);
         const result = runnerResult(
             await executeRecordedRun('/project', fixture.input, {
@@ -52,7 +51,7 @@ export const testNode = authoredSuite('run record policy', [
         ]);
         return scope.assert.collect();
     }),
-    authoredTest('maintenance follows completion without changing the verdict', async function (scope: TestScope) {
+    test('maintenance follows completion without changing the verdict', async function (scope) {
         const fixture = runRecordPolicyFixture('always', false);
         const diagnostics = [ 'History maintenance failed: permission denied' ];
         const result = runnerResult(
@@ -71,14 +70,20 @@ export const testNode = authoredSuite('run record policy', [
         scope.assert.deepEqual(result.maintenanceDiagnostics, diagnostics);
         return scope.assert.collect();
     }),
-    ...([ [ 'on-demand', false ], [ 'on-demand', true ], [ 'always', false ], [ 'always', true ] ] as const)
-        .map(function policyCase([ persist, record ]) {
-            return authoredTest(`${persist}, record ${String(record)}`, async function (scope: TestScope) {
-                await assertPolicy(scope, persist, record);
-                return scope.assert.collect();
-            });
-        }),
-    authoredTest('repeated executions receive separate record identities', async function (scope: TestScope) {
+    table({
+        title: 'records runs according to persistence policy',
+        cases: [ [ 'on-demand', false ], [ 'on-demand', true ], [ 'always', false ], [ 'always', true ] ] as const,
+        caseTitle([ persist, record ]) {
+            return `${persist}, ${String(record)}`;
+        },
+        async test(scope) {
+            const [ persist, record ] = scope.parameters;
+
+            await assertPolicy(scope, persist, record);
+            return scope.assert.collect();
+        }
+    }),
+    test('repeated executions receive separate record identities', async function (scope) {
         const fixture = runRecordPolicyFixture('always', false);
         const execute = async function execute(): Promise<RunResult> {
             return runResultFactory.build({ status: 'passed' });
@@ -89,9 +94,9 @@ export const testNode = authoredSuite('run record policy', [
         scope.assert.notEqual(fixture.writes[0]?.id, fixture.writes[2]?.id);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'merge recording reports completion write failures without publishing history',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = runRecordPolicyFixture('always', false);
             const input = {
                 ...fixture.input,
@@ -143,7 +148,7 @@ export const testNode = authoredSuite('run record policy', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('start write failure blocks execution and returns a runner error', async function (scope: TestScope) {
+    test('start write failure blocks execution and returns a runner error', async function (scope) {
         const fixture = runRecordPolicyFixture('always', false);
         let executions = 0;
         const delivery = await trackRunnerErrorDelivery(async function executeFailedRecording() {

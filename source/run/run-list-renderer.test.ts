@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
@@ -177,8 +177,8 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
     };
 }
 
-export const testNode = suite('source/run/run-list-renderer.test.ts', [
-    test('renderResolvedRunList() renders location variants', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Run list renderer', [
+    test('renderResolvedRunList() renders location variants', function (scope) {
         const testPlan = createLocationVariantPlan();
         const result = renderResolvedRunList(
             createResolvedRun(testPlan),

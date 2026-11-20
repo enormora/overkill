@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { emptyWorkUnitResourceConstraints, type PlacementPlan } from './run-types.ts';
 import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
@@ -240,7 +240,7 @@ function runHedgedStraggler(): HedgedStragglerRun {
     return { dispatcher, duplicate, filler, plan, primary, runtime };
 }
 
-function assertHedgedStraggler(scope: OverkillScope): void {
+function assertHedgedStraggler(scope: TestScope): void {
     const { dispatcher, duplicate, filler, plan, primary, runtime } = runHedgedStraggler();
 
     scope.assert.equal(primary.kind, 'primary');
@@ -267,14 +267,14 @@ function assertHedgedStraggler(scope: OverkillScope): void {
     });
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-dynamic-hedging.test.ts',
+    title: 'Worker pool dynamic hedging',
     children: [
         test({
             ...testCaseMetadata,
-            title: 'worker-pool dynamic dispatcher hedges explicit idempotent stragglers',
-            body(scope: OverkillScope) {
+            title: 'hedges explicit idempotent stragglers',
+            body(scope) {
                 assertHedgedStraggler(scope);
 
                 return scope.assert.collect();
@@ -282,8 +282,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool dynamic dispatcher does not hedge unsafe stragglers',
-            body(scope: OverkillScope) {
+            title: 'does not hedge unsafe stragglers',
+            body(scope) {
                 const unit = { ...hedgeSafeUnit(), resourceConstraints: emptyWorkUnitResourceConstraints };
                 const plan = twoLanePlan(unit);
                 const dispatcher = createWorkDispatcher(runtimeWithHedging(plan), plan);
@@ -296,8 +296,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool dynamic dispatcher falls back when duration history is empty',
-            body(scope: OverkillScope) {
+            title: 'falls back when duration history is empty',
+            body(scope) {
                 const plan = weightedPlan();
                 const runtime = runtimeWithEmptyDurationHistory(plan);
                 const lease = pullRequiredLease(createWorkDispatcher(runtime, plan), firstLane(plan));

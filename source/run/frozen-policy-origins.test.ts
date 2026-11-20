@@ -1,63 +1,69 @@
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { frozenMicrotestPolicy } from '../test-support/frozen-microtest-policy.ts';
-import { testNode as transport } from './frozen-policy-transport.test.ts';
+
 import { validateFrozenPolicyOrigins } from './frozen-policy-origins.ts';
 
-export const testNode = authoredSuite('frozen policy origin boundaries', [
-    transport,
-    ...([ { field: 'file', value: '../escape.ts' }, { field: 'file', value: './unnormalized.ts' }, {
-        field: 'path',
-        value: '/outside/case.ts'
-    }, { field: 'href', value: 'file:///outside/case.ts' } ] as const)
-        .map(function (scenario) {
-            return authoredTest(
-                `rejects inconsistent ${scenario.field} descriptor ${scenario.value}`,
-                async function (scope: TestScope) {
-                    const policy = await frozenMicrotestPolicy();
-                    const file = { ...policy.files[0], [scenario.field]: scenario.value };
-                    scope.assert.throws(function () {
-                        validateFrozenPolicyOrigins({ ...policy, files: [ file ] });
-                    }, { message: `Invalid frozen discovery descriptor: ${file.file}` });
-                    return scope.assert.collect();
-                }
-            );
-        }),
-    authoredTest('rejects duplicate discovery descriptors', async function (scope: TestScope) {
+export const testNode: TestNode = suite('frozen policy origin boundaries', [
+    table({
+        title: 'rejects inconsistent policy descriptors',
+        cases: [ { field: 'file', value: '../escape.ts' }, { field: 'file', value: './unnormalized.ts' }, {
+            field: 'path',
+            value: '/outside/case.ts'
+        }, { field: 'href', value: 'file:///outside/case.ts' } ] as const,
+        caseTitle(scenario) {
+            return `${scenario.field}, ${scenario.value}`;
+        },
+        async test(scope) {
+            const scenario = scope.parameters;
+
+            const policy = await frozenMicrotestPolicy();
+            const file = { ...policy.files[0], [scenario.field]: scenario.value };
+            scope.assert.throws(function () {
+                validateFrozenPolicyOrigins({ ...policy, files: [ file ] });
+            }, { message: `Invalid frozen discovery descriptor: ${file.file}` });
+            return scope.assert.collect();
+        }
+    }),
+    test('rejects duplicate discovery descriptors', async function (scope) {
         const policy = await frozenMicrotestPolicy();
         scope.assert.throws(function () {
             validateFrozenPolicyOrigins({ ...policy, files: [ policy.files[0], policy.files[0] ] });
         }, { message: `Duplicate frozen discovery descriptor: ${policy.files[0].file}` });
         return scope.assert.collect();
     }),
-    ...([ { cwd: 'relative', resolvedPath: null, configPath: null }, {
-        cwd: '/elsewhere',
-        resolvedPath: '/project/config.ts',
-        configPath: null
-    }, { cwd: '/project', resolvedPath: 'relative.ts', configPath: null } ] as const)
-        .map(function (source) {
-            return authoredTest(
-                `rejects inconsistent configuration roots ${source.cwd} and ${source.resolvedPath}`,
-                async function (scope: TestScope) {
-                    const policy = await frozenMicrotestPolicy();
-                    scope.assert.throws(function () {
-                        validateFrozenPolicyOrigins({
-                            ...policy,
-                            source: {
-                                kind: 'config-file',
-                                request: { cwd: source.cwd, configPath: source.configPath },
-                                resolvedPath: source.resolvedPath
-                            }
-                        });
-                    }, { message: 'Frozen policy requires consistent absolute config roots.' });
-                    return scope.assert.collect();
-                }
-            );
-        }),
-    authoredTest(
+    table({
+        title: 'rejects inconsistent configuration roots',
+        cases: [ { cwd: 'relative', resolvedPath: null, configPath: null }, {
+            cwd: '/elsewhere',
+            resolvedPath: '/project/config.ts',
+            configPath: null
+        }, { cwd: '/project', resolvedPath: 'relative.ts', configPath: null } ] as const,
+        caseTitle(source) {
+            return `${source.cwd}, ${source.resolvedPath}`;
+        },
+        async test(scope) {
+            const source = scope.parameters;
+
+            const policy = await frozenMicrotestPolicy();
+            scope.assert.throws(function () {
+                validateFrozenPolicyOrigins({
+                    ...policy,
+                    source: {
+                        kind: 'config-file',
+                        request: { cwd: source.cwd, configPath: source.configPath },
+                        resolvedPath: source.resolvedPath
+                    }
+                });
+            }, { message: 'Frozen policy requires consistent absolute config roots.' });
+            return scope.assert.collect();
+        }
+    }),
+    test(
         'accepts resolved configuration identity and rejects a conflicting request',
-        async function (scope: TestScope) {
+        async function (scope) {
             const policy = await frozenMicrotestPolicy();
             const source = {
                 kind: 'config-file',
@@ -74,16 +80,16 @@ export const testNode = authoredSuite('frozen policy origin boundaries', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('requires an absolute working directory', async function (scope: TestScope) {
+    test('requires an absolute working directory', async function (scope) {
         const policy = await frozenMicrotestPolicy();
         scope.assert.throws(function () {
             validateFrozenPolicyOrigins({ ...policy, cwd: 'relative' });
         }, { message: 'Frozen policy requires absolute project roots.' });
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'requires an absolute project root even when descriptors resolve consistently',
-        async function (scope: TestScope) {
+        async function (scope) {
             const policy = await frozenMicrotestPolicy();
             const original = policy.files[0];
             const path = resolve('relative', original.file);
@@ -97,7 +103,7 @@ export const testNode = authoredSuite('frozen policy origin boundaries', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('rejects module boundaries for a different project', async function (scope: TestScope) {
+    test('rejects module boundaries for a different project', async function (scope) {
         const policy = await frozenMicrotestPolicy();
         validateFrozenPolicyOrigins({
             ...policy,
@@ -108,8 +114,15 @@ export const testNode = authoredSuite('frozen policy origin boundaries', [
         }, { message: 'Module boundary conflicts with frozen project root.' });
         return scope.assert.collect();
     }),
-    ...([ null, 'missing' ] as const).map(function (fileSet) {
-        return authoredTest(`rejects invalid frozen file-set ownership ${fileSet}`, async function (scope: TestScope) {
+    table({
+        title: 'rejects invalid frozen file-set ownership',
+        cases: [ null, 'missing' ] as const,
+        caseTitle(fileSet) {
+            return `rejects invalid frozen file-set ownership ${fileSet}`;
+        },
+        async test(scope) {
+            const fileSet = scope.parameters;
+
             const policy = await frozenMicrotestPolicy();
             const profile = {
                 ...policy.profile,
@@ -120,9 +133,9 @@ export const testNode = authoredSuite('frozen policy origin boundaries', [
                 validateFrozenPolicyOrigins({ ...policy, profile, files: [ { ...policy.files[0], fileSet } ] });
             }, { message: `Invalid frozen file-set ownership: ${policy.files[0].file}` });
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('rejects file-set claims when the profile has no named sets', async function (scope: TestScope) {
+    test('rejects file-set claims when the profile has no named sets', async function (scope) {
         const policy = await frozenMicrotestPolicy();
         scope.assert.throws(function () {
             validateFrozenPolicyOrigins({ ...policy, files: [ { ...policy.files[0], fileSet: 'unknown' } ] });

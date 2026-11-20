@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     sandboxPaths,
@@ -13,8 +13,8 @@ import {
     validateProtectedMutationFiles
 } from './mutation-sandbox.ts';
 
-export const testNode = authoredSuite('mutation sandbox origin policy', [
-    test('preserves original file roles and discovers external module roots', async function (scope: TestScope) {
+export const testNode: TestNode = suite('mutation sandbox origin policy', [
+    test('preserves original file roles and discovers external module roots', async function (scope) {
         const result = await prepareMutationSandbox(
             sandboxInput,
             sandboxPaths([ '/dependencies', '/dependencies', '/sandbox/node_modules' ], new Map(), null)
@@ -36,7 +36,7 @@ export const testNode = authoredSuite('mutation sandbox origin policy', [
         });
         return scope.assert.collect();
     }),
-    test('rejects relative and escaped original file descriptions', async function (scope: TestScope) {
+    test('rejects relative and escaped original file descriptions', async function (scope) {
         for (const file of [ 'subject.ts', '/elsewhere/subject.ts', '/original' ]) {
             await scope.assert.rejects(async function () {
                 return await prepareMutationSandbox(
@@ -47,13 +47,13 @@ export const testNode = authoredSuite('mutation sandbox origin policy', [
         }
         return scope.assert.collect();
     }),
-    test('rejects shared module roots containing the original project', async function (scope: TestScope) {
+    test('rejects shared module roots containing the original project', async function (scope) {
         await scope.assert.rejects(async function () {
             return await prepareMutationSandbox(sandboxInput, sandboxPaths([ '/' ], new Map(), null));
         }, { message: /contains the original project/u });
         return scope.assert.collect();
     }),
-    test('ignores missing optional module search roots', async function (scope: TestScope) {
+    test('ignores missing optional module search roots', async function (scope) {
         const paths = sandboxPaths([ '/missing' ], new Map(), null);
         const result = await prepareMutationSandbox(sandboxInput, {
             ...paths,
@@ -67,14 +67,14 @@ export const testNode = authoredSuite('mutation sandbox origin policy', [
         scope.assert.equal(result.sharedRoots.includes('/missing'), false);
         return scope.assert.collect();
     }),
-    test('propagates canonicalization failures', async function (scope: TestScope) {
+    test('propagates canonicalization failures', async function (scope) {
         const failure = new Error('permission denied');
         await scope.assert.rejects(async function () {
             return await prepareMutationSandbox(sandboxInput, sandboxPaths([], new Map(), failure));
         }, { exact: failure });
         return scope.assert.collect();
     }),
-    test('translates original paths and file URLs into sandbox paths', function (scope: TestScope) {
+    test('translates original paths and file URLs into sandbox paths', function (scope) {
         const result = sandboxRunnerOptions(sandboxFixture, {
             ...sandboxSettings,
             configPath: '/original/config.ts',
@@ -85,7 +85,7 @@ export const testNode = authoredSuite('mutation sandbox origin policy', [
         scope.assert.equal(sandboxRunnerOptions(sandboxFixture, sandboxSettings).configPath, null);
         return scope.assert.collect();
     }),
-    test('rejects runner paths outside both project roots', function (scope: TestScope) {
+    test('rejects runner paths outside both project roots', function (scope) {
         for (const path of [ '../outside.ts', '/other/outside.ts' ]) {
             scope.assert.throws(function () {
                 return sandboxRunnerOptions(sandboxFixture, { ...sandboxSettings, paths: [ path ] });
@@ -93,14 +93,14 @@ export const testNode = authoredSuite('mutation sandbox origin policy', [
         }
         return scope.assert.collect();
     }),
-    test('rejects mutations of protected files after resolving aliases', async function (scope: TestScope) {
+    test('rejects mutations of protected files after resolving aliases', async function (scope) {
         const paths = sandboxPaths([], new Map([ [ '/sandbox/alias.ts', '/sandbox/subject.ts' ] ]), null);
         await scope.assert.rejects(async function () {
             await validateProtectedMutationFiles(sandboxFixture, [ '/sandbox/alias.ts' ], 'tests', paths.canonical);
         }, { message: 'Exclude tests from Stryker mutate: subject.ts' });
         return scope.assert.collect();
     }),
-    test('accepts excluded protected files and missing target paths', async function (scope: TestScope) {
+    test('accepts excluded protected files and missing target paths', async function (scope) {
         const paths = sandboxPaths([], new Map(), Object.assign(new Error('missing'), { code: 'ENOENT' }));
         await validateProtectedMutationFiles(sandboxFixture, [ '/sandbox/test.ts' ], 'tests', paths.canonical);
         scope.assert.throws(function () {
@@ -108,7 +108,7 @@ export const testNode = authoredSuite('mutation sandbox origin policy', [
         }, { message: /escapes the Stryker sandbox/u });
         return scope.assert.collect();
     }),
-    test('rejects protected aliases escaping the sandbox', async function (scope: TestScope) {
+    test('rejects protected aliases escaping the sandbox', async function (scope) {
         const paths = sandboxPaths([], new Map([ [ '/sandbox/test.ts', '/outside/test.ts' ] ]), null);
         await scope.assert.rejects(async function () {
             await validateProtectedMutationFiles(sandboxFixture, [ '/sandbox/test.ts' ], 'tests', paths.canonical);

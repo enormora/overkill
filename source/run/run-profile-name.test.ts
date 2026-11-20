@@ -1,11 +1,11 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { invalidProfileNameMessage } from '../config/profile-patterns.ts';
 import type { RunCommand } from './run-types.ts';
 
-const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 const validProjectProfileNames = [ 'backend-http', 'ui-browser', 'ui.browser', 'unit_fast', 'benchmark' ];
 const invalidProfileSyntaxMessage = 'Invalid profile name "backend/http". ' +
     'Profile names may only contain letters, numbers, dots, underscores, and hyphens.';
@@ -23,21 +23,21 @@ function runCommand(profile: string, config = defaultRunConfig()): RunCommand {
     };
 }
 
-export const testNode = suite('source/run/run-profile-name.test.ts', [
-    test('profile name validation accepts project-owned names', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Run profile name', [
+    test('profile name validation accepts project-owned names', function (scope) {
         for (const profileName of validProjectProfileNames) {
             scope.assert.equal(invalidProfileNameMessage(profileName), null);
         }
 
         return scope.assert.collect();
     }),
-    test('profile name validation rejects invalid names', function (scope: OverkillScope) {
+    test('profile name validation rejects invalid names', function (scope) {
         scope.assert.equal(invalidProfileNameMessage('backend/http'), invalidProfileSyntaxMessage);
         scope.assert.equal(invalidProfileNameMessage(''), emptyProfileNameMessage);
 
         return scope.assert.collect();
     }),
-    test('orchestrator.resolve() selects a project-owned profile name', async function (scope: OverkillScope) {
+    test('orchestrator.resolve() selects a project-owned profile name', async function (scope) {
         const runOrchestrator = createDeterministicRunOrchestrator();
         const resolvedRun = await runOrchestrator.resolve(runCommand(
             'backend-http',
@@ -63,7 +63,7 @@ export const testNode = suite('source/run/run-profile-name.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('orchestrator.resolve() rejects invalid profile names', async function (scope: OverkillScope) {
+    test('orchestrator.resolve() rejects invalid profile names', async function (scope) {
         const runOrchestrator = createDeterministicRunOrchestrator();
 
         await scope.assert.rejects(async function resolveInvalidRequestProfileName() {

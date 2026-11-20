@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defineReporter } from '../packages/engine/engine.entry-point.ts';
 import {
@@ -26,8 +26,8 @@ const reporter = defineReporter(function createRunSupportReporter() {
     };
 });
 
-export const testNode = suite('source/run/run-support.test.ts', [
-    test('copyConfig() preserves profile behavior while copying mutable containers', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Run support', [
+    test('copyConfig() preserves profile behavior while copying mutable containers', function (scope) {
         const config = defaultRunConfig({
             profiles: {
                 integration: defaultIntegrationProfile({
@@ -59,7 +59,7 @@ export const testNode = suite('source/run/run-support.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('copyRunRequest() copies resource overrides and debug selectors', function (scope: OverkillScope) {
+    test('copyRunRequest() copies resource overrides and debug selectors', function (scope) {
         const request = defaultRunRequest({
             debug: {
                 mode: 'off',
@@ -80,7 +80,7 @@ export const testNode = suite('source/run/run-support.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('copyConfig() rejects integration profiles without file discovery', function (scope: OverkillScope) {
+    test('copyConfig() rejects integration profiles without file discovery', function (scope) {
         const config = defaultRunConfig({
             profiles: {
                 integration: {
@@ -101,7 +101,7 @@ export const testNode = suite('source/run/run-support.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('run engine helpers preserve instance and module identities', function (scope: OverkillScope) {
+    test('run engine helpers preserve instance and module identities', function (scope) {
         const instanceEngine = { engine: defaultRunEngine, kind: 'instance' as const };
         const moduleEngine = {
             exportKind: 'getter' as const,

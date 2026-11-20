@@ -5,9 +5,9 @@ import type {
     ProcessUsageSnapshot,
     RunProcessUsageTracker,
     RunResult,
-    TestNode,
-    TestScope
+    TestNode
 } from '../packages/engine/engine.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 import { collectedRunPlanFromTestPlan, createRunResultFromCollectedPlan } from '../run/collected-run-plan.ts';
 import { defaultRunEngine } from '../run/default-run-engine.ts';
 import { RunCollectionError } from '../run/run-errors.ts';
@@ -17,13 +17,13 @@ import type { SupervisedChildCommand } from '../run/supervised-protocol.ts';
 import { createMemoryHistoryStorage } from './memory-history-storage.ts';
 
 const deterministicRunFixturePaths = {
-    emptySuite: 'source/integration-tests/run/fixtures/empty-suite.test.ts',
-    customEnginePassing: 'source/integration-tests/run/fixtures/custom-engine-passing.test.ts',
-    loadEnvPolicy: 'source/integration-tests/run/fixtures/load-env-policy.test.ts',
-    microtestCaptureControls: 'source/integration-tests/run/fixtures/microtest-capture-controls.test.ts',
-    passing: 'source/integration-tests/run/fixtures/passing.test.ts',
-    selection: 'source/integration-tests/run/fixtures/selection.test.ts',
-    throwsOnImport: 'source/integration-tests/run/fixtures/throws-on-import.test.ts'
+    emptySuite: 'source/integration-tests/integration/fixtures/empty-suite.test.ts',
+    customEnginePassing: 'source/integration-tests/integration/fixtures/custom-engine-passing.test.ts',
+    loadEnvPolicy: 'source/integration-tests/integration/fixtures/load-env-policy.test.ts',
+    microtestCaptureControls: 'source/integration-tests/integration/fixtures/microtest-capture-controls.test.ts',
+    passing: 'source/integration-tests/integration/fixtures/passing.test.ts',
+    selection: 'source/integration-tests/integration/fixtures/selection.test.ts',
+    throwsOnImport: 'source/integration-tests/integration/fixtures/throws-on-import.test.ts'
 };
 
 export type DeterministicRunCollection = {
@@ -92,7 +92,9 @@ function assertValidDeterministicModuleCollection(input: DeterministicRunCollect
     }
 }
 
-function pass(scope: TestScope): ReturnType<TestScope['assert']['collect']> {
+function pass(
+    scope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }
+): ReturnType<TestScope['assert']['collect']> {
     scope.assert.true(true, { message: 'passes' });
 
     return scope.assert.collect();

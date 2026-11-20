@@ -1,0 +1,251 @@
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+
+import { resourceAttachments } from '../../../attachments/attachment-context.ts';
+
+import { defineSimulatedHttpServer } from '../../../simulation/simulation.ts';
+import type { HttpTranscript } from '../../../transcript/http-transcript.ts';
+import { ResourceLifecycleError } from '../../../resources/resource-lifecycle-error.ts';
+import { startResources } from '../../../resources/resource-session.ts';
+import { defineRuntime } from '../../../resources/resources.ts';
+import { startRuntime } from '../../../resources/runtime-lifecycle.ts';
+import { createSimulatedHttpServerResource } from '../../../resources/simulated-http-server-resource.ts';
+
+type SimulatedHttpResourceDescriptor = {
+    readonly name: string;
+    readonly requirements: readonly unknown[];
+    readonly scope: string;
+};
+
+function testSignal(): AbortSignal {
+    const controller = new AbortController();
+
+    return controller.signal;
+}
+
+async function rejectedValue(promise: Promise<unknown>): Promise<unknown> {
+    try {
+        await promise;
+    } catch (error: unknown) {
+        return error;
+    }
+
+    throw new Error('Expected promise rejection.');
+}
+
+function assertSimulatedHttpResourceDescriptor(
+    scope: TestScope,
+    resource: SimulatedHttpResourceDescriptor
+): void {
+    scope.assert.equal(resource.name, 'api');
+    scope.assert.equal(resource.scope, 'per-case');
+    scope.assert.deepEqual(resource.requirements, []);
+}
+
+async function assertSimulatedHttpResourceResponses(
+    scope: TestScope,
+    defaultResponse: Response,
+    outageResponse: Response
+): Promise<void> {
+    scope.assert.equal(defaultResponse.status, 200);
+    scope.assert.deepEqual(await defaultResponse.json(), { key: 'default' });
+    scope.assert.equal(outageResponse.status, 503);
+    scope.assert.deepEqual(await outageResponse.json(), { key: 'outage' });
+}
+
+function assertSimulatedHttpTranscript(
+    scope: TestScope,
+    transcript: HttpTranscript<{ readonly scenario: string; }>
+): void {
+    const outageEntry = transcript.lastEntry;
+
+    scope.require.defined(outageEntry);
+    scope.assert.equal(transcript.entryCount, 2);
+    scope.assert.equal(outageEntry[0], 'http');
+    if (outageEntry[0] === 'http') {
+        scope.assert.deepEqual(outageEntry[1].context, { scenario: 'outage' });
+    }
+}
+
+async function assertSimulatedHttpResource(scope: TestScope): Promise<void> {
+    const simulation = defineSimulatedHttpServer({
+        name: 'api',
+        scenarios: {
+            default: { status: 200, title: 'standard responses' },
+            outage: { status: 503, title: 'upstream outage' }
+        },
+        handle(_request, scenario) {
+            return Response.json({ key: scenario.key }, { status: scenario.descriptor.status });
+        }
+    });
+    const resource = createSimulatedHttpServerResource({
+        simulation,
+        address: { kind: 'loopback', port: 0 }
+    });
+    const session = await startResources({ resources: { api: resource }, signal: testSignal() });
+    const defaultResponse = await fetch(session.context.api.baseUrl);
+    const outageResponse = await fetch(session.context.api.scenarioUrl('outage', '/orders'));
+
+    assertSimulatedHttpResourceDescriptor(scope, resource);
+    await assertSimulatedHttpResourceResponses(scope, defaultResponse, outageResponse);
+    assertSimulatedHttpTranscript(scope, session.context.api.transcript);
+
+    await session.disposeOnce({ signal: testSignal() });
+}
+
+async function assertHandlerErrorsFailResourceDisposal(scope: TestScope): Promise<void> {
+    const handlerError = new Error('handler exploded');
+    const simulation = defineSimulatedHttpServer({
+        name: 'api',
+        scenarios: { default: { title: 'standard responses' } },
+        handle() {
+            throw handlerError;
+        }
+    });
+    const resource = createSimulatedHttpServerResource({
+        simulation,
+        address: { kind: 'loopback', port: 0 }
+    });
+    const session = await startResources({ resources: { api: resource }, signal: testSignal() });
+    const response = await fetch(session.context.api.baseUrl);
+    await response.arrayBuffer();
+    const disposalError = await rejectedValue(session.disposeOnce({ signal: testSignal() }));
+
+    scope.assert.equal(response.status, 500);
+    scope.require.instanceOf(disposalError, ResourceLifecycleError);
+    scope.assert.deepEqual(disposalError.failures(), [
+        {
+            cause: handlerError,
+            phase: 'dispose',
+            resourceName: 'api'
+        }
+    ]);
+}
+
+async function assertExplicitResourceAddress(scope: TestScope): Promise<void> {
+    const simulation = defineSimulatedHttpServer({
+        name: 'api',
+        scenarios: { default: { title: 'standard responses' } },
+        handle() {
+            return Response.json({ status: 'ok' });
+        }
+    });
+    const resource = createSimulatedHttpServerResource({
+        simulation,
+        address: { kind: 'host', host: '127.0.0.1', port: 0 }
+    });
+    const session = await startResources({ resources: { api: resource }, signal: testSignal() });
+
+    scope.assert.equal(session.context.api.baseUrl.startsWith('http://127.0.0.1:'), true);
+
+    await session.disposeOnce({ signal: testSignal() });
+}
+
+async function assertRuntimeScenarioSelectsBaseUrl(scope: TestScope): Promise<void> {
+    const simulation = defineSimulatedHttpServer({
+        name: 'api',
+        scenarios: {
+            default: { status: 200, title: 'standard responses' },
+            outage: { status: 503, title: 'upstream outage' }
+        },
+        handle(_request, scenario) {
+            return Response.json({ key: scenario.key }, { status: scenario.descriptor.status });
+        }
+    });
+    const resource = createSimulatedHttpServerResource({
+        simulation,
+        address: { kind: 'loopback', port: 0 }
+    });
+    const runtime = defineRuntime({
+        name: 'api-runtime',
+        dimensions: {},
+        resources: { api: resource },
+        requirements: []
+    })
+        .scenario({ api: 'outage' });
+    const session = await startRuntime({ runtime, signal: testSignal() });
+    const response = await fetch(session.context.api.baseUrl);
+
+    scope.assert.equal(resource.scenarios.api.timing, 'request-routed');
+    scope.assert.equal(response.status, 503);
+    scope.assert.deepEqual(await response.json(), { key: 'outage' });
+
+    await session.disposeOnce({ signal: testSignal() });
+}
+
+async function assertScenarioContextFallbacks(scope: TestScope): Promise<void> {
+    const simulation = defineSimulatedHttpServer({
+        name: 'api',
+        scenarios: { default: { title: 'standard responses' } },
+        handle() {
+            return Response.json({ status: 'ok' });
+        }
+    });
+    const resource = createSimulatedHttpServerResource({
+        simulation,
+        address: { kind: 'loopback', port: 0 }
+    });
+    const acquired = await resource.acquire({
+        workload: null,
+        attachments: resourceAttachments('test'),
+        dependencies: {},
+        scenarios: {},
+        signal: testSignal()
+    });
+    const withoutScenarios: unknown = Reflect.apply(resource.exposeHandle, undefined, [ acquired, {} ]);
+    const invalidScenario: unknown = Reflect.apply(resource.exposeHandle, undefined, [
+        acquired,
+        { scenarios: { api: 1 } }
+    ]);
+
+    scope.assert.deepEqual([
+        typeof Reflect.get(withoutScenarios as Readonly<Record<string, unknown>>, 'baseUrl'),
+        typeof Reflect.get(invalidScenario as Readonly<Record<string, unknown>>, 'baseUrl')
+    ], [ 'string', 'string' ]);
+    if (resource.dispose === null) {
+        throw new Error('Expected resource disposal.');
+    }
+
+    const context = {
+        workload: null,
+        attachments: resourceAttachments('test'),
+        dependencies: {},
+        scenarios: { api: 'default' as const },
+        signal: testSignal()
+    };
+
+    scope.assert.deepEqual(
+        await Promise.all([
+            resource.dispose({} as never, context),
+            resource.dispose(acquired, context)
+        ]),
+        [ undefined, undefined ]
+    );
+}
+
+export const testNode: TestNode = suite('Simulated HTTP server resource', [
+    test('simulated HTTP server resources expose acquired server handles', async function (scope) {
+        await assertSimulatedHttpResource(scope);
+
+        return scope.assert.collect();
+    }),
+    test('simulated HTTP server resources fail disposal after handler errors', async function (scope) {
+        await assertHandlerErrorsFailResourceDisposal(scope);
+
+        return scope.assert.collect();
+    }),
+    test('simulated HTTP server resources pass explicit addresses', async function (scope) {
+        await assertExplicitResourceAddress(scope);
+
+        return scope.assert.collect();
+    }),
+    test('runtime scenarios select simulated HTTP base URLs', async function (scope) {
+        await assertRuntimeScenarioSelectsBaseUrl(scope);
+
+        return scope.assert.collect();
+    }),
+    test('simulated HTTP resources default malformed scenario contexts', async function (scope) {
+        await assertScenarioContextFallbacks(scope);
+
+        return scope.assert.collect();
+    })
+]);

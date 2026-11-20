@@ -2,7 +2,7 @@ import { Duplex } from 'node:stream';
 import { EventEmitter } from 'node:events';
 import { openProcessProbe, type ProcessProbeRuntime } from '../bench/process-probe-session.ts';
 import { unavailableChildMetrics, type NodeProbeReport } from '../bench/process-node-readings.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 
 type ProbeChannelScenario = {
     readonly snapshotTimeout: boolean;

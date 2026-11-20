@@ -1,4 +1,5 @@
-import { type TestScope as OverkillScope, defineMacro, suite, table, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, defineMacro, suite, table, test } from '@overkill-dev/test';
+
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 
 import { safeParse } from '@schema-hub/zod-error-formatter';
@@ -24,7 +25,7 @@ type SchemaValidationFailure = {
     readonly schema: Readonly<$ZodType>;
 };
 
-function assertValidationSuccess(scope: OverkillScope, schema: Readonly<$ZodType>, data: unknown): void {
+function assertValidationSuccess(scope: TestScope, schema: Readonly<$ZodType>, data: unknown): void {
     const result = safeParse(schema, data);
 
     if (!result.success) {
@@ -138,8 +139,8 @@ const invalidNestedFields: readonly SchemaValidationFailure[] = [
     }
 ];
 
-export const testNode = suite('source/config/config-schema.test.ts', [
-    test('microtest profile schema accepts the minimal profile', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Project configuration validation', [
+    test('microtest profile schema accepts the minimal profile', function (scope) {
         assertValidationSuccess(scope, microtestProfileSchema, {
             testFamily: 'microtest',
             failureArtifacts: defaultFailureArtifactPolicy
@@ -147,7 +148,7 @@ export const testNode = suite('source/config/config-schema.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('microtest profile schema accepts every current profile field', function (scope: OverkillScope) {
+    test('microtest profile schema accepts every current profile field', function (scope) {
         const reporter = createInMemoryRealTimeReporter();
 
         assertValidationSuccess(scope, microtestProfileSchema, {
@@ -182,7 +183,7 @@ export const testNode = suite('source/config/config-schema.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('microtest profile schema accepts profile file sets', function (scope: OverkillScope) {
+    test('microtest profile schema accepts profile file sets', function (scope) {
         assertValidationSuccess(scope, microtestProfileSchema, {
             failureArtifacts: defaultFailureArtifactPolicy,
             files: {
@@ -201,7 +202,7 @@ export const testNode = suite('source/config/config-schema.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('microtest execution schema accepts process model and scheduling variants', function (scope: OverkillScope) {
+    test('microtest execution schema accepts process model and scheduling variants', function (scope) {
         for (const processModel of [ 'in-process', 'supervised-process' ] as const) {
             for (const scheduling of [ 'concurrent', 'serial' ] as const) {
                 assertValidationSuccess(scope, microtestExecutionSchema, { processModel, scheduling });
@@ -215,7 +216,7 @@ export const testNode = suite('source/config/config-schema.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('integration profile schema accepts supervised profiles with files', function (scope: OverkillScope) {
+    test('integration profile schema accepts supervised profiles with files', function (scope) {
         const reporter = createInMemoryRealTimeReporter();
 
         assertValidationSuccess(scope, integrationProfileSchema, {
@@ -242,7 +243,7 @@ export const testNode = suite('source/config/config-schema.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('integration profile schema accepts worker-pool profiles with files', function (scope: OverkillScope) {
+    test('integration profile schema accepts worker-pool profiles with files', function (scope) {
         assertValidationSuccess(scope, integrationProfileSchema, {
             failureArtifacts: defaultFailureArtifactPolicy,
             attachments: defaultAttachmentLimits,
@@ -261,7 +262,7 @@ export const testNode = suite('source/config/config-schema.test.ts', [
     }),
     test(
         'integration execution schema accepts worker-pool lifecycle and distribution fields',
-        function (scope: OverkillScope) {
+        function (scope) {
             assertValidationSuccess(scope, integrationExecutionSchema, {
                 assignmentPolicy: 'case-count-balanced',
                 dispatchPolicy: 'dynamic-lease',
@@ -310,7 +311,7 @@ export const testNode = suite('source/config/config-schema.test.ts', [
     ),
     test(
         'integration execution schema rejects invalid worker-pool distribution fields',
-        function (scope: OverkillScope) {
+        function (scope) {
             const result = safeParse(integrationExecutionSchema, {
                 processModel: 'worker-pool',
                 scheduling: 'serial',
@@ -326,7 +327,7 @@ export const testNode = suite('source/config/config-schema.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('integration execution schema rejects host-process fields', function (scope: OverkillScope) {
+    test('integration execution schema rejects host-process fields', function (scope) {
         const result = safeParse(integrationExecutionSchema, {
             hostProcess: {
                 kind: 'child',
@@ -340,7 +341,7 @@ export const testNode = suite('source/config/config-schema.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('integration execution schema rejects invalid worker lifecycle fields', function (scope: OverkillScope) {
+    test('integration execution schema rejects invalid worker lifecycle fields', function (scope) {
         const result = safeParse(integrationExecutionSchema, {
             processModel: 'worker-pool',
             scheduling: 'serial',
@@ -353,7 +354,7 @@ export const testNode = suite('source/config/config-schema.test.ts', [
     }),
     test(
         'integration execution schema accepts duration-history-balanced assignment policy',
-        function (scope: OverkillScope) {
+        function (scope) {
             const result = safeParse(integrationExecutionSchema, {
                 assignmentPolicy: 'duration-history-balanced',
                 processModel: 'worker-pool',
@@ -365,7 +366,7 @@ export const testNode = suite('source/config/config-schema.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('integration execution schema rejects invalid worker-pool dispatch policy', function (scope: OverkillScope) {
+    test('integration execution schema rejects invalid worker-pool dispatch policy', function (scope) {
         const result = safeParse(integrationExecutionSchema, {
             dispatchPolicy: 'least-busy',
             processModel: 'worker-pool',
@@ -378,7 +379,7 @@ export const testNode = suite('source/config/config-schema.test.ts', [
     }),
     test(
         'integration execution schema rejects worker-pool fields on supervised profiles',
-        function (scope: OverkillScope) {
+        function (scope) {
             const result = safeParse(integrationExecutionSchema, {
                 dispatchPolicy: 'dynamic-lease',
                 processModel: 'supervised-process',
@@ -392,7 +393,7 @@ export const testNode = suite('source/config/config-schema.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('integration execution schema rejects in-process profiles', function (scope: OverkillScope) {
+    test('integration execution schema rejects in-process profiles', function (scope) {
         const result = safeParse(integrationExecutionSchema, {
             processModel: 'in-process',
             scheduling: 'serial'
@@ -402,14 +403,14 @@ export const testNode = suite('source/config/config-schema.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('integration profile schema rejects missing files', function (scope: OverkillScope) {
+    test('integration profile schema rejects missing files', function (scope) {
         const result = safeParse(integrationProfileSchema, { testFamily: 'integration' });
 
         scope.assert.equal(result.success, false);
 
         return scope.assert.collect();
     }),
-    test('microtest process usage schema accepts measured and unmeasured policies', function (scope: OverkillScope) {
+    test('microtest process usage schema accepts measured and unmeasured policies', function (scope) {
         assertValidationSuccess(scope, processUsageSchema, { measure: false });
         assertValidationSuccess(scope, processUsageSchema, {
             budgets: {
@@ -424,7 +425,7 @@ export const testNode = suite('source/config/config-schema.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('microtest timeout schema accepts soft and hard timeouts', function (scope: OverkillScope) {
+    test('microtest timeout schema accepts soft and hard timeouts', function (scope) {
         assertValidationSuccess(scope, timeoutSchema, {
             hardMilliseconds: 2,
             softMilliseconds: 1

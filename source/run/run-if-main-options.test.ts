@@ -1,10 +1,9 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test, type TestScope as DirectScope } from '@overkill-dev/test';
+import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
 
 import {
     type TestPlan,
     defaultFailureArtifactPolicy,
-    type TestBody as DirectTestBody,
-    type TestScope as DirectScope,
     createTestCase as createDirectTestCase
 } from '../packages/engine/engine.entry-point.ts';
 
@@ -33,7 +32,9 @@ const outputRenderer = defineFixedOutputRenderer({
     }
 });
 
-function passingBody(scope: DirectScope): ReturnType<DirectTestBody> {
+function passingBody(
+    scope: { readonly assert: Pick<DirectScope['assert'], 'true' | 'collect'>; }
+): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
 
     return scope.assert.collect();
@@ -127,7 +128,7 @@ function directTestPlan(): TestPlan {
     }));
 }
 
-async function assertReporterSelection(scope: OverkillScope): Promise<void> {
+async function assertReporterSelection(scope: TestScope): Promise<void> {
     const optionReporter = createReporter('option');
     const profileReporter = createReporter('profile');
     const configReporter = createReporter('config');
@@ -152,7 +153,7 @@ async function assertReporterSelection(scope: OverkillScope): Promise<void> {
     scope.assert.equal(defaultReporter(createReportingContext({ projectRoot: null })).name, 'line');
 }
 
-function assertOutputAndRootOptions(scope: OverkillScope): void {
+function assertOutputAndRootOptions(scope: TestScope): void {
     scope.assert.equal(selectedOutputRenderer(loadedConfig(null), undefined), outputRenderer);
     scope.assert.equal(selectedOutputRenderer(loadedConfig(null), { outputRenderer, reporters: [] }), outputRenderer);
     scope.assert.deepEqual(rootAnnotations(undefined), {});
@@ -187,14 +188,14 @@ function assertOutputAndRootOptions(scope: OverkillScope): void {
     );
 }
 
-export const testNode = suite('source/run/run-if-main-options.test.ts', [
-    test('runIfMain() resolves direct execution options', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Run if main options', [
+    test('resolves direct execution options', async function (scope) {
         await assertReporterSelection(scope);
         assertOutputAndRootOptions(scope);
 
         return scope.assert.collect();
     }),
-    test('directRunFacts() rejects unknown direct profiles', function (scope: OverkillScope) {
+    test('directRunFacts() rejects unknown direct profiles', function (scope) {
         scope.assert.throws(function readMissingDirectProfileFacts() {
             directRunFacts({
                 config: runConfig(loadedConfig(null), []),

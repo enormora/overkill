@@ -1,24 +1,17 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { runPlanCollection } from '../test-support/run-plan-collection.ts';
-import { testNode as localFailure } from './local-collection-failure-policy.test.ts';
-import { testNode as resolution } from './collected-resolution-policy.test.ts';
-import { testNode as transport } from './collection-root-policy.test.ts';
-import { testNode as observation } from './observed-run-collection-policy.test.ts';
+
 import {
     createRunTestPlan,
     createRunTestPlanFromFiles,
     createRunTestPlanFromDirectEntrypoint
 } from './run-test-plan.ts';
 
-export const testNode = authoredSuite('run collection boundary classification', [
-    localFailure,
-    resolution,
-    transport,
-    observation,
+export const testNode: TestNode = suite('run collection boundary classification', [
     test(
         'uses default runtime collection policy for direct, discovered and frozen files',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = runPlanCollection(false);
             const direct = createRunTestPlanFromDirectEntrypoint(fixture.input.engine, fixture.file, fixture.source);
             const discovered = await createRunTestPlan(fixture.input);
@@ -36,14 +29,14 @@ export const testNode = authoredSuite('run collection boundary classification', 
             return scope.assert.collect();
         }
     ),
-    test('classifies invalid direct plans as collection failures', function (scope: TestScope) {
+    test('classifies invalid direct plans as collection failures', function (scope) {
         const fixture = runPlanCollection(true);
         scope.assert.throws(function () {
             createRunTestPlanFromDirectEntrypoint(fixture.input.engine, fixture.file, fixture.source);
         }, { name: 'RunCollectionError', message: 'Failed to collect tests from runIfMain().' });
         return scope.assert.collect();
     }),
-    test('classifies invalid loaded plans as collection failures', async function (scope: TestScope) {
+    test('classifies invalid loaded plans as collection failures', async function (scope) {
         const fixture = runPlanCollection(true);
         await scope.assert.rejects(async function () {
             await createRunTestPlan(fixture.input);

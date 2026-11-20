@@ -1,7 +1,8 @@
+import { type TestNode, test } from '#tests';
 import { execFile } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { test } from '#tests';
+
 import { uneval } from 'devalue';
 
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
@@ -56,14 +57,17 @@ try {
 }
 `;
 
-export const testNode = test('compares content snapshots across packaged execution boundaries', async function (scope) {
-    const directory = await mkdtemp(join(import.meta.dirname, 'snapshot-script-'));
-    scope.cleanup(async function removeConsumerScript() {
-        await rm(directory, { recursive: true, force: true });
-    });
-    const file = join(directory, 'consumer.mjs');
-    await writeFile(file, script);
-    const output = await executeConsumer(file);
-    scope.assert.equal(output.trim(), 'snapshot package passed');
-    return scope.assert.collect();
-});
+export const testNode: TestNode = test(
+    'compares content snapshots across packaged execution boundaries',
+    async function (scope) {
+        const directory = await mkdtemp(join(import.meta.dirname, 'snapshot-script-'));
+        scope.cleanup(async function removeConsumerScript() {
+            await rm(directory, { recursive: true, force: true });
+        });
+        const file = join(directory, 'consumer.mjs');
+        await writeFile(file, script);
+        const output = await executeConsumer(file);
+        scope.assert.equal(output.trim(), 'snapshot package passed');
+        return scope.assert.collect();
+    }
+);

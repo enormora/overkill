@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { workerReplayRecord } from '../test-support/replay-record-fixture.ts';
 import { createCollectedPlan, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
@@ -239,8 +239,8 @@ async function prepareRecord(record: ReplayRunRecord): Promise<PreparedReplay> {
         }
     });
 }
-export const testNode = authoredSuite('retained replay record validation', [
-    authoredTest('replays baseline write records with comparisons only', async function (scope: TestScope) {
+export const testNode: TestNode = suite('retained replay record validation', [
+    test('replays baseline write records with comparisons only', async function (scope) {
         const record = retainedRecord();
         for (const mode of [ 'apply', 'bootstrap', 'diff', 'update' ] as const) {
             const prepared = await prepareRecord({
@@ -251,7 +251,7 @@ export const testNode = authoredSuite('retained replay record validation', [
         }
         return scope.assert.collect();
     }),
-    authoredTest('rejects a saved profile that disagrees with execution facts', async function (scope: TestScope) {
+    test('rejects a saved profile that disagrees with execution facts', async function (scope) {
         const record = retainedRecord();
         await scope.assert.rejects(async function inconsistentProfile() {
             await prepareRecord({
@@ -261,39 +261,50 @@ export const testNode = authoredSuite('retained replay record validation', [
         }, { message: 'Recorded profile and execution facts are inconsistent.' });
         return scope.assert.collect();
     }),
-    authoredTest('accepts a source without placement decisions', async function (scope: TestScope) {
+    test('accepts a source without placement decisions', async function (scope) {
         const record = replayRecordSchema.parse(placedRecord(retainedRecord(), null));
         scope.assert.deepEqual(await readContent(JSON.stringify(record), ignoreRead, record.id), record);
         return scope.assert.collect();
     }),
-    ...invalidRecords().map(function inconsistentRecord(entry) {
-        return authoredTest(entry.title, async function (scope: TestScope) {
+    table({
+        title: 'rejects invalid replay records',
+        cases: invalidRecords(),
+        caseTitle(entry) {
+            return entry.title;
+        },
+        async test(scope) {
+            const entry = scope.parameters;
+
             const record = retainedRecord();
             await scope.assert.rejects(async function rejectInconsistentRecord() {
                 await readContent(JSON.stringify(entry.change(record)), ignoreRead, record.id);
             }, { message: /inconsistent|incompatible|scheduling decisions|no placement plan/u });
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('accepts a consistent interrupted snapshot', async function (scope: TestScope) {
+    test('accepts a consistent interrupted snapshot', async function (scope) {
         const record = retainedRecord();
         const replay = await readContent(JSON.stringify(record), ignoreRead, record.id);
         scope.assert.deepEqual(replay.identities, record.identities);
         scope.assert.equal(replay.placementTrace, null);
         return scope.assert.collect();
     }),
-    ...[ null, '{' ].map(function unreadableContent(content) {
-        return authoredTest(
-            content === null ? 'rejects missing run records' : 'rejects malformed run JSON',
-            async function (scope: TestScope) {
-                await scope.assert.rejects(async function rejectUnreadableRecord() {
-                    await readContent(content, ignoreRead, 'retained-worker-run');
-                }, { message: /Cannot read replay input/u });
-                return scope.assert.collect();
-            }
-        );
+    table({
+        title: 'rejects missing and malformed run records',
+        cases: [ null, '{' ],
+        caseTitle(content) {
+            return content === null ? 'rejects missing run records' : 'rejects malformed run JSON';
+        },
+        async test(scope) {
+            const content = scope.parameters;
+
+            await scope.assert.rejects(async function rejectUnreadableRecord() {
+                await readContent(content, ignoreRead, 'retained-worker-run');
+            }, { message: /Cannot read replay input/u });
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('rejects traversal before reading the store', async function (scope: TestScope) {
+    test('rejects traversal before reading the store', async function (scope) {
         let reads = 0;
         await scope.assert.rejects(async function rejectTraversal() {
             await readContent('{}', function observeRead() {

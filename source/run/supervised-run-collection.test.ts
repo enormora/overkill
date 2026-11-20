@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { createFakeSupervisedChildProcess } from '../test-support/fake-supervised-child-process.ts';
@@ -38,7 +38,7 @@ function supervisedCollectCommand(): SupervisedCollectCommand {
         hardTimeoutMilliseconds: 1000,
         maxConcurrency: 5,
         kind: 'collect',
-        paths: [ 'source/integration-tests/run/fixtures/passing.test.ts' ],
+        paths: [ 'source/integration-tests/integration/fixtures/passing.test.ts' ],
         processBudgets: {
             activeResourceCount: null,
             javaScriptEngineHeapBytes: null,
@@ -205,8 +205,8 @@ function timeoutDependencies(): RunOrchestratorDependencies {
     };
 }
 
-export const testNode = suite('source/run/supervised-run-collection.test.ts', [
-    test('collectSupervisedRun() records collection spawn and ready timings', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Supervised run collection', [
+    test('records collection spawn and ready timings', async function (scope) {
         const dependencies = fakeWorkerPoolRuntimeDependencies();
         const timing = createRunTimingMeasurement(dependencies.wallClock);
         const result = await collectSupervisedRun(
@@ -241,8 +241,8 @@ export const testNode = suite('source/run/supervised-run-collection.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'collectSupervisedRun() preserves runner errors emitted before collection',
-        async function (scope: OverkillScope) {
+        'preserves runner errors emitted before collection',
+        async function (scope) {
             const result = await collectSupervisedRun(supervisedCollectCommand(), {
                 ...fakeWorkerPoolRuntimeDependencies(),
                 startSupervisedChild: createEventChild
@@ -253,7 +253,7 @@ export const testNode = suite('source/run/supervised-run-collection.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('collectSupervisedRun() reports collection timeouts as runner errors', async function (scope: OverkillScope) {
+    test('reports collection timeouts as runner errors', async function (scope) {
         await scope.assert.rejects(async function collectTimedOutRun() {
             await collectSupervisedRun(supervisedCollectCommand(), timeoutDependencies());
         }, {

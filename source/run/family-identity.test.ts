@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 
@@ -19,8 +19,8 @@ const neutral = createDefaultWorkId(logical);
 const first = { ...neutral, familyVariant: { family: '@example/checks', key: 'one' } };
 const second = { ...neutral, familyVariant: { family: '@example/checks', key: 'two' } };
 
-export const testNode = authoredSuite('family identity', [
-    test('retains the exact neutral shard input', function (scope: TestScope) {
+export const testNode: TestNode = suite('family identity', [
+    test('retains the exact neutral shard input', function (scope) {
         const unit = caseWorkUnitId(neutral);
         const inputs: string[] = [];
         workUnitBelongsToShard(unit, { index: 1, total: 2 }, {
@@ -45,7 +45,7 @@ export const testNode = authoredSuite('family identity', [
         scope.assert.equal(Object.hasOwn(workUnitIdentityProjection(caseWorkUnitId(neutral)), 'familyVariant'), false);
         return scope.assert.collect();
     }),
-    test('decodes legacy compiler work without executable family code', function (scope: TestScope) {
+    test('decodes legacy compiler work without executable family code', function (scope) {
         const { familyVariant, ...legacy } = neutral;
         scope.assert.equal(familyVariant, null);
         scope.assert.deepEqual(workIdSchema.parse(legacy), neutral);
@@ -56,7 +56,7 @@ export const testNode = authoredSuite('family identity', [
         });
         return scope.assert.collect();
     }),
-    test('keeps case artifacts within their family variant', function (scope: TestScope) {
+    test('keeps case artifacts within their family variant', function (scope) {
         const artifact: RuntimeAttachmentArtifact = {
             id: {
                 familyVariant: first.familyVariant,
@@ -84,7 +84,7 @@ export const testNode = authoredSuite('family identity', [
         scope.assert.deepEqual(artifactsForAttempt([ artifact ], second, { index: 0 }), []);
         return scope.assert.collect();
     }),
-    test('matches legacy case artifacts to neutral attempts', function (scope: TestScope) {
+    test('matches legacy case artifacts to neutral attempts', function (scope) {
         const artifact = {
             id: {
                 runtimes: [],
@@ -105,7 +105,7 @@ export const testNode = authoredSuite('family identity', [
         scope.assert.equal(JSON.stringify(variantMatches), '[]');
         return scope.assert.collect();
     }),
-    test('retains family variants in boundary failure evidence', function (scope: TestScope) {
+    test('retains family variants in boundary failure evidence', function (scope) {
         const artifact = createBoundaryFailureArtifact(
             {
                 kind: 'worker-crash',
@@ -130,7 +130,7 @@ export const testNode = authoredSuite('family identity', [
         });
         return scope.assert.collect();
     }),
-    test('normalizes recorded compiler units consistently with work identity', function (scope: TestScope) {
+    test('normalizes recorded compiler units consistently with work identity', function (scope) {
         const key = JSON.stringify([
             'compiler',
             'typescript',
@@ -149,7 +149,7 @@ export const testNode = authoredSuite('family identity', [
         );
         return scope.assert.collect();
     }),
-    test('omits neutral artifact dimensions and retains scoped variants', function (scope: TestScope) {
+    test('omits neutral artifact dimensions and retains scoped variants', function (scope) {
         const id = {
             attempt: null,
             scope: { kind: 'run' as const },

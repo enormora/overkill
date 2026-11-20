@@ -1,11 +1,11 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { observationPlan } from '../test-support/observation-lifetime.ts';
 import { createCollectedPlan, workerPoolResolvedRun } from '../test-support/worker-pool-execution-state.ts';
 import { runCollectionRootFromResolvedPlan, emptyRunPlanStatus } from './collected-run-plan.ts';
 
-export const testNode = authoredSuite('collection root and empty selection transport', [
-    authoredTest('preserves explicitly authored root controls in local collection', function (scope: TestScope) {
+export const testNode: TestNode = suite('collection root and empty selection transport', [
+    test('preserves explicitly authored root controls in local collection', function (scope) {
         const original = observationPlan();
         const controls = { capture: 'buffered', duplicateExecution: 'idempotent', timeoutMilliseconds: 42 } as const;
         const testPlan = { ...original, root: { ...original.root, controls } };
@@ -16,8 +16,15 @@ export const testNode = authoredSuite('collection root and empty selection trans
         });
         return scope.assert.collect();
     }),
-    ...[ false, true ].map(function (lastFailed) {
-        return authoredTest(`classifies absent selection with last-failed ${lastFailed}`, function (scope: TestScope) {
+    table({
+        title: 'classifies absent selection with last-failed policy',
+        cases: [ false, true ],
+        caseTitle(lastFailed) {
+            return `${lastFailed}`;
+        },
+        test(scope) {
+            const lastFailed = scope.parameters;
+
             const original = createCollectedPlan();
             const plan = { ...original, discoveredFiles: original.files };
             const run = workerPoolResolvedRun(plan);
@@ -28,6 +35,6 @@ export const testNode = authoredSuite('collection root and empty selection trans
                 'empty-shard'
             );
             return scope.assert.collect();
-        });
+        }
     })
 ]);

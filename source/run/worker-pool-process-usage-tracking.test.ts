@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { RunnerError } from '../packages/engine/engine.entry-point.ts';
 import {
@@ -52,14 +52,14 @@ function runtimeWithEmptyPlacementPlan(): WorkerPoolRunRuntime {
     };
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-process-usage-tracking.test.ts',
+    title: 'Worker pool process usage tracking',
     children: [
         test({
             ...testCaseMetadata,
-            title: 'worker-pool execution skips run start for empty placement plans',
-            async body(scope: OverkillScope) {
+            title: 'skips run start for empty placement plans',
+            async body(scope) {
                 let reportedEvents = 0;
                 const runtime = {
                     ...runtimeWithEmptyPlacementPlan(),
@@ -81,8 +81,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool execution records run-start reporter delivery errors',
-            async body(scope: OverkillScope) {
+            title: 'records run-start reporter delivery errors',
+            async body(scope) {
                 const runtime = {
                     ...fakeWorkerRuntime(createCollectedPlan()),
                     reporterDelivery: {
@@ -101,8 +101,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool execution starts pool process usage tracking with optional start waiters',
-            async body(scope: OverkillScope) {
+            title: 'starts pool process usage tracking with optional start waiters',
+            async body(scope) {
                 let startCount = 0;
                 let waited = false;
                 const tracker = {

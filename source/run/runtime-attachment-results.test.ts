@@ -1,6 +1,6 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import type { TestScope, HedgedConflictArtifact, RunArtifact } from '../packages/engine/engine.entry-point.ts';
+import type { HedgedConflictArtifact, RunArtifact } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { inlineAttachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
@@ -162,23 +162,23 @@ async function assertIndependentOutputSequence(scope: TestScope): Promise<void> 
     scope.assert.equal(result.artifacts.length, 2);
     scope.assert.deepEqual(attachmentArtifacts(result.artifacts), store.artifacts());
 }
-export const testNode = suite('source/run/runtime-attachment-results.test.ts', [
-    test('console captures do not collide with resource attachment sequences', async function (scope: TestScope) {
+export const testNode: TestNode = suite('Runtime attachment results', [
+    test('console captures do not collide with resource attachment sequences', async function (scope) {
         await assertIndependentOutputSequence(scope);
         return scope.assert.collect();
     }),
     test(
         'result merging matches attempt identities, deduplicates artifacts, and reports abandoned owners',
-        async function (scope: TestScope) {
+        async function (scope) {
             await assertResultOwnership(scope);
             return scope.assert.collect();
         }
     ),
-    test('discarded branch attachment errors do not fail retained execution', function (scope: TestScope) {
+    test('discarded branch attachment errors do not fail retained execution', function (scope) {
         assertCancelledErrors(scope);
         return scope.assert.collect();
     }),
-    test('hedged conflict evidence applies retry retention to both executions', async function (scope: TestScope) {
+    test('hedged conflict evidence applies retry retention to both executions', async function (scope) {
         await assertConflictRetention(scope);
         return scope.assert.collect();
     })

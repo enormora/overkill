@@ -1,15 +1,14 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { type EngineCaseBody, createTestEngine } from '../test-support/create-test-engine.ts';
 
 import { workload, type Workload } from '../packages/bench/bench.entry-point.ts';
 import type {
     Engine,
-    TestBody,
     TestCaseDefinition,
     TestPlan,
-    TestScope,
     WorkloadTestCaseVariant
 } from '../packages/engine/engine.entry-point.ts';
-import { createTestEngine } from '../test-support/create-test-engine.ts';
+
 import { caseId, workload as workloadFilter, parseRunFilterExpression } from '../packages/run/filters.entry-point.ts';
 import { matchesRunFilter } from '../run/run-selection-filters.ts';
 import { selectedAssignedWork } from '../run/worker-pool-worker-plan.ts';
@@ -27,7 +26,9 @@ type WorkloadFixture = {
     readonly plan: TestPlan;
 };
 
-function passingBody(scope: TestScope): ReturnType<TestBody> {
+function passingBody(
+    scope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }
+): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
     return scope.assert.collect();
 }
@@ -38,7 +39,7 @@ function workloadBody(
 ): WorkloadTestCaseVariant {
     return {
         id: input.id,
-        body(scope: TestScope) {
+        body(scope: { readonly assert: Pick<TestScope['assert'], 'greaterThan' | 'collect'>; }) {
             observe(input.parameters.packages);
             scope.assert.greaterThan(input.parameters.packages, 0);
             return scope.assert.collect();
@@ -68,8 +69,8 @@ function createWorkloadFixture(): WorkloadFixture {
     return { engine, observed, plan };
 }
 
-export const testNode = authoredSuite('workload test cases', [
-    test('lowers one logical node into distinct work identities without running bodies', function (scope: TestScope) {
+export const testNode: TestNode = suite('workload test cases', [
+    test('lowers one logical node into distinct work identities without running bodies', function (scope) {
         const { observed, plan } = createWorkloadFixture();
         scope.assert.equal(observed.length, 0);
         scope.assert.equal(plan.defined, 1);

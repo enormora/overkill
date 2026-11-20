@@ -1,12 +1,13 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
-import { defineReporter, type PropertyCaseEvidence, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { defineReporter, type PropertyCaseEvidence } from '../packages/engine/engine.entry-point.ts';
+
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
-export const testNode = authoredSuite('property progress', [
-    test('delivers immutable snapshots before trial evaluation', async function (scope: TestScope) {
+export const testNode: TestNode = suite('property progress', [
+    test('delivers immutable snapshots before trial evaluation', async function (scope) {
         const snapshots: PropertyCaseEvidence[] = [];
         let calls = 0;
         const reporter = defineReporter(function captureProgress() {

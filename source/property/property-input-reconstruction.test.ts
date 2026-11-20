@@ -1,4 +1,5 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
+
 import type { RunResult } from '../packages/engine/engine.entry-point.ts';
 
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
@@ -25,7 +26,7 @@ async function budgetedReconstruction(failing: boolean): Promise<RunResult> {
     );
 }
 
-export const testNode = authoredSuite('property input reconstruction', [
+export const testNode: TestNode = suite('property input reconstruction', [
     test('reports exhausted reconstruction work as inconclusive', async function (scope) {
         const result = await budgetedReconstruction(false);
         scope.assert.equal(result.summary.inconclusive, 1);
@@ -33,10 +34,13 @@ export const testNode = authoredSuite('property input reconstruction', [
         scope.assert.equal(result.perTest[0]?.property?.invocations[0]?.summary?.status, 'work-exhausted');
         return scope.assert.collect();
     }),
-    test('preserves an established assertion failure when reconstruction exhausts work', async function (scope) {
-        const result = await budgetedReconstruction(true);
-        scope.assert.equal(result.summary.failed, 1);
-        scope.assert.equal(result.summary.inconclusive, 0);
-        return scope.assert.collect();
-    })
+    test(
+        'preserves an established assertion failure when reconstruction exhausts work',
+        async function (scope) {
+            const result = await budgetedReconstruction(true);
+            scope.assert.equal(result.summary.failed, 1);
+            scope.assert.equal(result.summary.inconclusive, 0);
+            return scope.assert.collect();
+        }
+    )
 ]);

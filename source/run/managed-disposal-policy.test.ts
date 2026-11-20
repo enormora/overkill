@@ -1,4 +1,4 @@
-import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+import { type TestNode, table, suite } from '@overkill-dev/test';
 
 import { managedDisposal } from '../test-support/managed-disposal.ts';
 import {
@@ -8,34 +8,49 @@ import {
     freshDisposalSignal
 } from './resource-lifecycle-disposal.ts';
 
-export const testNode = authoredSuite('managed resource cleanup policy', [
-    ...[ false, true ].flatMap(function (observed) {
-        return [ false, true ].map(function (fails) {
-            return test(
-                `releases owner after observed ${observed} disposal failure ${fails}`,
-                async function (scope: TestScope) {
-                    const fixture = managedDisposal(fails ? 'dispose-error' : 'clean', observed);
-                    const request = { signal: freshDisposalSignal(), timing: null, testCases: [ fixture.testCase ] };
-                    if (fails) {
-                        await scope.assert.rejects(async function () {
-                            await disposeBoundary(fixture.stores, fixture.record.boundary.key, request);
-                        }, { message: 'dispose failed' });
-                    } else {
-                        await disposeBoundary(fixture.stores, fixture.record.boundary.key, request);
-                    }
-                    scope.assert.deepEqual(
-                        fixture.calls,
-                        observed ? [ 'close', 'dispose', 'release' ] : [ 'dispose', 'release' ]
-                    );
-                    scope.assert.equal(fixture.stores.existingRecord(fixture.record.boundary.key), undefined);
+export const testNode: TestNode = suite('managed resource cleanup policy', [
+    table({
+        title: 'releases owners after disposal failures',
+        cases: [ false, true ].flatMap(function (observed) {
+            return [ false, true ].map(function (fails) {
+                return ({
+                    caseDescription: `${observed}, ${fails}`,
+                    observed,
+                    fails
+                });
+            });
+        }),
+        caseTitle: (row) => row.caseDescription,
+        async test(scope) {
+            const { observed, fails } = scope.parameters;
+
+            const fixture = managedDisposal(fails ? 'dispose-error' : 'clean', observed);
+            const request = { signal: freshDisposalSignal(), timing: null, testCases: [ fixture.testCase ] };
+            if (fails) {
+                await scope.assert.rejects(async function () {
                     await disposeBoundary(fixture.stores, fixture.record.boundary.key, request);
-                    return scope.assert.collect();
-                }
+                }, { message: 'dispose failed' });
+            } else {
+                await disposeBoundary(fixture.stores, fixture.record.boundary.key, request);
+            }
+            scope.assert.deepEqual(
+                fixture.calls,
+                observed ? [ 'close', 'dispose', 'release' ] : [ 'dispose', 'release' ]
             );
-        });
+            scope.assert.equal(fixture.stores.existingRecord(fixture.record.boundary.key), undefined);
+            await disposeBoundary(fixture.stores, fixture.record.boundary.key, request);
+            return scope.assert.collect();
+        }
     }),
-    ...([ 'clean', 'prepare-error', 'finalize-error' ] as const).map(function (scenario) {
-        return test(`attributes ${scenario} observation to the owning attempt`, async function (scope: TestScope) {
+    table({
+        title: 'attributes disposal observations to the owning attempt',
+        cases: [ 'clean', 'prepare-error', 'finalize-error' ] as const,
+        caseTitle(scenario) {
+            return `${scenario}`;
+        },
+        async test(scope) {
+            const scenario = scope.parameters;
+
             const fixture = managedDisposal(scenario, true);
             await prepareManagedResources(fixture.stores, fixture.testCase, { index: 0 });
             await finalizeManagedChecks(fixture.stores, fixture.testCase, { index: 0 });
@@ -47,6 +62,6 @@ export const testNode = authoredSuite('managed resource cleanup policy', [
                 scenario === 'clean' ? null : fixture.testCase.id.title
             );
             return scope.assert.collect();
-        });
+        }
     })
 ]);

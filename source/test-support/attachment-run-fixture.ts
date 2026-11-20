@@ -1,4 +1,4 @@
-import type { TestScope } from '../engine/test-scope.ts';
+import type { TestScope } from '@overkill-dev/test';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import type { RunOrchestratorDependencies } from '../run/run-orchestrator-dependencies.ts';
 import { orchestrator } from '../run/run-orchestrator.entry-point.ts';
@@ -16,7 +16,7 @@ export type AttachmentRunFixture = {
 };
 
 export async function attachmentRunFixture(scope: TestScope): Promise<AttachmentRunFixture> {
-    const fixture = 'source/integration-tests/run/fixtures/runtime-attachments.test.ts';
+    const fixture = 'source/integration-tests/integration/fixtures/runtime-attachments.test.ts';
     const { directory } = await attachmentFixture(scope, defaultAttachmentLimits);
     const resolved = await orchestrator.resolve({
         config: defaultRunConfig({

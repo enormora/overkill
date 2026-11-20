@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 import type { NormalizedConfig, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
@@ -25,7 +25,7 @@ import {
     resultWithTimingCollection
 } from './run-timing-collection.ts';
 
-const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 
 function runCommand(config: NormalizedConfig, request: RunRequest): RunCommand {
     return {
@@ -48,7 +48,7 @@ function timingSpanByKind(report: RunPreciseTimingReport, kind: RunTimingSpanKin
     return span;
 }
 
-function assertMeasuredParentAndLocalSpans(scope: OverkillScope, report: RunPreciseTimingReport): void {
+function assertMeasuredParentAndLocalSpans(scope: TestScope, report: RunPreciseTimingReport): void {
     const parentSpan = timingSpanByKind(report, 'collection.resolve');
     const localSpan = timingSpanByKind(report, 'worker.import-startup');
 
@@ -81,8 +81,8 @@ function inProcessConfig(profile = defaultMicrotestProfile()): NormalizedConfig 
     });
 }
 
-export const testNode = suite('source/run/run-timing-collection.test.ts', [
-    test('resolveTimingCollection() applies profile and request policy', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Run timing collection', [
+    test('resolveTimingCollection() applies profile and request policy', function (scope) {
         const request = defaultRunRequest();
 
         scope.assert.equal(resolveTimingCollection(request, defaultMicrotestProfile()), 'summary');
@@ -105,7 +105,7 @@ export const testNode = suite('source/run/run-timing-collection.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('resolveTimingCollection() upgrades strategies that consume timing facts', function (scope: OverkillScope) {
+    test('resolveTimingCollection() upgrades strategies that consume timing facts', function (scope) {
         const request = defaultRunRequest();
 
         scope.assert.equal(
@@ -145,7 +145,7 @@ export const testNode = suite('source/run/run-timing-collection.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('orchestrator.run() leaves precise timings absent by default', async function (scope: OverkillScope) {
+    test('orchestrator.run() leaves precise timings absent by default', async function (scope) {
         const orchestrator = createDeterministicRunOrchestrator();
         const result = await orchestrator.run(runCommand(
             inProcessConfig(),
@@ -156,7 +156,7 @@ export const testNode = suite('source/run/run-timing-collection.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('RunTimingMeasurement records parent offsets and local durations', function (scope: OverkillScope) {
+    test('RunTimingMeasurement records parent offsets and local durations', function (scope) {
         const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
         const timing = createRunTimingMeasurement(clock);
 
@@ -186,7 +186,7 @@ export const testNode = suite('source/run/run-timing-collection.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('RunTimingMeasurement records failed measured work before rethrowing', function (scope: OverkillScope) {
+    test('RunTimingMeasurement records failed measured work before rethrowing', function (scope) {
         const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
         const timing = createRunTimingMeasurement(clock);
         const error = new Error('measurement failure');
@@ -224,7 +224,7 @@ export const testNode = suite('source/run/run-timing-collection.test.ts', [
     }),
     test(
         'resultWithTimingCollection() preserves summary mode and existing precise reports',
-        function (scope: OverkillScope) {
+        function (scope) {
             const summaryResult = runResultFactory.build();
             const preciseReport = preciseTimingReport({
                 aggregationMicroseconds: 0,
@@ -247,7 +247,7 @@ export const testNode = suite('source/run/run-timing-collection.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('resultWithTimingCollection() creates fallback precise reports', function (scope: OverkillScope) {
+    test('resultWithTimingCollection() creates fallback precise reports', function (scope: TestScope) {
         const result = resultWithTimingCollection('precise', runResultFactory.build());
 
         scope.require.notNull(result.timings.precise);
@@ -258,7 +258,7 @@ export const testNode = suite('source/run/run-timing-collection.test.ts', [
     }),
     test(
         'resultWithTimingCollection() derives collection-error summary from observed spans',
-        function (scope: OverkillScope) {
+        function (scope) {
             const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
             const timing = createRunTimingMeasurement(clock);
 
@@ -275,7 +275,7 @@ export const testNode = suite('source/run/run-timing-collection.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('resultWithTimingCollection() derives summary from local precise spans', function (scope: OverkillScope) {
+    test('resultWithTimingCollection() derives summary from local precise spans', function (scope) {
         const timing = createRunTimingMeasurement(
             createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
         );
@@ -298,7 +298,7 @@ export const testNode = suite('source/run/run-timing-collection.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('orchestrator.run() records precise spans for precise collection', async function (scope: OverkillScope) {
+    test('orchestrator.run() records precise spans for precise collection', async function (scope: TestScope) {
         const orchestrator = createDeterministicRunOrchestrator();
         const result = await orchestrator.run(runCommand(
             inProcessConfig(),

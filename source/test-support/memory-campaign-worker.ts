@@ -1,3 +1,4 @@
+import { defineHarness } from '@overkill-dev/test';
 import {
     type CampaignWorker,
     createCampaignSession,
@@ -19,7 +20,11 @@ type CampaignWorkerFixture = {
     readonly campaigns: ReadonlyMap<string, string>;
     readonly sandbox: MutationSandbox;
 };
-export async function memoryCampaignWorker(policyFailure: Error | null): Promise<CampaignWorkerFixture> {
+export const memoryCampaignWorker = defineHarness({
+    policyFailure(): Error | null {
+        return null;
+    }
+}, async function ({ policyFailure }): Promise<CampaignWorkerFixture> {
     const policy = await frozenMicrotestPolicy();
     const calls: string[] = [];
     const invocations: RunExecutionInvocation[] = [];
@@ -58,4 +63,4 @@ export async function memoryCampaignWorker(policyFailure: Error | null): Promise
     const worker = createCampaignSession({ baselines, campaigns }, runtime);
     const sandbox = { originalRoot: '/project', root: '/project', sharedRoots: [], files: [] };
     return { worker, runtime, policy, calls, invocations, baselines, campaigns, sandbox };
-}
+});

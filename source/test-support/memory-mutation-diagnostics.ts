@@ -3,7 +3,6 @@ import { type DeterministicClock, createDeterministicClock } from '@enormora/clo
 import type { InvocationBudget } from '../invocation-budget.ts';
 import type { RunExecutionReply } from '../run/execution-session-types.ts';
 import { createInvocationBudget } from '../packages/run/run.entry-point.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
 import type {
     MutationDiagnosticContext,
     MutationDiagnosticDocument
@@ -22,13 +21,11 @@ type MutationDiagnosticFixture = {
 };
 const invocationMilliseconds = 50;
 export function memoryMutationDiagnostics(
-    scope: TestScope,
     mode: MutationDiagnosticContext['mode'],
     failure: Error | null
 ): MutationDiagnosticFixture {
     const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
     const budget = createInvocationBudget(invocationMilliseconds, null, clock);
-    scope.cleanup(budget.dispose);
     const documents: MutationDiagnosticDocument[] = [];
     const context: MutationDiagnosticContext = {
         mode,

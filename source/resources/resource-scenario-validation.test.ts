@@ -1,6 +1,5 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defineResource } from './resources.ts';
 import { resourceScenarioOwners } from './resource-scenario-binding.ts';
 
@@ -110,8 +109,8 @@ function assertResourceScenarioValidation(scope: TestScope): void {
     );
 }
 
-export const testNode = suite('source/resources/resource-scenario-validation.test.ts', [
-    test('defineResource rejects malformed scenario slots', function (scope: TestScope) {
+export const testNode: TestNode = suite('Resource scenario validation', [
+    test('defineResource rejects malformed scenario slots', function (scope) {
         assertResourceScenarioValidation(scope);
 
         return scope.assert.collect();

@@ -1,5 +1,5 @@
+import { type TestNode, suite, test } from '@overkill-dev/test';
 import { resolve } from 'node:path';
-import { suite as authoredSuite, test } from '@overkill-dev/test';
 
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 
@@ -10,7 +10,7 @@ import { policyBaselineCommand } from './frozen-run-policy.ts';
 import { createSupervisedCollectCommand } from './run-isolated-command.ts';
 import { frozenSupervisedCommandSchema } from './frozen-supervised-command-schema.ts';
 
-const file = 'source/integration-tests/run/fixtures/throws-on-import.test.ts';
+const file = 'source/integration-tests/integration/fixtures/throws-on-import.test.ts';
 
 async function freezePolicy(): Promise<FrozenMicrotestPolicy> {
     const command = createMutationRunCommand({
@@ -25,7 +25,7 @@ async function freezePolicy(): Promise<FrozenMicrotestPolicy> {
     });
 }
 
-export const testNode = authoredSuite('frozen policy transport', [
+export const testNode: TestNode = suite('frozen policy transport', [
     test('transports module boundaries and accepts older unbounded policies', async function (scope) {
         const policy = await freezePolicy();
         const bounded = parseFrozenMicrotestPolicy({

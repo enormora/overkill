@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { defineReporter, defineTestFamily, type TestFamily } from '../packages/engine/engine.entry-point.ts';
 import { normalizeConfig, type RunCommand, type RunRequest } from '../packages/run/run.entry-point.ts';
@@ -99,9 +99,16 @@ const unsupportedAnalysisRequests: readonly {
     }
 ];
 
-export const testNode = authoredSuite('family runner failure policy', [
-    ...unsupportedAnalysisRequests.map(function rejectedAnalysisRequest(scenario) {
-        return authoredTest(`rejects ${scenario.name} for analysis before backend loading`, function (scope) {
+export const testNode: TestNode = suite('family runner failure policy', [
+    table({
+        title: 'rejects invalid analysis policies before backend loading',
+        cases: unsupportedAnalysisRequests,
+        caseTitle(scenario) {
+            return `${scenario.name}`;
+        },
+        test(scope) {
+            const scenario = scope.parameters;
+
             const events: string[] = [];
             const input = command(function record(event) {
                 events.push(event);
@@ -116,9 +123,9 @@ export const testNode = authoredSuite('family runner failure policy', [
             }, { message: scenario.message });
             scope.assert.deepEqual(events, []);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('rejects baseline and merge-recording namespaces for imported analysis', function (scope) {
+    test('rejects baseline and merge-recording namespaces for imported analysis', function (scope) {
         const input = command(function unusedBackend() {
             return undefined;
         }, 'complete');
@@ -136,7 +143,7 @@ export const testNode = authoredSuite('family runner failure policy', [
         }, { message: '--record-for-merge is only supported by ordinary runs outside execution sessions.' });
         return scope.assert.collect();
     }),
-    authoredTest('validates malformed JavaScript request flags before backend loading', function (scope) {
+    test('validates malformed JavaScript request flags before backend loading', function (scope) {
         const input = command(function unusedBackend() {
             return undefined;
         }, 'complete');
@@ -159,7 +166,7 @@ export const testNode = authoredSuite('family runner failure policy', [
         }
         return scope.assert.collect();
     }),
-    authoredTest('retains selection and disposal failures together', async function (scope) {
+    test('retains selection and disposal failures together', async function (scope) {
         const events: string[] = [];
         const cleanup = new Error('Family cleanup failed.');
         const input = command(function record(event) {
@@ -200,7 +207,7 @@ export const testNode = authoredSuite('family runner failure policy', [
         }
         throw new Error('Expected family selection to reject.');
     }),
-    authoredTest('preserves failures for resolved plans without family preparations', async function (scope) {
+    test('preserves failures for resolved plans without family preparations', async function (scope) {
         const input = command(function unusedBackend() {
             return undefined;
         }, 'complete');
@@ -219,7 +226,7 @@ export const testNode = authoredSuite('family runner failure policy', [
         }
         throw new Error('Expected family observation to reject.');
     }),
-    authoredTest('rejects variant drift between collection and repeated preparation', async function (scope) {
+    test('rejects variant drift between collection and repeated preparation', async function (scope) {
         const events: string[] = [];
         const input = command(function unusedBackend() {
             return undefined;
@@ -246,7 +253,7 @@ export const testNode = authoredSuite('family runner failure policy', [
         scope.assert.deepEqual(events, [ 'load', 'prepare', 'collect', 'dispose', 'load', 'prepare', 'dispose' ]);
         return scope.assert.collect();
     }),
-    authoredTest('reports imported family identity when rejecting benchmark selection', function (scope) {
+    test('reports imported family identity when rejecting benchmark selection', function (scope) {
         const events: string[] = [];
         const input = command(function record(event) {
             events.push(event);
@@ -260,7 +267,7 @@ export const testNode = authoredSuite('family runner failure policy', [
         scope.assert.deepEqual(events, []);
         return scope.assert.collect();
     }),
-    authoredTest('maps backend setup failures through runner diagnostics', async function (scope) {
+    test('maps backend setup failures through runner diagnostics', async function (scope) {
         const events: string[] = [];
         const coordinator = createUnitRunCoordinator();
         const result = await coordinator.orchestrator.run(command(function record(event) {
@@ -280,7 +287,7 @@ export const testNode = authoredSuite('family runner failure policy', [
         scope.assert.deepEqual(events, [ 'load', 'prepare' ]);
         return scope.assert.collect();
     }),
-    authoredTest('disposes empty selections without calling backend collection', async function (scope) {
+    test('disposes empty selections without calling backend collection', async function (scope) {
         const events: string[] = [];
         const coordinator = createUnitRunCoordinator();
         const input = command(function record(event) {
@@ -294,7 +301,7 @@ export const testNode = authoredSuite('family runner failure policy', [
         scope.assert.deepEqual(events, [ 'load', 'prepare', 'dispose' ]);
         return scope.assert.collect();
     }),
-    authoredTest('retains reporter failure and disposes backend before final delivery', async function (scope) {
+    test('retains reporter failure and disposes backend before final delivery', async function (scope) {
         const events: string[] = [];
         const coordinator = createUnitRunCoordinator();
         const input = command(function record(event) {

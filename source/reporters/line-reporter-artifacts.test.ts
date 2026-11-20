@@ -1,11 +1,4 @@
-import {
-    type TestScope as OverkillScope,
-    suite,
-    test,
-    doubleUsage,
-    testDouble,
-    type TestDouble
-} from '@overkill-dev/test';
+import { type TestNode, suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -150,8 +143,8 @@ const coverageArtifact: RunArtifact = {
     source: 'v8-native'
 };
 
-export const testNode = suite('source/reporters/line-reporter-artifacts.test.ts', [
-    test('line reporter points to completed coverage output', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Line reporter artifacts', [
+    test('points to completed coverage output', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
 
@@ -180,8 +173,8 @@ export const testNode = suite('source/reporters/line-reporter-artifacts.test.ts'
         return scope.assert.collect();
     }),
     test(
-        'line reporter suppresses captured output for passing tests by default',
-        async function (scope: OverkillScope) {
+        'suppresses captured output for passing tests by default',
+        async function (scope) {
             const log = testDouble<LogFunction>();
             const reporter = lineReporterWithLog(log);
 
@@ -207,8 +200,8 @@ export const testNode = suite('source/reporters/line-reporter-artifacts.test.ts'
         }
     ),
     test(
-        'line reporter defers captured output for passing tests in verbose mode',
-        async function (scope: OverkillScope) {
+        'defers captured output for passing tests in verbose mode',
+        async function (scope) {
             const log = testDouble<LogFunction>();
             const reporter = lineReporterWithOptions(log, true);
 
@@ -232,7 +225,7 @@ export const testNode = suite('source/reporters/line-reporter-artifacts.test.ts'
             return scope.assert.collect();
         }
     ),
-    test('line reporter defers truncated empty captured output', async function (scope: OverkillScope) {
+    test('defers truncated empty captured output', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithOptions(log, true);
 
@@ -255,7 +248,7 @@ export const testNode = suite('source/reporters/line-reporter-artifacts.test.ts'
 
         return scope.assert.collect();
     }),
-    test('line reporter defers captured output for non-passing tests', async function (scope: OverkillScope) {
+    test('defers captured output for non-passing tests', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
 
@@ -278,7 +271,7 @@ export const testNode = suite('source/reporters/line-reporter-artifacts.test.ts'
 
         return scope.assert.collect();
     }),
-    test('line reporter prints run-level captured output for non-green runs', async function (scope: OverkillScope) {
+    test('prints run-level captured output for non-green runs', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
 

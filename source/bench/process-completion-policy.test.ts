@@ -1,12 +1,12 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { completionProcess } from '../test-support/process-completion.ts';
 import { completeProcess } from './process-interactions.ts';
 import { processCheckpoint, withProcessTimeline, type ProcessCheckpoint } from './process-timeline.ts';
 
 const expectedExit = { kind: 'exit', readiness: null, steps: [], expectedExitCodes: [ 0 ] } as const;
-export const testNode = authoredSuite('process completion and timeline policy', [
-    authoredTest('returns the exit boundary after the complete script', async function (scope: TestScope) {
+export const testNode: TestNode = suite('process completion and timeline policy', [
+    test('returns the exit boundary after the complete script', async function (scope) {
         const fixture = completionProcess(0, null);
         fixture.output.append('stdout', Buffer.from('ready'));
         const result = await completeProcess(
@@ -28,25 +28,25 @@ export const testNode = authoredSuite('process completion and timeline policy', 
         scope.assert.deepEqual(fixture.calls, [ 'write:first', 'close' ]);
         return scope.assert.collect();
     }),
-    ...([ { code: null, signal: null }, { code: 1, signal: null }, { code: 0, signal: 'SIGTERM' } ] as const).map(
-        function (exit) {
-            return authoredTest(
-                `rejects unexpected exit ${String(exit.code)} ${String(exit.signal)}`,
-                async function (scope: TestScope) {
-                    const fixture = completionProcess(exit.code, exit.signal);
-                    await scope.assert.rejects(async function () {
-                        await completeProcess(expectedExit, fixture.child, fixture.output);
-                    }, {
-                        message: `Process exited unexpectedly: code ${String(exit.code)}, signal ${
-                            String(exit.signal)
-                        }.`
-                    });
-                    return scope.assert.collect();
-                }
-            );
+    table({
+        title: 'rejects unexpected exits',
+        cases: [ { code: null, signal: null }, { code: 1, signal: null }, { code: 0, signal: 'SIGTERM' } ] as const,
+        caseTitle(exit) {
+            return `${String(exit.code)}, ${String(exit.signal)}`;
+        },
+        async test(scope) {
+            const exit = scope.parameters;
+
+            const fixture = completionProcess(exit.code, exit.signal);
+            await scope.assert.rejects(async function () {
+                await completeProcess(expectedExit, fixture.child, fixture.output);
+            }, {
+                message: `Process exited unexpectedly: code ${String(exit.code)}, signal ${String(exit.signal)}.`
+            });
+            return scope.assert.collect();
         }
-    ),
-    authoredTest('accepts an explicitly allowed nonzero exit', async function (scope: TestScope) {
+    }),
+    test('accepts an explicitly allowed nonzero exit', async function (scope) {
         const fixture = completionProcess(7, null);
         const result = await completeProcess(
             { ...expectedExit, expectedExitCodes: [ 7 ] },
@@ -57,9 +57,9 @@ export const testNode = authoredSuite('process completion and timeline policy', 
         scope.assert.equal(result.readiness, null);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'uses readiness as the completion boundary without waiting for exit',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = completionProcess(1, 'SIGTERM');
             fixture.output.append('stdout', Buffer.from('ready'));
             const result = await completeProcess(
@@ -73,7 +73,7 @@ export const testNode = authoredSuite('process completion and timeline policy', 
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'measures interaction completion and preserves the metric name and provenance',
         async function (scope: TestScope) {
             const fixture = completionProcess(1, null);
@@ -105,9 +105,9 @@ export const testNode = authoredSuite('process completion and timeline policy', 
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'records successful and failed checkpoints without swallowing failures',
-        async function (scope: TestScope) {
+        async function (scope) {
             const recorded: ProcessCheckpoint[] = [];
             const failure = new Error('step failed');
             await withProcessTimeline(function (value) {
@@ -137,9 +137,9 @@ export const testNode = authoredSuite('process completion and timeline policy', 
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'preserves results and failures when timeline recording is disabled',
-        async function (scope: TestScope) {
+        async function (scope) {
             const failure = new Error('disabled');
             scope.assert.equal(
                 await withProcessTimeline(null, async function () {

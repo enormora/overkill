@@ -1,8 +1,8 @@
+import { table, type TestNode, suite, type TestScope } from '#tests';
 import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { suite, test, type TestScope } from '#tests';
 
 import {
     createCoverageConfigScript,
@@ -12,9 +12,9 @@ import {
     coverageTypeScriptSource,
     coverageNativeTypeScriptSource,
     type CoverageSourceKind
-} from './package-coverage-scripts.test.ts';
+} from './support/package-coverage-scripts.ts';
 
-const packageSmokeFolder = fileURLToPath(new URL('.', import.meta.url));
+const packageSmokeFolder = fileURLToPath(new URL('./', import.meta.url));
 const overkillBinEntryPointPath = path.join(
     packageSmokeFolder,
     'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
@@ -81,53 +81,57 @@ function assertConsumerCoverage(scope: TestScope, lcov: string, sourceKind: Cove
 
 const processModels = [ 'in-process', 'supervised-process' ] as const;
 
-export const testNode = suite(
+export const testNode: TestNode = suite(
     'packaged overkill generates coverage reports for consumer source',
-    processModels.flatMap(function coverageProcess(processModel) {
-        return ([ 'javascript', 'mapped', 'native', 'unloaded' ] as const).map(function coverageTest(sourceKind) {
-            return test({
-                title: `${processModel} ${sourceKind}`,
-                annotations: {},
-                controls: {},
-                async body(scope: TestScope) {
-                    await fs.rm(path.join(packageSmokeFolder, 'coverage-smoke'), { force: true, recursive: true });
-                    await Promise.all([
-                        fs.writeFile(
-                            path.join(packageSmokeFolder, 'coverage-overkill.config.js'),
-                            createCoverageConfigScript(processModel, sourceKind)
-                        ),
-                        fs.writeFile(
-                            path.join(packageSmokeFolder, 'coverage-source.mjs'),
-                            coverageGeneratedScript(sourceKind)
-                        ),
-                        fs.writeFile(
-                            path.join(packageSmokeFolder, 'coverage-source.ts'),
-                            sourceKind === 'native' ? coverageNativeTypeScriptSource : coverageTypeScriptSource
-                        ),
-                        fs.writeFile(
-                            path.join(packageSmokeFolder, 'coverage-types.ts'),
-                            '/** Domain type. */\nexport type Value = number;\n'
-                        ),
-                        fs.writeFile(
-                            path.join(packageSmokeFolder, 'coverage-unloaded.ts'),
-                            'export function untouched(): number { return 42; }\n'
-                        ),
-                        fs.writeFile(
-                            path.join(packageSmokeFolder, 'coverage-smoke.test.mjs'),
-                            coverageSmokeScript(sourceKind)
-                        )
-                    ]);
-
-                    const result = await runPackagedCoverage();
-                    const lcov = await fs.readFile(path.join(packageSmokeFolder, 'coverage-smoke/lcov.info'), 'utf8');
-
-                    assertCoverageDiagnostics(scope, result.stderr);
-                    scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
-                    assertConsumerCoverage(scope, lcov, sourceKind);
-
-                    return scope.assert.collect();
-                }
+    [ table({
+        annotations: {},
+        controls: {},
+        title: 'test binary coverage scenarios',
+        cases: processModels.flatMap(function coverageProcess(processModel) {
+            return ([ 'javascript', 'mapped', 'native', 'unloaded' ] as const).map(function coverageTest(sourceKind) {
+                return ({ caseDescription: `${processModel} ${sourceKind}`, processModel, sourceKind });
             });
-        });
-    })
+        }),
+        caseTitle: (row) => row.caseDescription,
+        async test(scope) {
+            const { processModel, sourceKind } = scope.parameters;
+
+            await fs.rm(path.join(packageSmokeFolder, 'coverage-smoke'), { force: true, recursive: true });
+            await Promise.all([
+                fs.writeFile(
+                    path.join(packageSmokeFolder, 'coverage-overkill.config.js'),
+                    createCoverageConfigScript(processModel, sourceKind)
+                ),
+                fs.writeFile(
+                    path.join(packageSmokeFolder, 'coverage-source.mjs'),
+                    coverageGeneratedScript(sourceKind)
+                ),
+                fs.writeFile(
+                    path.join(packageSmokeFolder, 'coverage-source.ts'),
+                    sourceKind === 'native' ? coverageNativeTypeScriptSource : coverageTypeScriptSource
+                ),
+                fs.writeFile(
+                    path.join(packageSmokeFolder, 'coverage-types.ts'),
+                    '/** Domain type. */\nexport type Value = number;\n'
+                ),
+                fs.writeFile(
+                    path.join(packageSmokeFolder, 'coverage-unloaded.ts'),
+                    'export function untouched(): number { return 42; }\n'
+                ),
+                fs.writeFile(
+                    path.join(packageSmokeFolder, 'coverage-smoke.test.mjs'),
+                    coverageSmokeScript(sourceKind)
+                )
+            ]);
+
+            const result = await runPackagedCoverage();
+            const lcov = await fs.readFile(path.join(packageSmokeFolder, 'coverage-smoke/lcov.info'), 'utf8');
+
+            assertCoverageDiagnostics(scope, result.stderr);
+            scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
+            assertConsumerCoverage(scope, lcov, sourceKind);
+
+            return scope.assert.collect();
+        }
+    }) ]
 );

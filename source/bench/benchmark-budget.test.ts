@@ -1,10 +1,10 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { normalizeMetricBudget } from './benchmark-budget-definition.ts';
 import { boundedMeanInterval, evaluateMetricBudget, quantileInterval } from './benchmark-budget.ts';
 import { defaultSamplingPolicy } from './sampling-policy.ts';
 
-export const testNode = authoredSuite('benchmark confidence intervals', [
+export const testNode: TestNode = suite('benchmark confidence intervals', [
     test('keeps single-observation means bounded by the declared range', function (scope) {
         scope.assert.deepEqual(boundedMeanInterval([ 1 ], { minimum: 0, maximum: 2 }, 0.05), {
             estimate: 1,

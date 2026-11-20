@@ -1,41 +1,51 @@
-import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+import { type TestNode, table, suite } from '@overkill-dev/test';
 
 import { MutantRunStatus } from '@stryker-mutator/api/test-runner';
 
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { createMutationEvidenceFixture } from '../../test-support/mutation-evidence-fixture.ts';
-import { testNode as protocol } from './mutation-baseline-protocol.test.ts';
+
 import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
 import { interruptedMutantResult, hitLimitCollectionReply } from './mutation-interrupted-result.ts';
 
-export const testNode = authoredSuite('interrupted mutation adapter replies', [
-    protocol,
-    ...[ false, true ].map(function (confirmedKill) {
-        return test(
-            `requires eligible killing evidence for interrupted bail ${confirmedKill}`,
-            async function (scope: TestScope) {
-                const fixture = await createMutationEvidenceFixture(scope, false);
-                if (confirmedKill) {
-                    await fixture.record(fixture.failed, []);
-                }
-                const data = { ...mutationLifecycleDataSchema.parse(fixture.lifecycle.snapshot()), bailed: true };
-                const result = interruptedMutantResult('/project', { kind: 'timeout', artifacts: [], data }, {
-                    ...fixture.expectation,
-                    disableBail: false
-                });
-                scope.assert.equal(result.status, confirmedKill ? MutantRunStatus.Timeout : MutantRunStatus.Error);
-                if (result.status === MutantRunStatus.Error) {
-                    scope.assert.includes(
-                        result.errorMessage,
-                        'Execution stopped without a confirmed eligible failure.'
-                    );
-                }
-                return scope.assert.collect();
+export const testNode: TestNode = suite('interrupted mutation adapter replies', [
+    table({
+        title: 'requires eligible killing evidence for interrupted bail',
+        cases: [ false, true ],
+        caseTitle(confirmedKill) {
+            return `${confirmedKill}`;
+        },
+        async test(scope) {
+            const confirmedKill = scope.parameters;
+
+            const fixture = await createMutationEvidenceFixture(scope, false);
+            if (confirmedKill) {
+                await fixture.record(fixture.failed, []);
             }
-        );
+            const data = { ...mutationLifecycleDataSchema.parse(fixture.lifecycle.snapshot()), bailed: true };
+            const result = interruptedMutantResult('/project', { kind: 'timeout', artifacts: [], data }, {
+                ...fixture.expectation,
+                disableBail: false
+            });
+            scope.assert.equal(result.status, confirmedKill ? MutantRunStatus.Timeout : MutantRunStatus.Error);
+            if (result.status === MutantRunStatus.Error) {
+                scope.assert.includes(
+                    result.errorMessage,
+                    'Execution stopped without a confirmed eligible failure.'
+                );
+            }
+            return scope.assert.collect();
+        }
     }),
-    ...[ 'loader', 'runtime' ].map(function (kind) {
-        return test(`only converts empty loader hit-limit failures to timeouts: ${kind}`, function (scope: TestScope) {
+    table({
+        title: 'converts only empty loader hit-limit failures to timeouts',
+        cases: [ 'loader', 'runtime' ],
+        caseTitle(kind) {
+            return `${kind}`;
+        },
+        test(scope) {
+            const kind = scope.parameters;
+
             const { reply } = mutationCoverageFixture('off');
             const data = { ...mutationLifecycleDataSchema.parse(reply.data), hitLimitExceeded: true };
             const guarded = {
@@ -59,6 +69,6 @@ export const testNode = authoredSuite('interrupted mutation adapter replies', [
                 kind: kind === 'loader' ? 'timeout' : null
             });
             return scope.assert.collect();
-        });
+        }
     })
 ]);

@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createDefaultWorkId } from '../engine/identity.ts';
 
@@ -100,8 +100,8 @@ function outcomeFindings(outcome: RunRecordTestOutcome | null | undefined): Outc
         })
     };
 }
-export const testNode = authoredSuite('recorded nested findings', [
-    test('preserves every composite child, assertion check, and resource finding', function (scope: TestScope) {
+export const testNode: TestNode = suite('recorded nested findings', [
+    test('preserves every composite child, assertion check, and resource finding', function (scope) {
         const live = nestedFindings();
         const recorded = recordedRunResult(live);
         scope.assert.deepEqual(outcomeFindings(recorded.perTest[0]?.outcome), {

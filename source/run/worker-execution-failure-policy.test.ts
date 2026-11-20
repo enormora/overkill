@@ -1,7 +1,7 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, testDouble } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { testDouble } from '../packages/test/test.entry-point.ts';
+
 import {
     fakeWorkerRuntime,
     createCollectedPlan,
@@ -57,8 +57,8 @@ function failingPool(mode: FailureMode): FailedPool {
         }
     };
 }
-export const testNode = authoredSuite('worker execution failure policy', [
-    test('retains host failure evidence ahead of a coincident worker rejection', async function (scope: TestScope) {
+export const testNode: TestNode = suite('worker execution failure policy', [
+    test('retains host failure evidence ahead of a coincident worker rejection', async function (scope) {
         const fixture = failingPool('host');
         const completed = await executeWorkerPoolUnits(fixture.runtime, placementPlan(), 0);
         scope.assert.equal(fixture.calls(), 1);
@@ -66,7 +66,7 @@ export const testNode = authoredSuite('worker execution failure policy', [
         scope.assert.equal(completed[0]?.interruptionCause.read(), 'host-failure');
         return scope.assert.collect();
     }),
-    test('does not schedule work after a terminal collection failure', async function (scope: TestScope) {
+    test('does not schedule work after a terminal collection failure', async function (scope) {
         const fixture = failingPool('terminal');
         fixture.runtime.terminalFailure.write(true);
         const completed = await executeWorkerPoolUnits(fixture.runtime, placementPlan(), 0);
@@ -74,7 +74,7 @@ export const testNode = authoredSuite('worker execution failure policy', [
         scope.assert.equal(fixture.calls(), 0);
         return scope.assert.collect();
     }),
-    test('retains non-error worker failures while bounding retries', async function (scope: TestScope) {
+    test('retains non-error worker failures while bounding retries', async function (scope) {
         const fixture = failingPool('crash');
         const completed = await executeWorkerPoolUnits(fixture.runtime, placementPlan(), 0);
         scope.assert.equal(fixture.calls(), 3);
@@ -82,7 +82,7 @@ export const testNode = authoredSuite('worker execution failure policy', [
         scope.assert.equal(fixture.runtime.runState.runnerErrors()[0]?.message, crashLimitMessage);
         return scope.assert.collect();
     }),
-    test('stops immediately when a worker reports denied permissions', async function (scope: TestScope) {
+    test('stops immediately when a worker reports denied permissions', async function (scope) {
         const fixture = failingPool('permission');
         const completed = await executeWorkerPoolUnits(fixture.runtime, placementPlan(), 0);
         scope.assert.equal(fixture.calls(), 1);
@@ -90,7 +90,7 @@ export const testNode = authoredSuite('worker execution failure policy', [
         scope.assert.true(fixture.runtime.terminalFailure.read());
         return scope.assert.collect();
     }),
-    test('does not turn failures after terminal shutdown into new crashes', async function (scope: TestScope) {
+    test('does not turn failures after terminal shutdown into new crashes', async function (scope) {
         const fixture = failingPool('stopped');
         const completed = await executeWorkerPoolUnits(fixture.runtime, placementPlan(), 0);
         scope.assert.equal(fixture.calls(), 1);
@@ -98,7 +98,7 @@ export const testNode = authoredSuite('worker execution failure policy', [
         scope.assert.deepEqual(fixture.runtime.runState.runnerErrors(), []);
         return scope.assert.collect();
     }),
-    test('does not requeue work cancelled by its parent', async function (scope: TestScope) {
+    test('does not requeue work cancelled by its parent', async function (scope) {
         const fixture = failingPool('cancelled');
         const completed = await executeWorkerPoolUnits(fixture.runtime, placementPlan(), 0);
         scope.assert.equal(fixture.calls(), 1);

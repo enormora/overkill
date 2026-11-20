@@ -1,11 +1,4 @@
-import {
-    type TestScope as OverkillScope,
-    suite,
-    test,
-    doubleUsage,
-    testDouble,
-    type TestDouble
-} from '@overkill-dev/test';
+import { type TestNode, suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -95,8 +88,8 @@ async function reportLongCase(reporter: RealTimeReporter): Promise<void> {
     });
 }
 
-export const testNode = suite('source/reporters/line-reporter-progress.test.ts', [
-    test('line reporter wraps long progress lines under the message column', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Line reporter progress', [
+    test('wraps long progress lines under the message column', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = narrowLineReporterWithLog(log, true);
 
@@ -112,7 +105,7 @@ export const testNode = suite('source/reporters/line-reporter-progress.test.ts',
 
         return scope.assert.collect();
     }),
-    test('line reporter can leave long progress lines unwrapped', async function (scope: OverkillScope) {
+    test('can leave long progress lines unwrapped', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = narrowLineReporterWithLog(log, false);
 
@@ -126,7 +119,7 @@ export const testNode = suite('source/reporters/line-reporter-progress.test.ts',
 
         return scope.assert.collect();
     }),
-    test('line reporter prints runner errors', async function (scope: OverkillScope) {
+    test('prints runner errors', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
 

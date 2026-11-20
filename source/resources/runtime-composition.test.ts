@@ -1,6 +1,5 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     composeRuntimes,
     createResourcesModule,
@@ -11,7 +10,6 @@ import {
     type RuntimeDefinition
 } from './resources.ts';
 import { startRuntime } from './runtime-lifecycle.ts';
-import { testNode as runtimeScenarioMatrixTestNode } from './runtime-scenario-matrix.test.ts';
 
 type Database = {
     readonly query: (sql: string) => readonly string[];
@@ -310,9 +308,8 @@ function assertScenarioCompositionValidation(scope: TestScope): void {
     }, { message: 'Scenario slot "mode" is attached multiple times.' });
 }
 
-export const testNode = suite('source/resources/runtime-composition.test.ts', [
-    runtimeScenarioMatrixTestNode,
-    test('composeRuntimes creates composed runtime graphs and scopes', function (scope: TestScope) {
+export const testNode: TestNode = suite('Runtime composition', [
+    test('composeRuntimes creates composed runtime graphs and scopes', function (scope) {
         assertRuntimeGraphComposition(scope);
         assertNestedRuntimeGraphComposition(scope);
         assertRuntimeGraphContextValidation(scope);
@@ -320,7 +317,7 @@ export const testNode = suite('source/resources/runtime-composition.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('runtime scenarios reach nested resource lifecycle contexts', async function (scope: TestScope) {
+    test('runtime scenarios reach nested resource lifecycle contexts', async function (scope) {
         await assertScenarioBindingsReachNestedOwners(scope);
         assertScenarioCompositionValidation(scope);
 

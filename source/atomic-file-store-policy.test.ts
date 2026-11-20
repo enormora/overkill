@@ -1,10 +1,10 @@
-import { suite, table, test, transcriptUsage, type TestScope } from '@overkill-dev/test';
+import { type TestNode, suite, table, test, transcriptUsage, type TestScope } from '@overkill-dev/test';
 
 import { atomicFileStore, reliableFileStore } from './test-support/atomic-file-store.ts';
 
 const target = '/project/state/result.json';
-export const testNode = suite('atomic runtime-state file storage', [
-    test('reads UTF-8 content and represents missing files as null', async function (scope: TestScope) {
+export const testNode: TestNode = suite('atomic runtime-state file storage', [
+    test('reads UTF-8 content and represents missing files as null', async function (scope) {
         const fixture = atomicFileStore.create({ initial: [ [ target, 'stored' ] ] });
         scope.assert.equal(await fixture.store.read(target), 'stored');
         scope.assert.equal(await fixture.store.read('/missing'), null);
@@ -25,7 +25,7 @@ export const testNode = suite('atomic runtime-state file storage', [
             return scope.assert.collect();
         }
     }),
-    test('publishes exclusive creates without overwriting existing content', async function (scope: TestScope) {
+    test('publishes exclusive creates without overwriting existing content', async function (scope) {
         const fixture = atomicFileStore.create({});
         await fixture.store.create(target, 'first');
         await scope.assert.rejects(async function () {
@@ -42,7 +42,7 @@ export const testNode = suite('atomic runtime-state file storage', [
         ]);
         return scope.assert.collect();
     }),
-    test('atomically replaces prior content and removes staging files', async function (scope: TestScope) {
+    test('atomically replaces prior content and removes staging files', async function (scope) {
         const fixture = atomicFileStore.create({ initial: [ [ target, 'old' ] ] });
         await fixture.store.write(target, 'new');
         scope.assert.deepEqual(Array.from(fixture.files), [ [ target, 'new' ] ]);
@@ -94,7 +94,7 @@ export const testNode = suite('atomic runtime-state file storage', [
         });
         return scope.assert.collect();
     }),
-    test('reports failed staging cleanup after successful publication', async function (scope: TestScope) {
+    test('reports failed staging cleanup after successful publication', async function (scope) {
         const failure = new Error('cleanup failed');
         const fixture = atomicFileStore.create({ faults: { ...reliableFileStore, cleanup: failure }, initial: [] });
         await scope.assert.rejects(async function () {
@@ -103,7 +103,7 @@ export const testNode = suite('atomic runtime-state file storage', [
         scope.assert.equal(fixture.files.get(target), 'new');
         return scope.assert.collect();
     }),
-    test('gives concurrent writes distinct exclusive staging paths', async function (scope: TestScope) {
+    test('gives concurrent writes distinct exclusive staging paths', async function (scope) {
         const fixture = atomicFileStore.create({});
         await Promise.all([ fixture.store.create('/project/one', 'one'), fixture.store.create('/project/two', 'two') ]);
         scope.assert.deepEqual(

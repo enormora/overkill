@@ -3,7 +3,6 @@ import { connectProcessHelper, type ProcessHelper } from '../bench/process-helpe
 import type { ProcessCommand } from '../bench/process-command.ts';
 import type { ProcessExecution } from '../bench/process-protocol.ts';
 import { processOutput } from '../bench/process-output.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
 import { processHelperChannel, type ProcessHelperChannel, type ProcessHelperFaults } from './process-helper-channel.ts';
 
 const maximumOutputBytes = 4096;
@@ -27,7 +26,6 @@ export const failedProcessExecution: ProcessExecution = {
     cleanupFailure: null
 };
 export function memoryProcessHelper(
-    scope: TestScope,
     ready: boolean,
     faults: ProcessHelperFaults
 ): MemoryProcessHelper {
@@ -58,9 +56,6 @@ export function memoryProcessHelper(
             }
             return await pending;
         }
-    });
-    scope.cleanup(function () {
-        channel.close(0, null);
     });
     if (ready) {
         channel.events.emit('message', { kind: 'ready', version: 1 });

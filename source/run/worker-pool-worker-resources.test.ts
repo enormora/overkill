@@ -1,17 +1,16 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { subjectTestNode } from '../test-support/create-test-engine.ts';
+import { type TestBody, type TestNode, type TestScope, suite, test, createTestFacade } from '@overkill-dev/test';
 
 import {
     defaultFailureArtifactPolicy,
     type TestPlan,
-    type TestCaseOptions,
-    type TestNode,
+    type TestNode as SubjectTestNode,
     type WorkId,
     createRoot,
     createTestPlan
 } from '../packages/engine/engine.entry-point.ts';
 
-import { createTestFacade } from '../packages/test/test.entry-point.ts';
-import { defineResource, withResources, type ResourceDefinition } from '../packages/test/resources.entry-point.ts';
+import { defineResource, withResources, type ResourceDefinition } from '@overkill-dev/test/resources';
 import type { EmptyResourceDependencies } from '../resources/resources.ts';
 import { createWorkerProcessUsageTracker } from './worker-execution-engine.ts';
 import type { WorkerPoolCommand, WorkerPoolLifecycleIdentity, WorkerPoolTask } from './worker-pool-protocol.ts';
@@ -159,11 +158,11 @@ function laneScratchResource(events: EventLog): ScratchResource {
     });
 }
 
-function collectedWorkerPlanFromNode(testNode: TestNode): CollectedWorkerPlan {
+function collectedWorkerPlanFromNode(testNode: TestNode | SubjectTestNode): CollectedWorkerPlan {
     const testPlan = createTestPlan(createRoot({
         ...testCaseMetadata,
         children: [
-            testNode
+            subjectTestNode(testNode)
         ],
         title: 'worker resources'
     }));
@@ -171,7 +170,7 @@ function collectedWorkerPlanFromNode(testNode: TestNode): CollectedWorkerPlan {
     return { runnerErrors: [], testPlan };
 }
 
-function collectedWorkerPlan(body: TestCaseOptions['body']): CollectedWorkerPlan {
+function collectedWorkerPlan(body: TestBody): CollectedWorkerPlan {
     return collectedWorkerPlanFromNode(test({
         ...testCaseMetadata,
         body,
@@ -240,7 +239,7 @@ function disposeLaneTask(lifecycle: WorkerPoolLifecycleIdentity): DisposeLaneLif
     };
 }
 
-async function assertRunResourcesAcquireAndDispose(scope: OverkillScope): Promise<void> {
+async function assertRunResourcesAcquireAndDispose(scope: TestScope): Promise<void> {
     const events = createEventLog();
     const lifecycle = { endpoint: null, token: 'acquire-dispose' };
     const database = projectedDatabaseResource(events);
@@ -258,7 +257,7 @@ async function assertRunResourcesAcquireAndDispose(scope: OverkillScope): Promis
     scope.assert.deepEqual(events.values(), [ 'acquire', 'dispose:postgres://localhost' ]);
 }
 
-async function assertRunResourceFailuresBecomeRunnerErrors(scope: OverkillScope): Promise<void> {
+async function assertRunResourceFailuresBecomeRunnerErrors(scope: TestScope): Promise<void> {
     const database = failingDatabaseResource();
     const lifecycle = { endpoint: null, token: 'failing-acquire' };
     const plan = collectedWorkerPlan(withResources({ database }, function testBody(resourceScope) {
@@ -271,7 +270,7 @@ async function assertRunResourceFailuresBecomeRunnerErrors(scope: OverkillScope)
     scope.assert.equal(output.runnerErrors[0]?.subtype, 'runtime-policy');
 }
 
-async function assertPlainBodiesDoNotAcquireRunResources(scope: OverkillScope): Promise<void> {
+async function assertPlainBodiesDoNotAcquireRunResources(scope: TestScope): Promise<void> {
     const lifecycle = { endpoint: null, token: 'plain-body' };
     const plan = collectedWorkerPlan(function testBody(resourceScope) {
         return resourceScope.assert.collect();
@@ -288,7 +287,7 @@ async function assertPlainBodiesDoNotAcquireRunResources(scope: OverkillScope): 
     scope.assert.deepEqual(await disposeWorkerRunResources(disposeRunTask(lifecycle)), { runnerErrors: [] });
 }
 
-async function assertScopeWrappersDoNotAcquireRunResources(scope: OverkillScope): Promise<void> {
+async function assertScopeWrappersDoNotAcquireRunResources(scope: TestScope): Promise<void> {
     const lifecycle = { endpoint: null, token: 'scope-wrapper' };
     const facade = createTestFacade({
         mapScope() {
@@ -308,7 +307,7 @@ async function assertScopeWrappersDoNotAcquireRunResources(scope: OverkillScope)
     });
 }
 
-async function assertLaneSessionsAreReusedAndDisposed(scope: OverkillScope): Promise<void> {
+async function assertLaneSessionsAreReusedAndDisposed(scope: TestScope): Promise<void> {
     const events = createEventLog();
     const lifecycle = { endpoint: null, token: 'lane-session' };
     const scratch = laneScratchResource(events);
@@ -324,14 +323,14 @@ async function assertLaneSessionsAreReusedAndDisposed(scope: OverkillScope): Pro
     scope.assert.deepEqual(await disposeWorkerLaneLifecycle(disposeLaneTask(lifecycle)), { runnerErrors: [] });
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-worker-resources.test.ts',
+    title: 'Worker pool worker resources',
     children: [
         test({
             ...testCaseMetadata,
-            title: 'worker-pool worker resources acquire projected run resources',
-            async body(scope: OverkillScope) {
+            title: 'acquire projected run resources',
+            async body(scope) {
                 await assertRunResourcesAcquireAndDispose(scope);
 
                 return scope.assert.collect();
@@ -339,8 +338,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool worker resources record acquisition failures',
-            async body(scope: OverkillScope) {
+            title: 'record acquisition failures',
+            async body(scope) {
                 await assertRunResourceFailuresBecomeRunnerErrors(scope);
 
                 return scope.assert.collect();
@@ -348,8 +347,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool worker resources ignore plain test bodies',
-            async body(scope: OverkillScope) {
+            title: 'ignore plain test bodies',
+            async body(scope) {
                 await assertPlainBodiesDoNotAcquireRunResources(scope);
 
                 return scope.assert.collect();
@@ -357,8 +356,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool worker resources ignore mapped scope wrappers',
-            async body(scope: OverkillScope) {
+            title: 'ignore mapped scope wrappers',
+            async body(scope) {
                 await assertScopeWrappersDoNotAcquireRunResources(scope);
 
                 return scope.assert.collect();
@@ -366,8 +365,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool worker resources reuse lane sessions',
-            async body(scope: OverkillScope) {
+            title: 'reuse lane sessions',
+            async body(scope) {
                 await assertLaneSessionsAreReusedAndDisposed(scope);
                 createWorkerProcessUsageTracker(command());
 

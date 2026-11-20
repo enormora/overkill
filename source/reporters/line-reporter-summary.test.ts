@@ -1,11 +1,4 @@
-import {
-    type TestScope as OverkillScope,
-    suite,
-    test,
-    doubleUsage,
-    testDouble,
-    type TestDouble
-} from '@overkill-dev/test';
+import { type TestNode, suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -48,8 +41,8 @@ function requireFinish(reporter: RealTimeReporter): NonNullable<RealTimeReporter
     return onFinish;
 }
 
-export const testNode = suite('source/reporters/line-reporter-summary.test.ts', [
-    test('line reporter retains lifetime findings from current runners', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Line reporter summary', [
+    test('retains lifetime findings from current runners', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
         const result: RunResult = {
@@ -83,7 +76,7 @@ export const testNode = suite('source/reporters/line-reporter-summary.test.ts', 
         scope.assert(doubleUsage.calledWith, log, [ '  Connection closed unexpectedly' ]);
         return scope.assert.collect();
     }),
-    test('line reporter accepts results from runners without resource checks', async function (scope: OverkillScope) {
+    test('accepts results from runners without resource checks', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
         const { resourceChecks: _resourceChecks, ...legacy } = runResultFactory.build({
@@ -100,7 +93,7 @@ export const testNode = suite('source/reporters/line-reporter-summary.test.ts', 
         ]);
         return scope.assert.collect();
     }),
-    test('line reporter prints slow runner overhead after the summary', async function (scope: OverkillScope) {
+    test('prints slow runner overhead after the summary', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
         const summary = runTimingSummary({
@@ -146,7 +139,7 @@ export const testNode = suite('source/reporters/line-reporter-summary.test.ts', 
 
         return scope.assert.collect();
     }),
-    test('line reporter prints the run count summary once the run finishes', async function (scope: OverkillScope) {
+    test('prints the run count summary once the run finishes', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
         const runResult: RunResult = runResultFactory.build({
@@ -181,8 +174,8 @@ export const testNode = suite('source/reporters/line-reporter-summary.test.ts', 
         return scope.assert.collect();
     }),
     test(
-        'line reporter prints nonzero neutral and terminal counts in the run summary',
-        async function (scope: OverkillScope) {
+        'prints nonzero neutral and terminal counts in the run summary',
+        async function (scope) {
             const log = testDouble<LogFunction>();
             const reporter = lineReporterWithLog(log);
             const runResult: RunResult = runResultFactory.build({

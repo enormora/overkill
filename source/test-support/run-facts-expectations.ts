@@ -1,7 +1,7 @@
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { RunCaseFacts, RunFacts } from '../run/run-types.ts';
 
-export const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
+export const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 
 export function expectedRunEnvironment(): RunFacts['environment'] {
     return {

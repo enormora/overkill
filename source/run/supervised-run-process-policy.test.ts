@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { CaseId } from '../engine/identity.ts';
 import type { ProcessUsageSnapshot } from '../engine/process-usage.ts';
@@ -54,7 +54,7 @@ function noBudgets(): ProcessBudgets {
 }
 
 function assertBreach(
-    scope: OverkillScope,
+    scope: TestScope,
     actual: ProcessBudgetBreach | null,
     expected: ProcessBudgetBreach
 ): void {
@@ -73,13 +73,13 @@ function activeCaseStates(): readonly [SupervisedRunState, SupervisedRunState, S
     return [ createSupervisedRunState('first-failure-and-final'), singleState, multiState ];
 }
 
-function assertCaseId(scope: OverkillScope, actual: CaseId | null, expected: CaseId): void {
+function assertCaseId(scope: TestScope, actual: CaseId | null, expected: CaseId): void {
     scope.require.defined(actual);
     scope.assert.deepEqual(actual, expected);
 }
 
-export const testNode = suite('source/run/supervised-run-process-policy.test.ts', [
-    test('findProcessBudgetBreach() selects the first exceeded process budget', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Supervised run process policy', [
+    test('findProcessBudgetBreach() selects the first exceeded process budget', function (scope) {
         assertBreach(
             scope,
             findProcessBudgetBreach(
@@ -109,7 +109,7 @@ export const testNode = suite('source/run/supervised-run-process-policy.test.ts'
 
         return scope.assert.collect();
     }),
-    test('process usage policy errors attribute active case boundaries', function (scope: OverkillScope) {
+    test('process usage policy errors attribute active case boundaries', function (scope) {
         const [ emptyState, singleState, multiState ] = activeCaseStates();
         const breach = {
             budget: 1,

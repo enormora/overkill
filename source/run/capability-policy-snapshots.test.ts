@@ -1,4 +1,5 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
+
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
 
 import {
@@ -7,7 +8,7 @@ import {
     type RuntimeSnapshotChange
 } from './capability-policy-snapshots.ts';
 
-export const testNode = authoredSuite('capability policy snapshots', [
+export const testNode: TestNode = suite('capability policy snapshots', [
     test('runtime capability policy host readers reject invalid host values', function (scope) {
         const invalidProcess = { env: { NUMBER: 1 } };
         const invalidHost = { sessionStorage: { length: '1' } };

@@ -1,8 +1,9 @@
+import { type TestNode, suite, test, type TestScope } from '#tests';
 import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { suite, test, type TestScope } from '#tests';
+
 import { createProgram, getPreEmitDiagnostics, ModuleKind, ScriptTarget } from 'typescript';
 
 import {
@@ -13,7 +14,7 @@ import {
     propertyLoadBoundaryScript,
     propertySubpathScript,
     propertyTypeScript
-} from './property-scripts.test.ts';
+} from './support/property-scripts.ts';
 
 type ScriptOutput = { readonly code: number; readonly stdout: string; readonly stderr: string; };
 
@@ -49,7 +50,7 @@ async function standardConsumer(scope: TestScope): Promise<string> {
     return directory;
 }
 
-export const testNode = suite('packaged property authoring', [
+export const testNode: TestNode = suite('packaged property authoring', [
     test('packaged witness replay preserves lifecycle and input graphs', async function (scope) {
         const result = await runNode(
             [ '--input-type=module', '--eval', propertyReplayScript ],

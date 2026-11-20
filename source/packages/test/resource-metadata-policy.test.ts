@@ -1,4 +1,4 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     defineResource,
@@ -6,8 +6,7 @@ import {
     defineRuntimeMatrix,
     type AnyResourceDefinition
 } from '../resources/resources.entry-point.ts';
-import { testNode as inputPolicy } from './resource-input-policy.test.ts';
-import type { TestScope } from './test.entry-point.ts';
+
 import { buildStepAttachments } from './resource-wrapper-metadata.ts';
 
 function fixedValueResource(name: string): AnyResourceDefinition {
@@ -21,9 +20,8 @@ function fixedValueResource(name: string): AnyResourceDefinition {
         dispose: null
     });
 }
-export const testNode = suite('resource wrapper attachment metadata', [
-    inputPolicy,
-    test('rejects different resource descriptors sharing a name', function (scope: TestScope) {
+export const testNode: TestNode = suite('resource wrapper attachment metadata', [
+    test('rejects different resource descriptors sharing a name', function (scope) {
         scope.assert.throws(function () {
             buildStepAttachments([ {
                 kind: 'resources',
@@ -32,7 +30,7 @@ export const testNode = suite('resource wrapper attachment metadata', [
         }, { message: 'Resource name "shared" is used by multiple descriptors.' });
         return scope.assert.collect();
     }),
-    test('records matrix variants and their shared resource graph', function (scope: TestScope) {
+    test('records matrix variants and their shared resource graph', function (scope) {
         const owner = fixedValueResource('owner');
         const matrix = defineRuntimeMatrix({
             name: 'api',

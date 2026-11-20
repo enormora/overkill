@@ -1,6 +1,6 @@
 import type { PropertyWitnessRunInput, PropertyWitnessStorageFactory } from '../run/property-witness-storage.ts';
 import { finalizeRuntimeAttachments } from '../run/attachment-coordinator-context.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 import { attachmentRecording } from './attachment-recording.ts';
 import { witnessAttachmentRetention, confirmedWitnessResult } from './witness-attachment-retention.ts';
 

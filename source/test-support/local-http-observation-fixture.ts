@@ -1,7 +1,7 @@
 import diagnostics from 'node:diagnostics_channel';
 import { IncomingMessage } from 'node:http';
 import { Socket } from 'node:net';
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 import {
     observeLocalHttpServer,
     type LocalHttpTranscriptObserver

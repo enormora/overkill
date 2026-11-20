@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { Engine } from './engine.ts';
@@ -23,7 +23,7 @@ function createSkippedPlan(engine: Engine): TestPlan {
     return engine.createTestPlan(root);
 }
 
-function assertSkippedPlan(scope: OverkillScope, testPlan: TestPlan): void {
+function assertSkippedPlan(scope: TestScope, testPlan: TestPlan): void {
     const plannedCase = testPlan.cases[0];
 
     scope.require.defined(plannedCase);
@@ -42,15 +42,15 @@ function assertSkippedPlan(scope: OverkillScope, testPlan: TestPlan): void {
     scope.assert.deepEqual(testPlan.discoveredCases, testPlan.cases);
 }
 
-export const testNode = suite('source/engine/skipped-test-plan.test.ts', [
-    test('createTestPlan() expands skipped test cases as leaf cases', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Skipped test plan', [
+    test('expands skipped test cases as leaf cases', function (scope) {
         const engine = createEngine();
 
         assertSkippedPlan(scope, createSkippedPlan(engine));
 
         return scope.assert.collect();
     }),
-    test('createTestPlan() rejects duplicate body and skipped case titles', function (scope: OverkillScope) {
+    test('rejects duplicate body and skipped case titles', function (scope) {
         const engine = createEngine();
         const root = engine.createRoot({
             children: [

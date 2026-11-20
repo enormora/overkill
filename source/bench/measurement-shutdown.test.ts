@@ -1,4 +1,5 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
+
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
 import { createMeasurementDeadline, type MeasurementShutdown } from './measurement-shutdown.ts';
@@ -27,7 +28,7 @@ function shutdownFixture(): ShutdownFixture {
         }
     };
 }
-export const testNode = authoredSuite('bounded measurement shutdown', [
+export const testNode: TestNode = suite('bounded measurement shutdown', [
     test('uses one deadline across asynchronous shutdown operations', async function (scope) {
         const fixture = shutdownFixture();
         fixture.clock.advanceByMilliseconds(1999);

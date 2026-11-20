@@ -1,13 +1,20 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { darwinProbe, platformPressure, linuxPressureText } from '../test-support/platform-pressure.ts';
 import { collectDarwinHostPressure } from './benchmark-host-darwin.ts';
 import { collectHostPlatformPressure } from './benchmark-host-platform.ts';
 
 const thermal = 'CPU_Speed_Limit = 80\nCPU_Scheduler_Limit = 90';
-export const testNode = authoredSuite('platform pressure collection policy', [
-    ...([ '1', '2', '4' ] as const).map(function (code) {
-        return authoredTest(`parses Darwin memory pressure code ${code}`, async function (scope: TestScope) {
+export const testNode: TestNode = suite('platform pressure collection policy', [
+    table({
+        title: 'parses Darwin memory pressure codes',
+        cases: [ '1', '2', '4' ] as const,
+        caseTitle(code) {
+            return `${code}`;
+        },
+        async test(scope) {
+            const code = scope.parameters;
+
             const fixture = darwinProbe(thermal, ` ${code}\n`);
             const result = await collectDarwinHostPressure(scope.signal, fixture.probe);
             scope.assert.partialDeepEqual(result, {
@@ -20,23 +27,27 @@ export const testNode = authoredSuite('platform pressure collection policy', [
                 '/usr/sbin/sysctl -n kern.memorystatus_vm_pressure_level'
             ]);
             return scope.assert.collect();
-        });
+        }
     }),
-    ...([ 'invalid', '0', '3', '8' ] as const).map(function (code) {
-        return authoredTest(
-            `marks unsupported Darwin memory pressure ${code} unavailable`,
-            async function (scope: TestScope) {
-                const fixture = darwinProbe(thermal, code);
-                const result = await collectDarwinHostPressure(scope.signal, fixture.probe);
-                scope.assert.partialDeepEqual(result, {
-                    CPU_Speed_Limit: { availability: 'available' },
-                    darwinMemoryPressureCode: { availability: 'unavailable' }
-                });
-                return scope.assert.collect();
-            }
-        );
+    table({
+        title: 'marks unsupported Darwin memory pressure unavailable',
+        cases: [ 'invalid', '0', '3', '8' ] as const,
+        caseTitle(code) {
+            return `${code}`;
+        },
+        async test(scope) {
+            const code = scope.parameters;
+
+            const fixture = darwinProbe(thermal, code);
+            const result = await collectDarwinHostPressure(scope.signal, fixture.probe);
+            scope.assert.partialDeepEqual(result, {
+                CPU_Speed_Limit: { availability: 'available' },
+                darwinMemoryPressureCode: { availability: 'unavailable' }
+            });
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('retains independent probe failures in unavailable readings', async function (scope: TestScope) {
+    test('retains independent probe failures in unavailable readings', async function (scope) {
         const fixture = darwinProbe(new Error('thermal failed'), new Error('memory failed'));
         const result = await collectDarwinHostPressure(scope.signal, fixture.probe);
         scope.assert.partialDeepEqual(result, {
@@ -46,7 +57,7 @@ export const testNode = authoredSuite('platform pressure collection policy', [
         });
         return scope.assert.collect();
     }),
-    authoredTest('collects and prefixes Linux CPU, memory, and IO readings', async function (scope: TestScope) {
+    test('collects and prefixes Linux CPU, memory, and IO readings', async function (scope) {
         const fixture = platformPressure(linuxPressureText, null);
         const result = await collectHostPlatformPressure('linux', scope.signal, fixture.runtime);
         scope.assert.deepEqual(fixture.calls, [ '/proc/pressure/cpu', '/proc/pressure/memory', '/proc/pressure/io' ]);
@@ -57,8 +68,15 @@ export const testNode = authoredSuite('platform pressure collection policy', [
         });
         return scope.assert.collect();
     }),
-    ...([ new Error('read failed'), 'non-error' ] as const).map(function (failure) {
-        return authoredTest(`retains Linux probe failure ${String(failure)}`, async function (scope: TestScope) {
+    table({
+        title: 'retains Linux probe failures',
+        cases: [ new Error('read failed'), 'non-error' ] as const,
+        caseTitle(failure) {
+            return `${String(failure)}`;
+        },
+        async test(scope) {
+            const failure = scope.parameters;
+
             const fixture = platformPressure('', failure);
             const result = await collectHostPlatformPressure('linux', scope.signal, fixture.runtime);
             scope.assert.partialDeepEqual(result, {
@@ -70,9 +88,9 @@ export const testNode = authoredSuite('platform pressure collection policy', [
                 }
             });
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('rejects oversized Linux pressure output', async function (scope: TestScope) {
+    test('rejects oversized Linux pressure output', async function (scope) {
         const fixture = platformPressure('x'.repeat(65_537), null);
         const result = await collectHostPlatformPressure('linux', scope.signal, fixture.runtime);
         scope.assert.partialDeepEqual(result, {
@@ -80,9 +98,9 @@ export const testNode = authoredSuite('platform pressure collection policy', [
         });
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'routes Darwin collection and skips probes on unsupported platforms',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = platformPressure('', null);
             const darwin = await collectHostPlatformPressure('darwin', scope.signal, fixture.runtime);
             const unsupported = await collectHostPlatformPressure('win32', scope.signal, fixture.runtime);

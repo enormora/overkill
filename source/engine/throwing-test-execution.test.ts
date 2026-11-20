@@ -1,13 +1,14 @@
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { AssertionError } from 'node:assert';
 import assert from 'node:assert/strict';
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
 import { createPermissionDenialRuntimePolicy } from '../run/capability-policy.ts';
 
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { TestRuntimePolicy } from './case-execution-context.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult } from './run-result.ts';
-import type { ThrowingTestBody, ThrowingTestScope } from './test-scope.ts';
+import type { ThrowingTestBody } from './test-scope.ts';
+
 import { isNodeAssertionError, nodeAssertionErrorFailure } from './node-assertion-error.ts';
 
 async function executeSingleThrowingBody(
@@ -65,7 +66,7 @@ function firstAssertionFailure(outcome: FailOutcome): AssertionTestFailure | nul
     return null;
 }
 
-function assertSourceLocationInThisFile(scope: OverkillScope, location: unknown): void {
+function assertSourceLocationInThisFile(scope: TestScope, location: unknown): void {
     if (typeof location !== 'object' || location === null || !Object.hasOwn(location, 'kind')) {
         scope.assert.fail({ message: 'Expected source location.' });
 
@@ -87,7 +88,7 @@ function assertSourceLocationInThisFile(scope: OverkillScope, location: unknown)
     );
 }
 
-function assertNodeAssertionFailure(scope: OverkillScope, failure: AssertionTestFailure): void {
+function assertNodeAssertionFailure(scope: TestScope, failure: AssertionTestFailure): void {
     const check = failure.checks[0];
     const child = check.kind === 'composite' ? check.children[0] : null;
 
@@ -107,7 +108,7 @@ function assertNodeAssertionFailure(scope: OverkillScope, failure: AssertionTest
     assertSourceLocationInThisFile(scope, child.sourceLocations[0]);
 }
 
-function assertUnknownNodeAssertionLocation(scope: OverkillScope, failure: AssertionTestFailure): void {
+function assertUnknownNodeAssertionLocation(scope: TestScope, failure: AssertionTestFailure): void {
     const check = failure.checks[0];
     if (check.kind !== 'composite') {
         scope.assert.equal(check.kind, 'composite');
@@ -125,8 +126,8 @@ function assertUnknownNodeAssertionLocation(scope: OverkillScope, failure: Asser
     scope.assert.deepEqual(child.sourceLocations, [ { kind: 'unknown' } ]);
 }
 
-export const testNode = suite('source/engine/throwing-test-execution.test.ts', [
-    test('retains preparation failures alongside a thrown Node assertion', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Throwing test execution', [
+    test('retains preparation failures alongside a thrown Node assertion', async function (scope: TestScope) {
         const policy = createPermissionDenialRuntimePolicy();
         scope.cleanup(function stopPreparationPolicy() {
             policy.takeRunErrors();
@@ -150,7 +151,7 @@ export const testNode = suite('source/engine/throwing-test-execution.test.ts', [
         scope.assert.match(JSON.stringify(outcome), /preparation sentinel/);
         return scope.assert.collect();
     }),
-    test('execute() lets throwing test cases pass with no recorded assertions', async function (scope: OverkillScope) {
+    test('lets throwing test cases pass with no recorded assertions', async function (scope) {
         const result = await executeSingleThrowingBody(function noAssertions() {
             return undefined;
         }, null);
@@ -160,7 +161,7 @@ export const testNode = suite('source/engine/throwing-test-execution.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() evaluates assertions recorded by throwing test cases', async function (scope: OverkillScope) {
+    test('evaluates assertions recorded by throwing test cases', async function (scope: TestScope) {
         const result = await executeSingleThrowingBody(function failedAssertion(testScope) {
             testScope.assert.equal(1, 2, { message: 'wrong count' });
         }, null);
@@ -173,7 +174,7 @@ export const testNode = suite('source/engine/throwing-test-execution.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() rejects pending async assertions from throwing test cases', async function (scope: OverkillScope) {
+    test('rejects pending async assertions from throwing test cases', async function (scope: TestScope) {
         const result = await executeSingleThrowingBody(function pendingAssertion(testScope) {
             const pendingAssertions = [ testScope.assert.rejects(async function neverResolves() {
                 await Promise.race<never>([]);
@@ -196,10 +197,12 @@ export const testNode = suite('source/engine/throwing-test-execution.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() keeps require failures fatal in throwing test cases', async function (scope: OverkillScope) {
+    test('keeps require failures fatal in throwing test cases', async function (scope: TestScope) {
         const result = await executeSingleThrowingBody(
-            function failedRequirement(testScope: ThrowingTestScope) {
-                testScope.require.string(1, { message: 'required string' });
+            function failedRequirement(testScope) {
+                const testScopeRequire: typeof testScope.require = testScope.require;
+
+                testScopeRequire.string(1, { message: 'required string' });
             },
             null
         );
@@ -214,8 +217,8 @@ export const testNode = suite('source/engine/throwing-test-execution.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'execute() reports Node AssertionError values as assertion failures in throwing test cases',
-        async function (scope: OverkillScope) {
+        'reports Node AssertionError values as assertion failures in throwing test cases',
+        async function (scope: TestScope) {
             const result = await executeSingleThrowingBody(function nodeAssertFailure() {
                 assert.equal(1, 2, 'wrong count');
             }, null);
@@ -229,7 +232,7 @@ export const testNode = suite('source/engine/throwing-test-execution.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('isNodeAssertionError() detects native and structural assertion errors only', function (scope: OverkillScope) {
+    test('isNodeAssertionError() detects native and structural assertion errors only', function (scope) {
         scope.assert.equal(
             isNodeAssertionError(
                 new AssertionError({
@@ -252,8 +255,8 @@ export const testNode = suite('source/engine/throwing-test-execution.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'execute() reports AssertionError values without stacks as assertion failures',
-        async function (scope: OverkillScope) {
+        'reports AssertionError values without stacks as assertion failures',
+        async function (scope: TestScope) {
             const result = await executeSingleThrowingBody(function assertionErrorWithoutStack() {
                 const error = new AssertionError({
                     actual: 1,
@@ -277,7 +280,7 @@ export const testNode = suite('source/engine/throwing-test-execution.test.ts', [
     ),
     test(
         'nodeAssertionErrorFailure() uses fallback locations when stacks do not parse',
-        function (scope: OverkillScope) {
+        function (scope: TestScope) {
             const error = new AssertionError({
                 actual: 1,
                 expected: 2,
@@ -308,8 +311,8 @@ export const testNode = suite('source/engine/throwing-test-execution.test.ts', [
         }
     ),
     test(
-        'execute() keeps ordinary thrown errors as body errors in throwing test cases',
-        async function (scope: OverkillScope) {
+        'keeps ordinary thrown errors as body errors in throwing test cases',
+        async function (scope: TestScope) {
             const result = await executeSingleThrowingBody(function bodyError() {
                 throw new Error('boom');
             }, null);

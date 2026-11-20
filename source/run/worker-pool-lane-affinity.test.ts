@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { WorkerLifecycle } from '../config/types.ts';
 import { emptyWorkUnitResourceConstraints, type WorkUnit, type WorkUnitResourceConstraints } from './run-types.ts';
@@ -42,8 +42,8 @@ function assignedLanes(units: readonly WorkUnit[], availableParallelism: number)
     });
 }
 
-export const testNode = suite('source/run/worker-pool-lane-affinity.test.ts', [
-    test('worker-pool lane affinity breaks ties after load', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Worker pool lane affinity', [
+    test('breaks ties after load', function (scope) {
         scope.assert.deepEqual(
             assignedLanes([
                 workUnitWithConstraints('affinity-tie-1', 'reuse', {
@@ -65,7 +65,7 @@ export const testNode = suite('source/run/worker-pool-lane-affinity.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('worker-pool lane affinity loses to fault-domain spreading', function (scope: OverkillScope) {
+    test('loses to fault-domain spreading', function (scope) {
         scope.assert.deepEqual(
             assignedLanes([
                 workUnitWithConstraints('affinity-fault-1', 'reuse', {

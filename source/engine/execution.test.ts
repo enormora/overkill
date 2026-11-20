@@ -1,13 +1,12 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
 import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 
-import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import type { KnownSourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import type { Engine } from './engine.ts';
 import type { FailOutcome, RunResult, RunnerError, TestOutcome } from './run-result.ts';
-import type { TestBody, TestScope } from './test-scope.ts';
 
 type SourceLocation = KnownSourceLocation;
 
@@ -44,7 +43,7 @@ function createPermissionError(permission: string, resource: string): Error {
     return error;
 }
 
-async function executeSingleBody(body: TestBody): Promise<RunResult> {
+async function executeSingleBody(body: EngineCaseBody): Promise<RunResult> {
     const engine = createEngine();
 
     return await engine.execute(
@@ -102,15 +101,15 @@ function createPlanWithUnusedTable(
     }));
 }
 
-export const testNode = suite('source/engine/execution.test.ts', [
-    test('execute() returns passing and failing outcomes with run counts', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Test case execution', [
+    test('returns passing and failing outcomes with run counts', async function (scope) {
         const engine = createEngine();
         const testPlan = engine.createTestPlan(
             engine.createRoot({
                 children: [
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
-                        body(testScope: TestScope) {
+                        body(testScope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }) {
                             testScope.assert.true(true, { message: 'passes' });
                             return testScope.assert.collect();
                         },
@@ -120,7 +119,7 @@ export const testNode = suite('source/engine/execution.test.ts', [
                     }),
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
-                        body(testScope: TestScope) {
+                        body(testScope: { readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>; }) {
                             testScope.assert.equal(1, 2, { message: 'numbers differ' });
                             return testScope.assert.collect();
                         },
@@ -165,7 +164,7 @@ export const testNode = suite('source/engine/execution.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() carries orphaned nodes from the plan', async function (scope: OverkillScope) {
+    test('carries orphaned nodes from the plan', async function (scope) {
         const engine = createEngine();
         const unusedTableLocation = {
             column: 3,
@@ -185,14 +184,14 @@ export const testNode = suite('source/engine/execution.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() fails tests with zero assertions', async function (scope: OverkillScope) {
+    test('fails tests with zero assertions', async function (scope: TestScope) {
         const engine = createEngine();
         const testPlan = engine.createTestPlan(
             engine.createRoot({
                 children: [
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
-                        body(testScope: TestScope) {
+                        body(testScope: { readonly assert: Pick<TestScope['assert'], 'collect'>; }) {
                             return testScope.assert.collect();
                         },
                         annotations: {},
@@ -226,7 +225,7 @@ export const testNode = suite('source/engine/execution.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() reports thrown permission denials as runner errors', async function (scope: OverkillScope) {
+    test('reports thrown permission denials as runner errors', async function (scope) {
         const result = await executeSingleBody(function throwPermissionDenial() {
             throw createPermissionError('FileSystemWrite', '/project/output.txt');
         });
@@ -249,7 +248,7 @@ export const testNode = suite('source/engine/execution.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() fails tests when assertion plan count does not match', async function (scope: OverkillScope) {
+    test('fails tests when assertion plan count does not match', async function (scope: TestScope) {
         const engine = createEngine();
         const testPlan = engine.createTestPlan(
             engine.createRoot({
@@ -292,7 +291,7 @@ export const testNode = suite('source/engine/execution.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() accepts a directly returned assertion node', async function (scope: OverkillScope) {
+    test('accepts a directly returned assertion node', async function (scope) {
         const result = await executeSingleBody(function body() {
             return {
                 actual: true,
@@ -307,7 +306,7 @@ export const testNode = suite('source/engine/execution.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() fails tests with invalid assertion plans', async function (scope: OverkillScope) {
+    test('fails tests with invalid assertion plans', async function (scope: TestScope) {
         const result = await executeSingleBody(function testBody(testScope) {
             testScope.plan(0);
             testScope.assert.true(true, { message: 'unreached' });
@@ -327,14 +326,19 @@ export const testNode = suite('source/engine/execution.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() exposes assertion and requirement convenience methods', async function (scope: OverkillScope) {
+    test('exposes assertion and requirement convenience methods', async function (scope) {
         const engine = createEngine();
         const testPlan = engine.createTestPlan(
             engine.createRoot({
                 children: [
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
-                        body(testScope: TestScope) {
+                        body(
+                            testScope: {
+                                readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>;
+                                readonly require: Pick<TestScope['require'], 'string' | 'defined'>;
+                            }
+                        ) {
                             testScope.assert.true(true, { message: 'one' });
                             testScope.require.string('value', { message: 'string' });
                             testScope.require.defined(true, { message: 'defined' });
@@ -358,14 +362,19 @@ export const testNode = suite('source/engine/execution.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() fails the test when a requirement fails', async function (scope: OverkillScope) {
+    test('fails the test when a requirement fails', async function (scope) {
         const engine = createEngine();
         const testPlan = engine.createTestPlan(
             engine.createRoot({
                 children: [
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
-                        body(testScope: TestScope) {
+                        body(
+                            testScope: {
+                                readonly assert: Pick<TestScope['assert'], 'collect'>;
+                                readonly require: Pick<TestScope['require'], 'string'>;
+                            }
+                        ) {
                             testScope.require.string(1, { message: 'required string' });
                             return testScope.assert.collect();
                         },
@@ -375,7 +384,12 @@ export const testNode = suite('source/engine/execution.test.ts', [
                     }),
                     engine.createTestCase({
                         definitionLocations: [ { kind: 'unknown' as const } ],
-                        body(testScope: TestScope) {
+                        body(
+                            testScope: {
+                                readonly assert: Pick<TestScope['assert'], 'collect'>;
+                                readonly require: Pick<TestScope['require'], 'defined'>;
+                            }
+                        ) {
                             testScope.require.defined(null, { message: 'required defined' });
                             return testScope.assert.collect();
                         },

@@ -1,5 +1,6 @@
-import { suite, test } from '@overkill-dev/test';
-import { recordSink, recordAsyncSink, type Transcript, type TestScope } from './test.entry-point.ts';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+
+import { recordSink, recordAsyncSink, type Transcript } from './test.entry-point.ts';
 
 type Entry = readonly [kind: 'state', value: number];
 function assertForwardedTranscript(scope: TestScope, transcript: Transcript<Entry>): void {
@@ -14,8 +15,8 @@ function assertForwardedTranscript(scope: TestScope, transcript: Transcript<Entr
     scope.assert.equal(transcript.entryCount, 0);
     scope.assert.deepEqual({ first: transcript.firstEntry, last: transcript.lastEntry }, { first: null, last: null });
 }
-export const testNode = suite('disposable transcript ownership', [
-    test('preserves transcript operations through a synchronous subscription wrapper', function (scope: TestScope) {
+export const testNode: TestNode = suite('disposable transcript ownership', [
+    test('preserves transcript operations through a synchronous subscription wrapper', function (scope) {
         let disposed = 0;
         using transcript = recordSink<Entry>(function () {
             return function () {
@@ -30,7 +31,7 @@ export const testNode = suite('disposable transcript ownership', [
     }),
     test(
         'preserves transcript operations through an asynchronous subscription wrapper',
-        async function (scope: TestScope) {
+        async function (scope) {
             let disposed = 0;
             await using transcript = recordAsyncSink<Entry>(function () {
                 return async function () {

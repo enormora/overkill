@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { defineMacro, type TestBody, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type {
     LoadedConfig,
@@ -11,8 +11,6 @@ import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import {
     defineOutputRenderer,
     defineReporter,
-    type TestCase,
-    type TestCaseOptions,
     type TestPlan,
     type DefinedReporter,
     type SinkDeclaration
@@ -61,15 +59,9 @@ function passiveReporter(name: string, sinks: readonly SinkDeclaration[]): Defin
 export const memoryReporter = passiveReporter('memory', [ { kind: 'memory' } ]);
 const terminalReporter = passiveReporter('terminal', [ { kind: 'stdout-raw' } ]);
 
-function listRunnerCase(
-    title: string,
-    body: TestCaseOptions['body']
-): TestCase {
-    return test({
-        body,
-        title
-    });
-}
+const listRunnerCase = defineMacro(function (title: string, body: TestBody) {
+    return test({ body, title });
+});
 
 async function loadDefaultConfig(): Promise<LoadedConfig> {
     return {
@@ -303,10 +295,10 @@ export async function listTests(
     });
 }
 
-export const testNode = suite('source/run/command-line-list-runner.test.ts', [
+export const testNode: TestNode = suite('Command line list runner', [
     listRunnerCase(
         'commandLineRunner.listTests() renders the resolved plan tree without loading reporters',
-        async function body(scope: OverkillScope) {
+        async function body(scope: TestScope) {
             let defaultReporterLoadCount = 0;
             const receivedCommands: RunCommand[] = [];
             const dependencies = createDependencies(
@@ -342,7 +334,7 @@ export const testNode = suite('source/run/command-line-list-runner.test.ts', [
     ),
     listRunnerCase(
         'commandLineRunner.listTests() preserves list selection',
-        async function body(scope: OverkillScope) {
+        async function body(scope: TestScope) {
             const receivedCommands: RunCommand[] = [];
             const integrationProfile = defaultIntegrationProfile({});
             const selection: RunSelection = {
@@ -396,7 +388,7 @@ export const testNode = suite('source/run/command-line-list-runner.test.ts', [
     ),
     listRunnerCase(
         'commandLineRunner.listTests() renders definition locations when requested',
-        async function body(scope: OverkillScope) {
+        async function body(scope: TestScope) {
             const result = await listTests(
                 createListDependencies(resolvePassingCommand, createMemoryReporter),
                 true,
@@ -415,7 +407,7 @@ export const testNode = suite('source/run/command-line-list-runner.test.ts', [
     ),
     listRunnerCase(
         'commandLineRunner.listTests() renders explicit orphan diagnostics',
-        async function body(scope: OverkillScope) {
+        async function body(scope: TestScope) {
             const result = await listTests(
                 createListDependencies(resolvePassingCommand, createMemoryReporter),
                 false,
@@ -436,7 +428,7 @@ export const testNode = suite('source/run/command-line-list-runner.test.ts', [
     ),
     listRunnerCase(
         'commandLineRunner.listTests() renders orphan definition locations when requested',
-        async function body(scope: OverkillScope) {
+        async function body(scope: TestScope) {
             const result = await listTests(
                 createListDependencies(createResolvedRunWithOrphanLocation, createMemoryReporter),
                 true,

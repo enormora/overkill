@@ -1,42 +1,51 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { executionSessionRuntime } from '../test-support/execution-session-runtime.ts';
 import { normalizeExecutionSessionOptions } from './execution-session-schema.ts';
 
-export const testNode = authoredSuite('memory execution session admission', [
-    ...[
-        { change: { lastFailed: true }, message: 'Memory execution sessions do not support last-failed recording.' },
-        {
-            change: { coverage: true },
-            message: 'Memory execution sessions do not support recorded coverage or baseline updates.'
+export const testNode: TestNode = suite('memory execution session admission', [
+    table({
+        title: 'rejects persisted session policy',
+        cases: [
+            {
+                change: { lastFailed: true },
+                message: 'Memory execution sessions do not support last-failed recording.'
+            },
+            {
+                change: { coverage: true },
+                message: 'Memory execution sessions do not support recorded coverage or baseline updates.'
+            },
+            {
+                change: { baselineUpdateMode: 'update' as const },
+                message: 'Memory execution sessions do not support recorded coverage or baseline updates.'
+            },
+            {
+                change: { debug: { mode: 'all' as const, selectors: [] as const } },
+                message: 'Memory execution sessions do not support persisted debug recording.'
+            }
+        ],
+        caseTitle(_parameters, index) {
+            return `${index}`;
         },
-        {
-            change: { baselineUpdateMode: 'update' as const },
-            message: 'Memory execution sessions do not support recorded coverage or baseline updates.'
-        },
-        {
-            change: { debug: { mode: 'all' as const, selectors: [] as const } },
-            message: 'Memory execution sessions do not support persisted debug recording.'
+        async test(scope) {
+            const scenario = scope.parameters;
+
+            const fixture = await executionSessionRuntime();
+            const { command } = fixture.options;
+            const supplied = {
+                ...fixture.options,
+                command: {
+                    ...command,
+                    policy: { ...command.policy, request: { ...command.policy.request, ...scenario.change } }
+                }
+            };
+            scope.assert.throws(function () {
+                normalizeExecutionSessionOptions(supplied, fixture.runtime.createSeed);
+            }, { message: scenario.message });
+            return scope.assert.collect();
         }
-    ]
-        .map(function (scenario, index) {
-            return authoredTest(`rejects persisted session policy ${index}`, async function (scope: TestScope) {
-                const fixture = await executionSessionRuntime();
-                const { command } = fixture.options;
-                const supplied = {
-                    ...fixture.options,
-                    command: {
-                        ...command,
-                        policy: { ...command.policy, request: { ...command.policy.request, ...scenario.change } }
-                    }
-                };
-                scope.assert.throws(function () {
-                    normalizeExecutionSessionOptions(supplied, fixture.runtime.createSeed);
-                }, { message: scenario.message });
-                return scope.assert.collect();
-            });
-        }),
-    authoredTest('generates a seed when invocation does not supply one', async function (scope: TestScope) {
+    }),
+    test('generates a seed when invocation does not supply one', async function (scope) {
         const fixture = await executionSessionRuntime();
         const { command } = fixture.options;
         const supplied = {

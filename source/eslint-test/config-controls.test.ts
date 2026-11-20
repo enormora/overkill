@@ -1,11 +1,11 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { ResourceLifecycleError } from '../packages/resources/resources.entry-point.ts';
 import { emptyConfigProject } from '../test-support/eslint-config.ts';
 import { projectFailure, propagateConfigControls } from './config-errors.ts';
 import { trialCandidates } from './config-seeds.ts';
 
-export const testNode = authoredSuite('config execution controls', [
+export const testNode: TestNode = suite('config execution controls', [
     test('rejects replay references to removed fixtures', async function (scope) {
         await scope.assert.rejects(async function removed() {
             await trialCandidates(
@@ -31,19 +31,22 @@ export const testNode = authoredSuite('config execution controls', [
         }, { message: 'denied' });
         return scope.assert.collect();
     }),
-    test('normalizes portable failure text and handles missing stacks and non-error throws', function (scope) {
-        const error = new Error('/project/file.js failed');
-        Reflect.deleteProperty(error, 'stack');
-        const normalized = projectFailure(error, '/project', scope.signal);
-        if (!(normalized instanceof Error)) {
-            throw new TypeError('Expected an error.');
+    test(
+        'normalizes portable failure text and handles missing stacks and non-error throws',
+        function (scope) {
+            const error = new Error('/project/file.js failed');
+            Reflect.deleteProperty(error, 'stack');
+            const normalized = projectFailure(error, '/project', scope.signal);
+            if (!(normalized instanceof Error)) {
+                throw new TypeError('Expected an error.');
+            }
+            scope.assert.equal(normalized.message, '<project>/file.js failed');
+            scope.assert.false(String(normalized.stack).includes('/project/file.js'));
+            const thrown = { reason: 'plugin failure' };
+            scope.assert.equal(projectFailure(thrown, '/project', scope.signal), thrown);
+            return scope.assert.collect();
         }
-        scope.assert.equal(normalized.message, '<project>/file.js failed');
-        scope.assert.false(String(normalized.stack).includes('/project/file.js'));
-        const thrown = { reason: 'plugin failure' };
-        scope.assert.equal(projectFailure(thrown, '/project', scope.signal), thrown);
-        return scope.assert.collect();
-    }),
+    ),
     test('cancellation retains priority over ordinary rule errors', function (scope) {
         const controller = new AbortController();
         controller.abort(new Error('cancelled'));

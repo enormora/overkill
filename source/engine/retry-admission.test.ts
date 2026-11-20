@@ -1,13 +1,13 @@
-import { test as authoredTest, suite } from '@overkill-dev/test';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import {
     defineReporter,
     type ReporterEvent,
     type DefinedReporter,
     type ProcessUsageSnapshot,
-    type RunProcessUsageTracker,
-    type TestScope
+    type RunProcessUsageTracker
 } from '../packages/engine/engine.entry-point.ts';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
@@ -95,147 +95,163 @@ function failRetryStart(event: ReporterEvent): void {
     }
 }
 
-export const testNode = suite('source/engine/retry-admission.test.ts', [
-    ...[ 0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY ].map(function invalidLimit(maxAttempts) {
-        return authoredTest({
-            ...metadata,
-            title: `engine rejects invalid total attempt limit ${String(maxAttempts)}`,
-            async body(scope: TestScope) {
-                const engine = createTestEngine();
-                let runs = 0;
-                const plan = engine.createTestPlan(engine.createRoot({
-                    annotations: {},
-                    controls: {},
-                    title: 'invalid policy',
-                    children: [ engine.createTestCase({
-                        ...metadata,
-                        title: 'case',
-                        body(attemptScope) {
-                            runs += 1;
-                            attemptScope.assert.fail();
-                            return attemptScope.assert.collect();
-                        }
-                    }) ]
-                }));
-                await scope.assert.rejects(async function executeInvalidPolicy() {
-                    await engine.execute(plan, {
-                        debug: { mode: 'off' },
-                        execution: { mode: 'serial-in-process' },
-                        reporters: [],
-                        runFacts: {},
-                        startedAt: '1970-01-01T00:00:00.000Z',
-                        retryPolicy: { maxAttempts }
-                    });
-                }, { message: 'Retry maxAttempts must be a positive safe integer.' });
-                scope.assert.equal(runs, 0);
-                return scope.assert.collect();
-            }
-        });
-    }),
-    ...schedulingCases.map(function executionMode(execution) {
-        return authoredTest({
-            ...metadata,
-            title: `fatal retry-start reporting prevents body execution under ${execution.mode}`,
-            async body(scope: TestScope) {
-                const engine = createTestEngine();
-                let runs = 0;
-                const reporter = defineReporter(function () {
-                    return {
-                        name: 'fatal-admission',
-                        kind: 'real-time',
-                        sinks: [ { kind: 'memory' } ],
-                        dispose: null,
-                        onFinish: null,
-                        onEvent: failRetryStart
-                    };
-                });
-                const plan = engine.createTestPlan(engine.createRoot({
-                    annotations: {},
-                    controls: {},
-                    title: 'admission',
-                    children: [ engine.createTestCase({
-                        ...metadata,
-                        title: 'case',
-                        body(attemptScope) {
-                            runs += 1;
-                            attemptScope.assert.fail();
-                            return attemptScope.assert.collect();
-                        }
-                    }) ]
-                }));
-                const result = await engine.execute(plan, {
-                    debug: { mode: 'off' },
-                    execution,
-                    reporters: [ reporter ],
-                    retryPolicy: { maxAttempts: 3 },
-                    runFacts: {},
-                    startedAt: '1970-01-01T00:00:00.000Z'
-                });
-                scope.assert.deepEqual([ runs, result.summary.crashed, result.perTest[0]?.attempts.length ], [
-                    1,
-                    1,
-                    2
-                ]);
-                scope.assert.equal(result.status, 'failed');
-                return scope.assert.collect();
-            }
-        });
-    }),
-    ...schedulingCases.flatMap(function processExecutionMode(execution) {
-        return [ 'tracking-start', 'initial-start', 'retry-start', 'retry-end' ].map(
-            function processTrigger(trigger) {
-                return authoredTest({
+export const testNode: TestNode = suite('Retry admission', [
+    table({
+        ...metadata,
+        title: 'rejects invalid total attempt limits',
+        cases: [ 0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY ],
+        caseTitle(maxAttempts) {
+            return `${String(maxAttempts)}`;
+        },
+        async test(scope) {
+            const maxAttempts = scope.parameters;
+
+            const engine = createTestEngine();
+            let runs = 0;
+            const plan = engine.createTestPlan(engine.createRoot({
+                annotations: {},
+                controls: {},
+                title: 'invalid policy',
+                children: [ engine.createTestCase({
                     ...metadata,
-                    title: `process exhaustion at ${trigger} stops retries under ${execution.mode}`,
-                    async body(scope: TestScope) {
-                        const engine = createTestEngine();
-                        const probe = processLimitProbe(trigger === 'tracking-start');
-                        let runs = 0;
-                        const plan = engine.createTestPlan(engine.createRoot({
-                            annotations: {},
-                            controls: {},
-                            title: 'process limit',
-                            children: [ engine.createTestCase({
-                                ...metadata,
-                                title: 'case',
-                                body(attemptScope) {
-                                    runs += 1;
-                                    attemptScope.assert.fail();
-                                    return attemptScope.assert.collect();
-                                }
-                            }) ]
-                        }));
-                        const result = await engine.execute(plan, {
-                            debug: { mode: 'off' },
-                            execution,
-                            reporters: [ processLimitReporter(probe, trigger) ],
-                            retryPolicy: { maxAttempts: 3 },
-                            runFacts: {},
-                            startedAt: '1970-01-01T00:00:00.000Z',
-                            processUsageTracker: probe.tracker,
-                            processBudgets: {
-                                activeResourceCount: null,
-                                javaScriptEngineHeapBytes: null,
-                                residentSetBytes: 1,
-                                residentSetGrowthBytesPerSecond: null
-                            }
-                        });
-                        scope.assert.equal(runs, [ 'initial-start', 'tracking-start' ].includes(trigger) ? 0 : 1);
-                        scope.assert.equal(result.status, 'failed');
-                        scope.assert.equal(result.runnerErrors[0]?.subtype, 'process-exhaustion');
-                        scope.assert.equal(
-                            result
-                                .perTest
-                                .flatMap(function attempts(test) {
-                                    return test.attempts;
-                                })
-                                .length,
-                            { 'tracking-start': 0, 'initial-start': 1, 'retry-start': 2, 'retry-end': 1 }[trigger]
-                        );
-                        return scope.assert.collect();
+                    title: 'case',
+                    body(attemptScope) {
+                        runs += 1;
+                        attemptScope.assert.fail();
+                        return attemptScope.assert.collect();
                     }
+                }) ]
+            }));
+            await scope.assert.rejects(async function executeInvalidPolicy() {
+                await engine.execute(plan, {
+                    debug: { mode: 'off' },
+                    execution: { mode: 'serial-in-process' },
+                    reporters: [],
+                    runFacts: {},
+                    startedAt: '1970-01-01T00:00:00.000Z',
+                    retryPolicy: { maxAttempts }
                 });
-            }
-        );
+            }, { message: 'Retry maxAttempts must be a positive safe integer.' });
+            scope.assert.equal(runs, 0);
+            return scope.assert.collect();
+        }
+    }),
+    table({
+        ...metadata,
+        title: 'reporting failures prevent retry body execution',
+        cases: schedulingCases,
+        caseTitle(execution) {
+            return `${execution.mode}`;
+        },
+        async test(scope) {
+            const execution = scope.parameters;
+
+            const engine = createTestEngine();
+            let runs = 0;
+            const reporter = defineReporter(function () {
+                return {
+                    name: 'fatal-admission',
+                    kind: 'real-time',
+                    sinks: [ { kind: 'memory' } ],
+                    dispose: null,
+                    onFinish: null,
+                    onEvent: failRetryStart
+                };
+            });
+            const plan = engine.createTestPlan(engine.createRoot({
+                annotations: {},
+                controls: {},
+                title: 'admission',
+                children: [ engine.createTestCase({
+                    ...metadata,
+                    title: 'case',
+                    body(attemptScope) {
+                        runs += 1;
+                        attemptScope.assert.fail();
+                        return attemptScope.assert.collect();
+                    }
+                }) ]
+            }));
+            const result = await engine.execute(plan, {
+                debug: { mode: 'off' },
+                execution,
+                reporters: [ reporter ],
+                retryPolicy: { maxAttempts: 3 },
+                runFacts: {},
+                startedAt: '1970-01-01T00:00:00.000Z'
+            });
+            scope.assert.deepEqual([ runs, result.summary.crashed, result.perTest[0]?.attempts.length ], [
+                1,
+                1,
+                2
+            ]);
+            scope.assert.equal(result.status, 'failed');
+            return scope.assert.collect();
+        }
+    }),
+    table({
+        ...metadata,
+        title: 'process exhaustion stops retries',
+        cases: schedulingCases.flatMap(function processExecutionMode(execution) {
+            return [ 'tracking-start', 'initial-start', 'retry-start', 'retry-end' ].map(
+                function processTrigger(trigger) {
+                    return ({
+                        caseDescription: `${trigger}, ${execution.mode}`,
+                        execution,
+                        trigger
+                    });
+                }
+            );
+        }),
+        caseTitle: (row) => row.caseDescription,
+        async test(scope) {
+            const { execution, trigger } = scope.parameters;
+
+            const engine = createTestEngine();
+            const probe = processLimitProbe(trigger === 'tracking-start');
+            let runs = 0;
+            const plan = engine.createTestPlan(engine.createRoot({
+                annotations: {},
+                controls: {},
+                title: 'process limit',
+                children: [ engine.createTestCase({
+                    ...metadata,
+                    title: 'case',
+                    body(attemptScope) {
+                        runs += 1;
+                        attemptScope.assert.fail();
+                        return attemptScope.assert.collect();
+                    }
+                }) ]
+            }));
+            const result = await engine.execute(plan, {
+                debug: { mode: 'off' },
+                execution,
+                reporters: [ processLimitReporter(probe, trigger) ],
+                retryPolicy: { maxAttempts: 3 },
+                runFacts: {},
+                startedAt: '1970-01-01T00:00:00.000Z',
+                processUsageTracker: probe.tracker,
+                processBudgets: {
+                    activeResourceCount: null,
+                    javaScriptEngineHeapBytes: null,
+                    residentSetBytes: 1,
+                    residentSetGrowthBytesPerSecond: null
+                }
+            });
+            scope.assert.equal(runs, [ 'initial-start', 'tracking-start' ].includes(trigger) ? 0 : 1);
+            scope.assert.equal(result.status, 'failed');
+            scope.assert.equal(result.runnerErrors[0]?.subtype, 'process-exhaustion');
+            scope.assert.equal(
+                result
+                    .perTest
+                    .flatMap(function attempts(test) {
+                        return test.attempts;
+                    })
+                    .length,
+                { 'tracking-start': 0, 'initial-start': 1, 'retry-start': 2, 'retry-end': 1 }[trigger]
+            );
+            return scope.assert.collect();
+        }
     })
 ]);

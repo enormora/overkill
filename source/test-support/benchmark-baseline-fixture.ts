@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { posix as path } from 'node:path';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 import {
     normalizeConfig,
     orchestrator,
@@ -11,7 +11,7 @@ import type { PerformanceBaselineAdapter } from '../baselines/performance-adapte
 import { defaultRunRequest } from './run-command-factory.ts';
 
 export const performanceBaselineFixtureFile =
-    'source/integration-tests/run/fixtures/performance-baselines.bench.test.ts';
+    'source/integration-tests/integration/fixtures/performance-baselines.bench.test.ts';
 const fixture = performanceBaselineFixtureFile;
 export type BaselineFixture = {
     readonly command: RunCommand;

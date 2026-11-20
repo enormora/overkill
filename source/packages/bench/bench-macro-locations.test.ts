@@ -1,12 +1,13 @@
-import * as ordinary from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import type { EngineCaseBody } from '../../test-support/create-test-engine.ts';
+
+import * as subjectAuthoring from '../test/test.entry-point.ts';
 import {
     captureSourceLocation,
     resolveSourceLocation,
     type RunResult,
     type SourceLocation,
-    type TestBody,
     type TestPlan,
-    type TestScope,
     createRoot,
     createTestPlan,
     execute
@@ -14,7 +15,9 @@ import {
 
 import * as bench from './bench.entry-point.ts';
 
-function failingBody(scope: TestScope): ReturnType<TestBody> {
+function failingBody(
+    scope: { readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>; }
+): ReturnType<EngineCaseBody> {
     scope.assert.equal('actual', 'expected');
     return scope.assert.collect();
 }
@@ -25,7 +28,7 @@ type LocatedMacroPlan = {
 };
 
 function createNestedMacroPlan(): LocatedMacroPlan {
-    const inner = ordinary.defineMacro(function failingBenchCase() {
+    const inner = subjectAuthoring.defineMacro(function failingBenchCase() {
         return bench.benchmark('fails', {
             kind: 'runtime',
             workloads: [ bench.workload('one', {}) ],
@@ -41,7 +44,7 @@ function createNestedMacroPlan(): LocatedMacroPlan {
         });
     });
     const outer = bench.defineMacro(function nestedOrdinarySuite() {
-        return ordinary.suite('nested', [ inner() ]);
+        return subjectAuthoring.suite('nested', [ inner() ]);
     });
     const callSite = captureSourceLocation();
     const subtree = outer();
@@ -80,7 +83,7 @@ type LocatedMacroCase = {
 };
 
 function subsequentMacroCase(): LocatedMacroCase {
-    const subsequent = ordinary.defineMacro(function laterBenchCase() {
+    const subsequent = subjectAuthoring.defineMacro(function laterBenchCase() {
         return bench.test('later macro', failingBody);
     });
     const callSite = captureSourceLocation();
@@ -89,8 +92,8 @@ function subsequentMacroCase(): LocatedMacroCase {
     return { applicationLocation: resolveSourceLocation(callSite), child };
 }
 
-export const testNode = ordinary.suite('source/packages/bench/bench-macro-locations.test.ts', [
-    ordinary.test('preserves nested cross-facade macro definition and assertion locations', async function (scope) {
+export const testNode: TestNode = suite('Benchmark macro source locations', [
+    test('preserves nested cross-facade macro definition and assertion locations', async function (scope) {
         const { applicationLocation, plan } = createNestedMacroPlan();
         const result = await execute(plan);
         const actual = resolveSourceLocation(plan.discoveredCases[0].definitionLocations[0]);
@@ -100,7 +103,7 @@ export const testNode = ordinary.suite('source/packages/bench/bench-macro-locati
         assertFailureLocation(scope, result, actual);
         return scope.assert.collect();
     }),
-    ordinary.test('restores macro locations after a factory throws', function (scope) {
+    test('restores macro locations after a factory throws', function (scope) {
         const broken = bench.defineMacro(function failingFactory() {
             throw new Error('factory failed');
         });
@@ -109,7 +112,7 @@ export const testNode = ordinary.suite('source/packages/bench/bench-macro-locati
             return broken();
         }, { message: 'factory failed' });
 
-        const plain = ordinary.test('outside macro', failingBody);
+        const plain = test('outside macro', failingBody);
         const { applicationLocation, child } = subsequentMacroCase();
 
         scope.assert.equal(plain.definitionLocations.length, 1);

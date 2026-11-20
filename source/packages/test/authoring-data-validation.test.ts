@@ -1,6 +1,5 @@
-import { test, suite } from '@overkill-dev/test';
+import { type TestNode, table, suite } from '@overkill-dev/test';
 
-import type { TestScope } from './test.entry-point.ts';
 import {
     readAuthoringAnnotations,
     readAuthoringControls,
@@ -27,33 +26,61 @@ const invalidControls: readonly unknown[] = [
     { timeoutMilliseconds: '100' },
     { duplicateExecution: 'unknown' }
 ];
-export const testNode = suite('authoring data validation', [
-    ...invalidAnnotations.map(function (value, index) {
-        return test(`rejects invalid annotation input ${index}`, function (scope: TestScope) {
+export const testNode: TestNode = suite('authoring data validation', [
+    table({
+        title: 'rejects invalid annotation input',
+        cases: invalidAnnotations,
+        caseTitle(_parameters, index) {
+            return `${index}`;
+        },
+        test(scope) {
+            const value = scope.parameters;
+
             scope.assert.throws(function () {
                 readAuthoringAnnotations(value);
             }, { type: TypeError });
             return scope.assert.collect();
-        });
+        }
     }),
-    ...invalidControls.map(function (value, index) {
-        return test(`rejects invalid control input ${index}`, function (scope: TestScope) {
+    table({
+        title: 'rejects invalid control input',
+        cases: invalidControls,
+        caseTitle(_parameters, index) {
+            return `${index}`;
+        },
+        test(scope) {
+            const value = scope.parameters;
+
             scope.assert.throws(function () {
                 readAuthoringControls(value);
             }, { type: TypeError });
             return scope.assert.collect();
-        });
+        }
     }),
-    ...[ null, [], { mapScope: 42 }, { annotations: null }, { controls: null } ].map(function (value, index) {
-        return test(`rejects invalid facade input ${index}`, function (scope: TestScope) {
+    table({
+        title: 'rejects invalid facade input',
+        cases: [ null, [], { mapScope: 42 }, { annotations: null }, { controls: null } ],
+        caseTitle(_parameters, index) {
+            return `${index}`;
+        },
+        test(scope) {
+            const value = scope.parameters;
+
             scope.assert.throws(function () {
                 Reflect.apply(readTestFacadeDefinition, undefined, [ value ]);
             }, { type: TypeError });
             return scope.assert.collect();
-        });
+        }
     }),
-    ...([ 'forbidden', 'idempotent' ] as const).map(function (duplicateExecution) {
-        return test(`retains ${duplicateExecution} duplicate execution controls`, function (scope: TestScope) {
+    table({
+        title: 'retains duplicate execution controls',
+        cases: [ 'forbidden', 'idempotent' ] as const,
+        caseTitle(duplicateExecution) {
+            return `${duplicateExecution}`;
+        },
+        test(scope) {
+            const duplicateExecution = scope.parameters;
+
             scope.assert.deepEqual(readAuthoringControls({ duplicateExecution }), { duplicateExecution });
             scope.assert.deepEqual(createAuthoringControls({ duplicateExecution }, {}), { duplicateExecution });
             scope.assert.deepEqual(
@@ -61,6 +88,6 @@ export const testNode = suite('authoring data validation', [
                 { duplicateExecution }
             );
             return scope.assert.collect();
-        });
+        }
     })
 ]);

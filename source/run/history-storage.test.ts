@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
@@ -33,8 +33,8 @@ function failFirstHistoryWrite(memory: HistoryStorage): HistoryStorage {
     };
 }
 
-export const testNode = authoredSuite('history persistence', [
-    test('checkpoints stay provisional and completion is idempotent', async function (scope: TestScope) {
+export const testNode: TestNode = suite('history persistence', [
+    test('checkpoints stay provisional and completion is idempotent', async function (scope) {
         const store = createMemoryHistoryStorage();
         const record = completedHistoryRecord('run');
         await updateCompactHistory(store, { ...record, status: 'started' }, context);
@@ -57,7 +57,7 @@ export const testNode = authoredSuite('history persistence', [
         scope.assert.equal(state.durations.entries.length, 0);
         return scope.assert.collect();
     }),
-    test('failed aggregate publication leaves no partial durations or receipt', async function (scope: TestScope) {
+    test('failed aggregate publication leaves no partial durations or receipt', async function (scope) {
         const store = failFirstHistoryWrite(createMemoryHistoryStorage());
         const record = completedHistoryRecord('run');
         await store.write(`${directory}/runs/run.json`, JSON.stringify(record));
@@ -70,7 +70,7 @@ export const testNode = authoredSuite('history persistence', [
         await assertOneCommittedSample(scope, store);
         return scope.assert.collect();
     }),
-    test('explicit repair reports corrupt-state loss and restores retained records', async function (scope: TestScope) {
+    test('explicit repair reports corrupt-state loss and restores retained records', async function (scope) {
         const store = createMemoryHistoryStorage();
         await store.write(`${directory}/history/index.json`, '{');
         await store.write(`${directory}/runs/run.json`, JSON.stringify(completedHistoryRecord('run')));
@@ -82,7 +82,7 @@ export const testNode = authoredSuite('history persistence', [
         scope.assert.equal(state?.summaries[0]?.status, 'passed');
         return scope.assert.collect();
     }),
-    test('automatic repair with no retained inputs leaves files untouched', async function (scope: TestScope) {
+    test('automatic repair with no retained inputs leaves files untouched', async function (scope) {
         const store = createMemoryHistoryStorage();
         await scope.assert.rejects(async function insufficientRecords() {
             await repairHistory(store, { ...repair, mode: 'automatic' });
@@ -93,7 +93,7 @@ export const testNode = authoredSuite('history persistence', [
     }),
     test(
         'malformed retained records fail repair without overwriting current history',
-        async function (scope: TestScope) {
+        async function (scope) {
             const store = createMemoryHistoryStorage();
             await updateCompactHistory(store, completedHistoryRecord('run'), context);
             const before = await store.read(`${directory}/history/index.json`);

@@ -1,10 +1,10 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { attachmentFile, attachmentFileScenario } from '../test-support/attachment-file.ts';
 import { createFileAttachmentRetention } from './attachment-retention.ts';
 
-export const testNode = authoredSuite('attachment file retention', [
-    test('handles partial writes and closes a completed attachment exactly once', async function (scope: TestScope) {
+export const testNode: TestNode = suite('attachment file retention', [
+    test('handles partial writes and closes a completed attachment exactly once', async function (scope) {
         const fixture = attachmentFile({ ...attachmentFileScenario, maximumWrite: 2 });
         const retention = createFileAttachmentRetention(fixture.file, 'artifacts/data.bin', 1024);
         scope.assert.equal(await retention.retain(Buffer.from('abcdef'), 1024), 6);
@@ -22,7 +22,7 @@ export const testNode = authoredSuite('attachment file retention', [
     }),
     test(
         'retains only bytes admitted by the file budget and marks incomplete content',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = attachmentFile(attachmentFileScenario);
             const retention = createFileAttachmentRetention(fixture.file, 'artifacts/data.bin', 3);
             scope.assert.equal(await retention.retain(Buffer.from('abcdef'), 1024), 3);
@@ -37,7 +37,7 @@ export const testNode = authoredSuite('attachment file retention', [
             return scope.assert.collect();
         }
     ),
-    test('honors the remaining scope budget without writing the excess bytes', async function (scope: TestScope) {
+    test('honors the remaining scope budget without writing the excess bytes', async function (scope) {
         const fixture = attachmentFile(attachmentFileScenario);
         const retention = createFileAttachmentRetention(fixture.file, 'artifacts/data.bin', 1024);
         scope.assert.equal(await retention.retain(Buffer.from('abcdef'), 1), 1);
@@ -51,7 +51,7 @@ export const testNode = authoredSuite('attachment file retention', [
         });
         return scope.assert.collect();
     }),
-    test('rejects stalled file writes and closes failed content', async function (scope: TestScope) {
+    test('rejects stalled file writes and closes failed content', async function (scope) {
         const fixture = attachmentFile({ ...attachmentFileScenario, maximumWrite: 0 });
         const retention = createFileAttachmentRetention(fixture.file, 'artifacts/data.bin', 1024);
         await scope.assert.rejects(async function () {
@@ -68,7 +68,7 @@ export const testNode = authoredSuite('attachment file retention', [
         scope.assert.deepEqual<unknown, unknown>(fixture.events, [ 'write:0', 'close' ]);
         return scope.assert.collect();
     }),
-    test('retains successful bytes and error identity when a later write fails', async function (scope: TestScope) {
+    test('retains successful bytes and error identity when a later write fails', async function (scope) {
         const failure = new Error('Write failed.');
         const fixture = attachmentFile({
             ...attachmentFileScenario,
@@ -90,7 +90,7 @@ export const testNode = authoredSuite('attachment file retention', [
         scope.assert.deepEqual<unknown, unknown>(fixture.events, [ 'write:2', 'close' ]);
         return scope.assert.collect();
     }),
-    test('normalizes truncated binary completion and rejects JSON omission', async function (scope: TestScope) {
+    test('normalizes truncated binary completion and rejects JSON omission', async function (scope) {
         const fixture = attachmentFile(attachmentFileScenario);
         const retention = createFileAttachmentRetention(fixture.file, 'artifacts/data.bin', 1024);
         scope.assert.throws(function () {
@@ -105,7 +105,7 @@ export const testNode = authoredSuite('attachment file retention', [
         });
         return scope.assert.collect();
     }),
-    test('surfaces file close failures', async function (scope: TestScope) {
+    test('surfaces file close failures', async function (scope) {
         const failure = new Error('Close failed.');
         const fixture = attachmentFile({ ...attachmentFileScenario, closeFailure: failure });
         const retention = createFileAttachmentRetention(fixture.file, 'artifacts/data.bin', 1024);

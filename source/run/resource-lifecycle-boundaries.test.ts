@@ -1,11 +1,10 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createCaseId } from '../engine/identity.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import { defineResource } from '../resources/resources.ts';
 import { bindResourceScenarios } from '../resources/resource-scenario-binding.ts';
-import { testNode as workloadInputValidationTestNode } from './workload-input-validation.test.ts';
+
 import { caseResourceBoundaryKeys, resourceLifecycleBoundaryUseCounts } from './resource-lifecycle-boundaries.ts';
 import {
     resourceAcquisitionCacheIdentity,
@@ -258,22 +257,21 @@ function assertDefaultMatrixSelection(scope: TestScope): void {
         }, new Set([ 'per-run' ]));
     }, { message: 'Runtime matrix "api" has no selected variant.' });
 }
-export const testNode = suite('source/run/resource-lifecycle-boundaries.test.ts', [
-    workloadInputValidationTestNode,
-    test('ignores unknown resource summaries and deduplicates shared dependencies', function (scope: TestScope) {
+export const testNode: TestNode = suite('Resource lifecycle boundaries', [
+    test('ignores unknown resource summaries and deduplicates shared dependencies', function (scope) {
         assertIncompleteResourceGraphs(scope);
         return scope.assert.collect();
     }),
-    test('selects the default runtime matrix variant and rejects empty matrices', function (scope: TestScope) {
+    test('selects the default runtime matrix variant and rejects empty matrices', function (scope) {
         assertDefaultMatrixSelection(scope);
         return scope.assert.collect();
     }),
-    test('scenario timing controls reusable lifecycle cache identities', function (scope: TestScope) {
+    test('scenario timing controls reusable lifecycle cache identities', function (scope) {
         assertScenarioCacheIdentities(scope);
 
         return scope.assert.collect();
     }),
-    test('cache identities omit empty state and traverse resource descriptors', function (scope: TestScope) {
+    test('cache identities omit empty state and traverse resource descriptors', function (scope) {
         assertCacheIdentityNodes(scope);
 
         return scope.assert.collect();

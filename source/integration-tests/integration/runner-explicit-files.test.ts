@@ -1,0 +1,443 @@
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import type {
+    RunCommand,
+    RunRequest,
+    NormalizedConfig,
+    MicrotestExecution,
+    Scheduling
+} from '../../packages/run/run.entry-point.ts';
+import { defineOutputRenderer, defineReporter } from '../../packages/engine/engine.entry-point.ts';
+
+import type { DefinedReporter, Reporter } from '../../engine/reporter.ts';
+import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
+import {
+    defaultMicrotestProfile,
+    defaultRunConfig,
+    defaultRunRequest
+} from '../../test-support/run-command-factory.ts';
+
+const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const skippedFixturePath = 'source/integration-tests/integration/fixtures/skipped.test.ts';
+const duplicateFixtureAPath = 'source/integration-tests/integration/fixtures/duplicate-a.test.ts';
+const duplicateFixtureBPath = 'source/integration-tests/integration/fixtures/duplicate-b.test.ts';
+const schedulingFixturePath = 'source/integration-tests/integration/fixtures/scheduling.test.ts';
+const discoveryFixtureGlob = 'source/integration-tests/integration/fixtures/discovery/*.test.ts';
+const discoverySlowFixturePath = 'source/integration-tests/integration/fixtures/discovery/slow.test.ts';
+const emptyTestData = { annotations: {}, controls: {} } as const;
+
+type SchedulingEvent = `end:${string}` | `start:${string}`;
+
+type SchedulingEventRecorder = {
+    readonly events: () => readonly SchedulingEvent[];
+    readonly reporter: DefinedReporter;
+};
+
+const memoryReporter = defineReporter(function createMemoryReporter(): Reporter {
+    return {
+        dispose: null,
+        kind: 'real-time',
+        name: 'memory',
+        onEvent() {
+            return undefined;
+        },
+        onFinish: null,
+        sinks: [ { kind: 'memory' } ]
+    };
+});
+
+const defaultConfig = defaultRunConfig({
+    outputRenderer: defineOutputRenderer(function createOutputRenderer() {
+        return {
+            render() {
+                return '';
+            }
+        };
+    }),
+    profiles: {
+        microtest: defaultMicrotestProfile({ timeouts: { collectionMilliseconds: 5000 } })
+    },
+    reporters: []
+});
+
+function createRunRequest(paths: readonly string[]): RunRequest {
+    return defaultRunRequest({
+        order: 'lexical',
+        paths
+    });
+}
+
+function createRunConfig(): NormalizedConfig {
+    return {
+        ...defaultConfig,
+        reporters: [ memoryReporter ]
+    };
+}
+
+function createDiscoveryRunConfig(): NormalizedConfig {
+    return {
+        ...defaultConfig,
+        profiles: {
+            microtest: defaultMicrotestProfile({
+                files: {
+                    exclude: [ discoverySlowFixturePath ],
+                    include: [ discoveryFixtureGlob ]
+                },
+                timeouts: { collectionMilliseconds: 5000 }
+            })
+        },
+        reporters: [ memoryReporter ]
+    };
+}
+
+function createSchedulingEventRecorder(): SchedulingEventRecorder {
+    const events: SchedulingEvent[] = [];
+
+    return {
+        events() {
+            return events;
+        },
+        reporter: defineReporter(function createSchedulingReporter(): Reporter {
+            return {
+                dispose: null,
+                kind: 'real-time',
+                name: 'scheduling-recorder',
+                onEvent(event) {
+                    if (event.kind === 'test-start') {
+                        events.push(`start:${event.case.title}`);
+                    } else if (event.kind === 'test-end') {
+                        events.push(`end:${event.case.title}`);
+                    }
+                },
+                onFinish: null,
+                sinks: [ { kind: 'memory' } ]
+            };
+        })
+    };
+}
+
+function createSchedulingRunConfig(
+    processModel: MicrotestExecution['processModel'],
+    scheduling: Scheduling,
+    reporter: DefinedReporter
+): NormalizedConfig {
+    return {
+        ...defaultConfig,
+        profiles: {
+            microtest: defaultMicrotestProfile({
+                execution: { processModel, scheduling },
+                timeouts: { collectionMilliseconds: 5000 }
+            })
+        },
+        reporters: [ reporter ]
+    };
+}
+
+function createRunCommand(paths: readonly string[]): RunCommand {
+    return {
+        config: createRunConfig(),
+        cwd: process.cwd(),
+        engine: { kind: 'default' },
+        request: createRunRequest(paths)
+    };
+}
+
+function createSupervisedRunCommand(paths: readonly string[], config: NormalizedConfig): RunCommand {
+    return {
+        config,
+        cwd: process.cwd(),
+        engine: { kind: 'default' },
+        request: {
+            ...createRunRequest(paths),
+            profile: 'microtest'
+        }
+    };
+}
+
+async function runSchedulingScenario(
+    processModel: MicrotestExecution['processModel'],
+    scheduling: Scheduling
+): Promise<readonly SchedulingEvent[]> {
+    const recorder = createSchedulingEventRecorder();
+    await orchestrator.run(createSupervisedRunCommand(
+        [ schedulingFixturePath ],
+        createSchedulingRunConfig(processModel, scheduling, recorder.reporter)
+    ));
+
+    return recorder.events();
+}
+
+function compareSchedulingEvent(first: SchedulingEvent, second: SchedulingEvent): number {
+    return first.localeCompare(second);
+}
+
+function assertConcurrentSchedulingEvents(scope: TestScope, events: readonly SchedulingEvent[]): void {
+    scope.assert.deepEqual(events.slice(0, 2), [
+        'start:delayed',
+        'start:immediate'
+    ]);
+    scope.assert.deepEqual(events.slice(2).toSorted(compareSchedulingEvent), [
+        'end:delayed',
+        'end:immediate'
+    ]);
+}
+
+export const testNode: TestNode = suite({
+    title: 'Runner explicit files',
+    ...emptyTestData,
+    children: [
+        test({
+            title: 'runner resolves and executes one explicit testNode file',
+            ...emptyTestData,
+            async body(
+                scope: {
+                    readonly assert: Pick<TestScope['assert'], 'deepEqual' | 'collect'>;
+                    readonly require: Pick<TestScope['require'], 'defined'>;
+                }
+            ) {
+                const resolvedRun = await orchestrator.resolve(createRunCommand([ passingFixturePath ]));
+                const result = await orchestrator.run(createRunCommand([ passingFixturePath ]));
+                const firstCase = resolvedRun.facts.cases[0];
+
+                scope.require.defined(firstCase);
+                scope.assert.deepEqual(firstCase.id, {
+                    file: passingFixturePath,
+                    title: 'passes',
+                    params: null,
+                    suite: [ 'fixture' ]
+                });
+                scope.assert.deepEqual(result.summary, {
+                    crashed: 0,
+                    defined: 2,
+                    discovered: 1,
+                    failed: 0,
+                    inconclusive: 0,
+                    passed: 1,
+                    planned: 1,
+                    processExhausted: 0,
+                    runtimePolicy: 0,
+                    skipped: 0
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        test({
+            title: 'runner executes a supervised microtest in a child process',
+            ...emptyTestData,
+            async body(scope) {
+                const result = await orchestrator.run(
+                    createSupervisedRunCommand([ passingFixturePath ], createRunConfig())
+                );
+
+                scope.assert.deepEqual(result.summary, {
+                    crashed: 0,
+                    defined: 2,
+                    discovered: 1,
+                    failed: 0,
+                    inconclusive: 0,
+                    passed: 1,
+                    planned: 1,
+                    processExhausted: 0,
+                    runtimePolicy: 0,
+                    skipped: 0
+                });
+                scope.assert.equal(result.runnerErrors.length, 0);
+
+                return scope.assert.collect();
+            }
+        }),
+        test({
+            title: 'runner executes all-skipped explicit files successfully',
+            ...emptyTestData,
+            async body(scope) {
+                const result = await orchestrator.run(
+                    createSupervisedRunCommand([ skippedFixturePath ], createRunConfig())
+                );
+
+                scope.assert.deepEqual(result.summary, {
+                    crashed: 0,
+                    defined: 2,
+                    discovered: 1,
+                    failed: 0,
+                    inconclusive: 0,
+                    passed: 0,
+                    planned: 1,
+                    processExhausted: 0,
+                    runtimePolicy: 0,
+                    skipped: 1
+                });
+                scope.assert.equal(result.runnerErrors.length, 0);
+
+                return scope.assert.collect();
+            }
+        }),
+        test({
+            title: 'runner resolves and executes profile-discovered files',
+            ...emptyTestData,
+            async body(scope) {
+                const command = createSupervisedRunCommand([], createDiscoveryRunConfig());
+                const resolvedRun = await orchestrator.resolve(command);
+                const result = await orchestrator.run(command);
+
+                scope.assert.deepEqual(
+                    resolvedRun.facts.cases.map(function toCaseId(testCase) {
+                        return testCase.id;
+                    }),
+                    [
+                        {
+                            file: 'source/integration-tests/integration/fixtures/discovery/integration.test.ts',
+                            title: 'integration passes',
+                            params: null,
+                            suite: [ 'discovery' ]
+                        },
+                        {
+                            file: 'source/integration-tests/integration/fixtures/discovery/unit.test.ts',
+                            title: 'unit passes',
+                            params: null,
+                            suite: [ 'discovery' ]
+                        }
+                    ]
+                );
+                scope.assert.deepEqual(result.summary, {
+                    crashed: 0,
+                    defined: 4,
+                    discovered: 2,
+                    failed: 0,
+                    inconclusive: 0,
+                    passed: 2,
+                    planned: 2,
+                    processExhausted: 0,
+                    runtimePolicy: 0,
+                    skipped: 0
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        test({
+            title: 'runner runs in-process microtests concurrently from profile scheduling',
+            ...emptyTestData,
+            async body(scope) {
+                const events = await runSchedulingScenario('in-process', 'concurrent');
+
+                assertConcurrentSchedulingEvents(scope, events);
+
+                return scope.assert.collect();
+            }
+        }),
+        test({
+            title: 'runner runs in-process microtests serially from profile scheduling',
+            ...emptyTestData,
+            async body(scope) {
+                const events = await runSchedulingScenario('in-process', 'serial');
+
+                scope.assert.deepEqual(events, [
+                    'start:delayed',
+                    'end:delayed',
+                    'start:immediate',
+                    'end:immediate'
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        test({
+            title: 'runner runs supervised microtests concurrently from profile scheduling',
+            ...emptyTestData,
+            async body(scope) {
+                const events = await runSchedulingScenario('supervised-process', 'concurrent');
+
+                assertConcurrentSchedulingEvents(scope, events);
+
+                return scope.assert.collect();
+            }
+        }),
+        test({
+            title: 'runner runs supervised microtests serially from profile scheduling',
+            ...emptyTestData,
+            async body(scope) {
+                const events = await runSchedulingScenario('supervised-process', 'serial');
+
+                scope.assert.deepEqual(events, [
+                    'start:delayed',
+                    'end:delayed',
+                    'start:immediate',
+                    'end:immediate'
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        test({
+            title: 'runner uses file identity to distinguish duplicate case names across files',
+            ...emptyTestData,
+            async body(scope) {
+                const resolvedRun = await orchestrator.resolve(createRunCommand([
+                    duplicateFixtureAPath,
+                    duplicateFixtureBPath
+                ]));
+
+                scope.assert.deepEqual(
+                    resolvedRun.facts.cases.map(function toCaseId(testCase) {
+                        return testCase.id;
+                    }),
+                    [
+                        {
+                            file: duplicateFixtureAPath,
+                            title: 'same case',
+                            params: null,
+                            suite: [ 'same suite' ]
+                        },
+                        {
+                            file: duplicateFixtureBPath,
+                            title: 'same case',
+                            params: null,
+                            suite: [ 'same suite' ]
+                        }
+                    ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        test({
+            title: 'runner rejects invalid explicit paths before module import',
+            ...emptyTestData,
+            async body(scope) {
+                const outsideDirectory = await mkdtemp(join(tmpdir(), 'overkill-runner-'));
+                const outsideFile = join(outsideDirectory, 'outside.test.ts');
+
+                await writeFile(outsideFile, 'export const testNode = null;\n');
+
+                try {
+                    await scope.assert.rejects(async function resolveMissingPath() {
+                        await orchestrator.resolve(createRunCommand([
+                            'source/integration-tests/integration/fixtures/missing.ts'
+                        ]));
+                    }, {
+                        message: 'Run path does not exist: source/integration-tests/integration/fixtures/missing.ts'
+                    });
+                    await scope.assert.rejects(async function resolveDirectoryPath() {
+                        await orchestrator.resolve(
+                            createRunCommand([ 'source/integration-tests/integration/fixtures' ])
+                        );
+                    }, { message: 'Directory run paths require selected profile file discovery.' });
+                    await scope.assert.rejects(async function resolveDuplicatePath() {
+                        await orchestrator.resolve(createRunCommand([ passingFixturePath, passingFixturePath ]));
+                    }, { message: `Run path must not be duplicated: ${passingFixturePath}` });
+                    await scope.assert.rejects(async function resolveOutsidePath() {
+                        await orchestrator.resolve(createRunCommand([ outsideFile ]));
+                    }, { message: `Run path must stay inside cwd: ${outsideFile}` });
+                } finally {
+                    await rm(outsideDirectory, { force: true, recursive: true });
+                }
+
+                return scope.assert.collect();
+            }
+        })
+    ]
+});

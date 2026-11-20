@@ -1,10 +1,10 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import { isTestNode, isTestRoot, stampTestNodeFamily } from './test-node.ts';
 
-export const testNode = suite('source/engine/test-node.test.ts', [
-    test('createRoot() creates a branded test root', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Test node construction', [
+    test('createRoot() creates a branded test root', function (scope) {
         const engine = createEngine();
         const testCase = engine.createTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
@@ -30,7 +30,7 @@ export const testNode = suite('source/engine/test-node.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createRoot() rejects an empty title', function (scope: OverkillScope) {
+    test('createRoot() rejects an empty title', function (scope) {
         const engine = createEngine();
 
         scope.assert.throws(function createUnnamedRoot() {
@@ -44,7 +44,7 @@ export const testNode = suite('source/engine/test-node.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createRoot() rejects non-object annotations', function (scope: OverkillScope) {
+    test('createRoot() rejects non-object annotations', function (scope) {
         const engine = createEngine();
 
         scope.assert.throws(function createInvalidRoot() {
@@ -58,7 +58,7 @@ export const testNode = suite('source/engine/test-node.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createRoot() rejects plain object test nodes', function (scope: OverkillScope) {
+    test('createRoot() rejects plain object test nodes', function (scope) {
         const engine = createEngine();
 
         scope.assert.throws(function createInvalidRoot() {
@@ -79,7 +79,7 @@ export const testNode = suite('source/engine/test-node.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createRoot() rejects nodes from another engine instance', function (scope: OverkillScope) {
+    test('createRoot() rejects nodes from another engine instance', function (scope) {
         const firstEngine = createEngine();
         const secondEngine = createEngine();
         const foreignTest = firstEngine.createTestCase({
@@ -104,7 +104,7 @@ export const testNode = suite('source/engine/test-node.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createTestCase() creates a branded test node', function (scope: OverkillScope) {
+    test('createTestCase() creates a branded test node', function (scope) {
         const engine = createEngine();
         const testCase = engine.createTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
@@ -127,7 +127,7 @@ export const testNode = suite('source/engine/test-node.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createThrowingTestCase() creates a branded test node', function (scope: OverkillScope) {
+    test('createThrowingTestCase() creates a branded test node', function (scope) {
         const engine = createEngine();
         const testCase = engine.createThrowingTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
@@ -149,7 +149,7 @@ export const testNode = suite('source/engine/test-node.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createSkippedTestCase() creates a branded test node', function (scope: OverkillScope) {
+    test('createSkippedTestCase() creates a branded test node', function (scope) {
         const engine = createEngine();
         const testCase = engine.createSkippedTestCase({
             annotations: { tags: [ 'critical' ] },
@@ -166,7 +166,7 @@ export const testNode = suite('source/engine/test-node.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createTestCase() rejects an empty title', function (scope: OverkillScope) {
+    test('createTestCase() rejects an empty title', function (scope) {
         const engine = createEngine();
 
         scope.assert.throws(function createUnnamedTestCase() {
@@ -184,7 +184,7 @@ export const testNode = suite('source/engine/test-node.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createSkippedTestCase() rejects invalid reason values', function (scope: OverkillScope) {
+    test('createSkippedTestCase() rejects invalid reason values', function (scope) {
         const engine = createEngine();
 
         scope.assert.throws(function createSkippedTestCaseWithNonStringReason() {
@@ -208,11 +208,11 @@ export const testNode = suite('source/engine/test-node.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createTestCase() rejects invalid title and definition location values', function (scope: OverkillScope) {
+    test('createTestCase() rejects invalid title and definition location values', function (scope) {
         const engine = createEngine();
-        const validBody = function body(
-            testScope: OverkillScope
-        ): ReturnType<OverkillScope['assert']['collect']> {
+        const validBody = function (
+            testScope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }
+        ) {
             testScope.assert.true(true, { message: 'passes' });
             return testScope.assert.collect();
         };
@@ -238,7 +238,7 @@ export const testNode = suite('source/engine/test-node.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createSuite() rejects non-object test data', function (scope: OverkillScope) {
+    test('createSuite() rejects non-object test data', function (scope) {
         const engine = createEngine();
 
         scope.assert.throws(function createInvalidSuite() {
@@ -262,7 +262,7 @@ export const testNode = suite('source/engine/test-node.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('stampTestNodeFamily() rejects conflicting families', function (scope: OverkillScope) {
+    test('stampTestNodeFamily() rejects conflicting families', function (scope) {
         const engine = createEngine();
         const testCase = engine.createTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
@@ -282,7 +282,7 @@ export const testNode = suite('source/engine/test-node.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createSuite() rejects plain object test nodes', function (scope: OverkillScope) {
+    test('createSuite() rejects plain object test nodes', function (scope) {
         const engine = createEngine();
 
         scope.assert.throws(function createInvalidSuite() {
@@ -304,7 +304,7 @@ export const testNode = suite('source/engine/test-node.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createSuite() rejects nodes from another engine instance', function (scope: OverkillScope) {
+    test('createSuite() rejects nodes from another engine instance', function (scope) {
         const firstEngine = createEngine();
         const secondEngine = createEngine();
         const foreignTest = firstEngine.createTestCase({
@@ -330,7 +330,7 @@ export const testNode = suite('source/engine/test-node.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createTable() validates case bodies', function (scope: OverkillScope) {
+    test('createTable() validates case bodies', function (scope) {
         const engine = createEngine();
 
         scope.assert.throws(function createInvalidTable() {

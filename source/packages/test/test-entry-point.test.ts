@@ -1,4 +1,5 @@
-import { type TestScope as OverkillScope, suite as authoredSuite } from '@overkill-dev/test';
+import { type TestNode, test, type TestScope, suite } from '@overkill-dev/test';
+import type { EngineCaseBody } from '../../test-support/create-test-engine.ts';
 
 import {
     resolveSourceLocation,
@@ -6,12 +7,10 @@ import {
     type SourceLocation,
     type Suite,
     type Table,
-    type TestBody,
     type TestCase,
-    type TestNode,
+    type TestNode as SubjectTestNode,
     type TestPlan,
     type TestOutcome,
-    type TestScope,
     createRoot,
     createTestPlan,
     execute,
@@ -53,14 +52,14 @@ const {
     defineParameterizedTestBody,
     doubleUsage,
     rule,
-    suite,
+    suite: subjectSuite,
     table,
-    test,
+    test: subjectTest,
     testDouble,
     testIterator
 } = testRoot;
-const invokeTest = test as (...parameters: readonly unknown[]) => unknown;
-const invokeSuite = suite as (...parameters: readonly unknown[]) => unknown;
+const invokeTest = subjectTest as (...parameters: readonly unknown[]) => unknown;
+const invokeSuite = subjectSuite as (...parameters: readonly unknown[]) => unknown;
 const rootAuthoringExportNames = [
     'createTestFacade',
     'createTranscript',
@@ -94,16 +93,18 @@ function sortedKeys(value: Readonly<Record<string, unknown>>): readonly string[]
     });
 }
 
-function assertRootAuthoringBoundary(scope: OverkillScope): void {
+function assertRootAuthoringBoundary(scope: TestScope): void {
     scope.assert.deepEqual(sortedKeys(testRoot), rootAuthoringExportNames);
 }
 
-function passingBody(scope: TestScope): ReturnType<TestBody> {
+function passingBody(
+    scope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }
+): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
     return scope.assert.collect();
 }
 
-function assertPassingSummary(scope: OverkillScope, summary: unknown): void {
+function assertPassingSummary(scope: TestScope, summary: unknown): void {
     scope.assert.deepEqual({
         ...summary as Awaited<ReturnType<typeof execute>>['summary'],
         defined: null
@@ -122,8 +123,8 @@ function assertPassingSummary(scope: OverkillScope, summary: unknown): void {
 }
 
 async function executeRootAuthoredNode(): Promise<RootAuthoringExecution> {
-    const testCase = test({ annotations: { tags: [ 'case' ] }, body: passingBody, title: 'passes' });
-    const testNode = suite({
+    const testCase = subjectTest({ annotations: { tags: [ 'case' ] }, body: passingBody, title: 'passes' });
+    const testNode = subjectSuite({
         annotations: { tags: [ 'suite' ] },
         children: [ testCase ],
         title: 'runtime'
@@ -144,7 +145,7 @@ async function executeRootAuthoredNode(): Promise<RootAuthoringExecution> {
     };
 }
 
-function assertRootAuthoredCase(scope: OverkillScope, plannedCase: RootAuthoringExecution['plannedCase']): void {
+function assertRootAuthoredCase(scope: TestScope, plannedCase: RootAuthoringExecution['plannedCase']): void {
     scope.require.defined(plannedCase);
     scope.assert.deepEqual(plannedCase.id, {
         file: null,
@@ -161,7 +162,7 @@ function assertRootAuthoredCase(scope: OverkillScope, plannedCase: RootAuthoring
     scope.assert.equal(plannedCase.testFamily, null);
 }
 
-function assertTableSummary(scope: OverkillScope, summary: unknown): void {
+function assertTableSummary(scope: TestScope, summary: unknown): void {
     scope.assert.deepEqual({
         ...summary as Awaited<ReturnType<typeof execute>>['summary'],
         defined: null
@@ -231,7 +232,7 @@ function caseIdsFor(plan: TestPlan): readonly unknown[] {
     });
 }
 
-function assertTableCases(scope: OverkillScope, execution: TableAuthoringExecution): void {
+function assertTableCases(scope: TestScope, execution: TableAuthoringExecution): void {
     scope.assert.deepEqual(caseIdsFor(execution.plan), [
         { file: null, params: parameterIdentity(execution.rows[0]), suite: [ 'rows' ], title: 'row 1' },
         { file: null, params: parameterIdentity(execution.rows[1]), suite: [ 'rows' ], title: 'row 2' }
@@ -266,7 +267,7 @@ function firstFailedCheckSourceLocations(result: Awaited<ReturnType<typeof execu
     return failure.checks[0].sourceLocations;
 }
 
-async function executeAuthoredNode(testNode: TestNode): Promise<Awaited<ReturnType<typeof execute>>> {
+async function executeAuthoredNode(testNode: SubjectTestNode): Promise<Awaited<ReturnType<typeof execute>>> {
     return await execute(createTestPlan(createRoot({
         children: [ testNode ],
         annotations: {},
@@ -275,7 +276,7 @@ async function executeAuthoredNode(testNode: TestNode): Promise<Awaited<ReturnTy
     })));
 }
 
-function assertSourceLocationInThisFile(scope: OverkillScope, location: SourceLocation): void {
+function assertSourceLocationInThisFile(scope: TestScope, location: SourceLocation): void {
     if (location.kind !== 'known') {
         scope.assert.equal(location.kind, 'known');
 
@@ -289,7 +290,7 @@ function assertSourceLocationInThisFile(scope: OverkillScope, location: SourceLo
 }
 
 function assertFirstSourceLocationInThisFile(
-    scope: OverkillScope,
+    scope: TestScope,
     sourceLocations: readonly SourceLocation[]
 ): void {
     const sourceLocation = sourceLocations[0];
@@ -298,7 +299,7 @@ function assertFirstSourceLocationInThisFile(
 }
 
 function assertMacroLocationForwarding(
-    scope: OverkillScope,
+    scope: TestScope,
     testCase: TestCase,
     failedSourceLocations: readonly SourceLocation[]
 ): void {
@@ -312,7 +313,7 @@ function assertMacroLocationForwarding(
 }
 
 function assertParameterizedBodyLocationForwarding(
-    scope: OverkillScope,
+    scope: TestScope,
     testCase: TestCase,
     failedSourceLocations: readonly SourceLocation[]
 ): void {
@@ -322,19 +323,22 @@ function assertParameterizedBodyLocationForwarding(
 }
 
 function createMissingNameTest(title: string): TestCase {
-    return test(title, function checkName(testScope) {
+    return subjectTest(title, function checkName(testScope) {
         testScope.assert.equal('', 'Ada', { message: 'missing name' });
         return testScope.assert.collect();
     });
 }
 
-function checkParameterizedName(testScope: TestScope, data: NameData): ReturnType<TestBody> {
+function checkParameterizedName(
+    testScope: { readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>; },
+    data: NameData
+): ReturnType<EngineCaseBody> {
     testScope.assert.equal(data.name, 'Ada', { message: 'wrong name' });
     return testScope.assert.collect();
 }
 
 function assertDefinitionLocationInThisFile(
-    scope: OverkillScope,
+    scope: TestScope,
     sourceLocations: TestCase['definitionLocations']
 ): void {
     const sourceLocation = sourceLocations[0];
@@ -363,7 +367,7 @@ function exerciseRootDoubles(
 }
 
 function assertRootDoubleUsage(
-    testScope: TestScope,
+    testScope: Parameters<EngineCaseBody>[0],
     loadValue: RootLoadValue,
     sequencedValue: RootSequencedValue,
     events: RootEvents
@@ -373,7 +377,7 @@ function assertRootDoubleUsage(
     testScope.assert(doubleUsage.yieldedExactly, events, [ 'created' ]);
 }
 
-function rootDoublesBody(testScope: TestScope): ReturnType<TestBody> {
+const rootDoublesBody: EngineCaseBody = function (testScope) {
     const patternedValue = testDouble<LoadValue>({
         rules: [ rule.when(testRoot.matches('id')).returns('patterned') ]
     });
@@ -385,19 +389,19 @@ function rootDoublesBody(testScope: TestScope): ReturnType<TestBody> {
     exerciseRootDoubles(loadValue, sequencedValue, events);
     assertRootDoubleUsage(testScope, loadValue, sequencedValue, events);
     return testScope.assert.collect();
-}
+};
 
-export const testNode = authoredSuite({
-    title: 'source/packages/test/test-entry-point.test.ts',
+export const testNode: TestNode = suite({
+    title: 'Test entry point',
     children: [
-        test('@overkill-dev/test root exposes authoring boundary only', function (scope: OverkillScope) {
+        test('@overkill-dev/test root exposes authoring boundary only', function (scope) {
             assertRootAuthoringBoundary(scope);
 
             return scope.assert.collect();
         }),
         test(
             '@overkill-dev/test test() and suite() create executable engine nodes',
-            async function (scope: OverkillScope) {
+            async function (scope) {
                 const execution = await executeRootAuthoredNode();
 
                 scope.assert.equal(ownsTestNode(execution.testCase), true);
@@ -410,7 +414,7 @@ export const testNode = authoredSuite({
         ),
         test(
             '@overkill-dev/test table() creates parameterized executable engine nodes',
-            async function (scope: OverkillScope) {
+            async function (scope) {
                 const execution = await executeTableAuthoredNode();
 
                 scope.assert.equal(ownsTestNode(execution.testNode), true);
@@ -423,8 +427,8 @@ export const testNode = authoredSuite({
                 return scope.assert.collect();
             }
         ),
-        test('@overkill-dev/test root doubles pass through engine assertions', async function (scope: OverkillScope) {
-            const result = await executeAuthoredNode(test('uses root doubles', rootDoublesBody));
+        test('@overkill-dev/test root doubles pass through engine assertions', async function (scope) {
+            const result = await executeAuthoredNode(subjectTest('uses root doubles', rootDoublesBody));
 
             assertPassingSummary(scope, result.summary);
 
@@ -432,7 +436,7 @@ export const testNode = authoredSuite({
         }),
         test(
             '@overkill-dev/test defineMacro() forwards definition and assertion source locations',
-            async function (scope: OverkillScope) {
+            async function (scope) {
                 const checkMissingName = defineMacro(createMissingNameTest);
                 const testCase = checkMissingName('requires name');
                 const result = await executeAuthoredNode(testCase);
@@ -445,9 +449,9 @@ export const testNode = authoredSuite({
         ),
         test(
             '@overkill-dev/test defineParameterizedTestBody() forwards assertion source locations',
-            async function (scope: OverkillScope) {
+            async function (scope) {
                 const checkName = defineParameterizedTestBody(checkParameterizedName);
-                const testCase = test('checks name', checkName({ name: 'Grace' }));
+                const testCase = subjectTest('checks name', checkName({ name: 'Grace' }));
                 const result = await executeAuthoredNode(testCase);
                 const failedSourceLocations = firstFailedCheckSourceLocations(result);
 
@@ -458,9 +462,9 @@ export const testNode = authoredSuite({
         ),
         test(
             '@overkill-dev/test captures definition locations from the authoring callsite',
-            function (scope: OverkillScope) {
-                const testCase = test('located test', passingBody);
-                const locatedSuite = authoredSuite('located suite', [ testCase ]);
+            function (scope) {
+                const testCase = subjectTest('located test', passingBody);
+                const locatedSuite = subjectSuite('located suite', [ testCase ]);
 
                 assertDefinitionLocationInThisFile(scope, testCase.definitionLocations);
                 assertDefinitionLocationInThisFile(scope, locatedSuite.definitionLocations);
@@ -470,9 +474,9 @@ export const testNode = authoredSuite({
         ),
         test({
             title: '@overkill-dev/test delegates invalid authoring inputs to engine validation',
-            body(scope: OverkillScope) {
+            body(scope) {
                 scope.assert.throws(function createNamelessTest() {
-                    test('', passingBody);
+                    subjectTest('', passingBody);
                 }, { message: 'Test node title must not be empty.' });
                 scope.assert.throws(function createSuiteWithPlainChild() {
                     invokeSuite('plain child', [ { kind: 'test' } ]);
@@ -480,7 +484,7 @@ export const testNode = authoredSuite({
                 scope.assert.throws(function createTestWithWrongArity() {
                     invokeTest();
                 }, { message: 'test() requires (title, body) or ({ title, annotations?, controls?, body }).' });
-                const captureCase = test({
+                const captureCase = subjectTest({
                     annotations: {},
                     body: passingBody,
                     controls: { capture: 'live' },

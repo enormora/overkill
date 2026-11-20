@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { moduleLoadingRuntime } from './test-support/module-loading-runtime.ts';
 import { createModuleLoading, type DeliveredModule } from './module-delivery.ts';
@@ -14,8 +14,8 @@ const modules: readonly DeliveredModule[] = [ {
     dependencies: {}
 }, { url: dependency, format: 'module', source: 'export const dependency = true;', dependencies: {} } ];
 const delivery = { build: 'build', modules, builtins: [] };
-export const testNode = authoredSuite('frozen module delivery failure boundaries', [
-    authoredTest('retains a rejected graph edge even when the operation catches it', async function (scope: TestScope) {
+export const testNode: TestNode = suite('frozen module delivery failure boundaries', [
+    test('retains a rejected graph edge even when the operation catches it', async function (scope) {
         const fixture = moduleLoadingRuntime();
         await scope.assert.rejects(async function () {
             await createModuleLoading(fixture.runtime).withModuleDelivery(delivery, async function () {
@@ -27,30 +27,40 @@ export const testNode = authoredSuite('frozen module delivery failure boundaries
         scope.assert.equal(fixture.registrations.length, 1);
         return scope.assert.collect();
     }),
-    ...([ { suffix: '', message: 'Implementation module is outside the frozen graph.' }, {
-        suffix: '&overkill-namespace=1',
-        message: 'Implementation namespace is outside the frozen graph.'
-    } ] as const)
-        .map(function (scenario) {
-            return authoredTest(
-                `retains frozen source rejection for namespace ${scenario.suffix}`,
-                async function (scope: TestScope) {
-                    const fixture = moduleLoadingRuntime();
-                    const rejectSource = function (): void {
-                        fixture.load(`file:///outside.ts?overkill-build=build%3A0${scenario.suffix}`);
-                    };
-                    await scope.assert.rejects(async function () {
-                        await createModuleLoading(fixture.runtime).withModuleDelivery(delivery, async function () {
-                            scope.assert.throws(rejectSource, { message: scenario.message });
-                        });
-                    }, { name: 'AggregateError', message: 'Implementation loading failed.' });
-                    scope.assert.equal(fixture.registrations.length, 1);
-                    return scope.assert.collect();
-                }
-            );
-        }),
-    ...([ null, 42, {}, { namespace: {} } ] as const).map(function (value, index) {
-        return authoredTest(`rejects non-native module namespace ${index}`, async function (scope: TestScope) {
+    table({
+        title: 'retains frozen source rejection across namespaces',
+        cases: [ { suffix: '', message: 'Implementation module is outside the frozen graph.' }, {
+            suffix: '&overkill-namespace=1',
+            message: 'Implementation namespace is outside the frozen graph.'
+        } ] as const,
+        caseTitle(scenario) {
+            return scenario.suffix === '' ? 'original namespace' : 'isolated namespace';
+        },
+        async test(scope) {
+            const scenario = scope.parameters;
+
+            const fixture = moduleLoadingRuntime();
+            const rejectSource = function (): void {
+                fixture.load(`file:///outside.ts?overkill-build=build%3A0${scenario.suffix}`);
+            };
+            await scope.assert.rejects(async function () {
+                await createModuleLoading(fixture.runtime).withModuleDelivery(delivery, async function () {
+                    scope.assert.throws(rejectSource, { message: scenario.message });
+                });
+            }, { name: 'AggregateError', message: 'Implementation loading failed.' });
+            scope.assert.equal(fixture.registrations.length, 1);
+            return scope.assert.collect();
+        }
+    }),
+    table({
+        title: 'rejects non-native module namespace',
+        cases: [ null, 42, {}, { namespace: {} } ] as const,
+        caseTitle(_parameters, index) {
+            return `${index}`;
+        },
+        async test(scope) {
+            const value = scope.parameters;
+
             const fixture = moduleLoadingRuntime();
             await scope.assert.rejects(async function () {
                 await createModuleLoading({
@@ -65,9 +75,9 @@ export const testNode = authoredSuite('frozen module delivery failure boundaries
             }, { message: 'Implementation modules must produce an ES module namespace.' });
             scope.assert.equal(fixture.registrations.length, 1);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('rejects resolution redirected after graph preparation', async function (scope: TestScope) {
+    test('rejects resolution redirected after graph preparation', async function (scope) {
         const fixture = moduleLoadingRuntime();
         const redirect = fixture.runtime.register({
             resolve(specifier, context, next) {
@@ -83,7 +93,7 @@ export const testNode = authoredSuite('frozen module delivery failure boundaries
         }, { message: 'Implementation module resolution changed after preparation.' });
         return scope.assert.collect();
     }),
-    authoredTest('normalizes already tagged declared graph edges', async function (scope: TestScope) {
+    test('normalizes already tagged declared graph edges', async function (scope: TestScope) {
         const fixture = moduleLoadingRuntime();
         const first = modules[0];
         scope.require.defined(first);
@@ -96,9 +106,9 @@ export const testNode = authoredSuite('frozen module delivery failure boundaries
         scope.assert.equal(fixture.registrations.length, 1);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'passes unrelated requests through temporary parent-aware resolution hooks',
-        function (scope: TestScope) {
+        function (scope) {
             const fixture = moduleLoadingRuntime();
             const loading = createModuleLoading({
                 ...fixture.runtime,

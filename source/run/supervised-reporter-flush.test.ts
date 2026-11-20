@@ -1,4 +1,4 @@
-import { test } from '@overkill-dev/test';
+import { type TestNode, test } from '@overkill-dev/test';
 
 import { settleAsyncWork } from '../engine/async-control.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
@@ -34,7 +34,7 @@ async function reportThroughPendingTransport(): Promise<{
     return { beforeFlush, disconnected: fixture.disconnected(), disconnectedBeforeFlush, sent: fixture.messages };
 }
 
-export const testNode = test(
+export const testNode: TestNode = test(
     'supervised reporting queues events before draining IPC on disconnect',
     async function (scope) {
         const result = await reportThroughPendingTransport();

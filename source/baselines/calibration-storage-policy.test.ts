@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { calibrationStorage, calibrationStorageScenario } from '../test-support/calibration-storage.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
@@ -21,8 +21,8 @@ async function failedPublication(operation: () => Promise<readonly string[]>): P
     }
     throw new Error('Expected publication failure.');
 }
-export const testNode = authoredSuite('calibration storage policy', [
-    test('round trips and removes references by stable relative identity', async function (scope: TestScope) {
+export const testNode: TestNode = suite('calibration storage policy', [
+    test('round trips and removes references by stable relative identity', async function (scope) {
         const fixture = await calibrationStorage(calibrationStorageScenario);
         const written = await fixture.store.write('bench', [ first, second ], owners);
         const references = await fixture.store.list();
@@ -51,12 +51,12 @@ export const testNode = authoredSuite('calibration storage policy', [
         scope.assert.deepEqual(await fixture.store.list(), []);
         return scope.assert.collect();
     }),
-    test('returns an empty inventory when the project disappeared', async function (scope: TestScope) {
+    test('returns an empty inventory when the project disappeared', async function (scope) {
         const fixture = await calibrationStorage({ ...calibrationStorageScenario, missingRoot: true });
         scope.assert.deepEqual(await fixture.store.list(), []);
         return scope.assert.collect();
     }),
-    test('rejects lexical and physical directory escapes', async function (scope: TestScope) {
+    test('rejects lexical and physical directory escapes', async function (scope) {
         const fixture = await calibrationStorage({ ...calibrationStorageScenario, ancestor: '/outside' });
         const message = 'Calibration reference directory must remain inside the project root.';
         await scope.assert.rejects(async function () {
@@ -76,7 +76,7 @@ export const testNode = authoredSuite('calibration storage policy', [
         );
         return scope.assert.collect();
     }),
-    test('validates the entire encoded batch before preparing storage', async function (scope: TestScope) {
+    test('validates the entire encoded batch before preparing storage', async function (scope) {
         const fixture = await calibrationStorage({ ...calibrationStorageScenario, maxBytes: 1024 });
         await scope.assert.rejects(
             async function () {
@@ -92,7 +92,7 @@ export const testNode = authoredSuite('calibration storage policy', [
         scope.assert.deepEqual(await fixture.store.list(), []);
         return scope.assert.collect();
     }),
-    test('rejects nonregular stored references', async function (scope: TestScope) {
+    test('rejects nonregular stored references', async function (scope) {
         const fixture = await calibrationStorage({ ...calibrationStorageScenario, regular: false });
         await fixture.store.write('bench', [ first ], owners);
         await scope.assert.rejects(async function () {
@@ -102,7 +102,7 @@ export const testNode = authoredSuite('calibration storage policy', [
         });
         return scope.assert.collect();
     }),
-    test('bounds stored references before decoding', async function (scope: TestScope) {
+    test('bounds stored references before decoding', async function (scope) {
         const fixture = await calibrationStorage({ ...calibrationStorageScenario, maxBytes: 1 });
         fixture.seed('references/calibration/large.calibration.json', 'large');
         await scope.assert.rejects(async function () {
@@ -112,7 +112,7 @@ export const testNode = authoredSuite('calibration storage policy', [
         });
         return scope.assert.collect();
     }),
-    test('ignores unrelated files and rejects mismatched reference identities', async function (scope: TestScope) {
+    test('ignores unrelated files and rejects mismatched reference identities', async function (scope) {
         const fixture = await calibrationStorage(calibrationStorageScenario);
         fixture.seed('references/calibration/notes.txt', 'ignored');
         scope.assert.deepEqual(await fixture.store.list(), []);
@@ -127,7 +127,7 @@ export const testNode = authoredSuite('calibration storage policy', [
         });
         return scope.assert.collect();
     }),
-    test('preserves completed writes when the next file fails', async function (scope: TestScope) {
+    test('preserves completed writes when the next file fails', async function (scope) {
         const fixture = await calibrationStorage({ ...calibrationStorageScenario, writeFailure: 2 });
         const error = await failedPublication(async function () {
             return fixture.store.write('bench', [ first, second ], owners);
@@ -143,7 +143,7 @@ export const testNode = authoredSuite('calibration storage policy', [
         scope.assert.equal(references.length, 1);
         return scope.assert.collect();
     }),
-    test('checks every reference before removing any file', async function (scope: TestScope) {
+    test('checks every reference before removing any file', async function (scope) {
         const fixture = await calibrationStorage(calibrationStorageScenario);
         await fixture.store.write('bench', [ first, second ], owners);
         const references = await fixture.store.list();

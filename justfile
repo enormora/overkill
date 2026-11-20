@@ -8,8 +8,10 @@ eslint-node-options := '--max-old-space-size-percentage=75'
 default:
     @just --list
 
-compile: benchmark-html-browser
+compile: _build-packages
     tsc --build
+
+_build-packages: benchmark-html-browser
     tsc --project source/tsconfig.sources.json --outDir target/package-build --tsBuildInfoFile target/buildcache/package-sources.tsbuildinfo
 
 benchmark-html-browser:
@@ -40,78 +42,77 @@ test-unit: benchmark-html-browser
     overkill run --profile unit
 
 test-integration: benchmark-html-browser
-    node node_modules/.bin/overkill run --profile integration
-    node node_modules/.bin/overkill run --profile mutationCampaigns
+    overkill run --profile integration
+    overkill run --profile mutation-campaigns
 
 test-runner-integration: test-integration
 
 test-process-integration: benchmark-html-browser
-    node node_modules/.bin/overkill run --profile process
+    overkill run --profile process
 
 test-unit-with-coverage: benchmark-html-browser
-    node --permission-audit --allow-inspector node_modules/.bin/overkill run --profile unit --coverage
+    overkill run --profile unit --coverage
 
 test-type-test-api:
-    node node_modules/.bin/overkill run --profile compilerAssessment
+    overkill run --profile compiler-assessment
 
 test-types:
     TSTYCHE_TYPESCRIPT_SPECIFIER=typescript tstyche
 
-_pack-smoke-packages packages: compile
-    rm -rf target/build/source/node_modules
-    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+_pack-smoke-packages packages: _build-packages
+    rm -rf source/integration-tests/package-smoke/node_modules
     rm -rf target/package-smoke
     mkdir -p target/package-smoke/node_modules
     NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" PACKTORY_INCLUDED_PACKAGES={{packages}} packtory pack --all --format folder --version 0.0.0 --vendor-dependencies --out target/package-smoke/node_modules
-    ln -s ../../../../package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
+    ln -s ../../../target/package-smoke/node_modules source/integration-tests/package-smoke/node_modules
 
-test-model-package-smoke: compile
-    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+test-model-package-smoke: _build-packages
+    rm -rf source/integration-tests/package-smoke/node_modules
     rm -rf target/model-package-smoke
     mkdir -p target/model-package-smoke/node_modules/@overkill-dev
     NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" PACKTORY_INCLUDED_PACKAGES=@overkill-dev/model,@overkill-dev/property,@overkill-dev/engine,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run packtory pack @overkill-dev/model --format folder --version 0.0.0 --vendor-dependencies --out target/model-package-smoke/node_modules/@overkill-dev/model
     ln -s model/node_modules/@overkill-dev/engine target/model-package-smoke/node_modules/@overkill-dev/engine
     ln -s model/node_modules/@overkill-dev/property target/model-package-smoke/node_modules/@overkill-dev/property
-    ln -s ../../../../model-package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
-    node node_modules/.bin/overkill run --profile packageSmoke target/build/source/integration-tests/package-smoke/model.test.js
-    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+    ln -s ../../../target/model-package-smoke/node_modules source/integration-tests/package-smoke/node_modules
+    overkill run --profile package-smoke source/integration-tests/package-smoke/model.test.ts
+    rm -rf source/integration-tests/package-smoke/node_modules
 
-test-linearizability-package-smoke: compile
-    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+test-linearizability-package-smoke: _build-packages
+    rm -rf source/integration-tests/package-smoke/node_modules
     rm -rf target/linearizability-package-smoke
     mkdir -p target/linearizability-package-smoke/node_modules/@overkill-dev
     NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" PACKTORY_INCLUDED_PACKAGES=@overkill-dev/linearizability,@overkill-dev/assert,@overkill-dev/model,@overkill-dev/property,@overkill-dev/engine,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run packtory pack @overkill-dev/linearizability --format folder --version 0.0.0 --vendor-dependencies --out target/linearizability-package-smoke/node_modules/@overkill-dev/linearizability
     ln -s linearizability/node_modules/@overkill-dev/engine target/linearizability-package-smoke/node_modules/@overkill-dev/engine
     ln -s linearizability/node_modules/@overkill-dev/property target/linearizability-package-smoke/node_modules/@overkill-dev/property
-    ln -s ../../../../linearizability-package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
-    node node_modules/.bin/overkill run --profile packageSmoke target/build/source/integration-tests/package-smoke/linearizability.test.js
-    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+    ln -s ../../../target/linearizability-package-smoke/node_modules source/integration-tests/package-smoke/node_modules
+    overkill run --profile package-smoke source/integration-tests/package-smoke/linearizability.test.ts
+    rm -rf source/integration-tests/package-smoke/node_modules
 
-test-eslint-package-smoke: compile
-    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+test-eslint-package-smoke: _build-packages
+    rm -rf source/integration-tests/package-smoke/node_modules
     rm -rf target/eslint-package-smoke
     mkdir -p target/eslint-package-smoke/node_modules/@overkill-dev
     NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" PACKTORY_INCLUDED_PACKAGES={{eslint-smoke-packages}} packtory pack @overkill-dev/eslint-test --format folder --version 0.0.0 --vendor-dependencies --out target/eslint-package-smoke/node_modules/@overkill-dev/eslint-test
     ln -sfn eslint-test/node_modules/@overkill-dev/engine target/eslint-package-smoke/node_modules/@overkill-dev/engine
-    ln -s ../../../../eslint-package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
-    node node_modules/.bin/overkill run --profile packageSmoke target/build/source/integration-tests/package-smoke/eslint-test.test.js
-    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+    ln -s ../../../target/eslint-package-smoke/node_modules source/integration-tests/package-smoke/node_modules
+    overkill run --profile package-smoke source/integration-tests/package-smoke/eslint-test.test.ts
+    rm -rf source/integration-tests/package-smoke/node_modules
 
 test-mutation-package-smoke: (_pack-smoke-packages mutation-smoke-packages)
-    node node_modules/.bin/overkill run --profile packageSmoke target/build/source/integration-tests/package-smoke/stryker-runner.test.js
-    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+    overkill run --profile package-smoke source/integration-tests/package-smoke/stryker-runner.test.ts
+    rm -rf source/integration-tests/package-smoke/node_modules
 
 test-package-smoke: (_pack-smoke-packages package-smoke-packages)
-    node node_modules/.bin/overkill run --profile packageSmoke
-    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+    overkill run --profile package-smoke
+    rm -rf source/integration-tests/package-smoke/node_modules
 
-publish-dry-run: compile
-    rm -rf target/build/source/node_modules
-    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+publish-dry-run: _build-packages
+    rm -rf source/integration-tests/package-smoke/node_modules
     NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" packtory publish
 
-benchmark-mutation-cost: compile
-    node node_modules/.bin/overkill bench run --profile mutation-cost --seed 42 --order lexical
+benchmark-mutation-cost: benchmark-html-browser
+    overkill bench run --profile mutation-cost --seed 42 --order lexical
 
 test-type-test-package-smoke: (_pack-smoke-packages "@overkill-dev/engine,@overkill-dev/run,@overkill-dev/type-test")
-    node node_modules/.bin/overkill run --profile packageSmoke target/build/source/integration-tests/package-smoke/type-test.test.js
+    overkill run --profile package-smoke source/integration-tests/package-smoke/type-test.test.ts
+    rm -rf source/integration-tests/package-smoke/node_modules

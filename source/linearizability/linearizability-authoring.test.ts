@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { property, gen } from '../packages/property/property.entry-point.ts';
 import { linearizability } from '../packages/linearizability/linearizability.entry-point.ts';
@@ -9,9 +9,16 @@ type DrainingSystem = {
     readonly drain: () => void;
 };
 
-export const testNode = authoredSuite('concurrent linearizability authoring', [
-    ...[ false, true ].map(function (overlap) {
-        return authoredTest(`checks increment histories with overlap ${overlap}`, async function (scope) {
+export const testNode: TestNode = suite('concurrent linearizability authoring', [
+    table({
+        title: 'checks increment histories across overlap patterns',
+        cases: [ false, true ],
+        caseTitle(overlap) {
+            return `${overlap}`;
+        },
+        async test(scope) {
+            const overlap = scope.parameters;
+
             const result = await executePropertyNode(
                 property({
                     title: 'increments',
@@ -50,9 +57,9 @@ export const testNode = authoredSuite('concurrent linearizability authoring', [
             scope.assert.equal(result.summary.failed, overlap ? 1 : 0);
             scope.assert.equal(result.summary.inconclusive, 0);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('records ordinary throws and continues the lane', async function (scope) {
+    test('records ordinary throws and continues the lane', async function (scope) {
         const result = await executePropertyNode(
             property({
                 title: 'expected errors',
@@ -83,7 +90,7 @@ export const testNode = authoredSuite('concurrent linearizability authoring', [
         scope.assert.equal(result.summary.inconclusive, 0);
         return scope.assert.collect();
     }),
-    authoredTest('drains admitted calls before cleanup after a fatal control error', async function (scope) {
+    test('drains admitted calls before cleanup after a fatal control error', async function (scope) {
         let clean = false;
         const result = await executePropertyNode(
             property({
@@ -138,7 +145,7 @@ export const testNode = authoredSuite('concurrent linearizability authoring', [
         scope.assert.true(clean);
         return scope.assert.collect();
     }),
-    authoredTest('runs lanes concurrently while preserving lane order and fresh systems', async function (scope) {
+    test('runs lanes concurrently while preserving lane order and fresh systems', async function (scope) {
         let created = 0;
         let cleaned = 0;
         const node = property({
@@ -183,8 +190,15 @@ export const testNode = authoredSuite('concurrent linearizability authoring', [
         scope.assert.equal(cleaned, created);
         return scope.assert.collect();
     }),
-    ...[ 'linearizable', 'not-linearizable', 'inconclusive' ].map(function (kind) {
-        return authoredTest(`maps ${kind} verdicts`, async function (scope) {
+    table({
+        title: 'maps checker verdicts',
+        cases: [ 'linearizable', 'not-linearizable', 'inconclusive' ],
+        caseTitle(kind) {
+            return `${kind}`;
+        },
+        async test(scope) {
+            const kind = scope.parameters;
+
             const result = await executePropertyNode(
                 property({
                     title: 'read consistency',
@@ -214,9 +228,9 @@ export const testNode = authoredSuite('concurrent linearizability authoring', [
             scope.assert.equal(result.summary.failed, kind === 'not-linearizable' ? 1 : 0);
             scope.assert.equal(result.summary.inconclusive, kind === 'inconclusive' ? 1 : 0);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('inconclusive confirmation preserves the initial failure', async function (scope) {
+    test('inconclusive confirmation preserves the initial failure', async function (scope) {
         let calls = 0;
         const result = await executePropertyNode(
             property({

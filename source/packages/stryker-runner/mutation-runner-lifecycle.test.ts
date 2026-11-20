@@ -1,11 +1,11 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { mutationRunnerRuntime } from '../../test-support/mutation-runner-runtime.ts';
 
 const success = { status: 'complete' };
 const timeout = { status: 'timeout' };
-export const testNode = authoredSuite('Stryker runner lifecycle ownership', [
-    test('initializes lazily once and shares the ready runner', async function (scope: TestScope) {
+export const testNode: TestNode = suite('Stryker runner lifecycle ownership', [
+    test('initializes lazily once and shares the ready runner', async function (scope) {
         const fixture = mutationRunnerRuntime();
         scope.assert.deepEqual(Array.from(fixture.calls), []);
         scope.assert.equal(await fixture.lifecycle.ready(null), fixture.runner);
@@ -14,7 +14,7 @@ export const testNode = authoredSuite('Stryker runner lifecycle ownership', [
         await fixture.lifecycle.dispose();
         return scope.assert.collect();
     }),
-    test('releases the campaign and execution exactly once', async function (scope: TestScope) {
+    test('releases the campaign and execution exactly once', async function (scope) {
         const fixture = mutationRunnerRuntime();
         await fixture.lifecycle.ready(null);
         await fixture.lifecycle.dispose();
@@ -42,7 +42,7 @@ export const testNode = authoredSuite('Stryker runner lifecycle ownership', [
         scope.assert.equal(failure.message, 'Stryker runner has been disposed.');
         return scope.assert.collect();
     }),
-    test('does not initialize for invalid deadlines', async function (scope: TestScope) {
+    test('does not initialize for invalid deadlines', async function (scope) {
         const fixture = mutationRunnerRuntime();
         for (const deadline of [ 0, -1, Number.NaN, Number.POSITIVE_INFINITY ]) {
             scope.assert.equal(
@@ -58,7 +58,7 @@ export const testNode = authoredSuite('Stryker runner lifecycle ownership', [
         await fixture.lifecycle.dispose();
         return scope.assert.collect();
     }),
-    test('passes the initialized runner and deadline to an invocation', async function (scope: TestScope) {
+    test('passes the initialized runner and deadline to an invocation', async function (scope) {
         const fixture = mutationRunnerRuntime();
         const result = await fixture.lifecycle.invoke(50, async function (runner, budget) {
             scope.assert.equal(runner, fixture.runner);
@@ -72,7 +72,7 @@ export const testNode = authoredSuite('Stryker runner lifecycle ownership', [
         await fixture.lifecycle.dispose();
         return scope.assert.collect();
     }),
-    test('converts a late successful result to timeout', async function (scope: TestScope) {
+    test('converts a late successful result to timeout', async function (scope) {
         const fixture = mutationRunnerRuntime();
         const completed: unknown[] = [];
         const result = await fixture.lifecycle.invoke(50, async function () {
@@ -87,7 +87,7 @@ export const testNode = authoredSuite('Stryker runner lifecycle ownership', [
         await fixture.lifecycle.dispose();
         return scope.assert.collect();
     }),
-    test('preserves error results after a deadline', async function (scope: TestScope) {
+    test('preserves error results after a deadline', async function (scope) {
         const fixture = mutationRunnerRuntime();
         const failure = { status: 'error' };
         const result = await fixture.lifecycle.invoke(50, async function () {
@@ -100,7 +100,7 @@ export const testNode = authoredSuite('Stryker runner lifecycle ownership', [
         await fixture.lifecycle.dispose();
         return scope.assert.collect();
     }),
-    test('converts deadline cancellation into timeout', async function (scope: TestScope) {
+    test('converts deadline cancellation into timeout', async function (scope) {
         const fixture = mutationRunnerRuntime();
         const result = await fixture.lifecycle.invoke(50, async function (_runner, budget) {
             fixture.clock.advanceByMilliseconds(50);
@@ -113,7 +113,7 @@ export const testNode = authoredSuite('Stryker runner lifecycle ownership', [
         await fixture.lifecycle.dispose();
         return scope.assert.collect();
     }),
-    test('preserves ordinary invocation failures', async function (scope: TestScope) {
+    test('preserves ordinary invocation failures', async function (scope) {
         const fixture = mutationRunnerRuntime();
         const failure = new Error('Invocation failed.');
         let caught: unknown = null;
@@ -140,7 +140,7 @@ export const testNode = authoredSuite('Stryker runner lifecycle ownership', [
     }),
     test(
         'rejects overlapping invocations and permits the next one after completion',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = mutationRunnerRuntime();
             const completion = Promise.withResolvers<typeof success>();
             const active = fixture.lifecycle.invoke(50, async function () {

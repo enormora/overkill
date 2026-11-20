@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { observationPlan } from '../test-support/observation-lifetime.ts';
@@ -6,45 +6,49 @@ import { supervisedChildCommand } from '../test-support/supervised-child-fixture
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import { createHostTestPlan, resolveHostEngine } from './host-test-plan.ts';
 
-export const testNode = authoredSuite('host collection policy forwarding', [
-    ...([ 'integration', 'property' ] as const).map(function (testFamily) {
-        return authoredTest(
-            `forwards ${testFamily} collection policy without executing cases`,
-            async function (scope: TestScope) {
-                const command = {
-                    ...supervisedChildCommand('collect', 'case.ts'),
-                    testFamily,
-                    propertyPolicy: defaultPropertyPolicy
-                };
-                const seen: unknown[] = [];
-                const plan = observationPlan();
-                const result = await createHostTestPlan({
-                    command,
-                    processModel: 'supervised-process',
-                    engine: createTestEngine(),
-                    async collect(policy, replay) {
-                        seen.push({ policy, replay });
-                        return plan;
+export const testNode: TestNode = suite('host collection policy forwarding', [
+    table({
+        title: 'forwards collection policy without executing cases',
+        cases: [ 'integration', 'property' ] as const,
+        caseTitle(testFamily) {
+            return `${testFamily}`;
+        },
+        async test(scope) {
+            const testFamily = scope.parameters;
+
+            const command = {
+                ...supervisedChildCommand('collect', 'case.ts'),
+                testFamily,
+                propertyPolicy: defaultPropertyPolicy
+            };
+            const seen: unknown[] = [];
+            const plan = observationPlan();
+            const result = await createHostTestPlan({
+                command,
+                processModel: 'supervised-process',
+                engine: createTestEngine(),
+                async collect(policy, replay) {
+                    seen.push({ policy, replay });
+                    return plan;
+                }
+            });
+            scope.assert.deepEqual(seen, [ {
+                policy: {
+                    runtimeMatrices: true,
+                    benchmarkCalibration: false,
+                    property: {
+                        testFamily,
+                        policy: defaultPropertyPolicy,
+                        timeoutMilliseconds: command.timeoutMilliseconds
                     }
-                });
-                scope.assert.deepEqual(seen, [ {
-                    policy: {
-                        runtimeMatrices: true,
-                        benchmarkCalibration: false,
-                        property: {
-                            testFamily,
-                            policy: defaultPropertyPolicy,
-                            timeoutMilliseconds: command.timeoutMilliseconds
-                        }
-                    },
-                    replay: null
-                } ]);
-                scope.assert.equal(result.cases[0].id.title, 'owned case');
-                return scope.assert.collect();
-            }
-        );
+                },
+                replay: null
+            } ]);
+            scope.assert.equal(result.cases[0].id.title, 'owned case');
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('resolves explicit engine modules through the provided loader', async function (scope: TestScope) {
+    test('resolves explicit engine modules through the provided loader', async function (scope) {
         const engine = createTestEngine();
         const selection = {
             kind: 'module',

@@ -6,7 +6,7 @@ import {
 } from '../run/attachment-connection.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import type { AttachmentReply, AttachmentEndpoint } from '../run/attachment-protocol.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 
 export type AttachmentChannel = {
     readonly endpoint: AttachmentEndpoint;

@@ -1,6 +1,5 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, defineMacro, type TestScope, suite, test } from '@overkill-dev/test';
 
-import type { TestNode } from '../packages/engine/engine.entry-point.ts';
 import { defineResource } from '../packages/resources/resources.entry-point.ts';
 import { assertResourceDependencyScopes, resourceDependencyScopeAllowed } from '../resources/resource-graph.ts';
 import type { WorkerLifecycle } from '../config/types.ts';
@@ -197,7 +196,7 @@ function localLane(): PlacementLane {
     };
 }
 
-function assertDependencyScopes(scope: OverkillScope): void {
+function assertDependencyScopes(scope: TestScope): void {
     const scopes = [ 'per-run', 'per-file', 'per-suite', 'shared-per-worker', 'per-case' ] as const;
     const allowed = scopes.map(function resourceRow(resourceScope) {
         return scopes.map(function dependencyCell(dependencyScope) {
@@ -214,7 +213,7 @@ function assertDependencyScopes(scope: OverkillScope): void {
     ]);
 }
 
-function assertDependencyGraphs(scope: OverkillScope): void {
+function assertDependencyGraphs(scope: TestScope): void {
     const dependency = defineResource({
         acquire() {
             return 'dependency';
@@ -256,7 +255,7 @@ function assertDependencyGraphs(scope: OverkillScope): void {
     });
 }
 
-function assertIdentityConflicts(scope: OverkillScope): void {
+function assertIdentityConflicts(scope: TestScope): void {
     const plan = identityConflictPlan();
     const conflictKinds = collectedPlanCompatibilityConflicts(plan).map(function conflictKind(conflict) {
         return conflict.kind;
@@ -271,7 +270,7 @@ function assertIdentityConflicts(scope: OverkillScope): void {
     scope.assert.deepEqual(missingRuntimeKinds, [ 'resource-definition' ]);
 }
 
-function assertExecutionConflicts(scope: OverkillScope): void {
+function assertExecutionConflicts(scope: TestScope): void {
     const plan = collectedPlan();
     const [ first, second ] = collectedRunCaseEntries(plan);
     scope.require.object(first);
@@ -315,7 +314,7 @@ function ownershipPlacementKinds(
 }
 
 function requiredPlanWork(
-    scope: OverkillScope,
+    scope: TestScope,
     plan: CollectedRunPlan
 ): readonly [WorkUnit['work'][number], WorkUnit['work'][number]] {
     const [ first, second ] = collectedRunCaseEntries(plan);
@@ -326,7 +325,7 @@ function requiredPlanWork(
     return [ first.workId, second.workId ];
 }
 
-function assertOwnershipPlacements(scope: OverkillScope): void {
+function assertOwnershipPlacements(scope: TestScope): void {
     const runPlan = resourcePlan('per-run');
     const [ firstRun, secondRun ] = requiredPlanWork(scope, runPlan);
     const filePlan = resourcePlan('per-file');
@@ -409,7 +408,7 @@ const describedConflicts: readonly RunExecutionPlanConflict[] = [
     }
 ];
 
-function assertErrorDescriptions(scope: OverkillScope): void {
+function assertErrorDescriptions(scope: TestScope): void {
     const error = new RunExecutionPlanError(describedConflicts, undefined);
     const unknownError = new RunExecutionPlanError([
         { kind: 'unknown' } as unknown as RunExecutionPlanConflict
@@ -443,18 +442,18 @@ function assertErrorDescriptions(scope: OverkillScope): void {
     }, { message: 'Execution plan conflicts must not be empty.' });
 }
 
-function compatibilityTest(title: string, assertion: (scope: OverkillScope) => void): TestNode {
+const compatibilityTest = defineMacro(function (title: string, assertion: (scope: TestScope) => void) {
     return test({
         title,
-        body(scope: OverkillScope) {
+        body(scope) {
             assertion(scope);
 
             return scope.assert.collect();
         }
     });
-}
+});
 
-export const testNode = suite('source/run/execution-plan-compatibility.test.ts', [
+export const testNode: TestNode = suite('Execution plan compatibility', [
     compatibilityTest('resource dependency scopes follow ownership nesting', function assertScopes(scope) {
         assertDependencyScopes(scope);
         assertDependencyGraphs(scope);

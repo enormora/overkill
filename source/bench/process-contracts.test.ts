@@ -1,10 +1,7 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
+
 import { processMeasurement, type ProcessRequest } from '../packages/bench/bench.entry-point.ts';
-import { testNode as completionPolicy } from './process-completion-policy.test.ts';
-import { testNode as childPolicy } from './process-child-policy.test.ts';
-import { testNode as nodeObservation } from './node-child-observation.test.ts';
-import { testNode as probePolicy } from './process-probe-policy.test.ts';
-import { testNode as importPolicy } from './module-import-policy.test.ts';
+
 import { processEvidenceSchema } from './process-evidence.ts';
 import { parseProcessRequest, processRequestSchema } from './process-command.ts';
 import { processOutput } from './process-output.ts';
@@ -16,12 +13,7 @@ const command = {
     completion: { kind: 'exit', readiness: null, steps: [], expectedExitCodes: [ 0 ] }
 } as const;
 
-export const testNode = suite('external process contracts', [
-    completionPolicy,
-    childPolicy,
-    nodeObservation,
-    importPolicy,
-    probePolicy,
+export const testNode: TestNode = suite('external process contracts', [
     test('retains explicit module absence in process evidence', function (scope) {
         const execution = {
             status: 'failed',
@@ -104,20 +96,23 @@ export const testNode = suite('external process contracts', [
         scope.assert.true(Object.isFrozen(processMeasurement({ instrumentation: 'off' })));
         return scope.assert.collect();
     }),
-    test('retains readable bounded output while counting bytes and matching later output', async function (scope) {
-        const output = processOutput('pipes', 3);
-        output.append('stdout', Buffer.from('éé'));
-        const ready = output.expect({ stream: 'stdout', text: 'Ready' }, 'readiness');
-        output.append('stdout', Buffer.from('Re'));
-        output.append('stdout', Buffer.from('ady'));
-        await ready;
-        scope.assert.deepEqual(output.snapshot(), {
-            kind: 'pipes',
-            stdout: { text: 'é', bytes: 9, truncated: true },
-            stderr: { text: '', bytes: 0, truncated: false }
-        });
-        return scope.assert.collect();
-    }),
+    test(
+        'retains readable bounded output while counting bytes and matching later output',
+        async function (scope) {
+            const output = processOutput('pipes', 3);
+            output.append('stdout', Buffer.from('éé'));
+            const ready = output.expect({ stream: 'stdout', text: 'Ready' }, 'readiness');
+            output.append('stdout', Buffer.from('Re'));
+            output.append('stdout', Buffer.from('ady'));
+            await ready;
+            scope.assert.deepEqual(output.snapshot(), {
+                kind: 'pipes',
+                stdout: { text: 'é', bytes: 9, truncated: true },
+                stderr: { text: '', bytes: 0, truncated: false }
+            });
+            return scope.assert.collect();
+        }
+    ),
     test('matches readiness independently of script consumption', async function (scope) {
         const output = processOutput('pty', 0);
         output.append('terminal', Buffer.from('Ready\r\n'));

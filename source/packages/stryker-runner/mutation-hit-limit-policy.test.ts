@@ -1,4 +1,4 @@
-import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { ConfigError } from '../../config/config-error.ts';
 import { RunResolutionError } from '../../run/run-errors.ts';
@@ -27,19 +27,33 @@ const rejected: readonly unknown[] = [
     new Error('unrelated', { cause: guard }),
     { ...configuration, failure: { ...configuration.failure, cause: new Error('unrelated') } }
 ];
-export const testNode = authoredSuite('mutation hit limit guard recognition', [
-    ...accepted.map(function (error, index) {
-        return test(`recognizes supported guard envelope ${index}`, function (scope: TestScope) {
+export const testNode: TestNode = suite('mutation hit limit guard recognition', [
+    table({
+        title: 'recognizes supported guard envelope',
+        cases: accepted,
+        caseTitle(_parameters, index) {
+            return `${index}`;
+        },
+        test(scope) {
+            const error = scope.parameters;
+
             scope.assert.true(isWrappedHitLimitGuard(error));
             scope.assert.equal(isHitLimitGuard(error), error === guard);
             return scope.assert.collect();
-        });
+        }
     }),
-    ...rejected.map(function (error, index) {
-        return test(`rejects unrelated guard envelope ${index}`, function (scope: TestScope) {
+    table({
+        title: 'rejects unrelated guard envelope',
+        cases: rejected,
+        caseTitle(_parameters, index) {
+            return `${index}`;
+        },
+        test(scope) {
+            const error = scope.parameters;
+
             scope.assert.false(isWrappedHitLimitGuard(error));
             scope.assert.false(isHitLimitGuard(error));
             return scope.assert.collect();
-        });
+        }
     })
 ]);

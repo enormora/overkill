@@ -1,26 +1,21 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { observationPlan } from '../test-support/observation-lifetime.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { definition } from '../test-support/benchmark-placement-fixture.ts';
-import { testNode as collection } from './run-plan-collection-policy.test.ts';
-import { testNode as importedHosts } from './imported-host-policy.test.ts';
-import { testNode as childCommands } from './supervised-child-policy.test.ts';
+
 import { selectedAssignedCases } from './worker-pool-worker-plan.ts';
 import { calibrationCapturePlan } from './default-run-engine.ts';
 
-export const testNode = authoredSuite('host execution plan policy', [
-    importedHosts,
-    collection,
-    childCommands,
-    test('selects assigned case identities without changing discovered cases', function (scope: TestScope) {
+export const testNode: TestNode = suite('host execution plan policy', [
+    test('selects assigned case identities without changing discovered cases', function (scope) {
         const plan = observationPlan();
         const selected = selectedAssignedCases(plan, [ plan.cases[0].id ]);
         scope.assert.equal(selected.cases[0], plan.cases[0]);
         scope.assert.equal(selected.discoveredCases, plan.discoveredCases);
         return scope.assert.collect();
     }),
-    test('rejects empty and unknown case assignments', function (scope: TestScope) {
+    test('rejects empty and unknown case assignments', function (scope) {
         const plan = observationPlan();
         for (const assigned of [ [], [ { ...plan.cases[0].id, title: 'missing' } ] ]) {
             scope.assert.throws(function () {
@@ -29,12 +24,12 @@ export const testNode = authoredSuite('host execution plan policy', [
         }
         return scope.assert.collect();
     }),
-    test('preserves ordinary execution plans when calibration capture is disabled', function (scope: TestScope) {
+    test('preserves ordinary execution plans when calibration capture is disabled', function (scope) {
         const plan = observationPlan();
         scope.assert.equal(calibrationCapturePlan(plan, null), plan);
         return scope.assert.collect();
     }),
-    test('classifies unavailable calibration execution as a collection failure', function (scope: TestScope) {
+    test('classifies unavailable calibration execution as a collection failure', function (scope) {
         const engine = createTestEngine();
         const child = engine.createBenchmarkTestCase({
             annotations: {},

@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { serializeValue, defineReporter, type PropertyCaseEvidence } from '../packages/engine/engine.entry-point.ts';
@@ -55,32 +55,35 @@ const rejectPropertyProgress = defineReporter(function rejectCheckpoints() {
     };
 });
 
-export const testNode = authoredSuite('shrink failure paths', [
-    test('confirms a replayable example when compatible shrink state is unavailable', async function (scope) {
-        let calls = 0;
-        const result = await executePropertyNode(
-            property({
-                title: 'mapped example without provenance',
-                generator: gen.integer({ min: 0, max: 100 }).map(function fresh(value) {
-                    return { value };
+export const testNode: TestNode = suite('shrink failure paths', [
+    test(
+        'confirms a replayable example when compatible shrink state is unavailable',
+        async function (scope) {
+            let calls = 0;
+            const result = await executePropertyNode(
+                property({
+                    title: 'mapped example without provenance',
+                    generator: gen.integer({ min: 0, max: 100 }).map(function fresh(value) {
+                        return { value };
+                    }),
+                    examples: [ function () {
+                        return { value: 100 };
+                    } ],
+                    test(_value, sample) {
+                        calls += 1;
+                        sample.assert.fail({ message: 'original example failure' });
+                        return sample.assert.collect();
+                    }
                 }),
-                examples: [ function () {
-                    return { value: 100 };
-                } ],
-                test(_value, sample) {
-                    calls += 1;
-                    sample.assert.fail({ message: 'original example failure' });
-                    return sample.assert.collect();
-                }
-            }),
-            propertyExecutionDefaults
-        );
-        scope.assert.equal(calls, 2);
-        scope.assert.equal(result.summary.failed, 1);
-        scope.assert.equal(result.perTest[0]?.property?.invocations[0]?.shrinkStatus, 'shrink-state-unavailable');
-        scope.assert.includes(JSON.stringify(result.perTest[0]?.property), 'original example failure');
-        return scope.assert.collect();
-    }),
+                propertyExecutionDefaults
+            );
+            scope.assert.equal(calls, 2);
+            scope.assert.equal(result.summary.failed, 1);
+            scope.assert.equal(result.perTest[0]?.property?.invocations[0]?.shrinkStatus, 'shrink-state-unavailable');
+            scope.assert.includes(JSON.stringify(result.perTest[0]?.property), 'original example failure');
+            return scope.assert.collect();
+        }
+    ),
     test('reports checkpoint delivery errors without losing failure evidence', async function (scope) {
         const node = property({
             title: 'failed checkpoint delivery',
@@ -311,30 +314,33 @@ export const testNode = authoredSuite('shrink failure paths', [
         scope.assert.includes(JSON.stringify(result.perTest[0]?.property), 'original assertion');
         return scope.assert.collect();
     }),
-    test('keeps shrink callback exceptions visible with the original failure evidence', async function (scope) {
-        let calls = 0;
-        const result = await executePropertyNode(
-            property({
-                title: 'shrink callback error',
-                generator: gen.integer({ min: 0, max: 1_000_000_000 }).map(function rejectZero(value) {
-                    if (value === 0) {
-                        throw new Error('shrink callback exploded');
+    test(
+        'keeps shrink callback exceptions visible with the original failure evidence',
+        async function (scope) {
+            let calls = 0;
+            const result = await executePropertyNode(
+                property({
+                    title: 'shrink callback error',
+                    generator: gen.integer({ min: 0, max: 1_000_000_000 }).map(function rejectZero(value) {
+                        if (value === 0) {
+                            throw new Error('shrink callback exploded');
+                        }
+                        return value;
+                    }),
+                    test(_value, sample) {
+                        calls += 1;
+                        sample.assert.fail({ message: 'original assertion' });
+                        return sample.assert.collect();
                     }
-                    return value;
                 }),
-                test(_value, sample) {
-                    calls += 1;
-                    sample.assert.fail({ message: 'original assertion' });
-                    return sample.assert.collect();
-                }
-            }),
-            propertyExecutionDefaults
-        );
-        scope.assert.equal(calls, 2);
-        scope.assert.equal(result.summary.failed, 1);
-        scope.assert.includes(JSON.stringify(result.perTest[0]?.outcome), 'shrink callback exploded');
-        scope.assert.includes(JSON.stringify(result.perTest[0]?.property), 'execution-error');
-        scope.assert.includes(JSON.stringify(result.perTest[0]?.property), 'original assertion');
-        return scope.assert.collect();
-    })
+                propertyExecutionDefaults
+            );
+            scope.assert.equal(calls, 2);
+            scope.assert.equal(result.summary.failed, 1);
+            scope.assert.includes(JSON.stringify(result.perTest[0]?.outcome), 'shrink callback exploded');
+            scope.assert.includes(JSON.stringify(result.perTest[0]?.property), 'execution-error');
+            scope.assert.includes(JSON.stringify(result.perTest[0]?.property), 'original assertion');
+            return scope.assert.collect();
+        }
+    )
 ]);

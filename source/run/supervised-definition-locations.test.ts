@@ -1,7 +1,6 @@
+import { type TestNode, test, type TestScope } from '@overkill-dev/test';
 import { isDeepStrictEqual } from 'node:util';
-import { test } from '@overkill-dev/test';
 
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     createChildRun,
     nativeChildDependencies,
@@ -62,9 +61,9 @@ function assertTransportedLocations(scope: TestScope, messages: readonly Supervi
     }
 }
 
-export const testNode = test(
+export const testNode: TestNode = test(
     'supervised execution resolves lazy case and suite locations before IPC',
-    async function (scope: TestScope) {
+    async function (scope) {
         const child = createChildRun({
             assignment: {
                 implementations: null,

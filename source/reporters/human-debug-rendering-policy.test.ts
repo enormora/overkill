@@ -1,11 +1,18 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { debugArtifactFixture } from '../test-support/debug-artifact-fixture.ts';
 import { formatDebugSummary, contextPrefix } from './human-reporter-rendering.ts';
 
-export const testNode = authoredSuite('human debug evidence rendering', [
-    ...([ null, 0, 42, -42 ] as const).map(function (growth) {
-        return authoredTest(`formats ${String(growth)} heap growth`, async function (scope: TestScope) {
+export const testNode: TestNode = suite('human debug evidence rendering', [
+    table({
+        title: 'formats heap growth',
+        cases: [ null, 0, 42, -42 ] as const,
+        caseTitle(growth) {
+            return `${String(growth)}`;
+        },
+        async test(scope) {
+            const growth = scope.parameters;
+
             const { artifact } = await debugArtifactFixture('debug case');
             const debug = {
                 ...artifact,
@@ -19,9 +26,9 @@ export const testNode = authoredSuite('human debug evidence rendering', [
             const heap = growth === null ? 'heap unavailable' : `${growth >= 0 ? '+' : ''}${growth} B heap (thread)`;
             scope.assert.equal(formatDebugSummary([ debug ]), ` [debug: 13 ms wall, 0 entries, ${heap}]`);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('sorts multiple runtime dimensions before rendering context', function (scope: TestScope) {
+    test('sorts multiple runtime dimensions before rendering context', function (scope) {
         scope.assert.equal(
             contextPrefix(
                 [ {

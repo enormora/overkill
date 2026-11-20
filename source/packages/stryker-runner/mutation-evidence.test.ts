@@ -1,4 +1,5 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
+
 import { MutantRunStatus, type MutantRunResult } from '@stryker-mutator/api/test-runner';
 import type { JsonValue } from 'type-fest';
 
@@ -20,9 +21,16 @@ function diagnostic(result: Readonly<MutantRunResult>): string {
     throw new Error(`Expected error or timeout, received ${result.status}.`);
 }
 
-export const testNode = authoredSuite('mutation failure evidence', [
-    ...[ 'failure', 'timeout' ].map(function interrupted(kind) {
-        return authoredTest(`retains completed case failures in a ${kind} reply`, async function (scope) {
+export const testNode: TestNode = suite('mutation failure evidence', [
+    table({
+        title: 'retains completed case failures across reply kinds',
+        cases: [ 'failure', 'timeout' ],
+        caseTitle(kind) {
+            return `${kind}`;
+        },
+        async test(scope) {
+            const kind = scope.parameters;
+
             const fixture = await createMutationEvidenceFixture(scope, false);
             await fixture.record(fixture.failed, []);
             const data = fixture.lifecycle.snapshot();
@@ -51,9 +59,9 @@ export const testNode = authoredSuite('mutation failure evidence', [
                 kind === 'failure' ? /^disposal sentinel/u : /^Mutant invocation/u
             );
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('retains claimed policy errors across cumulative serial completions', async function (scope) {
+    test('retains claimed policy errors across cumulative serial completions', async function (scope) {
         const fixture = await createMutationEvidenceFixture(scope, false);
         const error: RunnerError = {
             subtype: 'runtime-policy',
@@ -78,7 +86,7 @@ export const testNode = authoredSuite('mutation failure evidence', [
         scope.assert.true(snapshot.caseFailures[0]?.message.includes('policy sentinel') === true);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'resets failure evidence for each invocation without changing earlier snapshots',
         async function (scope) {
             const fixture = await createMutationEvidenceFixture(scope, false);
@@ -95,8 +103,15 @@ export const testNode = authoredSuite('mutation failure evidence', [
             return scope.assert.collect();
         }
     ),
-    ...[ 'cleanup', 'infrastructure' ].map(function errorKind(kind) {
-        return authoredTest(`keeps recorded ${kind} errors ahead of an interrupted timeout`, async function (scope) {
+    table({
+        title: 'prioritizes recorded errors over interrupted timeouts',
+        cases: [ 'cleanup', 'infrastructure' ],
+        caseTitle(kind) {
+            return `${kind}`;
+        },
+        async test(scope) {
+            const kind = scope.parameters;
+
             const fixture = await createMutationEvidenceFixture(scope, false);
             const { runnerErrors } = runResultFactory.build({
                 runnerErrors: [ { subtype: 'reporter', message: 'delivery sentinel' } ]
@@ -116,9 +131,9 @@ export const testNode = authoredSuite('mutation failure evidence', [
                 kind === 'infrastructure' ? /delivery sentinel/u : /cleanup-error sentinel/u
             );
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('rejects malformed and unowned snapshot evidence without claiming timeout', async function (scope) {
+    test('rejects malformed and unowned snapshot evidence without claiming timeout', async function (scope) {
         const fixture = await createMutationEvidenceFixture(scope, false);
         const data = mutationLifecycleDataSchema.parse(fixture.lifecycle.snapshot());
         const id = workIdentityKey(fixture.first.workId);
@@ -145,24 +160,27 @@ export const testNode = authoredSuite('mutation failure evidence', [
         );
         return scope.assert.collect();
     }),
-    authoredTest('requires a confirmed kill when a timeout snapshot reports an allowed bail', async function (scope) {
-        const fixture = await createMutationEvidenceFixture(scope, false);
-        await fixture.record(fixture.failed, []);
-        const data = { ...mutationLifecycleDataSchema.parse(fixture.lifecycle.snapshot()), bailed: true };
-        const expectation = { ...fixture.expectation, disableBail: false };
-        scope.assert.equal(
-            mutantExecutionResult(root, { artifacts: [], kind: 'timeout', data }, expectation).status,
-            'timeout'
-        );
-        scope.assert.equal(
-            mutantExecutionResult(
-                root,
-                { artifacts: [], kind: 'timeout', data: { ...data, caseFailures: [] } },
-                expectation
-            )
-                .status,
-            'error'
-        );
-        return scope.assert.collect();
-    })
+    test(
+        'requires a confirmed kill when a timeout snapshot reports an allowed bail',
+        async function (scope) {
+            const fixture = await createMutationEvidenceFixture(scope, false);
+            await fixture.record(fixture.failed, []);
+            const data = { ...mutationLifecycleDataSchema.parse(fixture.lifecycle.snapshot()), bailed: true };
+            const expectation = { ...fixture.expectation, disableBail: false };
+            scope.assert.equal(
+                mutantExecutionResult(root, { artifacts: [], kind: 'timeout', data }, expectation).status,
+                'timeout'
+            );
+            scope.assert.equal(
+                mutantExecutionResult(
+                    root,
+                    { artifacts: [], kind: 'timeout', data: { ...data, caseFailures: [] } },
+                    expectation
+                )
+                    .status,
+                'error'
+            );
+            return scope.assert.collect();
+        }
+    )
 ]);

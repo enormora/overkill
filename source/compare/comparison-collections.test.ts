@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 
@@ -17,10 +17,10 @@ const binaryDiff = defineNarrowingCompositeAssertion<Diff, Extract<Diff, { reado
     }
 });
 
-export const testNode = suite('source/compare/comparison-collections.test.ts', [
+export const testNode: TestNode = suite('Collection comparison', [
     test(
-        'compareDeepValues() compares Set members order independently with deep values',
-        function (scope: OverkillScope) {
+        'compares Set members order independently with deep values',
+        function (scope: TestScope) {
             const actual = new Set<unknown>([ { id: 2 }, { id: 1 } ]);
             const expected = new Set<unknown>([ { id: 1 }, { id: 2 } ]);
             const changed = new Set<unknown>([ { id: 1 }, { id: 3 } ]);
@@ -92,7 +92,7 @@ export const testNode = suite('source/compare/comparison-collections.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('compareDeepValues() compares Date, RegExp, and Error identity', function (scope: OverkillScope) {
+    test('compares Date, RegExp, and Error identity', function (scope: TestScope) {
         const firstError = Object.assign(new TypeError('bad value'), { code: 'A' }) as TypeError & {
             readonly code: string;
         };
@@ -128,7 +128,7 @@ export const testNode = suite('source/compare/comparison-collections.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('compareDeepValues() compares opaque built-ins by reference identity', function (scope: OverkillScope) {
+    test('compares opaque built-ins by reference identity', function (scope) {
         const promise = Promise.resolve();
         const weakMap = new WeakMap<Record<string, unknown>, unknown>();
         const weakSet = new WeakSet<Record<string, unknown>>();
@@ -153,7 +153,7 @@ export const testNode = suite('source/compare/comparison-collections.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('compareDeepValues() preserves repeated reference topology', function (scope: OverkillScope) {
+    test('preserves repeated reference topology', function (scope) {
         const actualShared = { left: null, right: null };
         const expectedShared = { left: null, right: null };
         const actual = { left: actualShared, right: actualShared };
@@ -167,7 +167,7 @@ export const testNode = suite('source/compare/comparison-collections.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('compareDeepValues() preserves cycle topology', function (scope: OverkillScope) {
+    test('preserves cycle topology', function (scope) {
         const actualCycle = {};
         const expectedCycle = {};
         Object.defineProperty(actualCycle, 'left', { enumerable: true, value: actualCycle });
@@ -177,7 +177,7 @@ export const testNode = suite('source/compare/comparison-collections.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('compareDeepValues() reports small binary diffs', function (scope: OverkillScope) {
+    test('reports small binary diffs', function (scope: TestScope) {
         const small = compareDeepValues(Uint8Array.from([ 1, 9, 3 ]), Uint8Array.from([ 1, 2, 3 ]));
         const { diff } = small;
 
@@ -196,7 +196,7 @@ export const testNode = suite('source/compare/comparison-collections.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('compareDeepValues() reports large binary summaries', function (scope: OverkillScope) {
+    test('reports large binary summaries', function (scope: TestScope) {
         const largeActual = Uint8Array.from({ length: 101 }, function value(unusedValue, index) {
             scope.assert.equal(unusedValue, undefined);
 
@@ -223,7 +223,7 @@ export const testNode = suite('source/compare/comparison-collections.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('comparePartialValue() matches only the expected structural subset', function (scope: OverkillScope) {
+    test('comparePartialValue() matches only the expected structural subset', function (scope: TestScope) {
         scope.assert.equal(comparePartialValue([ 1, { ok: true }, 3 ], [ 1, { ok: true } ]).passed, true);
         scope.assert.equal(comparePartialValue({ extra: true, id: 1 }, { id: 1 }).passed, true);
         scope.assert.equal(
@@ -265,7 +265,7 @@ export const testNode = suite('source/compare/comparison-collections.test.ts', [
     }),
     test(
         'compareArrayContainsPartial() and compareMembersPartialDeepEqual() report missing members',
-        function (scope: OverkillScope) {
+        function (scope: TestScope) {
             const contains = compareArrayContainsPartial([ { id: 1 } ], { id: 2 });
             const members = compareMembersPartialDeepEqual([ { id: 1 }, { id: 2 } ], [ { id: 2 }, { id: 3 } ]);
             const containsDiff = contains.diff;

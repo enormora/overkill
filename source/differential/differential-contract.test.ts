@@ -1,13 +1,13 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { gen, property } from '../packages/property/property.entry-point.ts';
 import { differential } from '../packages/differential/differential.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 
-export const testNode = authoredSuite('differential contract', [
-    authoredTest(
+export const testNode: TestNode = suite('differential contract', [
+    test(
         'preserves thrown identity and shallowly freezes observation containers',
-        async function (scope: TestScope) {
+        async function (scope) {
             const thrown: unknown = { expected: true };
             const result = await executePropertyNode(
                 property({
@@ -62,8 +62,17 @@ export const testNode = authoredSuite('differential contract', [
             return scope.assert.collect();
         }
     ),
-    ...([ 'sync', 'async' ] as const).map(function settlement(mode) {
-        return authoredTest(`${mode} comparison errors remain body errors`, async function (scope: TestScope) {
+    table({
+        title: 'comparison errors remain body errors',
+        cases: [ 'sync', 'async' ] as const,
+        caseTitle(mode) {
+            return `${mode}`;
+        },
+        async test(scope) {
+            const mode = scope.parameters;
+
+            const require: typeof scope.require = scope.require;
+
             function fail(): never {
                 throw new Error('comparison failed');
             }
@@ -86,7 +95,7 @@ export const testNode = authoredSuite('differential contract', [
             );
             scope.assert.equal(result.summary.failed, 1);
             const outcome = result.perTest[0]?.outcome;
-            scope.require.defined(outcome);
+            require.defined(outcome);
             if (outcome.kind !== 'fail') {
                 throw new Error('Expected failure.');
             }
@@ -94,10 +103,17 @@ export const testNode = authoredSuite('differential contract', [
                 return failure.kind === 'body-error' && failure.error.message === 'comparison failed';
             }));
             return scope.assert.collect();
-        });
+        }
     }),
-    ...([ 'before', 'reconstruction', 'settlement', 'comparison' ] as const).map(function cancellation(phase) {
-        return authoredTest(`${phase} cancellation stops callbacks`, async function (scope: TestScope) {
+    table({
+        title: 'cancellation stops callbacks',
+        cases: [ 'before', 'reconstruction', 'settlement', 'comparison' ] as const,
+        caseTitle(phase) {
+            return `${phase}`;
+        },
+        async test(scope) {
+            const phase = scope.parameters;
+
             const events: string[] = [];
             const controller = new AbortController();
             function cancel(): void {
@@ -170,9 +186,9 @@ export const testNode = authoredSuite('differential contract', [
             scope.assert.deepEqual(events, expected);
             scope.assert.equal(result.summary.failed, 1);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('identical errors without comparison assertions fail the contract', async function (scope: TestScope) {
+    test('identical errors without comparison assertions fail the contract', async function (scope) {
         function fail(): never {
             throw new Error('expected error');
         }

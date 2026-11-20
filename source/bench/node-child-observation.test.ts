@@ -1,9 +1,9 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { nodeChildObservation } from '../test-support/node-child-observation.ts';
 
-export const testNode = authoredSuite('child runtime metric ownership', [
-    test('converts process readings and retains metric provenance', function (scope: TestScope) {
+export const testNode: TestNode = suite('child runtime metric ownership', [
+    test('converts process readings and retains metric provenance', function (scope) {
         const fixture = nodeChildObservation(2);
         const report = fixture.observation.snapshot();
         fixture.observation.dispose();
@@ -34,7 +34,7 @@ export const testNode = authoredSuite('child runtime metric ownership', [
         ]);
         return scope.assert.collect();
     }),
-    test('marks delay metrics unavailable until samples arrive', function (scope: TestScope) {
+    test('marks delay metrics unavailable until samples arrive', function (scope) {
         const fixture = nodeChildObservation(0);
         const report = fixture.observation.snapshot();
         fixture.observation.dispose();

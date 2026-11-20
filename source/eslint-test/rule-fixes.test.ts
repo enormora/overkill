@@ -1,11 +1,11 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { applyRuleEdits } from './rule-fixes.ts';
 
 const byteOrderMarkCodePoint = 65_279;
 const byteOrderMark = String.fromCodePoint(byteOrderMarkCodePoint);
 
-export const testNode = authoredSuite('ESLint fix application', [
+export const testNode: TestNode = suite('ESLint fix application', [
     test('prefers the shorter edit when overlapping ranges start together', function (scope) {
         scope.assert.equal(
             applyRuleEdits('start rest', [

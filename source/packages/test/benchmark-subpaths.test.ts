@@ -1,10 +1,11 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
+
 import { benchmarkAuthoringExports } from '../../test-support/benchmark-authoring-exports.ts';
 
 import * as bench from './bench.entry-point.ts';
 import * as baselines from './baselines.entry-point.ts';
 
-export const testNode = suite('benchmark subpaths', [
+export const testNode: TestNode = suite('benchmark subpaths', [
     test('@overkill-dev/test/bench exposes the leaf authoring surface', function (scope) {
         scope.assert.deepEqual(
             Object.keys(bench).toSorted(function alphabetical(left, right) {

@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import { createBoundaryFailureArtifact, type BoundaryFailure } from '../engine/run-artifact.ts';
@@ -79,30 +79,36 @@ function nativeCompletion(failure: BoundaryFailure): RunResult {
     });
 }
 
-export const testNode = authoredSuite('supervised native completion evidence', [
-    ...failures.map(function nativeFailure(failure) {
-        return authoredTest(
-            `retains ${failure.kind} completion evidence after active ownership is cleared`,
-            function (scope: TestScope) {
-                const runtime = runningSupervisedRuntime();
-                runtime.state.addActiveCase(
-                    workIdentityKey(work),
-                    { capture: null, id: work.case, workId: work },
-                    0,
-                    { index: 0 }
-                );
-                const result = nativeCompletion(failure);
-                runtime.state.removeActiveCase(workIdentityKey(work));
-                handleChildMessage({ kind: 'result', result }, runtime);
-                scope.assert.deepEqual(runtime.state.artifacts(), [ result.artifacts[0] ]);
-                const completed = runtime.completedResult.read();
-                scope.require.notNull(completed);
-                scope.assert.deepEqual(completed, result);
-                return scope.assert.collect();
-            }
-        );
+export const testNode: TestNode = suite('supervised native completion evidence', [
+    table({
+        title: 'retains completion evidence after active ownership clears',
+        cases: failures,
+        caseTitle(failure) {
+            return `${failure.kind}`;
+        },
+        test(scope) {
+            const require: typeof scope.require = scope.require;
+
+            const failure = scope.parameters;
+
+            const runtime = runningSupervisedRuntime();
+            runtime.state.addActiveCase(
+                workIdentityKey(work),
+                { capture: null, id: work.case, workId: work },
+                0,
+                { index: 0 }
+            );
+            const result = nativeCompletion(failure);
+            runtime.state.removeActiveCase(workIdentityKey(work));
+            handleChildMessage({ kind: 'result', result }, runtime);
+            scope.assert.deepEqual(runtime.state.artifacts(), [ result.artifacts[0] ]);
+            const completed = runtime.completedResult.read();
+            require.notNull(completed);
+            scope.assert.deepEqual(completed, result);
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('ignores process usage samples delivered after terminal failure', function (scope) {
+    test('ignores process usage samples delivered after terminal failure', function (scope) {
         const runtime = runningSupervisedRuntime();
         runtime.terminalFailure.write(true);
         handleChildMessage({ kind: 'sample', sample }, runtime);

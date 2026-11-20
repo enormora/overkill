@@ -1,13 +1,13 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { propertyCorpusStorage, corpusStorageScenario } from '../test-support/property-corpus-storage.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { loadPropertyCorpus, persistPropertyCorpus } from './property-corpus-storage.ts';
 
-export const testNode = authoredSuite('property corpus storage policy', [
+export const testNode: TestNode = suite('property corpus storage policy', [
     test(
         'discovers deduplicated checked-in JSON witnesses recursively in stable path order',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = propertyCorpusStorage(corpusStorageScenario);
             fixture.seed('/project/corpus/b.json', JSON.stringify({ ...propertyCorpusEntry, seed: '2' }));
             fixture.seed('/project/corpus/nested/a.json', JSON.stringify(propertyCorpusEntry));
@@ -27,7 +27,7 @@ export const testNode = authoredSuite('property corpus storage policy', [
             return scope.assert.collect();
         }
     ),
-    test('round trips confirmed inputs within a profile-specific locked cache', async function (scope: TestScope) {
+    test('round trips confirmed inputs within a profile-specific locked cache', async function (scope) {
         const fixture = propertyCorpusStorage(corpusStorageScenario);
         scope.assert.deepEqual(
             await persistPropertyCorpus({ ...fixture.input, entries: [ propertyCorpusEntry ] }, fixture.access),
@@ -40,13 +40,13 @@ export const testNode = authoredSuite('property corpus storage policy', [
         scope.assert.deepEqual(fixture.events, [ 'prepare', 'lock', 'write', 'write', 'release' ]);
         return scope.assert.collect();
     }),
-    test('skips empty publications without creating storage or locks', async function (scope: TestScope) {
+    test('skips empty publications without creating storage or locks', async function (scope) {
         const fixture = propertyCorpusStorage(corpusStorageScenario);
         scope.assert.deepEqual(await persistPropertyCorpus({ ...fixture.input, entries: [] }, fixture.access), []);
         scope.assert.deepEqual(fixture.events, []);
         return scope.assert.collect();
     }),
-    test('reports unreadable local caches while preserving checked-in inventory', async function (scope: TestScope) {
+    test('reports unreadable local caches while preserving checked-in inventory', async function (scope) {
         const fixture = propertyCorpusStorage({
             ...corpusStorageScenario,
             readFailure: new Error('Cannot read cache.')
@@ -57,7 +57,7 @@ export const testNode = authoredSuite('property corpus storage policy', [
         scope.assert.includes(result.diagnostics[0]?.reason ?? '', 'Cannot read cache.');
         return scope.assert.collect();
     }),
-    test('wraps invalid checked-in witness failures with their source path', async function (scope: TestScope) {
+    test('wraps invalid checked-in witness failures with their source path', async function (scope) {
         const fixture = propertyCorpusStorage(corpusStorageScenario);
         fixture.seed('/project/corpus/bad.json', 'not JSON');
         await scope.assert.rejects(
@@ -71,7 +71,7 @@ export const testNode = authoredSuite('property corpus storage policy', [
         );
         return scope.assert.collect();
     }),
-    test('releases the cache lock when persistence fails', async function (scope: TestScope) {
+    test('releases the cache lock when persistence fails', async function (scope) {
         const failure = new Error('Cannot persist cache.');
         const fixture = propertyCorpusStorage({ ...corpusStorageScenario, writeFailure: failure });
         await scope.assert.rejects(
@@ -83,7 +83,7 @@ export const testNode = authoredSuite('property corpus storage policy', [
         scope.assert.deepEqual(fixture.events, [ 'prepare', 'lock', 'release' ]);
         return scope.assert.collect();
     }),
-    test('does not write before acquiring its cache lock', async function (scope: TestScope) {
+    test('does not write before acquiring its cache lock', async function (scope) {
         const failure = new Error('Cannot lock cache.');
         const fixture = propertyCorpusStorage({ ...corpusStorageScenario, lockFailure: failure });
         await scope.assert.rejects(
@@ -95,7 +95,7 @@ export const testNode = authoredSuite('property corpus storage policy', [
         scope.assert.deepEqual(fixture.events, [ 'prepare', 'lock' ]);
         return scope.assert.collect();
     }),
-    test('does not write a cache envelope larger than its byte budget', async function (scope: TestScope) {
+    test('does not write a cache envelope larger than its byte budget', async function (scope) {
         const fixture = propertyCorpusStorage(corpusStorageScenario);
         const policy = { ...fixture.input.policy, localCache: { ...fixture.input.policy.localCache, maxBytes: 1 } };
         const diagnostics = await persistPropertyCorpus(

@@ -1,12 +1,13 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+
 import { decodePropertyInput } from '../property/property-graph.ts';
-import type { TestScope, RunResult, PropertyWitnessFile } from '../packages/engine/engine.entry-point.ts';
+
+import type { RunResult, PropertyWitnessFile } from '../packages/engine/engine.entry-point.ts';
 
 import { gen, property } from '../packages/property/property.entry-point.ts';
 import { model, modelScenario } from '../packages/model/model.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
-import { testNode as contracts } from './model-contract.test.ts';
-import { testNode as composition } from './model-composition.test.ts';
+
 import type { ModelScenarioDefinition } from './model-definition.ts';
 
 function modelWitness(scope: TestScope, result: RunResult): PropertyWitnessFile {
@@ -53,9 +54,7 @@ function assertPristineOperations(scope: TestScope, value: unknown): void {
     }
 }
 
-export const testNode = authoredSuite('model-based testing', [
-    contracts,
-    composition,
+export const testNode: TestNode = suite('model-based testing', [
     test('reconstruction retains aliases and expires after cleanup', async function (scope) {
         let reconstruct: () => unknown = function () {
             return null;

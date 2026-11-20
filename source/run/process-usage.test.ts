@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -56,10 +56,10 @@ function createChangingProcessUsageTracker(
     });
 }
 
-export const testNode = suite('source/run/process-usage.test.ts', [
+export const testNode: TestNode = suite('Process usage', [
     test(
-        'process usage tracker summarizes sampled memory and start/end active resources',
-        function (scope: OverkillScope) {
+        'tracker summarizes sampled memory and start/end active resources',
+        function (scope) {
             const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
             const tracker = createChangingProcessUsageTracker(wallClock);
             const observedActiveResourceCounts: number[] = [];
@@ -99,7 +99,7 @@ export const testNode = suite('source/run/process-usage.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('process usage tracker rejects invalid lifecycle calls', function (scope: OverkillScope) {
+    test('tracker rejects invalid lifecycle calls', function (scope) {
         const unfinishedTracker = createEmptyProcessUsageTracker();
         const startedTracker = createEmptyProcessUsageTracker();
 

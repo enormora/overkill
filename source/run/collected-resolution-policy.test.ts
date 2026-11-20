@@ -1,4 +1,4 @@
-import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+import { type TestNode, table, suite } from '@overkill-dev/test';
 
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { planningInput } from '../test-support/benchmark-plan-input.ts';
@@ -74,19 +74,33 @@ function normalizedCollection(purpose: CollectionResolvedRunInput['benchmarkPurp
         collection: { collectedPlan: planned.collectedPlan, runnerErrors: [] }
     };
 }
-export const testNode = authoredSuite(
+export const testNode: TestNode = suite(
     'collected execution resolution policy',
     [
-        ...([ 'empty', 'multiple', 'ordinary', 'skipped' ] as const).map(function (selection) {
-            return test(`rejects witness replay with ${selection} selection`, async function (scope: TestScope) {
+        table({
+            title: 'rejects witness replay with incompatible selection',
+            cases: [ 'empty', 'multiple', 'ordinary', 'skipped' ] as const,
+            caseTitle(selection) {
+                return `${selection}`;
+            },
+            async test(scope) {
+                const selection = scope.parameters;
+
                 await scope.assert.rejects(async function () {
                     return createResolvedRunFromCollection(witnessSelection(selection));
                 }, { message: /requires exactly one executable property case/u });
                 return scope.assert.collect();
-            });
+            }
         }),
-        ...([ 'capture', 'compare' ] as const).map(function (purpose) {
-            return test(`retains normalization context for ${purpose} collection`, async function (scope: TestScope) {
+        table({
+            title: 'retains normalization context across collection purposes',
+            cases: [ 'capture', 'compare' ] as const,
+            caseTitle(purpose) {
+                return `${purpose}`;
+            },
+            async test(scope) {
+                const purpose = scope.parameters;
+
                 const input = normalizedCollection(purpose);
                 const run = await createResolvedRunFromCollection(input);
                 scope.assert.deepEqual({ normalization: run.facts.benchmarkNormalization }, {
@@ -94,22 +108,26 @@ export const testNode = authoredSuite(
                 });
                 scope.assert.equal(run.facts.execution.testFamily, 'benchmark');
                 return scope.assert.collect();
-            });
+            }
         }),
-        ...[ false, true ].map(function (empty) {
-            return test(
-                `preserves supervised collection facts with empty plan ${empty}`,
-                async function (scope: TestScope) {
-                    const input = collectionInput(empty);
-                    const run = await createResolvedRunFromCollection(input);
-                    scope.assert.equal(run.plan.kind, 'supervised');
-                    scope.assert.equal(run.facts.execution.testFamily, 'integration');
-                    scope.assert.equal(run.facts.benchmarkNormalization, null);
-                    scope.assert.equal(Object.isFrozen(run), true);
-                    scope.assert.deepEqual(run.collectionRunnerErrors, []);
-                    return scope.assert.collect();
-                }
-            );
+        table({
+            title: 'preserves supervised collection facts for empty and populated plans',
+            cases: [ false, true ],
+            caseTitle(empty) {
+                return `${empty}`;
+            },
+            async test(scope) {
+                const empty = scope.parameters;
+
+                const input = collectionInput(empty);
+                const run = await createResolvedRunFromCollection(input);
+                scope.assert.equal(run.plan.kind, 'supervised');
+                scope.assert.equal(run.facts.execution.testFamily, 'integration');
+                scope.assert.equal(run.facts.benchmarkNormalization, null);
+                scope.assert.equal(Object.isFrozen(run), true);
+                scope.assert.deepEqual(run.collectionRunnerErrors, []);
+                return scope.assert.collect();
+            }
         })
     ]
 );

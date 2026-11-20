@@ -13,9 +13,9 @@ import type { WorkerPoolRunRuntime } from '../run/worker-pool-runtime.ts';
 
 import { defaultRunConfig, defaultRunRequest, defaultIntegrationProfile } from './run-command-factory.ts';
 
-export const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
+export const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 
-export const secondIntegrationPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
+export const secondIntegrationPath = 'source/integration-tests/integration/fixtures/delayed-pass.test.ts';
 
 const annotations = { ownership: [], tags: [] };
 

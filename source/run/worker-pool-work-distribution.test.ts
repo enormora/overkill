@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { CaseId } from '../packages/engine/engine.entry-point.ts';
 import { caseIdentityKey } from '../engine/identity.ts';
@@ -8,9 +8,9 @@ import { emptyWorkUnitResourceConstraints, type CollectedRunPlan, type WorkUnit 
 import { createWorkerPoolPlacementPlan } from './worker-pool-placement-planning.ts';
 import { type WorkUnitPlanningInput, workUnitsFromCollectedPlan } from './work-unit-planning.ts';
 
-const firstPath = 'source/integration-tests/run/fixtures/passing.test.ts';
-const secondPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
-const thirdPath = 'source/integration-tests/run/fixtures/generated-fast.test.ts';
+const firstPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const secondPath = 'source/integration-tests/integration/fixtures/delayed-pass.test.ts';
+const thirdPath = 'source/integration-tests/integration/fixtures/generated-fast.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 const fileSets = new Map([
@@ -71,7 +71,7 @@ function collectedPlanWithEmptyFile(): CollectedRunPlan {
     return {
         ...collectedPlan(),
         files: [
-            { cases: [], file: 'source/integration-tests/run/fixtures/empty.test.ts' },
+            { cases: [], file: 'source/integration-tests/integration/fixtures/empty.test.ts' },
             ...collectedPlan().files
         ]
     };
@@ -235,8 +235,8 @@ function planningInput(
     };
 }
 
-export const testNode = suite('source/run/worker-pool-work-distribution.test.ts', [
-    test('worker-pool planning creates case work units', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Worker pool work distribution', [
+    test('worker-pool planning creates case work units', function (scope) {
         scope.assert.deepEqual(
             workUnitsFromCollectedPlan(planningInput(collectedPlan(), { mode: 'case' }, fileSetForFile)),
             [ caseWorkUnit(firstCaseId()), caseWorkUnit(secondCaseId()) ]
@@ -244,7 +244,7 @@ export const testNode = suite('source/run/worker-pool-work-distribution.test.ts'
 
         return scope.assert.collect();
     }),
-    test('worker-pool planning applies group overrides with unmatched file fallback', function (scope: OverkillScope) {
+    test('worker-pool planning applies group overrides with unmatched file fallback', function (scope) {
         const fastFileUnit = {
             ...fileWorkUnit(firstCaseId(), 'fast-files'),
             scheduling: 'serial',
@@ -272,7 +272,7 @@ export const testNode = suite('source/run/worker-pool-work-distribution.test.ts'
 
         return scope.assert.collect();
     }),
-    test('worker-pool planning creates grouped work units', function (scope: OverkillScope) {
+    test('worker-pool planning creates grouped work units', function (scope) {
         scope.assert.deepEqual(
             workUnitsFromCollectedPlan(planningInput(
                 collectedPlan(),
@@ -305,7 +305,7 @@ export const testNode = suite('source/run/worker-pool-work-distribution.test.ts'
 
         return scope.assert.collect();
     }),
-    test('worker-pool planning applies named group granularity', function (scope: OverkillScope) {
+    test('worker-pool planning applies named group granularity', function (scope) {
         scope.assert.deepEqual(
             workUnitsFromCollectedPlan(planningInput(
                 collectedPlan(),
@@ -327,7 +327,7 @@ export const testNode = suite('source/run/worker-pool-work-distribution.test.ts'
 
         return scope.assert.collect();
     }),
-    test('worker-pool planning falls back to file units for unmatched sets', function (scope: OverkillScope) {
+    test('worker-pool planning falls back to file units for unmatched sets', function (scope) {
         scope.assert.deepEqual(
             workUnitsFromCollectedPlan(planningInput(
                 collectedPlan(),
@@ -346,7 +346,7 @@ export const testNode = suite('source/run/worker-pool-work-distribution.test.ts'
 
         return scope.assert.collect();
     }),
-    test('worker-pool planning applies group-local order inside profile order slots', function (scope: OverkillScope) {
+    test('worker-pool planning applies group-local order inside profile order slots', function (scope) {
         const units = workUnitsFromCollectedPlan(planningInput(
             collectedPlanWithRepeatedFastSet(),
             {
@@ -373,7 +373,7 @@ export const testNode = suite('source/run/worker-pool-work-distribution.test.ts'
 
         return scope.assert.collect();
     }),
-    test('worker-pool planning rejects grouped work without file-set ownership', function (scope: OverkillScope) {
+    test('worker-pool planning rejects grouped work without file-set ownership', function (scope) {
         scope.assert.throws(function planWithoutFileSetLookup() {
             workUnitsFromCollectedPlan(planningInput(
                 collectedPlan(),
@@ -408,7 +408,7 @@ export const testNode = suite('source/run/worker-pool-work-distribution.test.ts'
 
         return scope.assert.collect();
     }),
-    test('worker-pool placement rejects invalid available parallelism', function (scope: OverkillScope) {
+    test('worker-pool placement rejects invalid available parallelism', function (scope) {
         for (const availableParallelism of [ Number.NaN, 0 ]) {
             scope.assert.throws(function rejectInvalidParallelism() {
                 createWorkerPoolPlacementPlan({
@@ -430,7 +430,7 @@ export const testNode = suite('source/run/worker-pool-work-distribution.test.ts'
 
         return scope.assert.collect();
     }),
-    test('worker-pool distribution config rejects invalid group names', function (scope: OverkillScope) {
+    test('worker-pool distribution config rejects invalid group names', function (scope) {
         scope.assert.equal(
             invalidWorkDistributionConfigMessage(
                 {

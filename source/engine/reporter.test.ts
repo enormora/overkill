@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -91,8 +91,8 @@ const stdoutPrimaryIntent: OutputLineIntent = {
     text: 'primary line'
 };
 
-export const testNode = suite('source/engine/reporter.test.ts', [
-    test('validateReporterSinks() allows managed supplemental standard output sinks', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Reporter', [
+    test('validateReporterSinks() allows managed supplemental standard output sinks', function (scope) {
         validateReporterSinks([
             createFinalReporter('first', [ { kind: 'stdout-managed-supplemental' } ]),
             createFinalReporter('second', [ { kind: 'stdout-managed-supplemental' } ])
@@ -101,7 +101,7 @@ export const testNode = suite('source/engine/reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('validateReporterSinks() rejects raw standard output conflicts', function (scope: OverkillScope) {
+    test('validateReporterSinks() rejects raw standard output conflicts', function (scope) {
         scope.assert.throws(function validateConflictingStandardOutputSinks() {
             validateReporterSinks([
                 createFinalReporter('first', [ { kind: 'stderr-raw' } ]),
@@ -116,7 +116,7 @@ export const testNode = suite('source/engine/reporter.test.ts', [
     }),
     test(
         'validateReporterSinks() rejects duplicate managed primary standard output sinks',
-        function (scope: OverkillScope) {
+        function (scope) {
             scope.assert.throws(function validateConflictingManagedOutputSinks() {
                 validateReporterSinks([
                     createFinalReporter('first', [ { kind: 'stdout-managed-primary' } ]),
@@ -132,7 +132,7 @@ export const testNode = suite('source/engine/reporter.test.ts', [
     ),
     test(
         'validateReporterSinks() allows one managed primary with managed supplemental standard output sinks',
-        function (scope: OverkillScope) {
+        function (scope) {
             validateReporterSinks([
                 createFinalReporter('primary', [ { kind: 'stdout-managed-primary' } ]),
                 createFinalReporter('supplemental', [ { kind: 'stdout-managed-supplemental' } ])
@@ -142,7 +142,7 @@ export const testNode = suite('source/engine/reporter.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('validateReporterSinks() rejects exact file and directory path conflicts', function (scope: OverkillScope) {
+    test('validateReporterSinks() rejects exact file and directory path conflicts', function (scope) {
         scope.assert.throws(function validateConflictingPathSinks() {
             validateReporterSinks([
                 createFinalReporter('first', [
@@ -159,7 +159,7 @@ export const testNode = suite('source/engine/reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('validateReporterSinks() treats memory and stream sinks as private', function (scope: OverkillScope) {
+    test('validateReporterSinks() treats memory and stream sinks as private', function (scope) {
         const stream = new WritableStream<unknown>();
 
         validateReporterSinks([
@@ -176,7 +176,7 @@ export const testNode = suite('source/engine/reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('reporter dispatcher disposes reporters once', async function (scope: OverkillScope) {
+    test('reporter dispatcher disposes reporters once', async function (scope) {
         const { dispatcher } = createRecordingDispatcher();
         let disposeCount = 0;
         const reporter: FinalResultReporter = {
@@ -203,7 +203,7 @@ export const testNode = suite('source/engine/reporter.test.ts', [
     }),
     test(
         'reporter dispatcher records direct runner-error delivery failures without notification',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
             const dispatcher = createReporterDispatcher({
                 stderr: { writeLine: ignoreOutputLine },
@@ -247,7 +247,7 @@ export const testNode = suite('source/engine/reporter.test.ts', [
     ),
     test(
         'reporter dispatcher records terminal runner-error notifications as delivered',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const { dispatcher } = createRecordingDispatcher();
             const failingReporter: RealTimeReporter = {
                 dispose: null,
@@ -294,7 +294,7 @@ export const testNode = suite('source/engine/reporter.test.ts', [
     ),
     test(
         'reporter dispatcher records runner-error notification output failures',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const { dispatcher } = createRecordingDispatcher();
             const failingReporter: RealTimeReporter = {
                 dispose: null,
@@ -336,7 +336,7 @@ export const testNode = suite('source/engine/reporter.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('reporter dispatcher reports non-error failures', async function (scope: OverkillScope) {
+    test('reporter dispatcher reports non-error failures', async function (scope) {
         const { dispatcher } = createRecordingDispatcher();
         const failingReporter: RealTimeReporter = {
             dispose: null,

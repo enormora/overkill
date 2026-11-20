@@ -1,12 +1,11 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
+import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
 import type { RunResult, PropertyWitnessFile } from '../packages/engine/engine.entry-point.ts';
-import { test } from '../packages/test/test.entry-point.ts';
+
 import { gen, property, withProperties } from '../packages/property/property.entry-point.ts';
 import { differential } from '../packages/differential/differential.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
-import { testNode as contractTestNode } from './differential-contract.test.ts';
-import { testNode as lifecycleTestNode } from './differential-lifecycle.test.ts';
 
 function confirmedWitness(result: RunResult): PropertyWitnessFile {
     const witness = result.perTest[0]?.property?.invocations[0]?.confirmedWitness;
@@ -16,10 +15,8 @@ function confirmedWitness(result: RunResult): PropertyWitnessFile {
     return witness;
 }
 
-export const testNode = authoredSuite('differential comparisons', [
-    lifecycleTestNode,
-    contractTestNode,
-    authoredTest('rejects malformed JavaScript declarations before executing callbacks', function (scope) {
+export const testNode: TestNode = suite('differential comparisons', [
+    test('rejects malformed JavaScript declarations before executing callbacks', function (scope) {
         const run = function (): number {
             return 1;
         };
@@ -42,7 +39,7 @@ export const testNode = authoredSuite('differential comparisons', [
         }
         return scope.assert.collect();
     }),
-    authoredTest('snapshots definitions and replays a retained mismatch', async function (scope) {
+    test('snapshots definitions and replays a retained mismatch', async function (scope) {
         const implementations = [
             {
                 name: 'one',
@@ -77,7 +74,7 @@ export const testNode = authoredSuite('differential comparisons', [
         scope.assert.equal(replay.summary.failed, 1);
         return scope.assert.collect();
     }),
-    authoredTest('isolates mutable graphs and preserves aliases in declaration order', async function (scope) {
+    test('isolates mutable graphs and preserves aliases in declaration order', async function (scope) {
         const calls: string[] = [];
         const result = await executePropertyNode(
             property({
@@ -135,7 +132,7 @@ export const testNode = authoredSuite('differential comparisons', [
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    authoredTest('captures synchronous throws and asynchronous rejections', async function (scope) {
+    test('captures synchronous throws and asynchronous rejections', async function (scope) {
         const result = await executePropertyNode(
             property({
                 title: 'errors',
@@ -172,7 +169,7 @@ export const testNode = authoredSuite('differential comparisons', [
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    authoredTest('awaits settlement before starting the next implementation', async function (scope) {
+    test('awaits settlement before starting the next implementation', async function (scope) {
         const events: string[] = [];
         let next = 0;
         async function execute(value: number): Promise<number> {
@@ -222,7 +219,7 @@ export const testNode = authoredSuite('differential comparisons', [
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    authoredTest('shrinks mismatches and retains a replayable witness', async function (scope) {
+    test('shrinks mismatches and retains a replayable witness', async function (scope) {
         const result = await executePropertyNode(
             property({
                 title: 'mismatch',
@@ -254,7 +251,7 @@ export const testNode = authoredSuite('differential comparisons', [
         scope.assert.defined(result.perTest[0]?.property?.invocations[0]?.confirmedWitness);
         return scope.assert.collect();
     }),
-    authoredTest('preserves permission denials and skips remaining callbacks', async function (scope) {
+    test('preserves permission denials and skips remaining callbacks', async function (scope) {
         let laterCalls = 0;
         const result = await executePropertyNode(
             property({
@@ -294,9 +291,9 @@ export const testNode = authoredSuite('differential comparisons', [
         );
         return scope.assert.collect();
     }),
-    authoredTest('supports nested property composition', async function (scope) {
+    test('supports nested property composition', async function (scope) {
         const result = await executePropertyNode(
-            test(
+            subjectTest(
                 'nested',
                 withProperties(async function (sample) {
                     return await sample.forall(

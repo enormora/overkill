@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     ConfigError,
@@ -224,14 +224,14 @@ async function runTests(dependencies: CommandLineRunnerDependencies): Promise<Co
     });
 }
 
-export const testNode = suite({
-    title: 'source/run/command-line-runner.test.ts',
+export const testNode: TestNode = suite({
+    title: 'Command line runner',
     ...emptyTestData,
     children: [
         test({
             title: 'commandLineRunner.runTests() accepts empty last-failed selections',
             ...emptyTestData,
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const dependencies = createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(async function emptyRun() {
                         return runnerResultFactory.build({
@@ -253,7 +253,12 @@ export const testNode = suite({
         test({
             title: 'commandLineRunner.runTests() injects the default reporter when config omits reporters',
             ...emptyTestData,
-            async body(scope: OverkillScope) {
+            async body(
+                scope: {
+                    readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>;
+                    readonly require: Pick<TestScope['require'], 'defined' | 'notNull'>;
+                }
+            ) {
                 const receivedCommands: RunCommand[] = [];
                 const dependencies = createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
@@ -279,7 +284,12 @@ export const testNode = suite({
         test({
             title: 'commandLineRunner.runTests() preserves configured reporters',
             ...emptyTestData,
-            async body(scope: OverkillScope) {
+            async body(
+                scope: {
+                    readonly assert: Pick<TestScope['assert'], 'equal' | 'collect'>;
+                    readonly require: Pick<TestScope['require'], 'defined' | 'notNull'>;
+                }
+            ) {
                 const receivedCommands: RunCommand[] = [];
                 let defaultReporterLoadCount = 0;
                 const dependencies = createRunnerDependencies({
@@ -314,7 +324,7 @@ export const testNode = suite({
         test({
             title: 'commandLineRunner.runTests() maps test failures to exit code 1',
             ...emptyTestData,
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
                         async function runCommand() {
@@ -334,7 +344,7 @@ export const testNode = suite({
         test({
             title: 'commandLineRunner.runTests() maps all-skipped runs to exit code 0',
             ...emptyTestData,
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
                         async function runCommand() {
@@ -354,7 +364,7 @@ export const testNode = suite({
         test({
             title: 'commandLineRunner.runTests() maps no planned tests to exit code 4',
             ...emptyTestData,
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
                         async function runCommand() {
@@ -374,7 +384,7 @@ export const testNode = suite({
         test({
             title: 'commandLineRunner.runTests() maps runner errors to exit code 2 with fallback diagnostics',
             ...emptyTestData,
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
                         async function runCommand() {
@@ -395,7 +405,7 @@ export const testNode = suite({
         test({
             title: 'commandLineRunner.runTests() maps config errors to exit code 3',
             ...emptyTestData,
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const result = await runTests(createRunnerDependencies({
                     async loadConfig() {
                         throw new ConfigError('Invalid project policy.');
@@ -413,7 +423,7 @@ export const testNode = suite({
         test({
             title: 'commandLineRunner.runTests() maps internal config load errors',
             ...emptyTestData,
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const result = await runTests(createRunnerDependencies({
                     async loadConfig() {
                         throw new Error('Config failed.');
@@ -432,7 +442,9 @@ export const testNode = suite({
         test({
             title: 'commandLineRunner.runTests() maps reporter sink conflicts to exit code 3',
             ...emptyTestData,
-            async body(scope: OverkillScope) {
+            async body(
+                scope
+            ) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
                         async function runCommand() {
@@ -455,7 +467,9 @@ export const testNode = suite({
         test({
             title: 'commandLineRunner.runTests() maps aggregate sink conflicts to exit code 3',
             ...emptyTestData,
-            async body(scope: OverkillScope) {
+            async body(
+                scope
+            ) {
                 const conflict = new ReporterSinkConflictError(
                     'Reporter sink conflict: stdout is claimed by incompatible reporters.'
                 );
@@ -492,7 +506,7 @@ export const testNode = suite({
         test({
             title: 'commandLineRunner.runTests() maps request errors to exit code 3',
             ...emptyTestData,
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
                         async function runCommand() {

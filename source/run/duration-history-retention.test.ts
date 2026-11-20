@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { historyTimestamp, historyWork } from '../test-support/history-record-fixture.ts';
@@ -20,8 +20,8 @@ const observation = {
 } as const;
 const context = { now: historyTimestamp, policy: defaultHistoryPolicy };
 
-export const testNode = authoredSuite('duration history retention', [
-    test('placement excludes uncommitted runs while retaining independent observations', function (scope: TestScope) {
+export const testNode: TestNode = suite('duration history retention', [
+    test('placement excludes uncommitted runs while retaining independent observations', function (scope) {
         const pending = ingestDurationState(emptyDurationState(historyTimestamp), [ observation ], {
             ...context,
             run: { id: 'pending', startedAt: historyTimestamp }
@@ -42,7 +42,7 @@ export const testNode = authoredSuite('duration history retention', [
         );
         return scope.assert.collect();
     }),
-    test('equal timestamps retain deterministic run order including independent samples', function (scope: TestScope) {
+    test('equal timestamps retain deterministic run order including independent samples', function (scope) {
         const initial = {
             ...emptyDurationState(historyTimestamp),
             entries: [ {
@@ -75,7 +75,7 @@ export const testNode = authoredSuite('duration history retention', [
         scope.assert.equal(retained.entries[0]?.totalDurationMicroseconds, 30);
         return scope.assert.collect();
     }),
-    test('observation trimming preserves counts and accumulated duration', function (scope: TestScope) {
+    test('observation trimming preserves counts and accumulated duration', function (scope) {
         let state = emptyDurationState(historyTimestamp);
         for (let index = 0; index < 25; index += 1) {
             state = ingestDurationState(state, [ observation ], {
@@ -88,7 +88,7 @@ export const testNode = authoredSuite('duration history retention', [
         scope.assert.equal(state.entries[0]?.totalDurationMicroseconds, 250);
         return scope.assert.collect();
     }),
-    test('expired records cannot resurrect old work history', function (scope: TestScope) {
+    test('expired records cannot resurrect old work history', function (scope) {
         const state = ingestDurationState(emptyDurationState(historyTimestamp), [ observation ], {
             ...context,
             run: { id: 'expired', startedAt: '2026-01-01T00:00:00.000Z' }
@@ -96,7 +96,7 @@ export const testNode = authoredSuite('duration history retention', [
         scope.assert.equal(state.entries.length, 0);
         return scope.assert.collect();
     }),
-    test('stale work entries are pruned', function (scope: TestScope) {
+    test('stale work entries are pruned', function (scope) {
         const earlier = '2026-01-01T00:00:00.000Z';
         const initial = ingestDurationState(emptyDurationState(earlier), [ {
             ...observation,

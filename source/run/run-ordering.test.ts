@@ -1,13 +1,13 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import type { NormalizedConfig } from '../config/types.ts';
-import { testNode as shards } from './run-sharding-policy.test.ts';
+
 import { orderedRunItems } from './run-ordering.ts';
 import type { ResolvedRun, RunCommand, RunRequest } from './run-types.ts';
 
-const selectionFixturePath = 'source/integration-tests/run/fixtures/selection.test.ts';
+const selectionFixturePath = 'source/integration-tests/integration/fixtures/selection.test.ts';
 
 const localConfig: NormalizedConfig = defaultRunConfig({
     profiles: {
@@ -58,11 +58,10 @@ function caseTitles(resolvedRun: ResolvedRun): readonly string[] {
     });
 }
 
-export const testNode = suite('source/run/run-ordering.test.ts', [
-    shards,
+export const testNode: TestNode = suite('Run ordering', [
     test(
         'orchestrator.resolve() keeps source-stable order for lexical requests',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const runOrchestrator = createUnitRunOrchestrator();
             const resolvedRun = await runOrchestrator.resolve(runCommand(
                 localConfig,
@@ -76,7 +75,7 @@ export const testNode = suite('source/run/run-ordering.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('orchestrator.resolve() applies repeatable seeded ordering', async function (scope: OverkillScope) {
+    test('orchestrator.resolve() applies repeatable seeded ordering', async function (scope) {
         const runOrchestrator = createUnitRunOrchestrator();
         const firstRun = await runOrchestrator.resolve(
             runCommand(localConfig, runRequest('seeded', 1n))
@@ -102,7 +101,7 @@ export const testNode = suite('source/run/run-ordering.test.ts', [
     }),
     test(
         'orchestrator.run() executes supervised assignments in ordered fact order',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const runOrchestrator = createUnitRunOrchestrator();
             const request = runRequest('seeded', 1n);
             const expectedRun = await runOrchestrator.resolve(runCommand(supervisedConfig, request));
@@ -118,7 +117,7 @@ export const testNode = suite('source/run/run-ordering.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('orderedRunItems() rejects seeded order without a resolved seed', function (scope: OverkillScope) {
+    test('orderedRunItems() rejects seeded order without a resolved seed', function (scope) {
         scope.assert.throws(
             function orderWithUnresolvedSeed() {
                 orderedRunItems([ singleCase ], 'seeded', { value: null });
@@ -128,7 +127,7 @@ export const testNode = suite('source/run/run-ordering.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('orderedRunItems() rejects sparse seeded case arrays', function (scope: OverkillScope) {
+    test('orderedRunItems() rejects sparse seeded case arrays', function (scope) {
         const sparseCases = [ singleCase, singleCase ];
         sparseCases.length = 3;
 

@@ -1,16 +1,16 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { suite as subjectSuite, test as subjectTest } from '../packages/test/test.entry-point.ts';
 
-import { suite, test } from '../packages/test/test.entry-point.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import { collectedRunPlanFromTestPlanCases } from './collected-run-plan.ts';
 import { bindRecordedTestPlan } from './replay-binding.ts';
 
 function sourcePlan(titles: readonly string[], observe: (title: string) => void): TestPlan {
-    const testNode = suite(
+    const testNode = subjectSuite(
         'retained suite',
         titles.map(function authoredCase(title) {
-            return test(title, function (scope) {
+            return subjectTest(title, function (scope) {
                 observe(title);
                 scope.assert.true(true);
                 return scope.assert.collect();
@@ -87,9 +87,16 @@ function invalidBindings(): readonly InvalidBinding[] {
         }
     ];
 }
-export const testNode = authoredSuite('saved case binding', [
-    ...invalidBindings().map(function incompatibleCase(entry) {
-        return authoredTest(entry.title, function (scope: TestScope) {
+export const testNode: TestNode = suite('saved case binding', [
+    table({
+        title: 'rejects invalid replay bindings',
+        cases: invalidBindings(),
+        caseTitle(entry) {
+            return entry.title;
+        },
+        test(scope) {
+            const entry = scope.parameters;
+
             const original = sourcePlan([ 'retained' ], ignoreCase);
             const saved = collectedRunPlanFromTestPlanCases(original, original.cases);
             const current: TestPlan = { ...original, discoveredCases: [ entry.change(original.cases[0]) ] };
@@ -97,9 +104,9 @@ export const testNode = authoredSuite('saved case binding', [
                 bindRecordedTestPlan(current, saved);
             }, { message: entry.message });
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('restores a saved skip without invoking the current body', async function (scope: TestScope) {
+    test('restores a saved skip without invoking the current body', async function (scope) {
         const original = sourcePlan([ 'retained' ], ignoreCase);
         const saved = collectedRunPlanFromTestPlanCases(original, [ {
             ...original.cases[0],
@@ -115,9 +122,9 @@ export const testNode = authoredSuite('saved case binding', [
         scope.assert.includes(JSON.stringify(result), 'saved skip');
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'binds current bodies in saved order without admitting extra cases',
-        async function (scope: TestScope) {
+        async function (scope) {
             const original = sourcePlan([ 'second', 'first' ], ignoreCase);
             const selected = original.cases[0];
             const saved = collectedRunPlanFromTestPlanCases(original, [ selected ]);
@@ -132,9 +139,9 @@ export const testNode = authoredSuite('saved case binding', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'reports unavailable runtime variants without running a substitute body',
-        async function (scope: TestScope) {
+        async function (scope) {
             const original = sourcePlan([ 'variant' ], ignoreCase);
             const first = original.cases[0];
             const runtimeCase = {
@@ -156,7 +163,7 @@ export const testNode = authoredSuite('saved case binding', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('rejects missing and ambiguous case identities', function (scope: TestScope) {
+    test('rejects missing and ambiguous case identities', function (scope) {
         const original = sourcePlan([ 'retained' ], ignoreCase);
         const saved = collectedRunPlanFromTestPlanCases(original, original.cases);
         scope.assert.throws(function missing() {

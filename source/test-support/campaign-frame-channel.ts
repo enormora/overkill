@@ -1,6 +1,6 @@
 import { serialize } from 'node:v8';
 import { receiveCampaignFrames, type CampaignSocket } from '../packages/stryker-runner/campaign-transport.ts';
-import { testDouble } from '../packages/test/test.entry-point.ts';
+import { testDouble } from '@overkill-dev/test';
 import { memoryCampaignSocket } from './memory-campaign-connection.ts';
 
 export type FrameScenario = 'body-string' | 'header-string' | 'large-header' | 'receiver-failure' | 'zero-header';

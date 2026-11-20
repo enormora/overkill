@@ -1,11 +1,12 @@
+import { type TestNode, suite, test, type TestScope } from '#tests';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
-import { suite, test, type TestScope } from '#tests';
+
 import type * as LineReporterPackage from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { resolvePackagedExport } from './packaged-module.test.ts';
+import { resolvePackagedExport } from './support/packaged-module.ts';
 import {
     recordedRunId,
     assertCompletedRunRecord,
@@ -16,7 +17,7 @@ import {
     assertSimulationPackageExports,
     assertTestStandardSubpathExports,
     importPackagedFilters
-} from './package-export-assertions.test.ts';
+} from './support/package-export-assertions.ts';
 import {
     authoringSmokeScript,
     customAuthoringFacadeScript,
@@ -35,7 +36,7 @@ import {
     runSubpathImportScript,
     standardSubpathImportScript,
     throwsOnImportSmokeScript
-} from './test-binary-scripts.test.ts';
+} from './support/test-binary-scripts.ts';
 
 const { createLineProgressReporter, createLineTreeReporter } = await import(
     await resolvePackagedExport('@overkill-dev/reporter-line')
@@ -215,8 +216,8 @@ async function assertHistoryCommand(scope: TestScope, args: readonly string[], e
     scope.assert.equal(result.code, 0);
     scope.assert.includes(result.stdout, expected);
 }
-export const testNode = suite('source/integration-tests/package-smoke/test-binary.test.ts', [
-    test('packaged history commands support maintenance and clear confirmation', async function (scope: TestScope) {
+export const testNode: TestNode = suite('Test binary', [
+    test('packaged history commands support maintenance and clear confirmation', async function (scope) {
         await writeHistorySmokeConfig();
         await assertHistoryCommand(scope, [ 'compact' ], 'Compacted');
         await assertHistoryCommand(scope, [ 'list' ], 'REPLAY');
@@ -234,7 +235,7 @@ export const testNode = suite('source/integration-tests/package-smoke/test-binar
         return scope.assert.collect();
     }),
 
-    test('@overkill-dev/test package owns the overkill binary', async function (scope: TestScope) {
+    test('@overkill-dev/test package owns the overkill binary', async function (scope) {
         const testPackageJson = await readPackageJson(testPackageFolder);
         const runPackageJson = await readPackageJson(runPackageFolder);
         const testBin = testPackageJson.bin;
@@ -252,12 +253,12 @@ export const testNode = suite('source/integration-tests/package-smoke/test-binar
 
         return scope.assert.collect();
     }),
-    test('@overkill-dev/reporter-line exposes every presentation variant', function (scope: TestScope) {
+    test('@overkill-dev/reporter-line exposes every presentation variant', function (scope) {
         assertLineReporterVariants(scope);
 
         return scope.assert.collect();
     }),
-    test('consumer imports packaged @overkill-dev/test root facade', async function (scope: TestScope) {
+    test('consumer imports packaged @overkill-dev/test root facade', async function (scope) {
         const testPackageJson = await readPackageJson(testPackageFolder);
         const packageExports = testPackageJson.exports;
         const result = await spawnNode([
@@ -280,7 +281,7 @@ export const testNode = suite('source/integration-tests/package-smoke/test-binar
 
         return scope.assert.collect();
     }),
-    test('consumer imports packaged @overkill-dev/test standard subpaths', async function (scope: TestScope) {
+    test('consumer imports packaged @overkill-dev/test standard subpaths', async function (scope) {
         const testPackageJson = await readPackageJson(testPackageFolder);
         const packageExports = testPackageJson.exports;
 
@@ -292,7 +293,7 @@ export const testNode = suite('source/integration-tests/package-smoke/test-binar
 
         return scope.assert.collect();
     }),
-    test('packaged overkill binary prints command help', async function (scope: TestScope) {
+    test('packaged overkill binary prints command help', async function (scope) {
         const result = await spawnNode([
             overkillBinEntryPointPath,
             '--help'
@@ -304,7 +305,7 @@ export const testNode = suite('source/integration-tests/package-smoke/test-binar
 
         return scope.assert.collect();
     }),
-    test('packaged overkill bin entry point prints command help', async function (scope: TestScope) {
+    test('packaged overkill bin entry point prints command help', async function (scope) {
         const result = await spawnNode([ overkillBinEntryPointPath, '--help' ]);
 
         scope.assert.equal(result.code, 0);
@@ -315,7 +316,7 @@ export const testNode = suite('source/integration-tests/package-smoke/test-binar
     }),
     test(
         'packaged overkill bin entry point default line reporter passes with capability restrictions',
-        async function (scope: TestScope) {
+        async function (scope) {
             await writeReporterPolicySmokeProject();
 
             const result = await spawnNode([
@@ -335,7 +336,7 @@ export const testNode = suite('source/integration-tests/package-smoke/test-binar
     ),
     test(
         'packaged overkill bin entry point line reporter shows test console policy violations',
-        async function (scope: TestScope) {
+        async function (scope) {
             await writeReporterPolicySmokeProject();
 
             const result = await spawnNode([
@@ -356,7 +357,7 @@ export const testNode = suite('source/integration-tests/package-smoke/test-binar
     ),
     test(
         'packaged overkill bin entry point falls back for final-only runner errors',
-        async function (scope: TestScope) {
+        async function (scope) {
             await writeReporterPolicySmokeProject();
 
             const result = await spawnNode([
@@ -379,7 +380,7 @@ export const testNode = suite('source/integration-tests/package-smoke/test-binar
     ),
     test(
         'packaged overkill bin entry point reports undeclared reporter console usage',
-        async function (scope: TestScope) {
+        async function (scope) {
             await writeReporterPolicySmokeProject();
 
             const result = await spawnNode([
@@ -402,7 +403,7 @@ export const testNode = suite('source/integration-tests/package-smoke/test-binar
     ),
     test(
         'packaged @overkill-dev/test root authoring creates runnable testNode exports',
-        async function (scope: TestScope) {
+        async function (scope) {
             await writePackageSmokeProject();
 
             const result = await spawnNode([
@@ -421,7 +422,7 @@ export const testNode = suite('source/integration-tests/package-smoke/test-binar
             return scope.assert.collect();
         }
     ),
-    test('packaged overkill list renders root authoring definition locations', async function (scope: TestScope) {
+    test('packaged overkill list renders root authoring definition locations', async function (scope) {
         await writePackageSmokeProject();
 
         const result = await spawnNode([
@@ -438,7 +439,7 @@ export const testNode = suite('source/integration-tests/package-smoke/test-binar
 
         return scope.assert.collect();
     }),
-    test('consumer custom facade alias creates filtered runnable testNode exports', async function (scope: TestScope) {
+    test('consumer custom facade alias creates filtered runnable testNode exports', async function (scope) {
         await writePackageSmokeProject();
 
         const result = await spawnNode([
@@ -455,7 +456,7 @@ export const testNode = suite('source/integration-tests/package-smoke/test-binar
 
         return scope.assert.collect();
     }),
-    test('consumer imports packaged @overkill-dev/run subpath helpers', async function (scope: TestScope) {
+    test('consumer imports packaged @overkill-dev/run subpath helpers', async function (scope) {
         const packageExports = await readPackageExports(runPackageFolder, '@overkill-dev/run');
         const result = await spawnNode([
             '--input-type=module',

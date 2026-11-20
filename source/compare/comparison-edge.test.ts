@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { rawProperty } from './raw-comparison.ts';
 import {
@@ -9,8 +9,8 @@ import {
     compareStringEquality
 } from './comparison.ts';
 
-export const testNode = suite('source/compare/comparison-edge.test.ts', [
-    test('raw properties tolerate inaccessible proxy descriptors', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Value comparison edge cases', [
+    test('raw properties tolerate inaccessible proxy descriptors', function (scope) {
         const value = new Proxy({ value: 42 }, {
             getOwnPropertyDescriptor() {
                 throw new Error('Descriptor unavailable.');
@@ -19,7 +19,7 @@ export const testNode = suite('source/compare/comparison-edge.test.ts', [
         scope.assert.deepEqual(rawProperty(value, 'value'), { key: 'value', value: { accessor: true } });
         return scope.assert.collect();
     }),
-    test('array differences ignore shared sparse positions', function (scope: OverkillScope) {
+    test('array differences ignore shared sparse positions', function (scope) {
         const actual = [ 'actual' ];
         const expected = [ 'expected' ];
         actual.length = 2;
@@ -34,7 +34,7 @@ export const testNode = suite('source/compare/comparison-edge.test.ts', [
         });
         return scope.assert.collect();
     }),
-    test('different error prototypes produce whole-value mismatches', function (scope: OverkillScope) {
+    test('different error prototypes produce whole-value mismatches', function (scope) {
         const result = compareDeepValues(new TypeError('failure'), new Error('failure'));
         scope.assert.equal(result.passed, false);
         scope.assert.equal(result.diff?.kind, 'value');
@@ -42,7 +42,7 @@ export const testNode = suite('source/compare/comparison-edge.test.ts', [
         return scope.assert.collect();
     }),
 
-    test('compareStringEquality() returns no diff for equal strings', function (scope: OverkillScope) {
+    test('compareStringEquality() returns no diff for equal strings', function (scope) {
         scope.assert.deepEqual(compareStringEquality('same', 'same'), {
             actual: { kind: 'string', truncation: null, value: 'same' },
             diff: null,
@@ -53,7 +53,7 @@ export const testNode = suite('source/compare/comparison-edge.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('compareDeepValues() rejects mismatched container kinds', function (scope: OverkillScope) {
+    test('compareDeepValues() rejects mismatched container kinds', function (scope) {
         scope.assert.equal(compareDeepValues([ 1 ], { 0: 1 }).passed, false);
         scope.assert.equal(compareDeepValues(new Map(), new Set()).passed, false);
         scope.assert.equal(compareDeepValues(new Set(), new Map()).passed, false);
@@ -63,7 +63,7 @@ export const testNode = suite('source/compare/comparison-edge.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('compareDeepValues() treats unavailable object introspection as a mismatch', function (scope: OverkillScope) {
+    test('compareDeepValues() treats unavailable object introspection as a mismatch', function (scope) {
         const ownKeysProxy = new Proxy({}, {
             ownKeys() {
                 throw new Error('keys unavailable');
@@ -80,7 +80,7 @@ export const testNode = suite('source/compare/comparison-edge.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('compareDeepValues() emits object remove and add operations', function (scope: OverkillScope) {
+    test('compareDeepValues() emits object remove and add operations', function (scope: TestScope) {
         const missing = compareDeepValues({ id: 1 }, { id: 1, name: 'Ada' });
         const extra = compareDeepValues({ id: 1, name: 'Ada' }, { id: 1 });
         const missingDiff = missing.diff;
@@ -111,7 +111,7 @@ export const testNode = suite('source/compare/comparison-edge.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('compareDeepValues() emits array removal for missing actual indexes', function (scope: OverkillScope) {
+    test('compareDeepValues() emits array removal for missing actual indexes', function (scope: TestScope) {
         const result = compareDeepValues([ 1 ], [ 1, 2 ]);
         const { diff } = result;
 
@@ -129,7 +129,7 @@ export const testNode = suite('source/compare/comparison-edge.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('compareDeepValues() handles ArrayBuffer and byte length mismatches', function (scope: OverkillScope) {
+    test('compareDeepValues() handles ArrayBuffer and byte length mismatches', function (scope: TestScope) {
         const changed = compareDeepValues(Uint8Array.from([ 1 ]).buffer, Uint8Array.from([ 2 ]).buffer);
         const longer = compareDeepValues(Uint8Array.from([ 1, 2 ]), Uint8Array.from([ 1 ]));
         const changedDiff = changed.diff;
@@ -152,7 +152,7 @@ export const testNode = suite('source/compare/comparison-edge.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('compareDeepValues() reports Error name and enumerable data differences', function (scope: OverkillScope) {
+    test('compareDeepValues() reports Error name and enumerable data differences', function (scope: TestScope) {
         const actual = new Error('same');
         const expected = new Error('same');
         const actualData = Object.assign(new Error('same'), { code: 'actual' }) as Error & {
@@ -175,7 +175,7 @@ export const testNode = suite('source/compare/comparison-edge.test.ts', [
     }),
     test(
         'comparePartialValue() handles primitive, array, built-in, and opaque failures',
-        function (scope: OverkillScope) {
+        function (scope) {
             scope.assert.equal(comparePartialValue(1, 2).passed, false);
             scope.assert.equal(comparePartialValue({}, [ 1 ]).passed, false);
             scope.assert.equal(comparePartialValue([ 1 ], [ 1, 2 ]).passed, false);
@@ -188,7 +188,7 @@ export const testNode = suite('source/compare/comparison-edge.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('comparePartialValue() preserves repeated reference topology', function (scope: OverkillScope) {
+    test('comparePartialValue() preserves repeated reference topology', function (scope) {
         const shared = { value: 1 };
         const actual = { left: shared, right: shared };
         const expected = {
@@ -200,7 +200,7 @@ export const testNode = suite('source/compare/comparison-edge.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('comparePartialValue() handles Map, Set, Error, and binary subsets', function (scope: OverkillScope) {
+    test('comparePartialValue() handles Map, Set, Error, and binary subsets', function (scope: TestScope) {
         scope.assert.deepEqual(
             [
                 compareDeepValues(new Map([ [ 'id', 1 ] ]), new Map()).passed,
@@ -234,7 +234,7 @@ export const testNode = suite('source/compare/comparison-edge.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('array membership comparisons report pass and invalid operand cases', function (scope: OverkillScope) {
+    test('array membership comparisons report pass and invalid operand cases', function (scope) {
         scope.assert.equal(compareArrayContainsPartial([ { id: 1 } ], { id: 1 }).passed, true);
         scope.assert.equal(compareArrayContainsPartial({ id: 1 }, { id: 1 }).passed, false);
         scope.assert.equal(compareMembersPartialDeepEqual([ { id: 1 } ], { id: 1 }).passed, false);

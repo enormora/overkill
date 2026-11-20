@@ -1,12 +1,12 @@
 import { createDeterministicClock } from '@enormora/clock';
 import {
     type RunResult,
-    type TestScope,
     type TestCase,
     type BenchmarkExecutionEnvironment,
     createRoot,
     createTestPlan
 } from '../packages/engine/engine.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';

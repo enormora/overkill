@@ -1,5 +1,7 @@
 import { defineBodyReference, type BodyReference } from '../engine/body-reference.ts';
-import type { TestScope, AssertionResult, ThrowingTestScope } from '../packages/engine/engine.entry-point.ts';
+
+import type { AssertionResult } from '../packages/engine/engine.entry-point.ts';
+
 import { implementationFacts } from '../implementation-reference.ts';
 import { caseParticipants } from '../engine/body-reference-participants.ts';
 import type { TestPlanCaseExecution } from '../engine/test-plan.ts';
@@ -27,9 +29,9 @@ function bodyReference<Scope, Result>(): BodyReference<Scope, Result> {
 }
 function referencedExecution(mode: BodyParticipantMode): TestPlanCaseExecution {
     if (mode === 'throwing') {
-        return { kind: 'body', bodyMode: 'throwing', body: bodyReference<ThrowingTestScope, undefined>() };
+        return { kind: 'body', bodyMode: 'throwing', body: bodyReference<unknown, undefined>() };
     }
-    return { kind: 'body', bodyMode: 'builder', body: bodyReference<TestScope, AssertionResult>() };
+    return { kind: 'body', bodyMode: 'builder', body: bodyReference<unknown, AssertionResult>() };
 }
 const initialActivationValue = 42;
 const readmittedActivationValue = 43;

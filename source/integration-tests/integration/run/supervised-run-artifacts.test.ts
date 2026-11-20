@@ -1,0 +1,332 @@
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+
+import { defaultHistoryPolicy } from '../../../config/history-policy.ts';
+import { startFakeIntegrationOutputChild } from '../../../test-support/supervised-output-fixture.ts';
+import {
+    defineOutputRenderer,
+    defineReporter,
+    type DefinedReporter,
+    type RunArtifact
+} from '../../../packages/engine/engine.entry-point.ts';
+import {
+    defaultIntegrationProfile,
+    defaultMicrotestProfile,
+    defaultRunRequest
+} from '../../../test-support/run-command-factory.ts';
+import type { NormalizedConfig } from '../../../config/types.ts';
+import { defaultRunEngine } from '../../../run/default-run-engine.ts';
+import { createNodeRunOrchestrator } from '../../../run/run-orchestrator.ts';
+import type { RunCommand } from '../../../run/run-types.ts';
+import type { RunOrchestrator } from '../../../run/run-orchestrator-types.ts';
+
+const integrationOutputFixturePath = 'source/integration-tests/integration/fixtures/integration-output.test.ts';
+const integrationCaptureControlsOutputFixturePath =
+    'source/integration-tests/integration/fixtures/integration-capture-controls-output.test.ts';
+const microtestProfile = defaultMicrotestProfile({
+    timeouts: { collectionMilliseconds: 5000 }
+});
+
+type ArtifactRecorder = {
+    readonly artifacts: () => readonly RunArtifact[];
+    readonly reporter: DefinedReporter;
+};
+
+type CapturedProcessOutput = {
+    readonly appendStderr: (chunk: Uint8Array) => void;
+    readonly appendStdout: (chunk: Uint8Array) => void;
+    readonly stderr: () => string;
+    readonly stdout: () => string;
+};
+
+function createRunConfig(profileName: string, profile: NormalizedConfig['profiles'][string]): NormalizedConfig {
+    return {
+        history: defaultHistoryPolicy,
+        loader: {
+            sourceMaps: false,
+            stripMode: 'strip-only'
+        },
+        outputRenderer: defineOutputRenderer(function createEmptyOutputRenderer() {
+            return {
+                render() {
+                    return '';
+                }
+            };
+        }),
+        profiles: {
+            [profileName]: profile,
+            microtest: microtestProfile
+        },
+        reporters: [],
+        runtimeStateDir: '.overkill'
+    };
+}
+
+function capturedOutputText(artifact: RunArtifact): string {
+    if (artifact.payload.kind !== 'captured-output') {
+        throw new Error('Expected captured output artifact.');
+    }
+
+    return artifact.payload.text;
+}
+
+function compareText(first: string, second: string): number {
+    return first.localeCompare(second);
+}
+
+function capturedOutputTexts(artifacts: readonly RunArtifact[]): readonly string[] {
+    return artifacts.map(capturedOutputText).toSorted(compareText);
+}
+
+function createArtifactRecorder(): ArtifactRecorder {
+    const eventArtifacts: RunArtifact[] = [];
+
+    return {
+        artifacts() {
+            return eventArtifacts;
+        },
+        reporter: defineReporter(function createArtifactReporterRuntime() {
+            return {
+                dispose: null,
+                kind: 'real-time',
+                name: 'artifact-recorder',
+                onEvent(event) {
+                    if (event.kind === 'test-end') {
+                        eventArtifacts.push(...event.artifacts);
+                    }
+                },
+                onFinish: null,
+                sinks: [ { kind: 'memory' } ]
+            };
+        })
+    };
+}
+
+function createCapturedOutput(): CapturedProcessOutput {
+    let stdout = '';
+    let stderr = '';
+
+    return {
+        stderr() {
+            return stderr;
+        },
+        stdout() {
+            return stdout;
+        },
+        appendStderr(chunk: Uint8Array) {
+            stderr += Buffer.from(chunk).toString('utf8');
+        },
+        appendStdout(chunk: Uint8Array) {
+            stdout += Buffer.from(chunk).toString('utf8');
+        }
+    };
+}
+
+function installNoPolicyRestriction(): () => void {
+    return function restoreNoPolicyRestriction(): void {
+        return undefined;
+    };
+}
+
+function createTestOrchestrator(output: CapturedProcessOutput): RunOrchestrator {
+    return createNodeRunOrchestrator({
+        defaultEngine: defaultRunEngine,
+        async discoverRunFilesWithProjectRoot(request) {
+            const files = request.paths.map(function discoverFile(file) {
+                const filePath = `${request.cwd}/${file}`;
+
+                return {
+                    file,
+                    fileSet: null,
+                    href: `file://${filePath}`,
+                    path: filePath
+                };
+            });
+            const [ firstFile ] = files;
+
+            if (firstFile === undefined) {
+                throw new Error('Fake supervised child discovery requires a test file.');
+            }
+
+            return {
+                files: [ firstFile, ...files.slice(1) ],
+                projectRoot: request.cwd
+            };
+        },
+        observeIpcListeners: installNoPolicyRestriction,
+        observeProcessExit: installNoPolicyRestriction,
+        async loadRunEngineModule() {
+            throw new Error('Fake supervised child tests do not load engine modules.');
+        },
+        async loadRunTestModules() {
+            throw new Error('Fake supervised child tests do not load test modules.');
+        },
+        node: {
+            arch: 'x64',
+            platform: 'linux',
+            version: '26.1.1'
+        },
+        readEnvironment() {
+            return {};
+        },
+        readStorage() {
+            return null;
+        },
+        stderr: {
+            write(chunk) {
+                output.appendStderr(chunk);
+            },
+            writeLine(line) {
+                output.appendStderr(Buffer.from(`${line}\n`));
+            }
+        },
+        stdout: {
+            write(chunk) {
+                output.appendStdout(chunk);
+            },
+            writeLine(line) {
+                output.appendStdout(Buffer.from(`${line}\n`));
+            }
+        },
+        startSupervisedChild: startFakeIntegrationOutputChild,
+        startWorkerPoolHost() {
+            throw new Error('Fake supervised child tests do not start worker-pool hosts.');
+        }
+    });
+}
+
+function integrationOutputRunCommand(
+    artifactReporter: DefinedReporter,
+    fixturePath: string,
+    capture: RunCommand['request']['capture']
+): RunCommand {
+    const profile = defaultIntegrationProfile({
+        execution: { processModel: 'supervised-process' },
+        files: {
+            exclude: [],
+            include: [ fixturePath ]
+        },
+        reporters: [ artifactReporter ]
+    });
+
+    return {
+        config: createRunConfig('integration', profile),
+        cwd: process.cwd(),
+        engine: { kind: 'default' },
+        request: defaultRunRequest({
+            capture,
+            paths: [ fixturePath ],
+            profile: 'integration'
+        })
+    };
+}
+
+function assertIntegrationCaseArtifacts(scope: TestScope, artifacts: readonly RunArtifact[]): void {
+    for (const artifact of artifacts) {
+        scope.assert.equal(artifact.id.scope.kind, 'case');
+        if (artifact.id.scope.kind === 'case') {
+            scope.assert.equal(artifact.id.scope.confidence, 'active-case');
+            scope.assert.equal(artifact.id.scope.case.title, 'captures output');
+        }
+    }
+}
+
+function assertIntegrationOutputArtifacts(
+    scope: TestScope,
+    result: Awaited<ReturnType<RunOrchestrator['run']>>,
+    eventArtifacts: readonly RunArtifact[]
+): void {
+    const caseArtifacts = result.artifacts.filter(function isCaseArtifact(artifact) {
+        return artifact.id.scope.kind === 'case';
+    });
+    const runArtifacts = result.artifacts.filter(function isRunArtifact(artifact) {
+        return artifact.id.scope.kind === 'run';
+    });
+
+    scope.assert.equal(result.summary.passed, 1);
+    scope.assert.equal(result.runnerErrors.length, 0);
+    scope.assert.deepEqual(runArtifacts.map(capturedOutputText), [ 'collection stdout\n' ]);
+    scope.assert.deepEqual(capturedOutputTexts(caseArtifacts), [
+        'case stderr\n',
+        'case stdout\n'
+    ]);
+    scope.assert.deepEqual(capturedOutputTexts(eventArtifacts), [
+        'case stderr\n',
+        'case stdout\n'
+    ]);
+    assertIntegrationCaseArtifacts(scope, caseArtifacts);
+}
+
+async function assertLiveIntegrationOutput(
+    scope: TestScope,
+    artifactReporter: ArtifactRecorder,
+    output: CapturedProcessOutput
+): Promise<void> {
+    const result = await createTestOrchestrator(output).run(
+        integrationOutputRunCommand(artifactReporter.reporter, integrationOutputFixturePath, 'live')
+    );
+
+    scope.assert.equal(result.summary.passed, 1);
+    scope.assert.equal(result.runnerErrors.length, 0);
+    scope.assert.deepEqual(result.artifacts, []);
+    scope.assert.deepEqual(artifactReporter.artifacts(), []);
+    scope.assert.equal(output.stdout(), 'collection stdout\ncase stdout\n');
+    scope.assert.equal(output.stderr(), 'case stderr\n');
+}
+
+async function assertCaptureControlsOutput(
+    scope: TestScope,
+    artifactReporter: ArtifactRecorder,
+    output: CapturedProcessOutput
+): Promise<void> {
+    const result = await createTestOrchestrator(output).run(
+        integrationOutputRunCommand(
+            artifactReporter.reporter,
+            integrationCaptureControlsOutputFixturePath,
+            'buffered'
+        )
+    );
+
+    scope.assert.equal(result.summary.passed, 1);
+    scope.assert.equal(result.runnerErrors.length, 0);
+    scope.assert.deepEqual(result.artifacts.map(capturedOutputText), [ 'collection stdout\n' ]);
+    scope.assert.deepEqual(artifactReporter.artifacts(), []);
+    scope.assert.equal(output.stdout(), 'case stdout\n');
+    scope.assert.equal(output.stderr(), 'case stderr\n');
+}
+
+export const testNode: TestNode = suite('Supervised run artifacts', [
+    test(
+        'captures unrestricted integration child output as artifacts',
+        async function (scope) {
+            const artifactRecorder = createArtifactRecorder();
+            const output = createCapturedOutput();
+            const result = await createTestOrchestrator(output).run(
+                integrationOutputRunCommand(
+                    artifactRecorder.reporter,
+                    integrationOutputFixturePath,
+                    'buffered'
+                )
+            );
+
+            assertIntegrationOutputArtifacts(scope, result, artifactRecorder.artifacts());
+
+            return scope.assert.collect();
+        }
+    ),
+    test('writes unrestricted integration child output live', async function (scope) {
+        const artifactRecorder = createArtifactRecorder();
+        const output = createCapturedOutput();
+
+        await assertLiveIntegrationOutput(scope, artifactRecorder, output);
+
+        return scope.assert.collect();
+    }),
+    test('honors integration case capture controls', async function (scope) {
+        const artifactRecorder = createArtifactRecorder();
+        const output = createCapturedOutput();
+
+        await assertCaptureControlsOutput(scope, artifactRecorder, output);
+
+        return scope.assert.collect();
+    })
+]);

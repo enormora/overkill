@@ -1,6 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
-
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { generatorContext } from '../test-support/generator-execution.ts';
 import { readGeneratorEdges, type Generator as PropertyGenerator } from './generator.ts';
@@ -13,7 +11,7 @@ function edgeValues<Value>(generator: PropertyGenerator<Value>): Value[] {
     });
 }
 
-export const testNode = authoredSuite('automatic generator edges', [
+export const testNode: TestNode = suite('automatic generator edges', [
     test('keeps bounded numeric and empty string representatives in their domains', function (scope) {
         scope.assert.deepEqual(edgeValues(gen.number({ min: -0.5, max: 0.5 })), [ -0.5, 0.5, 0, -0 ]);
         const strings = edgeValues(gen.string());

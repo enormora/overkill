@@ -1,10 +1,12 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test, type TestScope } from '@overkill-dev/test';
+
 import { Random } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
 import type { Writable } from 'type-fest';
 import { generateInput } from '../property/generator-input.ts';
 import { generatorContext, shrinkDescendants } from '../test-support/generator-execution.ts';
-import type { TestScope, PropertyInvocationEvidence } from '../packages/engine/engine.entry-point.ts';
+
+import type { PropertyInvocationEvidence } from '../packages/engine/engine.entry-point.ts';
 
 import {
     gen,
@@ -110,8 +112,8 @@ function assertConfirmedShrink(scope: TestScope, evidence: PropertyInvocationEvi
     scope.assert.deepEqual(evidence.diagnostics, []);
 }
 
-export const testNode = authoredSuite('model contracts', [
-    authoredTest('rejects a late disabled operation before system callbacks', async function (scope: TestScope) {
+export const testNode: TestNode = suite('model contracts', [
+    test('rejects a late disabled operation before system callbacks', async function (scope) {
         const events: string[] = [];
         const result = await executePropertyNode(
             model({
@@ -140,7 +142,7 @@ export const testNode = authoredSuite('model contracts', [
         scope.assert.includes(JSON.stringify(result.perTest), 'Model trace contains a disabled operation at index 2.');
         return scope.assert.collect();
     }),
-    authoredTest('preserves enabled transitions through state-dependent shrinking', function (scope: TestScope) {
+    test('preserves enabled transitions through state-dependent shrinking', function (scope) {
         const scenario = modelScenario({
             ...counterDefinition(),
             length: { minLength: 1, maxLength: 8 },
@@ -175,8 +177,15 @@ export const testNode = authoredSuite('model contracts', [
         );
         return scope.assert.collect();
     }),
-    ...([ 'success', 'require', 'throw' ] as const).map(function (mode) {
-        return authoredTest(`orders model callbacks and cleanup after ${mode}`, async function (scope: TestScope) {
+    table({
+        title: 'orders model callbacks and cleanup after execution',
+        cases: [ 'success', 'require', 'throw' ] as const,
+        caseTitle(mode) {
+            return `${mode}`;
+        },
+        async test(scope) {
+            const mode = scope.parameters;
+
             const events: string[] = [];
             const result = await executePropertyNode(
                 model({
@@ -224,10 +233,10 @@ export const testNode = authoredSuite('model contracts', [
                 scope.assert.includes(JSON.stringify(result.perTest), 'operation failed');
             }
             return scope.assert.collect();
-        });
+        }
     }),
 
-    authoredTest('confirms and shrinks the original model mismatch', async function (scope: TestScope) {
+    test('confirms and shrinks the original model mismatch', async function (scope: TestScope) {
         const result = await executePropertyNode(
             model({
                 ...counterDefinition(),
@@ -261,7 +270,7 @@ export const testNode = authoredSuite('model contracts', [
         scope.assert.equal(JSON.stringify(replay).includes('unexpected generation'), false);
         return scope.assert.collect();
     }),
-    authoredTest('preserves aliases and separates prediction from system graphs', async function (scope: TestScope) {
+    test('preserves aliases and separates prediction from system graphs', async function (scope) {
         const scenario = modelScenario<readonly TraceOperation[], TraceOperation, TraceOperation[]>({
             initial() {
                 return [];
@@ -308,7 +317,7 @@ export const testNode = authoredSuite('model contracts', [
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    authoredTest('keeps validated commands stable when a payload mutates its trace', async function (scope: TestScope) {
+    test('keeps validated commands stable when a payload mutates its trace', async function (scope) {
         const scenario = modelScenario<number, TraceOperation, number[]>({
             initial() {
                 return 0;
@@ -345,9 +354,9 @@ export const testNode = authoredSuite('model contracts', [
         scope.assert.equal(result.summary.failed, 0);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'rejects nondeterministic transition callbacks before creating a system',
-        async function (scope: TestScope) {
+        async function (scope) {
             let transitions = 0;
             let creations = 0;
             const node = model({
@@ -368,36 +377,40 @@ export const testNode = authoredSuite('model contracts', [
             return scope.assert.collect();
         }
     ),
-    ...([ 'longer', 'shorter' ] as const).map(function (direction) {
-        return authoredTest(
-            `rejects ${direction} reconstruction before creating a system`,
-            async function (scope: TestScope) {
-                let reconstructions = 0;
-                let creations = 0;
-                const node = model({
-                    ...counterDefinition(),
-                    examples: [ function () {
-                        reconstructions += 1;
-                        const firstLength = direction === 'longer' ? 1 : 2;
-                        const length = reconstructions % 2 === 1 ? firstLength : 3 - firstLength;
-                        return Array.from({ length }, function () {
-                            return 1;
-                        });
-                    } ],
-                    create() {
-                        creations += 1;
-                        return [];
-                    }
-                });
-                const result = await executePropertyNode(node, propertyExecutionDefaults);
-                scope.assert.equal(result.summary.failed, 1);
-                scope.assert.equal(creations, 0);
-                scope.assert.includes(JSON.stringify(result.perTest), 'Model reconstruction changed the trace length.');
-                return scope.assert.collect();
-            }
-        );
+    table({
+        title: 'rejects invalid reconstruction before creating a system',
+        cases: [ 'longer', 'shorter' ] as const,
+        caseTitle(direction) {
+            return `${direction}`;
+        },
+        async test(scope) {
+            const direction = scope.parameters;
+
+            let reconstructions = 0;
+            let creations = 0;
+            const node = model({
+                ...counterDefinition(),
+                examples: [ function () {
+                    reconstructions += 1;
+                    const firstLength = direction === 'longer' ? 1 : 2;
+                    const length = reconstructions % 2 === 1 ? firstLength : 3 - firstLength;
+                    return Array.from({ length }, function () {
+                        return 1;
+                    });
+                } ],
+                create() {
+                    creations += 1;
+                    return [];
+                }
+            });
+            const result = await executePropertyNode(node, propertyExecutionDefaults);
+            scope.assert.equal(result.summary.failed, 1);
+            scope.assert.equal(creations, 0);
+            scope.assert.includes(JSON.stringify(result.perTest), 'Model reconstruction changed the trace length.');
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('evaluates declared coverage through model checks', async function (scope: TestScope) {
+    test('evaluates declared coverage through model checks', async function (scope) {
         const node = model({
             ...counterDefinition(),
             coverage: [ { label: 'positive', minimumPercent: 100 } ],

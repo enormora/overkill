@@ -1,15 +1,16 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
+import { test as subjectTest, suite as subjectSuite } from '../packages/test/test.entry-point.ts';
 
-import { readPropertyExecutionHost, type TestNode } from '../packages/engine/engine.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { readPropertyExecutionHost, type TestNode as SubjectTestNode } from '../packages/engine/engine.entry-point.ts';
+
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property, withProperties } from './property-authoring.ts';
 import { gen } from './generators.ts';
 import { executeProperty } from './property-execution.ts';
 import type { PropertyRegressionInputs } from './property-execution-result.ts';
 
-function streamDriver(inputs: PropertyRegressionInputs<number>, recordValue: (value: number) => void): TestNode {
-    return test(
+function streamDriver(inputs: PropertyRegressionInputs<number>, recordValue: (value: number) => void): SubjectTestNode {
+    return subjectTest(
         'stable stream',
         withProperties(async function (scope) {
             const result = await executeProperty(
@@ -33,7 +34,7 @@ function streamDriver(inputs: PropertyRegressionInputs<number>, recordValue: (va
     );
 }
 
-function streamProperty(recordValue: (value: number) => void): TestNode {
+function streamProperty(recordValue: (value: number) => void): SubjectTestNode {
     return property({
         title: 'stable property',
         generator: gen.integer({ min: 0, max: 10_000 }),
@@ -45,8 +46,8 @@ function streamProperty(recordValue: (value: number) => void): TestNode {
     });
 }
 
-function nestedStreamProperty(recordValue: (value: number) => void, includeEarlier: boolean): TestNode {
-    return test(
+function nestedStreamProperty(recordValue: (value: number) => void, includeEarlier: boolean): SubjectTestNode {
+    return subjectTest(
         'stable nested property',
         withProperties(async function (scope) {
             if (includeEarlier) {
@@ -65,8 +66,8 @@ function nestedStreamProperty(recordValue: (value: number) => void, includeEarli
     );
 }
 
-export const testNode = authoredSuite('property deterministic streams', [
-    authoredTest('unrelated nested calls do not reseed a later invocation', async function (scope) {
+export const testNode: TestNode = suite('property deterministic streams', [
+    test('unrelated nested calls do not reseed a later invocation', async function (scope) {
         const first: number[] = [];
         const second: number[] = [];
         const firstRun = await executePropertyNode(
@@ -86,7 +87,7 @@ export const testNode = authoredSuite('property deterministic streams', [
         scope.assert.deepEqual(first, second);
         return scope.assert.collect();
     }),
-    authoredTest('corpus changes leave new exploration unchanged', async function (scope) {
+    test('corpus changes leave new exploration unchanged', async function (scope) {
         const first: number[] = [];
         const second: number[] = [];
         const results = await Promise.all([
@@ -120,17 +121,17 @@ export const testNode = authoredSuite('property deterministic streams', [
         scope.assert.deepEqual(first, second.slice(2));
         return scope.assert.collect();
     }),
-    authoredTest('case scheduling does not perturb generated inputs', async function (scope) {
+    test('case scheduling does not perturb generated inputs', async function (scope) {
         const serial: number[] = [];
         const concurrent: number[] = [];
         const first = await executePropertyNode(
-            suite('same suite', [ streamProperty(function (value) {
+            subjectSuite('same suite', [ streamProperty(function (value) {
                 serial.push(value);
             }) ]),
             propertyExecutionDefaults
         );
         const second = await executePropertyNode(
-            suite('same suite', [ streamProperty(function (value) {
+            subjectSuite('same suite', [ streamProperty(function (value) {
                 concurrent.push(value);
             }) ]),
             {
@@ -143,7 +144,7 @@ export const testNode = authoredSuite('property deterministic streams', [
         scope.assert.deepEqual(serial, concurrent);
         return scope.assert.collect();
     }),
-    authoredTest('the complete run seed contributes to the exploration stream', async function (scope) {
+    test('the complete run seed contributes to the exploration stream', async function (scope) {
         const first: number[] = [];
         const second: number[] = [];
         const results = await Promise.all([

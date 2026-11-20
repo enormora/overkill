@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 import { memoryOrdinaryBaselines } from '../test-support/memory-ordinary-baselines.ts';
@@ -41,8 +41,8 @@ async function workflowFixture(
         }
     };
 }
-export const testNode = authoredSuite('ordinary baseline event lifecycle', [
-    test('blocks publication when its retained report exceeds the artifact limit', async function (scope: TestScope) {
+export const testNode: TestNode = suite('ordinary baseline event lifecycle', [
+    test('blocks publication when its retained report exceeds the artifact limit', async function (scope) {
         const fixture = await workflowFixture(async function () {
             return { kind: 'observed', comparison: null, proposal: { kind: 'text', text: '42' } };
         });
@@ -73,7 +73,7 @@ export const testNode = authoredSuite('ordinary baseline event lifecycle', [
         scope.assert.deepEqual(await fixture.workflow.store.list(), []);
         return scope.assert.collect();
     }),
-    test('ignores skipped and intermediate retry events', async function (scope: TestScope) {
+    test('ignores skipped and intermediate retry events', async function (scope) {
         const fixture = await workflowFixture(async function () {
             throw new Error('Unexpected observation.');
         });
@@ -94,7 +94,7 @@ export const testNode = authoredSuite('ordinary baseline event lifecycle', [
         scope.assert.equal(fixture.observations(), 0);
         return scope.assert.collect();
     }),
-    test('does not propose changes for inapplicable adapters', async function (scope: TestScope) {
+    test('does not propose changes for inapplicable adapters', async function (scope) {
         const fixture = await workflowFixture(async function () {
             return { kind: 'not-applicable' };
         });
@@ -105,7 +105,7 @@ export const testNode = authoredSuite('ordinary baseline event lifecycle', [
         scope.assert.deepEqual(fixture.workflow.changes, []);
         return scope.assert.collect();
     }),
-    test('shares concurrent observations and reconciles their proposals once', async function (scope: TestScope) {
+    test('shares concurrent observations and reconciles their proposals once', async function (scope) {
         const fixture = await workflowFixture(async function () {
             return { kind: 'observed', comparison: null, proposal: { kind: 'text', text: '42' } };
         });

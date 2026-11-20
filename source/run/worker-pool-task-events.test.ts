@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     isTestDebugArtifact,
@@ -9,7 +9,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { debugArtifactFixture } from '../test-support/debug-artifact-fixture.ts';
 import { createCollectedPlan, createTaskRun, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
-import { testNode as evidence } from './worker-event-evidence-policy.test.ts';
+
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import type { WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
 import { handleWorkerMessage, recordTaskPermissionFailure } from './worker-pool-task-events.ts';
@@ -28,7 +28,7 @@ type RunLevelPermissionFailure = {
     readonly terminalFailure: boolean;
 };
 
-const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 const testCaseMetadata = {
     annotations: {},
     controls: {},
@@ -276,15 +276,19 @@ async function workerCheckpointCompletion(hasCompletedArtifact: boolean): Promis
     };
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-task-events.test.ts',
+    title: 'Worker pool task events',
     children: [
-        evidence,
         test({
             ...testCaseMetadata,
             title: 'worker completion replaces its checkpoint and retains placement identity',
-            async body(scope: OverkillScope) {
+            async body(
+                scope: {
+                    readonly assert: Pick<TestScope['assert'], 'equal' | 'deepEqual' | 'collect'>;
+                    readonly require: Pick<TestScope['require'], 'defined'>;
+                }
+            ) {
                 const { completed, retained, end } = await workerCheckpointCompletion(true);
                 scope.require.defined(retained);
                 scope.require.defined(end);
@@ -299,7 +303,12 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker completion retains its checkpoint when native evidence is missing',
-            async body(scope: OverkillScope) {
+            async body(
+                scope: {
+                    readonly assert: Pick<TestScope['assert'], 'deepEqual' | 'collect'>;
+                    readonly require: Pick<TestScope['require'], 'defined'>;
+                }
+            ) {
                 const { retained, end } = await workerCheckpointCompletion(false);
                 scope.require.defined(retained);
                 scope.require.defined(end);
@@ -310,7 +319,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool task events buffer starts and clear completed timeouts',
-            body(scope: OverkillScope) {
+            body(scope) {
                 const runtime = hedgedRuntime();
                 const taskRun = taskRunWithLane('worker-1', runtime);
 
@@ -328,7 +337,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool task events record reporter delivery errors',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const runtime = await reportedWorkerEventErrors();
 
                 scope.assert.equal(runtime.runState.runnerErrors()[0]?.message, 'Reporter failed.');
@@ -339,7 +348,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool task events complete the active placement attempt',
-            body(scope: OverkillScope) {
+            body(scope) {
                 const runtime = hedgedRuntime();
                 const taskRun = taskRunWithLane('worker-1', runtime);
                 const { attempt } = taskRun.members[0];
@@ -371,7 +380,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool task events ignore ordinary task errors for permission handling',
-            body(scope: OverkillScope) {
+            body(scope) {
                 const runtime = hedgedRuntime();
                 const taskRun = taskRunWithLane('worker-1', runtime);
                 const actions: string[] = [];
@@ -394,7 +403,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool task events record run-level permission task failures',
-            body(scope: OverkillScope) {
+            body(scope) {
                 const failure = runLevelPermissionFailure();
 
                 scope.assert.equal(failure.recorded, true);
@@ -409,7 +418,12 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool task events attribute permission task failures to the active case',
-            body(scope: OverkillScope) {
+            body(
+                scope: {
+                    readonly assert: Pick<TestScope['assert'], 'equal' | 'deepEqual' | 'collect'>;
+                    readonly require: Pick<TestScope['require'], 'defined'>;
+                }
+            ) {
                 const runtime = hedgedRuntime();
                 const taskRun = taskRunWithLane('worker-1', runtime);
                 const activeCase = firstCaseId();

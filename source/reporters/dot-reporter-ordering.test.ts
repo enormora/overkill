@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
@@ -32,8 +32,8 @@ function createFakeTerminal(columns: number): FakeTerminal {
     };
 }
 
-export const testNode = suite('source/reporters/dot-reporter-ordering.test.ts', [
-    test('dot reporter prints order and seed on run start', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Dot reporter ordering', [
+    test('dot reporter prints order and seed on run start', async function (scope) {
         const terminal = createFakeTerminal(80);
         const reporter = createDotReporter({
             interactive: false,

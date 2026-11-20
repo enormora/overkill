@@ -1,10 +1,10 @@
-import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { memoryCampaignWorker } from '../../test-support/memory-campaign-worker.ts';
 import type { FrozenMicrotestPolicy } from '../run/run.entry-point.ts';
 import type { CampaignWorker } from './campaign-worker.ts';
 
-type CampaignFixture = Awaited<ReturnType<typeof memoryCampaignWorker>>;
+type CampaignFixture = Awaited<ReturnType<typeof memoryCampaignWorker.create>>;
 type Invocation = Extract<Parameters<CampaignWorker['respond']>[0], { readonly kind: 'invoke'; }>;
 type InvalidAuthority = 'authority' | 'budget' | 'root' | 'seed';
 const messages = {
@@ -21,7 +21,7 @@ function invocation(policy: FrozenMicrotestPolicy, seed: string): Invocation {
     };
 }
 async function registeredCampaign(signal: AbortSignal): Promise<CampaignFixture> {
-    const fixture = await memoryCampaignWorker(null);
+    const fixture = await memoryCampaignWorker.create();
     await fixture.worker.respond({ kind: 'register', root: '/project' }, signal, null);
     await fixture.worker.respond(
         { kind: 'resolve-policy', sandbox: fixture.sandbox, settings: { seed: '42' } },
@@ -39,10 +39,17 @@ function changedInvocation(fixture: CampaignFixture, mode: InvalidAuthority): In
     };
     return invocation(policies[mode], mode === 'seed' ? '43' : '42');
 }
-export const testNode = authoredSuite(
+export const testNode: TestNode = suite(
     'campaign invocation admission',
-    ([ 'authority', 'budget', 'root', 'seed' ] as const).map(function invalidSession(mode) {
-        return test(`rejects changed campaign ${mode}`, async function (scope: TestScope) {
+    [ table({
+        title: 'rejects changed campaign',
+        cases: [ 'authority', 'budget', 'root', 'seed' ] as const,
+        caseTitle(mode) {
+            return `rejects changed campaign ${mode}`;
+        },
+        async test(scope) {
+            const mode = scope.parameters;
+
             const fixture = await registeredCampaign(scope.signal);
             if (mode === 'seed') {
                 await fixture.worker.respond(invocation(fixture.policy, '42'), scope.signal, 1);
@@ -57,6 +64,6 @@ export const testNode = authoredSuite(
             scope.assert.equal(fixture.invocations.length, mode === 'seed' ? 1 : 0);
             await fixture.worker.dispose();
             return scope.assert.collect();
-        });
-    })
+        }
+    }) ]
 );

@@ -1,7 +1,7 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { runWithTranscriptScope } from '../transcript/transcript-store.ts';
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
+
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { inlineAttachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
@@ -85,22 +85,22 @@ async function assertUnknownTranscriptScope(scope: TestScope): Promise<void> {
     scope.assert.equal(fixture.store.artifacts().length, 1);
     scope.assert.equal(fixture.store.artifacts()[0]?.id.scope.kind, 'run');
 }
-export const testNode = suite('source/resources/local-http-failure-capture.test.ts', [
+export const testNode: TestNode = suite('Local HTTP failure capture', [
     test(
         'unknown transcript scopes retain shared resource attribution despite an active case',
-        async function (scope: TestScope) {
+        async function (scope) {
             await assertUnknownTranscriptScope(scope);
             return scope.assert.collect();
         }
     ),
     test(
         'HTTP serialization errors surface when capture closes and stop observation',
-        async function (scope: TestScope) {
+        async function (scope) {
             await assertSerializationFailure(scope);
             return scope.assert.collect();
         }
     ),
-    test('HTTP capture diagnostics append to the same bounded stream', async function (scope: TestScope) {
+    test('HTTP capture diagnostics append to the same bounded stream', async function (scope) {
         await assertCaptureErrors(scope);
         return scope.assert.collect();
     }),

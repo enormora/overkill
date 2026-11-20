@@ -1,4 +1,4 @@
-import { type TestScope, test as authoredTest, suite as authoredSuite } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite } from '@overkill-dev/test';
 
 import type { RunResult } from '../packages/engine/engine.entry-point.ts';
 
@@ -32,106 +32,114 @@ function assertScheduleDisagreement(scope: TestScope, result: RunResult): void {
     }));
 }
 
-export const testNode = authoredSuite('linearizability confirmation', [
-    ...[ 1, 2 ].map(function exhaustedConfirmation(failures) {
-        return authoredTest(
-            `preserves failure when confirmation ${failures} exhausts checker work`,
-            async function (scope: TestScope) {
-                let calls = 0;
-                const result = await executePropertyNode(
-                    property({
-                        title: 'exhausted confirmation',
-                        generator: gen.tuple(gen.tuple(gen.integer({ min: 1, max: 100 }))),
-                        test: linearizability({
-                            create() {
-                                return null;
+export const testNode: TestNode = suite('linearizability confirmation', [
+    table({
+        title: 'preserves failure when confirmation exhausts checker work',
+        cases: [ 1, 2 ],
+        caseTitle(failures) {
+            return `confirmation ${failures}`;
+        },
+        async test(scope) {
+            const failures = scope.parameters;
+
+            let calls = 0;
+            const result = await executePropertyNode(
+                property({
+                    title: 'exhausted confirmation',
+                    generator: gen.tuple(gen.tuple(gen.integer({ min: 1, max: 100 }))),
+                    test: linearizability({
+                        create() {
+                            return null;
+                        },
+                        run() {
+                            calls += 1;
+                            return calls <= failures ? 1 : 0;
+                        },
+                        model: {
+                            initial() {
+                                return 0;
                             },
-                            run() {
-                                calls += 1;
-                                return calls <= failures ? 1 : 0;
-                            },
-                            model: {
-                                initial() {
-                                    return 0;
-                                },
-                                transition(state, observation) {
-                                    const matches = observation.outcome.kind === 'returned' &&
-                                        observation.outcome.value === state;
-                                    return matches
-                                        ? { kind: 'enabled', state }
-                                        : { kind: 'disabled' };
-                                }
-                            },
-                            maxWork: 2
-                        })
-                    }),
-                    propertyExecutionDefaults
-                );
-                assertExhaustedConfirmation(scope, result, failures);
-                return scope.assert.collect();
-            }
-        );
+                            transition(state, observation) {
+                                const matches = observation.outcome.kind === 'returned' &&
+                                    observation.outcome.value === state;
+                                return matches
+                                    ? { kind: 'enabled', state }
+                                    : { kind: 'disabled' };
+                            }
+                        },
+                        maxWork: 2
+                    })
+                }),
+                propertyExecutionDefaults
+            );
+            assertExhaustedConfirmation(scope, result, failures);
+            return scope.assert.collect();
+        }
     }),
-    ...[ 1, 2 ].map(function confirmation(disagreement) {
-        return authoredTest(
-            `detects schedule disagreement on confirmation ${disagreement}`,
-            async function (scope: TestScope) {
-                let created = 0;
-                let cleaned = 0;
-                const result = await executePropertyNode(
-                    property({
-                        title: 'schedule changes',
-                        generator: gen.tuple(gen.tuple(gen.constant(1)), gen.tuple(gen.constant(1))),
-                        test: linearizability({
-                            create(sample) {
-                                created += 1;
-                                sample.cleanup(function () {
-                                    cleaned += 1;
-                                });
-                                const gate = Promise.withResolvers<undefined>();
-                                if (created > disagreement) {
-                                    gate.resolve(undefined);
+    table({
+        title: 'detects schedule disagreement during confirmation',
+        cases: [ 1, 2 ],
+        caseTitle(disagreement) {
+            return `confirmation ${disagreement}`;
+        },
+        async test(scope) {
+            const disagreement = scope.parameters;
+
+            let created = 0;
+            let cleaned = 0;
+            const result = await executePropertyNode(
+                property({
+                    title: 'schedule changes',
+                    generator: gen.tuple(gen.tuple(gen.constant(1)), gen.tuple(gen.constant(1))),
+                    test: linearizability({
+                        create(sample) {
+                            created += 1;
+                            sample.cleanup(function () {
+                                cleaned += 1;
+                            });
+                            const gate = Promise.withResolvers<undefined>();
+                            if (created > disagreement) {
+                                gate.resolve(undefined);
+                            }
+                            return {
+                                overlap: created <= disagreement,
+                                counter: new Map([ [ 'value', 0 ] ]),
+                                admitted: Array.of<number>(),
+                                gate
+                            };
+                        },
+                        async run(operation: number, system) {
+                            const value = system.counter.get('value') ?? 0;
+                            system.admitted.push(operation);
+                            if (system.overlap) {
+                                if (system.admitted.length === 2) {
+                                    system.gate.resolve(undefined);
                                 }
-                                return {
-                                    overlap: created <= disagreement,
-                                    counter: new Map([ [ 'value', 0 ] ]),
-                                    admitted: Array.of<number>(),
-                                    gate
-                                };
+                                await system.gate.promise;
+                            }
+                            system.counter.set('value', value + operation);
+                            return value + operation;
+                        },
+                        model: {
+                            initial() {
+                                return 0;
                             },
-                            async run(operation: number, system) {
-                                const value = system.counter.get('value') ?? 0;
-                                system.admitted.push(operation);
-                                if (system.overlap) {
-                                    if (system.admitted.length === 2) {
-                                        system.gate.resolve(undefined);
-                                    }
-                                    await system.gate.promise;
-                                }
-                                system.counter.set('value', value + operation);
-                                return value + operation;
-                            },
-                            model: {
-                                initial() {
-                                    return 0;
-                                },
-                                transition(state, observation) {
-                                    const next = state + observation.operation;
-                                    return observation.outcome.kind === 'returned' && observation.outcome.value === next
-                                        ? { kind: 'enabled', state: next }
-                                        : { kind: 'disabled' };
-                                }
-                            },
-                            maxWork: 1000
-                        })
-                    }),
-                    propertyExecutionDefaults
-                );
-                assertScheduleDisagreement(scope, result);
-                scope.assert.equal(created, disagreement + 1);
-                scope.assert.equal(cleaned, created);
-                return scope.assert.collect();
-            }
-        );
+                            transition(state, observation) {
+                                const next = state + observation.operation;
+                                return observation.outcome.kind === 'returned' && observation.outcome.value === next
+                                    ? { kind: 'enabled', state: next }
+                                    : { kind: 'disabled' };
+                            }
+                        },
+                        maxWork: 1000
+                    })
+                }),
+                propertyExecutionDefaults
+            );
+            assertScheduleDisagreement(scope, result);
+            scope.assert.equal(created, disagreement + 1);
+            scope.assert.equal(cleaned, created);
+            return scope.assert.collect();
+        }
     })
 ]);

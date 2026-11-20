@@ -1,9 +1,9 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { serializeValue, serializeValueWithBudget } from './serialized-value.ts';
 
-export const testNode = suite('source/compare/serialized-value.test.ts', [
-    test('serializeValue() preserves primitive edge cases explicitly', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Serialized values', [
+    test('preserves primitive edge cases explicitly', function (scope) {
         const symbol = Symbol.for('id');
 
         scope.assert.deepEqual(
@@ -40,8 +40,8 @@ export const testNode = suite('source/compare/serialized-value.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'serializeValue() handles functions, arrays, holes, objects, symbols, and accessors',
-        function (scope: OverkillScope) {
+        'handles functions, arrays, holes, objects, symbols, and accessors',
+        function (scope) {
             const symbolKey = Symbol('id');
             const values: unknown[] = [ 'present' ];
             values.length = 2;
@@ -99,7 +99,7 @@ export const testNode = suite('source/compare/serialized-value.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('serializeValue() handles maps and sets', function (scope: OverkillScope) {
+    test('handles maps and sets', function (scope) {
         const mapValue = serializeValue(new Map<unknown, unknown>([ [ { id: 1 }, { name: 'Ada' } ] ]));
         const setValue = serializeValue(new Set<unknown>([ { id: 1 } ]));
 
@@ -108,7 +108,7 @@ export const testNode = suite('source/compare/serialized-value.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('serializeValue() handles errors, dates, and regexps', function (scope: OverkillScope) {
+    test('handles errors, dates, and regexps', function (scope) {
         const errorValue = serializeValue(new TypeError('bad value'));
         const dateValue = serializeValue(new Date('2026-07-29T00:00:00.000Z'));
         const regexpValue = serializeValue(/overkill/giu);
@@ -125,7 +125,7 @@ export const testNode = suite('source/compare/serialized-value.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('serializeValue() handles opaque references', function (scope: OverkillScope) {
+    test('handles opaque references', function (scope) {
         const promiseValue = serializeValue(Promise.resolve());
         const weakMapValue = serializeValue(new WeakMap<Record<string, unknown>, unknown>());
         const weakSetValue = serializeValue(new WeakSet<Record<string, unknown>>());
@@ -142,7 +142,7 @@ export const testNode = suite('source/compare/serialized-value.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('serializeValue() handles binary value kinds', function (scope: OverkillScope) {
+    test('handles binary value kinds', function (scope) {
         const buffer = Buffer.from([ 1, 2, 3 ]);
         const arrayBuffer = Uint8Array.from([ 4, 5 ]).buffer;
         const view = new DataView(Uint8Array.from([ 6, 7, 8 ]).buffer, 1, 2);
@@ -179,7 +179,7 @@ export const testNode = suite('source/compare/serialized-value.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('serializeValue() represents cycles and repeated references', function (scope: OverkillScope) {
+    test('represents cycles and repeated references', function (scope) {
         const node = {};
         Object.defineProperty(node, 'next', { enumerable: true, value: node });
 
@@ -197,7 +197,7 @@ export const testNode = suite('source/compare/serialized-value.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('serializeValueWithBudget() enforces every configured budget boundary', function (scope: OverkillScope) {
+    test('serializeValueWithBudget() enforces every configured budget boundary', function (scope) {
         const budget = {
             arrayEntries: 1,
             depth: 1,
@@ -270,7 +270,7 @@ export const testNode = suite('source/compare/serialized-value.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('serializeValue() catches unavailable proxy introspection', function (scope: OverkillScope) {
+    test('catches unavailable proxy introspection', function (scope) {
         const proxy = new Proxy({}, {
             ownKeys() {
                 throw new Error('no keys');

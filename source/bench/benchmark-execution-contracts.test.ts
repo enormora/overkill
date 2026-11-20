@@ -1,4 +1,6 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { executeEngineCase } from '../test-support/create-test-engine.ts';
+import { type TestNode, suite, test } from '@overkill-dev/test';
+
 import { processMeasurement } from '../packages/bench/bench.entry-point.ts';
 import { benchmarkDefinitionSchema } from '../run/benchmark-definition-schema.ts';
 import {
@@ -41,7 +43,7 @@ function benchmarkCase(): TestPlanCase {
     return createTestPlan(createRoot({ ...metadata, children: [ node ] })).cases[0];
 }
 
-export const testNode = authoredSuite('benchmark execution contracts', [
+export const testNode: TestNode = suite('benchmark execution contracts', [
     test('accepts process strategies in serialized benchmark definitions', function (scope) {
         const result = benchmarkDefinitionSchema.safeParse({
             kind: 'startup',
@@ -133,9 +135,14 @@ export const testNode = authoredSuite('benchmark execution contracts', [
             attempt,
             { index: 0 }
         );
-        await scope.assert.rejects(async function () {
-            return body(scope);
-        }, { message: 'Selected workload is absent from the benchmark definition.' });
+        const result = await executeEngineCase(body);
+        scope.assert.partialDeepEqual<unknown, unknown>(result.perTest[0]?.outcome, {
+            kind: 'fail',
+            failures: [ {
+                kind: 'body-error',
+                error: { message: 'Selected workload is absent from the benchmark definition.' }
+            } ]
+        });
         scope.assert.equal(attempt.result(), null);
         return scope.assert.collect();
     })

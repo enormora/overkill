@@ -1,5 +1,5 @@
+import { type TestNode, suite, test } from '@overkill-dev/test';
 import { channel } from 'node:diagnostics_channel';
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -122,10 +122,10 @@ function ignoreProcessObservation(): () => void {
     };
 }
 
-export const testNode = suite('source/engine/reporter-managed-output.test.ts', [
+export const testNode: TestNode = suite('Reporter managed output', [
     test(
         'native policy retains reporter console restrictions without test-policy attribution',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const environment = {};
             const policy = createRuntimeCapabilityPolicy({
                 dependencies: {
@@ -158,7 +158,7 @@ export const testNode = suite('source/engine/reporter-managed-output.test.ts', [
     ),
     test(
         'reporter dispatcher writes managed output in reporter registration order',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const { dispatcher, stderrLines, stdoutLines } = createRecordingDispatcher();
             const errors = await reportEvent(
                 dispatcher,
@@ -180,7 +180,7 @@ export const testNode = suite('source/engine/reporter-managed-output.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('reporter output scope records undeclared console diagnostics', function (scope: OverkillScope) {
+    test('reporter output scope records undeclared console diagnostics', function (scope) {
         const result = runWithReporterOutputScopeNow(
             [],
             function violationMessage(method) {
@@ -196,7 +196,7 @@ export const testNode = suite('source/engine/reporter-managed-output.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('reporter dispatcher writes managed stderr output', async function (scope: OverkillScope) {
+    test('reporter dispatcher writes managed stderr output', async function (scope) {
         const { dispatcher, stderrLines, stdoutLines } = createRecordingDispatcher();
         const errors = await reportEvent(
             dispatcher,
@@ -216,7 +216,7 @@ export const testNode = suite('source/engine/reporter-managed-output.test.ts', [
     }),
     test(
         'reporter dispatcher records undeclared managed output as a reporter error',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const { dispatcher } = createRecordingDispatcher();
             const errors = await reportEvent(
                 dispatcher,
@@ -236,7 +236,7 @@ export const testNode = suite('source/engine/reporter-managed-output.test.ts', [
     ),
     test(
         'reporter dispatcher records wrong-role managed output as a reporter error',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const { dispatcher } = createRecordingDispatcher();
             const errors = await reportEvent(
                 dispatcher,
@@ -260,7 +260,7 @@ export const testNode = suite('source/engine/reporter-managed-output.test.ts', [
     ),
     test(
         'reporter dispatcher records invalid managed output as a reporter error',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const { dispatcher } = createRecordingDispatcher();
             const errors = await reportEvent(
                 dispatcher,
@@ -280,7 +280,7 @@ export const testNode = suite('source/engine/reporter-managed-output.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('reporter dispatcher records rendered newlines as a reporter error', async function (scope: OverkillScope) {
+    test('reporter dispatcher records rendered newlines as a reporter error', async function (scope) {
         const { dispatcher } = createRecordingDispatcher();
         const renderer: OutputRenderer = {
             render() {

@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { baselineCaseEvent, baselineCaseResult, storedBaseline } from '../test-support/baseline-case-fixture.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -13,7 +13,7 @@ const inventory = {
     existing: [ storedBaseline ],
     participating: []
 };
-export const testNode = authoredSuite('ordinary baseline inventories', [
+export const testNode: TestNode = suite('ordinary baseline inventories', [
     test('preserves incompatible snapshot codecs and foreign contexts', function (scope) {
         const snapshots = { ...policy, snapshots: true };
         const record = {
@@ -33,7 +33,7 @@ export const testNode = authoredSuite('ordinary baseline inventories', [
         scope.assert.false(belongsToBaselineScope(policy, record.profile, record));
         return scope.assert.collect();
     }),
-    test('rejects unobserved stale expectations in normal runs', function (scope: TestScope) {
+    test('rejects unobserved stale expectations in normal runs', function (scope) {
         const completed = reconcileBaselineInventory(inventory);
         scope.assert.equal(completed.result.status, 'failed');
         scope.assert.equal(completed.result.runnerErrors[0]?.subtype, 'artifact');
@@ -41,14 +41,14 @@ export const testNode = authoredSuite('ordinary baseline inventories', [
         scope.assert.deepEqual(completed.warnings, []);
         return scope.assert.collect();
     }),
-    test('can warn about stale expectations without failing comparisons', function (scope: TestScope) {
+    test('can warn about stale expectations without failing comparisons', function (scope) {
         const completed = reconcileBaselineInventory({ ...inventory, policy: { ...policy, stale: 'warn' } });
         scope.assert.equal(completed.result.status, 'passed');
         scope.assert.deepEqual(completed.changes, []);
         scope.assert.equal(completed.warnings.length, 1);
         return scope.assert.collect();
     }),
-    test('preserves stale records for every incomplete selection', function (scope: TestScope) {
+    test('preserves stale records for every incomplete selection', function (scope) {
         for (
             const overrides of [
                 { paths: [ 'output.test.ts' ] },
@@ -72,7 +72,7 @@ export const testNode = authoredSuite('ordinary baseline inventories', [
         }
         return scope.assert.collect();
     }),
-    test('preserves stale records when execution or collection is incomplete', function (scope: TestScope) {
+    test('preserves stale records when execution or collection is incomplete', function (scope) {
         for (
             const result of [
                 { ...baselineCaseResult, status: 'failed' as const },
@@ -95,7 +95,7 @@ export const testNode = authoredSuite('ordinary baseline inventories', [
         }
         return scope.assert.collect();
     }),
-    test('preserves skipped cases even when they cannot observe', function (scope: TestScope) {
+    test('preserves skipped cases even when they cannot observe', function (scope) {
         const result = {
             ...baselineCaseResult,
             perTest: baselineCaseResult.perTest.map(function (entry) {
@@ -107,7 +107,7 @@ export const testNode = authoredSuite('ordinary baseline inventories', [
         scope.assert.deepEqual(completed.changes, []);
         return scope.assert.collect();
     }),
-    test('excludes foreign profiles and adapter contexts from the selected scope', function (scope: TestScope) {
+    test('excludes foreign profiles and adapter contexts from the selected scope', function (scope) {
         const adapter = {
             id: 'output',
             subtype: 'content-snapshot' as const,

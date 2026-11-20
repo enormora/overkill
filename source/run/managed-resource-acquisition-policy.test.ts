@@ -1,15 +1,14 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { managedAcquisition, managedDescriptor, managedRecord } from '../test-support/managed-resource-acquisition.ts';
 import { defineResource } from '../resources/resources.ts';
-import { testNode as disposal } from './managed-disposal-policy.test.ts';
+
 import { managedResourceHandle, resourceProjectionRecordsFromStores } from './resource-lifecycle-session-acquirer.ts';
 import { runWithLifecycleCase } from './resource-lifecycle-state.ts';
 
 const noProjections = { resources: [] } as const;
-export const testNode = authoredSuite('managed resource acquisition policy', [
-    disposal,
-    test('deduplicates acquired handles within the same boundary', async function (scope: TestScope) {
+export const testNode: TestNode = suite('managed resource acquisition policy', [
+    test('deduplicates acquired handles within the same boundary', async function (scope) {
         const fixture = managedAcquisition(noProjections);
         let acquisitions = 0;
         const resource = managedDescriptor(function () {
@@ -27,7 +26,7 @@ export const testNode = authoredSuite('managed resource acquisition policy', [
         scope.assert.deepEqual(resourceProjectionRecordsFromStores(fixture.stores), { resources: [] });
         return scope.assert.collect();
     }),
-    test('shares an acquisition that is still pending', async function (scope: TestScope) {
+    test('shares an acquisition that is still pending', async function (scope) {
         const fixture = managedAcquisition(noProjections);
         const ready = Promise.withResolvers<string>();
         let acquisitions = 0;
@@ -42,7 +41,7 @@ export const testNode = authoredSuite('managed resource acquisition policy', [
         scope.assert.deepEqual({ sharedHandle: left === right, acquisitions }, { sharedHandle: true, acquisitions: 1 });
         return scope.assert.collect();
     }),
-    test('forgets failed acquisitions and permits a retry', async function (scope: TestScope) {
+    test('forgets failed acquisitions and permits a retry', async function (scope) {
         const fixture = managedAcquisition(noProjections);
         const error = new Error('unavailable');
         let acquisitions = 0;
@@ -61,7 +60,7 @@ export const testNode = authoredSuite('managed resource acquisition policy', [
         scope.assert.equal(acquisitions, 2);
         return scope.assert.collect();
     }),
-    test('rejects distinct descriptors competing for a boundary name', async function (scope: TestScope) {
+    test('rejects distinct descriptors competing for a boundary name', async function (scope) {
         const fixture = managedAcquisition(noProjections);
         await fixture.acquire(managedDescriptor(function () {
             return 'first';
@@ -74,7 +73,7 @@ export const testNode = authoredSuite('managed resource acquisition policy', [
         scope.assert.equal(fixture.stores.records().length, 1);
         return scope.assert.collect();
     }),
-    test('acquires dependency handles before their consumers', async function (scope: TestScope) {
+    test('acquires dependency handles before their consumers', async function (scope) {
         const fixture = managedAcquisition(noProjections);
         const dependency = managedDescriptor(function () {
             return 'connection';
@@ -94,7 +93,7 @@ export const testNode = authoredSuite('managed resource acquisition policy', [
         scope.assert.equal(fixture.stores.records().length, 2);
         return scope.assert.collect();
     }),
-    test('keeps case error queues separate by attempt and drains each queue once', async function (scope: TestScope) {
+    test('keeps case error queues separate by attempt and drains each queue once', async function (scope) {
         const fixture = managedAcquisition(noProjections);
         fixture.stores.recordCaseError(fixture.testCase, 'first', new Error('failure'));
         await runWithLifecycleCase(fixture.testCase, { index: 2 }, async function () {
@@ -113,7 +112,7 @@ export const testNode = authoredSuite('managed resource acquisition policy', [
         scope.assert.deepEqual(fixture.stores.takeRunErrors(), []);
         return scope.assert.collect();
     }),
-    test('counts remaining boundary uses and supports removing retained records', function (scope: TestScope) {
+    test('counts remaining boundary uses and supports removing retained records', function (scope) {
         const fixture = managedAcquisition(noProjections);
         const resource = managedDescriptor(function () {
             return 'handle';
@@ -136,7 +135,7 @@ export const testNode = authoredSuite('managed resource acquisition policy', [
         }, { record: undefined, acquisition: null, records: [], checks: [] });
         return scope.assert.collect();
     }),
-    test('serializes owner handles into transport projections', async function (scope: TestScope) {
+    test('serializes owner handles into transport projections', async function (scope) {
         const fixture = managedAcquisition(noProjections);
         const resource = defineResource({
             name: 'remote',
@@ -159,7 +158,7 @@ export const testNode = authoredSuite('managed resource acquisition policy', [
         });
         return scope.assert.collect();
     }),
-    test('restores externally owned handles without acquiring the resource locally', async function (scope: TestScope) {
+    test('restores externally owned handles without acquiring the resource locally', async function (scope) {
         const fixture = managedAcquisition({
             resources: [ { boundaryKey: 'run:remote', payload: { value: 'transport' } } ]
         });

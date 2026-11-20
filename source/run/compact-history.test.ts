@@ -1,9 +1,9 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { emptyCompactHistory, retainCompactHistory } from './compact-history.ts';
 
-export const testNode = suite('compact history retention', [
+export const testNode: TestNode = suite('compact history retention', [
     test('applies both summary count and age limits without discarding pruned summaries', function (scope) {
         const now = '2026-10-29T00:00:00.000Z';
         const recent = {

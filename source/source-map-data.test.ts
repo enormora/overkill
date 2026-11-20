@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { TraceMap, type SourceMapSegment } from '@jridgewell/trace-mapping';
 
@@ -12,16 +12,23 @@ function mappedSource(segment: Readonly<SourceMapSegment>): TraceMap {
         mappings: [ [ Array.from(segment) ] ]
     });
 }
-export const testNode = authoredSuite('source map coordinate validation', [
-    ...([ [ -1, 0, 0, 0 ], [ 0, 1, 0, 0 ], [ 0, 0, 0, 0, 1 ] ] as const).map(function (segment, index) {
-        return authoredTest(`rejects invalid mapping coordinate ${index}`, function (scope: TestScope) {
+export const testNode: TestNode = suite('source map coordinate validation', [
+    table({
+        title: 'rejects invalid mapping coordinate',
+        cases: [ [ -1, 0, 0, 0 ], [ 0, 1, 0, 0 ], [ 0, 0, 0, 0, 1 ] ] as const,
+        caseTitle(_parameters, index) {
+            return `${index}`;
+        },
+        test(scope) {
+            const segment = scope.parameters;
+
             scope.assert.throws(function () {
                 validateSourceMapMappings(mappedSource(segment), true);
             }, { message: 'Source map has no usable original mappings.' });
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('allows unmapped statements only when the source contains no runtime', function (scope: TestScope) {
+    test('allows unmapped statements only when the source contains no runtime', function (scope) {
         const map = mappedSource([ 0 ]);
         validateSourceMapMappings(map, false);
         scope.assert.throws(function () {
@@ -29,7 +36,7 @@ export const testNode = authoredSuite('source map coordinate validation', [
         }, { message: 'Source map has no usable original mappings.' });
         return scope.assert.collect();
     }),
-    authoredTest('preserves valid named mappings and supplies an empty ignore list', function (scope: TestScope) {
+    test('preserves valid named mappings and supplies an empty ignore list', function (scope) {
         const map = mappedSource([ 0, 0, 0, 0, 0 ]);
         validateSourceMapMappings(map, true);
         scope.assert.deepEqual(normalizedSourceMap(map, [ 'const value = 42;' ]), {

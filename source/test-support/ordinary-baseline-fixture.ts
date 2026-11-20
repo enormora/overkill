@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 import {
     defineBaselineAdapter,
     normalizeConfig,
@@ -12,7 +12,7 @@ import { createOrdinaryBaselineStore, type OrdinaryBaselineStore } from '../run/
 import type { OrdinaryBaselineEntry } from '../run/baseline-record.ts';
 import { defaultRunRequest } from './run-command-factory.ts';
 
-export const ordinaryBaselineFixtureFile = 'source/integration-tests/run/fixtures/ordinary-baselines.test.ts';
+export const ordinaryBaselineFixtureFile = 'source/integration-tests/integration/fixtures/ordinary-baselines.test.ts';
 type ObservationProposal = { readonly actual: number; };
 type ObservationComparison = { readonly actual: number; readonly expected: number; };
 type Execution = 'in-process' | 'supervised-process' | 'worker-pool';

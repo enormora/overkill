@@ -1,5 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import {
     generatedCandidate,
@@ -10,7 +9,7 @@ import {
 import { gen } from './generators.ts';
 import { prepareGenerator } from './generator.ts';
 
-export const testNode = authoredSuite('generator primitives', [
+export const testNode: TestNode = suite('generator primitives', [
     test('generates bounded primitive domains and scalar singletons', function (scope) {
         scope.assert.deepEqual(generatedValues(gen.integer({ min: 7, max: 7 }), 3, generatorContext(10, 2, 100)), [
             7,

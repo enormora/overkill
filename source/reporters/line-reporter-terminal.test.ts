@@ -1,5 +1,6 @@
 import {
-    type TestScope as OverkillScope,
+    type TestNode,
+    type TestScope,
     suite,
     test,
     doubleUsage,
@@ -33,7 +34,7 @@ function lineReporterWithLog(log: Log): RealTimeReporter {
     return createLineReporter(fakeDependencies)(createReportingContext({ projectRoot: null }));
 }
 
-function assertTerminalOutput(scope: OverkillScope, log: Log): void {
+function assertTerminalOutput(scope: TestScope, log: Log): void {
     scope.assert(doubleUsage.callCount, log, 3);
     scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
         errorSymbol,
@@ -46,8 +47,8 @@ function assertTerminalOutput(scope: OverkillScope, log: Log): void {
     ]);
 }
 
-export const testNode = suite('source/reporters/line-reporter-terminal.test.ts', [
-    test('line reporter renders terminal test results and empty suite names', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Line reporter terminal', [
+    test('renders terminal test results and empty suite names', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
 

@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { passingIsolatedWorkerRun } from '../test-support/isolated-worker-run.ts';
 import { observationPlan } from '../test-support/observation-lifetime.ts';
@@ -27,8 +27,8 @@ function collectedContext(): CollectedRunContext {
         moduleBoundary: null
     };
 }
-export const testNode = authoredSuite('collected invocation selection policy', [
-    test('plans an ordinary local invocation without replacing its selected case', async function (scope: TestScope) {
+export const testNode: TestNode = suite('collected invocation selection policy', [
+    test('plans an ordinary local invocation without replacing its selected case', async function (scope) {
         const context = collectedContext();
         const result = await planCollectedInvocation(context, { selection: { kind: 'all' } });
         scope.assert.equal(result.kind, 'planned');
@@ -42,7 +42,7 @@ export const testNode = authoredSuite('collected invocation selection policy', [
     }),
     test(
         'returns explicit empty-selection evidence when an invocation excludes every case',
-        async function (scope: TestScope) {
+        async function (scope) {
             const result = await planCollectedInvocation(collectedContext(), { selection: { kind: 'none' } });
             scope.assert.equal(result.kind, 'empty-selection');
             if (result.kind !== 'empty-selection') {
@@ -54,7 +54,7 @@ export const testNode = authoredSuite('collected invocation selection policy', [
             return scope.assert.collect();
         }
     ),
-    test('preserves empty-shard plans while recording the invocation selection', async function (scope: TestScope) {
+    test('preserves empty-shard plans while recording the invocation selection', async function (scope) {
         const context = collectedContext();
         const collectedPlan = { ...createCollectedPlan(), files: [] };
         const result = await planCollectedInvocation({
@@ -67,7 +67,7 @@ export const testNode = authoredSuite('collected invocation selection policy', [
         scope.assert.true(Object.isFrozen(result.resolved));
         return scope.assert.collect();
     }),
-    test('rejects malformed invocation selections before planning', async function (scope: TestScope) {
+    test('rejects malformed invocation selections before planning', async function (scope) {
         const context = collectedContext();
         await scope.assert.rejects(async function () {
             await Reflect.apply(planCollectedInvocation, undefined, [ context, { selection: { kind: 'unknown' } } ]);

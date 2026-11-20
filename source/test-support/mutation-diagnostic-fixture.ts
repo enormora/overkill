@@ -11,7 +11,7 @@ import {
     type SerializedRunDiagnostics
 } from '../packages/run/run.entry-point.ts';
 import type { MutationDiagnosticContext } from '../packages/stryker-runner/mutation-diagnostic-storage.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 import { mutationCoverageFixture } from './mutation-coverage-fixture.ts';
 import { createMutationEvidenceFixture } from './mutation-evidence-fixture.ts';
 

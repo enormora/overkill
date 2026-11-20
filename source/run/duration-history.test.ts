@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { DurationHistoryIndex, DurationHistoryPlacement, DurationHistoryStore } from './duration-history-types.ts';
 import { readDurationHistoryIndex, selectDurationHistoryPlacement } from './duration-history.ts';
@@ -191,10 +191,10 @@ function fallbackPlacements(): FallbackPlacements {
     };
 }
 
-export const testNode = suite('source/run/duration-history.test.ts', [
+export const testNode: TestNode = suite('Duration history', [
     test(
-        'duration history reads missing files as cold start and rejects invalid JSON',
-        async function (scope: OverkillScope) {
+        'reads missing files as cold start and rejects invalid JSON',
+        async function (scope) {
             const missingHistory = await readDurationHistoryIndex(
                 {
                     async read() {
@@ -218,7 +218,7 @@ export const testNode = suite('source/run/duration-history.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('duration history rejects unsupported shapes and wraps read errors', async function (scope: OverkillScope) {
+    test('rejects unsupported shapes and wraps read errors', async function (scope) {
         let requestedPath = '';
         const absoluteRuntimeStateDir = `${process.cwd()}/target/duration-history-test`;
         const invalidShapeMessage = await readHistoryFailure({
@@ -252,7 +252,7 @@ export const testNode = suite('source/run/duration-history.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('duration history uses median fresh observations and ignores stale samples', function (scope: OverkillScope) {
+    test('uses median fresh observations and ignores stale samples', function (scope) {
         const selectedWork = work('selected');
         const selectedUnit = unit('selected', [ selectedWork ]);
         const index = historyIndex([
@@ -275,7 +275,7 @@ export const testNode = suite('source/run/duration-history.test.ts', [
     }),
     test(
         'duration-history-balanced falls back for cold, stale, and partially sampled work',
-        function (scope: OverkillScope) {
+        function (scope) {
             const scenarios = fallbackPlacements();
 
             scope.assert.equal(scenarios.partial.unitDuration?.(scenarios.mixedUnit), 200);
@@ -291,7 +291,7 @@ export const testNode = suite('source/run/duration-history.test.ts', [
     ),
     test(
         'duration-history-balanced balances lanes by duration and falls back when sparse',
-        function (scope: OverkillScope) {
+        function (scope) {
             const slow = unit('slow', [ work('slow') ]);
             const fastA = unit('fast-a', [ work('fast-a') ]);
             const fastB = unit('fast-b', [ work('fast-b') ]);

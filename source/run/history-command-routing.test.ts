@@ -1,10 +1,10 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { historyCommandRouting } from '../test-support/history-command-routing.ts';
 import { commandLineExitCodes } from './command-line-command.ts';
 
-export const testNode = authoredSuite('history command routing and confirmation', [
-    authoredTest('lists replay availability and preserves unknown durations', async function (scope: TestScope) {
+export const testNode: TestNode = suite('history command routing and confirmation', [
+    test('lists replay availability and preserves unknown durations', async function (scope) {
         const fixture = await historyCommandRouting(false, 'none');
         const result = await fixture.commands.list(fixture.request);
         scope.assert.equal(result.exitCode, commandLineExitCodes.pass);
@@ -15,8 +15,15 @@ export const testNode = authoredSuite('history command routing and confirmation'
         scope.assert.deepEqual(fixture.events, [ 'load', 'canonical', 'create:/project' ]);
         return scope.assert.collect();
     }),
-    ...([ true, false ] as const).map(function (dryRun) {
-        return authoredTest(`formats history pruning with dryRun=${String(dryRun)}`, async function (scope: TestScope) {
+    table({
+        title: 'formats history pruning previews and publication',
+        cases: [ true, false ] as const,
+        caseTitle(dryRun) {
+            return `${String(dryRun)}`;
+        },
+        async test(scope) {
+            const dryRun = scope.parameters;
+
             const fixture = await historyCommandRouting(false, 'none');
             const result = await fixture.commands.prune({ ...fixture.request, dryRun });
             const action = dryRun ? 'Would remove' : 'Removed';
@@ -26,16 +33,16 @@ export const testNode = authoredSuite('history command routing and confirmation'
             ]);
             scope.assert.deepEqual(result.fallbackDiagnostics, [ 'pruned diagnostic' ]);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('formats compaction results', async function (scope: TestScope) {
+    test('formats compaction results', async function (scope) {
         const fixture = await historyCommandRouting(false, 'none');
         const result = await fixture.commands.compact(fixture.request);
         scope.assert.deepEqual(result.stdoutLines, [ 'Compacted 0 retained runs.' ]);
         scope.assert.equal(result.exitCode, commandLineExitCodes.pass);
         return scope.assert.collect();
     }),
-    authoredTest('leaves history intact when clearing is declined', async function (scope: TestScope) {
+    test('leaves history intact when clearing is declined', async function (scope) {
         const fixture = await historyCommandRouting(false, 'none');
         const result = await fixture.commands.clear(fixture.request);
         scope.assert.deepEqual(result.stdoutLines, []);
@@ -43,7 +50,7 @@ export const testNode = authoredSuite('history command routing and confirmation'
         scope.assert.equal(fixture.events.at(-1), 'confirm:false');
         return scope.assert.collect();
     }),
-    authoredTest('clears history only after confirmation', async function (scope: TestScope) {
+    test('clears history only after confirmation', async function (scope) {
         const fixture = await historyCommandRouting(true, 'none');
         const result = await fixture.commands.clear({ ...fixture.request, yes: true });
         scope.assert.deepEqual(result.stdoutLines, [ 'History cleared.' ]);
@@ -51,14 +58,21 @@ export const testNode = authoredSuite('history command routing and confirmation'
         scope.assert.equal(fixture.events.at(-1), 'confirm:true');
         return scope.assert.collect();
     }),
-    ...([ 'load', 'canonical' ] as const).map(function (failure) {
-        return authoredTest(`reports history ${failure} failures`, async function (scope: TestScope) {
+    table({
+        title: 'reports history maintenance failures',
+        cases: [ 'load', 'canonical' ] as const,
+        caseTitle(failure) {
+            return `${failure}`;
+        },
+        async test(scope) {
+            const failure = scope.parameters;
+
             const fixture = await historyCommandRouting(false, failure);
             const result = await fixture.commands.list(fixture.request);
             scope.assert.equal(result.exitCode, commandLineExitCodes.internalCrash);
             scope.assert.equal(result.runResult, null);
             scope.assert.deepEqual(result.stdoutLines, []);
             return scope.assert.collect();
-        });
+        }
     })
 ]);

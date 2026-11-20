@@ -1,55 +1,44 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { InvocationDeadlineExceededError } from '../run/run.entry-point.ts';
 import { memoryCampaignWorker } from '../../test-support/memory-campaign-worker.ts';
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
-import { testNode as authorityPolicy } from './campaign-authority-policy.test.ts';
+
 import { createCampaignSession, type CampaignWorker } from './campaign-worker.ts';
 
 const { signal } = new AbortController();
 async function register(worker: CampaignWorker): Promise<void> {
     await worker.respond({ kind: 'register', root: '/project' }, signal, null);
 }
-export const testNode = authoredSuite('campaign worker authority', [
-    authorityPolicy,
-    test('assigns a stable campaign identity to a canonical sandbox', async function (scope: TestScope) {
-        const fixture = await memoryCampaignWorker(null);
+export const testNode: TestNode = suite('campaign worker authority', [
+    test('assigns a stable campaign identity to a canonical sandbox', async function (scope) {
+        const fixture = await memoryCampaignWorker.create();
         const result = await fixture.worker.respond({ kind: 'register', root: '/project/alias' }, signal, null);
         scope.assert.deepEqual(result, { kind: 'registered', campaign: '00000000-0000-4000-8000-000000000000' });
         scope.assert.equal(fixture.campaigns.get('/project'), '00000000-0000-4000-8000-000000000000');
         scope.assert.deepEqual(fixture.calls, [ 'canonicalRoot', 'identify' ]);
-        await fixture.worker.dispose();
+
         return scope.assert.collect();
     }),
-    test('rejects commands before registration', async function (scope: TestScope) {
-        const fixture = await memoryCampaignWorker(null);
-        let failure: unknown = null;
-        try {
+    test('rejects commands before registration', async function (scope) {
+        const fixture = await memoryCampaignWorker.create();
+        await scope.assert.rejects(async function () {
             await fixture.worker.respond({ kind: 'fetch' }, signal, null);
-        } catch (error: unknown) {
-            failure = error;
-        }
-        scope.require.instanceOf(failure, Error);
-        scope.assert.equal(failure.message, 'Campaign worker must register first.');
-        await fixture.worker.dispose();
+        }, { type: Error, message: 'Campaign worker must register first.' });
+
         return scope.assert.collect();
     }),
-    test('rejects repeated registration', async function (scope: TestScope) {
-        const fixture = await memoryCampaignWorker(null);
+    test('rejects repeated registration', async function (scope) {
+        const fixture = await memoryCampaignWorker.create();
         await register(fixture.worker);
-        let failure: unknown = null;
-        try {
+        await scope.assert.rejects(async function () {
             await register(fixture.worker);
-        } catch (error: unknown) {
-            failure = error;
-        }
-        scope.require.instanceOf(failure, Error);
-        scope.assert.equal(failure.message, 'Campaign worker is already registered.');
-        await fixture.worker.dispose();
+        }, { type: Error, message: 'Campaign worker is already registered.' });
+
         return scope.assert.collect();
     }),
-    test('shares a published baseline within one registered sandbox', async function (scope: TestScope) {
-        const fixture = await memoryCampaignWorker(null);
+    test('shares a published baseline within one registered sandbox', async function (scope) {
+        const fixture = await memoryCampaignWorker.create();
         await register(fixture.worker);
         scope.assert.deepEqual(await fixture.worker.respond({ kind: 'fetch' }, signal, null), {
             kind: 'baseline',
@@ -66,11 +55,11 @@ export const testNode = authoredSuite('campaign worker authority', [
             kind: 'baseline',
             baseline
         });
-        await fixture.worker.dispose();
+
         return scope.assert.collect();
     }),
-    test('rejects conflicting baseline publication', async function (scope: TestScope) {
-        const fixture = await memoryCampaignWorker(null);
+    test('rejects conflicting baseline publication', async function (scope) {
+        const fixture = await memoryCampaignWorker.create();
         await register(fixture.worker);
         await fixture.worker.respond(
             { kind: 'publish', baseline: mutationCoverageFixture('off').baseline },
@@ -84,11 +73,11 @@ export const testNode = authoredSuite('campaign worker authority', [
                 null
             );
         }, { type: Error, message: 'Conflicting campaign baseline publication.' });
-        await fixture.worker.dispose();
+
         return scope.assert.collect();
     }),
-    test('freezes registered policy once and rejects repeated policy registration', async function (scope: TestScope) {
-        const fixture = await memoryCampaignWorker(null);
+    test('freezes registered policy once and rejects repeated policy registration', async function (scope) {
+        const fixture = await memoryCampaignWorker.create();
         await register(fixture.worker);
         const request = { kind: 'resolve-policy', sandbox: fixture.sandbox, settings: { seed: '42' } } as const;
         scope.assert.deepEqual(await fixture.worker.respond(request, signal, null), {
@@ -100,12 +89,12 @@ export const testNode = authoredSuite('campaign worker authority', [
         if (repeated.kind === 'failure') {
             scope.assert.equal(repeated.failure.message, 'Campaign policy registration is invalid.');
         }
-        await fixture.worker.dispose();
+
         return scope.assert.collect();
     }),
-    test('serializes policy initialization failures', async function (scope: TestScope) {
+    test('serializes policy initialization failures', async function (scope) {
         const failure = new Error('Policy failed.');
-        const fixture = await memoryCampaignWorker(failure);
+        const fixture = await memoryCampaignWorker.create({ policyFailure: failure });
         await register(fixture.worker);
         const result = await fixture.worker.respond(
             {
@@ -120,11 +109,11 @@ export const testNode = authoredSuite('campaign worker authority', [
         if (result.kind === 'failure') {
             scope.assert.equal(result.failure.message, failure.message);
         }
-        await fixture.worker.dispose();
+
         return scope.assert.collect();
     }),
-    test('returns a timeout for deadline cancellation during policy resolution', async function (scope: TestScope) {
-        const fixture = await memoryCampaignWorker(null);
+    test('returns a timeout for deadline cancellation during policy resolution', async function (scope) {
+        const fixture = await memoryCampaignWorker.create();
         const controller = new AbortController();
         const deadline = new InvocationDeadlineExceededError();
         const worker = createCampaignSession({
@@ -148,11 +137,11 @@ export const testNode = authoredSuite('campaign worker authority', [
             null
         );
         scope.assert.deepEqual(result, { kind: 'timeout', artifacts: [], data: null });
-        await worker.dispose();
+
         return scope.assert.collect();
     }),
-    test('reuses the execution session while its authority remains unchanged', async function (scope: TestScope) {
-        const fixture = await memoryCampaignWorker(null);
+    test('reuses the execution session while its authority remains unchanged', async function (scope) {
+        const fixture = await memoryCampaignWorker.create();
         await register(fixture.worker);
         await fixture.worker.respond(
             { kind: 'resolve-policy', sandbox: fixture.sandbox, settings: { seed: '42' } },
@@ -184,15 +173,43 @@ export const testNode = authoredSuite('campaign worker authority', [
         );
         return scope.assert.collect();
     }),
-    test('cancellation rejects further registered work while allowing release', async function (scope: TestScope) {
-        const fixture = await memoryCampaignWorker(null);
+    test('disposal cancels further work and releases the active execution session', async function (scope) {
+        const fixture = await memoryCampaignWorker.create();
+        await register(fixture.worker);
+        await fixture.worker.respond(
+            { kind: 'resolve-policy', sandbox: fixture.sandbox, settings: { seed: '42' } },
+            signal,
+            null
+        );
+        await fixture.worker.respond(
+            {
+                kind: 'invoke',
+                session: {
+                    policy: fixture.policy,
+                    seed: '42',
+                    lifecycle: { moduleUrl: 'file:///project/lifecycle.ts', exportName: 'create' }
+                },
+                data: null
+            },
+            signal,
+            50
+        );
+        await fixture.worker.dispose();
+        scope.assert.deepEqual(fixture.calls, [ 'canonicalRoot', 'identify', 'policy', 'execution', 'dispose' ]);
+        await scope.assert.rejects(async function () {
+            await fixture.worker.respond({ kind: 'fetch' }, signal, null);
+        }, { type: DOMException, message: 'This operation was aborted' });
+        return scope.assert.collect();
+    }),
+    test('cancellation rejects further registered work while allowing release', async function (scope) {
+        const fixture = await memoryCampaignWorker.create();
         await register(fixture.worker);
         fixture.worker.cancel();
         await scope.assert.rejects(async function () {
             await fixture.worker.respond({ kind: 'fetch' }, signal, null);
         }, { type: Error });
         scope.assert.deepEqual(await fixture.worker.respond({ kind: 'release' }, signal, null), { kind: 'accepted' });
-        await fixture.worker.dispose();
+
         return scope.assert.collect();
     })
 ]);

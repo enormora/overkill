@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { selectedFamilyCollection } from '../test-support/selected-family-collection.ts';
 import { resolveSelectedFamilyFacts } from './selected-family-facts.ts';
@@ -9,35 +9,52 @@ const sources: readonly FamilyResolutionSource[] = [ {
     configPath: '/project/overkill.config.ts',
     profile: 'unit'
 }, { kind: 'module', module: { moduleUrl: 'file:///project/family.ts', exportName: 'family' } } ];
-export const testNode = authoredSuite('selected family fact recollection', [
-    ...([ 'worker-pool', 'supervised' ] as const).flatMap(function (model) {
-        return sources.map(function (source) {
-            return authoredTest(
-                `recollects ${source.kind} selected facts through ${model}`,
-                async function (scope: TestScope) {
-                    const fixture = await selectedFamilyCollection(model, source, 'pass');
-                    const result = await resolveSelectedFamilyFacts(fixture.run, fixture.input);
-                    scope.assert.deepEqual<unknown, unknown>(result.facts.family, fixture.actual?.facts);
-                    scope.assert.deepEqual<unknown, unknown>(
-                        result.plan.kind === 'local' ? null : result.plan.collectedPlan.family,
-                        fixture.actual
-                    );
-                    scope.assert.equal(fixture.commands.length, 1);
-                    scope.assert.deepEqual<unknown, unknown>(
-                        fixture.commands[0]?.family?.selection,
-                        fixture.run.facts.cases.map(function (value) {
-                            return value.workId;
-                        })
-                    );
-                    return scope.assert.collect();
-                }
+export const testNode: TestNode = suite('selected family fact recollection', [
+    table({
+        title: 'recollects selected facts across host boundaries',
+        cases: ([ 'worker-pool', 'supervised' ] as const).flatMap(function (model) {
+            return sources.map(function (source) {
+                return ({
+                    caseDescription: `${source.kind}, ${model}`,
+                    model,
+                    source
+                });
+            });
+        }),
+        caseTitle: (row) => row.caseDescription,
+        async test(scope) {
+            const { model, source } = scope.parameters;
+
+            const fixture = await selectedFamilyCollection(model, source, 'pass');
+            const result = await resolveSelectedFamilyFacts(fixture.run, fixture.input);
+            scope.assert.deepEqual<unknown, unknown>(result.facts.family, fixture.actual?.facts);
+            scope.assert.deepEqual<unknown, unknown>(
+                result.plan.kind === 'local' ? null : result.plan.collectedPlan.family,
+                fixture.actual
             );
-        });
+            scope.assert.equal(fixture.commands.length, 1);
+            scope.assert.deepEqual<unknown, unknown>(
+                fixture.commands[0]?.family?.selection,
+                fixture.run.facts.cases.map(function (value) {
+                    return value.workId;
+                })
+            );
+            return scope.assert.collect();
+        }
     }),
-    ...([ 'missing', 'preparation', 'checkpoint', 'error' ] as const).map(function (scenario) {
-        return authoredTest(`rejects ${scenario} recollection changes`, async function (scope: TestScope) {
+    table({
+        title: 'rejects recollection changes',
+        cases: [ 'missing', 'preparation', 'checkpoint', 'error' ] as const,
+        caseTitle(scenario) {
+            return `${scenario}`;
+        },
+        async test(scope) {
+            const require: typeof scope.require = scope.require;
+
+            const scenario = scope.parameters;
+
             const source = sources[0];
-            scope.require.defined(source);
+            require.defined(source);
             const fixture = await selectedFamilyCollection('worker-pool', source, scenario);
             await scope.assert.rejects(async function () {
                 await resolveSelectedFamilyFacts(fixture.run, fixture.input);
@@ -51,9 +68,9 @@ export const testNode = authoredSuite('selected family fact recollection', [
             });
             scope.assert.equal(fixture.commands.length, 1);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('does not recollect a family when no cases are selected', async function (scope: TestScope) {
+    test('does not recollect a family when no cases are selected', async function (scope: TestScope) {
         const source = sources[0];
         scope.require.defined(source);
         const fixture = await selectedFamilyCollection('worker-pool', source, 'pass');

@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { readWorkerPoolTaskWithoutPort } from './worker-pool-host-task.ts';
@@ -145,14 +145,14 @@ function collectTask(): WorkerPoolTask {
     };
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-host-task.test.ts',
+    title: 'Worker pool host task',
     children: [
         test({
             ...testCaseMetadata,
             title: 'readWorkerPoolTaskWithoutPort() serializes every task kind',
-            body(scope: OverkillScope) {
+            body(scope) {
                 const tasks = [
                     collectTask(),
                     acquireRunResourcesTask(),
@@ -221,7 +221,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'readWorkerPoolTaskWithoutPort() rejects invalid tasks',
-            body(scope: OverkillScope) {
+            body(scope) {
                 scope.assert.throws(function readInvalidTask() {
                     readWorkerPoolTaskWithoutPort({ kind: 'collect' });
                 }, {

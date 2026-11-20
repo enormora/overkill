@@ -1,9 +1,9 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { defineTestFamily, type FamilyModuleReference, createSuite } from '../packages/engine/engine.entry-point.ts';
 
 import { normalizeConfig } from '../packages/run/run.entry-point.ts';
-import { testNode as replayProfiles } from './family-replay-profile-policy.test.ts';
+
 import { freezeProfileFamily } from './family-profile-transport.ts';
 import type { FrozenFamilyDefinition } from './family-catalog.ts';
 import type { RunCollectionSource } from './run-types.ts';
@@ -91,9 +91,8 @@ function recordedSource(definition: FrozenFamilyDefinition | null): RunCollectio
     };
 }
 
-export const testNode = authoredSuite('family transport provenance', [
-    replayProfiles,
-    authoredTest('retains explicit configuration for direct entrypoints', function (scope) {
+export const testNode: TestNode = suite('family transport provenance', [
+    test('retains explicit configuration for direct entrypoints', function (scope) {
         scope.assert.deepEqual(
             transport(moduleReference, {
                 kind: 'direct-entrypoint',
@@ -112,7 +111,7 @@ export const testNode = authoredSuite('family transport provenance', [
         );
         return scope.assert.collect();
     }),
-    authoredTest('falls back to the named module when configuration has no resolved file', function (scope) {
+    test('falls back to the named module when configuration has no resolved file', function (scope) {
         scope.assert.equal(
             transport(moduleReference, {
                 kind: 'configured-source',
@@ -124,11 +123,11 @@ export const testNode = authoredSuite('family transport provenance', [
         );
         return scope.assert.collect();
     }),
-    authoredTest('falls back to the named module for records without family provenance', function (scope) {
+    test('falls back to the named module for records without family provenance', function (scope) {
         scope.assert.equal(transport(moduleReference, recordedSource(null)).source.kind, 'module');
         return scope.assert.collect();
     }),
-    authoredTest('retains recorded configuration provenance while rebasing the project root', function (scope) {
+    test('retains recorded configuration provenance while rebasing the project root', function (scope) {
         const previous = transport(moduleReference, configuredSource);
         const restored = transport(null, recordedSource({ ...previous, projectRoot: '/old-project' }));
         scope.assert.deepEqual(restored.source, previous.source);
@@ -136,21 +135,27 @@ export const testNode = authoredSuite('family transport provenance', [
         scope.assert.equal(restored.selection, null);
         return scope.assert.collect();
     }),
-    ...[
-        { name: 'identity', change: { id: '@example/changed' } },
-        { name: 'version', change: { version: '2' } },
-        { name: 'settings', change: { settings: { changed: true } } }
-    ]
-        .map(function changedRecordedDefinition(scenario) {
-            return authoredTest(`rejects changed recorded ${scenario.name} before backend loading`, function (scope) {
-                const previous = transport(moduleReference, configuredSource);
-                scope.assert.throws(function freezeChangedRecord() {
-                    transport(moduleReference, recordedSource({ ...previous, ...scenario.change }));
-                }, { message: 'Recorded family implementation or settings changed; collect a new run.' });
-                return scope.assert.collect();
-            });
-        }),
-    authoredTest('prefers explicit configuration over the definition module', function (scope) {
+    table({
+        title: 'rejects changed recorded policies before backend loading',
+        cases: [
+            { name: 'identity', change: { id: '@example/changed' } },
+            { name: 'version', change: { version: '2' } },
+            { name: 'settings', change: { settings: { changed: true } } }
+        ],
+        caseTitle(scenario) {
+            return `${scenario.name}`;
+        },
+        test(scope) {
+            const scenario = scope.parameters;
+
+            const previous = transport(moduleReference, configuredSource);
+            scope.assert.throws(function freezeChangedRecord() {
+                transport(moduleReference, recordedSource({ ...previous, ...scenario.change }));
+            }, { message: 'Recorded family implementation or settings changed; collect a new run.' });
+            return scope.assert.collect();
+        }
+    }),
+    test('prefers explicit configuration over the definition module', function (scope) {
         scope.assert.deepEqual(transport(moduleReference, configuredSource).source, {
             kind: 'config-file',
             configPath: '/project/config.ts',
@@ -158,18 +163,18 @@ export const testNode = authoredSuite('family transport provenance', [
         });
         return scope.assert.collect();
     }),
-    authoredTest('transports definitions without a module through explicit configuration', function (scope) {
+    test('transports definitions without a module through explicit configuration', function (scope) {
         scope.assert.equal(transport(null, configuredSource).processModel, 'worker-pool');
         return scope.assert.collect();
     }),
-    authoredTest('uses the named module when no configuration can be replayed', function (scope) {
+    test('uses the named module when no configuration can be replayed', function (scope) {
         scope.assert.deepEqual(transport(moduleReference, { kind: 'configured-files' }).source, {
             kind: 'module',
             module: moduleReference
         });
         return scope.assert.collect();
     }),
-    authoredTest('rejects local-only definitions before backend loading', function (scope) {
+    test('rejects local-only definitions before backend loading', function (scope) {
         scope.assert.throws(function isolateLocalDefinition() {
             transport(null, { kind: 'configured-files' });
         }, { message: 'The selected family has no importable configuration or module for isolated execution.' });

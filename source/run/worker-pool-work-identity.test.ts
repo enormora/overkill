@@ -1,15 +1,13 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { CaseId } from '../packages/engine/engine.entry-point.ts';
 import type { WorkDistribution } from '../config/types.ts';
-import { testNode as familyTransportTestNode } from './family-profile-transport.test.ts';
-import { testNode as familyResolutionTestNode } from './family-resolution.test.ts';
-import { testNode as familyIdentityTestNode } from './family-identity.test.ts';
+
 import { emptyWorkUnitResourceConstraints, type CollectedRunPlan } from './run-types.ts';
 import { type WorkUnitPlanningInput, workUnitsFromCollectedPlan } from './work-unit-planning.ts';
 
-const firstPath = 'source/integration-tests/run/fixtures/passing.test.ts';
-const secondPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
+const firstPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const secondPath = 'source/integration-tests/integration/fixtures/delayed-pass.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 const defaultUnitPolicy = {
@@ -107,11 +105,8 @@ function planningInput(
     };
 }
 
-export const testNode = suite('source/run/worker-pool-work-identity.test.ts', [
-    familyIdentityTestNode,
-    familyResolutionTestNode,
-    familyTransportTestNode,
-    test('worker-pool planning skips empty files and preserves workload ids', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Worker pool work identity', [
+    test('worker-pool planning skips empty files and preserves workload ids', function (scope) {
         const workload = {
             name: 'browser',
             params: { channel: 'stable' }
@@ -121,7 +116,7 @@ export const testNode = suite('source/run/worker-pool-work-identity.test.ts', [
         scope.assert.deepEqual(
             workUnitsFromCollectedPlan(planningInput(
                 collectedPlan([
-                    { cases: [], file: 'source/integration-tests/run/fixtures/empty.test.ts' },
+                    { cases: [], file: 'source/integration-tests/integration/fixtures/empty.test.ts' },
                     { cases: [ collectedCase(firstCaseId()) ], file: firstPath },
                     { cases: [ collectedCase(secondCaseId()) ], file: secondPath }
                 ]),

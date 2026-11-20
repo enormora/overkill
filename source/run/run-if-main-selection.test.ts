@@ -1,9 +1,8 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope as DirectScope } from '@overkill-dev/test';
+import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
 
 import {
-    type TestBody as DirectTestBody,
     type TestNode as DirectTestNode,
-    type TestScope as DirectScope,
     createTestCase as createDirectTestCase
 } from '../packages/engine/engine.entry-point.ts';
 
@@ -20,13 +19,17 @@ type CapturedRun = {
     readonly execution: CapturedExecution;
 };
 
-function passingBody(scope: DirectScope): ReturnType<DirectTestBody> {
+function passingBody(
+    scope: { readonly assert: Pick<DirectScope['assert'], 'true' | 'collect'>; }
+): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
 
     return scope.assert.collect();
 }
 
-function failingBody(scope: DirectScope): ReturnType<DirectTestBody> {
+function failingBody(
+    scope: { readonly assert: Pick<DirectScope['assert'], 'true' | 'collect'>; }
+): ReturnType<EngineCaseBody> {
     scope.assert.true(false);
 
     return scope.assert.collect();
@@ -89,10 +92,10 @@ async function runDirect(fixture: DirectRunFixture, testNode: DirectTestNode): P
     return capturedRun;
 }
 
-export const testNode = suite('source/run/run-if-main-selection.test.ts', [
+export const testNode: TestNode = suite('Run if main selection', [
     test(
-        'runIfMain() falls back when a matching profile excludes the direct file',
-        async function (scope: OverkillScope) {
+        'falls back when a matching profile excludes the direct file',
+        async function (scope) {
             const fixture = createDirectRunFixture({
                 config: {
                     profiles: {
@@ -121,7 +124,7 @@ export const testNode = suite('source/run/run-if-main-selection.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('runIfMain() rejects non-file import metadata', async function (scope: OverkillScope) {
+    test('rejects non-file import metadata', async function (scope) {
         const fixture = createDirectRunFixture({
             config: null,
             fileName: 'direct.test.ts',
@@ -143,7 +146,7 @@ export const testNode = suite('source/run/run-if-main-selection.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('runIfMain() sets process exitCode for failed direct runs', async function (scope: OverkillScope) {
+    test('sets process exitCode for failed direct runs', async function (scope) {
         const fixture = createDirectRunFixture({
             config: {
                 profiles: {

@@ -1,6 +1,6 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
+import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
-import { test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import type { PropertyInvocation } from '../packages/property/property.entry-point.ts';
 import type { PropertyWitnessFile } from '../engine/witness-file.ts';
@@ -10,7 +10,7 @@ import { gen } from './generators.ts';
 
 async function nestedWitness(): Promise<PropertyWitnessFile> {
     const result = await executePropertyNode(
-        test(
+        subjectTest(
             'keyed regression',
             withProperties(async function (parent) {
                 return await parent.forall({
@@ -32,12 +32,12 @@ async function nestedWitness(): Promise<PropertyWitnessFile> {
     return witness;
 }
 
-export const testNode = authoredSuite('property corpus invocation targets', [
-    authoredTest('direct nested replay substitutes only the keyed target', async function (scope) {
+export const testNode: TestNode = suite('property corpus invocation targets', [
+    test('direct nested replay substitutes only the keyed target', async function (scope) {
         const saved = await nestedWitness();
         const values: number[] = [];
         const result = await executePropertyNode(
-            test(
+            subjectTest(
                 'keyed regression',
                 withProperties(async function (parent) {
                     parent.cleanup(function finishCase() {
@@ -79,10 +79,10 @@ export const testNode = authoredSuite('property corpus invocation targets', [
         scope.assert.deepEqual(values.slice(-3), [ 42, 88, 99 ]);
         return scope.assert.collect();
     }),
-    authoredTest('retains enclosing body errors alongside an unreached replay target', async function (scope) {
+    test('retains enclosing body errors alongside an unreached replay target', async function (scope) {
         const saved = await nestedWitness();
         const result = await executePropertyNode(
-            test(
+            subjectTest(
                 'keyed regression',
                 withProperties(function () {
                     throw new Error('setup failed before target');
@@ -96,11 +96,11 @@ export const testNode = authoredSuite('property corpus invocation targets', [
         }));
         return scope.assert.collect();
     }),
-    authoredTest('rejects a duplicate replay key after substituting its first occurrence', async function (scope) {
+    test('rejects a duplicate replay key after substituting its first occurrence', async function (scope) {
         const saved = await nestedWitness();
         const inputs: number[] = [];
         const result = await executePropertyNode(
-            test(
+            subjectTest(
                 'keyed regression',
                 withProperties(async function (parent) {
                     for (let occurrence = 0; occurrence < 2; occurrence += 1) {
@@ -127,11 +127,11 @@ export const testNode = authoredSuite('property corpus invocation targets', [
         }));
         return scope.assert.collect();
     }),
-    authoredTest('replays explicit keys after their source location changes', async function (scope) {
+    test('replays explicit keys after their source location changes', async function (scope) {
         const saved = await nestedWitness();
         const inputs: number[] = [];
         const result = await executePropertyNode(
-            test(
+            subjectTest(
                 'keyed regression',
                 withProperties(async function (parent) {
                     return await parent.forall({
@@ -153,9 +153,9 @@ export const testNode = authoredSuite('property corpus invocation targets', [
         scope.assert.deepEqual(inputs, [ 42, 42 ]);
         return scope.assert.collect();
     }),
-    authoredTest('fails missing checked-in targets and diagnoses missing local targets', async function (scope) {
+    test('fails missing checked-in targets and diagnoses missing local targets', async function (scope) {
         const saved = await nestedWitness();
-        const node = test(
+        const node = subjectTest(
             'keyed regression',
             withProperties(function (parent) {
                 parent.assert.true(true);
@@ -176,9 +176,9 @@ export const testNode = authoredSuite('property corpus invocation targets', [
         scope.assert.includes(JSON.stringify(local), 'Skipped incompatible local corpus invocation target');
         return scope.assert.collect();
     }),
-    authoredTest('rejects duplicate explicit invocation keys', async function (scope) {
+    test('rejects duplicate explicit invocation keys', async function (scope) {
         const result = await executePropertyNode(
-            test(
+            subjectTest(
                 'duplicate keys',
                 withProperties(async function (parent) {
                     const invocation: PropertyInvocation<number> = {

@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { configFixtureCwd, createSingleConfigModuleLoader } from '../test-support/run-config-module-loader.ts';
 import type { LoadedConfig } from './config-loader.ts';
@@ -18,14 +18,14 @@ async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
 function assertProfileFiles(
     files: ProfileFiles | null,
     expected: ExpectedProfileFiles,
-    scope: OverkillScope
+    scope: TestScope
 ): void {
     scope.require.notNull(files);
     scope.assert.deepEqual(files, expected);
 }
 
-export const testNode = suite('source/config/config-profile-files.test.ts', [
-    test('loadConfig() normalizes profile file discovery', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Profile file selection', [
+    test('normalizes profile file discovery', async function (scope: TestScope) {
         const config = await loadConfigValue({
             profiles: {
                 microtest: {
@@ -59,7 +59,7 @@ export const testNode = suite('source/config/config-profile-files.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() rejects invalid profile file globs', async function (scope: OverkillScope) {
+    test('rejects invalid profile file globs', async function (scope) {
         await scope.assert.rejects(async function loadInvalidConfig() {
             await loadConfigValue({
                 profiles: {
@@ -78,7 +78,7 @@ export const testNode = suite('source/config/config-profile-files.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() normalizes profile file sets', async function (scope: OverkillScope) {
+    test('normalizes profile file sets', async function (scope: TestScope) {
         const config = await loadConfigValue({
             profiles: {
                 microtest: {
@@ -116,7 +116,7 @@ export const testNode = suite('source/config/config-profile-files.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() rejects invalid profile file sets', async function (scope: OverkillScope) {
+    test('rejects invalid profile file sets', async function (scope) {
         await scope.assert.rejects(async function loadMixedFilePolicy() {
             await loadConfigValue({
                 profiles: {

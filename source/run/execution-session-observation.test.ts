@@ -1,5 +1,5 @@
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 import { runInNewContext } from 'node:vm';
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
 
 import { InvocationDeadlineExceededError } from '../invocation-budget.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -73,11 +73,18 @@ function failedDeliveryReply(delivery: FailedDelivery): FailureReply {
     return reply;
 }
 
-export const testNode = authoredSuite(
+export const testNode: TestNode = suite(
     'interrupted execution evidence',
     [
-        ...([ 'timeout', 'missing-data' ] as const).map(function interruptedDelivery(interruption) {
-            return authoredTest(`preserves parent-owned artifacts after ${interruption}`, function (scope) {
+        table({
+            title: 'preserves parent-owned artifacts after interruption',
+            cases: [ 'timeout', 'missing-data' ] as const,
+            caseTitle(interruption) {
+                return `${interruption}`;
+            },
+            test(scope) {
+                const interruption = scope.parameters;
+
                 const result = runResultFactory.build({
                     artifacts: [ {
                         id: {
@@ -113,9 +120,9 @@ export const testNode = authoredSuite(
                 scope.assert.equal(reply.kind, interruption === 'timeout' ? 'timeout' : 'failure');
                 scope.assert.deepEqual(reply.artifacts, result.artifacts);
                 return scope.assert.collect();
-            });
+            }
         }),
-        authoredTest('ignores lifecycle data from another execution correlation', function (scope) {
+        test('ignores lifecycle data from another execution correlation', function (scope) {
             const observation = createExecutionDataObservation();
             observeExecutionMessage(
                 observation,
@@ -131,7 +138,7 @@ export const testNode = authoredSuite(
             scope.assert.false(observation.invalid.signal.aborted);
             return scope.assert.collect();
         }),
-        authoredTest('normalizes cross-realm delivery failures and retains checkpoint data', function (scope) {
+        test('normalizes cross-realm delivery failures and retains checkpoint data', function (scope) {
             const delivery = failingDelivery(runInNewContext('new Error("Delivery failed.")') as Error);
             const reply = failedDeliveryReply(delivery);
             const retainedData: unknown = reply.data;
@@ -141,7 +148,7 @@ export const testNode = authoredSuite(
             scope.assert.true(delivery.observation.invalid.signal.aborted);
             return scope.assert.collect();
         }),
-        authoredTest('retains native delivery errors and checkpoint data', function (scope) {
+        test('retains native delivery errors and checkpoint data', function (scope) {
             const delivery = failingDelivery(new Error('Delivery failed.'));
             const reply = failedDeliveryReply(delivery);
             const retainedData: unknown = reply.data;
@@ -151,31 +158,34 @@ export const testNode = authoredSuite(
             scope.assert.true(delivery.observation.invalid.signal.aborted);
             return scope.assert.collect();
         }),
-        authoredTest('retains permission failures when a deadline expires before lifecycle delivery', function (scope) {
-            const error = permissionDeniedRunnerErrorFromDiagnostic({
-                channel: 'node:permission-model:fs',
-                fallbackCapability: 'fs-write',
-                message: { permission: 'FileSystemWrite', resource: '/denied' }
-            }, {
-                attributedTo: null,
-                attributedToWork: null,
-                boundary: null,
-                diagnosticChannel: 'node:permission-model:fs',
-                hook: null,
-                phase: 'body'
-            });
-            const result = runResultFactory.build({ runnerErrors: [ error ] });
-            const reply = observedReply(
-                result,
-                interruptedExecutionCall('timeout'),
-                createExecutionDataObservation()
-            );
-            if (reply.kind !== 'result') {
-                throw new Error('Permission failures must not become timeout-only replies.');
+        test(
+            'retains permission failures when a deadline expires before lifecycle delivery',
+            function (scope) {
+                const error = permissionDeniedRunnerErrorFromDiagnostic({
+                    channel: 'node:permission-model:fs',
+                    fallbackCapability: 'fs-write',
+                    message: { permission: 'FileSystemWrite', resource: '/denied' }
+                }, {
+                    attributedTo: null,
+                    attributedToWork: null,
+                    boundary: null,
+                    diagnosticChannel: 'node:permission-model:fs',
+                    hook: null,
+                    phase: 'body'
+                });
+                const result = runResultFactory.build({ runnerErrors: [ error ] });
+                const reply = observedReply(
+                    result,
+                    interruptedExecutionCall('timeout'),
+                    createExecutionDataObservation()
+                );
+                if (reply.kind !== 'result') {
+                    throw new Error('Permission failures must not become timeout-only replies.');
+                }
+                scope.assert.true(reply.deadlineExceeded);
+                scope.assert.equal(reply.result, result);
+                return scope.assert.collect();
             }
-            scope.assert.true(reply.deadlineExceeded);
-            scope.assert.equal(reply.result, result);
-            return scope.assert.collect();
-        })
+        )
     ]
 );

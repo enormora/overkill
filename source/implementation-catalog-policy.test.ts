@@ -1,5 +1,6 @@
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 import { join } from 'node:path';
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+
 import { memoryImplementationCatalog } from './test-support/memory-implementation-catalog.ts';
 import {
     mergeImplementationCatalogs,
@@ -8,8 +9,8 @@ import {
     assertImplementationAssignments
 } from './implementation-catalog.ts';
 
-export const testNode = authoredSuite('portable implementation catalog policy', [
-    test('combines repeated build evidence without duplicating assignments or modules', function (scope: TestScope) {
+export const testNode: TestNode = suite('portable implementation catalog policy', [
+    test('combines repeated build evidence without duplicating assignments or modules', function (scope) {
         const catalog = memoryImplementationCatalog();
         const combined = combineImplementationBuilds([ ...catalog.builds, ...catalog.builds ]);
         scope.assert.deepEqual<unknown, unknown>(combined, catalog.builds[0]);
@@ -20,7 +21,7 @@ export const testNode = authoredSuite('portable implementation catalog policy', 
         }, { message: 'Expected implementation builds.' });
         return scope.assert.collect();
     }),
-    test('selects assignments by complete work identity boundaries', function (scope: TestScope) {
+    test('selects assignments by complete work identity boundaries', function (scope) {
         const catalog = memoryImplementationCatalog();
         scope.assert.deepEqual<unknown, unknown>(
             selectedImplementationAssignments(catalog, [ 'first' ]),
@@ -47,7 +48,7 @@ export const testNode = authoredSuite('portable implementation catalog policy', 
         }, { message: 'Frozen implementation assignments changed; prepare and collect a new run.' });
         return scope.assert.collect();
     }),
-    test('rejects conflicting evidence for the same module URL', function (scope: TestScope) {
+    test('rejects conflicting evidence for the same module URL', function (scope) {
         const catalog = memoryImplementationCatalog();
         const changed = {
             ...catalog,
@@ -71,7 +72,7 @@ export const testNode = authoredSuite('portable implementation catalog policy', 
         }, { message: 'Implementation module builds differ.' });
         return scope.assert.collect();
     }),
-    test('rejects merging catalogs prepared under different project roots', function (scope: TestScope) {
+    test('rejects merging catalogs prepared under different project roots', function (scope) {
         const catalog = memoryImplementationCatalog();
         scope.assert.throws(function mergeRoots() {
             mergeImplementationCatalogs([ catalog, {
@@ -81,7 +82,7 @@ export const testNode = authoredSuite('portable implementation catalog policy', 
         }, { message: 'Implementation project roots differ.' });
         return scope.assert.collect();
     }),
-    test('rejects merging catalogs from different native runtimes', function (scope: TestScope) {
+    test('rejects merging catalogs from different native runtimes', function (scope) {
         const catalog = memoryImplementationCatalog();
         const changed = {
             ...catalog,
@@ -94,7 +95,7 @@ export const testNode = authoredSuite('portable implementation catalog policy', 
         }, { message: 'Implementation runtimes differ.' });
         return scope.assert.collect();
     }),
-    test('rejects catalogs that resolve the same entry to different modules', function (scope: TestScope) {
+    test('rejects catalogs that resolve the same entry to different modules', function (scope) {
         const catalog = memoryImplementationCatalog();
         const changed = {
             ...catalog,
@@ -118,7 +119,7 @@ export const testNode = authoredSuite('portable implementation catalog policy', 
         }, { message: 'Implementation entry resolutions differ.' });
         return scope.assert.collect();
     }),
-    test('retains assignments from distinct shards sharing the same module build', function (scope: TestScope) {
+    test('retains assignments from distinct shards sharing the same module build', function (scope) {
         const catalog = memoryImplementationCatalog();
         const other = {
             ...catalog,
@@ -136,7 +137,7 @@ export const testNode = authoredSuite('portable implementation catalog policy', 
         scope.assert.equal(merged?.builds[0]?.assignments.length, 2);
         return scope.assert.collect();
     }),
-    test('rejects conflicting parsed input for overlapping work', function (scope: TestScope) {
+    test('rejects conflicting parsed input for overlapping work', function (scope) {
         const catalog = memoryImplementationCatalog();
         const changed = {
             ...catalog,

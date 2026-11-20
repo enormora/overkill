@@ -1,9 +1,8 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, testDouble } from '@overkill-dev/test';
 
 import type { LoadedConfig, ConfiguredRunCommand, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
 import type { TestPlan } from '../packages/engine/engine.entry-point.ts';
 
-import { testDouble } from '../doubles/test-double.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
 import {
@@ -163,8 +162,8 @@ function createRunOnlyOrchestrator(run: ConfiguredRunOrchestrator['run']): Confi
     };
 }
 
-export const testNode = suite('source/run/command-line-runner-error.test.ts', [
-    test('commandLineRunner.runTests() formats non-error internal crashes', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Command line runner error', [
+    test('commandLineRunner.runTests() formats non-error internal crashes', async function (scope) {
         const run = testDouble.rejects<ConfiguredRunOrchestrator['run']>('unexpected string failure');
         const runner = createCommandLineRunner(createRunnerDependencies(createRunOnlyOrchestrator(run)));
         const result = await runner.runTests({
@@ -179,7 +178,7 @@ export const testNode = suite('source/run/command-line-runner-error.test.ts', [
         ]);
         return scope.assert.collect();
     }),
-    test('commandLineRunner.runTests() formats Error internal crashes', async function (scope: OverkillScope) {
+    test('commandLineRunner.runTests() formats Error internal crashes', async function (scope) {
         const run = testDouble.rejects<ConfiguredRunOrchestrator['run']>(new Error('Unexpected failure.'));
         const runner = createCommandLineRunner(createRunnerDependencies(createRunOnlyOrchestrator(run)));
         const result = await runner.runTests({

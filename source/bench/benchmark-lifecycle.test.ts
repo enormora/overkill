@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { benchmarkLifecyclePolicySchema } from '../run/benchmark-policy-schema.ts';
 import { type TestCase, createRoot, createTestPlan, execute } from '../packages/engine/engine.entry-point.ts';
@@ -89,32 +89,35 @@ function assertRuntimeSettling(scope: TestScope, result: RunResult): void {
     scope.assert.equal(benchmarkResultSchema.parse(measurementResult(result)).lifecycle?.cooldown.mode, 'runtime');
 }
 
-export const testNode = authoredSuite('benchmark invocation lifetimes', [
-    test('rejects invalid cleanup callbacks while releasing already registered resources', async function (scope) {
-        let cleanups = 0;
-        const result = await runBenchmark(benchmark(
-            'invalid cleanup',
-            valueBenchmark(function ({ sample }) {
-                sample.cleanup(function releaseResource() {
-                    cleanups += 1;
-                });
-                const measured = sample.measure(function () {
-                    return 1;
-                });
-                Reflect.apply(sample.cleanup, undefined, [ null ]);
-                return { value: measured.value };
-            }),
-            measuredOnly
-        ));
-        scope.assert.equal(result.summary.failed, 1);
-        scope.assert.equal(cleanups, 1);
-        scope.assert.partialDeepEqual(failureOutcome(result), {
-            failures: [ { kind: 'body-error', error: { message: 'sample.cleanup() requires a callback.' } } ]
-        });
-        scope.assert.deepEqual(measurementResult(result).lifecycle.cleanup, { callbacks: 1, failures: 0 });
-        return scope.assert.collect();
-    }),
-    test('preserves established budget failures through a measurement interruption', async function (scope: TestScope) {
+export const testNode: TestNode = suite('benchmark invocation lifetimes', [
+    test(
+        'rejects invalid cleanup callbacks while releasing already registered resources',
+        async function (scope) {
+            let cleanups = 0;
+            const result = await runBenchmark(benchmark(
+                'invalid cleanup',
+                valueBenchmark(function ({ sample }) {
+                    sample.cleanup(function releaseResource() {
+                        cleanups += 1;
+                    });
+                    const measured = sample.measure(function () {
+                        return 1;
+                    });
+                    Reflect.apply(sample.cleanup, undefined, [ null ]);
+                    return { value: measured.value };
+                }),
+                measuredOnly
+            ));
+            scope.assert.equal(result.summary.failed, 1);
+            scope.assert.equal(cleanups, 1);
+            scope.assert.partialDeepEqual(failureOutcome(result), {
+                failures: [ { kind: 'body-error', error: { message: 'sample.cleanup() requires a callback.' } } ]
+            });
+            scope.assert.deepEqual(measurementResult(result).lifecycle.cleanup, { callbacks: 1, failures: 0 });
+            return scope.assert.collect();
+        }
+    ),
+    test('preserves established budget failures through a measurement interruption', async function (scope) {
         let calls = 0;
         const result = await runBenchmark(benchmark('interrupted budgets', {
             kind: 'runtime',
@@ -142,7 +145,7 @@ export const testNode = authoredSuite('benchmark invocation lifetimes', [
         scope.assert.equal(result.runnerErrors[0]?.subtype, 'measurement');
         return scope.assert.collect();
     }),
-    test('validates lifecycle policy at authoring without invoking the workload', function (scope: TestScope) {
+    test('validates lifecycle policy at authoring without invoking the workload', function (scope) {
         let calls = 0;
         const definition = valueBenchmark(function ({ sample }) {
             calls += 1;
@@ -172,7 +175,7 @@ export const testNode = authoredSuite('benchmark invocation lifetimes', [
         scope.assert.equal(calls, 0);
         return scope.assert.collect();
     }),
-    test('runs the native runtime policy after cleanup with no leaked harness work', async function (scope: TestScope) {
+    test('runs the native runtime policy after cleanup with no leaked harness work', async function (scope) {
         const result = await runBenchmark(benchmark(
             'runtime settling',
             valueBenchmark(function ({ sample }) {
@@ -202,7 +205,7 @@ export const testNode = authoredSuite('benchmark invocation lifetimes', [
     }),
     test(
         'warms automatically and excludes warmup values from budgets and measured counts',
-        async function (scope: TestScope) {
+        async function (scope) {
             let calls = 0;
             const node = benchmark(
                 'automatic',
@@ -225,7 +228,7 @@ export const testNode = authoredSuite('benchmark invocation lifetimes', [
             return scope.assert.collect();
         }
     ),
-    test('supports cold-start opt-out and preserves synchronous measured values', async function (scope: TestScope) {
+    test('supports cold-start opt-out and preserves synchronous measured values', async function (scope) {
         let calls = 0;
         const result = await runBenchmark(benchmark(
             'cold',
@@ -245,7 +248,7 @@ export const testNode = authoredSuite('benchmark invocation lifetimes', [
     }),
     test(
         'cleans every invocation in reverse order before the next preparation and attempt cleanup',
-        async function (scope: TestScope) {
+        async function (scope) {
             const events: string[] = [];
             let calls = 0;
             const result = await runBenchmark(benchmark(
@@ -302,7 +305,7 @@ export const testNode = authoredSuite('benchmark invocation lifetimes', [
     ),
     test(
         'retains completed readings and all cleanup failures while stopping further sampling',
-        async function (scope: TestScope) {
+        async function (scope) {
             let calls = 0;
             const result = await runBenchmark(benchmark(
                 'failed cleanup',
@@ -343,7 +346,7 @@ export const testNode = authoredSuite('benchmark invocation lifetimes', [
             return scope.assert.collect();
         }
     ),
-    test('cleans failed warmup preparation and preserves body and cleanup errors', async function (scope: TestScope) {
+    test('cleans failed warmup preparation and preserves body and cleanup errors', async function (scope) {
         const result = await runBenchmark(benchmark(
             'failed preparation',
             valueBenchmark(function ({ sample }) {
@@ -365,7 +368,7 @@ export const testNode = authoredSuite('benchmark invocation lifetimes', [
         });
         return scope.assert.collect();
     }),
-    test('rejects late cleanup registration and still executes remaining callbacks', async function (scope: TestScope) {
+    test('rejects late cleanup registration and still executes remaining callbacks', async function (scope) {
         let completed = false;
         const result = await runBenchmark(benchmark(
             'late registration',

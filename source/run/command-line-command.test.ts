@@ -1,11 +1,11 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createCommandLineErrorResultFromUnknown, readExitCodeFromRunResult } from './command-line-command.ts';
 import { RunCollectionError, RunResolutionError } from './run-errors.ts';
 
-export const testNode = suite('source/run/command-line-command.test.ts', [
-    test('createCommandLineErrorResultFromUnknown() maps no tests collected errors', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('CLI error results', [
+    test('maps no tests collected errors', function (scope) {
         const result = createCommandLineErrorResultFromUnknown(
             new RunResolutionError('No explicit run paths were provided.', undefined, 'no-tests-collected')
         );
@@ -17,7 +17,7 @@ export const testNode = suite('source/run/command-line-command.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createCommandLineErrorResultFromUnknown() maps collection errors', function (scope: OverkillScope) {
+    test('maps collection errors', function (scope) {
         const result = createCommandLineErrorResultFromUnknown(
             new RunCollectionError('Collection failed.', { cause: null }, 'loader')
         );
@@ -30,7 +30,7 @@ export const testNode = suite('source/run/command-line-command.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('readExitCodeFromRunResult() allows empty shards', function (scope: OverkillScope) {
+    test('readExitCodeFromRunResult() allows empty shards', function (scope) {
         scope.assert.equal(
             readExitCodeFromRunResult(runResultFactory.build({
                 planStatus: 'empty-shard',
@@ -49,8 +49,8 @@ export const testNode = suite('source/run/command-line-command.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'createCommandLineErrorResultFromUnknown() formats supplemental aggregate errors',
-        function (scope: OverkillScope) {
+        'formats supplemental aggregate errors',
+        function (scope) {
             const primaryError = new Error('primary failure');
             const result = createCommandLineErrorResultFromUnknown(
                 new AggregateError([ primaryError, 'supplemental failure' ], 'aggregate failure')
@@ -66,8 +66,8 @@ export const testNode = suite('source/run/command-line-command.test.ts', [
         }
     ),
     test(
-        'createCommandLineErrorResultFromUnknown() formats supplemental runner errors',
-        function (scope: OverkillScope) {
+        'formats supplemental runner errors',
+        function (scope) {
             const primaryError = new Error('primary failure');
             const result = createCommandLineErrorResultFromUnknown(
                 new AggregateError([
@@ -91,8 +91,8 @@ export const testNode = suite('source/run/command-line-command.test.ts', [
         }
     ),
     test(
-        'createCommandLineErrorResultFromUnknown() keeps malformed supplemental errors internal',
-        function (scope: OverkillScope) {
+        'keeps malformed supplemental errors internal',
+        function (scope) {
             const primaryError = new Error('primary failure');
             const result = createCommandLineErrorResultFromUnknown(
                 new AggregateError([
@@ -121,8 +121,8 @@ export const testNode = suite('source/run/command-line-command.test.ts', [
         }
     ),
     test(
-        'createCommandLineErrorResultFromUnknown() falls back to the aggregate message',
-        function (scope: OverkillScope) {
+        'falls back to the aggregate message',
+        function (scope) {
             const aggregateError = new AggregateError([], 'aggregate failure');
             Object.defineProperty(aggregateError, 'errors', { value: 'not-an-array' });
             const result = createCommandLineErrorResultFromUnknown(aggregateError);

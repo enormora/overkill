@@ -1,5 +1,5 @@
+import { type TestNode, suite, test } from '#tests';
 import { execFile } from 'node:child_process';
-import { suite, test } from '#tests';
 
 async function execute(script: string): Promise<string> {
     return new Promise(function executeConsumer(resolve, reject) {
@@ -59,7 +59,7 @@ if (result.summary.passed !== 1 || result.summary.inconclusive !== 1 || later !=
 console.log('differential package loaded');
 `;
 
-export const testNode = suite('packaged differential authoring', [
+export const testNode: TestNode = suite('packaged differential authoring', [
     test('shares property generators across package copies', async function (scope) {
         const result = await execute(script);
         scope.assert.equal(result.trim(), 'differential package loaded');

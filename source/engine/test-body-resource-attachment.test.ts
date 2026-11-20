@@ -1,6 +1,6 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
 
-import type { TestBody } from '../packages/engine/engine.entry-point.ts';
 import {
     attachTestBodyResourceAttachments,
     hasAttachedResourceDescriptors,
@@ -10,7 +10,9 @@ import {
     type TestBodyResourceAttachments
 } from './test-body-resource-attachment.ts';
 
-function passingBody(scope: OverkillScope): ReturnType<TestBody> {
+function passingBody(
+    scope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }
+): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
 
     return scope.assert.collect();
@@ -55,45 +57,48 @@ function runtimeAttachments(
     };
 }
 
-export const testNode = suite('source/engine/test-body-resource-attachment.test.ts', [
-    test('hasAttachedResourceDescriptors() reads resource descriptors from attachment metadata', function (scope) {
-        scope.assert.equal(
-            hasAttachedResourceDescriptors({
-                directResources: [],
-                resourceGraph: [],
-                runtimeGraphs: []
-            }),
-            false
-        );
-        scope.assert.equal(
-            hasAttachedResourceDescriptors({
-                directResources: [ { key: 'database', resourceName: 'database' } ],
-                resourceGraph: [],
-                runtimeGraphs: []
-            }),
-            true
-        );
-        scope.assert.equal(
-            hasAttachedResourceDescriptors(resourceAttachments([
-                { key: 'database', resourceName: 'database' }
-            ])),
-            true
-        );
-        scope.assert.equal(
-            hasAttachedResourceDescriptors(runtimeAttachments([
-                { key: 'database', resourceName: 'database' }
-            ], [])),
-            true
-        );
-        scope.assert.equal(
-            hasAttachedResourceDescriptors(runtimeAttachments([], [
-                { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 }
-            ])),
-            false
-        );
+export const testNode: TestNode = suite('Test body resource attachment', [
+    test(
+        'hasAttachedResourceDescriptors() reads resource descriptors from attachment metadata',
+        function (scope) {
+            scope.assert.equal(
+                hasAttachedResourceDescriptors({
+                    directResources: [],
+                    resourceGraph: [],
+                    runtimeGraphs: []
+                }),
+                false
+            );
+            scope.assert.equal(
+                hasAttachedResourceDescriptors({
+                    directResources: [ { key: 'database', resourceName: 'database' } ],
+                    resourceGraph: [],
+                    runtimeGraphs: []
+                }),
+                true
+            );
+            scope.assert.equal(
+                hasAttachedResourceDescriptors(resourceAttachments([
+                    { key: 'database', resourceName: 'database' }
+                ])),
+                true
+            );
+            scope.assert.equal(
+                hasAttachedResourceDescriptors(runtimeAttachments([
+                    { key: 'database', resourceName: 'database' }
+                ], [])),
+                true
+            );
+            scope.assert.equal(
+                hasAttachedResourceDescriptors(runtimeAttachments([], [
+                    { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 }
+                ])),
+                false
+            );
 
-        return scope.assert.collect();
-    }),
+            return scope.assert.collect();
+        }
+    ),
     test('resource attachment metadata is readable without becoming a body property', function (scope) {
         const attachments: TestBodyResourceAttachments = {
             directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
@@ -141,7 +146,7 @@ export const testNode = suite('source/engine/test-body-resource-attachment.test.
         }, { message: 'Resource attachments require a test body function.' });
         scope.assert.throws(function attachEmptyMetadata() {
             attachTestBodyResourceAttachments(
-                function emptyAttachmentBody(testScope: OverkillScope): ReturnType<TestBody> {
+                function emptyAttachmentBody(testScope: TestScope): ReturnType<EngineCaseBody> {
                     testScope.assert.true(true);
 
                     return testScope.assert.collect();
@@ -155,8 +160,8 @@ export const testNode = suite('source/engine/test-body-resource-attachment.test.
         }, { message: 'Test body resource attachments must not be empty.' });
 
         const attachedBody = attachTestBodyResourceAttachments(function attached(
-            testScope: OverkillScope
-        ): ReturnType<TestBody> {
+            testScope: TestScope
+        ): ReturnType<EngineCaseBody> {
             testScope.assert.true(true);
 
             return testScope.assert.collect();
@@ -195,8 +200,8 @@ export const testNode = suite('source/engine/test-body-resource-attachment.test.
         }, { message: 'Test body already has resource attachments.' });
         scope.assert.throws(function attachDuplicateResourceScope() {
             attachTestBodyResourceAttachments(function resourceDuplicateBody(
-                testScope: OverkillScope
-            ): ReturnType<TestBody> {
+                testScope: TestScope
+            ): ReturnType<EngineCaseBody> {
                 testScope.assert.true(true);
 
                 return testScope.assert.collect();
@@ -230,8 +235,8 @@ export const testNode = suite('source/engine/test-body-resource-attachment.test.
         }, { message: 'Resource scope "scratch" is attached multiple times.' });
         scope.assert.throws(function attachDuplicateRuntimeScope() {
             attachTestBodyResourceAttachments(function runtimeDuplicateBody(
-                testScope: OverkillScope
-            ): ReturnType<TestBody> {
+                testScope: TestScope
+            ): ReturnType<EngineCaseBody> {
                 testScope.assert.true(true);
 
                 return testScope.assert.collect();

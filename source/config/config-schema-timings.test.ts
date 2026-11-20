@@ -1,10 +1,10 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { safeParse } from '@schema-hub/zod-error-formatter';
 
 import { timingProfilePolicySchema } from './schema.ts';
 
-function assertValidationSuccess(scope: OverkillScope, data: unknown): void {
+function assertValidationSuccess(scope: TestScope, data: unknown): void {
     const result = safeParse(timingProfilePolicySchema, data);
 
     if (!result.success) {
@@ -17,7 +17,7 @@ function assertValidationSuccess(scope: OverkillScope, data: unknown): void {
 }
 
 function assertValidationFailure(
-    scope: OverkillScope,
+    scope: TestScope,
     data: unknown,
     expectedIssues: readonly string[]
 ): void {
@@ -32,14 +32,14 @@ function assertValidationFailure(
     scope.assert.deepEqual(result.error.issues, expectedIssues);
 }
 
-export const testNode = suite('source/config/config-schema-timings.test.ts', [
-    test('timing profile schema accepts collection modes', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Timing profile schema', [
+    test('accepts collection modes', function (scope) {
         assertValidationSuccess(scope, { collection: 'summary' });
         assertValidationSuccess(scope, { collection: 'precise' });
 
         return scope.assert.collect();
     }),
-    test('timing profile schema rejects missing collection and extra fields', function (scope: OverkillScope) {
+    test('rejects missing collection and extra fields', function (scope) {
         assertValidationFailure(
             scope,
             { extra: true },

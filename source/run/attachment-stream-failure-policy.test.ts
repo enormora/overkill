@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test, testDouble } from '@overkill-dev/test';
+import { type TestNode, suite, test, testDouble } from '@overkill-dev/test';
 
 import { createAttachmentStream, type AttachmentOperations } from './attachment-writer.ts';
 import type { AttachmentResponse } from './attachment-protocol.ts';
@@ -14,8 +14,8 @@ function operations(send: AttachmentOperations['send']): AttachmentOperations {
         release: testDouble.returns(undefined)
     };
 }
-export const testNode = authoredSuite('attachment stream failure admission', [
-    test('rejects text chunks supplied to binary streams', async function (scope: TestScope) {
+export const testNode: TestNode = suite('attachment stream failure admission', [
+    test('rejects text chunks supplied to binary streams', async function (scope) {
         const send = testDouble.rejects(new Error('Invalid chunks must not be sent.'));
         const stream = createAttachmentStream(operations(send), 1, 'binary');
         await scope.assert.rejects(async function () {
@@ -24,7 +24,7 @@ export const testNode = authoredSuite('attachment stream failure admission', [
         scope.assert.equal(send.callCount, 0);
         return scope.assert.collect();
     }),
-    test('retains a classified non-Error write failure for subsequent writes', async function (scope: TestScope) {
+    test('retains a classified non-Error write failure for subsequent writes', async function (scope) {
         const send = testDouble.rejects(42);
         const stream = createAttachmentStream(operations(send), 1, 'text');
         await scope.assert.rejects(async function () {
@@ -36,7 +36,7 @@ export const testNode = authoredSuite('attachment stream failure admission', [
         scope.assert.equal(send.callCount, 1);
         return scope.assert.collect();
     }),
-    test('settles a failed pending write before requesting close', async function (scope: TestScope) {
+    test('settles a failed pending write before requesting close', async function (scope) {
         const pending = Promise.withResolvers<AttachmentResponse>();
         const sent: string[] = [];
         const stream = createAttachmentStream(

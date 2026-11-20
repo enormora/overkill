@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import {
     checkLinearizability,
@@ -80,7 +80,7 @@ function oracle(history: readonly Event[], pending: boolean, value: number): boo
     });
 }
 
-export const testNode = authoredSuite('linearizability history policy', [
+export const testNode: TestNode = suite('linearizability history policy', [
     test('matches an independent subset and permutation oracle', async function (scope) {
         const schedules = permutations([ 0, 1, 2, 3 ]).filter(function valid(events) {
             return events.indexOf(2) > events.indexOf(0) && events.indexOf(3) > events.indexOf(1);

@@ -1,11 +1,11 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { historyStorage, historyStorageScenario } from '../test-support/history-storage.ts';
 
-export const testNode = authoredSuite('history storage ownership', [
+export const testNode: TestNode = suite('history storage ownership', [
     test(
         'reads and writes records and lists JSON files within the selected directory',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = historyStorage(historyStorageScenario);
             await fixture.store.write('/project/state/runs/one.json', 'one');
             await fixture.store.write('/project/state/runs/notes.txt', 'ignored');
@@ -16,7 +16,7 @@ export const testNode = authoredSuite('history storage ownership', [
             return scope.assert.collect();
         }
     ),
-    test('releases its lock after returning the operation result', async function (scope: TestScope) {
+    test('releases its lock after returning the operation result', async function (scope) {
         const fixture = historyStorage(historyStorageScenario);
         scope.assert.equal(
             await fixture.store.withLock(async function () {
@@ -27,7 +27,7 @@ export const testNode = authoredSuite('history storage ownership', [
         scope.assert.deepEqual(fixture.events, [ 'prepare:/project/state', 'lock', 'release-lock' ]);
         return scope.assert.collect();
     }),
-    test('releases locks when operations fail', async function (scope: TestScope) {
+    test('releases locks when operations fail', async function (scope) {
         const fixture = historyStorage(historyStorageScenario);
         const failure = new Error('Operation failed.');
         await scope.assert.rejects(async function () {
@@ -38,7 +38,7 @@ export const testNode = authoredSuite('history storage ownership', [
         scope.assert.deepEqual(fixture.events, [ 'prepare:/project/state', 'lock', 'release-lock' ]);
         return scope.assert.collect();
     }),
-    test('surfaces compromised locks even when the operation succeeds', async function (scope: TestScope) {
+    test('surfaces compromised locks even when the operation succeeds', async function (scope) {
         const failure = new Error('Lock compromised.');
         const fixture = historyStorage({ ...historyStorageScenario, lockCompromised: failure });
         await scope.assert.rejects(async function () {
@@ -49,7 +49,7 @@ export const testNode = authoredSuite('history storage ownership', [
         scope.assert.equal(fixture.events.at(-1), 'release-lock');
         return scope.assert.collect();
     }),
-    test('does not execute operations when lock acquisition fails', async function (scope: TestScope) {
+    test('does not execute operations when lock acquisition fails', async function (scope) {
         const failure = new Error('Cannot lock.');
         const fixture = historyStorage({ ...historyStorageScenario, lockFailure: failure });
         let executed = false;
@@ -63,7 +63,7 @@ export const testNode = authoredSuite('history storage ownership', [
     }),
     test(
         'registers an owner under the history lock and releases its lease before removal',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = historyStorage(historyStorageScenario);
             const release = await fixture.store.beginRun('unit-run');
             const ownerPath = '/project/state/active-runs/unit-run.json';
@@ -81,7 +81,7 @@ export const testNode = authoredSuite('history storage ownership', [
             return scope.assert.collect();
         }
     ),
-    test('removes a newly created owner when lease acquisition fails', async function (scope: TestScope) {
+    test('removes a newly created owner when lease acquisition fails', async function (scope) {
         const failure = new Error('Cannot lease.');
         const fixture = historyStorage({ ...historyStorageScenario, leaseFailure: failure });
         await scope.assert.rejects(async function () {
@@ -94,7 +94,7 @@ export const testNode = authoredSuite('history storage ownership', [
         ]);
         return scope.assert.collect();
     }),
-    test('reports a compromised run lease after releasing its owner', async function (scope: TestScope) {
+    test('reports a compromised run lease after releasing its owner', async function (scope) {
         const failure = new Error('Lease compromised.');
         const fixture = historyStorage({ ...historyStorageScenario, leaseCompromised: failure });
         const release = await fixture.store.beginRun('unit-run');

@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import type { RunOrchestratorDependencies } from '../run/run-orchestrator-dependencies.ts';
@@ -11,7 +11,7 @@ function recordPolicyMessage(): void {
     return undefined;
 }
 
-async function assertPoolFake(scope: OverkillScope, dependencies: FixtureDependencies): Promise<void> {
+async function assertPoolFake(scope: TestScope, dependencies: FixtureDependencies): Promise<void> {
     const pool = dependencies.createWorkerPool({
         cwd: '/project',
         hostProcess: { kind: 'direct' },
@@ -33,7 +33,7 @@ async function assertPoolFake(scope: OverkillScope, dependencies: FixtureDepende
     await pool.destroy();
 }
 
-async function assertReporterFakes(scope: OverkillScope, dependencies: FixtureDependencies): Promise<void> {
+async function assertReporterFakes(scope: TestScope, dependencies: FixtureDependencies): Promise<void> {
     const delivery = await dependencies.reporterDispatcher.createDelivery([], createPlainOutputRenderer());
     const tracked = await dependencies.reporterDispatcher.trackRunnerErrorDelivery(async function work() {
         return 'result';
@@ -54,7 +54,7 @@ async function assertReporterFakes(scope: OverkillScope, dependencies: FixtureDe
     scope.assert.equal(tracked.result, 'result');
 }
 
-async function assertStorageAndOutputFakes(scope: OverkillScope, dependencies: FixtureDependencies): Promise<void> {
+async function assertStorageAndOutputFakes(scope: TestScope, dependencies: FixtureDependencies): Promise<void> {
     dependencies.liveOutput.stderr.write(Buffer.from('stderr'));
     dependencies.liveOutput.stdout.write(Buffer.from('stdout'));
     await dependencies.runtimeStateStore.write('/history', '{}');
@@ -62,7 +62,7 @@ async function assertStorageAndOutputFakes(scope: OverkillScope, dependencies: F
     scope.assert.equal(await dependencies.runtimeStateStore.read('/history') === null, true);
 }
 
-function assertRuntimePolicyFakes(scope: OverkillScope, dependencies: FixtureDependencies): void {
+function assertRuntimePolicyFakes(scope: TestScope, dependencies: FixtureDependencies): void {
     const restoreIpcRestriction = dependencies.runtimeCapabilityPolicy.observeIpcListeners(recordPolicyMessage);
     const restoreProcessRestriction = dependencies.runtimeCapabilityPolicy.observeProcessExit(
         function unexpectedPrematureExit(): never {
@@ -76,7 +76,7 @@ function assertRuntimePolicyFakes(scope: OverkillScope, dependencies: FixtureDep
     restoreProcessRestriction();
 }
 
-async function assertUnsupportedFakes(scope: OverkillScope, dependencies: FixtureDependencies): Promise<void> {
+async function assertUnsupportedFakes(scope: TestScope, dependencies: FixtureDependencies): Promise<void> {
     scope.assert.throws(function createProcessUsageTracker() {
         dependencies.createProcessUsageTracker({ samplingIntervalMilliseconds: 1 });
     }, { message: 'Test fixture dependency is not configured.' });
@@ -91,10 +91,10 @@ async function assertUnsupportedFakes(scope: OverkillScope, dependencies: Fixtur
     }, { message: 'Test fixture dependency is not configured.' });
 }
 
-export const testNode = suite('source/test-support/worker-pool-runtime-fixtures.test.ts', [
+export const testNode: TestNode = suite('Worker pool runtime fixtures', [
     test(
         'fakeWorkerPoolRuntimeDependencies() creates observable worker-pool fakes',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const dependencies = fakeWorkerPoolRuntimeDependencies();
 
             scope.assert.equal(dependencies.createSeed(), 42n);

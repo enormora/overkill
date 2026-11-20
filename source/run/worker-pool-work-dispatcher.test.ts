@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { workIdentityKey } from '../engine/identity.ts';
 import type { DynamicWorkUnitId, PlacementTraceEntry } from './placement-trace.ts';
@@ -290,19 +290,19 @@ function pullRequiredLease(
     return lease;
 }
 
-function assertUnsplitLease(scope: OverkillScope, plan: PlacementPlan): void {
+function assertUnsplitLease(scope: TestScope, plan: PlacementPlan): void {
     const lease = pullRequiredLease(createWorkDispatcher(fakeWorkerRuntime(plan), plan), firstLane(plan));
 
     scope.assert.equal(lease.unit.work.length, 2);
     scope.assert.deepEqual(lease.traceUnit, lease.unit.id);
 }
 
-function assertFreshReservation(scope: OverkillScope, lease: WorkerPoolUnitLease): void {
+function assertFreshReservation(scope: TestScope, lease: WorkerPoolUnitLease): void {
     scope.assert.deepEqual(lease.reservation.faultDomains, [ 'rack' ]);
     scope.assert.deepEqual(lease.reservation.hardKeys, [ 'database' ]);
 }
 
-function assertRetainedReservation(scope: OverkillScope, lease: WorkerPoolUnitLease): void {
+function assertRetainedReservation(scope: TestScope, lease: WorkerPoolUnitLease): void {
     scope.assert.deepEqual(lease.reservation.faultDomains, []);
     scope.assert.deepEqual(lease.reservation.hardKeys, []);
 }
@@ -337,7 +337,7 @@ function splitLeaseMembers(expectation: SplitLeaseExpectation): readonly [
 }
 
 function assertSplitLeases(
-    scope: OverkillScope,
+    scope: TestScope,
     expectation: SplitLeaseExpectation
 ): void {
     const [ firstMember, secondMember ] = splitLeaseMembers(expectation);
@@ -367,14 +367,14 @@ function assertSplitLeases(
     scope.assert.deepEqual(expectation.traceEntry.parent, expectation.unit.id);
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-work-dispatcher.test.ts',
+    title: 'Worker pool work dispatcher',
     children: [
         test({
             ...testCaseMetadata,
-            title: 'worker-pool dynamic dispatcher releases constraints before retrying work',
-            body(scope: OverkillScope) {
+            title: 'releases constraints before retrying work',
+            body(scope) {
                 const plan = retainedReservationPlan();
                 const lane = firstLane(plan);
                 const dispatcher = createWorkDispatcher(fakeWorkerRuntime(plan), plan);
@@ -393,8 +393,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool dynamic dispatcher shares hard-key reservations within a batch',
-            body(scope: OverkillScope) {
+            title: 'shares hard-key reservations within a batch',
+            body(scope) {
                 const original = batchingPlan('reuse');
                 const plan = { ...original, units: original.units.map(constrainedUnit) };
                 const dispatcher = createWorkDispatcher(fakeWorkerRuntime(plan), plan);
@@ -409,8 +409,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool dynamic dispatcher retains partial leases on their lane',
-            body(scope: OverkillScope) {
+            title: 'retains partial leases on their lane',
+            body(scope) {
                 const plan = retainedReservationPlan();
                 const dispatcher = createWorkDispatcher(fakeWorkerRuntime(plan), plan);
                 const firstLease = pullRequiredLease(dispatcher, firstLane(plan));
@@ -430,8 +430,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool dynamic dispatcher splits eligible pending units',
-            body(scope: OverkillScope) {
+            title: 'splits eligible pending units',
+            body(scope) {
                 const unit = multiWorkUnit();
                 const plan = splitCandidatePlan(unit);
                 const runtime = fakeWorkerRuntime(plan);
@@ -447,8 +447,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool dynamic dispatcher batches compatible reusable units',
-            body(scope: OverkillScope) {
+            title: 'batches compatible reusable units',
+            body(scope) {
                 const plan = batchingPlan('reuse');
                 const dispatcher = createWorkDispatcher(fakeWorkerRuntime(plan), plan);
                 const lease = pullRequiredLease(dispatcher, firstLane(plan));
@@ -476,8 +476,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool dynamic dispatcher keeps fresh-worker units unbatched',
-            body(scope: OverkillScope) {
+            title: 'keeps fresh-worker units unbatched',
+            body(scope) {
                 const plan = batchingPlan('fresh-worker-per-unit');
                 const dispatcher = createWorkDispatcher(fakeWorkerRuntime(plan), plan);
                 const firstLease = pullRequiredLease(dispatcher, firstLane(plan));
@@ -493,8 +493,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool dynamic dispatcher keeps ineligible units whole',
-            body(scope: OverkillScope) {
+            title: 'keeps ineligible units whole',
+            body(scope) {
                 for (const variant of noSplitVariants()) {
                     assertUnsplitLease(scope, variant.plan);
                 }
@@ -504,8 +504,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool dynamic dispatcher keeps crash requeues whole',
-            body(scope: OverkillScope) {
+            title: 'keeps crash requeues whole',
+            body(scope) {
                 const unit = multiWorkUnit();
                 const plan = twoLanePlan(unit);
                 const dispatcher = createWorkDispatcher(fakeWorkerRuntime(plan), plan);
@@ -523,7 +523,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool pending split rejects malformed empty child sets',
-            body(scope: OverkillScope) {
+            body(scope) {
                 const unit = {
                     ...multiWorkUnit(),
                     work: []

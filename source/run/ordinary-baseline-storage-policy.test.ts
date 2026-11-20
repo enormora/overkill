@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { storedBaseline } from '../test-support/baseline-case-fixture.ts';
 
@@ -12,8 +12,8 @@ import type { StoredOrdinaryBaseline } from './baseline-record.ts';
 import { openOrdinaryBaselineStore } from './baseline-store.ts';
 import { createBaselineStorage } from './baseline-storage.ts';
 
-export const testNode = authoredSuite('ordinary baseline storage policy', [
-    test('creates, updates and removes baselines under a publication lock', async function (scope: TestScope) {
+export const testNode: TestNode = suite('ordinary baseline storage policy', [
+    test('creates, updates and removes baselines under a publication lock', async function (scope) {
         const fixture = await ordinaryBaselineStorage(ordinaryStorageScenario);
         const created = await fixture.store.publish([ { kind: 'create', baseline: storedBaseline } ]);
         const updated = { ...storedBaseline, payload: { kind: 'text' as const, text: '43' } };
@@ -34,7 +34,7 @@ export const testNode = authoredSuite('ordinary baseline storage policy', [
         });
         return scope.assert.collect();
     }),
-    test('rejects stale create, update and removal plans', async function (scope: TestScope) {
+    test('rejects stale create, update and removal plans', async function (scope) {
         const fixture = await ordinaryBaselineStorage(ordinaryStorageScenario);
         const file = fixture.storage.location(storedBaseline);
         fixture.seed(file, fixture.storage.encoded(storedBaseline));
@@ -53,7 +53,7 @@ export const testNode = authoredSuite('ordinary baseline storage policy', [
         scope.assert.equal(fixture.files.size, 1);
         return scope.assert.collect();
     }),
-    test('enforces serialized artifact limits before writing', async function (scope: TestScope) {
+    test('enforces serialized artifact limits before writing', async function (scope) {
         const fixture = await ordinaryBaselineStorage(ordinaryStorageScenario);
         const storage = createBaselineStorage<StoredOrdinaryBaseline>(
             { ...ordinaryStorageFormat, root: '/project', directory: '/project/baselines', maxBytes: 1 },
@@ -64,7 +64,7 @@ export const testNode = authoredSuite('ordinary baseline storage policy', [
         }, { message: 'Baseline exceeds the configured artifact byte limit.' });
         return scope.assert.collect();
     }),
-    test('rejects lexical and physical escapes from the project root', async function (scope: TestScope) {
+    test('rejects lexical and physical escapes from the project root', async function (scope) {
         const fixture = await ordinaryBaselineStorage(ordinaryStorageScenario);
         await scope.assert.rejects(async function () {
             await fixture.storage.checkDirectory('/outside');
@@ -74,13 +74,13 @@ export const testNode = authoredSuite('ordinary baseline storage policy', [
         }, { message: 'Baseline directory must remain inside the project root.' });
         return scope.assert.collect();
     }),
-    test('rejects symbolic link directories', async function (scope: TestScope) {
+    test('rejects symbolic link directories', async function (scope) {
         await scope.assert.rejects(async function () {
             return await ordinaryBaselineStorage({ ...ordinaryStorageScenario, link: true });
         }, { message: 'Baseline directories cannot be symbolic links.' });
         return scope.assert.collect();
     }),
-    test('rejects nonregular and oversized baseline files', async function (scope: TestScope) {
+    test('rejects nonregular and oversized baseline files', async function (scope) {
         const fixture = await ordinaryBaselineStorage({ ...ordinaryStorageScenario, file: false });
         const file = fixture.storage.location(storedBaseline);
         fixture.seed(file, '{}');
@@ -103,7 +103,7 @@ export const testNode = authoredSuite('ordinary baseline storage policy', [
         }, { message: /Invalid baseline file/u });
         return scope.assert.collect();
     }),
-    test('distinguishes missing files from files disappearing during reads', async function (scope: TestScope) {
+    test('distinguishes missing files from files disappearing during reads', async function (scope) {
         const fixture = await ordinaryBaselineStorage({ ...ordinaryStorageScenario, missingRead: true });
         const file = fixture.storage.location(storedBaseline);
         scope.assert.equal(await fixture.storage.read(file), null);
@@ -113,7 +113,7 @@ export const testNode = authoredSuite('ordinary baseline storage policy', [
         }, { message: 'Baseline disappeared while reading.' });
         return scope.assert.collect();
     }),
-    test('rejects baselines stored under the wrong identity', async function (scope: TestScope) {
+    test('rejects baselines stored under the wrong identity', async function (scope) {
         const fixture = await ordinaryBaselineStorage(ordinaryStorageScenario);
         const file = '/project/baselines/content-snapshot/wrong.baseline.json';
         fixture.seed(file, fixture.storage.encoded(storedBaseline));
@@ -122,7 +122,7 @@ export const testNode = authoredSuite('ordinary baseline storage policy', [
         }, { message: 'Baseline path does not match its identity.' });
         return scope.assert.collect();
     }),
-    test('rejects files disappearing during baseline inventory', async function (scope: TestScope) {
+    test('rejects files disappearing during baseline inventory', async function (scope) {
         const fixture = await ordinaryBaselineStorage(ordinaryStorageScenario);
         const access = {
             ...fixture.access,

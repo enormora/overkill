@@ -1,9 +1,9 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
 import { createMemoryHistoryStorage } from '../test-support/memory-history-storage.ts';
-import { testNode as failures } from './history-repair-failures.test.ts';
+
 import type { HistoryStorage } from './history-storage-types.ts';
 import { readCompactHistory, updateCompactHistory } from './history-storage.ts';
 import { repairHistory } from './history-repair.ts';
@@ -47,11 +47,10 @@ async function writeMergeHistoryRecords(store: HistoryStorage): Promise<void> {
     );
 }
 
-export const testNode = authoredSuite('history schema compatibility', [
-    failures,
+export const testNode: TestNode = suite('history schema compatibility', [
     test(
         'repair preserves summaries and counters after detailed records are pruned',
-        async function (scope: TestScope) {
+        async function (scope) {
             const store = createMemoryHistoryStorage();
             await updateCompactHistory(store, completedHistoryRecord('pruned'), context);
             await repairHistory(store, repair);
@@ -59,7 +58,7 @@ export const testNode = authoredSuite('history schema compatibility', [
             return scope.assert.collect();
         }
     ),
-    test('future schemas cannot be overwritten even by explicit repair', async function (scope: TestScope) {
+    test('future schemas cannot be overwritten even by explicit repair', async function (scope) {
         const store = createMemoryHistoryStorage();
         const source = JSON.stringify({ version: 99 });
         await store.write(`${directory}/history/index.json`, source);
@@ -108,7 +107,7 @@ export const testNode = authoredSuite('history schema compatibility', [
     }),
     test(
         'repair restores duration observations from retained runs without double counting',
-        async function (scope: TestScope) {
+        async function (scope) {
             const store = createMemoryHistoryStorage();
             await store.write(`${directory}/runs/old.json`, JSON.stringify(completedHistoryRecord('old')));
             await repairHistory(store, repair);

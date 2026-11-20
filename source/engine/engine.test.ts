@@ -1,17 +1,16 @@
-import { type TestScope as OverkillScope, suite, test, doubleUsage, rule, testDouble } from '@overkill-dev/test';
+import { type TestNode, suite, test, doubleUsage, rule, testDouble } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createEngine } from './engine.ts';
-import { testNode as familyTests } from './family-run.test.ts';
+
 import type { ExecutionDriver, ExecuteOptions } from './execution.ts';
 import { createPlainOutputRenderer } from './reporter-output.ts';
 import type { RunResult } from './run-result.ts';
 
-export const testNode = suite('source/engine/engine.test.ts', [
-    familyTests,
-    test('engine.execute() invokes the injected execute dependency', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Engine planning and execution', [
+    test('engine.execute() invokes the injected execute dependency', async function (scope) {
         const expectedResult = runResultFactory.build({ totalWallTimeMicroseconds: 42 });
         const execute = testDouble<ExecutionDriver>({
             fallback: rule.calls(async function executeInjectedPlan(): Promise<RunResult> {

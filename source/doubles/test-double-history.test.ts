@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { DoubleCall } from './double-history-record.ts';
 import { rule } from './double-rule.ts';
@@ -30,8 +30,8 @@ function createRecordedSnapshotLoader(): RecordedSnapshotLoader {
     return { actual, input, loadValue, output };
 }
 
-export const testNode = suite('source/doubles/test-double-history.test.ts', [
-    test('history array snapshots are shallow copies', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Test double history', [
+    test('history array snapshots are shallow copies', function (scope: TestScope) {
         const { actual, input, loadValue, output } = createRecordedSnapshotLoader();
         const calls = loadValue.calls as unknown as unknown[];
 
@@ -45,7 +45,7 @@ export const testNode = suite('source/doubles/test-double-history.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('history record snapshots are shallow copies', function (scope: OverkillScope) {
+    test('history record snapshots are shallow copies', function (scope: TestScope) {
         const { actual, input, loadValue, output } = createRecordedSnapshotLoader();
         const firstCall = loadValue.firstCall as DoubleCall | null;
 
@@ -69,7 +69,7 @@ export const testNode = suite('source/doubles/test-double-history.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('history result snapshots keep value references', function (scope: OverkillScope) {
+    test('history result snapshots keep value references', function (scope: TestScope) {
         const { actual, loadValue, output } = createRecordedSnapshotLoader();
         const outputResult = loadValue.firstResult;
 
@@ -81,7 +81,7 @@ export const testNode = suite('source/doubles/test-double-history.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('history properties are non-enumerable', function (scope: OverkillScope) {
+    test('history properties are non-enumerable', function (scope) {
         const loadValue = testDouble.returns('value');
 
         loadValue('id');
@@ -92,7 +92,7 @@ export const testNode = suite('source/doubles/test-double-history.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('reset clears history and restarts indexes', function (scope: OverkillScope) {
+    test('reset clears history and restarts indexes', function (scope) {
         type LoadValue = (id: string) => string;
 
         const seen: unknown[] = [];
@@ -115,7 +115,7 @@ export const testNode = suite('source/doubles/test-double-history.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('reset rewinds ordered rules and sequence behaviors', function (scope: OverkillScope) {
+    test('reset rewinds ordered rules and sequence behaviors', function (scope) {
         type LoadValue = () => string;
 
         const loadValue = testDouble<LoadValue>({
@@ -131,7 +131,7 @@ export const testNode = suite('source/doubles/test-double-history.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('sequence behavior state is independent per double', function (scope: OverkillScope) {
+    test('sequence behavior state is independent per double', function (scope) {
         type LoadValue = () => string;
 
         const sequence = rule.sequence([ 'first', 'second' ]);

@@ -1,11 +1,11 @@
-import { type TestScope, suite as authoredSuite, test, testDouble } from '@overkill-dev/test';
+import { type TestNode, suite, test, testDouble } from '@overkill-dev/test';
 
 import { memoryHistoryAccess, idleHistoryScenario } from '../test-support/history-access.ts';
 import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
 import { openHistoryAccess, inspectDetailedRecordState } from './history-state-access.ts';
 
-export const testNode = authoredSuite('history ownership metadata boundaries', [
-    test('rejects missing metadata for a listed run owner', async function (scope: TestScope) {
+export const testNode: TestNode = suite('history ownership metadata boundaries', [
+    test('rejects missing metadata for a listed run owner', async function (scope) {
         const fixture = await memoryHistoryAccess({
             ...idleHistoryScenario,
             owners: [ { name: 'missing.json', pid: 42, host: 'test-host' } ]
@@ -22,7 +22,7 @@ export const testNode = authoredSuite('history ownership metadata boundaries', [
         scope.assert.deepEqual(fixture.removed, []);
         return scope.assert.collect();
     }),
-    test('preserves non-error storage failures as classified history errors', async function (scope: TestScope) {
+    test('preserves non-error storage failures as classified history errors', async function (scope) {
         const fixture = await memoryHistoryAccess(idleHistoryScenario);
         await scope.assert.rejects(async function () {
             await fixture.access.guarded(async function () {
@@ -31,7 +31,7 @@ export const testNode = authoredSuite('history ownership metadata boundaries', [
         }, { name: 'RunCollectionError', message: 'History operation failed: 42', cause: { exact: 42 } });
         return scope.assert.collect();
     }),
-    test('marks valid records without replay plans as unavailable', async function (scope: TestScope) {
+    test('marks valid records without replay plans as unavailable', async function (scope) {
         const fixture = await memoryHistoryAccess(idleHistoryScenario);
         const record = { ...completedHistoryRecord('record'), replayPlan: null };
         scope.assert.equal(
@@ -47,7 +47,7 @@ export const testNode = authoredSuite('history ownership metadata boundaries', [
     }),
     test(
         'permits nested state directories while rejecting directories containing the project',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = await memoryHistoryAccess({ ...idleHistoryScenario, stateDirectory: '.overkill/nested' });
             await fixture.access.assertOwnedLocation();
             const access = openHistoryAccess({

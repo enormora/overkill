@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineResource, defineRuntime } from '../resources/resources.ts';
 import { runtimeMatrixDefinitionApi } from '../resources/runtime-matrix-definition.ts';
@@ -48,8 +48,8 @@ function selectedWork(variantId: string | null): WorkId {
         runtimes: [ { ...runtime.id, name: matrix.name, variantId } ]
     };
 }
-export const testNode = authoredSuite('runner managed runtime composition', [
-    test('requires runner selection before composing runtime matrix resources', function (scope: TestScope) {
+export const testNode: TestNode = suite('runner managed runtime composition', [
+    test('requires runner selection before composing runtime matrix resources', function (scope) {
         scope.assert.throws(function () {
             return combinedResourceEntries(steps, null);
         }, {
@@ -62,7 +62,7 @@ export const testNode = authoredSuite('runner managed runtime composition', [
         });
         return scope.assert.collect();
     }),
-    test('rejects missing and unknown matrix variant selections', function (scope: TestScope) {
+    test('rejects missing and unknown matrix variant selections', function (scope) {
         scope.assert.throws(function () {
             return combinedResourceEntries(steps, selectedWork(null));
         }, {
@@ -86,13 +86,13 @@ export const testNode = authoredSuite('runner managed runtime composition', [
         scope.assert.deepEqual(lifecycleScenarioBindings(dependency), { mode: 'alternate' });
         return scope.assert.collect();
     }),
-    test('reuses the same scoped resource identity for repeated runtime acquisition', function (scope: TestScope) {
+    test('reuses the same scoped resource identity for repeated runtime acquisition', function (scope) {
         const first = combinedResourceEntries(steps, selectedWork('first'));
         const second = combinedResourceEntries(steps, selectedWork('first'));
         scope.assert.equal(Object.values(first)[0], Object.values(second)[0]);
         return scope.assert.collect();
     }),
-    test('exposes selected matrix handles through composed runtime contexts', async function (scope: TestScope) {
+    test('exposes selected matrix handles through composed runtime contexts', async function (scope) {
         const work = selectedWork('first');
         const resources = combinedResourceEntries(steps, work);
         const handles = new Map(
@@ -108,7 +108,7 @@ export const testNode = authoredSuite('runner managed runtime composition', [
         await composed.disposeOnce({ signal: AbortSignal.any([]) });
         return scope.assert.collect();
     }),
-    test('reassembles nested composed runtime handles without losing matrix selection', function (scope: TestScope) {
+    test('reassembles nested composed runtime handles without losing matrix selection', function (scope) {
         const work = selectedWork('first');
         const resources = combinedResourceEntries(steps, work);
         const handles = new Map(

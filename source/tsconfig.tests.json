@@ -10,27 +10,6 @@
             ],
             "typescript/ast": [
                 "../node_modules/typescript-beta/dist/ast/index.d.ts"
-            ],
-            "@overkill-dev/assert": [
-                "./packages/assert/assert.entry-point.ts"
-            ],
-            "@overkill-dev/doubles": [
-                "./packages/doubles/doubles.entry-point.ts"
-            ],
-            "@overkill-dev/engine": [
-                "./packages/engine/engine.entry-point.ts"
-            ],
-            "@overkill-dev/engine/*": [
-                "./*"
-            ],
-            "@overkill-dev/reporter-line": [
-                "./packages/reporter-line/reporter-line.entry-point.ts"
-            ],
-            "@overkill-dev/reporter-benchmark-html": [
-                "./packages/reporter-benchmark-html/reporter-benchmark-html.entry-point.ts"
-            ],
-            "@overkill-dev/test/reporters": [
-                "./packages/test/reporters.entry-point.ts"
             ]
         },
         "rootDir": "..",
@@ -48,7 +27,8 @@
         "./property/fixtures/property-values-v1.json",
         "./property/fixtures/property-graph-v1.json",
         "./property/fixtures/property-custom-v1.json",
-        "./property/fixtures/property-graph-state-v1.json"
+        "./property/fixtures/property-graph-state-v1.json",
+        "../overkill.config.ts"
     ],
     "exclude": [
         "./**/*.type-test.ts"

@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineOutputRenderer, type DefinedOutputRenderer } from '../packages/engine/engine.entry-point.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
@@ -42,8 +42,8 @@ async function loadModule(module: unknown): Promise<LoadedConfig> {
     return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
-export const testNode = suite('source/config/config-exports.test.ts', [
-    test('loadConfig() accepts branded reporter and output renderer values', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Configuration exports', [
+    test('accepts branded reporter and output renderer values', async function (scope: TestScope) {
         const config = await loadModule({
             config: {
                 outputRenderer: outputRenderer(),
@@ -68,7 +68,7 @@ export const testNode = suite('source/config/config-exports.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() rejects unbranded reporter values', async function (scope: OverkillScope) {
+    test('rejects unbranded reporter values', async function (scope) {
         await scope.assert.rejects(async function loadInvalidConfig() {
             await loadModule({
                 config: {
@@ -92,7 +92,7 @@ export const testNode = suite('source/config/config-exports.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() rejects unbranded output renderer values', async function (scope: OverkillScope) {
+    test('rejects unbranded output renderer values', async function (scope) {
         await scope.assert.rejects(async function loadInvalidConfig() {
             await loadModule({
                 config: {
@@ -109,7 +109,7 @@ export const testNode = suite('source/config/config-exports.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() rejects config files without a named config export', async function (scope: OverkillScope) {
+    test('rejects config files without a named config export', async function (scope) {
         await scope.assert.rejects(async function loadInvalidConfig() {
             await loadModule({ projectConfig: {} });
         }, {
@@ -119,7 +119,7 @@ export const testNode = suite('source/config/config-exports.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() rejects config files with a default export', async function (scope: OverkillScope) {
+    test('rejects config files with a default export', async function (scope) {
         await scope.assert.rejects(async function loadInvalidConfig() {
             await loadModule({ default: {} });
         }, {
@@ -130,8 +130,8 @@ export const testNode = suite('source/config/config-exports.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'loadConfig() rejects config files with named config and default exports',
-        async function (scope: OverkillScope) {
+        'rejects config files with named config and default exports',
+        async function (scope) {
             await scope.assert.rejects(async function loadInvalidConfig() {
                 await loadModule({ config: {}, default: {} });
             }, {
@@ -142,7 +142,7 @@ export const testNode = suite('source/config/config-exports.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('loadConfig() rejects config files with extra runtime exports', async function (scope: OverkillScope) {
+    test('rejects config files with extra runtime exports', async function (scope) {
         await scope.assert.rejects(async function loadInvalidConfig() {
             await loadModule({ config: {}, extra: {} });
         }, {

@@ -1,13 +1,13 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { testDouble } from './test-double.ts';
 
 type ConstructedClient = { readonly name: string; };
 
-export const testNode = suite('source/doubles/double-history-empty.test.ts', [
+export const testNode: TestNode = suite('Double history empty', [
     test(
         'valid history indexes distinguish missing records from recorded constructions',
-        function (scope: OverkillScope) {
+        function (scope) {
             const Client = testDouble.constructs<new (name: string) => ConstructedClient>({
                 name: 'client'
             });
@@ -24,7 +24,7 @@ export const testNode = suite('source/doubles/double-history-empty.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('iterator history remains empty until the first iteration', function (scope: OverkillScope) {
+    test('iterator history remains empty until the first iteration', function (scope) {
         const sequence = testDouble.yields<() => Generator<number, undefined, unknown>>([ 42 ], undefined);
         scope.assert.equal(sequence.firstIteratorEvent, null);
         const iterator = sequence();
@@ -36,7 +36,7 @@ export const testNode = suite('source/doubles/double-history-empty.test.ts', [
         return scope.assert.collect();
     }),
 
-    test('empty history boundary accessors return null snapshots', function (scope: OverkillScope) {
+    test('empty history boundary accessors return null snapshots', function (scope) {
         const loadValue = testDouble.returns('value');
 
         scope.assert.equal(loadValue.firstCall, null);
@@ -50,7 +50,7 @@ export const testNode = suite('source/doubles/double-history-empty.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('invalid history indexes return null snapshots', function (scope: OverkillScope) {
+    test('invalid history indexes return null snapshots', function (scope) {
         const loadValue = testDouble.returns('value');
 
         scope.assert.equal(loadValue.nthCall(-1), null);

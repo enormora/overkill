@@ -1,8 +1,7 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 
-import { testNode as policy } from './reporting-policy-context.test.ts';
 import {
     createReportingContext,
     createRunReportingContext,
@@ -11,9 +10,8 @@ import {
     relativizeSourceLocationPath
 } from './reporting-context.ts';
 
-export const testNode = suite('source/engine/reporting-context.test.ts', [
-    policy,
-    test('run reports accept absent and partial preparation facts', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Reporting context', [
+    test('run reports accept absent and partial preparation facts', function (scope) {
         const reporting = createRunReportingContext();
         const result = runResultFactory.build();
         reporting.observeFacts(null);
@@ -34,7 +32,7 @@ export const testNode = suite('source/engine/reporting-context.test.ts', [
     }),
     test(
         'relativizeSourceLocationPath() renders files below project root as relative paths',
-        function (scope: OverkillScope) {
+        function (scope) {
             scope.assert.equal(
                 relativizeSourceLocationPath({
                     column: 5,
@@ -50,7 +48,7 @@ export const testNode = suite('source/engine/reporting-context.test.ts', [
     ),
     test(
         'relativizeSourceLocationPath() renders Windows files below project root as relative paths',
-        function (scope: OverkillScope) {
+        function (scope) {
             scope.assert.equal(
                 relativizeSourceLocationPath({
                     column: 5,
@@ -66,7 +64,7 @@ export const testNode = suite('source/engine/reporting-context.test.ts', [
     ),
     test(
         'formatSourceLocation() updates when the reporting context project root changes',
-        function (scope: OverkillScope) {
+        function (scope) {
             let projectRoot: string | null = null;
             const context = createReportingContext({
                 get projectRoot() {
@@ -87,7 +85,7 @@ export const testNode = suite('source/engine/reporting-context.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('formatSourceLocation() hides unknown source locations', function (scope: OverkillScope) {
+    test('formatSourceLocation() hides unknown source locations', function (scope) {
         const context = createReportingContext({ projectRoot: '/repo' });
 
         scope.assert.equal(formatSourceLocation({ kind: 'unknown' }, context), null);
@@ -96,7 +94,7 @@ export const testNode = suite('source/engine/reporting-context.test.ts', [
     }),
     test(
         'formatAssertionSourceLocations() renders forwarded assertion locations with shared paths',
-        function (scope: OverkillScope) {
+        function (scope) {
             const context = createReportingContext({ projectRoot: '/repo' });
 
             scope.assert.deepEqual(

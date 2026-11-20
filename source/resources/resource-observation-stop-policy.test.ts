@@ -1,11 +1,9 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
-
-import { testNode as cancellation } from '../resource-check-cancellation.test.ts';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { resourceCheckOwnerSession, completeObservation } from '../test-support/resource-check-session.ts';
 import { withResourceCheckCancellation } from '../resource-check-cancellation.ts';
 import type { WorkId } from '../engine/identity.ts';
-import { testNode as installation } from './resource-installation-policy.test.ts';
+
 import type { ResourceCheckSession } from './resource-checks.ts';
 
 const work: WorkId = {
@@ -28,31 +26,40 @@ function assertSharedAdmission(scope: TestScope, session: ResourceCheckSession, 
         }, { message: 'Resource observation is stopped.' });
     }
 }
-export const testNode = authoredSuite('resource observation stop policy', [
-    installation,
-    cancellation,
-    ...([ 'per-case', 'per-run' ] as const).map(function (resourceScope) {
-        return authoredTest(
-            `standalone ${resourceScope} stop closes admission exactly once`,
-            async function (scope: TestScope) {
-                const fixture = resourceCheckOwnerSession(completeObservation, resourceScope, null);
-                await fixture.session.install(scope.signal);
-                const failure = new Error('owner stopped');
-                fixture.context().ledger.requestStop(lifetime, 'owner', { kind: 'observation-error', error: failure });
-                fixture.context().ledger.requestStop(lifetime, 'owner', { kind: 'observation-error', error: failure });
-                scope.assert.deepEqual(fixture.stopped, [ failure ]);
-                scope.assert.throws(function () {
-                    fixture.session.assertAdmitted();
-                }, { message: 'Resource observation is stopped.' });
-                await scope.assert.rejects(async function () {
-                    await fixture.session.close(finish);
-                }, { message: 'Resource observation closure failed.' });
-                return scope.assert.collect();
-            }
-        );
+export const testNode: TestNode = suite('resource observation stop policy', [
+    table({
+        title: 'standalone stops close admission exactly once',
+        cases: [ 'per-case', 'per-run' ] as const,
+        caseTitle(resourceScope) {
+            return `${resourceScope}`;
+        },
+        async test(scope) {
+            const resourceScope = scope.parameters;
+
+            const fixture = resourceCheckOwnerSession(completeObservation, resourceScope, null);
+            await fixture.session.install(scope.signal);
+            const failure = new Error('owner stopped');
+            fixture.context().ledger.requestStop(lifetime, 'owner', { kind: 'observation-error', error: failure });
+            fixture.context().ledger.requestStop(lifetime, 'owner', { kind: 'observation-error', error: failure });
+            scope.assert.deepEqual(fixture.stopped, [ failure ]);
+            scope.assert.throws(function () {
+                fixture.session.assertAdmitted();
+            }, { message: 'Resource observation is stopped.' });
+            await scope.assert.rejects(async function () {
+                await fixture.session.close(finish);
+            }, { message: 'Resource observation closure failed.' });
+            return scope.assert.collect();
+        }
     }),
-    ...([ 'lifetime', 'attempt' ] as const).map(function (kind) {
-        return authoredTest(`managed shared ${kind} stop cancels its consumer`, async function (scope: TestScope) {
+    table({
+        title: 'managed shared stops cancel consumers',
+        cases: [ 'lifetime', 'attempt' ] as const,
+        caseTitle(kind) {
+            return `${kind}`;
+        },
+        async test(scope) {
+            const kind = scope.parameters;
+
             const fixture = resourceCheckOwnerSession(completeObservation, 'per-run', {
                 kind: 'managed',
                 consumers: [ work ]
@@ -75,11 +82,11 @@ export const testNode = authoredSuite('resource observation stop policy', [
                 await fixture.session.close(finish);
             }, { message: 'Resource observation closure failed.' });
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest(
+    test(
         'late stop requests retain evidence without cancelling a closed owner',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = resourceCheckOwnerSession(completeObservation, 'per-run', null);
             await fixture.session.install(scope.signal);
             await fixture.session.close(finish);

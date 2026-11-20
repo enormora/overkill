@@ -1,20 +1,15 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { executionSessionRuntime } from '../test-support/execution-session-runtime.ts';
-import { testNode as collected } from './collected-session-policy.test.ts';
-import { testNode as fresh } from './fresh-execution-host-policy.test.ts';
-import { testNode as host } from './execution-host-policy.test.ts';
+
 import { createManagedExecutionSession } from './execution-session.ts';
 import { runExecutionFailure } from './execution-failure.ts';
 import type { RunExecutionReply } from './execution-session-types.ts';
 import type { ExecutionSessionCall } from './execution-session-runtime-types.ts';
 
 const invocation = { data: { value: 42 }, timeoutMilliseconds: 50, signal: null };
-export const testNode = authoredSuite('execution session ownership', [
-    collected,
-    host,
-    fresh,
-    test('initializes once and reuses its environment for sequential invocations', async function (scope: TestScope) {
+export const testNode: TestNode = suite('execution session ownership', [
+    test('initializes once and reuses its environment for sequential invocations', async function (scope) {
         const fixture = await executionSessionRuntime();
         const session = createManagedExecutionSession(fixture.options, fixture.runtime);
         scope.assert.equal(fixture.initialized.length, 0);
@@ -34,7 +29,7 @@ export const testNode = authoredSuite('execution session ownership', [
         await session.dispose();
         return scope.assert.collect();
     }),
-    test('honors explicit fresh-invocation lifetime', async function (scope: TestScope) {
+    test('honors explicit fresh-invocation lifetime', async function (scope) {
         const fixture = await executionSessionRuntime();
         const session = createManagedExecutionSession(
             { ...fixture.options, environment: 'fresh-invocation' },
@@ -44,7 +39,7 @@ export const testNode = authoredSuite('execution session ownership', [
         await session.dispose();
         return scope.assert.collect();
     }),
-    test('returns timeout replies for invalid deadlines without initialization', async function (scope: TestScope) {
+    test('returns timeout replies for invalid deadlines without initialization', async function (scope) {
         const fixture = await executionSessionRuntime();
         const session = createManagedExecutionSession(fixture.options, fixture.runtime);
         for (const timeoutMilliseconds of [ 0, -1, Number.NaN, Number.POSITIVE_INFINITY ]) {
@@ -58,7 +53,7 @@ export const testNode = authoredSuite('execution session ownership', [
         await session.dispose();
         return scope.assert.collect();
     }),
-    test('rejects invocation admission after disposal', async function (scope: TestScope) {
+    test('rejects invocation admission after disposal', async function (scope) {
         const fixture = await executionSessionRuntime();
         const session = createManagedExecutionSession(fixture.options, fixture.runtime);
         await session.dispose();
@@ -68,7 +63,7 @@ export const testNode = authoredSuite('execution session ownership', [
         scope.assert.deepEqual(fixture.initialized, []);
         return scope.assert.collect();
     }),
-    test('rejects overlapping invocations and admits work after completion', async function (scope: TestScope) {
+    test('rejects overlapping invocations and admits work after completion', async function (scope) {
         const fixture = await executionSessionRuntime();
         const completion = Promise.withResolvers<RunExecutionReply>();
         const session = createManagedExecutionSession(fixture.options, {
@@ -95,7 +90,7 @@ export const testNode = authoredSuite('execution session ownership', [
         await session.dispose();
         return scope.assert.collect();
     }),
-    test('retains a copy of the latest checkpoint after an execution failure', async function (scope: TestScope) {
+    test('retains a copy of the latest checkpoint after an execution failure', async function (scope) {
         const fixture = await executionSessionRuntime();
         const checkpoint = { value: 1 };
         const session = createManagedExecutionSession(fixture.options, {
@@ -120,7 +115,7 @@ export const testNode = authoredSuite('execution session ownership', [
         await session.dispose();
         return scope.assert.collect();
     }),
-    test('retains completed results while marking an expired deadline', async function (scope: TestScope) {
+    test('retains completed results while marking an expired deadline', async function (scope) {
         const fixture = await executionSessionRuntime();
         const session = createManagedExecutionSession(fixture.options, {
             ...fixture.runtime,
@@ -142,7 +137,7 @@ export const testNode = authoredSuite('execution session ownership', [
         await session.dispose();
         return scope.assert.collect();
     }),
-    test('converts thrown deadline cancellation to a timeout reply', async function (scope: TestScope) {
+    test('converts thrown deadline cancellation to a timeout reply', async function (scope) {
         const fixture = await executionSessionRuntime();
         const session = createManagedExecutionSession(fixture.options, {
             ...fixture.runtime,
@@ -161,7 +156,7 @@ export const testNode = authoredSuite('execution session ownership', [
         await session.dispose();
         return scope.assert.collect();
     }),
-    test('converts deadline cancellation reported by a backend to timeout', async function (scope: TestScope) {
+    test('converts deadline cancellation reported by a backend to timeout', async function (scope) {
         const fixture = await executionSessionRuntime();
         const session = createManagedExecutionSession(fixture.options, {
             ...fixture.runtime,
@@ -188,7 +183,7 @@ export const testNode = authoredSuite('execution session ownership', [
         await session.dispose();
         return scope.assert.collect();
     }),
-    test('returns initialization failures without running an environment', async function (scope: TestScope) {
+    test('returns initialization failures without running an environment', async function (scope) {
         const fixture = await executionSessionRuntime();
         const session = createManagedExecutionSession(fixture.options, {
             ...fixture.runtime,
@@ -205,7 +200,7 @@ export const testNode = authoredSuite('execution session ownership', [
         await session.dispose();
         return scope.assert.collect();
     }),
-    test('does not initialize for an already cancelled invocation', async function (scope: TestScope) {
+    test('does not initialize for an already cancelled invocation', async function (scope) {
         const fixture = await executionSessionRuntime();
         const failure = new Error('Cancelled.');
         const session = createManagedExecutionSession(fixture.options, fixture.runtime);

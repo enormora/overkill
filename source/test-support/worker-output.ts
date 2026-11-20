@@ -6,7 +6,7 @@ import {
     type WorkerOutputTask,
     createWorkerOutputCapture
 } from '../run/worker-pool-output.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 
 function nativeOutput(record: (text: string) => void): Writable {
     return new Writable({

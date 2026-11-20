@@ -1,4 +1,4 @@
-import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
+import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
 
 import { placementPlan, fakeWorkerRuntime } from './worker-pool-placement-validation.test.ts';
 import {
@@ -202,18 +202,24 @@ function assertRecovery(scope: TestScope): void {
         JSON.stringify({ kind: 'recovery', previousAttempt: 'attempt-1' })
     );
 }
-export const testNode = authoredSuite(
+export const testNode: TestNode = suite(
     'dynamic replay decisions',
-    [
-        { title: 'batch envelopes', verify: assertBatch },
-        { title: 'split parentage and warm affinity', verify: assertSplit },
-        { title: 'hedged authority and conflicts', verify: assertHedge },
-        { title: 'recovery reassignment', verify: assertRecovery }
-    ]
-        .map(function decision(entry) {
-            return test(entry.title, function (scope: TestScope) {
-                entry.verify(scope);
-                return scope.assert.collect();
-            });
-        })
+    [ table({
+        title: 'replay trace decisions scenarios',
+        cases: [
+            { title: 'batch envelopes', verify: assertBatch },
+            { title: 'split parentage and warm affinity', verify: assertSplit },
+            { title: 'hedged authority and conflicts', verify: assertHedge },
+            { title: 'recovery reassignment', verify: assertRecovery }
+        ],
+        caseTitle(entry) {
+            return entry.title;
+        },
+        test(scope) {
+            const entry = scope.parameters;
+
+            entry.verify(scope);
+            return scope.assert.collect();
+        }
+    }) ]
 );

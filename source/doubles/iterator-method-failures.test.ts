@@ -1,11 +1,18 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { testIterator, testAsyncIterator, testAsyncIterable } from './protocol-double.ts';
 import { protocolIteratorEvents, protocolDisposeMethod } from './protocol-double-metadata.ts';
 
-export const testNode = authoredSuite('iterator method failure ownership', [
-    ...([ 'next', 'return' ] as const).map(function (method) {
-        return authoredTest(`records synchronous ${method} failures`, function (scope: TestScope) {
+export const testNode: TestNode = suite('iterator method failure ownership', [
+    table({
+        title: 'records synchronous iterator failures',
+        cases: [ 'next', 'return' ] as const,
+        caseTitle(method) {
+            return `${method}`;
+        },
+        test(scope) {
+            const method = scope.parameters;
+
             const failure = new Error(method);
             const iterator = testIterator.yieldsFrom(function () {
                 return {
@@ -27,11 +34,11 @@ export const testNode = authoredSuite('iterator method failure ownership', [
                 thrown: failure
             } ]);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest(
+    test(
         'records asynchronous return failure without losing the original error',
-        async function (scope: TestScope) {
+        async function (scope) {
             const failure = new Error('return');
             const iterator = testAsyncIterator.yieldsFrom(function () {
                 return {
@@ -55,7 +62,7 @@ export const testNode = authoredSuite('iterator method failure ownership', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('records recovered asynchronous throw as a returned value', async function (scope: TestScope) {
+    test('records recovered asynchronous throw as a returned value', async function (scope) {
         const iterator = testAsyncIterator.yieldsFrom(function () {
             return {
                 async next() {
@@ -75,9 +82,9 @@ export const testNode = authoredSuite('iterator method failure ownership', [
         } ]);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'aggregates asynchronous iterable event history from its iterators',
-        async function (scope: TestScope) {
+        async function (scope) {
             const iterable = testAsyncIterable.yields([ 'first' ], 'done');
             const iterator = iterable[Symbol.asyncIterator]();
             scope.assert.equal(protocolDisposeMethod(iterable), null);
@@ -90,7 +97,7 @@ export const testNode = authoredSuite('iterator method failure ownership', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('exposes the native synchronous iterator disposal protocol', function (scope: TestScope) {
+    test('exposes the native synchronous iterator disposal protocol', function (scope: TestScope) {
         const iterator = testIterator.yields([ 'first' ], 'done');
         const dispose = protocolDisposeMethod(iterator);
         scope.require.defined(dispose);

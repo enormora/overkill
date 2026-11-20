@@ -1,10 +1,10 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { historyLockAcquisition, historyLockScenario } from '../test-support/history-lock-acquisition.ts';
 import { withinHistoryMaintenanceBudget, historyMaintenanceDiagnostics } from './history-maintenance-budget.ts';
 
-export const testNode = authoredSuite('history lock acquisition policy', [
-    authoredTest('acquires absent locks and forwards compromise notifications', async function (scope: TestScope) {
+export const testNode: TestNode = suite('history lock acquisition policy', [
+    test('acquires absent locks and forwards compromise notifications', async function (scope: TestScope) {
         const fixture = historyLockAcquisition(historyLockScenario, 100);
         const release = await fixture.acquire();
         const attempt = fixture.attempts[0];
@@ -16,7 +16,7 @@ export const testNode = authoredSuite('history lock acquisition policy', [
         scope.assert.partialDeepEqual(attempt, { lockfilePath: '/project/state/history.lock', stale: 50 });
         return scope.assert.collect();
     }),
-    authoredTest('records stale lock recovery inside a maintenance budget', async function (scope: TestScope) {
+    test('records stale lock recovery inside a maintenance budget', async function (scope) {
         const fixture = historyLockAcquisition({ ...historyLockScenario, modified: 0 }, 100);
         await withinHistoryMaintenanceBudget(Number.MAX_SAFE_INTEGER, async function () {
             const release = await fixture.acquire();
@@ -25,7 +25,7 @@ export const testNode = authoredSuite('history lock acquisition policy', [
         }, performance.now.bind(performance));
         return scope.assert.collect();
     }),
-    authoredTest('does not mark a current lock as stale', async function (scope: TestScope) {
+    test('does not mark a current lock as stale', async function (scope) {
         const fixture = historyLockAcquisition({ ...historyLockScenario, modified: 975 }, 100);
         await withinHistoryMaintenanceBudget(Number.MAX_SAFE_INTEGER, async function () {
             const release = await fixture.acquire();
@@ -34,7 +34,7 @@ export const testNode = authoredSuite('history lock acquisition policy', [
         }, performance.now.bind(performance));
         return scope.assert.collect();
     }),
-    authoredTest('retries contended locks with bounded waits before acquiring', async function (scope: TestScope) {
+    test('retries contended locks with bounded waits before acquiring', async function (scope) {
         const fixture = historyLockAcquisition({ ...historyLockScenario, failures: 1, locked: true }, 100);
         const release = await fixture.acquire();
         await release();
@@ -42,14 +42,14 @@ export const testNode = authoredSuite('history lock acquisition policy', [
         scope.assert.deepEqual(fixture.waits, [ 25 ]);
         return scope.assert.collect();
     }),
-    authoredTest('preserves acquisition failures when the target is not locked', async function (scope: TestScope) {
+    test('preserves acquisition failures when the target is not locked', async function (scope) {
         const failure = new Error('permission denied');
         const fixture = historyLockAcquisition({ ...historyLockScenario, acquisition: failure, failures: 1 }, 100);
         await scope.assert.rejects(fixture.acquire, { exact: failure });
         scope.assert.deepEqual(fixture.waits, []);
         return scope.assert.collect();
     }),
-    authoredTest('stops retrying at the caller deadline', async function (scope: TestScope) {
+    test('stops retrying at the caller deadline', async function (scope) {
         const failure = new Error('busy');
         const fixture = historyLockAcquisition({
             ...historyLockScenario,
@@ -62,9 +62,9 @@ export const testNode = authoredSuite('history lock acquisition policy', [
         scope.assert.equal(fixture.attempts.length, 2);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'defers bounded maintenance after lock contention exhausts its deadline',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = historyLockAcquisition({ ...historyLockScenario, failures: 2, locked: true }, 10);
             await scope.assert.rejects(async function () {
                 await withinHistoryMaintenanceBudget(
@@ -77,8 +77,15 @@ export const testNode = authoredSuite('history lock acquisition policy', [
             return scope.assert.collect();
         }
     ),
-    ...([ 'inspection', 'check', 'wait' ] as const).map(function (phase) {
-        return authoredTest(`preserves ${phase} failures during lock acquisition`, async function (scope: TestScope) {
+    table({
+        title: 'preserves lock acquisition failures',
+        cases: [ 'inspection', 'check', 'wait' ] as const,
+        caseTitle(phase) {
+            return `${phase}`;
+        },
+        async test(scope) {
+            const phase = scope.parameters;
+
             const failure = new Error(`${phase} failed`);
             const fixture = historyLockAcquisition({
                 ...historyLockScenario,
@@ -88,9 +95,9 @@ export const testNode = authoredSuite('history lock acquisition policy', [
             }, 100);
             await scope.assert.rejects(fixture.acquire, { exact: failure });
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('checks the maintenance deadline before touching the lock', async function (scope: TestScope) {
+    test('checks the maintenance deadline before touching the lock', async function (scope) {
         const fixture = historyLockAcquisition(historyLockScenario, 100);
         await scope.assert.rejects(async function () {
             await withinHistoryMaintenanceBudget(0, fixture.acquire, performance.now.bind(performance));

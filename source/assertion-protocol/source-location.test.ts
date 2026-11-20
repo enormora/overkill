@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     captureSourceLocation,
@@ -9,7 +9,7 @@ import {
 import { forwardAssertionSourceLocations, sourceLocationsWithCurrentForwarding } from './source-location-forwarding.ts';
 import type { SourceLocation } from './assertion-node-shape.ts';
 
-function assertCapturedSourceLocation(scope: OverkillScope, location: SourceLocation): void {
+function assertCapturedSourceLocation(scope: TestScope, location: SourceLocation): void {
     if (location.kind !== 'known') {
         scope.assert.equal(location.kind, 'known');
 
@@ -21,8 +21,8 @@ function assertCapturedSourceLocation(scope: OverkillScope, location: SourceLoca
     scope.assert.equal(typeof location.column, 'number');
 }
 
-export const testNode = suite('source/assertion-protocol/source-location.test.ts', [
-    test('sourceLocationFromStack() parses file URL stack frames', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Assertion source locations', [
+    test('sourceLocationFromStack() parses file URL stack frames', function (scope) {
         scope.assert.deepEqual(
             sourceLocationFromStack(
                 [
@@ -42,7 +42,7 @@ export const testNode = suite('source/assertion-protocol/source-location.test.ts
 
         return scope.assert.collect();
     }),
-    test('sourceLocationFromStack() parses plain path stack frames', function (scope: OverkillScope) {
+    test('sourceLocationFromStack() parses plain path stack frames', function (scope) {
         scope.assert.deepEqual(
             sourceLocationFromStack(
                 [
@@ -62,7 +62,7 @@ export const testNode = suite('source/assertion-protocol/source-location.test.ts
 
         return scope.assert.collect();
     }),
-    test('sourceLocationFromStack() returns the unknown location for unusable stacks', function (scope: OverkillScope) {
+    test('sourceLocationFromStack() returns the unknown location for unusable stacks', function (scope) {
         scope.assert.deepEqual(
             sourceLocationFromStack(
                 [
@@ -77,7 +77,7 @@ export const testNode = suite('source/assertion-protocol/source-location.test.ts
 
         return scope.assert.collect();
     }),
-    test('sourceLocationFromStack() preserves invalid file URL stack frames', function (scope: OverkillScope) {
+    test('sourceLocationFromStack() preserves invalid file URL stack frames', function (scope) {
         scope.assert.deepEqual(
             sourceLocationFromStack('Error\n    at body (file:///%zz/source/users.test.ts:13:8)'),
             {
@@ -92,7 +92,7 @@ export const testNode = suite('source/assertion-protocol/source-location.test.ts
     }),
     test(
         'captureSourceLocation() returns a memoized provider for the capture callsite',
-        function (scope: OverkillScope) {
+        function (scope) {
             const location = captureSourceLocation();
             const first = location();
             const second = location();
@@ -103,7 +103,7 @@ export const testNode = suite('source/assertion-protocol/source-location.test.ts
             return scope.assert.collect();
         }
     ),
-    test('resolveSourceLocation() protects failures from provider errors', function (scope: OverkillScope) {
+    test('resolveSourceLocation() protects failures from provider errors', function (scope) {
         scope.assert.deepEqual(
             resolveSourceLocation(function throwLocationError() {
                 throw new Error('location failed');
@@ -113,7 +113,7 @@ export const testNode = suite('source/assertion-protocol/source-location.test.ts
 
         return scope.assert.collect();
     }),
-    test('resolveSourceLocation() rejects invalid known provider results', function (scope: OverkillScope) {
+    test('resolveSourceLocation() rejects invalid known provider results', function (scope) {
         scope.assert.throws(function resolveInvalidLocation() {
             resolveSourceLocation(function invalidKnownLocation() {
                 return { column: null, file: '', kind: 'known' as const, line: null };
@@ -122,7 +122,7 @@ export const testNode = suite('source/assertion-protocol/source-location.test.ts
 
         return scope.assert.collect();
     }),
-    test('assertion source location forwarding preserves nested authoring chains', function (scope: OverkillScope) {
+    test('assertion source location forwarding preserves nested authoring chains', function (scope) {
         const outerLocation = { column: 1, file: 'macro.ts', kind: 'known' as const, line: 2 };
         const innerLocation = { column: 3, file: 'body.ts', kind: 'known' as const, line: 4 };
         const assertionLocation = { column: 5, file: 'assertion.ts', kind: 'known' as const, line: 6 };

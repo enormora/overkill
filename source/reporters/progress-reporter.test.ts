@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import ansiEscapes from 'ansi-escapes';
 import figures from 'figures';
@@ -120,8 +120,8 @@ async function reportProgressRun(terminal: FakeTerminal): Promise<void> {
     });
 }
 
-export const testNode = suite('source/reporters/progress-reporter.test.ts', [
-    test('progress reporter redraws a live bar and prints final tree output', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Progress reporter', [
+    test('redraws a live bar and prints final tree output', async function (scope) {
         const terminal = createFakeTerminal();
 
         await reportProgressRun(terminal);
@@ -152,7 +152,7 @@ export const testNode = suite('source/reporters/progress-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('progress reporter prints runner errors in non-interactive output', async function (scope: OverkillScope) {
+    test('prints runner errors in non-interactive output', async function (scope) {
         const terminal = createFakeTerminal();
         const reporter = createProgressReporter({
             interactive: false,
@@ -180,7 +180,7 @@ export const testNode = suite('source/reporters/progress-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('progress reporter skips live bars in non-interactive output', async function (scope: OverkillScope) {
+    test('skips live bars in non-interactive output', async function (scope) {
         const terminal = createFakeTerminal();
         const reporter = createProgressReporter({
             interactive: false,
@@ -203,7 +203,7 @@ export const testNode = suite('source/reporters/progress-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('progress reporter keeps interactive runner errors for the final tree', async function (scope: OverkillScope) {
+    test('keeps interactive runner errors for the final tree', async function (scope) {
         const terminal = createFakeTerminal();
         const reporter = createProgressReporter({
             interactive: true,
@@ -237,7 +237,7 @@ export const testNode = suite('source/reporters/progress-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('progress reporter renders unknown and empty planned counts', async function (scope: OverkillScope) {
+    test('renders unknown and empty planned counts', async function (scope) {
         const unknownTerminal = createFakeTerminal();
         const emptyTerminal = createFakeTerminal();
         const unknownReporter = createProgressReporter({

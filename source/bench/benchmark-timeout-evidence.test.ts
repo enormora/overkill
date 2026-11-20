@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 import { createRoot, createTestPlan } from '../packages/engine/engine.entry-point.ts';
@@ -79,8 +79,8 @@ function assertSoftCancellation(scope: TestScope, result: PerTestResult): void {
     scope.assert.equal(result.verdict, 'fail');
 }
 
-export const testNode = authoredSuite('benchmark timeout evidence', [
-    test('soft cancellation retains a completed reading before stopping admission', async function (scope: TestScope) {
+export const testNode: TestNode = suite('benchmark timeout evidence', [
+    test('soft cancellation retains a completed reading before stopping admission', async function (scope) {
         const timed = createTimedBenchmark();
         scope.cleanup(timed.resume);
         await timed.suspended;
@@ -90,16 +90,19 @@ export const testNode = authoredSuite('benchmark timeout evidence', [
         assertSoftCancellation(scope, completed.result);
         return scope.assert.collect();
     }),
-    test('hard timeout preserves the last confirmed checkpoint in results and attempts', async function (scope) {
-        const timed = createTimedBenchmark();
-        scope.cleanup(timed.resume);
-        await timed.suspended;
-        timed.wallClock.advanceByMilliseconds(100);
-        const completed = await timed.execution;
-        scope.assert.equal(completed.result.verdict, 'crashed');
-        scope.assert.equal(completed.result.benchmark?.samples, 128);
-        scope.assert.equal(completed.result.benchmark?.status, 'incomplete');
-        scope.assert.equal(completed.result.attempts[0].benchmark?.samples, 128);
-        return scope.assert.collect();
-    })
+    test(
+        'hard timeout preserves the last confirmed checkpoint in results and attempts',
+        async function (scope) {
+            const timed = createTimedBenchmark();
+            scope.cleanup(timed.resume);
+            await timed.suspended;
+            timed.wallClock.advanceByMilliseconds(100);
+            const completed = await timed.execution;
+            scope.assert.equal(completed.result.verdict, 'crashed');
+            scope.assert.equal(completed.result.benchmark?.samples, 128);
+            scope.assert.equal(completed.result.benchmark?.status, 'incomplete');
+            scope.assert.equal(completed.result.attempts[0].benchmark?.samples, 128);
+            return scope.assert.collect();
+        }
+    )
 ]);

@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import {
     defineTestFamily,
@@ -79,8 +79,8 @@ const invalidDefinitions = [
     }
 ];
 
-export const testNode = authoredSuite('executable family definitions', [
-    authoredTest('rejects copied definitions when binding settings', function (scope) {
+export const testNode: TestNode = suite('executable family definitions', [
+    test('rejects copied definitions when binding settings', function (scope) {
         const family = defineTestFamily(settingsDefinition(function () {
             return null;
         }));
@@ -89,7 +89,7 @@ export const testNode = authoredSuite('executable family definitions', [
         }, { message: 'Settings require a defined test family.' });
         return scope.assert.collect();
     }),
-    authoredTest('rejects accessor settings without invoking their getters', function (scope) {
+    test('rejects accessor settings without invoking their getters', function (scope) {
         let reads = 0;
         const settings = Object.defineProperty({}, 'value', {
             enumerable: true,
@@ -107,7 +107,7 @@ export const testNode = authoredSuite('executable family definitions', [
         scope.assert.equal(reads, 0);
         return scope.assert.collect();
     }),
-    authoredTest('binds normalized settings independently without loading backends', function (scope) {
+    test('binds normalized settings independently without loading backends', function (scope) {
         let loads = 0;
         const family = defineTestFamily({
             ...settingsDefinition(function (input) {
@@ -135,8 +135,15 @@ export const testNode = authoredSuite('executable family definitions', [
         scope.assert.equal(loads, 0);
         return scope.assert.collect();
     }),
-    ...invalidDefinitions.map(function rejectedDefinition(entry) {
-        return authoredTest(`rejects definitions with ${entry.name}`, function (scope) {
+    table({
+        title: 'rejects malformed definitions',
+        cases: invalidDefinitions,
+        caseTitle(entry) {
+            return `${entry.name}`;
+        },
+        test(scope) {
+            const entry = scope.parameters;
+
             const definition = settingsDefinition(function () {
                 return null;
             });
@@ -147,10 +154,17 @@ export const testNode = authoredSuite('executable family definitions', [
                 message: new RegExp(entry.field, 'v')
             });
             return scope.assert.collect();
-        });
+        }
     }),
-    ...invalidSettings.map(function rejectedSettings(entry) {
-        return authoredTest(`rejects settings containing ${entry.name}`, function (scope) {
+    table({
+        title: 'rejects malformed settings',
+        cases: invalidSettings,
+        caseTitle(entry) {
+            return `${entry.name}`;
+        },
+        test(scope) {
+            const entry = scope.parameters;
+
             const family = defineTestFamily(
                 settingsDefinition(function () {
                     return Object.defineProperty({ value: null }, 'value', { value: entry.value });
@@ -162,9 +176,9 @@ export const testNode = authoredSuite('executable family definitions', [
                 message: 'Family settings require lossless, acyclic JSON.'
             });
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('snapshots settings and metadata without loading a backend', function (scope) {
+    test('snapshots settings and metadata without loading a backend', function (scope) {
         const input = { nested: { enabled: true } };
         let loads = 0;
         const family = defineTestFamily({
@@ -188,7 +202,7 @@ export const testNode = authoredSuite('executable family definitions', [
         scope.assert.equal(isDefinedTestFamily(family) && !isDefinedTestFamily({ ...family }), true);
         return scope.assert.collect();
     }),
-    authoredTest('validates module references and snapshots transport metadata', function (scope) {
+    test('validates module references and snapshots transport metadata', function (scope) {
         const module = { moduleUrl: 'file:///missing-family.ts', exportName: 'family' };
         const family = defineTestFamily({
             ...settingsDefinition(function () {
@@ -208,7 +222,7 @@ export const testNode = authoredSuite('executable family definitions', [
         }, { message: /Invalid URL/v });
         return scope.assert.collect();
     }),
-    authoredTest('rejects incompatible analysis features', function (scope) {
+    test('rejects incompatible analysis features', function (scope) {
         scope.assert.throws(function analysisCoverage() {
             defineTestFamily({
                 ...settingsDefinition(function () {
@@ -219,7 +233,7 @@ export const testNode = authoredSuite('executable family definitions', [
         }, { message: 'Analysis families cannot enable runtime profile options.' });
         return scope.assert.collect();
     }),
-    authoredTest('retains parser failures and invokes the lazy loader only on request', async function (scope) {
+    test('retains parser failures and invokes the lazy loader only on request', async function (scope) {
         const family = defineTestFamily(settingsDefinition(function () {
             throw new Error('Invalid settings');
         }));
@@ -231,7 +245,7 @@ export const testNode = authoredSuite('executable family definitions', [
         }, { message: 'Backend loaded' });
         return scope.assert.collect();
     }),
-    authoredTest('rejects nonserializable parser output', function (scope) {
+    test('rejects nonserializable parser output', function (scope) {
         const family = defineTestFamily({
             id: '@example/checks',
             version: '1',
@@ -249,7 +263,7 @@ export const testNode = authoredSuite('executable family definitions', [
         }, { message: 'Family settings require lossless, acyclic JSON.' });
         return scope.assert.collect();
     }),
-    authoredTest('preserves neutral keys and isolates family variants', function (scope) {
+    test('preserves neutral keys and isolates family variants', function (scope) {
         const logical = { file: null, suite: [], title: 'example', params: null };
         const neutral = { case: logical, runtimes: [], workload: null, familyVariant: null };
         scope.assert.equal(workIdentityKey(neutral), JSON.stringify([ null, [], 'example', null ]));

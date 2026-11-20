@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     type LoadedConfig,
@@ -199,10 +199,10 @@ async function runWithRunnerErrors(): ReturnType<ConfiguredRunOrchestrator['run'
     });
 }
 
-export const testNode = suite('source/run/command-line-runner-reporter-resolution.test.ts', [
+export const testNode: TestNode = suite('CLI reporter resolution', [
     test(
-        'commandLineRunner.runTests() keeps global reporters as fallback when profile reporters override them',
-        async function (scope: OverkillScope) {
+        'keeps global reporters as fallback when profile reporters override them',
+        async function (scope: TestScope) {
             const defaultReporter = createDefaultReporterLoader(memoryReporter);
             const scenario = await runScenario(
                 loadedConfig([ terminalReporter ], [ memoryReporter ]),
@@ -221,8 +221,8 @@ export const testNode = suite('source/run/command-line-runner-reporter-resolutio
         }
     ),
     test(
-        'commandLineRunner.runTests() skips the default reporter when profile reporters exist',
-        async function (scope: OverkillScope) {
+        'skips the default reporter when profile reporters exist',
+        async function (scope: TestScope) {
             const defaultReporter = createDefaultReporterLoader(terminalReporter);
             const scenario = await runScenario(
                 loadedConfig(null, [ memoryReporter ]),
@@ -240,8 +240,8 @@ export const testNode = suite('source/run/command-line-runner-reporter-resolutio
         }
     ),
     test(
-        'commandLineRunner.runTests() skips the default reporter when global non-terminal reporters exist',
-        async function (scope: OverkillScope) {
+        'skips the default reporter when global non-terminal reporters exist',
+        async function (scope: TestScope) {
             const defaultReporter = createDefaultReporterLoader(terminalReporter);
             const scenario = await runScenario(
                 loadedConfig([ memoryReporter ], null),
@@ -258,8 +258,8 @@ export const testNode = suite('source/run/command-line-runner-reporter-resolutio
         }
     ),
     test(
-        'commandLineRunner.runTests() skips the default reporter for unknown profiles',
-        async function (scope: OverkillScope) {
+        'skips the default reporter for unknown profiles',
+        async function (scope: TestScope) {
             const defaultReporter = createDefaultReporterLoader(memoryReporter);
             const scenario = await runScenario(
                 loadedConfig(null, null),
@@ -280,8 +280,8 @@ export const testNode = suite('source/run/command-line-runner-reporter-resolutio
         }
     ),
     test(
-        'commandLineRunner.runTests() falls back when profile terminal reporters did not receive errors',
-        async function (scope: OverkillScope) {
+        'falls back when profile terminal reporters did not receive errors',
+        async function (scope) {
             const defaultReporter = createDefaultReporterLoader(memoryReporter);
             const scenario = await runScenario(
                 loadedConfig(null, [ terminalReporter ]),

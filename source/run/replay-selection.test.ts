@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { emptyPropertyCorpus } from '../engine/property-corpus.ts';
 import type { WitnessFile } from '../engine/witness-file.ts';
@@ -58,8 +58,8 @@ function collectionWithCopies(count: number, resourceCount: number): CollectedRu
 async function selectedWitness(value: WitnessFile, execute: () => Promise<void>): Promise<void> {
     await withReplay({ kind: 'witness', witness: value, sourceRunId: null, moduleGraph: 'current' }, null, execute);
 }
-export const testNode = authoredSuite('replay target selection', [
-    authoredTest('restores recorded order and placement with the invocation signal', async function (scope: TestScope) {
+export const testNode: TestNode = suite('replay target selection', [
+    test('restores recorded order and placement with the invocation signal', async function (scope: TestScope) {
         const runtime = fakeWorkerRuntime(createCollectedPlan());
         const record = workerReplayRecord(runtime, null);
         const controller = new AbortController();
@@ -80,9 +80,9 @@ export const testNode = authoredSuite('replay target selection', [
         scope.assert.equal(currentReplaySignal(), null);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'accepts explicit simulation resource names independently of simulation names',
-        async function (scope: TestScope) {
+        async function (scope) {
             await selectedWitness({
                 ...simulation,
                 simulation: { name: 'other', payload: null },
@@ -93,9 +93,9 @@ export const testNode = authoredSuite('replay target selection', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'rejects nested property replay after its declaration changes kind',
-        async function (scope: TestScope) {
+        async function (scope) {
             await selectedWitness({
                 ...propertyCorpusEntry,
                 target: { kind: 'forall', location: { kind: 'unknown' }, occurrence: 0, key: null }
@@ -107,17 +107,24 @@ export const testNode = authoredSuite('replay target selection', [
             return scope.assert.collect();
         }
     ),
-    ...[ 0, 2 ].map(function invalidSelection(count) {
-        return authoredTest(`rejects a witness selecting ${count} cases`, async function (scope: TestScope) {
+    table({
+        title: 'requires a witness to select exactly one case',
+        cases: [ 0, 2 ],
+        caseTitle(count) {
+            return `${count}`;
+        },
+        async test(scope) {
+            const count = scope.parameters;
+
             await selectedWitness(propertyCorpusEntry, async function select() {
                 scope.assert.throws(function resolve() {
                     replayExecutionPlan(collectionWithCopies(count, 0));
                 }, { message: 'Witness replay target is missing or ambiguous.' });
             });
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('rejects a property witness after its declaration changes family', async function (scope: TestScope) {
+    test('rejects a property witness after its declaration changes family', async function (scope) {
         await selectedWitness(propertyCorpusEntry, async function select() {
             scope.assert.throws(function resolve() {
                 replayExecutionPlan(collectionWithCopies(1, 0));
@@ -125,26 +132,30 @@ export const testNode = authoredSuite('replay target selection', [
         });
         return scope.assert.collect();
     }),
-    ...[ 0, 2 ].map(function invalidResources(count) {
-        return authoredTest(
-            `rejects a simulation witness with ${count} matching resources`,
-            async function (scope: TestScope) {
-                await selectedWitness(simulation, async function select() {
-                    scope.assert.throws(function resolve() {
-                        replayExecutionPlan(collectionWithCopies(1, count));
-                    }, { message: 'Simulation witness resource is missing or ambiguous.' });
-                });
-                return scope.assert.collect();
-            }
-        );
+    table({
+        title: 'requires exactly one matching simulation resource',
+        cases: [ 0, 2 ],
+        caseTitle(count) {
+            return `${count}`;
+        },
+        async test(scope) {
+            const count = scope.parameters;
+
+            await selectedWitness(simulation, async function select() {
+                scope.assert.throws(function resolve() {
+                    replayExecutionPlan(collectionWithCopies(1, count));
+                }, { message: 'Simulation witness resource is missing or ambiguous.' });
+            });
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('accepts one matching simulation resource by its simulation name', async function (scope: TestScope) {
+    test('accepts one matching simulation resource by its simulation name', async function (scope) {
         await selectedWitness(simulation, async function select() {
             scope.assert.equal(replayExecutionPlan(collectionWithCopies(1, 1)), null);
         });
         return scope.assert.collect();
     }),
-    authoredTest('rejects recorded order after selected case metadata disappears', async function (scope: TestScope) {
+    test('rejects recorded order after selected case metadata disappears', async function (scope) {
         const record = workerReplayRecord(fakeWorkerRuntime(createCollectedPlan()), null);
         await withReplay({ kind: 'record', record }, null, async function select() {
             scope.assert.throws(function resolve() {
@@ -153,9 +164,9 @@ export const testNode = authoredSuite('replay target selection', [
         });
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'passes a property witness from a wire replay into the property corpus',
-        async function (scope: TestScope) {
+        async function (scope) {
             const wire = { kind: 'witness', witness: propertyCorpusEntry, moduleGraph: 'fresh' } as const;
             await withReplayWire(wire, async function select() {
                 scope.assert.deepEqual(wirePropertyCorpus(wire), {

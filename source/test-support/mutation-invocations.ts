@@ -13,7 +13,7 @@ import {
 import { createMutationBaseline } from '../packages/stryker-runner/mutation-baseline.ts';
 import { campaignBaselineSchema, type CampaignBaseline } from '../packages/stryker-runner/mutation-catalog.ts';
 import type { ReadyMutationRunner } from '../packages/stryker-runner/mutation-runner-initialization.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 
 const invocationMilliseconds = 50;
 export type MutationInvocationFixture = {

@@ -1,12 +1,12 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
 
 type LoadValues = (prefix: string) => Generator<string, string, unknown>;
 type LoadAsyncValues = (prefix: string) => AsyncGenerator<string, string, unknown>;
-export const testNode = authoredSuite('yielding double argument rules', [
-    test('selects synchronous yielded values by invocation arguments', function (scope: TestScope) {
+export const testNode: TestNode = suite('yielding double argument rules', [
+    test('selects synchronous yielded values by invocation arguments', function (scope) {
         const load = testDouble<LoadValues>({
             rules: [ rule.when('selected').yields<LoadValues>([ 'chosen' ], 'complete') ],
             fallback: rule.yields<LoadValues>([ 'fallback' ], 'missing')
@@ -22,7 +22,7 @@ export const testNode = authoredSuite('yielding double argument rules', [
         scope.assert.equal(load.callCount, 2);
         return scope.assert.collect();
     }),
-    test('delegates synchronous argument rules to the original invocation', function (scope: TestScope) {
+    test('delegates synchronous argument rules to the original invocation', function (scope) {
         const load = testDouble<LoadValues>({
             rules: [
                 rule.when('selected').yieldsFrom<LoadValues>(function* (prefix) {
@@ -41,7 +41,7 @@ export const testNode = authoredSuite('yielding double argument rules', [
         ]);
         return scope.assert.collect();
     }),
-    test('selects asynchronous yielded values by invocation arguments', async function (scope: TestScope) {
+    test('selects asynchronous yielded values by invocation arguments', async function (scope) {
         const load = testDouble<LoadAsyncValues>({
             rules: [ rule.when('selected').yieldsAsync<LoadAsyncValues>([ 'chosen' ], 'complete') ],
             fallback: rule.yieldsAsync<LoadAsyncValues>([], 'missing')
@@ -57,7 +57,7 @@ export const testNode = authoredSuite('yielding double argument rules', [
     }),
     test(
         'delegates asynchronous argument rules without losing the generator return value',
-        async function (scope: TestScope) {
+        async function (scope) {
             const load = testDouble<LoadAsyncValues>({
                 rules: [
                     rule

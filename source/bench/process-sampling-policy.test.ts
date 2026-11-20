@@ -1,10 +1,17 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { processSampling } from '../test-support/process-sampling.ts';
 
-export const testNode = authoredSuite('process sampling helper ownership', [
-    ...([ 'linux', 'darwin' ] as const).map(function (platform) {
-        return authoredTest(`creates a lazy shared helper on ${platform}`, async function (scope: TestScope) {
+export const testNode: TestNode = suite('process sampling helper ownership', [
+    table({
+        title: 'creates a lazy shared helper on supported platforms',
+        cases: [ 'linux', 'darwin' ] as const,
+        caseTitle(platform) {
+            return `${platform}`;
+        },
+        async test(scope) {
+            const platform = scope.parameters;
+
             const fixture = processSampling(platform, scope.signal, null);
             scope.assert.deepEqual(Array.from(fixture.created), []);
             await scope.assert.rejects(async function () {
@@ -18,11 +25,11 @@ export const testNode = authoredSuite('process sampling helper ownership', [
             scope.assert.equal(fixture.created[0]?.instrumentation, 'off');
             scope.assert.deepEqual(fixture.calls, [ 'run', 'run', 'close' ]);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest(
+    test(
         'cancels an acquired helper and unregisters cancellation after disposal',
-        async function (scope: TestScope) {
+        async function (scope) {
             const controller = new AbortController();
             const fixture = processSampling('linux', controller.signal, null);
             const sample = fixture.session.sample('measured');
@@ -37,7 +44,7 @@ export const testNode = authoredSuite('process sampling helper ownership', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('does not acquire a helper when disposed before sampling', async function (scope: TestScope) {
+    test('does not acquire a helper when disposed before sampling', async function (scope) {
         const controller = new AbortController();
         const fixture = processSampling('linux', controller.signal, null);
         await fixture.session.dispose();
@@ -46,7 +53,7 @@ export const testNode = authoredSuite('process sampling helper ownership', [
         scope.assert.deepEqual(fixture.created, []);
         return scope.assert.collect();
     }),
-    authoredTest('rejects process regions created after session disposal', async function (scope: TestScope) {
+    test('rejects process regions created after session disposal', async function (scope) {
         const fixture = processSampling('linux', scope.signal, null);
         await fixture.session.dispose();
         const sample = fixture.session.sample('measured');
@@ -57,7 +64,7 @@ export const testNode = authoredSuite('process sampling helper ownership', [
         scope.assert.deepEqual(fixture.created, []);
         return scope.assert.collect();
     }),
-    authoredTest('preserves helper close failures and releases ownership only once', async function (scope: TestScope) {
+    test('preserves helper close failures and releases ownership only once', async function (scope) {
         const failure = new Error('helper close failed');
         const fixture = processSampling('linux', scope.signal, failure);
         const sample = fixture.session.sample('measured');
@@ -70,12 +77,19 @@ export const testNode = authoredSuite('process sampling helper ownership', [
         scope.assert.deepEqual(fixture.calls, [ 'run', 'close' ]);
         return scope.assert.collect();
     }),
-    ...([ 'win32', 'unsupported' ] as const).map(function (platform) {
-        return authoredTest(`rejects unsupported process sampling on ${platform}`, function (scope: TestScope) {
+    table({
+        title: 'rejects unsupported sampling platforms',
+        cases: [ 'win32', 'unsupported' ] as const,
+        caseTitle(platform) {
+            return `${platform}`;
+        },
+        test(scope) {
+            const platform = scope.parameters;
+
             scope.assert.throws(function () {
                 processSampling(platform, scope.signal, null);
             }, { message: 'Process benchmarks support Linux and macOS.' });
             return scope.assert.collect();
-        });
+        }
     })
 ]);

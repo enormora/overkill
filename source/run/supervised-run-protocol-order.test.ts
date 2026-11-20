@@ -1,6 +1,7 @@
-import { suite, test } from '@overkill-dev/test';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import type { RunResult, TestScope } from '../packages/engine/engine.entry-point.ts';
+import type { RunResult } from '../packages/engine/engine.entry-point.ts';
+
 import { createFakeSupervisedChildProcess } from '../test-support/fake-supervised-child-process.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -10,7 +11,7 @@ import { createSupervisedRunCommand } from './run-isolated-command.ts';
 import { runSupervisedCommand } from './supervised-run.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
-const file = 'source/integration-tests/run/fixtures/passing.test.ts';
+const file = 'source/integration-tests/integration/fixtures/passing.test.ts';
 const profile = defaultMicrotestProfile();
 const command = {
     config: defaultRunConfig(),
@@ -136,16 +137,20 @@ async function assertProtocolOrder(scope: TestScope, phase: Phase): Promise<void
     }
 }
 
-export const testNode = suite('supervised child protocol order', [
-    ...phases.map(function protocolPhase(phase) {
-        return test({
-            ...metadata,
-            title: `validates child messages during ${phase}`,
-            async body(scope: TestScope) {
-                await assertProtocolOrder(scope, phase);
-                return scope.assert.collect();
-            }
-        });
+export const testNode: TestNode = suite('supervised child protocol order', [
+    table({
+        ...metadata,
+        title: 'validates messages during each protocol phase',
+        cases: phases,
+        caseTitle(phase) {
+            return `${phase}`;
+        },
+        async test(scope) {
+            const phase = scope.parameters;
+
+            await assertProtocolOrder(scope, phase);
+            return scope.assert.collect();
+        }
     }),
     test('collection timings remain valid when parent timing collection is absent', async function (scope) {
         const completed = await executeProtocolPhase('collection-timing');

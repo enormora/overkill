@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { selectTestProfile } from '../run/test-profile.ts';
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
@@ -31,7 +31,7 @@ async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
     return await loadConfigFromModule('overkill.config.js', configModule(config));
 }
 
-function assertDefaultMicrotestProcessUsage(scope: OverkillScope, config: LoadedConfig): void {
+function assertDefaultMicrotestProcessUsage(scope: TestScope, config: LoadedConfig): void {
     const profile = selectTestProfile('microtest', config);
 
     scope.require.defined(profile);
@@ -39,7 +39,7 @@ function assertDefaultMicrotestProcessUsage(scope: OverkillScope, config: Loaded
 }
 
 function assertProfileTiming(
-    scope: OverkillScope,
+    scope: TestScope,
     config: LoadedConfig,
     profileName: string,
     collection: 'precise' | 'summary'
@@ -51,7 +51,7 @@ function assertProfileTiming(
 }
 
 function requireMicrotestProfile(
-    scope: OverkillScope,
+    scope: TestScope,
     profile: ProfileConfig | undefined
 ): MicrotestProfileConfig {
     scope.require.defined(profile);
@@ -63,15 +63,15 @@ function requireMicrotestProfile(
     return profile;
 }
 
-export const testNode = suite('source/config/config.test.ts', [
-    test('defineConfig() returns the project config unchanged', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Configuration loading', [
+    test('defineConfig() returns the project config unchanged', function (scope) {
         const projectConfig = { runtimeStateDir: 'target/overkill-state' };
 
         scope.assert.equal(defineConfig(projectConfig), projectConfig);
 
         return scope.assert.collect();
     }),
-    test('loadConfig() returns defaults when no config exists', async function (scope: OverkillScope) {
+    test('returns defaults when no config exists', async function (scope) {
         const config = await createConfigModuleLoader({})({ configPath: null, cwd: configFixtureCwd });
 
         scope.assert.equal(config.configPath, null);
@@ -88,7 +88,7 @@ export const testNode = suite('source/config/config.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() normalizes microtest coverage policy', async function (scope: OverkillScope) {
+    test('normalizes microtest coverage policy', async function (scope) {
         const config = await loadConfigValue({
             profiles: {
                 microtest: {
@@ -146,14 +146,14 @@ export const testNode = suite('source/config/config.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('coverage output directories require a loaded config file', function (scope: OverkillScope) {
+    test('coverage output directories require a loaded config file', function (scope) {
         scope.assert.throws(function normalizeOutputWithoutConfig() {
             normalizeCoveragePolicy({ outputDir: 'coverage' }, null);
         }, { message: 'Coverage outputDir requires a loaded config file.' });
 
         return scope.assert.collect();
     }),
-    test('loadConfig() normalizes timing policies', async function (scope: OverkillScope) {
+    test('normalizes timing policies', async function (scope) {
         const config = await loadConfigValue({
             profiles: {
                 precise: {
@@ -174,7 +174,7 @@ export const testNode = suite('source/config/config.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() discovers a native TypeScript named config export', async function (scope: OverkillScope) {
+    test('discovers a native TypeScript named config export', async function (scope) {
         const config = await loadConfigFromModule(
             'overkill.config.ts',
             configModule({
@@ -191,7 +191,7 @@ export const testNode = suite('source/config/config.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() discovers a JavaScript named config export', async function (scope: OverkillScope) {
+    test('discovers a JavaScript named config export', async function (scope) {
         const config = await loadConfigValue({ runtimeStateDir: 'target/js-config-state' });
 
         scope.assert.equal(config.configPath, resolvedConfigFixturePath('overkill.config.js'));
@@ -199,7 +199,7 @@ export const testNode = suite('source/config/config.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() loads microtest process usage policy', async function (scope: OverkillScope) {
+    test('loads microtest process usage policy', async function (scope: TestScope) {
         const config = await loadConfigValue({
             profiles: {
                 microtest: {
@@ -238,7 +238,7 @@ export const testNode = suite('source/config/config.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() normalizes named profile overrides', async function (scope: OverkillScope) {
+    test('normalizes named profile overrides', async function (scope: TestScope) {
         const config = await loadConfigValue({
             profiles: {
                 microtest: {
@@ -284,7 +284,7 @@ export const testNode = suite('source/config/config.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() normalizes unmeasured named profile overrides', async function (scope: OverkillScope) {
+    test('normalizes unmeasured named profile overrides', async function (scope: TestScope) {
         const config = await loadConfigValue({
             profiles: {
                 safe: {
@@ -311,7 +311,7 @@ export const testNode = suite('source/config/config.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() inherits unmeasured named profile defaults', async function (scope: OverkillScope) {
+    test('inherits unmeasured named profile defaults', async function (scope: TestScope) {
         const config = await loadConfigValue({
             profiles: {
                 safe: {
@@ -327,14 +327,14 @@ export const testNode = suite('source/config/config.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() rejects unknown config keys', async function (scope: OverkillScope) {
+    test('rejects unknown config keys', async function (scope) {
         await scope.assert.rejects(async function loadInvalidConfig() {
             await loadConfigValue({ include: [ 'source' ] });
         }, { message: /unexpected additional property: "include"/ });
 
         return scope.assert.collect();
     }),
-    test('loadConfig() rejects profiles without a test family', async function (scope: OverkillScope) {
+    test('rejects profiles without a test family', async function (scope) {
         await scope.assert.rejects(async function loadInvalidConfig() {
             await loadConfigValue({
                 profiles: { microtest: {} }
@@ -343,7 +343,7 @@ export const testNode = suite('source/config/config.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() rejects unsupported profile test families', async function (scope: OverkillScope) {
+    test('rejects unsupported profile test families', async function (scope) {
         await scope.assert.rejects(async function loadInvalidConfig() {
             await loadConfigValue({
                 profiles: {
@@ -354,7 +354,7 @@ export const testNode = suite('source/config/config.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() rejects process budgets without measurement', async function (scope: OverkillScope) {
+    test('rejects process budgets without measurement', async function (scope) {
         await scope.assert.rejects(async function loadInvalidConfig() {
             await loadConfigValue({
                 profiles: {
@@ -370,7 +370,7 @@ export const testNode = suite('source/config/config.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() rejects invalid process usage numbers', async function (scope: OverkillScope) {
+    test('rejects invalid process usage numbers', async function (scope) {
         await scope.assert.rejects(async function loadInvalidConfig() {
             await loadConfigValue({
                 profiles: {
@@ -387,7 +387,7 @@ export const testNode = suite('source/config/config.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() rejects unknown microtest profile keys', async function (scope: OverkillScope) {
+    test('rejects unknown microtest profile keys', async function (scope) {
         await scope.assert.rejects(async function loadInvalidConfig() {
             await loadConfigValue({
                 profiles: {
@@ -405,7 +405,7 @@ export const testNode = suite('source/config/config.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('loadConfig() rejects invalid profile names', async function (scope: OverkillScope) {
+    test('rejects invalid profile names', async function (scope) {
         await scope.assert.rejects(async function loadInvalidConfig() {
             await loadConfigValue({
                 profiles: {

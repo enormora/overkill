@@ -1,16 +1,16 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type EngineCaseBody, createTestEngine } from '../test-support/create-test-engine.ts';
 
-import type { TestBody } from '../packages/engine/engine.entry-point.ts';
-import { createTestEngine } from '../test-support/create-test-engine.ts';
-
-function passingBody(scope: OverkillScope): ReturnType<TestBody> {
+function passingBody(
+    scope: { readonly assert: Pick<TestScope['assert'], 'true' | 'collect'>; }
+): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
 
     return scope.assert.collect();
 }
 
-export const testNode = suite('source/engine/test-plan-authoring-rules.test.ts', [
-    test('createTestPlan() rejects reachable tables with fewer than two cases', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Test plan authoring rules', [
+    test('rejects reachable tables with fewer than two cases', function (scope) {
         const engine = createTestEngine();
         const emptyTableRoot = engine.createRoot({
             children: [
@@ -58,7 +58,7 @@ export const testNode = suite('source/engine/test-plan-authoring-rules.test.ts',
 
         return scope.assert.collect();
     }),
-    test('createTestPlan() rejects duplicate sibling titles', function (scope: OverkillScope) {
+    test('rejects duplicate sibling titles', function (scope) {
         const engine = createTestEngine();
         const root = engine.createRoot({
             children: [
@@ -88,7 +88,7 @@ export const testNode = suite('source/engine/test-plan-authoring-rules.test.ts',
 
         return scope.assert.collect();
     }),
-    test('createTestPlan() rejects reachable empty nested suites', function (scope: OverkillScope) {
+    test('rejects reachable empty nested suites', function (scope) {
         const engine = createTestEngine();
         const root = engine.createRoot({
             children: [
@@ -119,7 +119,7 @@ export const testNode = suite('source/engine/test-plan-authoring-rules.test.ts',
 
         return scope.assert.collect();
     }),
-    test('createTestPlan() rejects duplicate table case titles', function (scope: OverkillScope) {
+    test('rejects duplicate table case titles', function (scope) {
         const engine = createTestEngine();
         const root = engine.createRoot({
             children: [

@@ -1,6 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
-
-import { testNode as failures } from './module-delivery-failures.test.ts';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { moduleLoadingRuntime } from './test-support/module-loading-runtime.ts';
 import { createModuleLoading, type DeliveredModule } from './module-delivery.ts';
@@ -20,9 +18,8 @@ const delivery = { build: 'build', modules, builtins: [ 'node:path' ] };
 const builtEntry = `${entry}?overkill-build=build%3A0`;
 const builtDependency = `${dependency}?overkill-build=build%3A0`;
 
-export const testNode = authoredSuite('frozen module delivery', [
-    failures,
-    test('returns the native namespace through a generated facade', async function (scope: TestScope) {
+export const testNode: TestNode = suite('frozen module delivery', [
+    test('returns the native namespace through a generated facade', async function (scope) {
         const fixture = moduleLoadingRuntime();
         const loading = createModuleLoading(fixture.runtime);
         const result = await loading.withModuleDelivery(delivery, async function (load) {
@@ -33,7 +30,7 @@ export const testNode = authoredSuite('frozen module delivery', [
         scope.assert.equal(fixture.registrations.length, 1);
         return scope.assert.collect();
     }),
-    test('resolves declared dependencies and allows declared builtins', async function (scope: TestScope) {
+    test('resolves declared dependencies and allows declared builtins', async function (scope) {
         const fixture = moduleLoadingRuntime();
         await createModuleLoading(fixture.runtime).withModuleDelivery(delivery, async function () {
             scope.assert.equal(fixture.resolve('./dependency', builtEntry).url, builtDependency);
@@ -42,7 +39,7 @@ export const testNode = authoredSuite('frozen module delivery', [
         });
         return scope.assert.collect();
     }),
-    test('uses parent-aware native resolution for undeclared graph edges', async function (scope: TestScope) {
+    test('uses parent-aware native resolution for undeclared graph edges', async function (scope) {
         const fixture = moduleLoadingRuntime();
         await createModuleLoading(fixture.runtime).withModuleDelivery(delivery, async function () {
             scope.assert.equal(fixture.resolve('./dependency.ts', builtEntry).url, builtDependency);
@@ -50,7 +47,7 @@ export const testNode = authoredSuite('frozen module delivery', [
         scope.assert.equal(fixture.registrations.length, 1);
         return scope.assert.collect();
     }),
-    test('serves frozen source and JSON namespace attributes', async function (scope: TestScope) {
+    test('serves frozen source and JSON namespace attributes', async function (scope) {
         const fixture = moduleLoadingRuntime();
         await createModuleLoading(fixture.runtime).withModuleDelivery(delivery, async function () {
             scope.assert.deepEqual(fixture.load(builtEntry), {
@@ -67,7 +64,7 @@ export const testNode = authoredSuite('frozen module delivery', [
         });
         return scope.assert.collect();
     }),
-    test('recognizes only imports from an active delivery', async function (scope: TestScope) {
+    test('recognizes only imports from an active delivery', async function (scope) {
         const fixture = moduleLoadingRuntime();
         const loading = createModuleLoading(fixture.runtime);
         scope.assert.false(loading.isDeliveredModuleImport({ parentURL: builtEntry }));
@@ -80,7 +77,7 @@ export const testNode = authoredSuite('frozen module delivery', [
         scope.assert.false(loading.isDeliveredModuleImport({ parentURL: builtEntry }));
         return scope.assert.collect();
     }),
-    test('rejects imports through a closed delivery', async function (scope: TestScope) {
+    test('rejects imports through a closed delivery', async function (scope) {
         const fixture = moduleLoadingRuntime();
         await createModuleLoading(fixture.runtime).withModuleDelivery(delivery, async function () {
             return undefined;
@@ -108,7 +105,7 @@ export const testNode = authoredSuite('frozen module delivery', [
         scope.assert.equal(fixture.registrations.length, 1);
         return scope.assert.collect();
     }),
-    test('shares one registry across loading instances', async function (scope: TestScope) {
+    test('shares one registry across loading instances', async function (scope) {
         const fixture = moduleLoadingRuntime();
         const first = createModuleLoading(fixture.runtime);
         const second = createModuleLoading(fixture.runtime);
@@ -121,7 +118,7 @@ export const testNode = authoredSuite('frozen module delivery', [
         scope.assert.equal(fixture.registrations.length, 1);
         return scope.assert.collect();
     }),
-    test('removes scoped hooks when the operation rejects', async function (scope: TestScope) {
+    test('removes scoped hooks when the operation rejects', async function (scope) {
         const fixture = moduleLoadingRuntime();
         const failure = new Error('operation failed');
         let caught: unknown = null;

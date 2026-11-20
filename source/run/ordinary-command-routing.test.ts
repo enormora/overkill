@@ -1,11 +1,18 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { ordinaryCommandRouting, ordinaryCommandScenario } from '../test-support/ordinary-command-routing.ts';
 import { commandLineExitCodes } from './command-line-command.ts';
 
-export const testNode = authoredSuite('ordinary baseline command routing', [
-    ...([ 'apply', 'bootstrap', 'diff', 'update' ] as const).map(function (verb) {
-        return authoredTest(`routes ${verb} and reports baseline changes`, async function (scope: TestScope) {
+export const testNode: TestNode = suite('ordinary baseline command routing', [
+    table({
+        title: 'routes ordinary commands and reports baseline changes',
+        cases: [ 'apply', 'bootstrap', 'diff', 'update' ] as const,
+        caseTitle(verb) {
+            return `${verb}`;
+        },
+        async test(scope) {
+            const verb = scope.parameters;
+
             const fixture = ordinaryCommandRouting(ordinaryCommandScenario);
             const result = await fixture.commands[verb](fixture.request);
             scope.assert.equal(
@@ -16,29 +23,33 @@ export const testNode = authoredSuite('ordinary baseline command routing', [
             scope.assert.equal(result.stdoutLines[0], 'baseline warning');
             scope.assert.true(result.stdoutLines[1]?.startsWith('create ') === true);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('passes an unchanged baseline diff', async function (scope: TestScope) {
+    test('passes an unchanged baseline diff', async function (scope) {
         const fixture = ordinaryCommandRouting({ ...ordinaryCommandScenario, changes: false });
         const result = await fixture.commands.diff(fixture.request);
         scope.assert.equal(result.exitCode, commandLineExitCodes.pass);
         scope.assert.deepEqual(result.stdoutLines, [ 'baseline warning' ]);
         return scope.assert.collect();
     }),
-    ...([ 'load', 'execute' ] as const).map(function (failure) {
-        return authoredTest(
-            `reports ${failure} failures through the command result`,
-            async function (scope: TestScope) {
-                const fixture = ordinaryCommandRouting({ ...ordinaryCommandScenario, failure });
-                const result = await fixture.commands.apply(fixture.request);
-                scope.assert.equal(result.exitCode, commandLineExitCodes.internalCrash);
-                scope.assert.equal(result.runResult, null);
-                scope.assert.true(result.fallbackDiagnostics.length > 0);
-                return scope.assert.collect();
-            }
-        );
+    table({
+        title: 'reports failures through the command result',
+        cases: [ 'load', 'execute' ] as const,
+        caseTitle(failure) {
+            return `${failure}`;
+        },
+        async test(scope) {
+            const failure = scope.parameters;
+
+            const fixture = ordinaryCommandRouting({ ...ordinaryCommandScenario, failure });
+            const result = await fixture.commands.apply(fixture.request);
+            scope.assert.equal(result.exitCode, commandLineExitCodes.internalCrash);
+            scope.assert.equal(result.runResult, null);
+            scope.assert.true(result.fallbackDiagnostics.length > 0);
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('lists stored baseline identities', async function (scope: TestScope) {
+    test('lists stored baseline identities', async function (scope) {
         const fixture = ordinaryCommandRouting(ordinaryCommandScenario);
         const result = await fixture.commands.list({
             cwd: '/project',
@@ -50,7 +61,7 @@ export const testNode = authoredSuite('ordinary baseline command routing', [
         scope.assert.deepEqual(fixture.calls, [ 'list' ]);
         return scope.assert.collect();
     }),
-    authoredTest('reports baseline listing failures', async function (scope: TestScope) {
+    test('reports baseline listing failures', async function (scope) {
         const fixture = ordinaryCommandRouting({ ...ordinaryCommandScenario, failure: 'list' });
         const result = await fixture.commands.list({
             cwd: '/project',

@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { defaultIntegrationProfile } from '../test-support/run-command-factory.ts';
 
@@ -21,9 +21,16 @@ function hostConfig(): NormalizedConfig {
     });
 }
 
-export const testNode = authoredSuite('benchmark host configuration', [
-    ...([ 'supervised-process', 'worker-pool' ] as const).map(function (processModel) {
-        return authoredTest(`copies integration placement ${processModel}`, function (scope: TestScope) {
+export const testNode: TestNode = suite('benchmark host configuration', [
+    table({
+        title: 'copies integration placement policy',
+        cases: [ 'supervised-process', 'worker-pool' ] as const,
+        caseTitle(processModel) {
+            return `${processModel}`;
+        },
+        test(scope) {
+            const processModel = scope.parameters;
+
             const original = {
                 ...hostConfig(),
                 profiles: {
@@ -36,9 +43,9 @@ export const testNode = authoredSuite('benchmark host configuration', [
             scope.assert.deepEqual(copied, original);
             scope.assert.notEqual(copied.profiles.sample?.execution, original.profiles.sample.execution);
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('copies supervised benchmark placement independently', function (scope: TestScope) {
+    test('copies supervised benchmark placement independently', function (scope) {
         const original = normalizeConfig({
             profiles: {
                 sample: {
@@ -53,7 +60,7 @@ export const testNode = authoredSuite('benchmark host configuration', [
         scope.assert.notEqual(copied.profiles.sample?.execution, original.profiles.sample?.execution);
         return scope.assert.collect();
     }),
-    authoredTest('requires every limit in direct normalized configuration', function (scope: TestScope) {
+    test('requires every limit in direct normalized configuration', function (scope) {
         const config = copyConfig(hostConfig());
         const profile = config.profiles.startup;
         if (profile?.testFamily !== 'benchmark') {
@@ -65,7 +72,7 @@ export const testNode = authoredSuite('benchmark host configuration', [
         }, { name: 'ConfigError' });
         return scope.assert.collect();
     }),
-    authoredTest('normalizes relative limits and leaves omitted checks disabled', function (scope: TestScope) {
+    test('normalizes relative limits and leaves omitted checks disabled', function (scope) {
         const profile = hostConfig().profiles.startup;
         if (profile?.testFamily !== 'benchmark') {
             throw new Error('Missing benchmark profile.');
@@ -75,7 +82,7 @@ export const testNode = authoredSuite('benchmark host configuration', [
         scope.assert.equal(profile.host.limits.maximumLinuxCpuStallPercent, null);
         return scope.assert.collect();
     }),
-    authoredTest('copies host policy independently when snapshotting configuration', function (scope: TestScope) {
+    test('copies host policy independently when snapshotting configuration', function (scope) {
         const config = hostConfig();
         const profile = config.profiles.startup;
         const copied = copyConfig(config).profiles.startup;
@@ -86,7 +93,7 @@ export const testNode = authoredSuite('benchmark host configuration', [
         scope.assert.deepEqual(copied.host, profile.host);
         return scope.assert.collect();
     }),
-    authoredTest('rejects invalid direct normalized policy', function (scope: TestScope) {
+    test('rejects invalid direct normalized policy', function (scope) {
         const config = hostConfig();
         const profile = config.profiles.startup;
         if (profile?.testFamily !== 'benchmark') {
@@ -102,9 +109,9 @@ export const testNode = authoredSuite('benchmark host configuration', [
         }, { name: 'ConfigError' });
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'rejects nonfinite or out-of-range limits, unknown keys, and host policy on ordinary profiles',
-        function (scope: TestScope) {
+        function (scope) {
             for (
                 const limits of [ { minimumAvailableMemoryPercent: -1 }, {
                     maximumCpuBusyPercent: Number.POSITIVE_INFINITY

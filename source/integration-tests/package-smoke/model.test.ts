@@ -1,5 +1,5 @@
+import { type TestNode, suite, test } from '#tests';
 import { execFile } from 'node:child_process';
-import { suite, test } from '#tests';
 
 async function execute(script: string): Promise<string> {
     return new Promise(function executeConsumer(resolve, reject) {
@@ -38,7 +38,7 @@ if (node.title !== 'packaged model') throw new Error('Invalid model node');
 console.log('model package loaded');
 `;
 
-export const testNode = suite('packaged model authoring', [
+export const testNode: TestNode = suite('packaged model authoring', [
     test('shares property generators across package copies', async function (scope) {
         const result = await execute(script);
         scope.assert.equal(result.trim(), 'model package loaded');

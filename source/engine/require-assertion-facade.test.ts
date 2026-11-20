@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 
@@ -132,8 +132,8 @@ function recordRequireNodes(facade: RequireAssertionFacade): void {
     recordTypeRequireNodes(facade);
 }
 
-export const testNode = suite('source/engine/require-assertion-facade.test.ts', [
-    test('createRecordingRequireFacade() records every built-in requirement node', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Require assertion facade', [
+    test('createRecordingRequireFacade() records every built-in requirement node', function (scope: TestScope) {
         const recording = createRequireRecording();
 
         recordRequireNodes(recording.facade);
@@ -195,7 +195,7 @@ export const testNode = suite('source/engine/require-assertion-facade.test.ts', 
 
         return scope.assert.collect();
     }),
-    test('createRecordingRequireFacade() applies annotated messages', function (scope: OverkillScope) {
+    test('createRecordingRequireFacade() applies annotated messages', function (scope) {
         const recording = createRequireRecording();
         const requiredValue: RequireAssertionFacade = recording.facade.annotated('required value');
         const optionValue: RequireAssertionFacade = recording.facade.annotated('base message');

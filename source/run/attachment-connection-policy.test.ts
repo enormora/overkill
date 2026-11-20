@@ -1,7 +1,7 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { attachmentChannel, type AttachmentChannel } from '../test-support/attachment-channel.ts';
-import { testNode as streamFailures } from './attachment-stream-failure-policy.test.ts';
+
 import { attachmentMaxPendingRequests, type AttachmentResponse } from './attachment-protocol.ts';
 
 const operation = { kind: 'write', writer: 1, data: 'unit' } as const;
@@ -20,9 +20,8 @@ async function assertAttachmentQueueRecovery(
     fixture.reply({ request: attachmentMaxPendingRequests, result: { kind: 'written' } });
     scope.assert.deepEqual(await next, { kind: 'written' });
 }
-export const testNode = authoredSuite('attachment connection policy', [
-    streamFailures,
-    test('waits for connection and correlates replies with numbered requests', async function (scope: TestScope) {
+export const testNode: TestNode = suite('attachment connection policy', [
+    test('waits for connection and correlates replies with numbered requests', async function (scope) {
         const fixture = attachmentChannel(scope);
         const pending = fixture.connection.exchange(operation);
         scope.assert.deepEqual(Array.from(fixture.sent), []);
@@ -37,7 +36,7 @@ export const testNode = authoredSuite('attachment connection policy', [
         });
         return scope.assert.collect();
     }),
-    test('delivers out of order replies to the matching callers', async function (scope: TestScope) {
+    test('delivers out of order replies to the matching callers', async function (scope) {
         const fixture = attachmentChannel(scope);
         fixture.connect();
         const first = fixture.connection.exchange(operation);
@@ -53,7 +52,7 @@ export const testNode = authoredSuite('attachment connection policy', [
         });
         return scope.assert.collect();
     }),
-    test('rejects connection failures with their original error', async function (scope: TestScope) {
+    test('rejects connection failures with their original error', async function (scope) {
         const fixture = attachmentChannel(scope);
         const failure = new Error('Connect failed.');
         const rejected = scope.assert.rejects(async function () {
@@ -66,7 +65,7 @@ export const testNode = authoredSuite('attachment connection policy', [
         }, { exact: failure });
         return scope.assert.collect();
     }),
-    test('rejects all pending and future requests when a channel disconnects', async function (scope: TestScope) {
+    test('rejects all pending and future requests when a channel disconnects', async function (scope) {
         const fixture = attachmentChannel(scope);
         fixture.connect();
         const pending = [ fixture.connection.exchange(operation), fixture.connection.exchange(operation) ];
@@ -84,7 +83,7 @@ export const testNode = authoredSuite('attachment connection policy', [
         }, { message });
         return scope.assert.collect();
     }),
-    test('notifies disconnect observers when the connection closes', async function (scope: TestScope) {
+    test('notifies disconnect observers when the connection closes', async function (scope) {
         const fixture = attachmentChannel(scope);
         fixture.connect();
         await fixture.connection.ready;
@@ -97,7 +96,7 @@ export const testNode = authoredSuite('attachment connection policy', [
         scope.assert.true(fixture.socket.destroyed);
         return scope.assert.collect();
     }),
-    test('fails pending requests on malformed replies', async function (scope: TestScope) {
+    test('fails pending requests on malformed replies', async function (scope) {
         const fixture = attachmentChannel(scope);
         fixture.connect();
         const pending = fixture.connection.exchange(operation);
@@ -110,7 +109,7 @@ export const testNode = authoredSuite('attachment connection policy', [
         scope.assert.true(fixture.socket.destroyed);
         return scope.assert.collect();
     }),
-    test('bounds pending requests and releases the queue after replies', async function (scope: TestScope) {
+    test('bounds pending requests and releases the queue after replies', async function (scope) {
         const fixture = attachmentChannel(scope);
         fixture.connect();
         const pending = Array.from(
@@ -129,7 +128,7 @@ export const testNode = authoredSuite('attachment connection policy', [
         await assertAttachmentQueueRecovery(scope, fixture, pending);
         return scope.assert.collect();
     }),
-    test('rejects oversized replies and destroys their transport', async function (scope: TestScope) {
+    test('rejects oversized replies and destroys their transport', async function (scope) {
         const fixture = attachmentChannel(scope);
         fixture.connect();
         const pending = fixture.connection.exchange(operation);

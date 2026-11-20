@@ -1,6 +1,5 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
 import { expandRuntimeMatrices } from '../engine/runtime-matrix-expansion.ts';
@@ -222,8 +221,8 @@ function assertScenarioRuntimeIdentities(
     scope.assert.deepEqual(selectedRuntime.scenarios, { api: 'payments-500' });
 }
 
-export const testNode = suite('source/run/runtime-matrix-expansion.test.ts', [
-    test('expands one matrix into work identities and selected resources', function (scope: TestScope) {
+export const testNode: TestNode = suite('Runtime matrix expansion', [
+    test('expands one matrix into work identities and selected resources', function (scope) {
         const expanded = expandRuntimeMatrices(
             testPlan(testCaseWithRuntimeGraphs([ matrixRuntimeGraph('node'), sidecarRuntimeGraph() ]))
         );
@@ -271,7 +270,7 @@ export const testNode = suite('source/run/runtime-matrix-expansion.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('preserves cases without matrices', function (scope: TestScope) {
+    test('preserves cases without matrices', function (scope) {
         const testCase = testCaseWithRuntimeGraphs([]);
         const expanded = expandRuntimeMatrices(testPlan(testCase));
 
@@ -303,7 +302,7 @@ export const testNode = suite('source/run/runtime-matrix-expansion.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('expands multiple matrices as a cartesian product', function (scope: TestScope) {
+    test('expands multiple matrices as a cartesian product', function (scope) {
         const expanded = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
             browserRuntimeGraph(),
             matrixRuntimeGraph('node')
@@ -339,7 +338,7 @@ export const testNode = suite('source/run/runtime-matrix-expansion.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('records scenario bindings without expanding scenario catalogs', function (scope: TestScope) {
+    test('records scenario bindings without expanding scenario catalogs', function (scope) {
         const defaultExpansion = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
             scenarioSidecarRuntimeGraph('default')
         ])));
@@ -353,7 +352,7 @@ export const testNode = suite('source/run/runtime-matrix-expansion.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('expands separate matrix wrappers as a cartesian product', function (scope: TestScope) {
+    test('expands separate matrix wrappers as a cartesian product', function (scope) {
         const expanded = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
             matrixRuntimeGraph('node'),
             browserRuntimeGraph()

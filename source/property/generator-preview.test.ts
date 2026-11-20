@@ -1,5 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { sampleGenerator } from './generator-preview.ts';
 import { gen } from './generators.ts';
@@ -8,7 +7,7 @@ type PreviewTree = { readonly left: PreviewTree; readonly right: PreviewTree; } 
 
 const request = { seed: 42n, count: 10, size: 3, depth: 0 };
 
-export const testNode = authoredSuite('generator previews', [
+export const testNode: TestNode = suite('generator previews', [
     test('samples have independent mutable storage', function (scope: TestScope) {
         const values = sampleGenerator(gen.array(gen.boolean()), request);
         const first = values[0];
@@ -20,7 +19,7 @@ export const testNode = authoredSuite('generator previews', [
         scope.assert.equal(second.length <= 3, true);
         return scope.assert.collect();
     }),
-    test('validates request shape and generator identity before empty previews', function (scope: TestScope) {
+    test('validates request shape and generator identity before empty previews', function (scope) {
         for (
             const invalid of [
                 null,
@@ -41,7 +40,7 @@ export const testNode = authoredSuite('generator previews', [
         }, { name: 'TypeError' });
         return scope.assert.collect();
     }),
-    test('recursive preview depth zero forces leaves', function (scope: TestScope) {
+    test('recursive preview depth zero forces leaves', function (scope) {
         const tree = gen.recursive<PreviewTree>({
             leaf: gen.constant(null),
             branch(child) {
@@ -57,7 +56,7 @@ export const testNode = authoredSuite('generator previews', [
         );
         return scope.assert.collect();
     }),
-    test('reproduces isolated streams without truncating seeds', function (scope: TestScope) {
+    test('reproduces isolated streams without truncating seeds', function (scope) {
         const generator = gen.integer({ min: 0, max: 1_000_000 });
         const first = sampleGenerator(generator, request);
         sampleGenerator(generator, { ...request, seed: -42n });
@@ -73,7 +72,7 @@ export const testNode = authoredSuite('generator previews', [
         );
         return scope.assert.collect();
     }),
-    test('bounds rejection and rejects incomplete previews', function (scope: TestScope) {
+    test('bounds rejection and rejects incomplete previews', function (scope) {
         scope.assert.throws(function impossibleFilter() {
             sampleGenerator(
                 gen.boolean().filter(function () {
@@ -93,7 +92,7 @@ export const testNode = authoredSuite('generator previews', [
         }, { name: 'RangeError' });
         return scope.assert.collect();
     }),
-    test('zero count defers callbacks and repeated values remain samples', function (scope: TestScope) {
+    test('zero count defers callbacks and repeated values remain samples', function (scope) {
         const generator = gen.constant(1).map(function unexpectedGeneration() {
             throw new Error('Must remain deferred');
         });
@@ -106,7 +105,7 @@ export const testNode = authoredSuite('generator previews', [
         );
         return scope.assert.collect();
     }),
-    test('reconstructs mutable dependent inputs without calling codecs', function (scope: TestScope) {
+    test('reconstructs mutable dependent inputs without calling codecs', function (scope) {
         const generator = gen
             .array(gen.boolean())
             .flatMap(function dependent(values) {

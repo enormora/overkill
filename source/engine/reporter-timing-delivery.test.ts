@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -128,10 +128,10 @@ async function executeWithPreciseTimings(
     });
 }
 
-export const testNode = suite('source/engine/reporter-timing-delivery.test.ts', [
+export const testNode: TestNode = suite('Reporter timing delivery', [
     test(
         'execute() delivers complete precise timings through both reporter lifecycles',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const engine = createTimingDeliveryEngine();
             const realTimeReporter = createInMemoryRealTimeReporter();
             const finalResultReporter = createInMemoryFinalResultReporter();

@@ -1,12 +1,12 @@
-import { test } from '@overkill-dev/test';
+import { type TestNode, test, type TestScope } from '@overkill-dev/test';
 
-import { type TestScope, createRoot, createTestCase, createTestPlan } from '../packages/engine/engine.entry-point.ts';
+import { createRoot, createTestCase, createTestPlan } from '../packages/engine/engine.entry-point.ts';
 
 import { createAsyncLeakMonitor } from '../engine/async-leak-diagnostics.ts';
 import { createDeterministicRunCoordinator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 
-export const testNode = test(
+export const testNode: TestNode = test(
     'nested direct collection does not leave a test-owned watchdog promise',
     async function (scope: TestScope) {
         const node = createTestCase({
@@ -32,7 +32,9 @@ export const testNode = test(
                 config: defaultRunConfig({ profiles: { microtest: defaultMicrotestProfile() } }),
                 cwd: process.cwd(),
                 engine: { kind: 'default' },
-                request: defaultRunRequest({ paths: [ 'source/integration-tests/run/fixtures/passing.test.ts' ] })
+                request: defaultRunRequest({
+                    paths: [ 'source/integration-tests/integration/fixtures/passing.test.ts' ]
+                })
             }, {
                 kind: 'direct-entrypoint',
                 configuration: { kind: 'memory' },

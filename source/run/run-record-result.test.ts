@@ -1,8 +1,8 @@
-import { suite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { RunResult, TestOutcome } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { testNode as nestedFindings } from './recorded-findings.test.ts';
+
 import { recordedRunResult, serializeRunDiagnostics, parseSerializedRunDiagnostics } from './run-record-result.ts';
 
 function opaqueFailure(): TestOutcome {
@@ -152,9 +152,8 @@ function resultWithOpaqueEvidence(): RunResult {
     };
 }
 
-export const testNode = suite('source/run/run-record-result.test.ts', [
-    nestedFindings,
-    authoredTest('round trips bounded diagnostic evidence without serializing it twice', function (scope) {
+export const testNode: TestNode = suite('Run record result', [
+    test('round trips bounded diagnostic evidence without serializing it twice', function (scope) {
         const live = resultWithOpaqueEvidence();
         const diagnostics = serializeRunDiagnostics(live);
         const encoded = JSON.stringify(diagnostics);
@@ -178,7 +177,7 @@ export const testNode = suite('source/run/run-record-result.test.ts', [
         }, { name: 'ZodError' });
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'projects cyclic and bigint diagnostics without changing live outcomes or artifact identities',
         function (scope) {
             const live = resultWithOpaqueEvidence();
@@ -200,7 +199,7 @@ export const testNode = suite('source/run/run-record-result.test.ts', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('serializes opaque attempt histories without mutating live evidence', function (scope) {
+    test('serializes opaque attempt histories without mutating live evidence', function (scope) {
         const live = resultWithOpaqueEvidence();
         const recorded = recordedRunResult(live);
         scope.assert.includes(JSON.stringify(recorded.perTest[0]?.attempts), '"kind":"bigint","value":"42"');

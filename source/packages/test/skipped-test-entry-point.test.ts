@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     resolveSourceLocation,
@@ -12,7 +12,7 @@ import {
     ownsTestNode
 } from '../engine/engine.entry-point.ts';
 
-import { createTestFacade, skippedTest, suite } from './test.entry-point.ts';
+import { createTestFacade, skippedTest, suite as subjectSuite } from './test.entry-point.ts';
 
 type SkippedAuthoringExecution = {
     readonly plannedCase: TestPlan['discoveredCases'][number] | undefined;
@@ -23,7 +23,7 @@ type SkippedAuthoringExecution = {
 
 const invokeSkippedTest = skippedTest as (...parameters: readonly unknown[]) => unknown;
 
-function assertSourceLocationInThisFile(scope: OverkillScope, location: SourceLocation): void {
+function assertSourceLocationInThisFile(scope: TestScope, location: SourceLocation): void {
     if (location.kind !== 'known') {
         scope.assert.equal(location.kind, 'known');
 
@@ -37,7 +37,7 @@ function assertSourceLocationInThisFile(scope: OverkillScope, location: SourceLo
 }
 
 function assertDefinitionLocationInThisFile(
-    scope: OverkillScope,
+    scope: TestScope,
     sourceLocations: TestCase['definitionLocations']
 ): void {
     const sourceLocation = sourceLocations[0];
@@ -55,7 +55,7 @@ async function executeRootSkippedNode(): Promise<SkippedAuthoringExecution> {
         reason: ' unsupported platform ',
         title: 'skips'
     });
-    const testNode = suite({
+    const testNode = subjectSuite({
         annotations: { tags: [ 'suite' ] },
         children: [ testCase ],
         controls: {},
@@ -109,7 +109,7 @@ async function executeFacadeSkippedNode(): Promise<SkippedAuthoringExecution> {
 }
 
 function assertSkippedOutcome(
-    scope: OverkillScope,
+    scope: TestScope,
     execution: SkippedAuthoringExecution,
     reason: string
 ): void {
@@ -123,7 +123,7 @@ function assertSkippedOutcome(
     }
 }
 
-function assertRootSkippedCase(scope: OverkillScope, execution: SkippedAuthoringExecution): void {
+function assertRootSkippedCase(scope: TestScope, execution: SkippedAuthoringExecution): void {
     scope.require.defined(execution.plannedCase);
     scope.assert.deepEqual(execution.plannedCase.id, {
         file: null,
@@ -137,14 +137,14 @@ function assertRootSkippedCase(scope: OverkillScope, execution: SkippedAuthoring
     assertSkippedOutcome(scope, execution, 'unsupported platform');
 }
 
-function assertFacadeSkippedData(scope: OverkillScope, execution: SkippedAuthoringExecution): void {
+function assertFacadeSkippedData(scope: TestScope, execution: SkippedAuthoringExecution): void {
     scope.require.defined(execution.plannedCase);
     scope.assert.equal(execution.plannedCase.testFamily, null);
     scope.assert.equal(execution.plannedCase.controls.capture, 'live');
     scope.assert.deepEqual(execution.plannedCase.annotations.tags, [ 'facade', 'suite', 'case' ]);
 }
 
-function assertFacadeSkippedCase(scope: OverkillScope, execution: SkippedAuthoringExecution): void {
+function assertFacadeSkippedCase(scope: TestScope, execution: SkippedAuthoringExecution): void {
     scope.require.defined(execution.plannedCase);
     scope.assert.deepEqual(execution.plannedCase.id, {
         file: null,
@@ -162,7 +162,7 @@ function assertFacadeSkippedCase(scope: OverkillScope, execution: SkippedAuthori
     scope.assert.equal(execution.result.summary.failed, 0);
 }
 
-function assertSkippedSummary(scope: OverkillScope, summary: Awaited<ReturnType<typeof execute>>['summary']): void {
+function assertSkippedSummary(scope: TestScope, summary: Awaited<ReturnType<typeof execute>>['summary']): void {
     scope.assert.deepEqual({
         ...summary,
         defined: null
@@ -180,10 +180,10 @@ function assertSkippedSummary(scope: OverkillScope, summary: Awaited<ReturnType<
     });
 }
 
-export const testNode = authoredSuite('source/packages/test/skipped-test-entry-point.test.ts', [
+export const testNode: TestNode = suite('Skipped test entry point', [
     test(
         '@overkill-dev/test skippedTest() creates visible skipped engine nodes',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const execution = await executeRootSkippedNode();
 
             scope.assert.equal(ownsTestNode(execution.testCase), true);
@@ -195,7 +195,7 @@ export const testNode = authoredSuite('source/packages/test/skipped-test-entry-p
             return scope.assert.collect();
         }
     ),
-    test('@overkill-dev/test facade skippedTest() composes family test data', async function (scope: OverkillScope) {
+    test('@overkill-dev/test facade skippedTest() composes family test data', async function (scope) {
         const execution = await executeFacadeSkippedNode();
 
         scope.assert.equal(ownsTestNode(execution.testCase), true);
@@ -206,7 +206,7 @@ export const testNode = authoredSuite('source/packages/test/skipped-test-entry-p
     }),
     test(
         '@overkill-dev/test skippedTest() delegates invalid inputs to engine validation',
-        function (scope: OverkillScope) {
+        function (scope) {
             scope.assert.throws(function createSkippedTestWithWrongArity() {
                 invokeSkippedTest();
             }, {

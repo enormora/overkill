@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
 import { withPerformanceBaselineReport } from '../baselines/performance-report.ts';
@@ -48,15 +48,15 @@ function policyReport(
 function baselineReport(metrics: readonly PerformanceMetricComparison[]): BenchmarkHtmlReport {
     return policyReport(metrics, observation, []);
 }
-export const testNode = authoredSuite('benchmark HTML baseline comparisons', [
-    test('retains policy diagnostics without inventing charts for untyped adapters', function (scope: TestScope) {
+export const testNode: TestNode = suite('benchmark HTML baseline comparisons', [
+    test('retains policy diagnostics without inventing charts for untyped adapters', function (scope) {
         const report = policyReport(null, observation, []);
         scope.assert.deepEqual(report.charts.baselines, []);
         scope.assert.includes(report.baselineDetails, 'Adapter does not describe metrics.');
         scope.assert.includes(report.baselineDetails, '"kind": "match"');
         return scope.assert.collect();
     }),
-    test('keeps unavailable observations and missing baselines explicit', function (scope: TestScope) {
+    test('keeps unavailable observations and missing baselines explicit', function (scope) {
         const metric = {
             name: 'latency',
             unit: 'ms',
@@ -138,7 +138,7 @@ export const testNode = authoredSuite('benchmark HTML baseline comparisons', [
         );
         return scope.assert.collect();
     }),
-    test('renders unavailable values and avoids arithmetic overflow', function (scope: TestScope) {
+    test('renders unavailable values and avoids arithmetic overflow', function (scope) {
         const report = baselineReport([
             {
                 name: 'missing',
@@ -175,7 +175,7 @@ export const testNode = authoredSuite('benchmark HTML baseline comparisons', [
         scope.assert.equal(html.includes('NaN'), false);
         return scope.assert.collect();
     }),
-    test('displays adapter policy independently of numeric chart deltas', function (scope: TestScope) {
+    test('displays adapter policy independently of numeric chart deltas', function (scope) {
         const report = baselineReport([ {
             name: 'latency',
             unit: 'ms',
@@ -190,7 +190,7 @@ export const testNode = authoredSuite('benchmark HTML baseline comparisons', [
         scope.assert.includes(html, '<td>match</td>');
         return scope.assert.collect();
     }),
-    test('shows range distances and leaves zero-reference percentages unavailable', function (scope: TestScope) {
+    test('shows range distances and leaves zero-reference percentages unavailable', function (scope) {
         const report = baselineReport([
             {
                 name: 'range',
@@ -207,7 +207,7 @@ export const testNode = authoredSuite('benchmark HTML baseline comparisons', [
         scope.assert.equal(html.includes('Infinity'), false);
         return scope.assert.collect();
     }),
-    test('keeps raw and normalized values in separate chart groups', function (scope: TestScope) {
+    test('keeps raw and normalized values in separate chart groups', function (scope) {
         const report = baselineReport([
             { name: 'latency', unit: 'ms', scale: { kind: 'raw' }, actual: 3, expected: { kind: 'missing' } },
             {

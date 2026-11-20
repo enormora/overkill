@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { RunResult } from '../engine/run-result.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
@@ -18,10 +18,10 @@ const runStartEvent = {
     startedAt: '2026-07-15T00:00:00.000Z'
 } as const;
 
-export const testNode = suite('source/reporters/in-memory-reporter.test.ts', [
+export const testNode: TestNode = suite('In memory reporter', [
     test(
         'in-memory real-time reporter records events and final result notification',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const reporter = createInMemoryRealTimeReporter();
             const runtimeReporter = reporter(reportingContext);
             const runResult: RunResult = runResultFactory.build();
@@ -42,7 +42,7 @@ export const testNode = suite('source/reporters/in-memory-reporter.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('in-memory final-result reporter records final results', async function (scope: OverkillScope) {
+    test('in-memory final-result reporter records final results', async function (scope) {
         const reporter = createInMemoryFinalResultReporter();
         const runtimeReporter = reporter(reportingContext);
         const runResult: RunResult = runResultFactory.build();
@@ -64,7 +64,7 @@ export const testNode = suite('source/reporters/in-memory-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('in-memory configurable reporter creates a real-time reporter', async function (scope: OverkillScope) {
+    test('in-memory configurable reporter creates a real-time reporter', async function (scope) {
         const reporter = createInMemoryReporter({ mode: 'real-time' });
         const runtimeReporter = reporter(reportingContext);
         const event = {
@@ -81,7 +81,7 @@ export const testNode = suite('source/reporters/in-memory-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('in-memory configurable reporter creates a final-result reporter', async function (scope: OverkillScope) {
+    test('in-memory configurable reporter creates a final-result reporter', async function (scope) {
         const reporter = createInMemoryReporter({ mode: 'final-result' });
         const runtimeReporter = reporter(reportingContext);
         const runResult: RunResult = runResultFactory.build();

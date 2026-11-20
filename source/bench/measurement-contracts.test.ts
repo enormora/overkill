@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { observationVariance } from './statistical-primitives.ts';
 import { resolveBenchmarkDefinition } from './benchmark-definition-resolution.ts';
@@ -20,7 +20,7 @@ const definition = {
     budgets: { one: { value: { maximum: 2 } } }
 };
 
-export const testNode = authoredSuite('measurement contracts', [
+export const testNode: TestNode = suite('measurement contracts', [
     test('rejects variance overflow instead of returning a non-finite interval', function (scope) {
         scope.assert.throws(function () {
             return observationVariance([ Number.MAX_VALUE, -Number.MAX_VALUE ]);

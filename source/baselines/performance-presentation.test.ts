@@ -1,7 +1,7 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test, testDouble } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { testDouble } from '../doubles/test-double.ts';
+
 import type { ChartedPerformanceBaselineAdapter, PerformanceBaselineAdapter } from './performance-adapter.ts';
 import { presentPerformanceMetrics } from './performance-presentation.ts';
 import { withPerformanceBaselineReport, readPerformanceBaselineReport } from './performance-report.ts';
@@ -25,8 +25,8 @@ const adapter: PerformanceBaselineAdapter = {
         return input.actual.value;
     }
 };
-export const testNode = authoredSuite('performance chart presentation', [
-    test('validates one-sided ranges and rejects empty or duplicate metric identities', function (scope: TestScope) {
+export const testNode: TestNode = suite('performance chart presentation', [
+    test('validates one-sided ranges and rejects empty or duplicate metric identities', function (scope) {
         const metric = { name: 'median', unit: 'ms', scale: { kind: 'raw' }, actual: 2 } as const;
         for (
             const expected of [
@@ -62,7 +62,7 @@ export const testNode = authoredSuite('performance chart presentation', [
         );
         return scope.assert.collect();
     }),
-    test('records thrown non-Error diagnostics and skips unavailable observations', function (scope: TestScope) {
+    test('records thrown non-Error diagnostics and skips unavailable observations', function (scope) {
         const charted = {
             ...adapter,
             describeMetrics: testDouble.throws('Chart failed.')
@@ -74,7 +74,7 @@ export const testNode = authoredSuite('performance chart presentation', [
         scope.assert.equal(presentPerformanceMetrics(charted, { kind: 'not-applicable' }).kind, 'unavailable');
         return scope.assert.collect();
     }),
-    test('accepts declared normalized values', function (scope: TestScope) {
+    test('accepts declared normalized values', function (scope) {
         const charted: ChartedPerformanceBaselineAdapter = {
             ...adapter,
             describeMetrics() {
@@ -93,7 +93,7 @@ export const testNode = authoredSuite('performance chart presentation', [
         });
         return scope.assert.collect();
     }),
-    test('records invalid chart metadata without throwing away comparison evidence', function (scope: TestScope) {
+    test('records invalid chart metadata without throwing away comparison evidence', function (scope) {
         const charted: ChartedPerformanceBaselineAdapter = {
             ...adapter,
             describeMetrics() {
@@ -110,7 +110,7 @@ export const testNode = authoredSuite('performance chart presentation', [
         scope.assert.equal(presentPerformanceMetrics(adapter, observation).kind, 'unavailable');
         return scope.assert.collect();
     }),
-    test('rejects reports that exceed the artifact limit', function (scope: TestScope) {
+    test('rejects reports that exceed the artifact limit', function (scope) {
         scope.assert.throws(function oversizedReport() {
             withPerformanceBaselineReport({
                 maxBytes: 1,

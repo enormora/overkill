@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     serializeValue,
@@ -33,7 +33,7 @@ function isCapturedOutputArtifact(artifact: RunArtifact): artifact is CapturedOu
 }
 
 function assertConcurrentArtifactScope(
-    scope: OverkillScope,
+    scope: TestScope,
     artifacts: ReturnType<SupervisedRunState['artifacts']>,
     activeCases: readonly CaseId[]
 ): void {
@@ -51,7 +51,7 @@ function assertConcurrentArtifactScope(
 }
 
 function capturedOutputArtifact(
-    scope: OverkillScope,
+    scope: TestScope,
     artifacts: ReturnType<SupervisedRunState['artifacts']>,
     index: number
 ): CapturedOutputArtifact | null {
@@ -64,7 +64,7 @@ function capturedOutputArtifact(
 }
 
 function assertCapturedOutputCap(
-    scope: OverkillScope,
+    scope: TestScope,
     artifacts: ReturnType<SupervisedRunState['artifacts']>
 ): void {
     const capped = capturedOutputArtifact(scope, artifacts, 0);
@@ -82,7 +82,7 @@ function assertCapturedOutputCap(
 }
 
 function assertRunCapturedOutput(
-    scope: OverkillScope,
+    scope: TestScope,
     state: SupervisedRunState,
     testCase: CaseId
 ): void {
@@ -123,7 +123,7 @@ function propertyCheckpoint(): PropertyCaseEvidence {
 }
 
 function assertInterruptedProperty(
-    scope: OverkillScope,
+    scope: TestScope,
     results: ReturnType<SupervisedRunState['perTestResults']>,
     property: PropertyCaseEvidence
 ): void {
@@ -141,8 +141,8 @@ function assertInterruptedProperty(
     scope.assert.equal(JSON.stringify(result.attempts[0].property), JSON.stringify(result.property));
 }
 
-export const testNode = suite('source/run/supervised-run-state.test.ts', [
-    test('selects authored live capture only for a single active case', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Supervised run state', [
+    test('selects authored live capture only for a single active case', function (scope) {
         const state = createSupervisedRunState('first-failure-and-final');
         scope.assert.equal(state.captureMode('buffered'), 'buffered');
         state.addActiveCase('live', { capture: 'live', id: caseId('live') }, 0, { index: 0 });
@@ -152,7 +152,7 @@ export const testNode = suite('source/run/supervised-run-state.test.ts', [
         scope.assert.equal(state.captureMode('live'), 'live');
         return scope.assert.collect();
     }),
-    test('preserves authored live capture while terminal output drains', function (scope: OverkillScope) {
+    test('preserves authored live capture while terminal output drains', function (scope: TestScope) {
         const state = createSupervisedRunState('first-failure-and-final');
         const result = runResultFactory.build({ perTest: [ { id: caseId('live') } ] }).perTest[0];
         scope.require.defined(result);
@@ -164,7 +164,7 @@ export const testNode = suite('source/run/supervised-run-state.test.ts', [
         scope.assert.equal(state.captureMode('buffered'), 'live');
         return scope.assert.collect();
     }),
-    test('retains property progress delivered through the supervised event boundary', function (scope: OverkillScope) {
+    test('retains property progress delivered through the supervised event boundary', function (scope) {
         const state = createSupervisedRunState('first-failure-and-final');
         const id = caseId('transported property progress');
         const workId = createDefaultWorkId(id);
@@ -189,7 +189,7 @@ export const testNode = suite('source/run/supervised-run-state.test.ts', [
         assertInterruptedProperty(scope, state.perTestResults(), property);
         return scope.assert.collect();
     }),
-    test('ignores property progress received after case termination', function (scope: OverkillScope) {
+    test('ignores property progress received after case termination', function (scope) {
         const state = createSupervisedRunState('first-failure-and-final');
         const id = caseId('late property progress');
         const key = caseIdentityKey(id);
@@ -201,7 +201,7 @@ export const testNode = suite('source/run/supervised-run-state.test.ts', [
         assertInterruptedProperty(scope, state.perTestResults(), property);
         return scope.assert.collect();
     }),
-    test('retains property evidence on interruption and ignores stale attempts', function (scope: OverkillScope) {
+    test('retains property evidence on interruption and ignores stale attempts', function (scope) {
         const state = createSupervisedRunState('first-failure-and-final');
         const id = caseId('interrupted property');
         const key = caseIdentityKey(id);
@@ -214,8 +214,8 @@ export const testNode = suite('source/run/supervised-run-state.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'createSupervisedRunState() duplicates captured output across concurrent active cases',
-        function (scope: OverkillScope) {
+        'duplicates captured output across concurrent active cases',
+        function (scope) {
             const state = createSupervisedRunState('first-failure-and-final');
             const firstCase = caseId('first');
             const secondCase = caseId('second');
@@ -232,7 +232,7 @@ export const testNode = suite('source/run/supervised-run-state.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('createSupervisedRunState() attributes captured output to runtime scenarios', function (scope: OverkillScope) {
+    test('attributes captured output to runtime scenarios', function (scope) {
         const state = createSupervisedRunState('first-failure-and-final');
         const testCase = caseId('scenario output');
         const runtime = {
@@ -263,7 +263,7 @@ export const testNode = suite('source/run/supervised-run-state.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createSupervisedRunState() records out-of-test output as run artifacts', function (scope: OverkillScope) {
+    test('records out-of-test output as run artifacts', function (scope) {
         const state = createSupervisedRunState('first-failure-and-final');
         const testCase = caseId('unrelated');
 
@@ -273,7 +273,7 @@ export const testNode = suite('source/run/supervised-run-state.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('createSupervisedRunState() applies one captured-output cap per active case', function (scope: OverkillScope) {
+    test('applies one captured-output cap per active case', function (scope) {
         const state = createSupervisedRunState('first-failure-and-final');
         const testCase = caseId('capped');
 

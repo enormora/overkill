@@ -1,6 +1,5 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     captureErrorHttpTranscript,
     createHttpTranscriptRecorder,
@@ -85,15 +84,15 @@ async function assertScopedTranscriptStore(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(store.view.entries, [ [ 'state', 1 ], [ 'state', 2 ] ]);
 }
 
-export const testNode = suite('source/transcript/transcript-store.test.ts', [
-    test('HTTP transcript primitives expose immutable safe values', async function (scope: TestScope) {
+export const testNode: TestNode = suite('Transcript store', [
+    test('HTTP transcript primitives expose immutable safe values', async function (scope) {
         await runWithTranscriptScope(null, async function assertLifetimePrimitives() {
             assertTranscriptPrimitives(scope);
         });
 
         return scope.assert.collect();
     }),
-    test('transcript stores isolate entries by active scope', async function (scope: TestScope) {
+    test('transcript stores isolate entries by active scope', async function (scope) {
         await runWithTranscriptScope(null, async function assertScopeRestoration() {
             await assertScopedTranscriptStore(scope);
         });

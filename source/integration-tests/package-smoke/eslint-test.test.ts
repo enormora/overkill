@@ -1,5 +1,5 @@
+import { type TestNode, test } from '#tests';
 import { execFile } from 'node:child_process';
-import { test } from '#tests';
 
 const script = `
 import { defineRuleTests, defineConfigTests } from '@overkill-dev/eslint-test';
@@ -35,7 +35,7 @@ if (configExploration?.executed !== policy.newTrials) throw new Error('Packed co
 console.log('ESLint testing package passed');
 `;
 
-export const testNode = test('runs packed ESLint examples and generated properties', async function (scope) {
+export const testNode: TestNode = test('runs packed ESLint examples and generated properties', async function (scope) {
     const output = await new Promise<string>(function runConsumer(resolve, reject) {
         execFile(
             process.execPath,

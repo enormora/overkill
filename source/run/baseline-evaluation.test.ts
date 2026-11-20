@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { OrdinaryBaselineAdapter, OrdinaryBaselineEvaluation } from '../baselines/ordinary-baseline-adapter.ts';
 import { baselineIdentityKey } from '../baselines/baseline-planning.ts';
@@ -17,8 +17,8 @@ function adapter(evaluation: OrdinaryBaselineEvaluation): OrdinaryBaselineAdapte
     };
 }
 const existing = new Map([ [ baselineIdentityKey(ordinaryBaselineIdentity(storedBaseline)), storedBaseline ] ]);
-export const testNode = authoredSuite('ordinary baseline evaluation', [
-    test('ignores explicitly inapplicable observations', async function (scope: TestScope) {
+export const testNode: TestNode = suite('ordinary baseline evaluation', [
+    test('ignores explicitly inapplicable observations', async function (scope) {
         const result = await evaluateBaselineAdapter({
             adapter: adapter({ kind: 'not-applicable' }),
             event: baselineCaseEvent,
@@ -29,7 +29,7 @@ export const testNode = authoredSuite('ordinary baseline evaluation', [
         scope.assert.deepEqual(result, { kind: 'not-applicable' });
         return scope.assert.collect();
     }),
-    test('rejects mismatches without diagnostic evidence', async function (scope: TestScope) {
+    test('rejects mismatches without diagnostic evidence', async function (scope) {
         const malformed = {
             kind: 'mismatch' as const,
             diagnostics: [ { actual: 43, expected: 42, summary: 'Changed.' } ] as const
@@ -50,7 +50,7 @@ export const testNode = authoredSuite('ordinary baseline evaluation', [
         }, { message: 'Baseline mismatch requires diagnostics.' });
         return scope.assert.collect();
     }),
-    test('preserves missing observation reasons', async function (scope: TestScope) {
+    test('preserves missing observation reasons', async function (scope) {
         await scope.assert.rejects(async function () {
             return await evaluateBaselineAdapter({
                 adapter: adapter({ kind: 'missing', reason: 'Output is unavailable.' }),
@@ -62,7 +62,7 @@ export const testNode = authoredSuite('ordinary baseline evaluation', [
         }, { message: 'Output is unavailable.' });
         return scope.assert.collect();
     }),
-    test('uses explicit workload identity when looking up expectations', async function (scope: TestScope) {
+    test('uses explicit workload identity when looking up expectations', async function (scope) {
         const work = { ...storedBaseline.work, workload: { name: 'large', params: {} } };
         const result = await evaluateBaselineAdapter({
             adapter: adapter({ kind: 'observed', comparison: null, proposal: null }),

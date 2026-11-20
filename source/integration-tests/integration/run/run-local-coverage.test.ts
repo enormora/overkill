@@ -1,0 +1,113 @@
+import { table, type TestNode, suite } from '@overkill-dev/test';
+
+import type { RunResult } from '../../../packages/engine/engine.entry-point.ts';
+import { withMemoryCoverageRecordFixture } from '../../../test-support/coverage-record-fixture.ts';
+import { defaultMicrotestProfile, defaultRunConfig } from '../../../test-support/run-command-factory.ts';
+import { createDeterministicRunTestModuleLoader } from '../../../test-support/deterministic-run-fixtures.ts';
+import { coverageBaselineSession, assertCoverageBaseline } from '../../../test-support/coverage-baseline-fixture.ts';
+import { createCoverageRunRecord } from '../../../run/coverage-run-record.ts';
+import { configuredFilesRunCollectionSource } from '../../../run/run-collection-source.ts';
+import { executeCoverageLocalRun } from '../../../run/run-local-coverage.ts';
+import { createRunTimingMeasurement } from '../../../run/run-timing-collection.ts';
+
+const passingFile = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const collectionScenarios = [
+    { file: passingFile, mode: 'enabled', missingSelection: false, shard: { index: 1, total: 1 }, status: 'passed' },
+    {
+        file: 'source/integration-tests/integration/fixtures/throws-on-import.test.ts',
+        mode: 'enabled',
+        missingSelection: false,
+        shard: { index: 1, total: 1 },
+        status: 'failed'
+    },
+    { file: passingFile, mode: 'disabled', missingSelection: true, shard: { index: 1, total: 1 }, status: 'failed' },
+    { file: passingFile, mode: 'disabled', missingSelection: false, shard: { index: 1, total: 2 }, status: 'passed' },
+    { file: passingFile, mode: 'disabled', missingSelection: false, shard: { index: 2, total: 2 }, status: 'passed' }
+] as const;
+const scenarios = collectionScenarios.flatMap(function baselineCases(scenario) {
+    return [ { ...scenario, baseline: false }, { ...scenario, baseline: true } ];
+});
+
+export const testNode: TestNode = suite(
+    'Run local coverage',
+    [ table({
+        annotations: {},
+        controls: {},
+        title: 'run local coverage scenarios',
+        cases: scenarios.map(function localCoverageTest(scenario) {
+            const { file } = scenario;
+            return ({
+                caseDescription: `local coverage checkpoints ${file} with ${scenario.mode} restrictions, ` +
+                    `selection ${scenario.missingSelection}, shard ${scenario.shard.index}/${scenario.shard.total}, ` +
+                    `baselines ${scenario.baseline}`,
+                scenario,
+                file
+            });
+        }),
+        caseTitle: (row) => row.caseDescription,
+        async test(scope) {
+            const { scenario, file } = scope.parameters;
+
+            return await withMemoryCoverageRecordFixture(
+                defaultRunConfig({
+                    profiles: { microtest: defaultMicrotestProfile({ execution: { processModel: 'in-process' } }) }
+                }),
+                [],
+                async function assertLocalCheckpoint(fixture) {
+                    const input = {
+                        ...fixture.request.input,
+                        request: {
+                            ...fixture.request.input.request,
+                            capabilityRestrictions: { mode: scenario.mode },
+                            selection: scenario.missingSelection
+                                ? {
+                                    kind: 'filter' as const,
+                                    filter: {
+                                        field: 'title' as const,
+                                        kind: 'equals' as const,
+                                        value: 'missing test'
+                                    }
+                                }
+                                : { kind: 'all' as const },
+                            shard: scenario.shard
+                        },
+                        files: [ { file, fileSet: null, href: `virtual:${file}`, path: file } ] as const
+                    };
+                    const dependencies = {
+                        ...fixture.request.dependencies,
+                        loadRunTestModules: createDeterministicRunTestModuleLoader({
+                            recordLoadEnvironmentMutation() {
+                                return undefined;
+                            }
+                        })
+                    };
+                    const attempt = await createCoverageRunRecord(process.cwd(), input, dependencies, null);
+                    await attempt.start();
+                    const result = await executeCoverageLocalRun({
+                        baseline: coverageBaselineSession(scenario.baseline, dependencies.reporterDispatcher),
+                        command: { ...fixture.request.command, request: input.request },
+                        dependencies,
+                        input,
+                        record: attempt.record,
+                        session: {
+                            childProcess: null,
+                            async dispose() {
+                                return undefined;
+                            },
+                            async finalize(coverageResult: RunResult) {
+                                return coverageResult;
+                            }
+                        },
+                        source: configuredFilesRunCollectionSource,
+                        timing: createRunTimingMeasurement(dependencies.wallClock)
+                    });
+                    scope.assert.equal(result.status, scenario.status);
+                    scope.assert.equal(fixture.records.at(-1)?.status, 'started');
+                    scope.assert.equal(fixture.records.at(-1)?.result?.status, result.status);
+                    assertCoverageBaseline(scope, result, scenario.baseline);
+                    return scope.assert.collect();
+                }
+            );
+        }
+    }) ]
+);

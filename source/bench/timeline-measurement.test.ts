@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { inlineAttachmentFixture, attachmentWork, type AttachmentFixture } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits, type AttachmentLimits } from '../engine/runtime-attachment.ts';
@@ -71,7 +71,7 @@ function authoredEvents(fixture: AttachmentFixture): readonly BenchmarkTimelineE
     });
 }
 
-export const testNode = authoredSuite('benchmark timelines', [
+export const testNode: TestNode = suite('benchmark timelines', [
     test('keeps authored operations synchronous and inert without capture', function (scope) {
         sampleTimeline.mark('disabled');
         scope.assert.equal(
@@ -82,7 +82,7 @@ export const testNode = authoredSuite('benchmark timelines', [
         );
         return scope.assert.collect();
     }),
-    test('retains authored failures, synchronous values, and overlapping spans', async function (scope: TestScope) {
+    test('retains authored failures, synchronous values, and overlapping spans', async function (scope) {
         const fixture = await captureTimeline(defaultAttachmentLimits, recordAuthoredEvents.bind(null, scope));
         scope.assert.partialDeepEqual(authoredEvents(fixture), [
             { name: '<marker>', phase: 'measured', sample: 1 },
@@ -140,7 +140,7 @@ export const testNode = authoredSuite('benchmark timelines', [
         scope.assert.deepEqual(await fixture.execution.finish(), []);
         return scope.assert.collect();
     }),
-    test('rejects invalid authored labels before invoking their operations', async function (scope: TestScope) {
+    test('rejects invalid authored labels before invoking their operations', async function (scope) {
         await withBenchmarkTimeline(
             timelineMeasurement(wallClockMeasurement(), { maximumEvents: 4096 }),
             async function () {
@@ -181,23 +181,29 @@ export const testNode = authoredSuite('benchmark timelines', [
         });
         return scope.assert.collect();
     }),
-    test('preserves timeline policies through raw and calibrated wrappers in either order', function (scope) {
-        const policy = { maximumEvents: 4096 };
-        const rules = { durationMicroseconds: { calibration: cpuCalibration(), scaling: 'proportional' as const } };
-        const strategies = [
-            rawMeasurement(timelineMeasurement(moduleMeasurement(), policy)),
-            timelineMeasurement(rawMeasurement(moduleMeasurement()), policy),
-            calibratedMeasurement(timelineMeasurement(moduleMeasurement(), policy), rules),
-            timelineMeasurement(calibratedMeasurement(moduleMeasurement(), rules), policy)
-        ];
-        for (const strategy of strategies) {
-            const resolved = resolveCalibratedMeasurement(strategy, new Set([ 'durationMicroseconds' ]));
-            scope.assert.equal(resolved.measurement.mode, 'module');
-            scope.assert.equal(measurementTimelinePolicy(resolved.measurement)?.maximumEvents, policy.maximumEvents);
+    test(
+        'preserves timeline policies through raw and calibrated wrappers in either order',
+        function (scope) {
+            const policy = { maximumEvents: 4096 };
+            const rules = { durationMicroseconds: { calibration: cpuCalibration(), scaling: 'proportional' as const } };
+            const strategies = [
+                rawMeasurement(timelineMeasurement(moduleMeasurement(), policy)),
+                timelineMeasurement(rawMeasurement(moduleMeasurement()), policy),
+                calibratedMeasurement(timelineMeasurement(moduleMeasurement(), policy), rules),
+                timelineMeasurement(calibratedMeasurement(moduleMeasurement(), rules), policy)
+            ];
+            for (const strategy of strategies) {
+                const resolved = resolveCalibratedMeasurement(strategy, new Set([ 'durationMicroseconds' ]));
+                scope.assert.equal(resolved.measurement.mode, 'module');
+                scope.assert.equal(
+                    measurementTimelinePolicy(resolved.measurement)?.maximumEvents,
+                    policy.maximumEvents
+                );
+            }
+            scope.assert.throws(function () {
+                timelineMeasurement(timelineMeasurement(wallClockMeasurement(), policy), policy);
+            }, { type: TypeError });
+            return scope.assert.collect();
         }
-        scope.assert.throws(function () {
-            timelineMeasurement(timelineMeasurement(wallClockMeasurement(), policy), policy);
-        }, { type: TypeError });
-        return scope.assert.collect();
-    })
+    )
 ]);

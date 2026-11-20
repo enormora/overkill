@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { ConfigError } from '../run/config.entry-point.ts';
 import { RunResolutionError } from '../run/run.entry-point.ts';
@@ -6,8 +6,8 @@ import { mutationPolicyResolution } from '../../test-support/mutation-policy-res
 import { resolveMutationPolicyRequest } from './mutation-policy-resolver.ts';
 
 const sandbox = { originalRoot: '/project', root: '/sandbox', files: [], sharedRoots: [] };
-export const testNode = authoredSuite('mutation policy resolution', [
-    authoredTest('freezes selected microtests against the loaded configuration', async function (scope: TestScope) {
+export const testNode: TestNode = suite('mutation policy resolution', [
+    test('freezes selected microtests against the loaded configuration', async function (scope) {
         const fixture = await mutationPolicyResolution('/project/overkill.config.js', null);
         const response = await resolveMutationPolicyRequest(fixture.request, fixture.runtime);
         scope.assert.deepEqual(response, { kind: 'policy', policy: fixture.policy });
@@ -17,7 +17,7 @@ export const testNode = authoredSuite('mutation policy resolution', [
         scope.assert.deepEqual(fixture.excluded, []);
         return scope.assert.collect();
     }),
-    authoredTest('rebases sandbox settings and verifies exclusions around freezing', async function (scope: TestScope) {
+    test('rebases sandbox settings and verifies exclusions around freezing', async function (scope) {
         const fixture = await mutationPolicyResolution('/sandbox/overkill.config.js', null);
         const response = await resolveMutationPolicyRequest({
             ...fixture.request,
@@ -42,7 +42,7 @@ export const testNode = authoredSuite('mutation policy resolution', [
         scope.assert.deepEqual(fixture.boundaries, [ { projectRoot: '/sandbox', sharedRoots: [] } ]);
         return scope.assert.collect();
     }),
-    authoredTest('checks test definitions when a sandbox has no configuration file', async function (scope: TestScope) {
+    test('checks test definitions when a sandbox has no configuration file', async function (scope) {
         const fixture = await mutationPolicyResolution(null, null);
         await resolveMutationPolicyRequest({ ...fixture.request, sandbox, cwd: '/sandbox' }, fixture.runtime);
         scope.assert.deepEqual(
@@ -53,9 +53,9 @@ export const testNode = authoredSuite('mutation policy resolution', [
         );
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'rejects sandbox identities conflicting with the resolver working directory',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = await mutationPolicyResolution(null, null);
             scope.assert.deepEqual(
                 await resolveMutationPolicyRequest({ ...fixture.request, sandbox }, fixture.runtime),
@@ -65,9 +65,9 @@ export const testNode = authoredSuite('mutation policy resolution', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'serializes configuration errors with their original cause message',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = await mutationPolicyResolution(
                 null,
                 new ConfigError('Configuration failed.', { cause: new Error('Read failed.') })
@@ -81,7 +81,7 @@ export const testNode = authoredSuite('mutation policy resolution', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('serializes resolution errors without losing their classification', async function (scope: TestScope) {
+    test('serializes resolution errors without losing their classification', async function (scope) {
         const fixture = await mutationPolicyResolution(
             null,
             new RunResolutionError('Unsupported.', {}, 'unsupported-request')
@@ -93,17 +93,24 @@ export const testNode = authoredSuite('mutation policy resolution', [
         });
         return scope.assert.collect();
     }),
-    ...[ new Error('Backend failed.'), 'Backend failed.' ].map(function (failure, index) {
-        return authoredTest(`serializes unexpected backend failure ${index}`, async function (scope: TestScope) {
+    table({
+        title: 'serializes unexpected backend failure',
+        cases: [ new Error('Backend failed.'), 'Backend failed.' ],
+        caseTitle(_parameters, index) {
+            return `${index}`;
+        },
+        async test(scope) {
+            const failure = scope.parameters;
+
             const fixture = await mutationPolicyResolution(null, failure);
             scope.assert.deepEqual(await resolveMutationPolicyRequest(fixture.request, fixture.runtime), {
                 kind: 'error',
                 message: 'Backend failed.'
             });
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest('rejects malformed settings before loading configuration', async function (scope: TestScope) {
+    test('rejects malformed settings before loading configuration', async function (scope) {
         const fixture = await mutationPolicyResolution(null, null);
         const response = await resolveMutationPolicyRequest(
             { ...fixture.request, settings: { seed: '-1' } },

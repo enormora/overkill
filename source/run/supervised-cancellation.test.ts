@@ -1,4 +1,4 @@
-import { test, suite } from '@overkill-dev/test';
+import { table, type TestNode, suite } from '@overkill-dev/test';
 
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { createFakeSupervisedChildProcess } from '../test-support/fake-supervised-child-process.ts';
@@ -11,7 +11,7 @@ import { runSupervisedCommand } from './supervised-run.ts';
 import { SupervisedCollectionError, supervisedCancellationMessage } from './run-errors.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
-const file = 'source/integration-tests/run/fixtures/passing.test.ts';
+const file = 'source/integration-tests/integration/fixtures/passing.test.ts';
 const command = {
     config: defaultRunConfig(),
     cwd: process.cwd(),
@@ -103,36 +103,40 @@ async function cancelAt(phase: Phase): Promise<EngineRunResult> {
     return completion;
 }
 
-export const testNode = suite(
+export const testNode: TestNode = suite(
     'supervised invocation cancellation',
-    phases.map(function cancellationPhase(phase) {
-        return test({
-            ...metadata,
-            title: `cancellation during ${phase} respects child completion`,
-            async body(scope) {
-                if (phase === 'startup' || phase === 'collection') {
-                    await scope.assert.rejects(async function cancelCollection() {
-                        return await cancelAt(phase);
-                    }, { type: SupervisedCollectionError });
-                } else {
-                    const result = await cancelAt(phase);
-                    scope.assert.equal(result.status, phase === 'completed' ? 'passed' : 'failed');
-                    scope.assert.deepEqual(
-                        result.runnerErrors.map(function cancellationDiagnostic(error) {
-                            return { message: error.message, attribution: error.attributedTo, subtype: error.subtype };
-                        }),
-                        phase === 'completed' ? [] : [ {
-                            message: supervisedCancellationMessage,
-                            attribution: null,
-                            subtype: 'crash'
-                        } ]
-                    );
-                    if (phase === 'active') {
-                        scope.assert.equal(result.summary.crashed, 1);
-                    }
+    [ table({
+        ...metadata,
+        title: 'cancellation during respects child completion',
+        cases: phases,
+        caseTitle(phase) {
+            return `cancellation during ${phase} respects child completion`;
+        },
+        async test(scope) {
+            const phase = scope.parameters;
+
+            if (phase === 'startup' || phase === 'collection') {
+                await scope.assert.rejects(async function cancelCollection() {
+                    return await cancelAt(phase);
+                }, { type: SupervisedCollectionError });
+            } else {
+                const result = await cancelAt(phase);
+                scope.assert.equal(result.status, phase === 'completed' ? 'passed' : 'failed');
+                scope.assert.deepEqual(
+                    result.runnerErrors.map(function cancellationDiagnostic(error) {
+                        return { message: error.message, attribution: error.attributedTo, subtype: error.subtype };
+                    }),
+                    phase === 'completed' ? [] : [ {
+                        message: supervisedCancellationMessage,
+                        attribution: null,
+                        subtype: 'crash'
+                    } ]
+                );
+                if (phase === 'active') {
+                    scope.assert.equal(result.summary.crashed, 1);
                 }
-                return scope.assert.collect();
             }
-        });
-    })
+            return scope.assert.collect();
+        }
+    }) ]
 );

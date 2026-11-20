@@ -1,17 +1,17 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
-import type { TestNode } from '../packages/engine/engine.entry-point.ts';
+import type { TestNode as SubjectTestNode } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import type { DiscoveredRunFile } from './run-types.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { createRunTestModuleLoader, type RunTestModuleLoader } from './run-test-modules.ts';
 
-const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
-const duplicateFixturePath = 'source/integration-tests/run/fixtures/duplicate-a.test.ts';
-const missingTestNodeFixturePath = 'source/integration-tests/run/fixtures/missing-test-node.test.ts';
-const plainTestNodeFixturePath = 'source/integration-tests/run/fixtures/plain-test-node.test.ts';
-const throwsOnImportFixturePath = 'source/integration-tests/run/fixtures/throws-on-import.test.ts';
+const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const duplicateFixturePath = 'source/integration-tests/integration/fixtures/duplicate-a.test.ts';
+const missingTestNodeFixturePath = 'source/integration-tests/integration/fixtures/missing-test-node.test.ts';
+const plainTestNodeFixturePath = 'source/integration-tests/integration/fixtures/plain-test-node.test.ts';
+const throwsOnImportFixturePath = 'source/integration-tests/integration/fixtures/throws-on-import.test.ts';
 
 function discoveredFile(file: string): DiscoveredRunFile {
     return {
@@ -22,7 +22,7 @@ function discoveredFile(file: string): DiscoveredRunFile {
     };
 }
 
-function createPassingTestNode(title: string): TestNode {
+function createPassingTestNode(title: string): SubjectTestNode {
     return defaultRunEngine.createTestCase({
         definitionLocations: [ { kind: 'unknown' as const } ],
         annotations: {},
@@ -52,10 +52,10 @@ function createVirtualRunTestModuleLoader(modules: Readonly<Record<string, unkno
     });
 }
 
-export const testNode = suite('source/run/run-test-modules.test.ts', [
+export const testNode: TestNode = suite('Test module loading', [
     test(
-        'loadRunTestModules() imports named testNode exports for the selected engine',
-        async function (scope: OverkillScope) {
+        'imports named testNode exports for the selected engine',
+        async function (scope) {
             const loadRunTestModules = createVirtualRunTestModuleLoader({
                 [`virtual:${passingFixturePath}`]: { testNode: createPassingTestNode('passes') },
                 [`virtual:${duplicateFixturePath}`]: { testNode: createPassingTestNode('duplicate') }
@@ -81,7 +81,7 @@ export const testNode = suite('source/run/run-test-modules.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('loadRunTestModules() rejects missing and foreign testNode exports', async function (scope: OverkillScope) {
+    test('rejects missing and foreign testNode exports', async function (scope) {
         const loadRunTestModules = createVirtualRunTestModuleLoader({
             [`virtual:${missingTestNodeFixturePath}`]: {},
             [`virtual:${plainTestNodeFixturePath}`]: { testNode: {} },
@@ -103,8 +103,8 @@ export const testNode = suite('source/run/run-test-modules.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'loadRunTestModules() reports module import failures as collection errors',
-        async function (scope: OverkillScope) {
+        'reports module import failures as collection errors',
+        async function (scope) {
             const loadRunTestModules = createVirtualRunTestModuleLoader({});
 
             try {

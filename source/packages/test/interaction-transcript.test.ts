@@ -1,20 +1,13 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { requirePublishedCompositeReference } from '../../test-support/assertion-reference-boundary.ts';
+import type { EngineCaseBody } from '../../test-support/create-test-engine.ts';
 
-import {
-    type TestBody,
-    type TestScope,
-    createRoot,
-    createTestCase,
-    createTestPlan,
-    execute
-} from '../engine/engine.entry-point.ts';
+import { createRoot, createTestCase, createTestPlan, execute } from '../engine/engine.entry-point.ts';
 
 import { runWithTranscriptScope } from '../run/transcript-store.entry-point.ts';
-import { testNode as validation } from './interaction-transcript-validation.test.ts';
-import { testNode as ownership } from './interaction-transcript-ownership.test.ts';
+
 import {
     createTranscript,
-    doubleUsage,
     recordAsyncSink,
     recordSink,
     transcriptUsage,
@@ -32,7 +25,9 @@ type DisposableHandle = {
     readonly dispose: () => void;
 };
 
-async function executeAssertionBody(body: (scope: TestScope) => void): Promise<Awaited<ReturnType<typeof execute>>> {
+async function executeAssertionBody(
+    body: (...parameters: Parameters<EngineCaseBody>) => void
+): Promise<Awaited<ReturnType<typeof execute>>> {
     return await execute(createTestPlan(createRoot({
         children: [
             createTestCase({
@@ -53,7 +48,7 @@ async function executeAssertionBody(body: (scope: TestScope) => void): Promise<A
     })));
 }
 
-function assertPassingExecution(scope: OverkillScope, result: Awaited<ReturnType<typeof execute>>): void {
+function assertPassingExecution(scope: TestScope, result: Awaited<ReturnType<typeof execute>>): void {
     scope.assert.deepEqual(
         {
             failed: result.summary.failed,
@@ -66,7 +61,7 @@ function assertPassingExecution(scope: OverkillScope, result: Awaited<ReturnType
     );
 }
 
-function assertFailingExecution(scope: OverkillScope, result: Awaited<ReturnType<typeof execute>>): void {
+function assertFailingExecution(scope: TestScope, result: Awaited<ReturnType<typeof execute>>): void {
     scope.assert.deepEqual(
         {
             failed: result.summary.failed,
@@ -85,7 +80,7 @@ function disposeTwice(disposable: DisposableHandle): void {
 }
 
 function assertRecordedFirstState(
-    scope: OverkillScope,
+    scope: TestScope,
     transcript: Transcript<StateEntry>,
     entries: readonly StateEntry[]
 ): void {
@@ -96,11 +91,12 @@ function assertRecordedFirstState(
     scope.assert.equal(transcript.nthEntry(0), entries[0]);
     scope.assert.equal(transcript.nthEntry(-1), null);
     scope.assert.equal(transcript.nthEntry(1.5), null);
+    requirePublishedCompositeReference(transcriptUsage.exactly);
     scope.assert(transcriptUsage.exactly, transcript, [ [ 'state', 1 ] ]);
 }
 
 function assertResetTranscript(
-    scope: OverkillScope,
+    scope: TestScope,
     transcript: Transcript<StateEntry>
 ): void {
     scope.assert.equal(transcript.entries.length, 0);
@@ -108,41 +104,46 @@ function assertResetTranscript(
 }
 
 function assertWarnSinkRecorded(
-    scope: OverkillScope,
+    scope: TestScope,
     transcript: Transcript<WarnEntry>,
-    warn: (...parameters: readonly unknown[]) => undefined
+    warn: ReturnType<Transcript<WarnEntry>['sink']>
 ): void {
-    scope.assert(doubleUsage.calledOnceWith, warn, [ 'retrying', { attempt: 2 } ]);
+    scope.assert.equal(warn.callCount, 1);
+    scope.assert.deepEqual<unknown, unknown>(warn.firstCall?.arguments, [ 'retrying', { attempt: 2 } ]);
+    requirePublishedCompositeReference(transcriptUsage.exactly);
     scope.assert(transcriptUsage.exactly, transcript, [
         [ 'warn', 'retrying', { attempt: 2 } ]
     ]);
 }
 
-async function assertKindOnlyFails(scope: OverkillScope, transcript: Transcript<WarnEntry>): Promise<void> {
+async function assertKindOnlyFails(scope: TestScope, transcript: Transcript<WarnEntry>): Promise<void> {
     assertFailingExecution(
         scope,
         await executeAssertionBody(function containsKindOnly(testScope) {
+            requirePublishedCompositeReference(transcriptUsage.contains);
             testScope.assert(transcriptUsage.contains, transcript, [ 'warn' ]);
         })
     );
 }
 
-async function assertPlainObjectFails(scope: OverkillScope): Promise<void> {
+async function assertPlainObjectFails(scope: TestScope): Promise<void> {
     assertFailingExecution(
         scope,
         await executeAssertionBody(function rejectsPlainObject(testScope) {
+            requirePublishedCompositeReference(transcriptUsage.empty);
             testScope.assert(transcriptUsage.empty, { entries: [] });
         })
     );
 }
 
 async function assertEmptySequenceFails(
-    scope: OverkillScope,
+    scope: TestScope,
     transcript: Transcript<WarnEntry>
 ): Promise<void> {
     assertFailingExecution(
         scope,
         await executeAssertionBody(function rejectsEmptySequence(testScope) {
+            requirePublishedCompositeReference(transcriptUsage.startsWith);
             testScope.assert(
                 transcriptUsage.startsWith,
                 transcript,
@@ -161,38 +162,43 @@ function recordWarnTranscript(transcript: Transcript<WarnEntry>): void {
 }
 
 function assertWarnTranscriptUsage(
-    scope: OverkillScope,
+    scope: TestScope,
     transcript: Transcript<WarnEntry>,
     prefix: readonly [TranscriptEntry],
     ordered: readonly [TranscriptEntry, TranscriptEntry]
 ): void {
+    requirePublishedCompositeReference(transcriptUsage.exactly);
     scope.assert(transcriptUsage.exactly, transcript, [
         [ 'warn', 'retrying', { attempt: 2, delay: 10 } ],
         [ 'warn', 'done', { attempt: 3 } ]
     ]);
+    requirePublishedCompositeReference(transcriptUsage.contains);
     scope.assert(transcriptUsage.contains, transcript, [ 'warn', 'retrying', { attempt: 2 } ]);
+    requirePublishedCompositeReference(transcriptUsage.startsWith);
     scope.assert(transcriptUsage.startsWith, transcript, prefix);
+    requirePublishedCompositeReference(transcriptUsage.inOrder);
     scope.assert(transcriptUsage.inOrder, transcript, ordered);
 }
 
-export const testNode = suite('source/packages/test/interaction-transcript.test.ts', [
-    validation,
-    ownership,
-    test('createTranscript() records live ordered entries', function (scope: OverkillScope): ReturnType<TestBody> {
-        const transcript = createTranscript<StateEntry>();
-        const { entries } = transcript;
+export const testNode: TestNode = suite('Interaction transcript', [
+    test(
+        'createTranscript() records live ordered entries',
+        function (scope): ReturnType<EngineCaseBody> {
+            const transcript = createTranscript<StateEntry>();
+            const { entries } = transcript;
 
-        transcript.record('state', 1);
-        assertRecordedFirstState(scope, transcript, entries);
+            transcript.record('state', 1);
+            assertRecordedFirstState(scope, transcript, entries);
 
-        transcript.reset();
-        assertResetTranscript(scope, transcript);
+            transcript.reset();
+            assertResetTranscript(scope, transcript);
 
-        return scope.assert.collect();
-    }),
+            return scope.assert.collect();
+        }
+    ),
     test(
         'transcript.sink() records through a test double with independent reset',
-        function (scope: OverkillScope): ReturnType<TestBody> {
+        function (scope): ReturnType<EngineCaseBody> {
             const transcript = createTranscript<WarnEntry>();
             const warn = transcript.sink('warn');
 
@@ -212,7 +218,7 @@ export const testNode = suite('source/packages/test/interaction-transcript.test.
     ),
     test(
         'recordSink() subscribes immediately and disposes sync cleanup once',
-        function (scope: OverkillScope): ReturnType<TestBody> {
+        function (scope): ReturnType<EngineCaseBody> {
             let cleanupCount = 0;
             let recordState: (value: number) => void = function missingRecordState() {
                 throw new Error('recordSink() did not subscribe.');
@@ -243,7 +249,7 @@ export const testNode = suite('source/packages/test/interaction-transcript.test.
     ),
     test(
         'recordAsyncSink() subscribes immediately and disposes async cleanup once',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             let cleanupCount = 0;
             const states = recordAsyncSink<StateEntry>(function subscribe(record) {
                 record('state', 1);
@@ -263,7 +269,7 @@ export const testNode = suite('source/packages/test/interaction-transcript.test.
             return scope.assert.collect();
         }
     ),
-    test('subscription recorders reject invalid factories and cleanup shapes', async function (scope: OverkillScope) {
+    test('subscription recorders reject invalid factories and cleanup shapes', async function (scope) {
         scope.assert.throws(function createSyncSinkWithoutFactory() {
             recordSink(undefined as unknown as (record: (...entry: StateEntry) => void) => () => void);
         }, { message: 'recordSink() requires a subscription factory function.' });
@@ -295,7 +301,7 @@ export const testNode = suite('source/packages/test/interaction-transcript.test.
 
         return scope.assert.collect();
     }),
-    test('transcriptUsage asserts exact and partial transcript entries', async function (scope: OverkillScope) {
+    test('transcriptUsage asserts exact and partial transcript entries', async function (scope) {
         const transcript = createTranscript<WarnEntry>();
         const prefix: readonly [TranscriptEntry] = [
             [ 'warn', 'retrying', { attempt: 2 } ]
@@ -314,11 +320,12 @@ export const testNode = suite('source/packages/test/interaction-transcript.test.
 
         return scope.assert.collect();
     }),
-    test('transcriptUsage snapshots entries when the assertion is recorded', async function (scope: OverkillScope) {
+    test('transcriptUsage snapshots entries when the assertion is recorded', async function (scope) {
         const result = await executeAssertionBody(function assertBeforeLaterRecord(testScope) {
             const transcript = createTranscript();
 
             transcript.record('state', 1);
+            requirePublishedCompositeReference(transcriptUsage.exactly);
             testScope.assert(transcriptUsage.exactly, transcript, [ [ 'state', 1 ] ]);
             transcript.record('state', 2);
         });
@@ -327,7 +334,7 @@ export const testNode = suite('source/packages/test/interaction-transcript.test.
 
         return scope.assert.collect();
     }),
-    test('transcripts show the active case or the full resource lifetime', async function (scope: OverkillScope) {
+    test('transcripts show the active case or the full resource lifetime', async function (scope) {
         const transcript = createTranscript<StateEntry>();
         const firstCase = {};
         const secondCase = {};

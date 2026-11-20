@@ -1,13 +1,13 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
 import { defineCompositeAssertion as definePublishedCompositeAssertion } from '@overkill-dev/test/assert';
 import type { AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
 import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
-import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+
 import type { AssertionTestFailure, FailOutcome, RunResult } from './run-result.ts';
-import type { TestBody, TestScope } from './test-scope.ts';
 
 function firstFailOutcome(result: RunResult): FailOutcome | null {
     const firstResult = result.perTest.at(0);
@@ -19,7 +19,7 @@ function firstFailOutcome(result: RunResult): FailOutcome | null {
     return null;
 }
 
-async function executeSingleBody(body: TestBody): Promise<RunResult> {
+async function executeSingleBody(body: EngineCaseBody): Promise<RunResult> {
     const engine = createEngine();
 
     return await engine.execute(
@@ -71,13 +71,15 @@ function firstFailedCheck(outcome: FailOutcome): FailedCheck | null {
     return firstAssertionFailure(outcome)?.checks.at(0) ?? null;
 }
 
-export const testNode = suite('source/engine/assertion-execution.test.ts', [
+export const testNode: TestNode = suite('Assertion execution', [
     test(
-        'execute() counts successful requirements once a returned assertion result exists',
-        async function (scope: OverkillScope) {
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        'counts successful requirements once a returned assertion result exists',
+        async function (scope) {
+            const result = await executeSingleBody(function testBody(testScope) {
+                const testScopeRequire: typeof testScope.require = testScope.require;
+
                 testScope.plan(2);
-                testScope.require.string('value');
+                testScopeRequire.string('value');
                 testScope.assert.true(true);
                 return testScope.assert.collect();
             });
@@ -87,9 +89,11 @@ export const testNode = suite('source/engine/assertion-execution.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('execute() rejects successful require-only builder collection', async function (scope: OverkillScope) {
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
-            testScope.require.string('value');
+    test('rejects successful require-only builder collection', async function (scope: TestScope) {
+        const result = await executeSingleBody(function testBody(testScope) {
+            const testScopeRequire: typeof testScope.require = testScope.require;
+
+            testScopeRequire.string('value');
             return testScope.assert.collect();
         });
         const outcome = firstFailOutcome(result);
@@ -107,10 +111,12 @@ export const testNode = suite('source/engine/assertion-execution.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('execute() skips plan mismatch when a requirement fails', async function (scope: OverkillScope) {
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+    test('skips plan mismatch when a requirement fails', async function (scope: TestScope) {
+        const result = await executeSingleBody(function testBody(testScope) {
+            const testScopeRequire: typeof testScope.require = testScope.require;
+
             testScope.plan(2);
-            testScope.require.string(1, { message: 'required string' });
+            testScopeRequire.string(1, { message: 'required string' });
             return testScope.assert.collect();
         });
         const outcome = firstFailOutcome(result);
@@ -142,11 +148,13 @@ export const testNode = suite('source/engine/assertion-execution.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'execute() treats caught failed requirements as fatal and ignores later assertions',
-        async function (scope: OverkillScope) {
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        'treats caught failed requirements as fatal and ignores later assertions',
+        async function (scope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
+                const testScopeRequire: typeof testScope.require = testScope.require;
+
                 try {
-                    testScope.require.string(1, { message: 'required string' });
+                    testScopeRequire.string(1, { message: 'required string' });
                 } catch {
                     testScope.assert.fail({ message: 'ignored failure' });
                 }
@@ -183,8 +191,8 @@ export const testNode = suite('source/engine/assertion-execution.test.ts', [
         }
     ),
     test(
-        'execute() rejects returned results that drop recorded builder assertions',
-        async function (scope: OverkillScope) {
+        'rejects returned results that drop recorded builder assertions',
+        async function (scope: TestScope) {
             const result = await executeSingleBody(function testBody(testScope) {
                 const replacement: AssertAssertionNode = {
                     actual: true,
@@ -215,8 +223,8 @@ export const testNode = suite('source/engine/assertion-execution.test.ts', [
         }
     ),
     test(
-        'execute() accepts appended direct assertions around builder assertions',
-        async function (scope: OverkillScope) {
+        'accepts appended direct assertions around builder assertions',
+        async function (scope) {
             const result = await executeSingleBody(function testBody(testScope) {
                 const leading: AssertAssertionNode = {
                     actual: true,
@@ -245,12 +253,14 @@ export const testNode = suite('source/engine/assertion-execution.test.ts', [
         }
     ),
     test(
-        'execute() merges successful requirements by timeline for counts and check ids',
-        async function (scope: OverkillScope) {
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        'merges successful requirements by timeline for counts and check ids',
+        async function (scope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
+                const testScopeRequire: typeof testScope.require = testScope.require;
+
                 testScope.plan(3);
                 testScope.assert.equal(1, 2, { message: 'first assert' });
-                testScope.require.string('value');
+                testScopeRequire.string('value');
                 testScope.assert.equal(3, 4, { message: 'second assert' });
                 return testScope.assert.collect();
             });

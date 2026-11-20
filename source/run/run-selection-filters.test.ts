@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
@@ -20,7 +20,7 @@ import {
     runtimeDimension,
     runtimeScenario,
     runtimeVariant,
-    suite,
+    suite as subjectSuite,
     tag,
     title
 } from './run-selection-filters.ts';
@@ -60,14 +60,14 @@ const anonymousCandidate = {
     workId: createDefaultWorkId(anonymousCaseId)
 };
 
-function assertRuntimeScenarioMatches(scope: OverkillScope): void {
+function assertRuntimeScenarioMatches(scope: TestScope): void {
     scope.assert.equal(matchesRunFilter(runtimeScenario('api', 'api', 'payments-500'), candidate), true);
     scope.assert.equal(matchesRunFilter(runtimeScenario('API', 'api', 'payments-500'), candidate), false);
     scope.assert.equal(matchesRunFilter(runtimeScenario('api', 'api', 'PAYMENTS-500'), candidate), false);
     scope.assert.equal(matchesRunFilter(runtimeScenario('api', 'missing', 'payments-500'), candidate), false);
 }
 
-function assertRuntimeIdentityMatches(scope: OverkillScope): void {
+function assertRuntimeIdentityMatches(scope: TestScope): void {
     scope.assert.equal(matchesRunFilter(runtime('browser'), candidate), true);
     scope.assert.equal(matchesRunFilter(runtime('Browser'), candidate), false);
     scope.assert.equal(matchesRunFilter(runtimeVariant('browser', 'chromium'), candidate), true);
@@ -77,17 +77,17 @@ function assertRuntimeIdentityMatches(scope: OverkillScope): void {
     scope.assert.equal(matchesRunFilter(runtimeDimension('browser', 'missing', 'value'), candidate), false);
 }
 
-function assertCompositeFiltersMatch(scope: OverkillScope): void {
+function assertCompositeFiltersMatch(scope: TestScope): void {
     scope.assert.equal(matchesRunFilter(not(tag('slow')), candidate), true);
     scope.assert.equal(matchesRunFilter(all([ tag('FAST'), owner('@PAYMENTS') ]), candidate), true);
     scope.assert.equal(matchesRunFilter(any([ tag('slow'), owner('@PAYMENTS') ]), candidate), true);
     scope.assert.equal(matchesRunFilter(tag('slow'), candidate), false);
 }
 
-export const testNode = authoredSuite('source/run/run-selection-filters.test.ts', [
+export const testNode: TestNode = suite('Run selection filters', [
     test(
         'work identity selections validate and match complete default work identities',
-        function (scope: OverkillScope) {
+        function (scope) {
             const workId = createDefaultWorkId(candidate.id);
             const filter = { kind: 'work-id' as const, id: workId };
             scope.assert.equal(invalidRunSelectionMessage({ kind: 'filter', filter }), null);
@@ -95,14 +95,14 @@ export const testNode = authoredSuite('source/run/run-selection-filters.test.ts'
             return scope.assert.collect();
         }
     ),
-    test('workload filters exclude cases without a workload identity', function (scope: OverkillScope) {
+    test('workload filters exclude cases without a workload identity', function (scope) {
         scope.assert.false(matchesRunFilter(equals('workload', 'small'), {
             ...candidate,
             workId: { ...candidate.workId, workload: null }
         }));
         return scope.assert.collect();
     }),
-    test('work identity filters preserve exact runtime and workload bindings', function (scope: OverkillScope) {
+    test('work identity filters preserve exact runtime and workload bindings', function (scope) {
         const filter = { kind: 'work-id', id: candidate.workId } as const;
         const selection = { kind: 'filter', filter } as const;
         scope.assert.deepEqual(copyRunSelection(selection), selection);
@@ -132,7 +132,7 @@ export const testNode = authoredSuite('source/run/run-selection-filters.test.ts'
         );
         return scope.assert.collect();
     }),
-    test('filter helpers create serializable filter expressions', function (scope: OverkillScope) {
+    test('filter helpers create serializable filter expressions', function (scope) {
         scope.assert.deepEqual(
             all([ tag('fast'), not(file('source/**')), any([ title('charge'), owner('@payments') ]) ]),
             {
@@ -153,7 +153,7 @@ export const testNode = authoredSuite('source/run/run-selection-filters.test.ts'
         scope.assert.deepEqual(caseId(candidate.id), { id: candidate.id, kind: 'case-id' });
         scope.assert.deepEqual(params('EUR'), { field: 'params', kind: 'contains', value: 'EUR' });
         scope.assert.deepEqual(owner('@payments'), { field: 'owner', kind: 'equals', value: '@payments' });
-        scope.assert.deepEqual(suite('payments'), { field: 'suite', kind: 'contains', value: 'payments' });
+        scope.assert.deepEqual(subjectSuite('payments'), { field: 'suite', kind: 'contains', value: 'payments' });
         scope.assert.deepEqual(runtimeScenario('api', 'api', 'payments-500'), {
             kind: 'runtime-scenario',
             runtime: 'api',
@@ -178,12 +178,12 @@ export const testNode = authoredSuite('source/run/run-selection-filters.test.ts'
 
         return scope.assert.collect();
     }),
-    test('matchesRunFilter() matches supported dimensions case-insensitively', function (scope: OverkillScope) {
+    test('matchesRunFilter() matches supported dimensions case-insensitively', function (scope) {
         const matchingFilters: readonly RunFilter[] = [
             caseId(candidate.id),
             file('source/payments/*.test.ts'),
             title('charges'),
-            suite('PAYMENTS > CARD'),
+            subjectSuite('PAYMENTS > CARD'),
             params('eur'),
             tag('fast'),
             owner('@payments'),
@@ -202,15 +202,15 @@ export const testNode = authoredSuite('source/run/run-selection-filters.test.ts'
 
         return scope.assert.collect();
     }),
-    test('matchesRunFilter() treats absent identity dimensions as non-matches', function (scope: OverkillScope) {
+    test('matchesRunFilter() treats absent identity dimensions as non-matches', function (scope) {
         scope.assert.equal(matchesRunFilter(file('source/**/*.test.ts'), anonymousCandidate), false);
         scope.assert.equal(matchesRunFilter(params('currency'), anonymousCandidate), false);
-        scope.assert.equal(matchesRunFilter(suite('payments'), anonymousCandidate), false);
+        scope.assert.equal(matchesRunFilter(subjectSuite('payments'), anonymousCandidate), false);
         scope.assert.equal(matchesRunFilter(title('anonymous'), anonymousCandidate), true);
 
         return scope.assert.collect();
     }),
-    test('copyRunSelection() deep-copies serializable filter trees', function (scope: OverkillScope) {
+    test('copyRunSelection() deep-copies serializable filter trees', function (scope) {
         const selection = {
             filter: all([
                 not(caseId(candidate.id)),
@@ -234,7 +234,7 @@ export const testNode = authoredSuite('source/run/run-selection-filters.test.ts'
 
         return scope.assert.collect();
     }),
-    test('run filter helpers reject empty text operands', function (scope: OverkillScope) {
+    test('run filter helpers reject empty text operands', function (scope) {
         scope.assert.throws(function createEmptyContainsFilter() {
             contains('title', ' ');
         }, { message: 'Run filter value must not be empty.' });
@@ -262,7 +262,7 @@ export const testNode = authoredSuite('source/run/run-selection-filters.test.ts'
 
         return scope.assert.collect();
     }),
-    test('run filter validation rejects malformed filter trees', function (scope: OverkillScope) {
+    test('run filter validation rejects malformed filter trees', function (scope) {
         scope.assert.throws(function createEmptyComposite() {
             all([] as unknown as readonly [RunFilter, ...RunFilter[]]);
         }, { message: 'Composite run filters must contain at least one child filter.' });

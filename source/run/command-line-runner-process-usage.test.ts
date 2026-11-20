@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { LoadedConfig, ConfiguredRunCommand, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
 
@@ -206,7 +206,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
     };
 }
 
-function assertProcessUsageCommand(scope: OverkillScope, suppliedCommand: ConfiguredRunCommand | RunCommand): void {
+function assertProcessUsageCommand(scope: TestScope, suppliedCommand: ConfiguredRunCommand | RunCommand): void {
     const { command } = snapshotRunCommand(suppliedCommand);
     const profile = command.config.profiles.microtest;
 
@@ -257,10 +257,10 @@ function assertProcessUsageCommand(scope: OverkillScope, suppliedCommand: Config
     });
 }
 
-export const testNode = suite('source/run/command-line-runner-process-usage.test.ts', [
+export const testNode: TestNode = suite('Command line runner process usage', [
     test(
         'commandLineRunner.runTests() carries process usage config and request values',
-        async function (scope: OverkillScope) {
+        async function (scope: TestScope) {
             const recordedCommands = createRecordedRunCommands();
             const runner = createCommandLineRunner(createRunnerDependencies(recordedCommands));
             const result = await runner.runTests({

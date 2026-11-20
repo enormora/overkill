@@ -1,11 +1,11 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { projectedResourceLifecycle } from '../test-support/projected-resource-lifecycle.ts';
 import { managedCase } from '../test-support/managed-resource-acquisition.ts';
 import { createResourceLifecycleSession, acquireResourceLifecycleScopes } from './resource-lifecycle.ts';
 
-export const testNode = authoredSuite('projected resource session ownership', [
-    test('merges later projections by owner boundary before acquisition', async function (scope: TestScope) {
+export const testNode: TestNode = suite('projected resource session ownership', [
+    test('merges later projections by owner boundary before acquisition', async function (scope) {
         const fixture = projectedResourceLifecycle();
         fixture.session.updateProjectedResources({
             resources: [ { boundaryKey: 'unrelated', payload: 'other' }, {
@@ -18,7 +18,7 @@ export const testNode = authoredSuite('projected resource session ownership', [
         scope.assert.deepEqual(await fixture.session.disposeAll(scope.signal), []);
         return scope.assert.collect();
     }),
-    test('prepares selected work and completes each external owner boundary', async function (scope: TestScope) {
+    test('prepares selected work and completes each external owner boundary', async function (scope) {
         const fixture = projectedResourceLifecycle();
         scope.assert.equal(await fixture.use(scope.signal), 'consumer:initial');
         scope.assert.deepEqual(await fixture.session.prepareAttempt(fixture.testCase.workId, { index: 0 }), []);
@@ -27,7 +27,7 @@ export const testNode = authoredSuite('projected resource session ownership', [
         scope.assert.deepEqual(await fixture.session.disposeAll(scope.signal), []);
         return scope.assert.collect();
     }),
-    test('rejects work outside the owning session without affecting valid work', async function (scope: TestScope) {
+    test('rejects work outside the owning session without affecting valid work', async function (scope) {
         const fixture = projectedResourceLifecycle();
         await scope.assert.rejects(async function () {
             await fixture.session.prepareAttempt({
@@ -41,7 +41,7 @@ export const testNode = authoredSuite('projected resource session ownership', [
     }),
     test(
         'runs load operations through a resource policy without altering their value',
-        async function (scope: TestScope) {
+        async function (scope) {
             const session = createResourceLifecycleSession({
                 testCases: [],
                 boundaryUseCounts: [],
@@ -59,7 +59,7 @@ export const testNode = authoredSuite('projected resource session ownership', [
             return scope.assert.collect();
         }
     ),
-    test('exposes preparation and completion for explicitly acquired empty scopes', async function (scope: TestScope) {
+    test('exposes preparation and completion for explicitly acquired empty scopes', async function (scope) {
         const testCase = managedCase();
         const session = await acquireResourceLifecycleScopes({
             options: {

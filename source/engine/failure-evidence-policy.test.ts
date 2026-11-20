@@ -1,10 +1,7 @@
-import { suite, test } from '@overkill-dev/test';
+import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 
-import {
-    defaultFailureArtifactPolicy,
-    type RunnerError,
-    type TestScope
-} from '../packages/engine/engine.entry-point.ts';
+import { defaultFailureArtifactPolicy, type RunnerError } from '../packages/engine/engine.entry-point.ts';
+
 import {
     boundaryArtifacts,
     caseBoundaryArtifacts,
@@ -100,33 +97,37 @@ async function rejectedExecution(error: Error, cleanupErrors: readonly unknown[]
     throw new Error('Expected execution to reject.');
 }
 
-export const testNode = suite('failure artifact contexts', [
-    ...timeoutOwners.map(function timeoutAttribution({ activeWork, ...attribution }) {
-        return test({
-            ...metadata,
-            title: `hard timeout attribution follows ${activeWork.length} active attempts`,
-            body(scope: TestScope) {
-                const cause: CrashCause = {
-                    activeAttempts: activeWork.map(function (active) {
-                        return active.attempt;
-                    }),
-                    activeCases: activeWork.map(function (active) {
-                        return active.work.case;
-                    }),
-                    activeWork: activeWork.map(function (active) {
-                        return active.work;
-                    }),
-                    reason: 'hard-timeout',
-                    termination: 'hard-timeout'
-                };
-                scope.assert.partialDeepEqual(executionCrashError(cause), {
-                    ...attribution,
-                    cause,
-                    subtype: 'crash'
-                });
-                return scope.assert.collect();
-            }
-        });
+export const testNode: TestNode = suite('failure artifact contexts', [
+    table({
+        ...metadata,
+        title: 'attributes hard timeouts to active attempts',
+        cases: timeoutOwners,
+        caseTitle({ activeWork }) {
+            return `${activeWork.length}`;
+        },
+        test(scope) {
+            const { activeWork, ...attribution } = scope.parameters;
+
+            const cause: CrashCause = {
+                activeAttempts: activeWork.map(function (active) {
+                    return active.attempt;
+                }),
+                activeCases: activeWork.map(function (active) {
+                    return active.work.case;
+                }),
+                activeWork: activeWork.map(function (active) {
+                    return active.work;
+                }),
+                reason: 'hard-timeout',
+                termination: 'hard-timeout'
+            };
+            scope.assert.partialDeepEqual(executionCrashError(cause), {
+                ...attribution,
+                cause,
+                subtype: 'crash'
+            });
+            return scope.assert.collect();
+        }
     }),
     test('execution and cleanup failures retain their original causes in order', async function (scope: TestScope) {
         const error = new Error('execution failed');
@@ -140,7 +141,7 @@ export const testNode = suite('failure artifact contexts', [
     }),
     test(
         'attempt evidence excludes foreign work and retries without mutating earlier snapshots',
-        function (scope: TestScope) {
+        function (scope) {
             const owned = crashEvidence([ { work, attempt } ]);
             const shared = crashEvidence([ { work, attempt }, { work: peer, attempt } ]);
             const observed = withFailureArtifactContext(defaultFailureArtifactPolicy, function captureEvidence() {
@@ -156,7 +157,7 @@ export const testNode = suite('failure artifact contexts', [
             return scope.assert.collect();
         }
     ),
-    test('nested executions restore outer boundary evidence and sampling intervals', function (scope: TestScope) {
+    test('nested executions restore outer boundary evidence and sampling intervals', function (scope) {
         const previousInterval = currentProcessUsageSamplingInterval();
         const owned = crashEvidence([ { work, attempt } ]);
         const other = crashEvidence([ { work: peer, attempt } ]);

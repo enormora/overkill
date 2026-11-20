@@ -1,7 +1,7 @@
 import { AsyncResource } from 'node:async_hooks';
 import { channel } from 'node:diagnostics_channel';
 import { setTimeout as scheduleTimer, clearTimeout as cancelTimer } from 'node:timers';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 import { createRuntimeCapabilityPolicy, type RuntimeCapabilityPolicy } from '../run/capability-policy.ts';
 import { observeProcessIpcListeners } from '../run/node-process-policy-observation.ts';
 import { createAsyncLeakMonitor } from '../engine/async-leak-diagnostics.ts';

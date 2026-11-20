@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -187,8 +187,8 @@ async function collectInvalidOwnedPool(timing: RunTimingMeasurement): Promise<In
     return { destroyed, options, thrownError };
 }
 
-export const testNode = suite('source/run/worker-pool-collection.test.ts', [
-    test('collectInWorkerPool() uses a provided pool without destroying it', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Worker pool collection', [
+    test('uses a provided pool without destroying it', async function (scope) {
         let destroyed = false;
         const runState = createSupervisedRunState('first-failure-and-final');
         const pool = createTestPool({
@@ -218,8 +218,8 @@ export const testNode = suite('source/run/worker-pool-collection.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'collectInWorkerPool() destroys owned pools after invalid collection results',
-        async function (scope: OverkillScope) {
+        'destroys owned pools after invalid collection results',
+        async function (scope) {
             const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
             const timing = createRunTimingMeasurement(clock);
             const result = await collectInvalidOwnedPool(timing);
@@ -238,8 +238,8 @@ export const testNode = suite('source/run/worker-pool-collection.test.ts', [
         }
     ),
     test(
-        'collectInWorkerPool() destroys owned pools after successful collection',
-        async function (scope: OverkillScope) {
+        'destroys owned pools after successful collection',
+        async function (scope) {
             let destroyed = false;
             let optionHasTiming = true;
             const result = await collectInWorkerPool({
@@ -269,8 +269,8 @@ export const testNode = suite('source/run/worker-pool-collection.test.ts', [
         }
     ),
     test(
-        'collectInWorkerPool() reports collection timeouts as terminal failures',
-        async function (scope: OverkillScope) {
+        'reports collection timeouts as terminal failures',
+        async function (scope) {
             let timeoutCallback: TimeoutCallback = function missingTimeoutCallback() {
                 throw new Error('Expected collection timeout.');
             };

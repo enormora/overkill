@@ -1,11 +1,4 @@
-import {
-    type TestScope as OverkillScope,
-    suite,
-    test,
-    doubleUsage,
-    testDouble,
-    type TestDouble
-} from '@overkill-dev/test';
+import { type TestNode, suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { serializedValueDiff } from '../compare/comparison.ts';
@@ -118,8 +111,8 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
     await reporter.onEvent({ kind: 'run-end', result: runResultFactory.build({ summary: { planned: 2 } }) });
 }
 
-export const testNode = suite('source/reporters/tap-console-reporter.test.ts', [
-    test('reports the final result without any test cases formatted as TAP', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Tap console reporter', [
+    test('reports the final result without any test cases formatted as TAP', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = tapConsoleReporterWithLog(log);
 
@@ -148,7 +141,7 @@ export const testNode = suite('source/reporters/tap-console-reporter.test.ts', [
     }),
     test(
         'reports the final result with passed and failed test cases formatted as TAP',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const log = testDouble<LogFunction>();
             const reporter = tapConsoleReporterWithLog(log);
 
@@ -191,7 +184,7 @@ export const testNode = suite('source/reporters/tap-console-reporter.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('reports a failed TAP test point with a fallback diagnostic reason', async function (scope: OverkillScope) {
+    test('reports a failed TAP test point with a fallback diagnostic reason', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = tapConsoleReporterWithLog(log);
 
@@ -239,7 +232,7 @@ export const testNode = suite('source/reporters/tap-console-reporter.test.ts', [
     }),
     test(
         'reports skip and inconclusive outcomes as TAP directives and diagnostics',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const log = testDouble<LogFunction>();
             const reporter = tapConsoleReporterWithLog(log);
 
@@ -290,7 +283,7 @@ export const testNode = suite('source/reporters/tap-console-reporter.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('real-time TAP reporter streams test points before the final plan', async function (scope: OverkillScope) {
+    test('real-time TAP reporter streams test points before the final plan', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = tapConsoleRealTimeReporterWithLog(log);
 
@@ -306,7 +299,7 @@ export const testNode = suite('source/reporters/tap-console-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('real-time TAP reporter writes runner errors as bail out', async function (scope: OverkillScope) {
+    test('real-time TAP reporter writes runner errors as bail out', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = tapConsoleRealTimeReporterWithLog(log);
 

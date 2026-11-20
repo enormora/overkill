@@ -1,5 +1,5 @@
+import { type TestNode, suite, test } from '@overkill-dev/test';
 import { randomBytes } from 'node:crypto';
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
 import { type RunnerError, createRoot, createTestPlan } from '../packages/engine/engine.entry-point.ts';
 
@@ -19,7 +19,7 @@ type RunCommandParts = {
     readonly request: RunRequest;
 };
 
-const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 const defaultConfig: NormalizedConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
@@ -38,10 +38,10 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
     };
 }
 
-export const testNode = suite('source/run/run-runtime-policy.test.ts', [
+export const testNode: TestNode = suite('Run runtime policy', [
     test(
         'runtime capability checkpoints report mutations before attempt completion',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const environment = { VALUE: 'before' };
             const during: RunnerError[] = [];
             const observed = createTestPlan(createRoot({
@@ -93,7 +93,7 @@ export const testNode = suite('source/run/run-runtime-policy.test.ts', [
     ),
     test(
         'orchestrator.run() supports disabled capability restrictions for in-process runs',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const runOrchestrator = createDeterministicRunOrchestrator();
             const result = await runOrchestrator.run(createRunCommand({
                 config: defaultConfig,
@@ -113,7 +113,7 @@ export const testNode = suite('source/run/run-runtime-policy.test.ts', [
     ),
     test(
         'orchestrator.run() generates in-process seeds outside runtime policy monitoring',
-        async function (scope: OverkillScope) {
+        async function (scope) {
             const runOrchestrator = createDeterministicRunOrchestratorWithSeed(function createRandomSeed() {
                 return randomBytes(8).readBigUInt64BE();
             });

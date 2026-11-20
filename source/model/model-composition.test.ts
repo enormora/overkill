@@ -1,7 +1,10 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { test as subjectTest } from '../packages/test/test.entry-point.ts';
+
 import { z } from 'zod/v4';
-import type { TestScope, PropertyWitnessFile } from '../packages/engine/engine.entry-point.ts';
-import { test } from '../packages/test/test.entry-point.ts';
+
+import type { PropertyWitnessFile } from '../packages/engine/engine.entry-point.ts';
+
 import { type LengthBounds, defineCodec, gen, withProperties } from '../packages/property/property.entry-point.ts';
 import { model, modelScenario, type ModelDefinition } from '../packages/model/model.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
@@ -58,8 +61,8 @@ async function verifyStoredTrace(
     );
 }
 
-export const testNode = authoredSuite('model composition', [
-    authoredTest('filters disabled operations before executing generated traces', async function (scope: TestScope) {
+export const testNode: TestNode = suite('model composition', [
+    test('filters disabled operations before executing generated traces', async function (scope) {
         const result = await executePropertyNode(
             model({
                 title: 'bounded counter',
@@ -99,7 +102,7 @@ export const testNode = authoredSuite('model composition', [
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    authoredTest('supports nested invocations with valid state-dependent traces', async function (scope: TestScope) {
+    test('supports nested invocations with valid state-dependent traces', async function (scope) {
         const scenario = modelScenario({
             initial() {
                 return 0;
@@ -130,7 +133,7 @@ export const testNode = authoredSuite('model composition', [
                 sample.assert.between(state, 0, 2);
             }
         });
-        const node = test(
+        const node = subjectTest(
             'nested model',
             withProperties(async function (sample) {
                 return await sample.forall(scenario);
@@ -140,7 +143,7 @@ export const testNode = authoredSuite('model composition', [
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    authoredTest('supports undefined initial and expected state', async function (scope: TestScope) {
+    test('supports undefined initial and expected state', async function (scope) {
         const result = await executePropertyNode(
             model({
                 title: 'undefined model',
@@ -174,7 +177,7 @@ export const testNode = authoredSuite('model composition', [
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'uses the complete trace codec for replay outside generation bounds',
         async function (scope: TestScope) {
             const codec = defineCodec<readonly number[]>({

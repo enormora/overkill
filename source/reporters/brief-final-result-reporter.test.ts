@@ -1,9 +1,10 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+
 import { createDeterministicClock } from '@enormora/clock';
 
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { createPlainOutputRenderer, type OutputLineIntent } from '../engine/reporter-output.ts';
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
+
 import { createReportingContext } from '../engine/reporting-context.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createBriefFinalResultReporter } from '../packages/reporter-brief/reporter-brief.entry-point.ts';
@@ -43,8 +44,8 @@ function assertFinalDiagnostics(scope: TestScope, output: readonly OutputLineInt
     scope.assert.true(output[3]?.text.startsWith('done status=failed discovered=10 planned=8 executed=3 '));
 }
 
-export const testNode = suite('brief final-result reporter', [
-    test('accepts results from runners without resource checks', async function (scope: TestScope) {
+export const testNode: TestNode = suite('brief final-result reporter', [
+    test('accepts results from runners without resource checks', async function (scope) {
         const reporter = createBriefFinalResultReporter()(context);
         const { resourceChecks: _resourceChecks, ...legacy } = runResultFactory.build({
             summary: { discovered: 1, planned: 1, passed: 1 }
@@ -58,7 +59,7 @@ export const testNode = suite('brief final-result reporter', [
         ]);
         return scope.assert.collect();
     }),
-    test('delivers managed final output through the dispatcher', async function (scope: TestScope) {
+    test('delivers managed final output through the dispatcher', async function (scope) {
         const lines: string[] = [];
         const dispatcher = createReporterDispatcher({
             stdout: {
@@ -91,7 +92,7 @@ export const testNode = suite('brief final-result reporter', [
         scope.assert.deepEqual(await delivery.disposeReporters(), []);
         return scope.assert.collect();
     }),
-    test('declares a final-result managed primary sink', function (scope: TestScope) {
+    test('declares a final-result managed primary sink', function (scope) {
         const reporter = createBriefFinalResultReporter()(context);
         scope.assert.equal(reporter.kind, 'final-result');
         scope.assert.equal(reporter.name, 'brief-final-result');
@@ -99,7 +100,7 @@ export const testNode = suite('brief final-result reporter', [
         scope.assert.deepEqual(reporter.sinks, [ { kind: 'stdout-managed-primary' } ]);
         return scope.assert.collect();
     }),
-    test('rejects conflicting managed primary reporters', async function (scope: TestScope) {
+    test('rejects conflicting managed primary reporters', async function (scope) {
         const dispatcher = createReporterDispatcher({
             stdout: {
                 writeLine() {
@@ -123,7 +124,7 @@ export const testNode = suite('brief final-result reporter', [
     }),
     test(
         'renders final causes and runner errors before counts with located annotations',
-        async function (scope: TestScope) {
+        async function (scope) {
             const result = runResultFactory.build({
                 perTest: [ {
                     outcome: {

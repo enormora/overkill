@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { EqualAssertionNode } from '../assertion-protocol/assertions/equality.ts';
 import { createDefaultWorkId } from './identity.ts';
@@ -35,8 +35,8 @@ function completedAttempt(): DebugAttempt {
     return attempt;
 }
 
-export const testNode = authoredSuite('debug recording boundaries', [
-    test('drops oversized timeline labels while preserving body completion', function (scope: TestScope) {
+export const testNode: TestNode = suite('debug recording boundaries', [
+    test('drops oversized timeline labels while preserving body completion', function (scope) {
         const attempt = createDebugAttempt(work);
         attempt.assertion({ ...assertion, message: 'x'.repeat(11 * 1024 * 1024) });
         attempt.completeBody({ kind: 'returned' });
@@ -48,7 +48,7 @@ export const testNode = authoredSuite('debug recording boundaries', [
         }, { dropped: 1, kinds: [ 'body-end' ] });
         return scope.assert.collect();
     }),
-    test('limits recording providers and ignores registration after completion', function (scope: TestScope) {
+    test('limits recording providers and ignores registration after completion', function (scope) {
         const attempt = createDebugAttempt(work);
         for (let index = 0; index < 101; index += 1) {
             attempt.includeRecording({
@@ -70,7 +70,7 @@ export const testNode = authoredSuite('debug recording boundaries', [
         scope.assert.equal(attempt.recordingProviders().length, 100);
         return scope.assert.collect();
     }),
-    test('rejects oversized provider metadata without exhausting later recordings', function (scope: TestScope) {
+    test('rejects oversized provider metadata without exhausting later recordings', function (scope) {
         const attempt = createDebugAttempt(work);
         attempt.includeRecording({
             name: 'x'.repeat(11 * 1024 * 1024),
@@ -93,7 +93,7 @@ export const testNode = authoredSuite('debug recording boundaries', [
         scope.assert.equal(attempt.snapshot().dropped, 1);
         return scope.assert.collect();
     }),
-    test('ignores module observation belonging to a different active attempt', function (scope: TestScope) {
+    test('ignores module observation belonging to a different active attempt', function (scope) {
         const attempt = createDebugAttempt(work);
         const other = createDebugAttempt({ ...work, case: { ...work.case, title: 'other' } });
         attempt.record('body-start', null);
@@ -103,7 +103,7 @@ export const testNode = authoredSuite('debug recording boundaries', [
         scope.assert.deepEqual(attempt.snapshot().moduleLoads, []);
         return scope.assert.collect();
     }),
-    test('a completed attempt ignores late trace evidence', function (scope: TestScope) {
+    test('a completed attempt ignores late trace evidence', function (scope) {
         const attempt = completedAttempt();
         const snapshot = attempt.snapshot();
         attempt.record('plan', 2);
@@ -113,7 +113,7 @@ export const testNode = authoredSuite('debug recording boundaries', [
         scope.assert.deepEqual(attempt.snapshot(), snapshot);
         return scope.assert.collect();
     }),
-    test('oversized module and overlap observations leave space for later evidence', function (scope: TestScope) {
+    test('oversized module and overlap observations leave space for later evidence', function (scope) {
         const attempt = createDebugAttempt(work);
         attempt.module({ ...moduleObservation, specifier: 'x'.repeat(11 * 1024 * 1024) });
         attempt.overlap({ ...work, case: { ...work.case, title: 'x'.repeat(3 * 1024 * 1024) } });
@@ -124,7 +124,7 @@ export const testNode = authoredSuite('debug recording boundaries', [
         scope.assert.equal(trace.dropped, 2);
         return scope.assert.collect();
     }),
-    test('records an interruption when assertion locations are unavailable', function (scope: TestScope) {
+    test('records an interruption when assertion locations are unavailable', function (scope) {
         const attempt = createDebugAttempt(work);
         debugAttempts.run(attempt, function capture() {
             captureDebugModule(attempt, { ...moduleObservation, start: process.hrtime.bigint() });

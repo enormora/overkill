@@ -1,11 +1,12 @@
+import { type TestNode, suite, test, type TestScope } from '#tests';
 import { execFile, type ExecException } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { suite, test, type TestScope } from '#tests';
+
 import { z } from 'zod/v4';
 
-const directory = fileURLToPath(new URL('.', import.meta.url));
+const directory = fileURLToPath(new URL('./', import.meta.url));
 function cliExitCode(error: Readonly<ExecException> | null): number | null {
     if (error === null) {
         return 0;
@@ -196,8 +197,8 @@ async function assertPackagedFailureEvidence(scope: TestScope): Promise<void> {
     await assertPackagedWitness(scope, artifact);
 }
 
-export const testNode = suite('source/integration-tests/package-smoke/test-binary-attachments.test.ts', [
-    test('published runner and simulation packages share transcript attribution', async function (scope: TestScope) {
+export const testNode: TestNode = suite('Test binary attachments', [
+    test('published runner and simulation packages share transcript attribution', async function (scope) {
         const script = [
             "import {runWithTranscriptScope} from '@overkill-dev/run/transcript-store';",
             "import {createHttpTranscriptRecorder} from '@overkill-dev/simulation/transcript';",
@@ -212,12 +213,12 @@ export const testNode = suite('source/integration-tests/package-smoke/test-binar
     }),
     test(
         'packaged integration resources retain native witnesses with their producer version',
-        async function (scope: TestScope) {
+        async function (scope) {
             await assertPackagedFailureEvidence(scope);
             return scope.assert.collect();
         }
     ),
-    test('packaged fixtures and wrapped bodies share runner attachments', async function (scope: TestScope) {
+    test('packaged fixtures and wrapped bodies share runner attachments', async function (scope) {
         await assertPackagedAttachments(scope);
         return scope.assert.collect();
     })

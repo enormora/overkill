@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createReportingContext } from '../engine/reporting-context.ts';
 import type { RunResult } from '../engine/run-result.ts';
@@ -134,7 +134,7 @@ function exportedSpans(content: string): readonly Readonly<Record<string, unknow
     });
 }
 
-function assertRootSpan(scope: OverkillScope, span: Readonly<Record<string, unknown>>): void {
+function assertRootSpan(scope: TestScope, span: Readonly<Record<string, unknown>>): void {
     scope.assert.equal(span.name, 'overkill.run');
     scope.assert.equal(span.traceId, '00000000000000000000000000000001');
     scope.assert.equal(span.spanId, '0000000000000001');
@@ -149,7 +149,7 @@ function assertRootSpan(scope: OverkillScope, span: Readonly<Record<string, unkn
     });
 }
 
-function assertChildSpan(scope: OverkillScope, span: Readonly<Record<string, unknown>>): void {
+function assertChildSpan(scope: TestScope, span: Readonly<Record<string, unknown>>): void {
     scope.assert.equal(span.name, 'overkill.timing.resource.acquire');
     scope.assert.equal(span.traceId, '00000000000000000000000000000001');
     scope.assert.equal(span.spanId, '0000000000000002');
@@ -189,7 +189,7 @@ async function writePreciseResult(recording: RecordingDependencies): Promise<{
     return { reporterSinks: reporter.sinks, write };
 }
 
-function assertWrittenTrace(scope: OverkillScope, recording: RecordingDependencies, write: FileWrite): void {
+function assertWrittenTrace(scope: TestScope, recording: RecordingDependencies, write: FileWrite): void {
     scope.assert.equal(recording.writes.length, 1);
     scope.assert.equal(write.path, 'reports/traces.jsonl');
     scope.assert.equal(write.content.endsWith('\n'), true);
@@ -199,8 +199,8 @@ function assertWrittenTrace(scope: OverkillScope, recording: RecordingDependenci
     assertChildSpan(scope, entry(spans, 1, 'child span'));
 }
 
-export const testNode = suite('source/reporters/opentelemetry-reporter.test.ts', [
-    test('writes an OTLP JSON trace with absolute timestamps', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('OpenTelemetry reporter', [
+    test('writes an OTLP JSON trace with absolute timestamps', async function (scope) {
         const recording = createRecordingDependencies();
         const { reporterSinks, write } = await writePreciseResult(recording);
         scope.assert.deepEqual(reporterSinks, [ { kind: 'file', path: 'reports/traces.jsonl' } ]);
@@ -208,7 +208,7 @@ export const testNode = suite('source/reporters/opentelemetry-reporter.test.ts',
 
         return scope.assert.collect();
     }),
-    test('writes unset OTLP statuses for a successful run and timing span', async function (scope: OverkillScope) {
+    test('writes unset OTLP statuses for a successful run and timing span', async function (scope) {
         const recording = createRecordingDependencies();
         const reporter = createOpenTelemetryReporter(recording.dependencies, {
             outputFile: 'traces.jsonl'
@@ -236,7 +236,7 @@ export const testNode = suite('source/reporters/opentelemetry-reporter.test.ts',
 
         return scope.assert.collect();
     }),
-    test('rejects results without precise timings before writing a file', async function (scope: OverkillScope) {
+    test('rejects results without precise timings before writing a file', async function (scope) {
         const recording = createRecordingDependencies();
         const reporter = createOpenTelemetryReporter(recording.dependencies, {
             outputFile: 'traces.jsonl'

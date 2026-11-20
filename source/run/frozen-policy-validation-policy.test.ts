@@ -1,20 +1,18 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test, testDouble } from '@overkill-dev/test';
 
-import { testDouble } from '../packages/test/test.entry-point.ts';
 import { frozenPolicyValidation } from '../test-support/frozen-policy-validation.ts';
 import { ConfigError } from '../packages/run/config.entry-point.ts';
-import { testNode as origins } from './frozen-policy-origins.test.ts';
+
 import { revalidateFrozenPolicy } from './frozen-policy-validation.ts';
 
-export const testNode = authoredSuite('frozen policy source validation', [
-    origins,
-    test('accepts identical configured discovery and execution facts', async function (scope: TestScope) {
+export const testNode: TestNode = suite('frozen policy source validation', [
+    test('accepts identical configured discovery and execution facts', async function (scope) {
         const fixture = await frozenPolicyValidation();
         await revalidateFrozenPolicy(fixture.policy, fixture.dependencies, fixture.load);
         scope.assert.deepEqual(fixture.events, [ 'load', 'discover' ]);
         return scope.assert.collect();
     }),
-    test('does not reload an in-memory policy', async function (scope: TestScope) {
+    test('does not reload an in-memory policy', async function (scope) {
         const fixture = await frozenPolicyValidation();
         await revalidateFrozenPolicy(
             { ...fixture.policy, source: { kind: 'memory' } },
@@ -24,7 +22,7 @@ export const testNode = authoredSuite('frozen policy source validation', [
         scope.assert.deepEqual(fixture.events, []);
         return scope.assert.collect();
     }),
-    test('rejects changed runtime state storage', async function (scope: TestScope) {
+    test('rejects changed runtime state storage', async function (scope) {
         const fixture = await frozenPolicyValidation();
         await scope.assert.rejects(async function () {
             await revalidateFrozenPolicy(fixture.policy, fixture.dependencies, async function () {
@@ -36,7 +34,7 @@ export const testNode = authoredSuite('frozen policy source validation', [
         }, { message: 'Frozen policy changed: runtimeStateDir.' });
         return scope.assert.collect();
     }),
-    test('rejects discovery outside the frozen project root', async function (scope: TestScope) {
+    test('rejects discovery outside the frozen project root', async function (scope) {
         const fixture = await frozenPolicyValidation();
         await scope.assert.rejects(async function () {
             await revalidateFrozenPolicy(fixture.policy, {
@@ -46,11 +44,11 @@ export const testNode = authoredSuite('frozen policy source validation', [
             }, fixture.load);
         }, {
             message:
-                'Frozen policy revalidation failed: RunResolutionError: Invalid frozen discovery descriptor: source/integration-tests/run/fixtures/passing.test.ts'
+                'Frozen policy revalidation failed: RunResolutionError: Invalid frozen discovery descriptor: source/integration-tests/integration/fixtures/passing.test.ts'
         });
         return scope.assert.collect();
     }),
-    test('preserves nested configuration failure details', async function (scope: TestScope) {
+    test('preserves nested configuration failure details', async function (scope) {
         const fixture = await frozenPolicyValidation();
         const failure = new ConfigError('invalid config', { cause: new Error('invalid profile') });
         await scope.assert.rejects(async function () {
@@ -63,7 +61,7 @@ export const testNode = authoredSuite('frozen policy source validation', [
         });
         return scope.assert.collect();
     }),
-    test('wraps non-Error loading failures', async function (scope: TestScope) {
+    test('wraps non-Error loading failures', async function (scope) {
         const fixture = await frozenPolicyValidation();
         await scope.assert.rejects(async function () {
             await revalidateFrozenPolicy(

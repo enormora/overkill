@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ReplayRunRecord } from '../run/replay-record-types.ts';
 import { normalizeConfig, type ProjectProfileConfig, type RunCommand } from '../packages/run/run.entry-point.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 import { replayRecordSchema } from '../run/replay-record-schema.ts';
 import { defaultRunRequest } from './run-command-factory.ts';
 

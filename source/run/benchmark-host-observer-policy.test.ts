@@ -1,12 +1,12 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { hostObservation, hostObservationScenario } from '../test-support/host-observation.ts';
 import { observeBenchmarkHost } from './benchmark-host-observer.ts';
 
-export const testNode = authoredSuite('benchmark host observation ownership', [
+export const testNode: TestNode = suite('benchmark host observation ownership', [
     test(
         'samples one bounded window and filters garbage collection entries by time',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = hostObservation(hostObservationScenario);
             const result = await observeBenchmarkHost(AbortSignal.any([]), fixture.runtime);
             scope.assert.partialDeepEqual<unknown, unknown>(result.cpuBusy, { availability: 'available', value: 75 });
@@ -42,7 +42,7 @@ export const testNode = authoredSuite('benchmark host observation ownership', [
             return scope.assert.collect();
         }
     ),
-    test('marks unsampled event loop delays unavailable', async function (scope: TestScope) {
+    test('marks unsampled event loop delays unavailable', async function (scope) {
         const fixture = hostObservation({ ...hostObservationScenario, count: 0 });
         const result = await observeBenchmarkHost(AbortSignal.any([]), fixture.runtime);
         scope.assert.partialDeepEqual<unknown, unknown>(result.metrics.eventLoopDelayMeanMicroseconds, {
@@ -54,7 +54,7 @@ export const testNode = authoredSuite('benchmark host observation ownership', [
         });
         return scope.assert.collect();
     }),
-    test('reports unavailable CPU evidence when native CPU snapshots are absent', async function (scope: TestScope) {
+    test('reports unavailable CPU evidence when native CPU snapshots are absent', async function (scope) {
         const fixture = hostObservation({ ...hostObservationScenario, cpuAvailable: false });
         const result = await observeBenchmarkHost(AbortSignal.any([]), fixture.runtime);
         scope.assert.partialDeepEqual<unknown, unknown>(result.cpuBusy, {
@@ -63,7 +63,7 @@ export const testNode = authoredSuite('benchmark host observation ownership', [
         });
         return scope.assert.collect();
     }),
-    test('releases observers after waiting fails and retains the reason', async function (scope: TestScope) {
+    test('releases observers after waiting fails and retains the reason', async function (scope) {
         const fixture = hostObservation({ ...hostObservationScenario, waitFailure: new Error('Wait failed.') });
         const result = await observeBenchmarkHost(AbortSignal.any([]), fixture.runtime);
         scope.assert.partialDeepEqual<unknown, unknown>(result.metrics.observation, {
@@ -74,7 +74,7 @@ export const testNode = authoredSuite('benchmark host observation ownership', [
         scope.assert.deepEqual(fixture.events, [ 'observe', 'enable', 'wait:250', 'disable', 'disconnect' ]);
         return scope.assert.collect();
     }),
-    test('normalizes nonerror observation failures', async function (scope: TestScope) {
+    test('normalizes nonerror observation failures', async function (scope) {
         const fixture = hostObservation({ ...hostObservationScenario, waitFailure: 'unavailable' });
         const result = await observeBenchmarkHost(AbortSignal.any([]), fixture.runtime);
         scope.assert.partialDeepEqual<unknown, unknown>(result.metrics.observation, {
@@ -83,7 +83,7 @@ export const testNode = authoredSuite('benchmark host observation ownership', [
         });
         return scope.assert.collect();
     }),
-    test('cleans up partially initialized observation windows', async function (scope: TestScope) {
+    test('cleans up partially initialized observation windows', async function (scope) {
         const fixture = hostObservation({ ...hostObservationScenario, beginFailure: new Error('Cannot observe.') });
         const result = await observeBenchmarkHost(AbortSignal.any([]), fixture.runtime);
         scope.assert.partialDeepEqual<unknown, unknown>(result.metrics.observation, {
@@ -95,7 +95,7 @@ export const testNode = authoredSuite('benchmark host observation ownership', [
     }),
     test(
         'preserves cleanup failure as a collection error and still disconnects observers',
-        async function (scope: TestScope) {
+        async function (scope) {
             const failure = new Error('Cannot disable.');
             const fixture = hostObservation({ ...hostObservationScenario, cleanupFailure: failure });
             await scope.assert.rejects(async function () {

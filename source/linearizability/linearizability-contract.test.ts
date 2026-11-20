@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { gen, property } from '../packages/property/property.entry-point.ts';
 import {
@@ -76,8 +76,8 @@ const definition: LinearizabilityDefinition<number, number, unknown, null> = {
     maxWork: 100
 };
 
-export const testNode = authoredSuite('linearizability authoring contracts', [
-    authoredTest('preserves non-enumerable model callbacks', async function (scope) {
+export const testNode: TestNode = suite('linearizability authoring contracts', [
+    test('preserves non-enumerable model callbacks', async function (scope) {
         const result = await executePropertyNode(
             property({
                 title: 'non-enumerable model',
@@ -98,7 +98,7 @@ export const testNode = authoredSuite('linearizability authoring contracts', [
         scope.assert.equal(result.summary.passed, 1);
         return scope.assert.collect();
     }),
-    authoredTest('rejects invalid budgets and callbacks before executing user code', function (scope) {
+    test('rejects invalid budgets and callbacks before executing user code', function (scope) {
         const created: number[] = [];
         const declaration = {
             ...definition,
@@ -118,8 +118,15 @@ export const testNode = authoredSuite('linearizability authoring contracts', [
         scope.assert.empty(created);
         return scope.assert.collect();
     }),
-    ...malformedPrograms.map(function ({ title, input }) {
-        return authoredTest(`rejects ${title} before system creation`, async function (scope) {
+    table({
+        title: 'rejects invalid contracts before system creation',
+        cases: malformedPrograms,
+        caseTitle({ title }) {
+            return `${title}`;
+        },
+        async test(scope) {
+            const { title, input } = scope.parameters;
+
             const created: number[] = [];
             const body = linearizability({
                 ...definition,
@@ -147,44 +154,50 @@ export const testNode = authoredSuite('linearizability authoring contracts', [
             scope.assert.equal(outcome.failures[0].error.name, 'TypeError');
             scope.assert.empty(created);
             return scope.assert.collect();
-        });
+        }
     }),
-    ...[ null, undefined, function returnedFunction() {
-        return 1;
-    } ]
-        .map(function (expected, index) {
-            return authoredTest(`preserves synchronous output ${index}`, async function (scope) {
-                const result = await executePropertyNode(
-                    property({
-                        title: 'synchronous output',
-                        generator: gen.tuple(gen.tuple(gen.constant(0))),
-                        test: linearizability({
-                            create() {
-                                return null;
+    table({
+        title: 'preserves synchronous output',
+        cases: [ null, undefined, function returnedFunction() {
+            return 1;
+        } ],
+        caseTitle(_parameters, index) {
+            return `${index}`;
+        },
+        async test(scope) {
+            const expected = scope.parameters;
+
+            const result = await executePropertyNode(
+                property({
+                    title: 'synchronous output',
+                    generator: gen.tuple(gen.tuple(gen.constant(0))),
+                    test: linearizability({
+                        create() {
+                            return null;
+                        },
+                        run(operation: number) {
+                            if (operation !== 0) {
+                                throw new Error('Unexpected operation.');
+                            }
+                            return expected;
+                        },
+                        model: {
+                            initial() {
+                                return 0;
                             },
-                            run(operation: number) {
-                                if (operation !== 0) {
-                                    throw new Error('Unexpected operation.');
-                                }
-                                return expected;
-                            },
-                            model: {
-                                initial() {
-                                    return 0;
-                                },
-                                transition(state, observation) {
-                                    const matches = observation.outcome.kind === 'returned' &&
-                                        observation.outcome.value === expected;
-                                    return matches ? { kind: 'enabled', state } : { kind: 'disabled' };
-                                }
-                            },
-                            maxWork: 100
-                        })
-                    }),
-                    propertyExecutionDefaults
-                );
-                scope.assert.equal(result.summary.passed, 1);
-                return scope.assert.collect();
-            });
-        })
+                            transition(state, observation) {
+                                const matches = observation.outcome.kind === 'returned' &&
+                                    observation.outcome.value === expected;
+                                return matches ? { kind: 'enabled', state } : { kind: 'disabled' };
+                            }
+                        },
+                        maxWork: 100
+                    })
+                }),
+                propertyExecutionDefaults
+            );
+            scope.assert.equal(result.summary.passed, 1);
+            return scope.assert.collect();
+        }
+    })
 ]);

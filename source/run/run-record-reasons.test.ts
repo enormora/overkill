@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { table, type TestNode, suite, test } from '@overkill-dev/test';
 
 import { normalizeConfig } from '../config/config.ts';
 
@@ -19,8 +19,8 @@ const reasons = [
     [ 'always', true, true, [ 'profile', 'request', 'coverage' ] ]
 ] as const;
 
-export const testNode = authoredSuite('recording requirements and failures', [
-    authoredTest('merge recording includes debug persistence in the shared session', async function (scope: TestScope) {
+export const testNode: TestNode = suite('recording requirements and failures', [
+    test('merge recording includes debug persistence in the shared session', async function (scope) {
         const fixture = runRecordPolicyFixture('on-demand', false);
         const input = {
             ...fixture.input,
@@ -43,9 +43,9 @@ export const testNode = authoredSuite('recording requirements and failures', [
         scope.assert.equal(fixture.writes.at(-1)?.status, 'completed');
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'execution sessions reject merge recording even when coverage owns the record',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = runRecordPolicyFixture('on-demand', false);
             await scope.assert.rejects(async function mergeInsideSession() {
                 await withExecutionSession({
@@ -69,7 +69,7 @@ export const testNode = authoredSuite('recording requirements and failures', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('last-failed requires recording without explicit record', async function (scope: TestScope) {
+    test('last-failed requires recording without explicit record', async function (scope) {
         const fixture = runRecordPolicyFixture('on-demand', false);
         const input = { ...fixture.input, request: { ...fixture.input.request, lastFailed: true } };
         scope.assert.deepEqual(resolveRunRecordPersistence(input.request, input.profile), {
@@ -83,22 +83,35 @@ export const testNode = authoredSuite('recording requirements and failures', [
         scope.assert.equal(fixture.writes.at(-1)?.status, 'completed');
         return scope.assert.collect();
     }),
-    ...reasons.map(function persistenceReasons([ persist, record, coverage, expected ]) {
-        return authoredTest(
-            `${persist}, request ${String(record)}, coverage ${String(coverage)}`,
-            function (scope: TestScope) {
-                const fixture = runRecordPolicyFixture(persist, record);
-                const facts = resolveRunRecordPersistence(
-                    { ...fixture.input.request, coverage },
-                    fixture.input.profile
-                );
-                scope.assert.deepEqual(facts, { persist: expected.length > 0, reasons: expected });
-                return scope.assert.collect();
-            }
-        );
+    table({
+        title: 'records runs according to request and coverage policy',
+        cases: reasons,
+        caseTitle([ persist, record, coverage ]) {
+            return `${persist}, ${String(record)}, ${String(coverage)}`;
+        },
+        test(scope) {
+            const [ persist, record, coverage, expected ] = scope.parameters;
+
+            const fixture = runRecordPolicyFixture(persist, record);
+            const facts = resolveRunRecordPersistence(
+                { ...fixture.input.request, coverage },
+                fixture.input.profile
+            );
+            scope.assert.deepEqual(facts, { persist: expected.length > 0, reasons: expected });
+            return scope.assert.collect();
+        }
     }),
-    ...([ 'microtest', 'integration', 'benchmark', 'property' ] as const).map(function profileFamily(testFamily) {
-        return authoredTest(`${testFamily} normalizes required recording`, function (scope: TestScope) {
+    table({
+        title: 'normalizes required recording',
+        cases: [ 'microtest', 'integration', 'benchmark', 'property' ] as const,
+        caseTitle(testFamily) {
+            return `${testFamily}`;
+        },
+        test(scope) {
+            const testFamily = scope.parameters;
+
+            const require: typeof scope.require = scope.require;
+
             const config = normalizeConfig({
                 profiles: {
                     required: {
@@ -109,14 +122,14 @@ export const testNode = authoredSuite('recording requirements and failures', [
                 }
             });
             const { required } = config.profiles;
-            scope.require.defined(required);
+            require.defined(required);
             scope.assert.equal(required.runRecords.persist, 'always');
             return scope.assert.collect();
-        });
+        }
     }),
-    authoredTest(
+    test(
         'mutation sessions suppress ordinary recording and its persistence reasons',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = runRecordPolicyFixture('always', true);
             await withExecutionSession({
                 data: null,
@@ -138,9 +151,9 @@ export const testNode = authoredSuite('recording requirements and failures', [
             return scope.assert.collect();
         }
     ),
-    authoredTest(
+    test(
         'coverage retains ownership of its record when ordinary recording is requested',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = runRecordPolicyFixture('always', true);
             await executeRecordedRun(
                 '/project',
@@ -158,7 +171,7 @@ export const testNode = authoredSuite('recording requirements and failures', [
             return scope.assert.collect();
         }
     ),
-    authoredTest('escaping execution failures leave an interrupted record', async function (scope: TestScope) {
+    test('escaping execution failures leave an interrupted record', async function (scope) {
         const fixture = runRecordPolicyFixture('always', false);
         await scope.assert.rejects(async function runInterrupted() {
             await executeRecordedRun('/project', fixture.input, fixture.dependencies, async function execute() {
@@ -169,9 +182,9 @@ export const testNode = authoredSuite('recording requirements and failures', [
         scope.assert.equal(fixture.writes.at(-1)?.result?.status, 'failed');
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'interruption persistence failures retain the execution failure in an aggregate',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = runRecordPolicyFixture('always', false);
             let writes = 0;
             await scope.assert.rejects(async function runFailedInterruption() {

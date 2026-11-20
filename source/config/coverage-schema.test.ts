@@ -1,7 +1,7 @@
-import { suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { safeParse } from '@schema-hub/zod-error-formatter';
-import type { TestScope } from '../packages/engine/engine.entry-point.ts';
+
 import { microtestProfileSchema } from './schema.ts';
 
 function validationIssues(data: unknown): readonly string[] {
@@ -10,8 +10,8 @@ function validationIssues(data: unknown): readonly string[] {
     return result.success ? [] : result.error.issues;
 }
 
-export const testNode = suite('source/config/coverage-schema.test.ts', [
-    test('coverage policy accepts every output and all-files source policy', function (scope: TestScope) {
+export const testNode: TestNode = suite('Coverage policy', [
+    test('accepts every output and all-files source policy', function (scope) {
         scope.assert.deepEqual(
             validationIssues({
                 coverage: {
@@ -31,7 +31,7 @@ export const testNode = suite('source/config/coverage-schema.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('coverage policy validates thresholds and all-files includes', function (scope: TestScope) {
+    test('validates thresholds and all-files includes', function (scope) {
         scope.assert.deepEqual(
             validationIssues({
                 coverage: { thresholds: { lines: 101 } },

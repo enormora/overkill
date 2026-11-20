@@ -8,7 +8,7 @@ export async function frozenMicrotestPolicy(): Promise<FrozenMicrotestPolicy> {
         profiles: {
             unit: {
                 testFamily: 'microtest',
-                files: { include: [ 'source/integration-tests/run/fixtures/passing.test.ts' ] },
+                files: { include: [ 'source/integration-tests/integration/fixtures/passing.test.ts' ] },
                 execution: { processModel: 'in-process' }
             }
         }
@@ -18,7 +18,7 @@ export async function frozenMicrotestPolicy(): Promise<FrozenMicrotestPolicy> {
         moduleBoundary: null,
         command: {
             ...command,
-            request: { ...command.request, paths: [ 'source/integration-tests/run/fixtures/passing.test.ts' ] }
+            request: { ...command.request, paths: [ 'source/integration-tests/integration/fixtures/passing.test.ts' ] }
         },
         source: { kind: 'memory' }
     });

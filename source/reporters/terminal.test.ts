@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import ansiEscapes from 'ansi-escapes';
 
@@ -48,16 +48,16 @@ function createFakeTerminal(columns: number): FakeTerminal {
     };
 }
 
-export const testNode = suite('source/reporters/terminal.test.ts', [
+export const testNode: TestNode = suite('Terminal', [
     test(
         'visibleTerminalWidth() ignores ANSI escapes and counts Unicode display width',
-        function (scope: OverkillScope) {
+        function (scope) {
             scope.assert.equal(visibleTerminalWidth('\u{1B}[31m✓\u{1B}[39m漢'), 3);
 
             return scope.assert.collect();
         }
     ),
-    test('terminal progress renderer redraws the full block on interactive resize', function (scope: OverkillScope) {
+    test('terminal progress renderer redraws the full block on interactive resize', function (scope) {
         const terminal = createFakeTerminal(4);
         const renderer = createTerminalProgressRenderer({
             interactive: true,
@@ -73,7 +73,7 @@ export const testNode = suite('source/reporters/terminal.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('terminal progress renderer ignores resize before progress and after finish', function (scope: OverkillScope) {
+    test('terminal progress renderer ignores resize before progress and after finish', function (scope) {
         const terminal = createFakeTerminal(4);
         const renderer = createTerminalProgressRenderer({
             interactive: true,
@@ -91,7 +91,7 @@ export const testNode = suite('source/reporters/terminal.test.ts', [
     }),
     test(
         'terminal progress renderer does not emit cursor escapes in non-interactive output',
-        function (scope: OverkillScope) {
+        function (scope) {
             const terminal = createFakeTerminal(2);
             const renderer = createTerminalProgressRenderer({
                 interactive: false,
@@ -109,7 +109,7 @@ export const testNode = suite('source/reporters/terminal.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('terminal progress renderer falls back when output columns are invalid', function (scope: OverkillScope) {
+    test('terminal progress renderer falls back when output columns are invalid', function (scope) {
         const terminal = createFakeTerminal(0);
         const renderer = createTerminalProgressRenderer({
             interactive: false,
@@ -124,7 +124,7 @@ export const testNode = suite('source/reporters/terminal.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('terminal progress renderer treats finish as idempotent', function (scope: OverkillScope) {
+    test('terminal progress renderer treats finish as idempotent', function (scope) {
         const terminal = createFakeTerminal(4);
         const renderer = createTerminalProgressRenderer({
             interactive: false,
@@ -139,7 +139,7 @@ export const testNode = suite('source/reporters/terminal.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('terminal progress renderer removes resize listener on dispose', function (scope: OverkillScope) {
+    test('terminal progress renderer removes resize listener on dispose', function (scope) {
         const terminal = createFakeTerminal(4);
         const renderer = createTerminalProgressRenderer({
             interactive: true,

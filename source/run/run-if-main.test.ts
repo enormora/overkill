@@ -1,10 +1,9 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test, type TestScope as DirectScope } from '@overkill-dev/test';
+import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
 
 import {
     stampTestNodeFamily,
-    type TestBody as DirectTestBody,
     type TestNode as DirectTestNode,
-    type TestScope as DirectScope,
     createTestCase as createDirectTestCase
 } from '../packages/engine/engine.entry-point.ts';
 
@@ -19,13 +18,17 @@ type CapturedRun = {
     readonly rootTitle: string;
 };
 
-function passingBody(scope: DirectScope): ReturnType<DirectTestBody> {
+function passingBody(
+    scope: { readonly assert: Pick<DirectScope['assert'], 'true' | 'collect'>; }
+): ReturnType<EngineCaseBody> {
     scope.assert.true(true);
 
     return scope.assert.collect();
 }
 
-function resourceBody(scope: DirectScope): ReturnType<DirectTestBody> {
+function resourceBody(
+    scope: { readonly assert: Pick<DirectScope['assert'], 'equal' | 'collect'>; }
+): ReturnType<EngineCaseBody> {
     scope.assert.equal('ready', 'ready');
 
     return scope.assert.collect();
@@ -125,8 +128,8 @@ async function runDirect(fixture: DirectRunFixture, testNode: DirectTestNode): P
     return capturedRun;
 }
 
-export const testNode = suite('source/run/run-if-main.test.ts', [
-    test('runIfMain() returns before config loading when imported', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Direct module execution', [
+    test('returns before config loading when imported', async function (scope) {
         const fixture = createDirectRunFixture({
             config: {
                 profiles: {
@@ -144,7 +147,7 @@ export const testNode = suite('source/run/run-if-main.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('runIfMain() selects the configured profile matching the current file', async function (scope: OverkillScope) {
+    test('selects the configured profile matching the current file', async function (scope) {
         const fixture = createDirectRunFixture({
             config: {
                 profiles: {
@@ -172,7 +175,7 @@ export const testNode = suite('source/run/run-if-main.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('runIfMain() selects the configured profile matching a file set', async function (scope: OverkillScope) {
+    test('selects the configured profile matching a file set', async function (scope: TestScope) {
         const fixture = createDirectRunFixture({
             config: {
                 profiles: {
@@ -204,8 +207,8 @@ export const testNode = suite('source/run/run-if-main.test.ts', [
         return scope.assert.collect();
     }),
     test(
-        'runIfMain() falls back to configured microtest when no profile matches',
-        async function (scope: OverkillScope) {
+        'falls back to configured microtest when no profile matches',
+        async function (scope) {
             const fixture = createDirectRunFixture({
                 config: {
                     profiles: {
@@ -228,8 +231,8 @@ export const testNode = suite('source/run/run-if-main.test.ts', [
         }
     ),
     test(
-        'runIfMain() rejects fallback profiles when the current file is outside every file set',
-        async function (scope: OverkillScope) {
+        'rejects fallback profiles when the current file is outside every file set',
+        async function (scope) {
             const fixture = createDirectRunFixture({
                 config: {
                     profiles: {
@@ -257,8 +260,8 @@ export const testNode = suite('source/run/run-if-main.test.ts', [
         }
     ),
     test(
-        'runIfMain() rejects profile file sets that overlap outside the current file',
-        async function (scope: OverkillScope) {
+        'rejects profile file sets that overlap outside the current file',
+        async function (scope) {
             const fixture = createDirectRunFixture({
                 config: {
                     profiles: {
@@ -291,7 +294,7 @@ export const testNode = suite('source/run/run-if-main.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('runIfMain() rejects ambiguous profile file matches', async function (scope: OverkillScope) {
+    test('rejects ambiguous profile file matches', async function (scope) {
         const fixture = createDirectRunFixture({
             config: {
                 profiles: {
@@ -317,7 +320,7 @@ export const testNode = suite('source/run/run-if-main.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('runIfMain() accepts integration profiles selected by file match', async function (scope: OverkillScope) {
+    test('accepts integration profiles selected by file match', async function (scope) {
         const fixture = createDirectRunFixture({
             config: {
                 profiles: {
@@ -337,7 +340,7 @@ export const testNode = suite('source/run/run-if-main.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('runIfMain() does not warn for supervised profiles', async function (scope: OverkillScope) {
+    test('does not warn for supervised profiles', async function (scope) {
         const fixture = createDirectRunFixture({
             config: null,
             fileName: 'direct.test.ts',
@@ -350,7 +353,7 @@ export const testNode = suite('source/run/run-if-main.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('runIfMain() rejects cases outside the selected test family', async function (scope: OverkillScope) {
+    test('rejects cases outside the selected test family', async function (scope) {
         const fixture = createDirectRunFixture({
             config: null,
             fileName: 'direct.test.ts',
@@ -366,7 +369,7 @@ export const testNode = suite('source/run/run-if-main.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('runIfMain() rejects resource-attached microtest cases', async function (scope: OverkillScope) {
+    test('rejects resource-attached microtest cases', async function (scope) {
         const fixture = createDirectRunFixture({
             config: null,
             fileName: 'direct.test.ts',
@@ -382,7 +385,7 @@ export const testNode = suite('source/run/run-if-main.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('runIfMain() rejects selected-profile control policy violations', async function (scope: OverkillScope) {
+    test('rejects selected-profile control policy violations', async function (scope) {
         const fixture = createDirectRunFixture({
             config: null,
             fileName: 'direct.test.ts',
@@ -412,7 +415,7 @@ export const testNode = suite('source/run/run-if-main.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('runIfMain() preserves an existing nonzero process exitCode', async function (scope: OverkillScope) {
+    test('preserves an existing nonzero process exitCode', async function (scope) {
         const fixture = createDirectRunFixture({
             config: null,
             fileName: 'direct.test.ts',
@@ -426,7 +429,7 @@ export const testNode = suite('source/run/run-if-main.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('runIfMain() writes runner errors not delivered by reporters', async function (scope: OverkillScope) {
+    test('writes runner errors not delivered by reporters', async function (scope) {
         const fixture = createDirectRunFixture({
             config: null,
             fileName: 'direct.test.ts',

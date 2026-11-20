@@ -1,24 +1,24 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
+import type { EngineCaseBody } from '../../test-support/create-test-engine.ts';
 
-import { test, table, defineMacro, defineParameterizedTestBody } from '../test/test.entry-point.ts';
+import { test as subjectTest, table, defineMacro, defineParameterizedTestBody } from '../test/test.entry-point.ts';
 import {
     attachTestBodyOrigin,
     captureTestBodyOrigin,
     createEngine,
     forwardTestBodyOrigin,
     readTestBodyOrigin,
-    resolveSourceLocation,
-    type TestBody
+    resolveSourceLocation
 } from '../engine/engine.entry-point.ts';
 
-function parameterizedBody(scope: Parameters<TestBody>[0], value: number): ReturnType<TestBody> {
+function parameterizedBody(scope: Parameters<EngineCaseBody>[0], value: number): ReturnType<EngineCaseBody> {
     scope.assert.equal(value, 1);
     return scope.assert.collect();
 }
 
-export const testNode = authoredSuite('checker body ownership', [
-    authoredTest('captures low-level engine callbacks without running them', function (scope) {
-        const source: TestBody = function () {
+export const testNode: TestNode = suite('checker body ownership', [
+    test('captures low-level engine callbacks without running them', function (scope) {
+        const source: EngineCaseBody = function () {
             throw new Error('Do not invoke');
         };
         const node = createEngine().createTestCase({
@@ -31,12 +31,12 @@ export const testNode = authoredSuite('checker body ownership', [
         scope.assert.equal(node.bodyOrigin?.body, source);
         return scope.assert.collect();
     }),
-    authoredTest('preserves the original callback through macro wrappers without invoking it', function (scope) {
-        const source: TestBody = function () {
+    test('preserves the original callback through macro wrappers without invoking it', function (scope) {
+        const source: EngineCaseBody = function () {
             throw new Error('Source body must not execute during collection.');
         };
         const declared = defineMacro(function () {
-            return test('macro case', source);
+            return subjectTest('macro case', source);
         })();
         if (declared.execution.kind !== 'body') {
             throw new Error('Expected a body case.');
@@ -45,8 +45,8 @@ export const testNode = authoredSuite('checker body ownership', [
         scope.assert.equal(readTestBodyOrigin(source), null);
         return scope.assert.collect();
     }),
-    authoredTest('preserves shared table callback ownership without invoking rows', function (scope) {
-        const source: TestBody = function () {
+    test('preserves shared table callback ownership without invoking rows', function (scope) {
+        const source: EngineCaseBody = function () {
             throw new Error('Source body must not execute during collection.');
         };
         const rows = table({ title: 'rows', cases: [ 1, 2 ], test: source });
@@ -56,7 +56,7 @@ export const testNode = authoredSuite('checker body ownership', [
         scope.assert.equal(readTestBodyOrigin(source), null);
         return scope.assert.collect();
     }),
-    authoredTest('captures parameterized body declarations before applications', function (scope) {
+    test('captures parameterized body declarations before applications', function (scope) {
         const factory = defineParameterizedTestBody(parameterizedBody);
         const first = readTestBodyOrigin(factory(1));
         const second = readTestBodyOrigin(factory(2));
@@ -70,14 +70,14 @@ export const testNode = authoredSuite('checker body ownership', [
         }
         return scope.assert.collect();
     }),
-    authoredTest('keeps ownership immutable and forwarding idempotent', function (scope) {
-        const source: TestBody = function () {
+    test('keeps ownership immutable and forwarding idempotent', function (scope) {
+        const source: EngineCaseBody = function () {
             throw new Error('Do not invoke');
         };
-        const other: TestBody = function () {
+        const other: EngineCaseBody = function () {
             throw new Error('Do not invoke');
         };
-        const wrapper: TestBody = function () {
+        const wrapper: EngineCaseBody = function () {
             throw new Error('Do not invoke');
         };
         forwardTestBodyOrigin(source, wrapper);

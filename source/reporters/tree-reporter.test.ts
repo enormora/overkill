@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -26,8 +26,8 @@ function createLogRecorder(): LogRecorder {
     };
 }
 
-export const testNode = suite('source/reporters/tree-reporter.test.ts', [
-    test('tree reporter prints logical final results', async function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Tree reporter', [
+    test('prints logical final results', async function (scope) {
         const recorder = createLogRecorder();
         const reporter = createTreeReporter({
             stdoutConsole: { log: recorder.log }
@@ -84,7 +84,7 @@ export const testNode = suite('source/reporters/tree-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('tree reporter can hide passing results', async function (scope: OverkillScope) {
+    test('can hide passing results', async function (scope) {
         const recorder = createLogRecorder();
         const reporter = createTreeReporter({
             stdoutConsole: { log: recorder.log }
@@ -129,7 +129,7 @@ export const testNode = suite('source/reporters/tree-reporter.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('tree reporter renders skip and inconclusive symbols', async function (scope: OverkillScope) {
+    test('renders skip and inconclusive symbols', async function (scope) {
         const recorder = createLogRecorder();
         const reporter = createTreeReporter({
             stdoutConsole: { log: recorder.log }

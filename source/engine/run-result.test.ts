@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
@@ -50,7 +50,7 @@ function createFailedCheck(): FailedCheckFixture {
     };
 }
 
-function assertCaseRunnerErrorPredicates(scope: OverkillScope): void {
+function assertCaseRunnerErrorPredicates(scope: TestScope): void {
     const branded = new CaseRunnerError('Fixture failed.', {
         cause: new Error('fixture'),
         subtype: 'fixture'
@@ -85,7 +85,7 @@ const timingSpan = function timingSpan(
     };
 };
 
-function assertDefaultTimingModelValues(scope: OverkillScope): void {
+function assertDefaultTimingModelValues(scope: TestScope): void {
     scope.assert.equal(defaultRunTimingSpanLimit, 5000);
     scope.assert.equal(defaultRunTimingSlowestSpanLimit, 50);
     scope.assert.deepEqual(zeroTimingCollectionOverhead, {
@@ -119,8 +119,8 @@ function stacklessPermissionDeniedError(): Error {
     return denied;
 }
 
-export const testNode = suite('source/engine/run-result.test.ts', [
-    test('verdictFromOutcome() returns the outcome kind as the verdict', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Run result', [
+    test('verdictFromOutcome() returns the outcome kind as the verdict', function (scope) {
         const outcome: TestOutcome = {
             failures: [ { checks: [ createFailedCheck() ], kind: 'assertion' } ],
             kind: 'fail'
@@ -130,12 +130,12 @@ export const testNode = suite('source/engine/run-result.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('isCaseRunnerError() accepts only branded runner errors', function (scope: OverkillScope) {
+    test('isCaseRunnerError() accepts only branded runner errors', function (scope) {
         assertCaseRunnerErrorPredicates(scope);
 
         return scope.assert.collect();
     }),
-    test('permissionDeniedRunnerErrorFromThrown() preserves non-Error denied fields', function (scope: OverkillScope) {
+    test('permissionDeniedRunnerErrorFromThrown() preserves non-Error denied fields', function (scope) {
         const denied = {
             code: 'ERR_ACCESS_DENIED',
             permission: 'FileSystemRead'
@@ -172,7 +172,7 @@ export const testNode = suite('source/engine/run-result.test.ts', [
     }),
     test(
         'permissionDeniedRunnerErrorFromDiagnostic() falls back without denied fields',
-        function (scope: OverkillScope) {
+        function (scope) {
             const runnerError = permissionDeniedRunnerErrorFromDiagnostic({
                 channel: 'node:permission-model:fs',
                 fallbackCapability: 'fs-read',
@@ -199,7 +199,7 @@ export const testNode = suite('source/engine/run-result.test.ts', [
     ),
     test(
         'permissionDeniedRunnerErrorFromThrown() serializes Error denials without stacks',
-        function (scope: OverkillScope) {
+        function (scope) {
             const runnerError = permissionDeniedRunnerErrorFromThrown(
                 stacklessPermissionDeniedError(),
                 permissionRunnerErrorContext
@@ -225,7 +225,7 @@ export const testNode = suite('source/engine/run-result.test.ts', [
             return scope.assert.collect();
         }
     ),
-    test('runTimingSummary() clamps execution time to total wall time', function (scope: OverkillScope) {
+    test('runTimingSummary() clamps execution time to total wall time', function (scope) {
         scope.assert.deepEqual(
             runTimingSummary({
                 testExecutionWallTimeMicroseconds: 15,
@@ -242,7 +242,7 @@ export const testNode = suite('source/engine/run-result.test.ts', [
     }),
     test(
         'preciseTimingReport() bounds spans, aggregates totals, and records slowest spans',
-        function (scope: OverkillScope) {
+        function (scope) {
             const configLoadStart = timingSpan('config.load', 3, 0);
             const reporterDelivery = timingSpan('reporter.deliver', 20, 3);
             const configLoadEnd = timingSpan('config.load', 10, 23);

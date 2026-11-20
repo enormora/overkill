@@ -1,12 +1,13 @@
+import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { type TestScope, suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+
 import { globalErrorObservation } from '../test-support/global-error-observation.ts';
 import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { observeActiveCaseWork } from './execution-global-error-observer.ts';
 import { executionErrorOwnership } from './execution-error-ownership.ts';
 
-export const testNode = authoredSuite('global error attribution boundaries', [
-    authoredTest('leaves work subscriptions empty outside an execution boundary', function (scope: TestScope) {
+export const testNode: TestNode = suite('global error attribution boundaries', [
+    test('leaves work subscriptions empty outside an execution boundary', function (scope) {
         const observed: string[] = [];
         const storage = executionErrorOwnership().runScopeStorage;
         if (!(storage instanceof AsyncLocalStorage)) {
@@ -21,7 +22,7 @@ export const testNode = authoredSuite('global error attribution boundaries', [
         scope.assert.deepEqual(observed, []);
         return scope.assert.collect();
     }),
-    authoredTest('serializes errors without a stack', async function (scope: TestScope) {
+    test('serializes errors without a stack', async function (scope) {
         const fixture = globalErrorObservation();
         const failure = new Error('stackless');
         Reflect.deleteProperty(failure, 'stack');
@@ -33,7 +34,7 @@ export const testNode = authoredSuite('global error attribution boundaries', [
         });
         return scope.assert.collect();
     }),
-    authoredTest('keeps infrastructure errors at run level while a case is active', async function (scope: TestScope) {
+    test('keeps infrastructure errors at run level while a case is active', async function (scope: TestScope) {
         const fixture = globalErrorObservation();
         await fixture.observer.runBoundary(async function () {
             await fixture.observer.runCase(fixture.testCase, { index: 0 }, async function () {
@@ -48,8 +49,17 @@ export const testNode = authoredSuite('global error attribution boundaries', [
         scope.assert.includes(error.message, 'Infrastructure failed.');
         return scope.assert.collect();
     }),
-    ...[ false, true ].map(function permissionAttribution(active) {
-        return authoredTest(`retains denied permissions with active case ${active}`, async function (scope: TestScope) {
+    table({
+        title: 'retains denied permissions across case ownership states',
+        cases: [ false, true ],
+        caseTitle(active) {
+            return `${active}`;
+        },
+        async test(scope) {
+            const require: typeof scope.require = scope.require;
+
+            const active = scope.parameters;
+
             const fixture = globalErrorObservation();
             async function denied(): Promise<void> {
                 fixture.events.emit(
@@ -69,12 +79,12 @@ export const testNode = authoredSuite('global error attribution boundaries', [
                 }
             });
             const error = fixture.observer.takeErrors()[0];
-            scope.require.defined(error);
+            require.defined(error);
             scope.assert.equal(error.subtype, 'permission');
             scope.assert.deepEqual({ attributedTo: error.attributedTo }, {
                 attributedTo: active ? fixture.testCase.id : null
             });
             return scope.assert.collect();
-        });
+        }
     })
 ]);

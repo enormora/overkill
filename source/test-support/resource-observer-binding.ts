@@ -6,7 +6,7 @@ import type {
     ResourceCheckObserverReference,
     ResourceCheckInstallationContext
 } from '../resources/resource-checks.ts';
-import type { TestScope } from '../packages/test/test.entry-point.ts';
+import type { TestScope } from '@overkill-dev/test';
 import { resourceImplementationBinding } from './resource-implementation-binding.ts';
 import { resourceCheckSession, completeObservation } from './resource-check-session.ts';
 

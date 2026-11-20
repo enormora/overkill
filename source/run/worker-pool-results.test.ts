@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { PerTestResult, RunResult } from '../packages/engine/engine.entry-point.ts';
 import { summaryRunTimings } from '../engine/run-timings.ts';
@@ -27,7 +27,7 @@ type TraceCapturingRuntime = {
     readonly runtime: WorkerPoolRunRuntime;
 };
 
-const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
 const testCaseMetadata = {
     annotations: {},
     controls: {},
@@ -260,14 +260,14 @@ async function workerPoolFinalizationResults(): Promise<{
     return { emptyResult, placementTrace, result };
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-results.test.ts',
+    title: 'Worker pool results',
     children: [
         test({
             ...testCaseMetadata,
             title: 'worker-pool finalization and empty results aggregate run state',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const { emptyResult, placementTrace, result } = await workerPoolFinalizationResults();
 
                 scope.assert.equal(result.perTest[0]?.id.title, 'first');
@@ -291,7 +291,7 @@ export const testNode = suite({
         test({
             ...testCaseMetadata,
             title: 'worker-pool empty shard results report a successful empty shard run',
-            async body(scope: OverkillScope) {
+            async body(scope) {
                 const events: ReportedEvent[] = [];
                 const result = await createEmptyWorkerPoolResult(
                     emptyShardResolvedRun(createCollectedPlan()),

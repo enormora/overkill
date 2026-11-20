@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { simulatedHttpListener, simulatedListenerScenario } from '../test-support/simulated-http-listener.ts';
 import { defineSimulatedHttpServer } from './simulation.ts';
@@ -11,8 +11,8 @@ const simulation = defineSimulatedHttpServer({
         return new Response('unit');
     }
 });
-export const testNode = authoredSuite('simulated HTTP listener ownership', [
-    test('rejects unbranded definitions before creating a listener', async function (scope: TestScope) {
+export const testNode: TestNode = suite('simulated HTTP listener ownership', [
+    test('rejects unbranded definitions before creating a listener', async function (scope) {
         const fixture = simulatedHttpListener(simulatedListenerScenario);
         await scope.assert.rejects(async function () {
             await Reflect.apply(listenToSimulatedHttpServer, undefined, [ {
@@ -24,7 +24,7 @@ export const testNode = authoredSuite('simulated HTTP listener ownership', [
         scope.assert.deepEqual(fixture.calls, []);
         return scope.assert.collect();
     }),
-    test('exposes routed URLs and closes once across repeated disposal', async function (scope: TestScope) {
+    test('exposes routed URLs and closes once across repeated disposal', async function (scope) {
         const fixture = simulatedHttpListener(simulatedListenerScenario);
         await using server = await listenToSimulatedHttpServer({ simulation }, function () {
             return fixture.listening;
@@ -41,7 +41,7 @@ export const testNode = authoredSuite('simulated HTTP listener ownership', [
         scope.assert.equal(fixture.emitter.listenerCount('error'), 0);
         return scope.assert.collect();
     }),
-    test('uses explicit listen addresses', async function (scope: TestScope) {
+    test('uses explicit listen addresses', async function (scope) {
         const fixture = simulatedHttpListener(simulatedListenerScenario);
         const server = await listenToSimulatedHttpServer(
             { simulation, host: 'localhost', port: 42 },
@@ -54,7 +54,7 @@ export const testNode = authoredSuite('simulated HTTP listener ownership', [
         scope.assert.deepEqual(fixture.calls, [ 'listen:localhost:42', 'close' ]);
         return scope.assert.collect();
     }),
-    test('propagates startup failures and unregisters the ready listener', async function (scope: TestScope) {
+    test('propagates startup failures and unregisters the ready listener', async function (scope) {
         const failure = new Error('Listen failed.');
         const fixture = simulatedHttpListener({ ...simulatedListenerScenario, listenError: failure });
         await scope.assert.rejects(async function () {
@@ -67,7 +67,7 @@ export const testNode = authoredSuite('simulated HTTP listener ownership', [
         scope.assert.equal(fixture.emitter.listenerCount('listening'), 0);
         return scope.assert.collect();
     }),
-    test('rejects missing TCP addresses', async function (scope: TestScope) {
+    test('rejects missing TCP addresses', async function (scope) {
         const fixture = simulatedHttpListener({ ...simulatedListenerScenario, address: null });
         await scope.assert.rejects(async function () {
             return listenToSimulatedHttpServer({ simulation }, function () {
@@ -78,7 +78,7 @@ export const testNode = authoredSuite('simulated HTTP listener ownership', [
         });
         return scope.assert.collect();
     }),
-    test('propagates close failures on every disposal without closing twice', async function (scope: TestScope) {
+    test('propagates close failures on every disposal without closing twice', async function (scope) {
         const failure = new Error('Close failed.');
         const fixture = simulatedHttpListener({ ...simulatedListenerScenario, closeError: failure });
         const server = await listenToSimulatedHttpServer({ simulation }, function () {
@@ -93,7 +93,7 @@ export const testNode = authoredSuite('simulated HTTP listener ownership', [
         scope.assert.deepEqual(fixture.calls, [ 'listen:127.0.0.1:0', 'close' ]);
         return scope.assert.collect();
     }),
-    test('reports retained handler errors after closing the server', async function (scope: TestScope) {
+    test('reports retained handler errors after closing the server', async function (scope) {
         const failure = new Error('Handler failed.');
         const fixture = simulatedHttpListener({ ...simulatedListenerScenario, handlerErrors: [ failure ] });
         const server = await listenToSimulatedHttpServer({ simulation }, function () {
@@ -108,7 +108,7 @@ export const testNode = authoredSuite('simulated HTTP listener ownership', [
         scope.assert.deepEqual(fixture.calls, [ 'listen:127.0.0.1:0', 'close' ]);
         return scope.assert.collect();
     }),
-    test('normalizes nonerror handler failures', async function (scope: TestScope) {
+    test('normalizes nonerror handler failures', async function (scope) {
         const fixture = simulatedHttpListener({ ...simulatedListenerScenario, handlerErrors: [ 'failed' ] });
         const server = await listenToSimulatedHttpServer({ simulation }, function () {
             return fixture.listening;

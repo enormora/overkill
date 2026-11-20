@@ -1,11 +1,9 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { workerOutput } from '../test-support/worker-output.ts';
-import { testNode as workerTasks } from './worker-task-policy.test.ts';
 
-export const testNode = authoredSuite('worker output capture', [
-    workerTasks,
-    test('forwards stream bytes and monotonic timestamps to the worker port', function (scope: TestScope) {
+export const testNode: TestNode = suite('worker output capture', [
+    test('forwards stream bytes and monotonic timestamps to the worker port', function (scope) {
         const fixture = workerOutput(scope);
         const capture = fixture.capture.captureOutput(fixture.task, fixture.clock);
         fixture.streams.stdout.write('out');
@@ -21,7 +19,7 @@ export const testNode = authoredSuite('worker output capture', [
         scope.assert.deepEqual({ stdout: fixture.stdout, stderr: fixture.stderr }, { stdout: [], stderr: [] });
         return scope.assert.collect();
     }),
-    test('restores the original stream destinations', function (scope: TestScope) {
+    test('restores the original stream destinations', function (scope) {
         const fixture = workerOutput(scope);
         const capture = fixture.capture.captureOutput(fixture.task, fixture.clock);
         fixture.streams.stdout.write('captured');
@@ -35,7 +33,7 @@ export const testNode = authoredSuite('worker output capture', [
         scope.assert.equal(fixture.messages.length, 1);
         return scope.assert.collect();
     }),
-    test('invokes callbacks for both supported write signatures', function (scope: TestScope) {
+    test('invokes callbacks for both supported write signatures', function (scope) {
         const fixture = workerOutput(scope);
         const capture = fixture.capture.captureOutput(fixture.task, fixture.clock);
         const completed: (Error | null | undefined)[] = [];
@@ -49,7 +47,7 @@ export const testNode = authoredSuite('worker output capture', [
         scope.assert.deepEqual(completed, [ null, null ]);
         return scope.assert.collect();
     }),
-    test('suppresses output while acknowledging writes and restores it afterwards', function (scope: TestScope) {
+    test('suppresses output while acknowledging writes and restores it afterwards', function (scope) {
         const fixture = workerOutput(scope);
         const capture = fixture.capture.suppressOutput();
         const completed: (Error | null | undefined)[] = [];
@@ -68,7 +66,7 @@ export const testNode = authoredSuite('worker output capture', [
         });
         return scope.assert.collect();
     }),
-    test('restores an enclosing capture after nested suppression', function (scope: TestScope) {
+    test('restores an enclosing capture after nested suppression', function (scope) {
         const fixture = workerOutput(scope);
         const outer = fixture.capture.captureOutput(fixture.task, fixture.clock);
         const inner = fixture.capture.suppressOutput();

@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { RunnerError } from '../packages/engine/engine.entry-point.ts';
 import type { ResourceScope } from '../resources/resources.ts';
@@ -109,7 +109,7 @@ function runnerError(message: string): RunnerError {
     };
 }
 
-async function assertNoResourcesSkipWorkerTasks(scope: OverkillScope): Promise<void> {
+async function assertNoResourcesSkipWorkerTasks(scope: TestScope): Promise<void> {
     const runtime = runtimeWithPoolRun(collectedPlanWithResources([]), async function rejectUnexpectedTask() {
         throw new Error('Worker resource task should not run.');
     });
@@ -123,7 +123,7 @@ async function assertNoResourcesSkipWorkerTasks(scope: OverkillScope): Promise<v
     scope.assert.equal(collectedPlanNeedsLaneResourceLifecycle(runtime), false);
 }
 
-async function assertInvalidLaneDisposalRecordsRunnerError(scope: OverkillScope): Promise<void> {
+async function assertInvalidLaneDisposalRecordsRunnerError(scope: TestScope): Promise<void> {
     const runtime = runtimeWithPoolRun(
         collectedPlanWithResources([ resource('scratch', 'per-case') ]),
         async function runInvalidDisposalTask() {
@@ -141,7 +141,7 @@ async function assertInvalidLaneDisposalRecordsRunnerError(scope: OverkillScope)
     );
 }
 
-async function assertRunResourceErrorsStopTheRun(scope: OverkillScope): Promise<void> {
+async function assertRunResourceErrorsStopTheRun(scope: TestScope): Promise<void> {
     const runtime = runtimeWithPoolRun(
         collectedPlanWithResources([ resource('database', 'per-run') ]),
         async function runResourceTask() {
@@ -158,7 +158,7 @@ async function assertRunResourceErrorsStopTheRun(scope: OverkillScope): Promise<
     scope.assert.equal(runtime.runState.runnerErrors()[0]?.message, 'database failed');
 }
 
-async function assertTerminalFailureSuppressesDisposalFailures(scope: OverkillScope): Promise<void> {
+async function assertTerminalFailureSuppressesDisposalFailures(scope: TestScope): Promise<void> {
     const runtime = runtimeWithPoolRun(collectedPlanWithResources([]), async function runFailingDisposalTask() {
         throw new Error('dispose failed');
     });
@@ -177,14 +177,14 @@ async function assertTerminalFailureSuppressesDisposalFailures(scope: OverkillSc
     scope.assert.deepEqual(runtime.runState.runnerErrors(), []);
 }
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-resource-lifecycle-disposal.test.ts',
+    title: 'Worker pool resource lifecycle disposal',
     children: [
         test({
             ...testCaseMetadata,
-            title: 'worker-pool resource lifecycle skips worker tasks without resources',
-            async body(scope: OverkillScope) {
+            title: 'skips worker tasks without resources',
+            async body(scope) {
                 await assertNoResourcesSkipWorkerTasks(scope);
 
                 return scope.assert.collect();
@@ -192,8 +192,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool resource lifecycle records invalid lane disposal output',
-            async body(scope: OverkillScope) {
+            title: 'records invalid lane disposal output',
+            async body(scope) {
                 await assertInvalidLaneDisposalRecordsRunnerError(scope);
 
                 return scope.assert.collect();
@@ -201,8 +201,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool resource lifecycle records run resource runner errors',
-            async body(scope: OverkillScope) {
+            title: 'records run resource runner errors',
+            async body(scope) {
                 await assertRunResourceErrorsStopTheRun(scope);
 
                 return scope.assert.collect();
@@ -210,8 +210,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'worker-pool resource lifecycle suppresses disposal failures after terminal failure',
-            async body(scope: OverkillScope) {
+            title: 'suppresses disposal failures after terminal failure',
+            async body(scope) {
                 await assertTerminalFailureSuppressesDisposalFailures(scope);
 
                 return scope.assert.collect();

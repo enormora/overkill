@@ -1,13 +1,9 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { processInvocation } from '../test-support/process-invocation.ts';
-import { testNode as reports } from './process-probe-report-policy.test.ts';
-import { testNode as sampling } from './process-sampling-policy.test.ts';
 
-export const testNode = authoredSuite('process sample invocation ownership', [
-    reports,
-    sampling,
-    test('measures exactly one process region and records its observation', async function (scope: TestScope) {
+export const testNode: TestNode = suite('process sample invocation ownership', [
+    test('measures exactly one process region and records its observation', async function (scope) {
         const fixture = await processInvocation('pass', scope.signal);
         const result = await fixture.invocation.sample.process(fixture.request);
         fixture.invocation.ensureMeasured();
@@ -17,7 +13,7 @@ export const testNode = authoredSuite('process sample invocation ownership', [
         await fixture.invocation.dispose();
         return scope.assert.collect();
     }),
-    test('rejects samples that never measure a process region', async function (scope: TestScope) {
+    test('rejects samples that never measure a process region', async function (scope) {
         const fixture = await processInvocation('pass', scope.signal);
         scope.assert.throws(fixture.invocation.ensureMeasured, {
             message: 'Each process sample must await exactly one complete process region.'
@@ -25,7 +21,7 @@ export const testNode = authoredSuite('process sample invocation ownership', [
         await fixture.invocation.dispose();
         return scope.assert.collect();
     }),
-    test('rejects repeated regions even after a successful measurement', async function (scope: TestScope) {
+    test('rejects repeated regions even after a successful measurement', async function (scope) {
         const fixture = await processInvocation('pass', scope.signal);
         await fixture.invocation.sample.process(fixture.request);
         await scope.assert.rejects(async function () {
@@ -38,7 +34,7 @@ export const testNode = authoredSuite('process sample invocation ownership', [
         await fixture.invocation.dispose();
         return scope.assert.collect();
     }),
-    test('preserves failed process observations', async function (scope: TestScope) {
+    test('preserves failed process observations', async function (scope) {
         const fixture = await processInvocation('failure', scope.signal);
         await scope.assert.rejects(async function () {
             await fixture.invocation.sample.process(fixture.request);
@@ -47,13 +43,13 @@ export const testNode = authoredSuite('process sample invocation ownership', [
         await fixture.invocation.dispose();
         return scope.assert.collect();
     }),
-    test('reports cleanup failures after a completed measurement', async function (scope: TestScope) {
+    test('reports cleanup failures after a completed measurement', async function (scope) {
         const fixture = await processInvocation('cleanup', scope.signal);
         await fixture.invocation.sample.process(fixture.request);
         await scope.assert.rejects(fixture.invocation.dispose, { message: 'Benchmark process cleanup failed.' });
         return scope.assert.collect();
     }),
-    test('aborts unfinished regions during disposal and observes their rejection', async function (scope: TestScope) {
+    test('aborts unfinished regions during disposal and observes their rejection', async function (scope) {
         const fixture = await processInvocation('pending', scope.signal);
         const pending = scope.assert.rejects(async function () {
             await fixture.invocation.sample.process(fixture.request);
@@ -64,7 +60,7 @@ export const testNode = authoredSuite('process sample invocation ownership', [
         scope.assert.equal(fixture.calls.length, 1);
         return scope.assert.collect();
     }),
-    test('rejects an already cancelled sample before invoking its process helper', async function (scope: TestScope) {
+    test('rejects an already cancelled sample before invoking its process helper', async function (scope) {
         const controller = new AbortController();
         const error = new Error('cancelled');
         controller.abort(error);

@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createTaskRun } from '../test-support/worker-pool-execution-state.ts';
 import { placementPlan, fakeWorkerRuntime } from './worker-pool-placement-validation.test.ts';
@@ -84,8 +84,8 @@ function assertDuplicateCancellation(scope: TestScope): void {
         return dispatcher.blocked(primaryLane);
     });
 }
-export const testNode = authoredSuite('replay dispatcher lifecycle', [
-    test('cancels the recorded duplicate after its authority completes', function (scope: TestScope) {
+export const testNode: TestNode = suite('replay dispatcher lifecycle', [
+    test('cancels the recorded duplicate after its authority completes', function (scope) {
         assertDuplicateCancellation(scope);
         return scope.assert.collect();
     }),
@@ -97,7 +97,7 @@ export const testNode = authoredSuite('replay dispatcher lifecycle', [
         scope.assert.equal(dispatcher.pull(duplicateLane)?.kind, 'hedged-duplicate');
         return scope.assert.collect();
     }),
-    test('clear wakes waiters and prevents further dispatch', async function (scope: TestScope) {
+    test('clear wakes waiters and prevents further dispatch', async function (scope) {
         const { dispatcher, primaryLane } = cancellationFixture();
         const notified = dispatcher.waitForChange();
         dispatcher.clear();

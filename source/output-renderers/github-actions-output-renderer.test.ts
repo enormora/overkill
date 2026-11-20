@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { OutputLineIntent, OutputRenderer } from '../engine/reporter-output.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
@@ -19,10 +19,10 @@ function createRenderer(): OutputRenderer {
     return createGithubActionsOutputRenderer()(createReportingContext({ projectRoot: null }));
 }
 
-export const testNode = suite('source/output-renderers/github-actions-output-renderer.test.ts', [
+export const testNode: TestNode = suite('GitHub Actions output renderer', [
     test(
-        'GitHub Actions output renderer renders located diagnostics as workflow commands',
-        function (scope: OverkillScope) {
+        'renders located diagnostics as workflow commands',
+        function (scope) {
             const renderer = createRenderer();
             const renderedDiagnostic = [
                 '::error file=source/users-test.ts,line=10,col=5,title=users%3A creates profile::',
@@ -38,7 +38,7 @@ export const testNode = suite('source/output-renderers/github-actions-output-ren
             return scope.assert.collect();
         }
     ),
-    test('GitHub Actions output renderer passes unlocated output through', function (scope: OverkillScope) {
+    test('passes unlocated output through', function (scope) {
         const renderer = createRenderer();
 
         scope.assert.equal(
@@ -53,7 +53,7 @@ export const testNode = suite('source/output-renderers/github-actions-output-ren
 
         return scope.assert.collect();
     }),
-    test('GitHub Actions output renderer handles optional annotation properties', function (scope: OverkillScope) {
+    test('handles optional annotation properties', function (scope) {
         const renderer = createRenderer();
 
         scope.assert.equal(

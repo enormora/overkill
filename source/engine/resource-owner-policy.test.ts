@@ -1,5 +1,5 @@
+import { type TestNode, suite, test } from '@overkill-dev/test';
 import { AsyncResource } from 'node:async_hooks';
-import { suite as authoredSuite, test } from '@overkill-dev/test';
 
 import {
     observeCaseResourceOwners,
@@ -8,7 +8,7 @@ import {
 } from './resource-owner-observation.ts';
 
 const unownedContext = new AsyncResource('unowned-resource-context');
-export const testNode = authoredSuite('resource owner acquisition policy', [
+export const testNode: TestNode = suite('resource owner acquisition policy', [
     test('acquires and releases resources outside a case observation', async function (scope) {
         const acquired = await unownedContext.runInAsyncScope(async function () {
             const result = await observeResourceOwnerAcquisition(async function () {

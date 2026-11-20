@@ -1,6 +1,6 @@
-import { test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, test } from '@overkill-dev/test';
+import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
-import { test } from '../packages/test/test.entry-point.ts';
 import { defineReporter, readPropertyExecutionHost } from '../packages/engine/engine.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { withProperties } from './property-authoring.ts';
@@ -8,12 +8,12 @@ import { normalizePropertyInvocation } from './property-invocation.ts';
 import { executeProperty } from './property-execution.ts';
 import { gen } from './generators.ts';
 
-export const testNode = authoredTest(
+export const testNode: TestNode = test(
     'cancellation preserves failure evidence before confirmation',
     async function (scope) {
         const controller = new AbortController();
         let calls = 0;
-        const node = test(
+        const node = subjectTest(
             'canceled property invocation',
             withProperties(async function (parent) {
                 const invocation = normalizePropertyInvocation({

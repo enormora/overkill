@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { MeasurementInvocationEvidence } from '../engine/measurement-evidence.ts';
 import type { AsyncMetricCollector, MetricCollector } from './measurement-types.ts';
@@ -7,8 +7,8 @@ import { asyncMeasurementStrategy, measurementStrategy } from './measurement-str
 import { availableMetric } from './metric-reading.ts';
 import { measurementContext, currentMeasurementContext } from './measurement-context.ts';
 
-export const testNode = authoredSuite('collector lifecycle ownership', [
-    test('releases allocations registered by preparation before it throws', function (scope: TestScope) {
+export const testNode: TestNode = suite('collector lifecycle ownership', [
+    test('releases allocations registered by preparation before it throws', function (scope) {
         const events: string[] = [];
         const failure = new Error('partial preparation');
         const collector: MetricCollector = {
@@ -31,7 +31,7 @@ export const testNode = authoredSuite('collector lifecycle ownership', [
         scope.assert.deepEqual(events, [ 'release' ]);
         return scope.assert.collect();
     }),
-    test('continues stopping and finalizing collectors after a stop failure', function (scope: TestScope) {
+    test('continues stopping and finalizing collectors after a stop failure', function (scope) {
         const events: string[] = [];
         const failure = new Error('stop failed');
         function collector(name: string): MetricCollector {
@@ -82,7 +82,7 @@ export const testNode = authoredSuite('collector lifecycle ownership', [
         ]);
         return scope.assert.collect();
     }),
-    test('cancellation interrupts readiness and uses a fresh finalization signal', async function (scope: TestScope) {
+    test('cancellation interrupts readiness and uses a fresh finalization signal', async function (scope) {
         const controller = new AbortController();
         const started = Promise.withResolvers<undefined>();
         const cancelled = new Error('cancelled');
@@ -125,7 +125,7 @@ export const testNode = authoredSuite('collector lifecycle ownership', [
         scope.assert.deepEqual(events, [ 'fresh', 'finalized', 'released' ]);
         return scope.assert.collect();
     }),
-    test('rejects finalization attributed to another invocation', function (scope: TestScope) {
+    test('rejects finalization attributed to another invocation', function (scope) {
         const collector: MetricCollector = {
             name: 'stale',
             version: '1',
@@ -155,7 +155,7 @@ export const testNode = authoredSuite('collector lifecycle ownership', [
         }, { message: 'Collector returned evidence for another invocation or target.' });
         return scope.assert.collect();
     }),
-    test('retains unaffected readings and every failure in incomplete evidence', function (scope: TestScope) {
+    test('retains unaffected readings and every failure in incomplete evidence', function (scope) {
         const evidence: MeasurementInvocationEvidence[] = [];
         const failure = new Error('finalize failed');
         const context = {

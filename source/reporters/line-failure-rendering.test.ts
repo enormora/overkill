@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import type { FailedCompositeCheck, FailedLeafCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { compareDeepValues, compareStringEquality, serializedValueDiff } from '../compare/comparison.ts';
@@ -37,8 +37,8 @@ function assertionFailure(checks: readonly [FailedLeafCheck, ...FailedLeafCheck[
     return { checks, kind: 'assertion' };
 }
 
-export const testNode = suite('source/reporters/line-failure-rendering.test.ts', [
-    test('line failure formatter renders serialized scalar values and locations', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Line failure rendering', [
+    test('line failure formatter renders serialized scalar values and locations', function (scope) {
         const lines = formatFailure(assertionFailure([
             failedCheck({
                 actual: serializeValue(undefined),
@@ -87,7 +87,7 @@ export const testNode = suite('source/reporters/line-failure-rendering.test.ts',
 
         return scope.assert.collect();
     }),
-    test('source location rendering labels empty and multi-hop chains', function (scope: OverkillScope) {
+    test('source location rendering labels empty and multi-hop chains', function (scope) {
         scope.assert.deepEqual(formatDefinitionLocations([], reportingContext), { details: [], primary: null });
         scope.assert.deepEqual(
             formatDefinitionLocations([
@@ -135,7 +135,7 @@ export const testNode = suite('source/reporters/line-failure-rendering.test.ts',
 
         return scope.assert.collect();
     }),
-    test('line failure formatter renders structured string hunks', function (scope: OverkillScope) {
+    test('line failure formatter renders structured string hunks', function (scope) {
         const comparison = compareStringEquality('Ada', 'Grace');
         const lines = formatFailure(assertionFailure([
             failedCheck({
@@ -155,7 +155,7 @@ export const testNode = suite('source/reporters/line-failure-rendering.test.ts',
 
         return scope.assert.collect();
     }),
-    test('line failure formatter renders object, array, map, and set diffs', function (scope: OverkillScope) {
+    test('line failure formatter renders object, array, map, and set diffs', function (scope) {
         const objectComparison = compareDeepValues({ id: 1, name: 'Grace' }, { id: 1, name: 'Ada' });
         const arrayComparison = compareDeepValues([ 1, 3 ], [ 1, 2 ]);
         const mapComparison = compareDeepValues(new Map([ [ 'id', 2 ] ]), new Map([ [ 'id', 1 ] ]));
@@ -196,7 +196,7 @@ export const testNode = suite('source/reporters/line-failure-rendering.test.ts',
 
         return scope.assert.collect();
     }),
-    test('line failure formatter renders binary diff summaries', function (scope: OverkillScope) {
+    test('line failure formatter renders binary diff summaries', function (scope) {
         const actualBytes = new Uint8Array(101);
         const expectedBytes = new Uint8Array(101);
         actualBytes.fill(2);
@@ -218,7 +218,7 @@ export const testNode = suite('source/reporters/line-failure-rendering.test.ts',
 
         return scope.assert.collect();
     }),
-    test('line failure formatter renders composite children', function (scope: OverkillScope) {
+    test('line failure formatter renders composite children', function (scope) {
         const child = failedCheck({
             actual: serializeValue(false),
             diff: null,
@@ -250,7 +250,7 @@ export const testNode = suite('source/reporters/line-failure-rendering.test.ts',
 
         return scope.assert.collect();
     }),
-    test('line failure formatter renders body errors and test-contract failures', function (scope: OverkillScope) {
+    test('line failure formatter renders body errors and test-contract failures', function (scope) {
         const failure: TestFailure = {
             error: {
                 message: 'boom',
@@ -277,7 +277,7 @@ export const testNode = suite('source/reporters/line-failure-rendering.test.ts',
 
         return scope.assert.collect();
     }),
-    test('line failure formatter truncates oversized rendered values', function (scope: OverkillScope) {
+    test('line failure formatter truncates oversized rendered values', function (scope) {
         const diff: Diff = {
             actual: serializeValue('x'.repeat(9000)),
             expected: serializeValue('y'),

@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { mergeRecordFixture } from '../test-support/merge-record-fixture.ts';
 
@@ -30,7 +30,7 @@ function implementationEvidence(): NonNullable<ReplayRunRecord['facts']['impleme
         builds: [ { assignments: [], graph: { ...identity, build: implementationFingerprint(identity) } } ]
     };
 }
-export const testNode = authoredSuite('recorded implementation provenance', [
+export const testNode: TestNode = suite('recorded implementation provenance', [
     test('reports incompatible implementation catalogs as merge conflicts', function (scope) {
         const current = mergeRecordFixture('current', 1, 1);
         const implementations = implementationEvidence();
@@ -59,16 +59,19 @@ export const testNode = authoredSuite('recorded implementation provenance', [
         }
         return scope.assert.collect();
     }),
-    test('requires explicit implementation evidence on both sides of a current replay snapshot', function (scope) {
-        const current = record();
-        scope.assert.equal(current.version, currentRunRecordVersion);
-        for (const field of [ 'facts', 'replayPlan' ] as const) {
-            const incomplete = structuredClone(current);
-            Reflect.deleteProperty(incomplete[field], 'implementations');
-            scope.assert.equal(replayRecordSchema.safeParse(incomplete).success, false);
+    test(
+        'requires explicit implementation evidence on both sides of a current replay snapshot',
+        function (scope) {
+            const current = record();
+            scope.assert.equal(current.version, currentRunRecordVersion);
+            for (const field of [ 'facts', 'replayPlan' ] as const) {
+                const incomplete = structuredClone(current);
+                Reflect.deleteProperty(incomplete[field], 'implementations');
+                scope.assert.equal(replayRecordSchema.safeParse(incomplete).success, false);
+            }
+            return scope.assert.collect();
         }
-        return scope.assert.collect();
-    }),
+    ),
     test('rejects a replay plan whose implementation provenance differs from its facts', function (scope) {
         const current = record();
         const identity = {

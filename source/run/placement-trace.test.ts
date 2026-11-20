@@ -1,4 +1,4 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { createPlacementTraceRecorder } from './placement-trace.ts';
 
@@ -15,14 +15,16 @@ const testCaseMetadata = {
     definitionLocations: [ { kind: 'unknown' as const } ]
 } as const;
 
-export const testNode = suite({
+export const testNode: TestNode = suite({
     ...testCaseMetadata,
-    title: 'source/run/placement-trace.test.ts',
+    title: 'Placement trace',
     children: [
         test({
             ...testCaseMetadata,
-            title: 'placement trace records a complete immutable attempt lifecycle',
-            body(scope: OverkillScope) {
+            title: 'records a complete immutable attempt lifecycle',
+            body(
+                scope
+            ) {
                 const recorder = createPlacementTraceRecorder();
                 const attempt = recorder.assignAttempt(unit, [ work ], 'lane-1', { kind: 'initial' });
 
@@ -52,8 +54,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'placement trace validates attempt transitions and explicit recovery',
-            body(scope: OverkillScope) {
+            title: 'validates attempt transitions and explicit recovery',
+            body(scope) {
                 const recorder = createPlacementTraceRecorder();
                 const attempt = recorder.assignAttempt(unit, [ work ], 'lane-1', { kind: 'initial' });
 
@@ -74,8 +76,8 @@ export const testNode = suite({
         }),
         test({
             ...testCaseMetadata,
-            title: 'placement trace rejects unfinished attempts',
-            body(scope: OverkillScope) {
+            title: 'rejects unfinished attempts',
+            body(scope) {
                 const recorder = createPlacementTraceRecorder();
                 const attempt = recorder.assignAttempt(unit, [ work ], 'lane-1', { kind: 'initial' });
 

@@ -1,12 +1,12 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { executionLifecycle } from '../test-support/execution-lifecycle.ts';
 import { currentCaseExecutionLifecycle } from '../engine/case-execution-lifecycle.ts';
 import { runExecutionLifecycle } from './execution-session-lifecycle.ts';
 import { currentExecutionSession } from './execution-session-context.ts';
 
-export const testNode = authoredSuite('execution lifecycle policy', [
-    test('loads an isolated lifecycle and validates selection and checkpoints', async function (scope: TestScope) {
+export const testNode: TestNode = suite('execution lifecycle policy', [
+    test('loads an isolated lifecycle and validates selection and checkpoints', async function (scope) {
         const fixture = executionLifecycle(null);
         const value = await runExecutionLifecycle({
             transport: fixture.transport,
@@ -54,7 +54,7 @@ export const testNode = authoredSuite('execution lifecycle policy', [
     }),
     test(
         'stops admission after cancellation but allows disposal and final checkpoints',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = executionLifecycle(null);
             const failure = new Error('Cancelled lifecycle.');
             await runExecutionLifecycle({
@@ -79,7 +79,7 @@ export const testNode = authoredSuite('execution lifecycle policy', [
             return scope.assert.collect();
         }
     ),
-    test('disposes after execution failures without losing the original error', async function (scope: TestScope) {
+    test('disposes after execution failures without losing the original error', async function (scope) {
         const fixture = executionLifecycle(null);
         const failure = new Error('Execution failed.');
         await scope.assert.rejects(
@@ -98,7 +98,7 @@ export const testNode = authoredSuite('execution lifecycle policy', [
         scope.assert.deepEqual<unknown, unknown>(fixture.events, [ 'create', 'dispose' ]);
         return scope.assert.collect();
     }),
-    test('surfaces disposal errors after successful execution', async function (scope: TestScope) {
+    test('surfaces disposal errors after successful execution', async function (scope) {
         const failure = new Error('Disposal failed.');
         const fixture = executionLifecycle(failure);
         await scope.assert.rejects(
@@ -116,7 +116,7 @@ export const testNode = authoredSuite('execution lifecycle policy', [
         );
         return scope.assert.collect();
     }),
-    test('retains both failures when execution and disposal fail', async function (scope: TestScope) {
+    test('retains both failures when execution and disposal fail', async function (scope) {
         const disposal = new Error('Disposal failed.');
         const failure = new Error('Execution failed.');
         const fixture = executionLifecycle(disposal);
@@ -141,7 +141,7 @@ export const testNode = authoredSuite('execution lifecycle policy', [
         }
         return scope.assert.collect();
     }),
-    test('rejects missing factories and invalid lifecycle instances', async function (scope: TestScope) {
+    test('rejects missing factories and invalid lifecycle instances', async function (scope) {
         const fixture = executionLifecycle(null);
         for (const module of [ null, {}, { create: 42 } ]) {
             await scope.assert.rejects(

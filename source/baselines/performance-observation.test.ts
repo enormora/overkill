@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { benchmarkSampleFixture } from '../test-support/benchmark-html-fixture.ts';
 
@@ -82,7 +82,7 @@ function normalization(cost: number): BenchmarkNormalizationEvidence {
         }
     };
 }
-export const testNode = authoredSuite('performance observation normalization', [
+export const testNode: TestNode = suite('performance observation normalization', [
     test('rejects legacy sample normalization without an explicit budget scale', function (scope: TestScope) {
         const evidence = normalization(10);
         const metric = evidence.metrics.value;
@@ -100,7 +100,7 @@ export const testNode = authoredSuite('performance observation normalization', [
     }),
     test(
         'normalizes adapter samples while retaining unavailable readings, raw metrics and original artifacts',
-        function (scope: TestScope) {
+        function (scope) {
             const unavailable = unavailableMetric('offline', provenance);
             const artifact = samples([ availableMetric(100, provenance), unavailable ]);
             const observed = observePerformance(
@@ -130,7 +130,7 @@ export const testNode = authoredSuite('performance observation normalization', [
             return scope.assert.collect();
         }
     ),
-    test('leaves other JSON attachments on their original scale', function (scope: TestScope) {
+    test('leaves other JSON attachments on their original scale', function (scope) {
         const artifact = samples([ availableMetric(100, provenance) ]);
         const other = { ...artifact, payload: { ...artifact.payload, name: 'other-observations' } };
         scope.assert.deepEqual(
@@ -146,7 +146,7 @@ export const testNode = authoredSuite('performance observation normalization', [
         );
         return scope.assert.collect();
     }),
-    test('preserves non-JSON sample evidence and inapplicable adapters', function (scope: TestScope) {
+    test('preserves non-JSON sample evidence and inapplicable adapters', function (scope) {
         const artifact = samples([]);
         const text = {
             ...artifact,
@@ -166,7 +166,7 @@ export const testNode = authoredSuite('performance observation normalization', [
         );
         return scope.assert.collect();
     }),
-    test('rejects overflowing normalized values before invoking an adapter', function (scope: TestScope) {
+    test('rejects overflowing normalized values before invoking an adapter', function (scope) {
         const artifact = samples([ availableMetric(Number.MAX_VALUE, provenance) ]);
         scope.assert.throws(function () {
             return observePerformance(
@@ -178,7 +178,7 @@ export const testNode = authoredSuite('performance observation normalization', [
         }, { message: 'Normalized performance observation is not finite.' });
         return scope.assert.collect();
     }),
-    test('bounds normalized samples and final adapter observations', function (scope: TestScope) {
+    test('bounds normalized samples and final adapter observations', function (scope) {
         const input = { artifacts: [ samples([ availableMetric(100, provenance) ]) ], calibration, work };
         scope.assert.throws(function () {
             return observePerformance(adapter, input, normalization(10), 1);

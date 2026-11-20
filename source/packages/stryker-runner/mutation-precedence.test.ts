@@ -1,4 +1,4 @@
-import { suite as authoredSuite, test as authoredTest } from '@overkill-dev/test';
+import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import { MutantRunStatus, type MutantRunResult } from '@stryker-mutator/api/test-runner';
 
@@ -13,7 +13,6 @@ import { runResultFactory } from '../../test-support/run-result-factory.ts';
 import { expiredMutantResult, mutantExecutionResult } from './mutation-results.ts';
 import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
 import type { MutationInvocationExpectation } from './mutation-observation.ts';
-import { testNode as evidenceTestNode } from './mutation-evidence.test.ts';
 
 const root = '/project';
 const bodyFailure = {
@@ -101,64 +100,71 @@ function hitLimitFailures(): HitLimitFailures {
     return { direct, valid: [ direct, loader ], invalid };
 }
 
-export const testNode = authoredSuite('mutation result precedence', [
-    evidenceTestNode,
-    ...[ false, true ].map(function independentCancellation(cancelled) {
-        return authoredTest(
-            `native case timeout preserves independent cancellation ${String(cancelled)}`,
-            function (scope) {
-                const { reply, expectation } = mutationInvocation([]);
-                const { runnerErrors } = runResultFactory.build({
-                    runnerErrors: [
-                        { subtype: 'crash', message: 'case hard timeout', cause: { termination: 'hard-timeout' } },
-                        ...cancelled
-                            ? [ {
-                                subtype: 'crash' as const,
-                                message: 'independent cancellation sentinel',
-                                cause: { termination: 'cancelled' }
-                            } ]
-                            : []
-                    ]
-                });
-                const result = mutantExecutionResult(root, {
-                    ...reply,
-                    result: { ...reply.result, runnerErrors },
-                    deadlineExceeded: false
-                }, expectation);
-                scope.assert.equal(result.status, cancelled ? 'error' : 'timeout');
-                if (cancelled) {
-                    scope.assert.match(diagnostic(result), /independent cancellation sentinel/);
-                }
-                return scope.assert.collect();
+export const testNode: TestNode = suite('mutation result precedence', [
+    table({
+        title: 'native case timeout preserves independent cancellation',
+        cases: [ false, true ],
+        caseTitle(cancelled) {
+            return `${String(cancelled)}`;
+        },
+        test(scope) {
+            const cancelled = scope.parameters;
+
+            const { reply, expectation } = mutationInvocation([]);
+            const { runnerErrors } = runResultFactory.build({
+                runnerErrors: [
+                    { subtype: 'crash', message: 'case hard timeout', cause: { termination: 'hard-timeout' } },
+                    ...cancelled
+                        ? [ {
+                            subtype: 'crash' as const,
+                            message: 'independent cancellation sentinel',
+                            cause: { termination: 'cancelled' }
+                        } ]
+                        : []
+                ]
+            });
+            const result = mutantExecutionResult(root, {
+                ...reply,
+                result: { ...reply.result, runnerErrors },
+                deadlineExceeded: false
+            }, expectation);
+            scope.assert.equal(result.status, cancelled ? 'error' : 'timeout');
+            if (cancelled) {
+                scope.assert.match(diagnostic(result), /independent cancellation sentinel/);
             }
-        );
+            return scope.assert.collect();
+        }
     }),
-    ...[ false, true ].map(function cleanupError(withCleanupError) {
-        return authoredTest(
-            `retains an earlier kill alongside timeout and cleanup error ${String(withCleanupError)}`,
-            function (scope) {
-                const { reply, expectation } = mutationInvocation([
-                    { kind: 'fail', failures: [ bodyFailure ] },
-                    {
-                        kind: 'fail',
-                        failures: withCleanupError ? [ timeoutFailure, cleanupFailure ] : [ timeoutFailure ]
-                    }
-                ]);
-                const result = mutantExecutionResult(root, reply, expectation);
-                scope.assert.equal(result.status, withCleanupError ? 'error' : 'timeout');
-                const message = diagnostic(result);
-                scope.assert.match(message, /earlier body sentinel[\s\S]*timeout/u);
-                for (const testCase of reply.result.perTest.slice(0, 2)) {
-                    scope.assert.true(message.includes(workIdentityKey(testCase.workId)));
+    table({
+        title: 'retains earlier kills alongside timeout and cleanup errors',
+        cases: [ false, true ],
+        caseTitle(withCleanupError) {
+            return `${String(withCleanupError)}`;
+        },
+        test(scope) {
+            const withCleanupError = scope.parameters;
+
+            const { reply, expectation } = mutationInvocation([
+                { kind: 'fail', failures: [ bodyFailure ] },
+                {
+                    kind: 'fail',
+                    failures: withCleanupError ? [ timeoutFailure, cleanupFailure ] : [ timeoutFailure ]
                 }
-                if (withCleanupError) {
-                    scope.assert.true(message.includes('cleanup sentinel'));
-                }
-                return scope.assert.collect();
+            ]);
+            const result = mutantExecutionResult(root, reply, expectation);
+            scope.assert.equal(result.status, withCleanupError ? 'error' : 'timeout');
+            const message = diagnostic(result);
+            scope.assert.match(message, /earlier body sentinel[\s\S]*timeout/u);
+            for (const testCase of reply.result.perTest.slice(0, 2)) {
+                scope.assert.true(message.includes(workIdentityKey(testCase.workId)));
             }
-        );
+            if (withCleanupError) {
+                scope.assert.true(message.includes('cleanup sentinel'));
+            }
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('retains a body failure when the same case times out during cleanup', function (scope) {
+    test('retains a body failure when the same case times out during cleanup', function (scope) {
         const { reply, expectation } = mutationInvocation([ {
             kind: 'fail',
             failures: [ bodyFailure, timeoutFailure ]
@@ -169,7 +175,7 @@ export const testNode = authoredSuite('mutation result precedence', [
         scope.assert.true(diagnostic(result).includes('deadlineMilliseconds: 1'));
         return scope.assert.collect();
     }),
-    authoredTest('retains native failures when lifecycle observations are incomplete', function (scope) {
+    test('retains native failures when lifecycle observations are incomplete', function (scope) {
         const { reply, expectation } = mutationInvocation([ { kind: 'fail', failures: [ bodyFailure ] } ]);
         const data = mutationLifecycleDataSchema.parse(reply.data);
         const result = mutantExecutionResult(root, { ...reply, data: { ...data, completed: [] } }, expectation);
@@ -180,7 +186,7 @@ export const testNode = authoredSuite('mutation result precedence', [
         scope.assert.true(diagnostic(result).includes('earlier body sentinel'));
         return scope.assert.collect();
     }),
-    authoredTest('retains earlier failures when later case identities cannot be canonicalized', function (scope) {
+    test('retains earlier failures when later case identities cannot be canonicalized', function (scope) {
         const { reply, expectation } = mutationInvocation([ { kind: 'fail', failures: [ bodyFailure ] } ]);
         const perTest = reply.result.perTest.map(function invalidLaterIdentity(result, index) {
             const workId = index === 1
@@ -195,7 +201,7 @@ export const testNode = authoredSuite('mutation result precedence', [
         scope.assert.true(diagnostic(result).includes(expectation.selected[0] ?? 'missing identity'));
         return scope.assert.collect();
     }),
-    authoredTest(
+    test(
         'retains an infrastructure failure and a kill despite deadline and hit-limit expiry',
         function (scope) {
             const { reply, expectation } = mutationInvocation([ { kind: 'fail', failures: [ bodyFailure ] } ]);
@@ -215,24 +221,28 @@ export const testNode = authoredSuite('mutation result precedence', [
             return scope.assert.collect();
         }
     ),
-    ...[ false, true ].map(function hitLimit(exceeded) {
-        return authoredTest(
-            `retains killing diagnostics when the invocation expires with hit limit ${String(exceeded)}`,
-            function (scope) {
-                const { reply, expectation } = mutationInvocation([ { kind: 'fail', failures: [ bodyFailure ] } ]);
-                const data = mutationLifecycleDataSchema.parse(reply.data);
-                const result = mutantExecutionResult(root, {
-                    ...reply,
-                    deadlineExceeded: !exceeded,
-                    data: { ...data, hitLimitExceeded: exceeded }
-                }, expectation);
-                scope.assert.equal(result.status, 'timeout');
-                scope.assert.true(diagnostic(result).includes('earlier body sentinel'));
-                return scope.assert.collect();
-            }
-        );
+    table({
+        title: 'retains killing diagnostics when invocation expires',
+        cases: [ false, true ],
+        caseTitle(exceeded) {
+            return `${String(exceeded)}`;
+        },
+        test(scope) {
+            const exceeded = scope.parameters;
+
+            const { reply, expectation } = mutationInvocation([ { kind: 'fail', failures: [ bodyFailure ] } ]);
+            const data = mutationLifecycleDataSchema.parse(reply.data);
+            const result = mutantExecutionResult(root, {
+                ...reply,
+                deadlineExceeded: !exceeded,
+                data: { ...data, hitLimitExceeded: exceeded }
+            }, expectation);
+            scope.assert.equal(result.status, 'timeout');
+            scope.assert.true(diagnostic(result).includes('earlier body sentinel'));
+            return scope.assert.collect();
+        }
     }),
-    authoredTest('requires a pure tracked hit-limit guard to classify a failure as timeout', function (scope) {
+    test('requires a pure tracked hit-limit guard to classify a failure as timeout', function (scope) {
         const { reply, expectation } = mutationInvocation([]);
         const data = { ...mutationLifecycleDataSchema.parse(reply.data), hitLimitExceeded: true };
         const { direct, valid, invalid } = hitLimitFailures();
@@ -258,7 +268,7 @@ export const testNode = authoredSuite('mutation result precedence', [
         );
         return scope.assert.collect();
     }),
-    authoredTest('preserves terminal diagnostics when the outer invocation deadline expires', function (scope) {
+    test('preserves terminal diagnostics when the outer invocation deadline expires', function (scope) {
         const error: MutantRunResult = { status: MutantRunStatus.Error, errorMessage: 'infrastructure sentinel' };
         const timeout: MutantRunResult = { status: MutantRunStatus.Timeout, reason: 'timeout sentinel' };
         scope.assert.deepEqual(expiredMutantResult(error), error);

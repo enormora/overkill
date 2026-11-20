@@ -1,4 +1,4 @@
-import { test, suite as authoredSuite } from '@overkill-dev/test';
+import { type TestNode, table, suite } from '@overkill-dev/test';
 
 import { parseWitnessFile, type SimulationWitnessFile } from '../packages/engine/engine.entry-point.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
@@ -71,23 +71,44 @@ const invalid = [
     { ...simulation, runtimeSnapshot: Number.POSITIVE_INFINITY }
 ];
 
-export const testNode = authoredSuite('witness file compatibility', [
-    ...witnesses.map(function compatible(witness, index) {
-        return test(`preserves version one witness ${index}`, function (scope) {
+export const testNode: TestNode = suite('witness file compatibility', [
+    table({
+        title: 'preserves version one witness',
+        cases: witnesses,
+        caseTitle(_parameters, index) {
+            return `${index}`;
+        },
+        test(scope) {
+            const witness = scope.parameters;
+
             scope.assert.deepEqual(parseWitnessFile(structuredClone(witness)), witness);
             return scope.assert.collect();
-        });
+        }
     }),
-    ...invalid.map(function malformed(value, index) {
-        return test(`rejects invalid witness ${index}`, function (scope) {
+    table({
+        title: 'rejects invalid witness',
+        cases: invalid,
+        caseTitle(_parameters, index) {
+            return `${index}`;
+        },
+        test(scope) {
+            const value = scope.parameters;
+
             scope.assert.throws(function parseInvalidWitness() {
                 parseWitnessFile(value);
             }, { name: 'ZodError' });
             return scope.assert.collect();
-        });
+        }
     }),
-    ...[ 'resource', 'scenario', 'runtimeSnapshot', 'faultConfiguration' ].map(function required(field) {
-        return test(`requires nullable ${field}`, function (scope) {
+    table({
+        title: 'requires nullable witness fields',
+        cases: [ 'resource', 'scenario', 'runtimeSnapshot', 'faultConfiguration' ],
+        caseTitle(field) {
+            return `${field}`;
+        },
+        test(scope) {
+            const field = scope.parameters;
+
             const value = Object.fromEntries(
                 Object.entries(simulation).filter(function retained([ key ]) {
                     return key !== field;
@@ -97,6 +118,6 @@ export const testNode = authoredSuite('witness file compatibility', [
                 parseWitnessFile(value);
             }, { name: 'ZodError' });
             return scope.assert.collect();
-        });
+        }
     })
 ]);

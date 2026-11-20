@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
 import { DryRunStatus, MutantRunStatus } from '@stryker-mutator/api/test-runner';
 
@@ -6,8 +6,8 @@ import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fi
 import { mutationInvocations } from '../../test-support/mutation-invocations.ts';
 
 const dry = { coverageAnalysis: 'off', timeout: 50, disableBail: false } as const;
-export const testNode = authoredSuite('mutation runner invocation orchestration', [
-    test('publishes the first complete dry run as the campaign baseline', async function (scope: TestScope) {
+export const testNode: TestNode = suite('mutation runner invocation orchestration', [
+    test('publishes the first complete dry run as the campaign baseline', async function (scope) {
         const { reply } = mutationCoverageFixture('off');
         const fixture = mutationInvocations(scope, null, reply);
         const result = await fixture.invocations.dry(fixture.runner, dry, fixture.budget);
@@ -18,7 +18,7 @@ export const testNode = authoredSuite('mutation runner invocation orchestration'
         scope.assert.equal(fixture.executions.length, 1);
         return scope.assert.collect();
     }),
-    test('reuses a published baseline without republishing it', async function (scope: TestScope) {
+    test('reuses a published baseline without republishing it', async function (scope) {
         const coverage = mutationCoverageFixture('off');
         const fixture = mutationInvocations(scope, coverage.baseline, coverage.reply);
         await fixture.invocations.dry(fixture.runner, dry, fixture.budget);
@@ -27,7 +27,7 @@ export const testNode = authoredSuite('mutation runner invocation orchestration'
         scope.assert.equal(fixture.executions.length, 2);
         return scope.assert.collect();
     }),
-    test('does not publish a timed out dry run', async function (scope: TestScope) {
+    test('does not publish a timed out dry run', async function (scope) {
         const fixture = mutationInvocations(scope, null, { kind: 'timeout', artifacts: [], data: null });
         const result = await fixture.invocations.dry(fixture.runner, dry, fixture.budget);
         scope.assert.equal(result.status, DryRunStatus.Timeout);
@@ -35,7 +35,7 @@ export const testNode = authoredSuite('mutation runner invocation orchestration'
         scope.assert.equal(fixture.baseline(), null);
         return scope.assert.collect();
     }),
-    test('rejects coverage changes before running a dry invocation', async function (scope: TestScope) {
+    test('rejects coverage changes before running a dry invocation', async function (scope) {
         const coverage = mutationCoverageFixture('perTest');
         const fixture = mutationInvocations(scope, coverage.baseline, coverage.reply);
         await scope.assert.rejects(async function () {
@@ -46,7 +46,7 @@ export const testNode = authoredSuite('mutation runner invocation orchestration'
     }),
     test(
         'returns timeout before execution when baseline delivery exhausts the budget',
-        async function (scope: TestScope) {
+        async function (scope) {
             const fixture = mutationInvocations(scope, null, mutationCoverageFixture('off').reply);
             const runner = {
                 ...fixture.runner,
@@ -66,7 +66,7 @@ export const testNode = authoredSuite('mutation runner invocation orchestration'
             return scope.assert.collect();
         }
     ),
-    test('requires a dry-run baseline before executing a mutant', async function (scope: TestScope) {
+    test('requires a dry-run baseline before executing a mutant', async function (scope) {
         const coverage = mutationCoverageFixture('off');
         const fixture = mutationInvocations(scope, null, coverage.reply);
         await scope.assert.rejects(async function () {
@@ -75,7 +75,7 @@ export const testNode = authoredSuite('mutation runner invocation orchestration'
         scope.assert.deepEqual(fixture.executions, []);
         return scope.assert.collect();
     }),
-    test('runs a runtime mutant against the frozen campaign selection', async function (scope: TestScope) {
+    test('runs a runtime mutant against the frozen campaign selection', async function (scope) {
         const coverage = mutationCoverageFixture('off');
         const fixture = mutationInvocations(scope, coverage.baseline, coverage.reply);
         const result = await fixture.invocations.mutant(fixture.runner, coverage.options, fixture.budget);
@@ -84,7 +84,7 @@ export const testNode = authoredSuite('mutation runner invocation orchestration'
         scope.assert.partialDeepEqual<unknown, unknown>(fixture.executions[0], { activeMutant: 'mutant' });
         return scope.assert.collect();
     }),
-    test('forwards static activation and environment replacement to execution', async function (scope: TestScope) {
+    test('forwards static activation and environment replacement to execution', async function (scope) {
         const coverage = mutationCoverageFixture('off');
         const fixture = mutationInvocations(scope, coverage.baseline, coverage.reply);
         await fixture.invocations.mutant(fixture.runner, {
@@ -95,7 +95,7 @@ export const testNode = authoredSuite('mutation runner invocation orchestration'
         scope.assert.deepEqual(fixture.admissions, [ 'static:true' ]);
         return scope.assert.collect();
     }),
-    test('returns timeout before mutant execution when baseline delivery is late', async function (scope: TestScope) {
+    test('returns timeout before mutant execution when baseline delivery is late', async function (scope) {
         const coverage = mutationCoverageFixture('off');
         const fixture = mutationInvocations(scope, coverage.baseline, coverage.reply);
         const runner = {

@@ -1,4 +1,9 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import {
+    requireEngineNarrowingReference,
+    requireEngineCompositeReference
+} from '../test-support/assertion-reference-boundary.ts';
+import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
 import {
     defineCompositeAssertion,
@@ -12,9 +17,8 @@ import type {
     SourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
-import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+
 import type { AssertionTestFailure, FailOutcome, RunResult, TestContractFailure } from './run-result.ts';
-import type { TestBody, TestScope } from './test-scope.ts';
 
 type BooleanResult = { readonly ok: boolean; };
 type ValueResult = {
@@ -31,6 +35,7 @@ const narrowingResultOk = defineNarrowingCompositeAssertion({
         return result.ok;
     }
 });
+requireEngineNarrowingReference(narrowingResultOk);
 
 const foreignFailureAssertion = defineCompositeAssertion({
     assert(check) {
@@ -40,6 +45,7 @@ const foreignFailureAssertion = defineCompositeAssertion({
     },
     name: 'throwsForeign'
 });
+requireEngineCompositeReference(foreignFailureAssertion);
 
 function firstFailOutcome(result: RunResult): FailOutcome | null {
     const firstResult = result.perTest.at(0);
@@ -51,7 +57,7 @@ function firstFailOutcome(result: RunResult): FailOutcome | null {
     return null;
 }
 
-async function executeSingleBody(body: TestBody): Promise<RunResult> {
+async function executeSingleBody(body: EngineCaseBody): Promise<RunResult> {
     const engine = createEngine();
 
     return await engine.execute(
@@ -119,6 +125,7 @@ const capturedTestLocation = definePublishedCompositeAssertion({
         ]);
     }
 });
+requireEngineCompositeReference(capturedTestLocation);
 
 function firstFailedCheck(outcome: FailOutcome): FailedCheck | null {
     return firstAssertionFailure(outcome)?.checks.at(0) ?? null;
@@ -154,17 +161,18 @@ function firstForeignChild(outcome: FailOutcome): FailedForeignCheck | null {
     return null;
 }
 
-export const testNode = suite('source/engine/assertion-execution-composite.test.ts', [
+export const testNode: TestNode = suite('Composite assertion execution', [
     test(
-        'execute() records callable composite assertion references as one planned boundary',
-        async function (scope: OverkillScope) {
+        'records callable composite assertion references as one planned boundary',
+        async function (scope: TestScope) {
             const resultOk = defineCompositeAssertion({
                 assert(check, result: BooleanResult) {
                     return check.true(result.ok);
                 },
                 name: 'resultOk'
             });
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            requireEngineCompositeReference(resultOk);
+            const result = await executeSingleBody(function testBody(testScope) {
                 testScope.plan(1);
                 testScope.assert(resultOk, { ok: true });
                 testScope.assert.length([ 1, 2 ], 2);
@@ -187,7 +195,7 @@ export const testNode = suite('source/engine/assertion-execution-composite.test.
             return scope.assert.collect();
         }
     ),
-    test('execute() reports composite parent failures with child diagnostics', async function (scope: OverkillScope) {
+    test('reports composite parent failures with child diagnostics', async function (scope: TestScope) {
         const resultOk = defineCompositeAssertion({
             assert(check, result: ValueResult, expected: unknown) {
                 return check.group([
@@ -202,7 +210,8 @@ export const testNode = suite('source/engine/assertion-execution-composite.test.
             },
             name: 'resultOk'
         });
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        requireEngineCompositeReference(resultOk);
+        const result = await executeSingleBody(function testBody(testScope) {
             testScope.assert(resultOk, { ok: false, value: { count: 1 } }, { count: 2 });
             return testScope.assert.collect();
         });
@@ -264,14 +273,15 @@ export const testNode = suite('source/engine/assertion-execution-composite.test.
 
         return scope.assert.collect();
     }),
-    test('execute() records narrowing assertion references through assert', async function (scope: OverkillScope) {
+    test('records narrowing assertion references through assert', async function (scope) {
         const isString = defineNarrowingCompositeAssertion({
             name: 'isString',
             narrows(value: unknown): value is string {
                 return typeof value === 'string';
             }
         });
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        requireEngineNarrowingReference(isString);
+        const result = await executeSingleBody(function testBody(testScope) {
             testScope.assert(isString, 'value');
             return testScope.assert.collect();
         });
@@ -280,8 +290,8 @@ export const testNode = suite('source/engine/assertion-execution-composite.test.
 
         return scope.assert.collect();
     }),
-    test('execute() rejects non-engine assertion references', async function (scope: OverkillScope) {
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+    test('rejects non-engine assertion references', async function (scope: TestScope) {
+        const result = await executeSingleBody(function testBody(testScope) {
             callUnknownFacade(testScope.assert, [ 'not-reference' ]);
             return testScope.assert.collect();
         });
@@ -294,15 +304,18 @@ export const testNode = suite('source/engine/assertion-execution-composite.test.
 
         return scope.assert.collect();
     }),
-    test('execute() rejects non-narrowing references through require', async function (scope: OverkillScope) {
+    test('rejects non-narrowing references through require', async function (scope: TestScope) {
         const reference = defineCompositeAssertion({
             assert(check) {
                 return check.true(true);
             },
             name: 'custom'
         });
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
-            callUnknownFacade(testScope.require, [ reference, 'value' ]);
+        requireEngineCompositeReference(reference);
+        const result = await executeSingleBody(function testBody(testScope) {
+            const testScopeRequire: typeof testScope.require = testScope.require;
+
+            callUnknownFacade(testScopeRequire, [ reference, 'value' ]);
             return testScope.assert.collect();
         });
         const outcome = firstFailOutcome(result);
@@ -315,14 +328,16 @@ export const testNode = suite('source/engine/assertion-execution-composite.test.
         return scope.assert.collect();
     }),
     test(
-        'execute() short-circuits failed narrowing assertion references through require',
-        async function (scope: OverkillScope) {
+        'short-circuits failed narrowing assertion references through require',
+        async function (scope: TestScope) {
             const error = new Error('boom');
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
+                const testScopeRequire: typeof testScope.require = testScope.require;
+
                 testScope.plan(2);
                 const actual: NarrowingResult = { error, ok: false };
 
-                testScope.require(narrowingResultOk, actual);
+                testScopeRequire(narrowingResultOk, actual);
                 testScope.assert.fail({ message: 'ignored' });
                 return testScope.assert.collect();
             });
@@ -374,7 +389,7 @@ export const testNode = suite('source/engine/assertion-execution-composite.test.
             return scope.assert.collect();
         }
     ),
-    test('execute() rejects unawaited async custom assertions at collect', async function (scope: OverkillScope) {
+    test('rejects unawaited async custom assertions at collect', async function (scope: TestScope) {
         const eventuallyOk = defineCompositeAssertion({
             async assert(check) {
                 await Promise.resolve();
@@ -382,7 +397,8 @@ export const testNode = suite('source/engine/assertion-execution-composite.test.
             },
             name: 'eventuallyOk'
         });
-        const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        requireEngineCompositeReference(eventuallyOk);
+        const result = await executeSingleBody(function testBody(testScope) {
             const pendingAssertions = [ testScope.assert(eventuallyOk) ];
 
             scope.assert.equal(pendingAssertions.length, 1);
@@ -404,9 +420,9 @@ export const testNode = suite('source/engine/assertion-execution-composite.test.
         return scope.assert.collect();
     }),
     test(
-        'execute() normalizes foreign bridge failures under the composite parent',
-        async function (scope: OverkillScope) {
-            const result = await executeSingleBody(function testBody(testScope: TestScope) {
+        'normalizes foreign bridge failures under the composite parent',
+        async function (scope: TestScope) {
+            const result = await executeSingleBody(function testBody(testScope) {
                 testScope.assert.annotated('foreign failed')(foreignFailureAssertion);
                 return testScope.assert.collect();
             });

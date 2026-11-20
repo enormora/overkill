@@ -1,4 +1,4 @@
-import { type TestScope, suite as authoredSuite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -20,7 +20,7 @@ function budgetFixture(scope: TestScope, signal: Readonly<AbortSignal> | null): 
     return { clock, budget };
 }
 
-export const testNode = authoredSuite('invocation budgets', [
+export const testNode: TestNode = suite('invocation budgets', [
     test('uses elapsed monotonic time despite Unix clock changes', function (scope) {
         const { clock, budget } = budgetFixture(scope, null);
         clock.setCurrentUnixEpochMicroseconds(9_000_000_000n);

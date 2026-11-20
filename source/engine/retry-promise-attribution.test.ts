@@ -1,6 +1,6 @@
-import { test, suite } from '@overkill-dev/test';
+import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
 
-import type { TestScope, TestPlanCase } from '../packages/engine/engine.entry-point.ts';
+import type { TestPlanCase } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createAsyncLeakMonitor, type AsyncLeakMonitor } from './async-leak-diagnostics.ts';
 
@@ -46,24 +46,28 @@ async function assertPromiseWindows(
     }
 }
 
-export const testNode = suite(
-    'source/engine/retry-promise-attribution.test.ts',
-    [ 'retry', 'runtime-variant' ].map(function attributionBoundary(kind) {
-        return test({
-            ...metadata,
-            title: `promise leak evidence does not move into a later ${kind} window`,
-            async body(scope: TestScope) {
-                const first = promiseCase();
-                const next = kind === 'retry' ? first : {
-                    ...first,
-                    workId: {
-                        ...first.workId,
-                        runtimes: [ { name: 'service', variantId: 'next', dimensions: {}, scenarios: {} } ]
-                    }
-                };
-                await assertPromiseWindows(scope, createAsyncLeakMonitor(), first, next);
-                return scope.assert.collect();
-            }
-        });
-    })
+export const testNode: TestNode = suite(
+    'Retry promise attribution',
+    [ table({
+        ...metadata,
+        title: 'promise leak evidence does not move into a later window',
+        cases: [ 'retry', 'runtime-variant' ],
+        caseTitle(kind) {
+            return `promise leak evidence does not move into a later ${kind} window`;
+        },
+        async test(scope) {
+            const kind = scope.parameters;
+
+            const first = promiseCase();
+            const next = kind === 'retry' ? first : {
+                ...first,
+                workId: {
+                    ...first.workId,
+                    runtimes: [ { name: 'service', variantId: 'next', dimensions: {}, scenarios: {} } ]
+                }
+            };
+            await assertPromiseWindows(scope, createAsyncLeakMonitor(), first, next);
+            return scope.assert.collect();
+        }
+    }) ]
 );

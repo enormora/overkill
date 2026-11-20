@@ -1,11 +1,9 @@
-import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
+import { type TestNode, suite, test } from '@overkill-dev/test';
 
-import { testNode as familyTestNode } from './test-family.test.ts';
 import { formatCaseId, runtimeIdentityKey, type CaseId } from './identity.ts';
 
-export const testNode = suite('source/engine/identity.test.ts', [
-    familyTestNode,
-    test('formatCaseId() renders direct engine identities for display', function (scope: OverkillScope) {
+export const testNode: TestNode = suite('Identity', [
+    test('formatCaseId() renders direct engine identities for display', function (scope) {
         const caseId: CaseId = {
             file: null,
             title: 'row 1',
@@ -17,7 +15,7 @@ export const testNode = suite('source/engine/identity.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('formatCaseId() renders origin and parameter slots when present', function (scope: OverkillScope) {
+    test('formatCaseId() renders origin and parameter slots when present', function (scope) {
         const caseId: CaseId = {
             file: 'source/users.test.ts',
             title: 'round-trip',
@@ -29,7 +27,7 @@ export const testNode = suite('source/engine/identity.test.ts', [
 
         return scope.assert.collect();
     }),
-    test('runtimeIdentityKey() canonicalizes and distinguishes scenario bindings', function (scope: OverkillScope) {
+    test('runtimeIdentityKey() canonicalizes and distinguishes scenario bindings', function (scope) {
         const first = runtimeIdentityKey({
             dimensions: { node: '26' },
             name: 'api',
