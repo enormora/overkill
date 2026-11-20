@@ -97,8 +97,12 @@ export const testNode = suite('child process payload schemas', [
     }),
     test('retains executable variants and rejects incomplete live identity', function (scope) {
         const caseId = { file: null, params: null, suite: [], title: 'variant' };
-        const workId = { case: caseId, runtimes: [], workload: { name: 'large', params: {} },
-            familyVariant: { family: 'analysis', key: 'compiler-a' } };
+        const workId = {
+            case: caseId,
+            runtimes: [],
+            workload: { name: 'large', params: {} },
+            familyVariant: { family: 'analysis', key: 'compiler-a' }
+        };
         const event = { attempt: 0, case: caseId, workId, definitionLocations, kind: 'test-start', suitePath: [] };
         scope.assert.deepEqual(reporterEventSchema.parse(event), { ...event, case: { ...caseId, suite: [] } });
         scope.assert.false(reporterEventSchema.safeParse({ ...event, attempt: -1 }).success);
@@ -110,9 +114,17 @@ export const testNode = suite('child process payload schemas', [
     }),
     test('rejects reporter events without executable identity', function (scope) {
         const caseId = { file: null, params: null, suite: [], title: 'missing identity' };
-        scope.assert.false(reporterEventSchema.safeParse({
-            attempt: 0, case: caseId, definitionLocations, kind: 'test-start', suitePath: []
-        }).success);
+        scope.assert.false(
+            reporterEventSchema
+                .safeParse({
+                    attempt: 0,
+                    case: caseId,
+                    definitionLocations,
+                    kind: 'test-start',
+                    suitePath: []
+                })
+                .success
+        );
         return scope.assert.collect();
     }),
 

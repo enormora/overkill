@@ -30,9 +30,8 @@ import {
     type HedgedAuthorities
 } from './worker-pool-hedged-arbitration.ts';
 import {
-    casesByKey,
+    validateTaskResults,
     recordBatchStarted,
-    recordBatchCompleted,
     clearTaskTimeout,
     finishCompletedLease,
     finishFailedLease,
@@ -369,17 +368,6 @@ function handleTaskFailure(
     recordTaskCrash(taskRun, context.runtime, 'worker-crash', error instanceof Error ? error.message : String(error));
 
     return recordWorkerCrash(context.runtime, context.crashCount, context.dispatcher) ? [] : pendingMembers(taskRun);
-}
-
-function validateTaskResults(
-    output: WorkerPoolRunOutput,
-    task: WorkerPoolTaskRun,
-    runtime: WorkerPoolRunRuntime
-): void {
-    task.state.assertResults(output.results.flatMap(function completed(entry) {
-        return entry.result.perTest;
-    }), casesByKey(task, runtime));
-    recordBatchCompleted(task, runtime);
 }
 
 async function recordCompletedTaskRun(

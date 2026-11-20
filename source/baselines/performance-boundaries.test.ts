@@ -25,7 +25,12 @@ const event: BenchmarkCaseEnd = {
     artifacts: [],
     attempt: 0,
     case: createCaseId('startup.bench.ts', [], 'starts', null),
-    workId: { familyVariant: null, case: createCaseId('startup.bench.ts', [], 'starts', null), runtimes: [], workload: null },
+    workId: {
+        familyVariant: null,
+        case: createCaseId('startup.bench.ts', [], 'starts', null),
+        runtimes: [],
+        workload: null
+    },
     completion: 'final',
     definitionLocations: [ { kind: 'unknown' } ],
     durationMicroseconds: 1,

@@ -66,9 +66,36 @@ function activeCaseStates(): readonly [SupervisedRunState, SupervisedRunState, S
     const singleState = createSupervisedRunState('first-failure-and-final');
     const multiState = createSupervisedRunState('first-failure-and-final');
 
-    singleState.addActiveCase('first', { capture: null, id: firstCaseId, workId: { familyVariant: null, case: firstCaseId, runtimes: [], workload: null } }, 0, { index: 0 });
-    multiState.addActiveCase('first', { capture: null, id: firstCaseId, workId: { familyVariant: null, case: firstCaseId, runtimes: [], workload: null } }, 0, { index: 0 });
-    multiState.addActiveCase('second', { capture: null, id: secondCaseId, workId: { familyVariant: null, case: secondCaseId, runtimes: [], workload: null } }, 0, { index: 0 });
+    singleState.addActiveCase(
+        'first',
+        {
+            capture: null,
+            id: firstCaseId,
+            workId: { familyVariant: null, case: firstCaseId, runtimes: [], workload: null }
+        },
+        0,
+        { index: 0 }
+    );
+    multiState.addActiveCase(
+        'first',
+        {
+            capture: null,
+            id: firstCaseId,
+            workId: { familyVariant: null, case: firstCaseId, runtimes: [], workload: null }
+        },
+        0,
+        { index: 0 }
+    );
+    multiState.addActiveCase(
+        'second',
+        {
+            capture: null,
+            id: secondCaseId,
+            workId: { familyVariant: null, case: secondCaseId, runtimes: [], workload: null }
+        },
+        0,
+        { index: 0 }
+    );
 
     return [ createSupervisedRunState('first-failure-and-final'), singleState, multiState ];
 }

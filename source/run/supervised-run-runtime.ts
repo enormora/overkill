@@ -136,7 +136,7 @@ function applyTestEndEvent(
     state: SupervisedRunState,
     observedAtMicroseconds: number
 ): void {
-    const workId = event.workId;
+    const { workId } = event;
     const key = workIdentityKey(workId);
 
     for (const artifact of event.artifacts) {

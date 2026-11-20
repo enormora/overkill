@@ -36,7 +36,12 @@ export const testNode = authoredSuite('line reporter completion policy', [
         await reporter.onEvent({
             kind: 'test-end',
             case: { file: null, suite: [], title: 'retry case', params: null },
-            workId: { familyVariant: null, case: { file: null, suite: [], title: 'retry case', params: null }, runtimes: [], workload: null },
+            workId: {
+                familyVariant: null,
+                case: { file: null, suite: [], title: 'retry case', params: null },
+                runtimes: [],
+                workload: null
+            },
             attempt: 1,
             definitionLocations: [ { kind: 'unknown' } ],
             suitePath: [],

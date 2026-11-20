@@ -202,10 +202,20 @@ function scheduleOverlappingCases(
     record: TimeoutRuntimeRecord,
     timeout: SupervisedHardTimeout
 ): void {
-    record.runtime.state.addActiveCase('first', { capture: null, id: caseId, workId: { familyVariant: null, case: caseId, runtimes: [], workload: null } }, 0, { index: 0 });
+    record.runtime.state.addActiveCase(
+        'first',
+        { capture: null, id: caseId, workId: { familyVariant: null, case: caseId, runtimes: [], workload: null } },
+        0,
+        { index: 0 }
+    );
     timeout.start();
     record.advanceTo(500_000);
-    record.runtime.state.addActiveCase('second', { capture: null, id: caseId, workId: { familyVariant: null, case: caseId, runtimes: [], workload: null } }, 500_000, { index: 0 });
+    record.runtime.state.addActiveCase(
+        'second',
+        { capture: null, id: caseId, workId: { familyVariant: null, case: caseId, runtimes: [], workload: null } },
+        500_000,
+        { index: 0 }
+    );
     timeout.start();
     record.runtime.state.removeActiveCase('first');
     timeout.start();

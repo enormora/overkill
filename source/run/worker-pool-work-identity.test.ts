@@ -1,8 +1,8 @@
-import { collectedCasesByKey } from './supervised-run-state.ts';
 import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
 import type { CaseId } from '../packages/engine/engine.entry-point.ts';
 import type { WorkDistribution } from '../config/types.ts';
+import { collectedCasesByKey } from './supervised-run-state.ts';
 import { testNode as familyTransportTestNode } from './family-profile-transport.test.ts';
 import { testNode as familyResolutionTestNode } from './family-resolution.test.ts';
 import { testNode as familyIdentityTestNode } from './family-identity.test.ts';
@@ -112,7 +112,9 @@ export const testNode = suite('source/run/worker-pool-work-identity.test.ts', [
     test('rejects duplicate catalog identities without counting another discovery', function (scope: OverkillScope) {
         const entry = collectedCase(firstCaseId());
         const plan = collectedPlan([ { file: firstPath, cases: [ entry, entry ] } ]);
-        scope.assert.throws(() => collectedCasesByKey(plan), {
+        scope.assert.throws(function () {
+            return collectedCasesByKey(plan);
+        }, {
             message: 'Frozen catalog contains duplicate work identities.'
         });
         scope.assert.equal(plan.files[0]?.cases.length, 2);

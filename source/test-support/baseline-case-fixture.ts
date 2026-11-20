@@ -7,7 +7,12 @@ export const baselineCaseEvent: BaselineCaseEnd = {
     kind: 'test-end',
     attempt: 0,
     case: createCaseId('output.test.ts', [], 'output', null),
-    workId: { familyVariant: null, case: createCaseId('output.test.ts', [], 'output', null), runtimes: [], workload: null },
+    workId: {
+        familyVariant: null,
+        case: createCaseId('output.test.ts', [], 'output', null),
+        runtimes: [],
+        workload: null
+    },
     definitionLocations: [ { kind: 'unknown' } ],
     suitePath: [],
     artifacts: [],

@@ -14,7 +14,7 @@ import {
 } from './supervised-run-state.ts';
 import { captureCrashEvidence } from './supervised-run-process-policy.ts';
 import type { PlacementRecoveryDecision } from './placement-trace.ts';
-import type { WorkerPoolMessage } from './worker-pool-protocol.ts';
+import type { WorkerPoolMessage, WorkerPoolRunOutput } from './worker-pool-protocol.ts';
 import {
     workerPoolPlacementTrace,
     type WorkerPoolRunRuntime,
@@ -67,7 +67,7 @@ export function finishFailedLease(
     });
 }
 
-export function casesByKey(
+function casesByKey(
     taskRun: WorkerPoolTaskRun,
     runtime: WorkerPoolRunRuntime
 ): ReadonlyMap<string, SupervisedCase> {
@@ -422,7 +422,9 @@ function handleUnitStarted(
     const member = taskRun.members.find(function assigned(entry) {
         return entry.attempt === message.attempt;
     });
-    if (member === undefined || taskRun.activeAttempt.read() !== null || taskRun.completedAttempts.has(message.attempt)) {
+    if (
+        member === undefined || taskRun.activeAttempt.read() !== null || taskRun.completedAttempts.has(message.attempt)
+    ) {
         throw new TypeError('Worker placement start is unknown, duplicate, or out of order.');
     }
     taskRun.activeAttempt.write(message.attempt);
@@ -523,4 +525,18 @@ export function recordBatchCompleted(taskRun: WorkerPoolTaskRun, runtime: Worker
             lane: taskRun.lane
         });
     }
+}
+
+export function validateTaskResults(
+    output: WorkerPoolRunOutput,
+    task: WorkerPoolTaskRun,
+    runtime: WorkerPoolRunRuntime
+): void {
+    task.state.assertResults(
+        output.results.flatMap(function completed(entry) {
+            return entry.result.perTest;
+        }),
+        casesByKey(task, runtime)
+    );
+    recordBatchCompleted(task, runtime);
 }

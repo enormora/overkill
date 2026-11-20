@@ -1,4 +1,3 @@
-import { assertRuntimeEvent, assertRuntimeResults } from './runtime-evidence-acceptance.ts';
 import type { ReporterEvent } from '../engine/reporter.ts';
 import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import { resourceCheckSnapshotKey } from '../resource-check-snapshot.ts';
@@ -15,6 +14,7 @@ import type { PerTestResult, PropertyCaseEvidence, RunnerError, RunArtifact } fr
 import { caseAttemptHistory } from '../engine/test-attempt-history.ts';
 import type { RetryArtifactPolicy } from '../config/execution.ts';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
+import { assertRuntimeEvent, assertRuntimeResults } from './runtime-evidence-acceptance.ts';
 import {
     createBoundaryArtifactCapture,
     unknownBoundaryMetadata,
@@ -375,7 +375,7 @@ export function createSupervisedRunState(
 
     return {
         assertEvent(event, selected) {
-            assertRuntimeEvent(event, selected, cases.active, attemptResults, perTest);
+            assertRuntimeEvent(event, selected, { active: cases.active, attempts: attemptResults, completed: perTest });
         },
         assertResults(results, selected) {
             assertRuntimeResults(results, selected, perTest, cases.pendingTerminal);

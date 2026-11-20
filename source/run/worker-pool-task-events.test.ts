@@ -404,7 +404,16 @@ export const testNode = suite({
                 const taskRun = taskRunWithLane('worker-1', runtime);
                 const activeCase = firstCaseId();
 
-                taskRun.state.addActiveCase('active', { capture: null, id: activeCase, workId: { familyVariant: null, case: activeCase, runtimes: [], workload: null } }, 0, { index: 0 });
+                taskRun.state.addActiveCase(
+                    'active',
+                    {
+                        capture: null,
+                        id: activeCase,
+                        workId: { familyVariant: null, case: activeCase, runtimes: [], workload: null }
+                    },
+                    0,
+                    { index: 0 }
+                );
                 scope.assert.equal(recordPermissionFailureForTask(taskRun, runtime), true);
                 const attributedWork = taskRun.state.runnerErrors()[0]?.attributedToWork;
                 scope.require.defined(attributedWork);

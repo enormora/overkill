@@ -7,6 +7,12 @@ import type { PerTestResult } from '../engine/run-result.ts';
 type SelectedWork = { readonly id: PerTestResult['id']; };
 type ActiveAttempt = { readonly attempt: AttemptId; };
 
+type RuntimeEvidence = {
+    readonly active: ReadonlyMap<string, ActiveAttempt>;
+    readonly attempts: ReadonlyMap<string, readonly PerTestResult[]>;
+    readonly completed: ReadonlyMap<string, PerTestResult>;
+};
+
 type WorkEvent = Extract<ReporterEvent, { readonly workId: unknown; }>;
 
 function isWorkEvent(event: ReporterEvent): event is WorkEvent {
@@ -14,8 +20,10 @@ function isWorkEvent(event: ReporterEvent): event is WorkEvent {
 }
 
 function assertSelectedEvent(event: WorkEvent, selected: ReadonlyMap<string, SelectedWork>): void {
-    if (!selected.has(workIdentityKey(event.workId)) ||
-        caseIdentityKey(event.case) !== caseIdentityKey(event.workId.case)) {
+    if (
+        !selected.has(workIdentityKey(event.workId)) ||
+        caseIdentityKey(event.case) !== caseIdentityKey(event.workId.case)
+    ) {
         throw new TypeError('Runtime evidence does not identify selected work.');
     }
     if (!Number.isSafeInteger(event.attempt) || event.attempt < 0) {
@@ -47,13 +55,12 @@ function assertCompletionArtifacts(event: WorkEvent): void {
 export function assertRuntimeEvent(
     event: ReporterEvent,
     selected: ReadonlyMap<string, SelectedWork>,
-    active: ReadonlyMap<string, ActiveAttempt>,
-    attempts: ReadonlyMap<string, readonly PerTestResult[]>,
-    completed: ReadonlyMap<string, PerTestResult>
+    evidence: RuntimeEvidence
 ): void {
     if (!isWorkEvent(event)) {
         return;
     }
+    const { active, attempts, completed } = evidence;
     assertSelectedEvent(event, selected);
     const key = workIdentityKey(event.workId);
     if (event.kind === 'test-start') {
@@ -79,8 +86,10 @@ function assertMatchingCompletion(result: PerTestResult, accepted: PerTestResult
     if (accepted === undefined) {
         return;
     }
-    if (!isDeepStrictEqual(accepted.attempts, result.attempts) || accepted.verdict !== result.verdict ||
-        !isDeepStrictEqual(accepted.outcome, result.outcome)) {
+    if (
+        !isDeepStrictEqual(accepted.attempts, result.attempts) || accepted.verdict !== result.verdict ||
+        !isDeepStrictEqual(accepted.outcome, result.outcome)
+    ) {
         throw new TypeError('Runtime result contradicts accepted completion evidence.');
     }
 }
