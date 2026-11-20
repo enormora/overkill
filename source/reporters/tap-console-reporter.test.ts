@@ -70,9 +70,25 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
     await reporter.onEvent({
         property: null,
         benchmark: null,
+        completion: 'retry',
+        attempt: 0,
+        case: passingCaseId,
+        workId: { familyVariant: null, case: passingCaseId, runtimes: [], workload: null },
+        definitionLocations: [ definitionLocation ],
+        artifacts: [],
+        kind: 'test-end',
+        outcome: { kind: 'pass' },
+        suitePath: suitePathFromTitles(passingCaseId.suite),
+        verdict: 'pass',
+        durationMicroseconds: 1
+    });
+    await reporter.onEvent({
+        property: null,
+        benchmark: null,
         completion: 'final',
         attempt: 0,
         case: passingCaseId,
+        workId: { familyVariant: null, case: passingCaseId, runtimes: [], workload: null },
         definitionLocations: [ definitionLocation ],
         artifacts: [],
         kind: 'test-end',
@@ -87,6 +103,7 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
         completion: 'final',
         attempt: 0,
         case: failingCaseId,
+        workId: { familyVariant: null, case: failingCaseId, runtimes: [], workload: null },
         definitionLocations: [ definitionLocation ],
         artifacts: [],
         kind: 'test-end',

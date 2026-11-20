@@ -94,7 +94,7 @@ export function createProgressReporter(
                 if (event.kind === 'run-start') {
                     state = { completed: 0, failed: 0, planned: readPlannedCount(event) };
                     renderProgress();
-                } else if (event.kind === 'test-end') {
+                } else if (event.kind === 'test-end' && event.completion === 'final') {
                     state = updateState(state, event);
                     renderProgress();
                 } else if (event.kind === 'runner-error' && !dependencies.interactive) {

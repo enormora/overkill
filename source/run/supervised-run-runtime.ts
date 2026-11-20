@@ -1,5 +1,5 @@
 import { finalizedResourceCheckResult } from '../engine/resource-check-result.ts';
-import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
+import { workIdentityKey } from '../engine/identity.ts';
 import type {
     ReporterEvent,
     ProcessUsageSnapshot,
@@ -122,7 +122,7 @@ function applyTestStartEvent(
     cases: ReadonlyMap<string, SupervisedCase>,
     observedAtMicroseconds: number
 ): void {
-    const workId = event.workId ?? createDefaultWorkId(event.case);
+    const { workId } = event;
     const key = workIdentityKey(workId);
     const testCase = cases.get(key);
 
@@ -136,7 +136,7 @@ function applyTestEndEvent(
     state: SupervisedRunState,
     observedAtMicroseconds: number
 ): void {
-    const workId = event.workId ?? createDefaultWorkId(event.case);
+    const { workId } = event;
     const key = workIdentityKey(workId);
 
     for (const artifact of event.artifacts) {
@@ -191,6 +191,7 @@ export function applyEvent(
     cases: ReadonlyMap<string, SupervisedCase>,
     observedAtMicroseconds: number
 ): void {
+    state.assertEvent(event, cases);
     if (event.kind === 'debug-checkpoint') {
         state.recordArtifact(event.artifact);
     } else if (event.kind === 'test-start') {
@@ -257,7 +258,7 @@ function childEventWithAttachments(event: ReporterEvent, runtime: SupervisedRunR
     if (event.kind !== 'test-end') {
         return event;
     }
-    const work = event.workId ?? createDefaultWorkId(event.case);
+    const work = event.workId;
     runtime.attachments?.settleAttempt(
         work,
         { index: event.attempt },
@@ -287,6 +288,7 @@ function childEventWithAttachments(event: ReporterEvent, runtime: SupervisedRunR
 
 function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): void {
     const collectedPlan = runtime.collectedPlan.read();
+    runtime.state.assertEvent(event, collectedPlan === null ? new Map() : collectedCasesByKey(collectedPlan));
     const reportedEvent = childEventWithAttachments(event, runtime);
 
     if (collectedPlan !== null) {
@@ -352,6 +354,8 @@ function handleChildSample(sample: ProcessUsageSnapshot, runtime: SupervisedRunR
 }
 
 function handleCompletedResult(result: RunResult, runtime: SupervisedRunRuntime): void {
+    const plan = runtime.collectedPlan.read();
+    runtime.state.assertResults(result.perTest, plan === null ? new Map() : collectedCasesByKey(plan));
     for (const artifact of result.artifacts) {
         if (
             [ 'debug', 'worker-crash', 'process-exhaustion' ].includes(artifact.payload.kind)

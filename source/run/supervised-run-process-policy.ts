@@ -1,4 +1,4 @@
-import { createDefaultWorkId, type AttemptId, type CaseId, type WorkId } from '../engine/identity.ts';
+import type { AttemptId, CaseId, WorkId } from '../engine/identity.ts';
 import { observedGrowthBytesPerSecond } from '../engine/process-usage-growth.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { ProcessUsageSnapshot } from '../engine/process-usage.ts';
@@ -75,7 +75,7 @@ function activeCaseIds(state: SupervisedRunState): readonly CaseId[] {
 
 function activeWorkIds(state: SupervisedRunState): readonly WorkId[] {
     return Array.from(state.activeCases.values(), function toWorkId(testCase) {
-        return testCase.workId ?? createDefaultWorkId(testCase.id);
+        return testCase.workId;
     });
 }
 
@@ -87,7 +87,7 @@ function activeAttemptEvidence(
     state: SupervisedRunState
 ): readonly { readonly work: WorkId; readonly attempt: AttemptId; }[] {
     return Array.from(state.activeCases.values(), function attemptEvidence(active) {
-        return { work: active.workId ?? createDefaultWorkId(active.id), attempt: active.attempt };
+        return { work: active.workId, attempt: active.attempt };
     });
 }
 

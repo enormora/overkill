@@ -1,5 +1,5 @@
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
-import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
+import { workIdentityKey } from '../engine/identity.ts';
 import type { ReporterEvent } from '../engine/reporter.ts';
 import { runStatusFromPlan, type RunResult, type RunnerError, type PerTestResult } from '../engine/run-result.ts';
 import { failedPerformanceBaselineCheck } from '../baselines/performance-check.ts';
@@ -10,7 +10,7 @@ export function baselineRunnerError(error: unknown, event: BaselineCaseEnd | nul
     return {
         attributedTo: event === null ? null : event.case,
         attributedToAttempt: event === null ? null : { index: event.attempt },
-        attributedToWork: event === null ? null : event.workId ?? createDefaultWorkId(event.case),
+        attributedToWork: event === null ? null : event.workId,
         cause: error,
         diagnostics: [],
         message: error instanceof Error ? error.message : String(error),

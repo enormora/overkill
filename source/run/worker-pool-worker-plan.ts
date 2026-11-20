@@ -109,6 +109,11 @@ export function sendCollectedPlan(collectedPlan: CollectedWorkerPoolTestPlan): W
     };
 }
 
+function hasDuplicateWork(work: readonly WorkId[]): boolean {
+    const keys = new Set(work.map(workIdentityKey));
+    return keys.size !== work.length;
+}
+
 export function selectedAssignedWork(
     testPlan: TestPlan,
     assignedWork: AssignedWork,
@@ -117,6 +122,12 @@ export function selectedAssignedWork(
     const casesByIdentity = new Map(testPlan.cases.map(function toCaseEntry(testCase) {
         return [ workIdentityKey(testCase.workId), testCase ];
     }));
+    if (
+        casesByIdentity.size !== testPlan.cases.length ||
+        hasDuplicateWork(assignedWork)
+    ) {
+        throw new Error('Worker-pool catalog or assignment contains duplicate work identities.');
+    }
     const cases = assignedWork.flatMap(function toAssignedCase(work) {
         const matchedCase = casesByIdentity.get(workIdentityKey(work));
 

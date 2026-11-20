@@ -3,9 +3,10 @@ import { type TestScope, suite as authoredSuite, test as authoredTest } from '@o
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import { createBoundaryFailureArtifact, type BoundaryFailure } from '../engine/run-artifact.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { createCollectedPlan } from '../test-support/worker-pool-execution-state.ts';
 import type { RunArtifact, RunResult } from './run-engine-primitives.ts';
 import { runningSupervisedRuntime } from './supervised-run-runtime.test.ts';
-import { handleChildMessage } from './supervised-run-runtime.ts';
+import { handleChildMessage, type SupervisedRunRuntime } from './supervised-run-runtime.ts';
 
 const work = createDefaultWorkId({ file: 'example.test.ts', suite: [], title: 'crashes', params: null });
 const sample = {
@@ -79,18 +80,45 @@ function nativeCompletion(failure: BoundaryFailure): RunResult {
     });
 }
 
+function bindNativeCatalog(scope: TestScope, runtime: SupervisedRunRuntime): void {
+    const plan = createCollectedPlan();
+    const file = plan.files[0];
+    scope.require.defined(file);
+    const testCase = file.cases[0];
+    scope.require.defined(testCase);
+    runtime.collectedPlan.write({
+        ...plan,
+        files: [ {
+            file: 'example.test.ts',
+            cases: [ {
+                ...testCase,
+                workId: work,
+                title: work.case.title,
+                params: null,
+                suitePath: []
+            } ]
+        } ]
+    });
+}
+
+function activeNativeRuntime(scope: TestScope): SupervisedRunRuntime {
+    const runtime = runningSupervisedRuntime();
+    runtime.state.addActiveCase(
+        workIdentityKey(work),
+        { capture: null, id: work.case, workId: work },
+        0,
+        { index: 0 }
+    );
+    bindNativeCatalog(scope, runtime);
+    return runtime;
+}
+
 export const testNode = authoredSuite('supervised native completion evidence', [
     ...failures.map(function nativeFailure(failure) {
         return authoredTest(
             `retains ${failure.kind} completion evidence after active ownership is cleared`,
             function (scope: TestScope) {
-                const runtime = runningSupervisedRuntime();
-                runtime.state.addActiveCase(
-                    workIdentityKey(work),
-                    { capture: null, id: work.case, workId: work },
-                    0,
-                    { index: 0 }
-                );
+                const runtime = activeNativeRuntime(scope);
                 const result = nativeCompletion(failure);
                 runtime.state.removeActiveCase(workIdentityKey(work));
                 handleChildMessage({ kind: 'result', result }, runtime);

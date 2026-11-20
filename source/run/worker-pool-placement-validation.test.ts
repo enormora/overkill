@@ -367,13 +367,28 @@ function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
     };
 }
 
+function placementCatalog(placement: PlacementPlan): WorkerPoolRunRuntime['collectedPlan'] {
+    const plan = createCollectedPlan();
+    const file = plan.files[0];
+    const template = file?.cases[0];
+    if (file === undefined || template === undefined) {
+        throw new Error('Placement fixture requires a collected case.');
+    }
+    const cases = placement.units.flatMap(function unitCases(unit) {
+        return unit.work.map(function workCase(workId) {
+            return { ...template, workId, title: workId.case.title, params: workId.case.params };
+        });
+    });
+    return { ...plan, defined: cases.length, files: [ { ...file, cases } ] };
+}
+
 export function fakeWorkerRuntime(placement: PlacementPlan): WorkerPoolRunRuntime {
     const taskResults: RunResult[] = [];
     const placementTrace = createWorkerPoolPlacementTraceRecorder();
     return {
         attachments: null,
         activeTasks: new Set(),
-        collectedPlan: createCollectedPlan(),
+        collectedPlan: placementCatalog(placement),
         collectionRunnerErrors: [],
         dependencies: fakeDependencies(),
         destroyPool: true,
