@@ -7,10 +7,9 @@ import {
     workIdentityKey,
     type RunExecutionReply
 } from '../run/run.entry-point.ts';
-import { canonicalWork, mutationLifecycleDataSchema } from './mutation-catalog.ts';
+import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
 import { mutationObservationError, type MutationInvocationExpectation } from './mutation-observation.ts';
-import { classifyMutationCase, type MutationCaseClassification } from './mutation-case-classification.ts';
-import { mutationDiagnostics, hasMutationExecutionError } from './mutation-diagnostics.ts';
+import { mutationDiagnostics, hasMutationExecutionError, observeMutationCases } from './mutation-diagnostics.ts';
 import {
     interruptedMutantResult,
     interruptedCompletedMutant,
@@ -21,12 +20,11 @@ import { isInterruptedExecution } from './mutation-timeout.ts';
 type ResultReply = Extract<RunExecutionReply, { readonly kind: 'result'; }>;
 
 function killingResult(
-    root: string,
     reply: ResultReply,
-    classifications: readonly MutationCaseClassification[]
+    failures: Readonly<MutationDiagnostics['caseFailures']>
 ): MutantRunResult {
-    const killedBy = reply.result.perTest.flatMap(function killingIdentity(result, index) {
-        return classifications[index]?.kind === 'killed' ? [ workIdentityKey(canonicalWork(root, result.workId)) ] : [];
+    const kills = failures.filter(function killed(failure) {
+        return failure.kind === 'killed';
     });
     const nrOfTests = reply
         .result
@@ -35,15 +33,17 @@ function killingResult(
             return result.verdict !== 'skip';
         })
         .length;
-    if (killedBy.length === 0) {
+    if (kills.length === 0) {
         return { status: MutantRunStatus.Survived, nrOfTests };
     }
     return {
         status: MutantRunStatus.Killed,
-        killedBy,
-        failureMessage: classifications
-            .flatMap(function killingDiagnostic(classification) {
-                return classification.kind === 'killed' ? [ classification.message ] : [];
+        killedBy: kills.map(function killingIdentity(kill) {
+            return kill.id;
+        }),
+        failureMessage: kills
+            .map(function killingDiagnostic(kill) {
+                return kill.message;
             })
             .join('\n'),
         nrOfTests
@@ -52,10 +52,9 @@ function killingResult(
 
 type MutationDiagnostics = ReturnType<typeof mutationDiagnostics>;
 type CompletedEvidence = {
-    readonly data: ReturnType<typeof mutationLifecycleDataSchema.parse> | null;
+    readonly data: Readonly<ReturnType<typeof mutationLifecycleDataSchema.parse>> | null;
     readonly observation: string | null;
     readonly diagnostics: MutationDiagnostics;
-    readonly classifications: readonly MutationCaseClassification[];
 };
 
 function unconfirmedBail(evidence: CompletedEvidence): string | null {
@@ -95,7 +94,7 @@ function mutationTimedOut(reply: ResultReply, evidence: CompletedEvidence): bool
         });
 }
 
-function completedMutantResult(root: string, reply: ResultReply, evidence: CompletedEvidence): MutantRunResult {
+function completedMutantResult(reply: ResultReply, evidence: CompletedEvidence): MutantRunResult {
     const errorMessage = completedMutationError(evidence);
     if (errorMessage !== null) {
         return { status: MutantRunStatus.Error, errorMessage };
@@ -112,7 +111,42 @@ function completedMutantResult(root: string, reply: ResultReply, evidence: Compl
                 .join('\n')
         };
     }
-    return killingResult(root, reply, evidence.classifications);
+    return killingResult(reply, evidence.diagnostics.caseFailures);
+}
+
+function completedResult(
+    root: string,
+    reply: ResultReply,
+    expectation: Extract<MutationInvocationExpectation, { readonly kind: 'mutant'; }>,
+    data: CompletedEvidence['data']
+): MutantRunResult {
+    const hitLimitCases = new Set(
+        data?.hitLimitExceeded === true
+            ? data
+                .caseFailures
+                .filter(function (failure) {
+                    return failure.kind === 'timeout';
+                })
+                .map(function (failure) {
+                    return failure.id;
+                })
+            : []
+    );
+    const observations = observeMutationCases(
+        root,
+        reply.result.perTest,
+        reply.result.runnerErrors,
+        function hitLimit(id) {
+            return hitLimitCases.has(id);
+        }
+    );
+    return completedMutantResult(reply, {
+        data,
+        observation: data === null
+            ? 'Invalid mutation lifecycle data.'
+            : mutationObservationError(root, reply, expectation, data),
+        diagnostics: mutationDiagnostics(observations, reply.result.runnerErrors)
+    });
 }
 
 function observedMutantResult(
@@ -120,43 +154,18 @@ function observedMutantResult(
     reply: RunExecutionReply,
     expectation: Extract<MutationInvocationExpectation, { readonly kind: 'mutant'; }>
 ): MutantRunResult {
+    const parsed = mutationLifecycleDataSchema.safeParse(reply.data);
     if (reply.kind !== 'result') {
-        return interruptedMutantResult(root, reply, expectation);
+        return interruptedMutantResult(root, reply, expectation, parsed);
     }
-    const collection = hitLimitCollectionReply(reply);
+    const collection = hitLimitCollectionReply(reply, parsed.data ?? null);
     if (collection !== null) {
-        return interruptedMutantResult(root, collection, expectation);
+        return interruptedMutantResult(root, collection, expectation, parsed);
     }
     if (isInterruptedExecution(reply)) {
-        return interruptedCompletedMutant(root, reply, expectation);
+        return interruptedCompletedMutant(root, reply, expectation, parsed);
     }
-    const parsed = mutationLifecycleDataSchema.safeParse(reply.data);
-    const observations = reply.result.perTest.map(function observeCase(result) {
-        const id = workIdentityKey(canonicalWork(root, result.workId));
-        const hitLimitExceeded = parsed.data?.hitLimitExceeded === true &&
-            parsed.data.caseFailures.some(function verifiedTimeout(failure) {
-                return failure.id === id && failure.kind === 'timeout';
-            });
-        return {
-            id,
-            classification: classifyMutationCase(
-                root,
-                result,
-                reply.result.runnerErrors,
-                hitLimitExceeded
-            )
-        };
-    });
-    return completedMutantResult(root, reply, {
-        data: parsed.data ?? null,
-        observation: parsed.success
-            ? mutationObservationError(root, reply, expectation)
-            : 'Invalid mutation lifecycle data.',
-        diagnostics: mutationDiagnostics(observations, reply.result.runnerErrors),
-        classifications: observations.map(function caseClassification(observed) {
-            return observed.classification;
-        })
-    });
+    return completedResult(root, reply, expectation, parsed.data ?? null);
 }
 
 function invalidMutantResult(reply: RunExecutionReply, cause: unknown): MutantRunResult {

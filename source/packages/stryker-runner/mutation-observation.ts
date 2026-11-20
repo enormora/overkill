@@ -2,7 +2,7 @@ import { workIdentityKey, type PerTestResult, type RunExecutionReply } from '../
 import {
     canonicalWork,
     hasRunnableMutationSelection,
-    mutationLifecycleDataSchema,
+    type mutationLifecycleDataSchema,
     sameMutationCatalog,
     type CampaignBaseline,
     type MutationCatalog
@@ -144,9 +144,9 @@ export function mutationSnapshotError(
 export function mutationObservationError(
     root: string,
     reply: ResultReply,
-    expectation: MutationInvocationExpectation
+    expectation: MutationInvocationExpectation,
+    data: LifecycleData
 ): string | null {
-    const data = mutationLifecycleDataSchema.parse(reply.data);
     const allowBail = expectation.kind === 'mutant' && !expectation.disableBail;
     const checks: readonly (readonly [boolean, string])[] = [
         [ expectedCatalog(root, data, expectation), 'Eligible test catalog changed under mutation.' ],

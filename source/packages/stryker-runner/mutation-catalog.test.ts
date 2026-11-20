@@ -10,7 +10,6 @@ import {
     canonicalWork,
     eligibleMutationCatalog,
     exactMutationSelection,
-    mutationCatalog,
     mutationCatalogSchema,
     mutationTestFiles,
     projectFile
@@ -33,13 +32,13 @@ export const testNode = authoredSuite('mutation catalog contract', [
         const id = workIdentityKey(work);
         for (const ids of [ [], [ 'unknown' ], [ id, 'unknown' ], [ id, id ] ]) {
             scope.assert.throws(function invalidSelection() {
-                exactMutationSelection(root, plan, ids);
+                exactMutationSelection(eligibleMutationCatalog(root, plan, null).workById, ids);
             }, { name: 'Error' });
         }
         return scope.assert.collect();
     }),
     test('rejects catalog identities that disagree with their structural work', function (scope) {
-        const catalog = mutationCatalog(root, collectedMutationPlan([ work ]));
+        const { catalog } = eligibleMutationCatalog(root, collectedMutationPlan([ work ]), null);
         scope.assert.equal(
             mutationCatalogSchema
                 .safeParse(catalog.map(function mismatchedIdentity(entry) {
@@ -76,7 +75,7 @@ export const testNode = authoredSuite('mutation catalog contract', [
                 ]
             ) {
                 const plan = collectedMutationPlan([ { ...work, case: { ...work.case, file } } ]);
-                const catalog = eligibleMutationCatalog(sandbox, plan, [ './tests/nested/../a.ts' ]);
+                const { catalog } = eligibleMutationCatalog(sandbox, plan, [ './tests/nested/../a.ts' ]);
                 scope.assert.equal(projectFile(sandbox, file), 'tests/a.ts');
                 scope.assert.deepEqual(
                     catalog.map(function identity(entry) {
@@ -112,13 +111,14 @@ export const testNode = authoredSuite('mutation catalog contract', [
             { ...work, case: { ...work.case, suite: [ 'outer > inner' ] } },
             { ...work, case: { ...work.case, suite: [ 'outer', 'inner' ] } }
         ];
-        const catalog = mutationCatalog(root, collectedMutationPlan(cases));
+        const { catalog } = eligibleMutationCatalog(root, collectedMutationPlan(cases), null);
         const identities = new Set(catalog.map(function identity(entry) {
             return entry.id;
         }));
         scope.assert.equal(identities.size, 2);
         const parameterized = [ null, '', '"one"', '"two"' ].map(function parameterKey(params) {
-            return mutationCatalog(root, collectedMutationPlan([ { ...work, case: { ...work.case, params } } ]))[0]?.id;
+            const plan = collectedMutationPlan([ { ...work, case: { ...work.case, params } } ]);
+            return eligibleMutationCatalog(root, plan, null).catalog[0]?.id;
         });
         const parameterIdentities = new Set(parameterized);
         scope.assert.equal(parameterIdentities.size, 4);
@@ -142,12 +142,12 @@ export const testNode = authoredSuite('mutation catalog contract', [
             };
         });
         const plan = collectedMutationPlan(variants);
-        const catalog = mutationCatalog(root, plan);
+        const { catalog, workById } = eligibleMutationCatalog(root, plan, null);
         scope.assert.equal(catalog.length, 2);
         scope.assert.notEqual(catalog[0]?.id, catalog[1]?.id);
         for (const variant of variants) {
             const id = workIdentityKey(canonicalWork(root, variant));
-            scope.assert.deepEqual(exactMutationSelection(root, plan, [ id ]), {
+            scope.assert.deepEqual(exactMutationSelection(workById, [ id ]), {
                 kind: 'filter',
                 filter: { kind: 'any', filters: [ { kind: 'work-id', id: variant } ] }
             });
@@ -175,8 +175,8 @@ export const testNode = authoredSuite('mutation catalog contract', [
             })
         };
         scope.assert.deepEqual(
-            mutationCatalog(root, collectedMutationPlan([ reordered ])),
-            mutationCatalog(root, collectedMutationPlan([ first ]))
+            eligibleMutationCatalog(root, collectedMutationPlan([ reordered ]), null).catalog,
+            eligibleMutationCatalog(root, collectedMutationPlan([ first ]), null).catalog
         );
         return scope.assert.collect();
     }),
@@ -212,11 +212,15 @@ export const testNode = authoredSuite('mutation catalog contract', [
                 };
             })
         };
-        scope.assert.deepEqual(mutationCatalog(root, moved), mutationCatalog(root, plan));
+        scope.assert.deepEqual(
+            eligibleMutationCatalog(root, moved, null).catalog,
+            eligibleMutationCatalog(root, plan, null).catalog
+        );
         scope.assert.throws(function rejectCanonicalDuplicate() {
-            mutationCatalog(
+            eligibleMutationCatalog(
                 root,
-                collectedMutationPlan([ work, { ...work, case: { ...work.case, file: './tests/a.ts' } } ])
+                collectedMutationPlan([ work, { ...work, case: { ...work.case, file: './tests/a.ts' } } ]),
+                null
             );
         }, { message: 'Mutation catalog must contain unique eligible tests.' });
         return scope.assert.collect();

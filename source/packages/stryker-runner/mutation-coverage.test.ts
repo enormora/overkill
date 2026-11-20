@@ -15,7 +15,7 @@ export const testNode = authoredSuite('mutation coverage delivery', [
             const { reply, baseline } = mutationCoverageFixture(mode);
             const data = mutationLifecycleDataSchema.parse(reply.data);
             const coverage = { ...baseline.coverage, static: { mutant: 4, unloaded: 0 } };
-            const result = dryMutationResult('/project', { ...reply, data: { ...data, coverage } }, mode, {
+            const { result } = dryMutationResult('/project', { ...reply, data: { ...data, coverage } }, mode, {
                 kind: 'dry',
                 baseline: null,
                 testFiles: null
@@ -40,7 +40,7 @@ export const testNode = authoredSuite('mutation coverage delivery', [
             function (scope) {
                 const { reply } = mutationCoverageFixture(mode);
                 const data = mutationLifecycleDataSchema.parse(reply.data);
-                const result = dryMutationResult(
+                const { result } = dryMutationResult(
                     '/project',
                     {
                         ...reply,
@@ -70,6 +70,7 @@ export const testNode = authoredSuite('mutation coverage delivery', [
             };
             scope.assert.equal(
                 dryMutationResult('/project', partial, 'perTest', { kind: 'dry', baseline: null, testFiles: null })
+                    .result
                     .status,
                 'error'
             );
@@ -83,6 +84,7 @@ export const testNode = authoredSuite('mutation coverage delivery', [
                     'perTest',
                     { kind: 'dry', baseline: null, testFiles: null }
                 )
+                    .result
                     .status,
                 'error'
             );
@@ -92,7 +94,7 @@ export const testNode = authoredSuite('mutation coverage delivery', [
     authoredTest('rejects unknown owners rather than allowing Stryker to discard their coverage', function (scope) {
         const { reply } = mutationCoverageFixture('perTest');
         const data = mutationLifecycleDataSchema.parse(reply.data);
-        const result = dryMutationResult(
+        const { result } = dryMutationResult(
             '/project',
             {
                 ...reply,

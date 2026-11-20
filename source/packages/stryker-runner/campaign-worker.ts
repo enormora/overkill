@@ -4,12 +4,13 @@ import { isDeepStrictEqual } from 'node:util';
 import {
     InvocationDeadlineExceededError,
     isInvocationCancellation,
-    normalizeConfig,
     orchestrator,
     runExecutionFailure,
     type RunExecutionSession,
     type FrozenMicrotestPolicy
 } from '../run/run.entry-point.ts';
+import { createStoredValue } from '../../stored-value.ts';
+import { mutationSessionOptions } from './mutation-runner-execution.ts';
 import { initializeMutationPolicy } from './mutation-policy-process.ts';
 import { parseRunnerOptions } from './runner-settings-schema.ts';
 import type { campaignRequestSchema, CampaignResponse } from './campaign-protocol.ts';
@@ -32,18 +33,14 @@ export type CampaignWorker = {
     readonly cancel: () => void;
     readonly dispose: () => Promise<void>;
 };
-function createOwnedExecution(input: Readonly<SessionRequest['session']>): RunExecutionSession {
-    const { outputRenderer } = normalizeConfig({});
-    return orchestrator.createExecutionSession({
-        command: {
-            kind: 'frozen-policy',
-            policy: input.policy,
-            invocation: { seed: { value: BigInt(input.seed) }, selection: { kind: 'all' } },
-            reporting: { outputRenderer, reporters: [] }
-        },
-        lifecycle: input.lifecycle,
-        environment: 'fresh-invocation'
-    });
+type CampaignAuthority = {
+    readonly policy: FrozenMicrotestPolicy;
+    readonly seed: string;
+};
+
+function createOwnedExecution(authority: CampaignAuthority): RunExecutionSession {
+    const { policy, seed } = authority;
+    return orchestrator.createExecutionSession(mutationSessionOptions(policy, seed, 'fresh-invocation'));
 }
 function publishBaseline(
     baselines: Readonly<Map<string, CampaignBaseline>>,
@@ -57,18 +54,6 @@ function publishBaseline(
     baselines.set(root, baseline);
     return { kind: 'accepted' };
 }
-function fetchBaseline(baselines: ReadonlyMap<string, CampaignBaseline>, root: string): CampaignResponse {
-    const baseline = baselines.get(root);
-    return { kind: 'baseline', baseline: baseline ?? null };
-}
-function registeredRoot(roots: ReadonlyMap<'sandbox', string>): string {
-    const sandbox = roots.get('sandbox');
-    if (sandbox === undefined) {
-        throw new Error('Campaign worker must register first.');
-    }
-    return sandbox;
-}
-
 export type CampaignWorkerRuntime = {
     readonly canonicalRoot: (path: string) => Promise<string>;
     readonly identify: () => string;
@@ -81,51 +66,42 @@ type CampaignState = {
 };
 export function createCampaignSession(state: CampaignState, runtime: CampaignWorkerRuntime): CampaignWorker {
     const cancellation = new AbortController();
-    const ownership = {
-        root: new Map<'sandbox', string>(),
-        registering: new Set<'started'>(),
-        session: new Map<'active', RunExecutionSession>(),
-        sessionInput: new Map<'active', SessionRequest['session']>(),
-        authority: new Map<'frozen', FrozenMicrotestPolicy>()
+    const connection = {
+        registrationStarted: createStoredValue(false),
+        sandboxRoot: createStoredValue<string | null>(null),
+        authority: createStoredValue<CampaignAuthority | null>(null),
+        execution: createStoredValue<RunExecutionSession | null>(null),
+        disposal: createStoredValue<Promise<void> | null>(null)
     };
+
+    async function dispose(): Promise<void> {
+        cancellation.abort();
+        const pending = connection.disposal.read() ?? connection.execution.read()?.dispose() ?? Promise.resolve();
+        connection.disposal.write(pending);
+        return pending;
+    }
     async function register(sandbox: string): Promise<CampaignResponse> {
-        if (ownership.registering.has('started')) {
+        if (connection.registrationStarted.read()) {
             throw new Error('Campaign worker is already registered.');
         }
-        ownership.registering.add('started');
+        connection.registrationStarted.write(true);
         const root = await runtime.canonicalRoot(sandbox);
-        ownership.root.set('sandbox', root);
+        connection.sandboxRoot.write(root);
         const campaign = state.campaigns.get(root) ?? runtime.identify();
         state.campaigns.set(root, campaign);
         return { kind: 'registered', campaign };
-    }
-    async function release(): Promise<CampaignResponse> {
-        await ownership.session.get('active')?.dispose();
-        ownership.session.clear();
-        return { kind: 'accepted' };
-    }
-    function validateSession(request: SessionRequest): void {
-        if (request.session.policy.cwd !== registeredRoot(ownership.root)) {
-            throw new Error('Isolated execution does not belong to the registered sandbox.');
-        }
-        if (
-            ownership.session.has('active') && !isDeepStrictEqual(ownership.sessionInput.get('active'), request.session)
-        ) {
-            throw new Error('Campaign execution policy changed.');
-        }
-        if (!isDeepStrictEqual(ownership.authority.get('frozen'), request.session.policy)) {
-            throw new Error('Campaign execution conflicts with its frozen policy authority.');
-        }
     }
     async function invoke(
         request: SessionRequest,
         signal: AbortSignal,
         timeoutMilliseconds: number
     ): Promise<CampaignResponse> {
-        validateSession(request);
-        const execution = ownership.session.get('active') ?? runtime.execution(request.session);
-        ownership.session.set('active', execution);
-        ownership.sessionInput.set('active', request.session);
+        const authority = connection.authority.read();
+        if (authority === null) {
+            throw new Error('Campaign execution requires a frozen policy.');
+        }
+        const execution = connection.execution.read() ?? runtime.execution(authority);
+        connection.execution.write(execution);
         return await execution.run({
             data: request.data,
             timeoutMilliseconds,
@@ -134,27 +110,32 @@ export function createCampaignSession(state: CampaignState, runtime: CampaignWor
     }
     async function freezeRegisteredPolicy(
         request: Extract<WorkerRequest, { readonly kind: 'resolve-policy'; }>,
-        signal: AbortSignal
+        signal: AbortSignal,
+        cwd: string
     ): Promise<CampaignResponse> {
-        const cwd = registeredRoot(ownership.root);
-        if (request.sandbox.root !== cwd || ownership.authority.has('frozen')) {
+        if (request.sandbox.root !== cwd || connection.authority.read() !== null) {
             throw new Error('Campaign policy registration is invalid.');
         }
+        const settings = parseRunnerOptions(request.settings);
         const policy = await runtime.policy({
             cwd,
             sandbox: request.sandbox,
-            settings: parseRunnerOptions(request.settings),
+            settings,
             signal
         });
-        ownership.authority.set('frozen', policy);
+        if (policy.cwd !== cwd) {
+            throw new Error('Isolated execution does not belong to the registered sandbox.');
+        }
+        connection.authority.write({ policy, seed: settings.seed });
         return { kind: 'policy', policy };
     }
     async function resolvePolicy(
         request: Extract<WorkerRequest, { readonly kind: 'resolve-policy'; }>,
-        signal: AbortSignal
+        signal: AbortSignal,
+        cwd: string
     ): Promise<CampaignResponse> {
         try {
-            return await freezeRegisteredPolicy(request, signal);
+            return await freezeRegisteredPolicy(request, signal, cwd);
         } catch (error: unknown) {
             if (signal.reason instanceof InvocationDeadlineExceededError && isInvocationCancellation(error, signal)) {
                 return { kind: 'timeout', artifacts: [], data: null };
@@ -167,22 +148,26 @@ export function createCampaignSession(state: CampaignState, runtime: CampaignWor
         signal: AbortSignal,
         timeoutMilliseconds: number | null
     ): Promise<CampaignResponse> {
-        const sandbox = registeredRoot(ownership.root);
+        const sandboxRoot = connection.sandboxRoot.read();
+        if (sandboxRoot === null) {
+            throw new Error('Campaign worker must register first.');
+        }
         if (request.kind === 'resolve-policy') {
-            return await resolvePolicy(request, signal);
+            return await resolvePolicy(request, signal, sandboxRoot);
         }
         if (request.kind === 'publish') {
-            return publishBaseline(state.baselines, sandbox, request.baseline);
+            return publishBaseline(state.baselines, sandboxRoot, request.baseline);
         }
         if (request.kind === 'fetch') {
-            return fetchBaseline(state.baselines, sandbox);
+            return { kind: 'baseline', baseline: state.baselines.get(sandboxRoot) ?? null };
         }
         return await invoke(request, signal, invocationTimeout(timeoutMilliseconds));
     }
     return {
         async respond(request, signal, timeoutMilliseconds) {
             if (request.kind === 'release') {
-                return await release();
+                await dispose();
+                return { kind: 'accepted' };
             }
             const ownedSignal = AbortSignal.any([ cancellation.signal, signal ]);
             ownedSignal.throwIfAborted();
@@ -193,10 +178,7 @@ export function createCampaignSession(state: CampaignState, runtime: CampaignWor
         cancel() {
             cancellation.abort();
         },
-        async dispose() {
-            cancellation.abort();
-            await ownership.session.get('active')?.dispose();
-        }
+        dispose
     };
 }
 

@@ -7,7 +7,7 @@ import { workIdentityKey, type PerTestResult, type RunExecutionReply } from '../
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { runResultFactory } from '../../test-support/run-result-factory.ts';
 import { dryMutationResult } from './dry-run-results.ts';
-import { mutationLifecycleDataSchema, mutationCatalog } from './mutation-catalog.ts';
+import { mutationLifecycleDataSchema, eligibleMutationCatalog } from './mutation-catalog.ts';
 import { testNode as mutantResultsTestNode } from './mutation-results.test.ts';
 import { testNode as precedenceTestNode } from './mutation-precedence.test.ts';
 
@@ -46,7 +46,8 @@ export const testNode = authoredSuite('structured dry-run results', [
     authoredTest('returns timeouts for valid interrupted lifecycle evidence', function (scope: TestScope) {
         const { reply } = mutationCoverageFixture('off');
         scope.assert.deepEqual(
-            dryMutationResult('/project', { kind: 'timeout', data: reply.data, artifacts: [] }, 'off', expectation),
+            dryMutationResult('/project', { kind: 'timeout', data: reply.data, artifacts: [] }, 'off', expectation)
+                .result,
             { status: DryRunStatus.Timeout, reason: 'Dry run exceeded its deadline.' }
         );
         return scope.assert.collect();
@@ -57,7 +58,7 @@ export const testNode = authoredSuite('structured dry-run results', [
             ...fixture.baseline,
             coverage: { ...fixture.baseline.coverage, static: { baselineOnly: 7 } }
         };
-        const result = dryMutationResult('/project', fixture.reply, 'all', { ...expectation, baseline });
+        const { result } = dryMutationResult('/project', fixture.reply, 'all', { ...expectation, baseline });
         scope.assert.partialDeepEqual<unknown, unknown>(result, {
             status: DryRunStatus.Complete,
             mutantCoverage: { static: { baselineOnly: 7, mutant: 3 }, perTest: {} }
@@ -73,11 +74,12 @@ export const testNode = authoredSuite('structured dry-run results', [
                 outcome: { kind: 'pass' }
             } ]
         });
-        const catalog = mutationCatalog(
+        const { catalog } = eligibleMutationCatalog(
             '/project',
             collectedMutationPlan(result.perTest.map(function (entry) {
                 return entry.workId;
-            }))
+            })),
+            null
         );
         const selected = catalog.map(function (entry) {
             return entry.id;
@@ -97,7 +99,7 @@ export const testNode = authoredSuite('structured dry-run results', [
                 hitLimitExceeded: false
             }
         } as const;
-        const actual = dryMutationResult('/project', reply, 'off', expectation);
+        const actual = dryMutationResult('/project', reply, 'off', expectation).result;
         if (actual.status !== DryRunStatus.Complete) {
             throw new Error('Expected completed dry-run evidence.');
         }
@@ -133,7 +135,7 @@ export const testNode = authoredSuite('structured dry-run results', [
                     ]
                 })
                 .perTest;
-            const result = dryMutationResult(
+            const { result } = dryMutationResult(
                 '/project',
                 {
                     ...reply,
@@ -192,7 +194,7 @@ export const testNode = authoredSuite('structured dry-run results', [
         .map(function ordinaryFailure(outcome) {
             return authoredTest(`reports ${outcome.failures[0].kind} as an individual failure`, function (scope) {
                 const { reply } = mutationCoverageFixture('off');
-                const result = dryMutationResult('/project', withOutcome(reply, outcome), 'off', expectation);
+                const { result } = dryMutationResult('/project', withOutcome(reply, outcome), 'off', expectation);
                 if (result.status !== DryRunStatus.Complete) {
                     throw new Error('Expected an individual failed test.');
                 }
@@ -215,7 +217,7 @@ export const testNode = authoredSuite('structured dry-run results', [
                 }`,
                 function (scope) {
                     const { reply } = mutationCoverageFixture('perTest');
-                    const result = dryMutationResult(
+                    const { result } = dryMutationResult(
                         '/project',
                         {
                             ...withOutcome(reply, { kind: 'fail', failures }),
@@ -251,7 +253,7 @@ export const testNode = authoredSuite('structured dry-run results', [
         if (failed?.outcome?.kind !== 'fail') {
             throw new Error('Missing assertion outcome.');
         }
-        const result = dryMutationResult(
+        const { result } = dryMutationResult(
             '/project',
             withOutcome(reply, {
                 kind: 'fail',
@@ -275,7 +277,7 @@ export const testNode = authoredSuite('structured dry-run results', [
     }),
     authoredTest('rejects unsupported case failures as infrastructure errors', function (scope) {
         const { reply } = mutationCoverageFixture('off');
-        const result = dryMutationResult(
+        const { result } = dryMutationResult(
             '/project',
             withOutcome(reply, {
                 kind: 'fail',
@@ -305,7 +307,7 @@ export const testNode = authoredSuite('structured dry-run results', [
     authoredTest('returns errors for inconclusive and missing outcomes', function (scope) {
         const { reply } = mutationCoverageFixture('off');
         for (const outcome of [ null, { kind: 'inconclusive', reason: 'uncertain sentinel' } ] as const) {
-            const result = dryMutationResult('/project', withOutcome(reply, outcome), 'off', expectation);
+            const { result } = dryMutationResult('/project', withOutcome(reply, outcome), 'off', expectation);
             scope.assert.equal(result.status, DryRunStatus.Error);
         }
         return scope.assert.collect();
@@ -313,7 +315,7 @@ export const testNode = authoredSuite('structured dry-run results', [
     authoredTest('rejects unsupported verdicts even when a failed outcome is available', function (scope) {
         const { reply } = mutationCoverageFixture('off');
         for (const verdict of [ 'crashed', 'inconclusive', 'process-exhausted', 'runtime-policy' ] as const) {
-            const result = dryMutationResult(
+            const { result } = dryMutationResult(
                 '/project',
                 {
                     ...reply,
@@ -343,7 +345,7 @@ export const testNode = authoredSuite('structured dry-run results', [
                 { artifacts: [], kind: 'timeout', data: null }
             ] as const
         ) {
-            const result = dryMutationResult('/project', timedReply, 'perTest', expectation);
+            const { result } = dryMutationResult('/project', timedReply, 'perTest', expectation);
             scope.assert.deepEqual(result, {
                 status: DryRunStatus.Timeout,
                 reason: timedReply.kind === 'timeout'
@@ -362,7 +364,8 @@ export const testNode = authoredSuite('structured dry-run results', [
                 { artifacts: [], kind: 'timeout', data: { ...data, infrastructureErrors: [ 'cleanup sentinel' ] } },
                 'off',
                 expectation
-            ),
+            )
+                .result,
             { status: DryRunStatus.Error, errorMessage: 'cleanup sentinel' }
         );
         scope.assert.deepEqual(
@@ -375,18 +378,24 @@ export const testNode = authoredSuite('structured dry-run results', [
                 },
                 'off',
                 expectation
-            ),
+            )
+                .result,
             { status: DryRunStatus.Error, errorMessage: 'case sentinel' }
         );
         return scope.assert.collect();
     }),
     authoredTest('rejects malformed timeout checkpoints', function (scope) {
-        const result = dryMutationResult('/project', { artifacts: [], kind: 'timeout', data: {} }, 'off', expectation);
+        const { result } = dryMutationResult(
+            '/project',
+            { artifacts: [], kind: 'timeout', data: {} },
+            'off',
+            expectation
+        );
         scope.assert.equal(result.status, DryRunStatus.Error);
         return scope.assert.collect();
     }),
     authoredTest('returns execution failure diagnostics without completing a dry run', function (scope) {
-        const result = dryMutationResult(
+        const { result } = dryMutationResult(
             '/project',
             {
                 artifacts: [],
@@ -412,7 +421,8 @@ export const testNode = authoredSuite('structured dry-run results', [
                 },
                 'off',
                 expectation
-            ),
+            )
+                .result,
             { status: DryRunStatus.Error, errorMessage: 'Dry run failed.' }
         );
         return scope.assert.collect();
@@ -424,7 +434,7 @@ export const testNode = authoredSuite('structured dry-run results', [
             const ids = native.perTest.map(function (result) {
                 return workIdentityKey(result.workId);
             });
-            const result = dryMutationResult(
+            const { result } = dryMutationResult(
                 '/project',
                 {
                     kind: 'result',
