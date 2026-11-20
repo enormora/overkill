@@ -408,7 +408,10 @@ describe('Assertion protocol', function () {
 
     test('requires another matcher field for the base Error constructor', function () {
         class RateLimitError extends Error {
-            public override name = 'RateLimitError';
+            public constructor() {
+                super('Rate limit exceeded.');
+                this.name = 'RateLimitError';
+            }
         }
 
         function throwRateLimit(): never {
