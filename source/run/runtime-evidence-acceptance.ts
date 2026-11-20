@@ -1,9 +1,8 @@
 import { isDeepStrictEqual } from 'node:util';
 import type { ReporterEvent } from '../engine/reporter.ts';
-import { caseIdentityKey, workIdentityKey } from '../engine/identity.ts';
+import { caseIdentityKey, workIdentityKey, type AttemptId } from '../engine/identity.ts';
 import { artifactsForAttempt } from '../engine/run-artifact.ts';
 import type { PerTestResult } from '../engine/run-result.ts';
-import type { AttemptId } from '../engine/identity.ts';
 
 type SelectedWork = { readonly id: PerTestResult['id']; };
 type ActiveAttempt = { readonly attempt: AttemptId; };
@@ -78,9 +77,6 @@ function assertResultIdentity(
 
 function assertMatchingCompletion(result: PerTestResult, accepted: PerTestResult | undefined): void {
     if (accepted === undefined) {
-        if (result.verdict === 'pass' || result.verdict === 'fail' || result.verdict === 'skip') {
-            throw new TypeError('Runtime result is missing final completion evidence.');
-        }
         return;
     }
     if (!isDeepStrictEqual(accepted.attempts, result.attempts) || accepted.verdict !== result.verdict ||

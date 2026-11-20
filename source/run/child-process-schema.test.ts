@@ -100,7 +100,7 @@ export const testNode = suite('child process payload schemas', [
         const workId = { case: caseId, runtimes: [], workload: { name: 'large', params: {} },
             familyVariant: { family: 'analysis', key: 'compiler-a' } };
         const event = { attempt: 0, case: caseId, workId, definitionLocations, kind: 'test-start', suitePath: [] };
-        scope.assert.deepEqual(reporterEventSchema.parse(event), JSON.parse(JSON.stringify(event)));
+        scope.assert.deepEqual(reporterEventSchema.parse(event), { ...event, case: { ...caseId, suite: [] } });
         scope.assert.false(reporterEventSchema.safeParse({ ...event, attempt: -1 }).success);
         scope.assert.false(reporterEventSchema.safeParse({ ...event, attempt: 0.5 }).success);
         const { familyVariant, ...incomplete } = workId;

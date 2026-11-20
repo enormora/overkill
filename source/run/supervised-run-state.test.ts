@@ -1,3 +1,4 @@
+import type { ReporterEvent } from '../engine/reporter.ts';
 import { type TestScope as OverkillScope, suite, test } from '@overkill-dev/test';
 
 import {
@@ -148,9 +149,9 @@ export const testNode = suite('source/run/supervised-run-state.test.ts', [
         const workId = createDefaultWorkId(id);
         const key = workIdentityKey(workId);
         const selected = new Map([ [ key, { capture: null, id, workId } ] ]);
-        const start = { kind: 'test-start' as const, case: id, workId, attempt: 0,
+        const start: Extract<ReporterEvent, { readonly kind: 'test-start'; }> = { kind: 'test-start', case: id, workId, attempt: 0,
             definitionLocations: [ { kind: 'unknown' as const } ], suitePath: [] };
-        const end = { ...start, kind: 'test-end' as const, completion: 'final' as const,
+        const end: Extract<ReporterEvent, { readonly kind: 'test-end'; }> = { ...start, kind: 'test-end', completion: 'final' as const,
             outcome: { kind: 'pass' as const }, verdict: 'pass' as const, artifacts: [],
             property: null, benchmark: null, durationMicroseconds: 1 };
         applyEvent(start, state, selected, 0);
@@ -172,7 +173,7 @@ export const testNode = suite('source/run/supervised-run-state.test.ts', [
         const { workId, id } = result;
         const key = workIdentityKey(workId);
         const selected = new Map([ [ key, { capture: null, id, workId } ] ]);
-        const start = { kind: 'test-start' as const, case: id, workId, attempt: 0,
+        const start: Extract<ReporterEvent, { readonly kind: 'test-start'; }> = { kind: 'test-start', case: id, workId, attempt: 0,
             definitionLocations: [ { kind: 'unknown' as const } ], suitePath: [] };
         scope.assert.throws(() => state.assertEvent({ ...start, workId: {
             ...workId, familyVariant: { family: 'other', key: 'compiler' }
