@@ -9,17 +9,12 @@ import {
 import { campaignBaselineSchema } from './mutation-catalog.ts';
 import { mutationSandboxSchema } from './mutation-sandbox.ts';
 
-export const campaignProtocolVersion = 1;
+export const campaignProtocolVersion = 2;
 
 const jsonSchema: z.ZodType<JsonValue> = z.json();
 
 export const campaignEndpointSchema = z.strictObject({ port: z.number().int().positive(), token: z.uuid() }).readonly();
 export type CampaignEndpoint = z.output<typeof campaignEndpointSchema>;
-export const campaignSessionSchema = z.strictObject({
-    policy: z.unknown().transform(parseFrozenMicrotestPolicy),
-    seed: z.string().regex(/^(?:0|[1-9]\d*)$/u),
-    lifecycle: z.strictObject({ moduleUrl: z.url(), exportName: z.string().min(1) })
-});
 export const campaignRequestSchema = z.strictObject({
     kind: z.literal('request'),
     version: z.literal(campaignProtocolVersion),
@@ -33,7 +28,6 @@ export const campaignRequestSchema = z.strictObject({
         z.strictObject({ kind: z.literal('fetch') }),
         z.strictObject({
             kind: z.literal('invoke'),
-            session: campaignSessionSchema,
             data: jsonSchema
         }),
         z.strictObject({ kind: z.literal('release') })

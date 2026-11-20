@@ -161,11 +161,6 @@ export const testNode = authoredSuite('campaign worker authority', [
         );
         const request = {
             kind: 'invoke',
-            session: {
-                policy: fixture.policy,
-                seed: '42',
-                lifecycle: { moduleUrl: 'file:///project/lifecycle.ts', exportName: 'create' }
-            },
             data: { value: 1 }
         } as const;
         scope.assert.deepEqual(await fixture.worker.respond(request, signal, 50), {
@@ -175,7 +170,10 @@ export const testNode = authoredSuite('campaign worker authority', [
         });
         await fixture.worker.respond(request, signal, 40);
         await fixture.worker.respond({ kind: 'release' }, signal, null);
-        scope.assert.deepEqual(fixture.calls, [ 'canonicalRoot', 'identify', 'policy', 'execution', 'dispose' ]);
+        scope.assert.deepEqual({ calls: fixture.calls, authorities: fixture.authorities }, {
+            calls: [ 'canonicalRoot', 'identify', 'policy', 'execution', 'dispose' ],
+            authorities: [ { policy: fixture.policy, seed: '42' } ]
+        });
         scope.assert.deepEqual(
             fixture.invocations.map(function (invocation) {
                 return invocation.timeoutMilliseconds;

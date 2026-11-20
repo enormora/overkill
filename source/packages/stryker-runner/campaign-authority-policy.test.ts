@@ -1,62 +1,46 @@
 import { type TestScope, test, suite as authoredSuite } from '@overkill-dev/test';
 
 import { memoryCampaignWorker } from '../../test-support/memory-campaign-worker.ts';
-import type { FrozenMicrotestPolicy } from '../run/run.entry-point.ts';
-import type { CampaignWorker } from './campaign-worker.ts';
+import { campaignProtocolVersion, campaignRequestSchema } from './campaign-protocol.ts';
 
-type CampaignFixture = Awaited<ReturnType<typeof memoryCampaignWorker>>;
-type Invocation = Extract<Parameters<CampaignWorker['respond']>[0], { readonly kind: 'invoke'; }>;
-type InvalidAuthority = 'authority' | 'budget' | 'root' | 'seed';
-const messages = {
-    authority: 'Campaign execution conflicts with its frozen policy authority.',
-    budget: 'Campaign execution requires an invocation budget.',
-    root: 'Isolated execution does not belong to the registered sandbox.',
-    seed: 'Campaign execution policy changed.'
-};
-function invocation(policy: FrozenMicrotestPolicy, seed: string): Invocation {
-    return {
-        kind: 'invoke',
-        session: { policy, seed, lifecycle: { moduleUrl: 'file:///project/lifecycle.ts', exportName: 'create' } },
-        data: null
-    };
-}
-async function registeredCampaign(signal: AbortSignal): Promise<CampaignFixture> {
-    const fixture = await memoryCampaignWorker(null);
-    await fixture.worker.respond({ kind: 'register', root: '/project' }, signal, null);
-    await fixture.worker.respond(
-        { kind: 'resolve-policy', sandbox: fixture.sandbox, settings: { seed: '42' } },
-        signal,
-        null
-    );
-    return fixture;
-}
-function changedInvocation(fixture: CampaignFixture, mode: InvalidAuthority): Invocation {
-    const policies = {
-        authority: { ...fixture.policy, runtimeStateDir: 'other' },
-        budget: fixture.policy,
-        root: { ...fixture.policy, cwd: '/another-project' },
-        seed: fixture.policy
-    };
-    return invocation(policies[mode], mode === 'seed' ? '43' : '42');
-}
-export const testNode = authoredSuite(
-    'campaign invocation admission',
-    ([ 'authority', 'budget', 'root', 'seed' ] as const).map(function invalidSession(mode) {
-        return test(`rejects changed campaign ${mode}`, async function (scope: TestScope) {
-            const fixture = await registeredCampaign(scope.signal);
-            if (mode === 'seed') {
-                await fixture.worker.respond(invocation(fixture.policy, '42'), scope.signal, 1);
-            }
-            await scope.assert.rejects(async function () {
-                await fixture.worker.respond(
-                    changedInvocation(fixture, mode),
-                    scope.signal,
-                    mode === 'budget' ? null : 1
-                );
-            }, { message: messages[mode] });
-            scope.assert.equal(fixture.invocations.length, mode === 'seed' ? 1 : 0);
-            await fixture.worker.dispose();
-            return scope.assert.collect();
+const invocation = { kind: 'invoke', data: null } as const;
+
+export const testNode = authoredSuite('campaign invocation admission', [
+    test('rejects execution settings supplied with an invocation', function (scope: TestScope) {
+        const parsed = campaignRequestSchema.safeParse({
+            kind: 'request',
+            version: campaignProtocolVersion,
+            token: '00000000-0000-4000-8000-000000000000',
+            id: 0,
+            timeoutMilliseconds: 50,
+            request: { ...invocation, session: { seed: '43' } }
         });
+        scope.assert.equal(parsed.success, false);
+        return scope.assert.collect();
+    }),
+    test('requires a frozen policy before running', async function (scope: TestScope) {
+        const { worker, sandbox, invocations } = await memoryCampaignWorker(null);
+        await worker.respond({ kind: 'register', root: sandbox.root }, scope.signal, null);
+        await scope.assert.rejects(async function () {
+            return await worker.respond(invocation, scope.signal, 50);
+        }, { message: 'Campaign execution requires a frozen policy.' });
+        scope.assert.equal(invocations.length, 0);
+        await worker.dispose();
+        return scope.assert.collect();
+    }),
+    test('requires a budget and rejects invocations after release', async function (scope: TestScope) {
+        const { worker, sandbox, invocations } = await memoryCampaignWorker(null);
+        await worker.respond({ kind: 'register', root: sandbox.root }, scope.signal, null);
+        await worker.respond({ kind: 'resolve-policy', sandbox, settings: { seed: '42' } }, scope.signal, null);
+        await scope.assert.rejects(async function () {
+            return await worker.respond(invocation, scope.signal, null);
+        }, { message: 'Campaign execution requires an invocation budget.' });
+        await worker.respond({ kind: 'release' }, scope.signal, null);
+        await scope.assert.rejects(async function () {
+            return await worker.respond(invocation, scope.signal, 50);
+        }, { type: Error });
+        scope.assert.equal(invocations.length, 0);
+        await worker.dispose();
+        return scope.assert.collect();
     })
-);
+]);
