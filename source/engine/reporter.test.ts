@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -91,7 +91,7 @@ const stdoutPrimaryIntent: OutputLineIntent = {
     text: 'primary line'
 };
 
-export const testNode: TestNode = suite('Reporter', [
+export const testNode = suite('Reporter', [
     test('validateReporterSinks() allows managed supplemental standard output sinks', function (scope) {
         validateReporterSinks([
             createFinalReporter('first', [ { kind: 'stdout-managed-supplemental' } ]),

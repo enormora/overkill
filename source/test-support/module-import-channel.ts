@@ -23,7 +23,7 @@ type ModuleImportChannel = {
 };
 const startupStepNanoseconds = 1_000_000n;
 export async function moduleImportChannel(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     input: ImportChannelScenario
 ): Promise<ModuleImportChannel> {
     const sent: string[] = [];
@@ -80,7 +80,7 @@ export async function moduleImportChannel(
             };
         }
     };
-    scope.cleanup(function releaseImportChannel() {
+    cleanup(function releaseImportChannel() {
         socket.destroy();
     });
     const session = await openModuleImportSession(runtime);

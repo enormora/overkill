@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { createCaseId } from '../engine/identity.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
@@ -101,178 +101,166 @@ function countsForResource(testCases: readonly TestPlanCase[], resourceName: str
         });
 }
 
-function assertScenarioCacheIdentities(scope: TestScope): void {
-    const first = scenarioCase('first', 'per-file', 'primary');
-    const second = scenarioCase('second', 'per-file', 'replica');
-
-    scope.assert.deepEqual(countsForResource([ first, second ], 'database'), [ 1, 1 ]);
-    scope.assert.deepEqual(
-        countsForResource([
-            first,
-            scenarioCase('same', 'per-file', 'primary')
-        ], 'database'),
-        [ 2 ]
-    );
-    scope.assert.deepEqual(
-        countsForResource([
-            scenarioCase('routed-first', 'per-file', 'primary', { timing: 'request-routed' }),
-            scenarioCase('routed-second', 'per-file', 'replica', { timing: 'request-routed' })
-        ], 'database'),
-        [ 2 ]
-    );
-    const dependentCases = [
-        scenarioCase('dependent-first', 'per-file', 'primary', {
-            dependent: true,
-            timing: 'request-routed'
-        }),
-        scenarioCase('dependent-second', 'per-file', 'replica', {
-            dependent: true,
-            timing: 'request-routed'
-        })
-    ];
-
-    scope.assert.deepEqual(countsForResource(dependentCases, 'database'), [ 2 ]);
-    scope.assert.deepEqual(countsForResource(dependentCases, 'server'), [ 1, 1 ]);
-    scope.assert.deepEqual(caseResourceBoundaryKeys(first, new Set()), []);
-}
-
 function reorderedCacheNode(node: ResourceCacheIdentityNode): ResourceCacheIdentityNode {
     return { ...node, dependencies: node.dependencies.toReversed(), scenarios: node.scenarios.toReversed() };
 }
 
-function assertCacheIdentityNodes(scope: TestScope): void {
-    const empty: ResourceCacheIdentityNode = { workload: null, dependencies: [], scenarios: [] };
-    const emptyDependency: ResourceCacheIdentityNode = {
-        workload: null,
-        dependencies: [ { key: 'empty', resource: empty } ],
-        scenarios: []
-    };
-    const database = defineResource({
-        name: 'identity-database',
-        scope: 'per-case',
-        requirements: [],
-        scenarios: {
-            database: { default: 'primary', timing: 'acquire', values: [ 'primary', 'replica' ] }
-        },
-        acquire(context) {
-            return context.scenarios.database;
-        },
-        dispose: null
-    });
-    const replica = bindResourceScenarios(database, { database: 'replica' });
-    const server = defineResource({
-        name: 'identity-server',
-        scope: 'per-case',
-        requirements: [],
-        dependencies: { database: replica },
-        acquire(context) {
-            return context.dependencies.database;
-        },
-        dispose: null
-    });
-    const serverNode = resourceDescriptorCacheIdentityNode(server);
-    const routed: ResourceCacheIdentityNode = {
-        workload: null,
-        dependencies: [],
-        scenarios: [ { name: 'database', timing: 'request-routed', value: 'replica' } ]
-    };
-    const ordered: ResourceCacheIdentityNode = {
-        workload: null,
-        dependencies: [
-            { key: 'routed', resource: routed },
-            {
-                key: 'acquired',
-                resource: {
-                    workload: null,
-                    dependencies: [],
-                    scenarios: [ { name: 'database', timing: 'acquire', value: 'primary' } ]
+export const testNode = suite('Resource lifecycle boundaries', [
+    test('ignores unknown resource summaries and deduplicates shared dependencies', (scope: TestScope) => {
+        const source = scenarioCase('case', 'per-run', 'primary');
+        const original = source.resourceAttachments.resourceGraph[0];
+        scope.require.defined(original);
+        const resource = { ...original, dependencies: [ 'missing' ] };
+        const attachments = {
+            ...source.resourceAttachments,
+            resourceGraph: [ resource ],
+            directResources: [ { key: 'one', resourceName: 'database' }, { key: 'two', resourceName: 'database' }, {
+                key: 'absent',
+                resourceName: 'absent'
+            } ]
+        };
+        const testCase = { ...source, resourceAttachments: { ...attachments, runtimeGraphs: [] } };
+        scope.assert.equal(caseResourceBoundaryKeys(testCase, new Set([ 'per-run' ])).length, 1);
+        scope.assert.deepEqual(
+            caseResourceBoundaryKeys(scenarioCase('case', 'unsupported', 'primary'), new Set([ 'per-run' ])),
+            []
+        );
+
+        return scope.assert.collect();
+    }),
+    test('selects the default runtime matrix variant and rejects empty matrices', (scope: TestScope) => {
+        const source = scenarioCase('case', 'per-run', 'primary');
+        const runtime = source.resourceAttachments.runtimeGraphs[0];
+        scope.require.defined(runtime);
+        if (runtime.kind !== 'runtime') {
+            throw new Error('Expected a leaf runtime fixture.');
+        }
+        const matrix = {
+            kind: 'runtime-matrix' as const,
+            resources: [],
+            name: 'api',
+            dimensions: {},
+            requirements: [],
+            variants: [ { id: 'primary', runtime } ]
+        };
+        const testCase = {
+            ...source,
+            workId: { ...source.workId, runtimes: [] },
+            resourceAttachments: { ...source.resourceAttachments, runtimeGraphs: [ matrix ] }
+        };
+        scope.assert.equal(caseResourceBoundaryKeys(testCase, new Set([ 'per-run' ])).length, 1);
+        scope.assert.throws(function () {
+            caseResourceBoundaryKeys({
+                ...testCase,
+                resourceAttachments: { ...testCase.resourceAttachments, runtimeGraphs: [ { ...matrix, variants: [] } ] }
+            }, new Set([ 'per-run' ]));
+        }, { message: 'Runtime matrix "api" has no selected variant.' });
+
+        return scope.assert.collect();
+    }),
+    test('scenario timing controls reusable lifecycle cache identities', (scope) => {
+        const first = scenarioCase('first', 'per-file', 'primary');
+        const second = scenarioCase('second', 'per-file', 'replica');
+
+        scope.assert.deepEqual(countsForResource([ first, second ], 'database'), [ 1, 1 ]);
+        scope.assert.deepEqual(
+            countsForResource([
+                first,
+                scenarioCase('same', 'per-file', 'primary')
+            ], 'database'),
+            [ 2 ]
+        );
+        scope.assert.deepEqual(
+            countsForResource([
+                scenarioCase('routed-first', 'per-file', 'primary', { timing: 'request-routed' }),
+                scenarioCase('routed-second', 'per-file', 'replica', { timing: 'request-routed' })
+            ], 'database'),
+            [ 2 ]
+        );
+        const dependentCases = [
+            scenarioCase('dependent-first', 'per-file', 'primary', {
+                dependent: true,
+                timing: 'request-routed'
+            }),
+            scenarioCase('dependent-second', 'per-file', 'replica', {
+                dependent: true,
+                timing: 'request-routed'
+            })
+        ];
+
+        scope.assert.deepEqual(countsForResource(dependentCases, 'database'), [ 2 ]);
+        scope.assert.deepEqual(countsForResource(dependentCases, 'server'), [ 1, 1 ]);
+        scope.assert.deepEqual(caseResourceBoundaryKeys(first, new Set()), []);
+
+        return scope.assert.collect();
+    }),
+    test('cache identities omit empty state and traverse resource descriptors', (scope) => {
+        const empty: ResourceCacheIdentityNode = { workload: null, dependencies: [], scenarios: [] };
+        const emptyDependency: ResourceCacheIdentityNode = {
+            workload: null,
+            dependencies: [ { key: 'empty', resource: empty } ],
+            scenarios: []
+        };
+        const database = defineResource({
+            name: 'identity-database',
+            scope: 'per-case',
+            requirements: [],
+            scenarios: {
+                database: { default: 'primary', timing: 'acquire', values: [ 'primary', 'replica' ] }
+            },
+            acquire(context) {
+                return context.scenarios.database;
+            },
+            dispose: null
+        });
+        const replica = bindResourceScenarios(database, { database: 'replica' });
+        const server = defineResource({
+            name: 'identity-server',
+            scope: 'per-case',
+            requirements: [],
+            dependencies: { database: replica },
+            acquire(context) {
+                return context.dependencies.database;
+            },
+            dispose: null
+        });
+        const serverNode = resourceDescriptorCacheIdentityNode(server);
+        const routed: ResourceCacheIdentityNode = {
+            workload: null,
+            dependencies: [],
+            scenarios: [ { name: 'database', timing: 'request-routed', value: 'replica' } ]
+        };
+        const ordered: ResourceCacheIdentityNode = {
+            workload: null,
+            dependencies: [
+                { key: 'routed', resource: routed },
+                {
+                    key: 'acquired',
+                    resource: {
+                        workload: null,
+                        dependencies: [],
+                        scenarios: [ { name: 'database', timing: 'acquire', value: 'primary' } ]
+                    }
                 }
-            }
-        ],
-        scenarios: [
-            { name: 'second', timing: 'acquire', value: 'second' },
-            { name: 'first', timing: 'acquire', value: 'first' }
-        ]
-    };
-    const defaultedNode = resourceDescriptorCacheIdentityNode(bindResourceScenarios(database, {}));
+            ],
+            scenarios: [
+                { name: 'second', timing: 'acquire', value: 'second' },
+                { name: 'first', timing: 'acquire', value: 'first' }
+            ]
+        };
+        const defaultedNode = resourceDescriptorCacheIdentityNode(bindResourceScenarios(database, {}));
 
-    scope.assert.deepEqual([
-        resourceAcquisitionCacheIdentity(empty),
-        resourceHandleCacheIdentity(empty),
-        resourceAcquisitionCacheIdentity(emptyDependency),
-        resourceAcquisitionCacheIdentity(serverNode).includes('replica'),
-        resourceHandleCacheIdentity(serverNode).includes('replica'),
-        resourceAcquisitionCacheIdentity(defaultedNode).includes('primary'),
-        resourceAcquisitionCacheIdentity(routed),
-        resourceHandleCacheIdentity(routed).includes('replica'),
-        resourceHandleCacheIdentity(ordered) === resourceHandleCacheIdentity(reorderedCacheNode(ordered))
-    ], [ '', '', '', true, true, true, '', true, true ]);
-}
-
-function assertIncompleteResourceGraphs(scope: TestScope): void {
-    const source = scenarioCase('case', 'per-run', 'primary');
-    const original = source.resourceAttachments.resourceGraph[0];
-    scope.require.defined(original);
-    const resource = { ...original, dependencies: [ 'missing' ] };
-    const attachments = {
-        ...source.resourceAttachments,
-        resourceGraph: [ resource ],
-        directResources: [ { key: 'one', resourceName: 'database' }, { key: 'two', resourceName: 'database' }, {
-            key: 'absent',
-            resourceName: 'absent'
-        } ]
-    };
-    const testCase = { ...source, resourceAttachments: { ...attachments, runtimeGraphs: [] } };
-    scope.assert.equal(caseResourceBoundaryKeys(testCase, new Set([ 'per-run' ])).length, 1);
-    scope.assert.deepEqual(
-        caseResourceBoundaryKeys(scenarioCase('case', 'unsupported', 'primary'), new Set([ 'per-run' ])),
-        []
-    );
-}
-function assertDefaultMatrixSelection(scope: TestScope): void {
-    const source = scenarioCase('case', 'per-run', 'primary');
-    const runtime = source.resourceAttachments.runtimeGraphs[0];
-    scope.require.defined(runtime);
-    if (runtime.kind !== 'runtime') {
-        throw new Error('Expected a leaf runtime fixture.');
-    }
-    const matrix = {
-        kind: 'runtime-matrix' as const,
-        resources: [],
-        name: 'api',
-        dimensions: {},
-        requirements: [],
-        variants: [ { id: 'primary', runtime } ]
-    };
-    const testCase = {
-        ...source,
-        workId: { ...source.workId, runtimes: [] },
-        resourceAttachments: { ...source.resourceAttachments, runtimeGraphs: [ matrix ] }
-    };
-    scope.assert.equal(caseResourceBoundaryKeys(testCase, new Set([ 'per-run' ])).length, 1);
-    scope.assert.throws(function () {
-        caseResourceBoundaryKeys({
-            ...testCase,
-            resourceAttachments: { ...testCase.resourceAttachments, runtimeGraphs: [ { ...matrix, variants: [] } ] }
-        }, new Set([ 'per-run' ]));
-    }, { message: 'Runtime matrix "api" has no selected variant.' });
-}
-export const testNode: TestNode = suite('Resource lifecycle boundaries', [
-    test('ignores unknown resource summaries and deduplicates shared dependencies', function (scope) {
-        assertIncompleteResourceGraphs(scope);
-        return scope.assert.collect();
-    }),
-    test('selects the default runtime matrix variant and rejects empty matrices', function (scope) {
-        assertDefaultMatrixSelection(scope);
-        return scope.assert.collect();
-    }),
-    test('scenario timing controls reusable lifecycle cache identities', function (scope) {
-        assertScenarioCacheIdentities(scope);
-
-        return scope.assert.collect();
-    }),
-    test('cache identities omit empty state and traverse resource descriptors', function (scope) {
-        assertCacheIdentityNodes(scope);
+        scope.assert.deepEqual([
+            resourceAcquisitionCacheIdentity(empty),
+            resourceHandleCacheIdentity(empty),
+            resourceAcquisitionCacheIdentity(emptyDependency),
+            resourceAcquisitionCacheIdentity(serverNode).includes('replica'),
+            resourceHandleCacheIdentity(serverNode).includes('replica'),
+            resourceAcquisitionCacheIdentity(defaultedNode).includes('primary'),
+            resourceAcquisitionCacheIdentity(routed),
+            resourceHandleCacheIdentity(routed).includes('replica'),
+            resourceHandleCacheIdentity(ordered) === resourceHandleCacheIdentity(reorderedCacheNode(ordered))
+        ], [ '', '', '', true, true, true, '', true, true ]);
 
         return scope.assert.collect();
     })

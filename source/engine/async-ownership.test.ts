@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     createAsyncControlState,
@@ -16,7 +16,7 @@ async function settleRecords(state: AsyncControlState): Promise<void> {
         })
     );
 }
-export const testNode: TestNode = suite('asynchronous task ownership', [
+export const testNode = suite('asynchronous task ownership', [
     test('runs registered cleanups once in reverse registration order', async function (scope) {
         const state = createAsyncControlState();
         const calls: number[] = [];

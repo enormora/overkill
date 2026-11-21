@@ -1,5 +1,5 @@
 import { AsyncResource } from 'node:async_hooks';
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { observationCase, observationError } from '../test-support/observation-lifetime.ts';
 import { registerExecutionDisposal } from '../execution-ownership.ts';
@@ -15,7 +15,7 @@ async function rejectedObservationValue(operation: Promise<unknown>): Promise<un
     }
 }
 
-export const testNode: TestNode = suite('execution observation lifetime policy', [
+export const testNode = suite('execution observation lifetime policy', [
     test(
         'retains origin attribution for callbacks observed after their attempt closes',
         async function (scope) {

@@ -1,4 +1,5 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import type { ParameterizedTestScope } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import type { RunResult } from '../packages/engine/engine.entry-point.ts';
 
@@ -11,7 +12,7 @@ import { createSupervisedRunCommand } from './run-isolated-command.ts';
 import { runSupervisedCommand } from './supervised-run.ts';
 
 const metadata = { definitionLocations: [ { kind: 'unknown' } ] } as const;
-const file = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const file = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 const profile = defaultMicrotestProfile();
 const command = {
     config: defaultRunConfig(),
@@ -123,38 +124,34 @@ async function executeProtocolPhase(phase: Phase): Promise<RunResult> {
     );
 }
 
-async function assertProtocolOrder(scope: TestScope, phase: Phase): Promise<void> {
-    if (phase === 'before-collection') {
-        await scope.assert.rejects(async function rejectPrematureResult() {
-            return await executeProtocolPhase(phase);
-        }, { message: 'Invalid supervised child IPC lifecycle.' });
-    } else {
-        const completed = await executeProtocolPhase(phase);
-        scope.assert.equal(completed.status, 'failed');
-        const error = completed.runnerErrors[0];
-        scope.require.defined(error);
-        scope.assert.equal(
-            error.subtype,
-            phase === 'collection-error' ? 'loader' : 'runtime-policy'
-        );
-        scope.assert.equal(error.attributedTo, null);
-        if (phase === 'active-attempt') {
-            scope.assert.equal(completed.perTest[0]?.verdict, 'crashed');
-        }
-    }
-}
-
-export const testNode: TestNode = suite('supervised child protocol order', [
+export const testNode = suite('supervised child protocol order', [
     table({
         title: 'validates messages during each protocol phase',
         cases: phases,
         caseTitle(phase) {
             return phase;
         },
-        async test(scope) {
+        async test(scope: ParameterizedTestScope<(typeof phases)[number]>) {
             const phase = scope.parameters;
+            if (phase === 'before-collection') {
+                await scope.assert.rejects(async function rejectPrematureResult() {
+                    return await executeProtocolPhase(phase);
+                }, { message: 'Invalid supervised child IPC lifecycle.' });
+            } else {
+                const protocolOrderCompleted = await executeProtocolPhase(phase);
+                scope.assert.equal(protocolOrderCompleted.status, 'failed');
+                const protocolOrderError = protocolOrderCompleted.runnerErrors[0];
+                scope.require.defined(protocolOrderError);
+                scope.assert.equal(
+                    protocolOrderError.subtype,
+                    phase === 'collection-error' ? 'loader' : 'runtime-policy'
+                );
+                scope.assert.equal(protocolOrderError.attributedTo, null);
+                if (phase === 'active-attempt') {
+                    scope.assert.equal(protocolOrderCompleted.perTest[0]?.verdict, 'crashed');
+                }
+            }
 
-            await assertProtocolOrder(scope, phase);
             return scope.assert.collect();
         }
     }),

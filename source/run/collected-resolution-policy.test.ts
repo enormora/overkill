@@ -1,4 +1,4 @@
-import { type TestNode, table, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { planningInput } from '../test-support/benchmark-plan-input.ts';
@@ -74,7 +74,7 @@ function normalizedCollection(purpose: CollectionResolvedRunInput['benchmarkPurp
         collection: { collectedPlan: planned.collectedPlan, runnerErrors: [] }
     };
 }
-export const testNode: TestNode = suite(
+export const testNode = suite(
     'collected execution resolution policy',
     [
         table({

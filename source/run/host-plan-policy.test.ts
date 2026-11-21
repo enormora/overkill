@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { observationPlan } from '../test-support/observation-lifetime.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -7,7 +7,7 @@ import { definition } from '../test-support/benchmark-placement-fixture.ts';
 import { selectedAssignedCases } from './worker-pool-worker-plan.ts';
 import { calibrationCapturePlan } from './default-run-engine.ts';
 
-export const testNode: TestNode = suite('host execution plan policy', [
+export const testNode = suite('host execution plan policy', [
     test('selects assigned case identities without changing discovered cases', function (scope) {
         const plan = observationPlan();
         const selected = selectedAssignedCases(plan, [ plan.cases[0].id ]);

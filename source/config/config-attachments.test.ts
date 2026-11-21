@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defaultRunRequest, defaultIntegrationProfile, defaultRunConfig } from '../test-support/run-command-factory.ts';
 
@@ -8,7 +8,7 @@ import { integrationProfileSchema, microtestProfileSchema } from './schema.ts';
 import { attachmentLimitsSchema } from './evidence-policy.ts';
 
 const files = { include: [ 'source/**/*.integration.test.ts' ] };
-export const testNode: TestNode = suite('Configuration attachments', [
+export const testNode = suite('Configuration attachments', [
     test('normalized integration profiles reject unbounded attachment limits', function (scope) {
         const profile = {
             ...defaultIntegrationProfile({}),

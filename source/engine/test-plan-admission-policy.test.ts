@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { observationCase } from '../test-support/observation-lifetime.ts';
 
@@ -13,7 +13,7 @@ const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind:
 function unexecutedBody(): never {
     throw new Error('Collection must not execute bodies.');
 }
-export const testNode: TestNode = suite('test plan admission and deferred bodies', [
+export const testNode = suite('test plan admission and deferred bodies', [
     test('reports duplicate sibling titles at the root boundary', function (scope) {
         const engine = createTestEngine();
         const children = [ 'duplicate', 'duplicate' ].map(function node(title) {

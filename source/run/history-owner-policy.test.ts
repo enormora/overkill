@@ -1,10 +1,10 @@
-import { type TestNode, suite, test, testDouble } from '@overkill-dev/test';
+import { suite, test, testDouble } from '@overkill-dev/test';
 
 import { memoryHistoryAccess, idleHistoryScenario } from '../test-support/history-access.ts';
 import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
 import { openHistoryAccess, inspectDetailedRecordState } from './history-state-access.ts';
 
-export const testNode: TestNode = suite('history ownership metadata boundaries', [
+export const testNode = suite('history ownership metadata boundaries', [
     test('rejects missing metadata for a listed run owner', async function (scope) {
         const fixture = await memoryHistoryAccess({
             ...idleHistoryScenario,

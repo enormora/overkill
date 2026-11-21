@@ -1,4 +1,4 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { debugArtifactForWork } from '../test-support/debug-artifact-fixture.ts';
 
@@ -41,9 +41,9 @@ function recordActiveCheckpoint(fixture: SupervisedMessageFixture, artifact: Run
     fixture.runtime.state.recordArtifact(artifact);
 }
 
-export const testNode: TestNode = suite('supervised child message policy', [
+export const testNode = suite('supervised child message policy', [
     test('retains resource observation progress before final results', async function (scope) {
-        const fixture = supervisedMessageRuntime(scope, false, true);
+        const fixture = supervisedMessageRuntime(scope.cleanup, false, true);
         const snapshot: Extract<ReporterEvent, { readonly kind: 'resource-check-progress'; }>['snapshot'] = {
             owner: { run: 'run', id: 'owner', scope: 'per-run' },
             resource: 'service',
@@ -61,7 +61,7 @@ export const testNode: TestNode = suite('supervised child message policy', [
         return scope.assert.collect();
     }),
     test('retains measurement progress for an active child case', async function (scope: TestScope) {
-        const fixture = supervisedMessageRuntime(scope, false, true);
+        const fixture = supervisedMessageRuntime(scope.cleanup, false, true);
         const benchmark = benchmarkHtmlFixture('progress').perTest[0]?.benchmark;
         scope.require.defined(benchmark);
         fixture.receive({
@@ -91,7 +91,7 @@ export const testNode: TestNode = suite('supervised child message policy', [
         return scope.assert.collect();
     }),
     test('ignores process samples after terminal failure', function (scope) {
-        const fixture = supervisedMessageRuntime(scope, false, true);
+        const fixture = supervisedMessageRuntime(scope.cleanup, false, true);
         fixture.runtime.terminalFailure.write(true);
         fixture.receive({
             kind: 'sample',
@@ -112,7 +112,7 @@ export const testNode: TestNode = suite('supervised child message policy', [
         cases: [ false, true ],
         caseTitle: String,
         async test(scope) {
-            const fixture = supervisedMessageRuntime(scope, false, true);
+            const fixture = supervisedMessageRuntime(scope.cleanup, false, true);
             const checkpoint = await debugArtifactForWork(fixture.work);
             const completed = { ...checkpoint, payload: { ...checkpoint.payload, durationMicroseconds: 10 } };
             recordActiveCheckpoint(fixture, checkpoint);
@@ -138,7 +138,7 @@ export const testNode: TestNode = suite('supervised child message policy', [
         }
     }),
     test('ignores session transport updates during ordinary result aggregation', function (scope) {
-        const fixture = supervisedMessageRuntime(scope, false, true);
+        const fixture = supervisedMessageRuntime(scope.cleanup, false, true);
         fixture.receive({ kind: 'execution-data', data: null });
         fixture.receive({ kind: 'execution-checkpoint', data: null });
         scope.assert.equal(fixture.runtime.completedResult.read(), null);
@@ -146,7 +146,7 @@ export const testNode: TestNode = suite('supervised child message policy', [
         return scope.assert.collect();
     }),
     test('retains collection errors alongside the delivered plan', function (scope) {
-        const fixture = supervisedMessageRuntime(scope, false, false);
+        const fixture = supervisedMessageRuntime(scope.cleanup, false, false);
         const errors = runResultFactory.build({ runnerErrors: [ { message: 'Collection failed.' } ] }).runnerErrors;
         fixture.receive({ kind: 'collected', collectedPlan: fixture.plan, runnerErrors: errors });
         scope.assert.equal(fixture.runtime.collectedPlan.read(), fixture.plan);
@@ -162,7 +162,7 @@ export const testNode: TestNode = suite('supervised child message policy', [
 
             const collected = scope.parameters;
 
-            const fixture = supervisedMessageRuntime(scope, true, collected);
+            const fixture = supervisedMessageRuntime(scope.cleanup, true, collected);
             const error = runResultFactory.build({ runnerErrors: [ { message: 'Child failed.' } ] }).runnerErrors[0];
             require.defined(error);
             fixture.receive({ kind: 'event', event: { kind: 'runner-error', error } });
@@ -179,7 +179,7 @@ export const testNode: TestNode = suite('supervised child message policy', [
     test(
         'settles and reports coordinated attachments for legacy case completion events',
         async function (scope: TestScope) {
-            const fixture = supervisedMessageRuntime(scope, false, true);
+            const fixture = supervisedMessageRuntime(scope.cleanup, false, true);
             fixture.receive({
                 kind: 'event',
                 event: {

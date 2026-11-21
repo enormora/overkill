@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { workerTaskRuntime } from '../test-support/worker-task-runtime.ts';
 
@@ -8,7 +8,7 @@ import { runWorkerPoolTask } from './worker-pool-worker.ts';
 function isCollectionOutput(value: unknown): value is WorkerPoolCollection {
     return typeof value === 'object' && value !== null && Object.hasOwn(value, 'collectedPlan');
 }
-export const testNode: TestNode = suite('worker task dispatch and ownership', [
+export const testNode = suite('worker task dispatch and ownership', [
     test('collects and closes the task channel after publishing timing', async function (scope) {
         const fixture = workerTaskRuntime(null, null);
         const result = await runWorkerPoolTask({ ...fixture.task, kind: 'collect' }, fixture.runtime);

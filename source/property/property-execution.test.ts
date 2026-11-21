@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
 import { propertyErrorInputCodec } from '../test-support/property-error-input.ts';
@@ -11,7 +11,7 @@ import { gen } from './generators.ts';
 import { executeProperty } from './property-execution.ts';
 import type { PropertyExecutionResult } from './property-execution-result.ts';
 
-export const testNode: TestNode = suite('property trial execution', [
+export const testNode = suite('property trial execution', [
     test('executes all five phases in order with independent accounting', async function (scope) {
         const observed: number[] = [];
         const captured: PropertyExecutionResult<number>[] = [];

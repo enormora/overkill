@@ -1,4 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     serializeValue,
@@ -16,20 +17,34 @@ function firstPropertyEvidence(result: RunResult): PropertyInvocationEvidence | 
     return result.perTest[0]?.property?.invocations[0] ?? null;
 }
 
-function assertOriginalTarget(scope: TestScope, outcome: TestOutcome | null): void {
-    scope.assert.equal(outcome?.kind, 'fail');
-    if (outcome?.kind !== 'fail') {
-        return;
+const assertOriginalTarget = defineCompositeAssertion({
+    name: 'original target',
+    assert(check, outcome: TestOutcome | null) {
+        const initialChecks = check.equal(outcome?.kind, 'fail');
+        if (outcome?.kind !== 'fail') {
+            return initialChecks;
+        }
+        const failure = outcome.failures[0];
+        const intermediateChecks = check.equal(failure.kind, 'assertion');
+        if (failure.kind === 'assertion') {
+            return check.group([
+                initialChecks,
+                intermediateChecks,
+                check.equal(
+                    failure
+                        .checks
+                        .length,
+                    1
+                ),
+                check.equal(failure.checks[0].summary, 'original target')
+            ]);
+        } else {
+            return check.group([ initialChecks, intermediateChecks ]);
+        }
     }
-    const failure = outcome.failures[0];
-    scope.assert.equal(failure.kind, 'assertion');
-    if (failure.kind === 'assertion') {
-        scope.assert.equal(failure.checks.length, 1);
-        scope.assert.equal(failure.checks[0].summary, 'original target');
-    }
-}
+});
 
-export const testNode: TestNode = suite('first failure shrinking', [
+export const testNode = suite('first failure shrinking', [
     test('distinguishes exception classes with the same error name and throw site', async function (scope) {
         class OriginalFailureError extends Error {
             public constructor(message: string, options: Readonly<ErrorOptions> | undefined) {
@@ -144,7 +159,7 @@ export const testNode: TestNode = suite('first failure shrinking', [
             }),
             propertyExecutionDefaults
         );
-        assertOriginalTarget(scope, result.perTest[0]?.outcome ?? null);
+        scope.assert(assertOriginalTarget, result.perTest[0]?.outcome ?? null);
         scope.assert.equal(
             JSON.stringify(firstPropertyEvidence(result)?.retained?.input),
             JSON.stringify(serializeValue(0))

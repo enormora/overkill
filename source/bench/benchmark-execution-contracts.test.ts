@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 import { executeEngineCase } from '../test-support/create-test-engine.ts';
 
 import { processMeasurement } from '../packages/bench/bench.entry-point.ts';
@@ -43,7 +43,7 @@ function benchmarkCase(): TestPlanCase {
     return createTestPlan(createRoot({ ...metadata, children: [ node ] })).cases[0];
 }
 
-export const testNode: TestNode = suite('benchmark execution contracts', [
+export const testNode = suite('benchmark execution contracts', [
     test('accepts process strategies in serialized benchmark definitions', function (scope) {
         const result = benchmarkDefinitionSchema.safeParse({
             kind: 'startup',

@@ -1,4 +1,4 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { trackRunnerErrorDelivery } from '../engine/reporter-error-delivery-tracking.ts';
 
@@ -12,26 +12,7 @@ import { readCompactHistory } from './history-storage.ts';
 
 type RunResult = Awaited<ReturnType<typeof executeRecordedRun>>;
 
-async function assertPolicy(scope: TestScope, persist: 'always' | 'on-demand', record: boolean): Promise<void> {
-    const fixture = runRecordPolicyFixture(persist, record);
-    const result = await executeRecordedRun(
-        '/project',
-        fixture.input,
-        fixture.dependencies,
-        async function execute(session) {
-            scope.assert.notEqual(session, null);
-            scope.assert.equal(fixture.writes.length, 1);
-            return runResultFactory.build({ status: 'passed' });
-        }
-    );
-    scope.assert.equal(result.status, 'passed');
-    scope.assert.equal(fixture.writes.at(-1)?.detail, persist === 'always' || record ? 'detailed' : 'compact');
-    scope.assert.equal(fixture.writes.length, 2);
-    scope.assert.equal(fixture.writes[0]?.status, 'started');
-    scope.assert.equal(fixture.writes.at(-1)?.status, 'completed');
-}
-
-export const testNode: TestNode = suite('run record policy', [
+export const testNode = suite('run record policy', [
     test('maintenance startup failures remain non-fatal', async function (scope) {
         const fixture = runRecordPolicyFixture('always', false);
         const result = runnerResult(
@@ -78,8 +59,26 @@ export const testNode: TestNode = suite('run record policy', [
         },
         async test(scope) {
             const [ persist, record ] = scope.parameters;
+            const policyFixture = runRecordPolicyFixture(persist, record);
+            const policyResult = await executeRecordedRun(
+                '/project',
+                policyFixture.input,
+                policyFixture.dependencies,
+                async function execute(session) {
+                    scope.assert.notEqual(session, null);
+                    scope.assert.equal(policyFixture.writes.length, 1);
+                    return runResultFactory.build({ status: 'passed' });
+                }
+            );
+            scope.assert.equal(policyResult.status, 'passed');
+            scope.assert.equal(
+                policyFixture.writes.at(-1)?.detail,
+                persist === 'always' || record ? 'detailed' : 'compact'
+            );
+            scope.assert.equal(policyFixture.writes.length, 2);
+            scope.assert.equal(policyFixture.writes[0]?.status, 'started');
+            scope.assert.equal(policyFixture.writes.at(-1)?.status, 'completed');
 
-            await assertPolicy(scope, persist, record);
             return scope.assert.collect();
         }
     }),

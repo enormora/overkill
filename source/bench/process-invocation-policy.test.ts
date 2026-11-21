@@ -1,8 +1,8 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { processInvocation } from '../test-support/process-invocation.ts';
 
-export const testNode: TestNode = suite('process sample invocation ownership', [
+export const testNode = suite('process sample invocation ownership', [
     test('measures exactly one process region and records its observation', async function (scope) {
         const fixture = await processInvocation('pass', scope.signal);
         const result = await fixture.invocation.sample.process(fixture.request);

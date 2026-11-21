@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { DoubleCall } from './double-history-record.ts';
 import { rule } from './double-rule.ts';
@@ -30,7 +30,7 @@ function createRecordedSnapshotLoader(): RecordedSnapshotLoader {
     return { actual, input, loadValue, output };
 }
 
-export const testNode: TestNode = suite('Test double history', [
+export const testNode = suite('Test double history', [
     test('history array snapshots are shallow copies', function (scope: TestScope) {
         const { actual, input, loadValue, output } = createRecordedSnapshotLoader();
         const calls = loadValue.calls as unknown as unknown[];

@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -131,15 +132,15 @@ const ignoreStartOptions: (options: WorkerPoolHostProcessStartOptions) => void =
     return undefined;
 };
 
-function closePoolAfterTest(scope: TestScope, fixture: HostedPoolFixture): void {
-    scope.cleanup(async function closeHostedPool() {
+function closePoolAfterTest(cleanup: TestScope['cleanup'], fixture: HostedPoolFixture): void {
+    cleanup(async function closeHostedPool() {
         await fixture.pool.destroy();
         fixture.child.emitExit();
     });
 }
 
 function createPoolFixture(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     options: WorkerPoolCreationOptions,
     onStart: (options: WorkerPoolHostProcessStartOptions) => void
 ): HostedPoolFixture {
@@ -158,7 +159,7 @@ function createPoolFixture(
             }
         })
     };
-    closePoolAfterTest(scope, fixture);
+    closePoolAfterTest(cleanup, fixture);
     return fixture;
 }
 
@@ -229,31 +230,6 @@ async function startRunTask(fixture: HostedPoolFixture): Promise<RunningTaskFixt
     return { ...fixture, result };
 }
 
-function createForwardingFixture(scope: TestScope): ForwardingFixture {
-    const child = createFakeHostChild();
-    const output: string[] = [];
-    const pool = createHostedWorkerPool({
-        wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),
-        environmentVariables: { NODE_OPTIONS: '--inspect' },
-        options: workerPoolOptions(),
-        startWorkerPoolHost(options) {
-            scope.assert.deepEqual(options.nodeArguments, [ '--expose-gc' ]);
-            scope.assert.equal(options.testFamily, 'integration');
-
-            return child;
-        }
-    });
-    closePoolAfterTest(scope, { child, pool });
-    const port = createFakePort();
-    const controller = new AbortController();
-
-    pool.setHostOutputSink?.(function collectOutput(stream, chunk) {
-        output.push(`${stream}:${Buffer.from(chunk).toString()}`);
-    });
-
-    return { child, controller, output, pool, port, result: runCollectTask(pool, port, controller.signal) };
-}
-
 function emitTaskOutput(
     child: FakeHostChild,
     runTaskCommand: Extract<WorkerPoolHostCommand, { readonly kind: 'run-task'; }>
@@ -283,22 +259,27 @@ function resolveTask(
     });
 }
 
-async function assertForwardingResult(scope: TestScope, fixture: ForwardingFixture): Promise<void> {
-    scope.assert.deepEqual(await fixture.result, { ok: true });
-    scope.assert.deepEqual(fixture.output, [ 'stdout:host stdout', 'stderr:host stderr' ]);
-    scope.assert.deepEqual(fixture.port.messages(), [ {
-        capturedAtMicroseconds: 50,
-        chunk: Buffer.from('task stdout'),
-        kind: 'output',
-        stream: 'stdout'
-    } ]);
-    scope.assert.deepEqual(fixture.child.sentCommands().map(commandKind), [ 'configure', 'run-task', 'abort-task' ]);
-    scope.assert.equal(fixture.pool.options.maxThreads, 2);
-}
+const assertForwardingResult = defineCompositeAssertion({
+    name: 'forwarding result',
+    async assert(check, fixture: ForwardingFixture) {
+        return check.group([
+            check.deepEqual(await fixture.result, { ok: true }),
+            check.deepEqual(fixture.output, [ 'stdout:host stdout', 'stderr:host stderr' ]),
+            check.deepEqual(fixture.port.messages(), [ {
+                capturedAtMicroseconds: 50,
+                chunk: Buffer.from('task stdout'),
+                kind: 'output',
+                stream: 'stdout'
+            } ]),
+            check.deepEqual(fixture.child.sentCommands().map(commandKind), [ 'configure', 'run-task', 'abort-task' ]),
+            check.equal(fixture.pool.options.maxThreads, 2)
+        ]);
+    }
+});
 
-function createTrackingFixture(scope: TestScope): ProcessUsageTrackingFixture {
+function createTrackingFixture(cleanup: TestScope['cleanup']): ProcessUsageTrackingFixture {
     const fixture = createPoolFixture(
-        scope,
+        cleanup,
         workerPoolOptions({ workerLifecycle: 'fresh-worker-per-unit' }),
         ignoreStartOptions
     );
@@ -340,9 +321,9 @@ async function startTrackingWithOneSample(
     await start;
 }
 
-export const testNode: TestNode = suite('Hosted worker pools', [
+export const testNode = suite('Hosted worker pools', [
     test('reports a missing host process usage sample', function (scope: TestScope) {
-        const { pool } = createPoolFixture(scope, workerPoolOptions(), ignoreStartOptions);
+        const { pool } = createPoolFixture(scope.cleanup, workerPoolOptions(), ignoreStartOptions);
         const tracker = pool.createProcessUsageTracker?.({ samplingIntervalMilliseconds: 25 });
 
         scope.require.defined(tracker);
@@ -356,7 +337,7 @@ export const testNode: TestNode = suite('Hosted worker pools', [
     }),
     test('rejects task errors from the child host', async function (scope) {
         const fixture = await startRunTask(createPoolFixture(
-            scope,
+            scope.cleanup,
             workerPoolOptions({ hostProcess: { kind: 'direct' } }),
             function expectDirectHost(options) {
                 scope.assert.deepEqual(options.nodeArguments, []);
@@ -382,20 +363,56 @@ export const testNode: TestNode = suite('Hosted worker pools', [
     test(
         'forwards tasks, output, messages, and aborts',
         async function (scope) {
-            const fixture = createForwardingFixture(scope);
+            const createForwardingFixtureChild = createFakeHostChild();
+            const createForwardingFixtureOutput: string[] = [];
+            const createForwardingFixturePool = createHostedWorkerPool({
+                wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),
+                environmentVariables: { NODE_OPTIONS: '--inspect' },
+                options: workerPoolOptions(),
+                startWorkerPoolHost(options) {
+                    scope.assert.deepEqual(options.nodeArguments, [ '--expose-gc' ]);
+                    scope.assert.equal(options.testFamily, 'integration');
+
+                    return createForwardingFixtureChild;
+                }
+            });
+            closePoolAfterTest(scope.cleanup, {
+                child: createForwardingFixtureChild,
+                pool: createForwardingFixturePool
+            });
+            const createForwardingFixturePort = createFakePort();
+            const createForwardingFixtureController = new AbortController();
+
+            createForwardingFixturePool.setHostOutputSink?.(function collectOutput(stream, chunk) {
+                createForwardingFixtureOutput.push(`${stream}:${Buffer.from(chunk).toString()}`);
+            });
+
+            const fixture = {
+                child: createForwardingFixtureChild,
+                controller: createForwardingFixtureController,
+                output: createForwardingFixtureOutput,
+                pool: createForwardingFixturePool,
+                port: createForwardingFixturePort,
+                result: runCollectTask(
+                    createForwardingFixturePool,
+                    createForwardingFixturePort,
+                    createForwardingFixtureController.signal
+                )
+            };
+
             const runTaskCommand = await waitForRunTaskCommand(fixture.child);
 
             emitTaskOutput(fixture.child, runTaskCommand);
             fixture.controller.abort();
             resolveTask(fixture.child, runTaskCommand);
-            await assertForwardingResult(scope, fixture);
+            await scope.assert(assertForwardingResult, fixture);
             scope.assert.equal(fixture.pool.options.isolateWorkers, false);
 
             return scope.assert.collect();
         }
     ),
     test('exposes host process usage samples', async function (scope) {
-        const fixture = createTrackingFixture(scope);
+        const fixture = createTrackingFixture(scope.cleanup);
         const usage = await collectTwoProcessUsageSamples(fixture);
 
         scope.assert.deepEqual(fixture.observedSamples, [ 10, 20 ]);
@@ -410,7 +427,7 @@ export const testNode: TestNode = suite('Hosted worker pools', [
         return scope.assert.collect();
     }),
     test('rejects pending tasks when the host errors', async function (scope) {
-        const fixture = await startRunTask(createPoolFixture(scope, workerPoolOptions(), ignoreStartOptions));
+        const fixture = await startRunTask(createPoolFixture(scope.cleanup, workerPoolOptions(), ignoreStartOptions));
 
         fixture.child.emitError(new Error('host failed'));
 
@@ -423,7 +440,7 @@ export const testNode: TestNode = suite('Hosted worker pools', [
     test(
         'destroys an active host and ignores idle destroy',
         async function (scope: TestScope) {
-            const fixture = createPoolFixture(scope, workerPoolOptions(), ignoreStartOptions);
+            const fixture = createPoolFixture(scope.cleanup, workerPoolOptions(), ignoreStartOptions);
             const tracker = fixture.pool.createProcessUsageTracker?.({ samplingIntervalMilliseconds: 25 });
 
             scope.require.defined(tracker);

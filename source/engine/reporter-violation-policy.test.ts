@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, testDouble } from '@overkill-dev/test';
+import { table, suite, testDouble } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -8,7 +8,7 @@ import { createReporterDispatcher } from './reporter-dispatcher.ts';
 import { createPlainOutputRenderer } from './reporter-output.ts';
 import { recordReporterConsoleDiagnostic } from './reporter-output-scope.ts';
 
-export const testNode: TestNode = suite(
+export const testNode = suite(
     'reporter output violation classification',
     [ table({
         title: 'rejects undeclared console output',

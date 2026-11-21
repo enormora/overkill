@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 import type { EngineCaseBody } from '../../test-support/create-test-engine.ts';
 
 import { transcriptAssertion } from '../../test-support/transcript-assertion.ts';
@@ -35,7 +35,7 @@ const invalidCases: readonly InvalidTranscriptCase[] = [ {
         scope.assert(transcriptUsage.startsWith, null, [ [ 'state' ] ]);
     }
 } ];
-export const testNode: TestNode = suite('transcript assertion validation', [
+export const testNode = suite('transcript assertion validation', [
     table({
         title: 'reports invalid transcript subjects as assertion failures',
         cases: invalidCases,

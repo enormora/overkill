@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 import { suite as subjectSuite, test as subjectTest } from '../packages/test/test.entry-point.ts';
 
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
@@ -87,7 +87,7 @@ function invalidBindings(): readonly InvalidBinding[] {
         }
     ];
 }
-export const testNode: TestNode = suite('saved case binding', [
+export const testNode = suite('saved case binding', [
     table({
         title: 'rejects invalid replay bindings',
         cases: invalidBindings(),

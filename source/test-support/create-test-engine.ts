@@ -1,3 +1,5 @@
+import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
+import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
 import { createDeterministicClock, type Clock } from '@enormora/clock';
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { createEngine, type Engine } from '../engine/engine.ts';
@@ -6,16 +8,20 @@ import { createReporterDispatcher, type ReporterDispatcher } from '../engine/rep
 import { isTestNode, type TestNode } from '../engine/test-node.ts';
 import type { RunResult } from '../engine/run-result.ts';
 
+export const engineCasePassedChecks = (
+    check: CompositeCheckBuilder<'assert'>,
+    result: RunResult
+): CompositeAssertionReturn<'assert'> => {
+    return check.group([
+        check.equal(result.status, 'passed'),
+        check.equal(result.summary.planned, 1),
+        check.equal(result.summary.passed, 1),
+        check.empty(result.runnerErrors)
+    ]);
+};
 export const engineCasePassed = defineCompositeAssertion({
     name: 'engine case passes',
-    assert(check, result: RunResult) {
-        return check.group([
-            check.equal(result.status, 'passed'),
-            check.equal(result.summary.planned, 1),
-            check.equal(result.summary.passed, 1),
-            check.empty(result.runnerErrors)
-        ]);
-    }
+    assert: engineCasePassedChecks
 });
 
 export type EngineCaseBody = Extract<

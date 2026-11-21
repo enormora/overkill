@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import { defaultFailureArtifactPolicy, type CaseId, type RunResult } from '../packages/engine/engine.entry-point.ts';
@@ -14,7 +14,7 @@ const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { k
 
 type PlacementPlan = NonNullable<WorkerPoolRunRuntime['resolvedRun']['facts']['execution']['placementPlan']>;
 type WorkUnit = PlacementPlan['units'][number];
-export const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+export const integrationPath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 export const testCaseMetadata = {
     ...testMetadata
@@ -433,7 +433,7 @@ function runtimeWithInstanceEngine(): WorkerPoolRunRuntime {
     };
 }
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool placement validation',
     children: [

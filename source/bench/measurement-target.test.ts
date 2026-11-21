@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { canonicalJson } from '../canonical-identity.ts';
 import type { MeasurementEvidence } from '../engine/measurement-evidence.ts';
@@ -36,18 +37,23 @@ function targetWithClock(now: () => number): MeasurementTarget {
         nowMicroseconds: now
     };
 }
-function assertInvocationOrder(scope: TestScope, evidence: MeasurementEvidence): void {
-    scope.assert.deepEqual(
-        evidence.invocations.map(function identity(entry) {
-            return [ entry.invocation.phase, entry.invocation.index, entry.invocation.attempt.index ];
-        }),
-        [ [ 'warmup', 0, 0 ], [ 'measured', 0, 0 ], [ 'measured', 1, 0 ] ]
-    );
-    scope.assert.true(evidence.invocations.every(function sameTarget(entry) {
-        return entry.target.name === 'target' && entry.status === 'complete';
-    }));
-}
-export const testNode: TestNode = suite('measurement targets and attribution', [
+const assertInvocationOrder = defineCompositeAssertion({
+    name: 'invocation order',
+    assert(check, evidence: MeasurementEvidence) {
+        return check.group([
+            check.deepEqual(
+                evidence.invocations.map(function identity(entry) {
+                    return [ entry.invocation.phase, entry.invocation.index, entry.invocation.attempt.index ];
+                }),
+                [ [ 'warmup', 0, 0 ], [ 'measured', 0, 0 ], [ 'measured', 1, 0 ] ]
+            ),
+            check.true(evidence.invocations.every(function sameTarget(entry) {
+                return entry.target.name === 'target' && entry.status === 'complete';
+            }))
+        ]);
+    }
+});
+export const testNode = suite('measurement targets and attribution', [
     test('allocates distinct measurement IDs under microtest policy', function (scope) {
         const executionIds = new Set<string>();
         for (let invocation = 0; invocation < 129; invocation += 1) {
@@ -198,7 +204,7 @@ export const testNode: TestNode = suite('measurement targets and attribution', [
         );
         const evidence = result.perTest[0]?.benchmark?.lifecycle?.measurement;
         scope.require.defined(evidence);
-        assertInvocationOrder(scope, evidence);
+        scope.assert(assertInvocationOrder, evidence);
         return scope.assert.collect();
     }),
     test('rejects unavailable target capabilities before warmup', async function (scope) {

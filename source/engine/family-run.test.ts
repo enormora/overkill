@@ -1,4 +1,5 @@
-import { type TestNode, table, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
@@ -168,50 +169,52 @@ async function prepareAnalysis(
     });
 }
 
-function assertAnalysisResults(
-    scope: TestScope,
-    result: RunResult,
-    workIds: readonly WorkId[],
-    events: readonly ReporterEvent[]
-): void {
-    scope.assert.equal(result.status, 'passed');
-    scope.assert.deepEqual(
-        result.artifacts.map(function variant(artifact) {
-            return artifact.id.familyVariant?.key;
-        }),
-        [ 'one', 'two' ]
-    );
-    scope.assert.deepEqual(
-        result.perTest.map(function work(entry) {
-            return entry.workId;
-        }),
-        workIds
-    );
-    scope.assert.deepEqual(
-        result.perTest.map(function verdict(entry) {
-            return entry.verdict;
-        }),
-        [ 'skip', 'skip', 'pass', 'pass' ]
-    );
-    scope.assert.deepEqual(
-        events.flatMap(function start(event) {
-            return event.kind === 'test-start' && event.case.title === 'check'
-                ? [ event.workId.familyVariant?.key ]
-                : [];
-        }),
-        [ 'one', 'two' ]
-    );
-}
+const assertAnalysisResults = defineCompositeAssertion({
+    name: 'analysis results',
+    assert(check, result: RunResult, workIds: readonly WorkId[], events: readonly ReporterEvent[]) {
+        return check.group([
+            check.equal(result.status, 'passed'),
+            check.deepEqual(
+                result.artifacts.map(function variant(artifact) {
+                    return artifact.id.familyVariant?.key;
+                }),
+                [ 'one', 'two' ]
+            ),
+            check.deepEqual(
+                result.perTest.map(function work(entry) {
+                    return entry.workId;
+                }),
+                workIds
+            ),
+            check.deepEqual(
+                result.perTest.map(function verdict(entry) {
+                    return entry.verdict;
+                }),
+                [ 'skip', 'skip', 'pass', 'pass' ]
+            ),
+            check.deepEqual(
+                events.flatMap(function start(event) {
+                    return event.kind === 'test-start' && event.case.title === 'check'
+                        ? [ event.workId.familyVariant?.key ]
+                        : [];
+                }),
+                [ 'one', 'two' ]
+            )
+        ]);
+    }
+});
 
-async function assertSkippedSelection(scope: TestScope, engine: Engine, prepared: PreparedFamilyRun): Promise<void> {
-    const workIds = prepared.testPlan.cases.flatMap(function skip(testCase) {
-        return testCase.execution.kind === 'skip' ? [ testCase.workId ] : [];
-    });
-    const collected = await prepared.collect({ workIds, signal });
-    const result = await engine.execute(collected, options);
-    scope.assert.equal(result.summary.skipped, 2);
-    scope.assert.equal(collected.facts.collection, null);
-}
+const assertSkippedSelection = defineCompositeAssertion({
+    name: 'skipped selection',
+    async assert(check, engine: Engine, prepared: PreparedFamilyRun) {
+        const workIds = prepared.testPlan.cases.flatMap(function skip(testCase) {
+            return testCase.execution.kind === 'skip' ? [ testCase.workId ] : [];
+        });
+        const collected = await prepared.collect({ workIds, signal });
+        const result = await engine.execute(collected, options);
+        return check.group([ check.equal(result.summary.skipped, 2), check.equal(collected.facts.collection, null) ]);
+    }
+});
 
 function runtimeFamily(): TestFamily<null> {
     return defineTestFamily({
@@ -241,7 +244,7 @@ function runtimeFamily(): TestFamily<null> {
     });
 }
 
-export const testNode: TestNode = suite('engine family runs', [
+export const testNode = suite('engine family runs', [
     test('exposes frozen preparation facts before selection', async function (scope) {
         const engine = createTestEngine();
         const observed: string[] = [];
@@ -271,7 +274,7 @@ export const testNode: TestNode = suite('engine family runs', [
             reporters: [ recordEvents(events.push.bind(events)) ]
         });
         scope.assert.deepEqual(Array.from(observed), [ 'parsed', 'loaded', 'two', 'one', 'disposed' ]);
-        assertAnalysisResults(scope, result, workIds, events);
+        scope.assert(assertAnalysisResults, result, workIds, events);
         return scope.assert.collect();
     }),
     table({
@@ -314,7 +317,7 @@ export const testNode: TestNode = suite('engine family runs', [
         const engine = createTestEngine();
         const observed: string[] = [];
         await using prepared = await prepareAnalysis(engine, observed.push.bind(observed), false);
-        await assertSkippedSelection(scope, engine, prepared);
+        await scope.assert(assertSkippedSelection, engine, prepared);
         scope.assert.deepEqual(observed, [ 'parsed', 'loaded', 'disposed' ]);
         return scope.assert.collect();
     }),

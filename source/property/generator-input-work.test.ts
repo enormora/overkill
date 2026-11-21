@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { Random } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
@@ -39,7 +39,7 @@ function reconstructionWork(): ReconstructionWork {
     };
 }
 
-export const testNode: TestNode = suite('generator reconstruction work', [
+export const testNode = suite('generator reconstruction work', [
     test('bounds reconstruction without corrupting the retained candidate', function (scope: TestScope) {
         const work = reconstructionWork();
         const root = generateInput(

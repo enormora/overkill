@@ -1,8 +1,8 @@
-import { type TestNode, table, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { idleWorkerRuntime, resourceOwnerRuntime } from '../test-support/idle-worker-runtime.ts';
 
-export const testNode: TestNode = suite('idle worker runtime ownership', [
+export const testNode = suite('idle worker runtime ownership', [
     table({
         title: 'isolates per-run resource ownership',
         cases: [ false, true ],

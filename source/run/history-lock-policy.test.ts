@@ -1,9 +1,9 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { historyLockAcquisition, historyLockScenario } from '../test-support/history-lock-acquisition.ts';
 import { withinHistoryMaintenanceBudget, historyMaintenanceDiagnostics } from './history-maintenance-budget.ts';
 
-export const testNode: TestNode = suite('history lock acquisition policy', [
+export const testNode = suite('history lock acquisition policy', [
     test('acquires absent locks and forwards compromise notifications', async function (scope: TestScope) {
         const fixture = historyLockAcquisition(historyLockScenario, 100);
         const release = await fixture.acquire();

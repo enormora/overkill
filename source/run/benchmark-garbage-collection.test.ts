@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { definition } from '../test-support/benchmark-placement-fixture.ts';
 import { defaultBenchmarkLifecyclePolicy } from '../bench/benchmark-lifecycle-policy.ts';
@@ -23,7 +23,7 @@ function selected(
     } ];
 }
 
-export const testNode: TestNode = suite('benchmark GC host policy', [
+export const testNode = suite('benchmark GC host policy', [
     test('preserves existing flags and recognizes GC aliases without duplication', function (scope) {
         for (const flag of [ '--expose-gc', '--expose_gc' ]) {
             const original = { kind: 'child', nodeArguments: [ '--cpu-prof', flag ] } as const;

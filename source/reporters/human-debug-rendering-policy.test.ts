@@ -1,9 +1,9 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { debugArtifactFixture } from '../test-support/debug-artifact-fixture.ts';
 import { formatDebugSummary, contextPrefix } from './human-reporter-rendering.ts';
 
-export const testNode: TestNode = suite('human debug evidence rendering', [
+export const testNode = suite('human debug evidence rendering', [
     table({
         title: 'formats heap growth',
         cases: [ null, 0, 42, -42 ] as const,

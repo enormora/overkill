@@ -1,5 +1,5 @@
 import { AsyncResource } from 'node:async_hooks';
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { evaluateSnapshot, type SnapshotInput } from '../baselines/snapshot-context.ts';
 import { executeSnapshot, storedSnapshot, snapshotWire as wire } from '../test-support/snapshot-fixture.ts';
@@ -17,7 +17,7 @@ const matchingInputs: readonly SnapshotInput[] = [
     })
 ];
 
-export const testNode: TestNode = suite('snapshot comparison and proposals', [
+export const testNode = suite('snapshot comparison and proposals', [
     table({
         title: 'compares matching inputs as one assertion',
         cases: matchingInputs,

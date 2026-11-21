@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createInvocationBudget } from '../run/run.entry-point.ts';
 import {
@@ -10,7 +10,7 @@ import {
 import { attachCampaignClient, connectCampaign } from './campaign-client.ts';
 import { campaignProtocolVersion } from './campaign-protocol.ts';
 
-export const testNode: TestNode = suite('campaign client protocol ownership', [
+export const testNode = suite('campaign client protocol ownership', [
     test('correlates requests and releases an idle connection', async function (scope) {
         const fixture = await memoryCampaignClient();
         const first = fixture.client.request({ kind: 'fetch' }, null);

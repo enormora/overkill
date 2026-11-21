@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import historicalState from './fixtures/property-graph-state-v1.json' with { type: 'json' };
@@ -84,7 +84,7 @@ function expectedGraph(): Record<string, unknown> {
     return Object.assign(expected, { self: expected });
 }
 
-export const testNode: TestNode = suite('property decoder compatibility', [
+export const testNode = suite('property decoder compatibility', [
     test('historical custom reads select exactly one decoder without encoding', async function (scope) {
         const input = await fixture('property-custom-v1');
         const before = JSON.stringify(input);

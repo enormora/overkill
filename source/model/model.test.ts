@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { decodePropertyInput } from '../property/property-graph.ts';
 
@@ -10,9 +10,11 @@ import { executePropertyNode, propertyExecutionDefaults } from '../test-support/
 
 import type { ModelScenarioDefinition } from './model-definition.ts';
 
-function modelWitness(scope: TestScope, result: RunResult): PropertyWitnessFile {
+function modelWitness(result: RunResult): PropertyWitnessFile {
     const witness = result.perTest[0]?.property?.invocations[0]?.confirmedWitness;
-    scope.require.defined(witness);
+    if (witness === undefined || witness === null) {
+        throw new Error('Expected witness to satisfy defined.');
+    }
     return witness;
 }
 
@@ -43,18 +45,7 @@ function counter(): ModelScenarioDefinition<number, number, { readonly value: nu
     };
 }
 
-function assertPristineOperations(scope: TestScope, value: unknown): void {
-    scope.require.array(value);
-    scope.assert.between(value.length, 1, 2);
-    for (const operation of value) {
-        scope.require.object(operation);
-        scope.require.hasProperty(operation, 'value');
-        scope.require.number(operation.value);
-        scope.assert.between(operation.value, 1, 5);
-    }
-}
-
-export const testNode: TestNode = suite('model-based testing', [
+export const testNode = suite('model-based testing', [
     test('reconstruction retains aliases and expires after cleanup', async function (scope) {
         let reconstruct: () => unknown = function () {
             return null;
@@ -143,7 +134,7 @@ export const testNode: TestNode = suite('model-based testing', [
         });
         const result = await executePropertyNode(node, propertyExecutionDefaults);
         scope.assert.equal(result.summary.failed, 1);
-        const witness = modelWitness(scope, result);
+        const witness = modelWitness(result);
         generated = 0;
         const replay = await executePropertyNode(node, { ...propertyExecutionDefaults, replay: witness });
         scope.assert.equal(replay.summary.failed, 1);
@@ -174,7 +165,7 @@ export const testNode: TestNode = suite('model-based testing', [
         scope.assert.equal(created, 0);
         return scope.assert.collect();
     }),
-    test('isolates model expectations from payload mutation', async function (scope) {
+    test('isolates model expectations from payload mutation', async function (scope: TestScope) {
         const result = await executePropertyNode(
             model({
                 title: 'mutating system',
@@ -206,12 +197,22 @@ export const testNode: TestNode = suite('model-based testing', [
             propertyExecutionDefaults
         );
         scope.assert.equal(result.summary.failed, 1);
-        assertPristineOperations(
-            scope,
-            decodePropertyInput(modelWitness(scope, result).counterexample, null, function () {
+        const pristineOperationsValue: unknown = decodePropertyInput(
+            modelWitness(result).counterexample,
+            null,
+            function () {
                 return undefined;
-            })
+            }
         );
+        scope.require.array(pristineOperationsValue);
+        scope.assert.between(pristineOperationsValue.length, 1, 2);
+        for (const pristineOperationsOperation of pristineOperationsValue) {
+            scope.require.object(pristineOperationsOperation);
+            scope.require.hasProperty(pristineOperationsOperation, 'value');
+            scope.require.number(pristineOperationsOperation.value);
+            scope.assert.between(pristineOperationsOperation.value, 1, 5);
+        }
+
         return scope.assert.collect();
     }),
     test('checks terminal empty traces and supports scenario composition', async function (scope) {

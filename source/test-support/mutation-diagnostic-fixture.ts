@@ -1,3 +1,4 @@
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -61,16 +62,16 @@ function capturedDiagnosticReply(reply: ResultReply): ResultReply {
 }
 
 export async function createMutationDiagnosticFixture(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     mode: MutationDiagnosticContext['mode']
 ): Promise<MutationDiagnosticFixture> {
     const directory = await mkdtemp(path.join(tmpdir(), 'overkill-mutation-diagnostics-'));
-    scope.cleanup(async function removeDiagnostics() {
+    cleanup(async function removeDiagnostics() {
         await rm(directory, { recursive: true, force: true });
     });
     const controller = new AbortController();
     const budget = createInvocationBudget(invocationTimeoutMilliseconds, controller.signal, createClock());
-    scope.cleanup(budget.dispose);
+    cleanup(budget.dispose);
     const context: MutationDiagnosticContext = {
         mode,
         directory: path.join(directory, 'mutation'),
@@ -92,36 +93,46 @@ export async function readMutationDiagnosticDocuments(context: MutationDiagnosti
 }
 
 export async function createMutationDiagnosticFailure(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     retainDiagnostics: boolean
 ): Promise<RunExecutionLifecycle> {
-    const evidence = await createMutationEvidenceFixture(scope, retainDiagnostics);
+    const evidence = await createMutationEvidenceFixture(cleanup, retainDiagnostics);
     await evidence.record(evidence.failed, []);
     return evidence.lifecycle;
 }
 
-export function assertMutationDiagnosticDocuments(
-    scope: TestScope,
-    context: MutationDiagnosticContext,
-    documents: readonly string[]
-): void {
-    scope.assert.equal(documents.length, repeatedInvocationCount);
-    for (const document of documents) {
-        scope.assert.includes(document, '"mutant": "../mutant"');
-        scope.assert.includes(document, '"truncated": true');
-        scope.assert.includes(document, `"campaign": "${context.campaign}"`);
-        scope.assert.includes(document, 'first.test.ts');
+export const assertMutationDiagnosticDocuments = defineCompositeAssertion({
+    name: 'mutation diagnostic documents',
+    assert(check, context: MutationDiagnosticContext, documents: readonly string[]) {
+        return check.group([
+            check.equal(documents.length, repeatedInvocationCount),
+            ...documents.map((document) => {
+                return check.group([
+                    check.includes(document, '"mutant": "../mutant"'),
+                    check.includes(document, '"truncated": true'),
+                    check.includes(document, `"campaign": "${context.campaign}"`),
+                    check.includes(document, 'first.test.ts')
+                ]);
+            }),
+            check.notEqual(documents[0], documents[1])
+        ]);
     }
-    scope.assert.notEqual(documents[0], documents[1]);
-}
-export function assertMutationDiagnosticCheckpoint(scope: TestScope, diagnostic: SerializedRunDiagnostics): void {
-    scope.assert.equal(diagnostic.perTest[0]?.outcome?.kind, 'fail');
-    scope.assert.equal(diagnostic.artifacts.length, 1);
-    scope.assert.equal(JSON.stringify(parseSerializedRunDiagnostics(diagnostic)), JSON.stringify(diagnostic));
-}
+});
+export const assertMutationDiagnosticCheckpoint = defineCompositeAssertion({
+    name: 'mutation diagnostic checkpoint',
+    assert(check, diagnostic: SerializedRunDiagnostics) {
+        return check.group([
+            check.equal(diagnostic.perTest[0]?.outcome?.kind, 'fail'),
+            check.equal(diagnostic.artifacts.length, 1),
+            check.equal(JSON.stringify(parseSerializedRunDiagnostics(diagnostic)), JSON.stringify(diagnostic))
+        ]);
+    }
+});
 
-export async function createMutationTranscriptFixture(scope: TestScope): Promise<MutationDiagnosticFixture> {
-    const fixture = await createMutationDiagnosticFixture(scope, 'all');
+export async function createMutationTranscriptFixture(
+    cleanup: TestScope['cleanup']
+): Promise<MutationDiagnosticFixture> {
+    const fixture = await createMutationDiagnosticFixture(cleanup, 'all');
     const context = { ...fixture.context, root: fixture.directory };
     await writeFile(path.join(fixture.directory, 'transcript.bin'), 'recorded transcript');
     const reply: ResultReply = {

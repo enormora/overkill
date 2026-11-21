@@ -1,4 +1,5 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -144,20 +145,24 @@ async function executeHardTimedCase(
     });
 }
 
-function assertHardTimeoutResult(
-    scope: TestScope,
-    executedCase: Awaited<ReturnType<typeof executeCaseBody>>,
-    error: RunnerError | undefined
-): void {
-    scope.require.defined(error);
-    scope.require.defined(error.attributedTo);
+const assertHardTimeoutResult = defineCompositeAssertion({
+    name: 'hard timeout result',
+    assert(check, executedCase: Awaited<ReturnType<typeof executeCaseBody>>, error: RunnerError | undefined) {
+        if (error === undefined || error === null) {
+            return check.defined(error);
+        }
+        if (error.attributedTo === undefined || error.attributedTo === null) {
+            return check.defined(error.attributedTo);
+        }
+        return check.group([
+            check.equal(executedCase.result.verdict, 'crashed'),
+            check.equal(error.subtype, 'crash'),
+            check.equal(error.attributedTo.title, 'hard timeout')
+        ]);
+    }
+});
 
-    scope.assert.equal(executedCase.result.verdict, 'crashed');
-    scope.assert.equal(error.subtype, 'crash');
-    scope.assert.equal(error.attributedTo.title, 'hard timeout');
-}
-
-export const testNode: TestNode = suite('Case timeout supervision', [
+export const testNode = suite('Case timeout supervision', [
     table({
         title: 'retains hard timeout after the soft limit',
         cases: [ { hardTimeoutMilliseconds: 10, timeoutMilliseconds: 100 }, softTimeoutPolicy ],
@@ -177,7 +182,7 @@ export const testNode: TestNode = suite('Case timeout supervision', [
             const executedCase = await execution;
             const [ error ] = supervision.runnerErrors;
 
-            assertHardTimeoutResult(scope, executedCase, error);
+            scope.assert(assertHardTimeoutResult, executedCase, error);
 
             return scope.assert.collect();
         }

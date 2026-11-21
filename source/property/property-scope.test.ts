@@ -1,5 +1,5 @@
 import { once } from 'node:events';
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { requireEngineCompositeReference } from '../test-support/assertion-reference-boundary.ts';
 import { test as subjectTest, suite as subjectSuite } from '../packages/test/test.entry-point.ts';
@@ -12,7 +12,7 @@ import type { PropertyForall, PropertySampleScope } from './property-definition.
 import { property, withProperties } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
-export const testNode: TestNode = suite('property trial scopes', [
+export const testNode = suite('property trial scopes', [
     test('stops at a sample assertion-plan mismatch', async function (scope) {
         const values: number[] = [];
         const node = property({

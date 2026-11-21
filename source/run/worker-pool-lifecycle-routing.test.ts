@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
@@ -22,8 +23,8 @@ type RoutedLifecycles = {
     readonly push: (...workerLifecycle: readonly WorkerLifecycle[]) => number;
 };
 
-const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
-const secondIntegrationPath = 'source/integration-tests/integration/fixtures/delayed-pass.test.ts';
+const integrationPath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
+const secondIntegrationPath = 'source/integration-tests/runtime/fixtures/delayed-pass.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 
@@ -289,59 +290,72 @@ function runOptions(): Parameters<CreatedWorkerPool['run']>[1] {
     };
 }
 
-async function assertRoutedPoolErrors(scope: TestScope, runtime: WorkerPoolRunRuntime): Promise<void> {
-    await scope.assert.rejects(async function runInvalidTask() {
-        await runtime.pool.run(invalidWorkerPoolTask(), runOptions());
-    }, { message: 'Worker-pool received an invalid task.' });
-    await scope.assert.rejects(async function runUnknownLane() {
-        await runtime.pool.run({
-            command: { workerLifecycle: 'unknown' },
-            kind: 'run',
-            lane: 'unknown'
-        }, runOptions());
-    }, { message: 'Worker-pool task has no "unknown" route.' });
-    await scope.assert.rejects(async function collectUnknownLifecycle() {
-        await runtime.pool.run({
-            command: { workerLifecycle: 'unknown' },
-            kind: 'collect'
-        }, runOptions());
-    }, { message: 'Worker-pool task has no "unknown" route.' });
-}
+const assertRoutedPoolErrors = defineCompositeAssertion({
+    name: 'routed pool errors',
+    async assert(check, runtime: WorkerPoolRunRuntime) {
+        return check.group([
+            await check.rejects(async function runInvalidTask() {
+                await runtime.pool.run(invalidWorkerPoolTask(), runOptions());
+            }, { message: 'Worker-pool received an invalid task.' }),
+            await check.rejects(async function runUnknownLane() {
+                await runtime.pool.run({
+                    command: { workerLifecycle: 'unknown' },
+                    kind: 'run',
+                    lane: 'unknown'
+                }, runOptions());
+            }, { message: 'Worker-pool task has no "unknown" route.' }),
+            await check.rejects(async function collectUnknownLifecycle() {
+                await runtime.pool.run({
+                    command: { workerLifecycle: 'unknown' },
+                    kind: 'collect'
+                }, runOptions());
+            }, { message: 'Worker-pool task has no "unknown" route.' })
+        ]);
+    }
+});
 
-async function assertRoutedLifecycleRuns(
-    scope: TestScope,
-    runtime: WorkerPoolRunRuntime,
-    routedLifecycles: readonly WorkerLifecycle[],
-    routedHostOutputSinks: readonly WorkerLifecycle[]
-): Promise<void> {
-    scope.assert.equal(runtime.pool.options.maxThreads, 2);
-    scope.assert.equal(await runtime.pool.run(lifecycleTask('reuse', 'worker-1'), runOptions()), 'reuse');
-    scope.assert.equal(
-        await runtime.pool.run(lifecycleTask('fresh-worker-per-unit', 'worker-2'), runOptions()),
-        'fresh-worker-per-unit'
-    );
-    scope.assert.equal(
-        await runtime.pool.run({ kind: 'collect', command: { workerLifecycle: 'reuse' } }, runOptions()),
-        'reuse'
-    );
-    scope.assert.equal(
-        await runtime.pool.run(
-            { kind: 'collect', command: { workerLifecycle: 'fresh-worker-per-unit' } },
-            runOptions()
-        ),
-        'fresh-worker-per-unit'
-    );
-    runtime.pool.setHostOutputSink?.(null);
-    scope.assert.deepEqual(routedLifecycles, [ 'reuse', 'fresh-worker-per-unit', 'reuse', 'fresh-worker-per-unit' ]);
-    scope.assert.deepEqual(routedHostOutputSinks, [
-        'reuse',
-        'fresh-worker-per-unit',
-        'reuse',
-        'fresh-worker-per-unit'
-    ]);
-}
+const assertRoutedLifecycleRuns = defineCompositeAssertion({
+    name: 'routed lifecycle runs',
+    async assert(
+        check,
+        runtime: WorkerPoolRunRuntime,
+        routedLifecycles: readonly WorkerLifecycle[],
+        routedHostOutputSinks: readonly WorkerLifecycle[]
+    ) {
+        const initialChecks = check.group([
+            check.equal(runtime.pool.options.maxThreads, 2),
+            check.equal(await runtime.pool.run(lifecycleTask('reuse', 'worker-1'), runOptions()), 'reuse'),
+            check.equal(
+                await runtime.pool.run(lifecycleTask('fresh-worker-per-unit', 'worker-2'), runOptions()),
+                'fresh-worker-per-unit'
+            ),
+            check.equal(
+                await runtime.pool.run({ kind: 'collect', command: { workerLifecycle: 'reuse' } }, runOptions()),
+                'reuse'
+            ),
+            check.equal(
+                await runtime.pool.run(
+                    { kind: 'collect', command: { workerLifecycle: 'fresh-worker-per-unit' } },
+                    runOptions()
+                ),
+                'fresh-worker-per-unit'
+            )
+        ]);
+        runtime.pool.setHostOutputSink?.(null);
+        return check.group([
+            initialChecks,
+            check.deepEqual(routedLifecycles, [ 'reuse', 'fresh-worker-per-unit', 'reuse', 'fresh-worker-per-unit' ]),
+            check.deepEqual(routedHostOutputSinks, [
+                'reuse',
+                'fresh-worker-per-unit',
+                'reuse',
+                'fresh-worker-per-unit'
+            ])
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('Worker pool lifecycle routing', [
+export const testNode = suite('Worker pool lifecycle routing', [
     test('worker-pool runtime splits and routes mixed lifecycle pools', async function (scope) {
         const createdWorkerPools: WorkerPoolCreationOptions[] = [];
         const routedLifecycles: WorkerLifecycle[] = [];
@@ -358,7 +372,7 @@ export const testNode: TestNode = suite('Worker pool lifecycle routing', [
             runState: createSupervisedRunState('first-failure-and-final')
         });
 
-        await assertRoutedLifecycleRuns(scope, runtime, routedLifecycles, routedHostOutputSinks);
+        await scope.assert(assertRoutedLifecycleRuns, runtime, routedLifecycles, routedHostOutputSinks);
         scope.assert.deepEqual(createdWorkerPools, [
             {
                 cwd: process.cwd(),
@@ -375,7 +389,7 @@ export const testNode: TestNode = suite('Worker pool lifecycle routing', [
                 workerLifecycle: 'fresh-worker-per-unit'
             }
         ]);
-        await assertRoutedPoolErrors(scope, runtime);
+        await scope.assert(assertRoutedPoolErrors, runtime);
 
         await runtime.pool.destroy();
 

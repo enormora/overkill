@@ -12,7 +12,7 @@ const entryPointFiles = [
 ];
 const testSupportFiles = [ '^source/test-support/', '^source/integration-tests/[^/]+/support/' ];
 const testFiles = [ '\\.(test|type-test)\\.ts$' ];
-const testFixtureFiles = [ '^source/integration-tests/integration/fixtures/' ];
+const testFixtureFiles = [ '^source/integration-tests/runtime/fixtures/' ];
 const excludedFiles = [ '^(\\./)?target/', ...testFixtureFiles ];
 const commandLineLazyModuleBoundaries = [
     '^source/packages/reporter-(dot|line)/',

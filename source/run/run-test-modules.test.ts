@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { TestNode as SubjectTestNode } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -7,11 +7,11 @@ import type { DiscoveredRunFile } from './run-types.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { createRunTestModuleLoader, type RunTestModuleLoader } from './run-test-modules.ts';
 
-const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
-const duplicateFixturePath = 'source/integration-tests/integration/fixtures/duplicate-a.test.ts';
-const missingTestNodeFixturePath = 'source/integration-tests/integration/fixtures/missing-test-node.test.ts';
-const plainTestNodeFixturePath = 'source/integration-tests/integration/fixtures/plain-test-node.test.ts';
-const throwsOnImportFixturePath = 'source/integration-tests/integration/fixtures/throws-on-import.test.ts';
+const passingFixturePath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
+const duplicateFixturePath = 'source/integration-tests/runtime/fixtures/duplicate-a.test.ts';
+const missingTestNodeFixturePath = 'source/integration-tests/runtime/fixtures/missing-test-node.test.ts';
+const plainTestNodeFixturePath = 'source/integration-tests/runtime/fixtures/plain-test-node.test.ts';
+const throwsOnImportFixturePath = 'source/integration-tests/runtime/fixtures/throws-on-import.test.ts';
 
 function discoveredFile(file: string): DiscoveredRunFile {
     return {
@@ -52,7 +52,7 @@ function createVirtualRunTestModuleLoader(modules: Readonly<Record<string, unkno
     });
 }
 
-export const testNode: TestNode = suite('Test module loading', [
+export const testNode = suite('Test module loading', [
     test(
         'imports named testNode exports for the selected engine',
         async function (scope) {

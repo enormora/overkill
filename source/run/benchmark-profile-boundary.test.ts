@@ -1,4 +1,4 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
 import { ConfigError, normalizeConfig, type NormalizedConfig } from '../packages/run/config.entry-point.ts';
@@ -17,7 +17,7 @@ async function rejectUnexpectedInvocation(): Promise<never> {
     throw new Error('Benchmark profiles must be rejected before collection or reporter loading.');
 }
 
-export const testNode: TestNode = suite('benchmark profile command boundaries', [
+export const testNode = suite('benchmark profile command boundaries', [
     test(
         'snapshots mixed profiles without losing retry, work-group or coverage policies',
         function (scope) {
@@ -108,7 +108,7 @@ export const testNode: TestNode = suite('benchmark profile command boundaries', 
                 engine: { kind: 'default' },
                 request: defaultRunRequest({
                     profile: 'benchmark',
-                    paths: [ 'source/integration-tests/integration/fixtures/passing.test.ts' ]
+                    paths: [ 'source/integration-tests/runtime/fixtures/passing.test.ts' ]
                 })
             });
             scope.assert.equal(resolved.facts.execution.testFamily, 'microtest');

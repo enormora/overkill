@@ -1,8 +1,8 @@
-import { table, type TestNode, suite, type TestScope } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import type { TestPlanCase } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
-import { createAsyncLeakMonitor, type AsyncLeakMonitor } from './async-leak-diagnostics.ts';
+import { createAsyncLeakMonitor } from './async-leak-diagnostics.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
@@ -25,28 +25,7 @@ function promiseCase(): TestPlanCase {
         .cases[0];
 }
 
-async function assertPromiseWindows(
-    scope: TestScope,
-    monitor: AsyncLeakMonitor,
-    first: TestPlanCase,
-    next: TestPlanCase
-): Promise<void> {
-    const pending = await monitor.runCase(first, async function createPendingPromise() {
-        return Promise.withResolvers<undefined>();
-    });
-    try {
-        scope.assert.notNull(monitor.casePromiseLeakError(first));
-        await monitor.runCase(next, async function completedAttempt() {
-            return undefined;
-        });
-        scope.assert.equal(monitor.casePromiseLeakError(next), null);
-    } finally {
-        pending.resolve(undefined);
-        monitor.stop();
-    }
-}
-
-export const testNode: TestNode = suite(
+export const testNode = suite(
     'Retry promise attribution',
     [ table({
         title: 'promise leak evidence does not move into a later window',
@@ -63,7 +42,24 @@ export const testNode: TestNode = suite(
                     runtimes: [ { name: 'service', variantId: 'next', dimensions: {}, scenarios: {} } ]
                 }
             };
-            await assertPromiseWindows(scope, createAsyncLeakMonitor(), first, next);
+            const promiseWindowsMonitor = createAsyncLeakMonitor();
+            const promiseWindowsPending = await promiseWindowsMonitor.runCase(
+                first,
+                async function createPendingPromise() {
+                    return Promise.withResolvers<undefined>();
+                }
+            );
+            try {
+                scope.assert.notNull(promiseWindowsMonitor.casePromiseLeakError(first));
+                await promiseWindowsMonitor.runCase(next, async function completedAttempt() {
+                    return undefined;
+                });
+                scope.assert.equal(promiseWindowsMonitor.casePromiseLeakError(next), null);
+            } finally {
+                promiseWindowsPending.resolve(undefined);
+                promiseWindowsMonitor.stop();
+            }
+
             return scope.assert.collect();
         }
     }) ]

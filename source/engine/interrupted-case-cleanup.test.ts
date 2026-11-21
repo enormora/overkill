@@ -1,5 +1,6 @@
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import assert from 'node:assert/strict';
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { createInterruptedCase, type InterruptedCase } from '../test-support/interrupted-case.ts';
@@ -21,7 +22,7 @@ type CleanupState = {
 
 type CleanupProbe = CleanupState & { readonly fixture: InterruptedCase; };
 
-function createCleanupProbe(scope: TestScope): CleanupProbe {
+function createCleanupProbe(cleanup: TestScope['cleanup']): CleanupProbe {
     const events: string[] = [];
     const scopes: Pick<TestScope, 'cleanup' | 'startInFlight'>[] = [];
     const state: CleanupState = {
@@ -52,7 +53,7 @@ function createCleanupProbe(scope: TestScope): CleanupProbe {
         await state.body.promise;
         return testScope.assert.collect();
     }, null);
-    scope.cleanup(fixture.stop);
+    cleanup(fixture.stop);
     return { ...state, fixture };
 }
 
@@ -62,59 +63,61 @@ async function trackedExecution(probe: CleanupProbe): Promise<ConcurrentCase> {
     return result;
 }
 
-async function finishInterruptedCleanup(probe: CleanupProbe, scope: TestScope): Promise<ConcurrentCase> {
-    const running = trackedExecution(probe);
-    probe.fixture.clock.advanceByMilliseconds(10);
-    await probe.started.promise;
-    scope.assert.false(probe.returned.read());
-    scope.assert.deepEqual(Array.from(probe.events), [ 'second' ]);
-    probe.cleanup.resolve(undefined);
-    const result = await running;
-    scope.assert.equal(result.result.verdict, 'crashed');
-    scope.assert.deepEqual(probe.events, [ 'second', 'first' ]);
-    return result;
-}
+const assertClosedRegistration = defineCompositeAssertion({
+    name: 'closed registration',
+    assert(check, probe: CleanupProbe) {
+        const captured = probe.scopes[0];
+        assert.ok(captured !== undefined);
+        return check.group([
+            check.throws(function registerLateCleanup() {
+                captured.cleanup(function lateCleanup() {
+                    probe.recordEvent('late');
+                });
+            }, { message: /cannot be called after test cleanup/ }),
+            check.throws(function startLateWork() {
+                captured.startInFlight(async function lateOperation() {
+                    probe.recordEvent('late operation');
+                });
+            }, { message: /cannot be called after test cleanup/ })
+        ]);
+    }
+});
 
-function assertClosedRegistration(probe: CleanupProbe, scope: TestScope): void {
-    const captured = probe.scopes[0];
-    assert.ok(captured !== undefined);
-    scope.assert.throws(function registerLateCleanup() {
-        captured.cleanup(function lateCleanup() {
-            probe.recordEvent('late');
-        });
-    }, { message: /cannot be called after test cleanup/ });
-    scope.assert.throws(function startLateWork() {
-        captured.startInFlight(async function lateOperation() {
-            probe.recordEvent('late operation');
-        });
-    }, { message: /cannot be called after test cleanup/ });
-}
+const assertCleanupFailures = defineCompositeAssertion({
+    name: 'cleanup failures',
+    assert(check, result: ConcurrentCase) {
+        assert.ok(result.result.outcome?.kind === 'fail');
+        return check.deepEqual(
+            result.result.outcome.failures.map(function cleanupMessage(failure) {
+                assert.ok(failure.kind === 'cleanup-error');
+                return failure.error.message;
+            }),
+            [ 'preparation sentinel', 'cleanup sentinel' ]
+        );
+    }
+});
 
-async function verifyLateBody(probe: CleanupProbe, result: ConcurrentCase, scope: TestScope): Promise<void> {
-    const snapshot = structuredClone(result);
-    probe.body.resolve(undefined);
-    await scope.yieldToNextTurn();
-    scope.assert.deepEqual(probe.events, [ 'second', 'first' ]);
-    scope.assert.deepEqual(result, snapshot);
-    assertClosedRegistration(probe, scope);
-}
-
-function assertCleanupFailures(result: ConcurrentCase, scope: TestScope): void {
-    assert.ok(result.result.outcome?.kind === 'fail');
-    scope.assert.deepEqual(
-        result.result.outcome.failures.map(function cleanupMessage(failure) {
-            assert.ok(failure.kind === 'cleanup-error');
-            return failure.error.message;
-        }),
-        [ 'preparation sentinel', 'cleanup sentinel' ]
-    );
-}
-
-export const testNode: TestNode = suite('interrupted case cleanup', [
+export const testNode = suite('interrupted case cleanup', [
     test('awaits reverse cleanup before returning while the body remains pending', async function (scope) {
-        const probe = createCleanupProbe(scope);
-        const result = await finishInterruptedCleanup(probe, scope);
-        await verifyLateBody(probe, result, scope);
+        const probe = createCleanupProbe(scope.cleanup);
+
+        const finishInterruptedCleanupRunning = trackedExecution(probe);
+        probe.fixture.clock.advanceByMilliseconds(10);
+        await probe.started.promise;
+        scope.assert.false(probe.returned.read());
+        scope.assert.deepEqual(Array.from(probe.events), [ 'second' ]);
+        probe.cleanup.resolve(undefined);
+        const finishInterruptedCleanupResult = await finishInterruptedCleanupRunning;
+        scope.assert.equal(finishInterruptedCleanupResult.result.verdict, 'crashed');
+        scope.assert.deepEqual(probe.events, [ 'second', 'first' ]);
+        const result = finishInterruptedCleanupResult;
+        const verifyLateBodySnapshot = structuredClone(result);
+        probe.body.resolve(undefined);
+        await scope.yieldToNextTurn();
+        scope.assert.deepEqual(probe.events, [ 'second', 'first' ]);
+        scope.assert.deepEqual(result, verifyLateBodySnapshot);
+        scope.assert(assertClosedRegistration, probe);
+
         return scope.assert.collect();
     }),
     table({
@@ -163,7 +166,7 @@ export const testNode: TestNode = suite('interrupted case cleanup', [
         scope.cleanup(fixture.stop);
         const running = fixture.run();
         fixture.clock.advanceByMilliseconds(10);
-        assertCleanupFailures(await running, scope);
+        scope.assert(assertCleanupFailures, await running);
         state.gate.resolve(undefined);
         return scope.assert.collect();
     }),

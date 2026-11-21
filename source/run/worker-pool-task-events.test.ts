@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     isTestDebugArtifact,
@@ -28,7 +28,7 @@ type RunLevelPermissionFailure = {
     readonly terminalFailure: boolean;
 };
 
-const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const integrationPath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 const testCaseMetadata = {
     annotations: {},
     controls: {},
@@ -267,7 +267,7 @@ async function workerCheckpointCompletion(hasCompletedArtifact: boolean): Promis
     };
 }
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool task events',
     children: [

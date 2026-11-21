@@ -1,8 +1,8 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { retentionCatalog, retentionCatalogScenario } from '../test-support/retention-catalog.ts';
 
-export const testNode: TestNode = suite('history retention catalog reconstruction', [
+export const testNode = suite('history retention catalog reconstruction', [
     test(
         'reconstructs committed record metadata and retains indexed artifact ownership',
         async function (scope) {

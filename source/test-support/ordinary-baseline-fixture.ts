@@ -12,7 +12,7 @@ import { createOrdinaryBaselineStore, type OrdinaryBaselineStore } from '../run/
 import type { OrdinaryBaselineEntry } from '../run/baseline-record.ts';
 import { defaultRunRequest } from './run-command-factory.ts';
 
-export const ordinaryBaselineFixtureFile = 'source/integration-tests/integration/fixtures/ordinary-baselines.test.ts';
+export const ordinaryBaselineFixtureFile = 'source/integration-tests/runtime/fixtures/ordinary-baselines.test.ts';
 type ObservationProposal = { readonly actual: number; };
 type ObservationComparison = { readonly actual: number; readonly expected: number; };
 type Execution = 'in-process' | 'supervised-process' | 'worker-pool';
@@ -140,13 +140,13 @@ export async function ordinaryBaselineProject(
 }
 
 export async function createOrdinaryBaselineFixture(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     execution: Execution,
     payloadKind: 'binary' | 'text'
 ): Promise<OrdinaryBaselineFixture> {
     await mkdir('target', { recursive: true });
     const directory = await mkdtemp('target/ordinary-baselines-');
-    scope.cleanup(async function () {
+    cleanup(async function () {
         await rm(directory, { recursive: true, force: true });
     });
     return await ordinaryBaselineProject(directory, execution, payloadKind);

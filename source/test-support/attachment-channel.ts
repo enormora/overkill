@@ -18,7 +18,7 @@ export type AttachmentChannel = {
     readonly reply: (value: AttachmentReply) => void;
     readonly deliver: (line: string) => void;
 };
-export function attachmentChannel(scope: TestScope): AttachmentChannel {
+export function attachmentChannel(cleanup: TestScope['cleanup']): AttachmentChannel {
     const sent: unknown[] = [];
     const references = { retained: 0, released: 0 };
     const socket = Object.assign(
@@ -50,7 +50,7 @@ export function attachmentChannel(scope: TestScope): AttachmentChannel {
         limits: defaultAttachmentLimits
     };
     const connection = attachAttachmentConnection(endpoint, socket);
-    scope.cleanup(async function releaseChannel() {
+    cleanup(async function releaseChannel() {
         socket.destroy();
         await Promise.resolve();
     });

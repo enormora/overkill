@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { NormalizedConfig, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
 
@@ -23,8 +23,8 @@ type ReporterLifecycleRecorder = {
     readonly reporter: DefinedReporter;
 };
 
-const throwsOnImportFixturePath = 'source/integration-tests/integration/fixtures/throws-on-import.test.ts';
-const emptySuiteFixturePath = 'source/integration-tests/integration/fixtures/empty-suite.test.ts';
+const throwsOnImportFixturePath = 'source/integration-tests/runtime/fixtures/throws-on-import.test.ts';
+const emptySuiteFixturePath = 'source/integration-tests/runtime/fixtures/empty-suite.test.ts';
 const defaultRequest = defaultRunRequest();
 const supervisedCollectionConfig = defaultRunConfig({
     profiles: {
@@ -117,7 +117,7 @@ function createFakeDependencies(
     } as unknown as RunOrchestratorDependencies;
 }
 
-export const testNode: TestNode = suite('Run collection error reporting', [
+export const testNode = suite('Run collection error reporting', [
     test('orchestrator.run() returns collection failures as runner errors', async function (scope) {
         const runOrchestrator = createUnitRunOrchestrator();
         const importFailureResult = await runOrchestrator.run(createRunCommand({

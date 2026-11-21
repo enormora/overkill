@@ -1,22 +1,28 @@
+import { consumerEnvironment } from './support/consumer-environment.ts';
 import { execFile } from 'node:child_process';
-import { type TestNode, suite, test } from '#tests';
+import { suite } from '@overkill-dev/test';
+import { packageConsumer } from './support/package-consumer.ts';
 
-async function execute(script: string): Promise<string> {
-    return new Promise(function executeConsumer(resolve, reject) {
-        execFile(
-            process.execPath,
-            [ '--input-type=module', '--eval', script ],
-            { cwd: import.meta.dirname },
-            function completed(error, stdout) {
-                if (error === null) {
-                    resolve(stdout);
-                } else {
-                    reject(new Error('Model package consumer failed.', { cause: error }));
+const consumerFacade = packageConsumer('packaged model authoring', function consumerFixture(consumerDirectory) {
+    async function execute(script: string): Promise<string> {
+        return new Promise(function executeConsumer(resolve, reject) {
+            execFile(
+                process.execPath,
+                [ '--input-type=module', '--eval', script ],
+                { env: consumerEnvironment(process.env, consumerDirectory), cwd: consumerDirectory },
+                function completed(error, stdout) {
+                    if (error === null) {
+                        resolve(stdout);
+                    } else {
+                        reject(new Error('Model package consumer failed.', { cause: error }));
+                    }
                 }
-            }
-        );
-    });
-}
+            );
+        });
+    }
+    return { execute };
+});
+const { test } = consumerFacade;
 
 const script = `
 import { model, modelScenario } from '@overkill-dev/model';
@@ -38,8 +44,10 @@ if (node.title !== 'packaged model') throw new Error('Invalid model node');
 console.log('model package loaded');
 `;
 
-export const testNode: TestNode = suite('packaged model authoring', [
+export const testNode = suite('packaged model authoring', [
     test('shares property generators across package copies', async function (scope) {
+        const { execute } = scope.resources.consumer;
+
         const result = await execute(script);
         scope.assert.equal(result.trim(), 'model package loaded');
         return scope.assert.collect();

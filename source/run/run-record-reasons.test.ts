@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { normalizeConfig } from '../config/config.ts';
 
@@ -19,7 +19,7 @@ const reasons = [
     [ 'always', true, true, [ 'profile', 'request', 'coverage' ] ]
 ] as const;
 
-export const testNode: TestNode = suite('recording requirements and failures', [
+export const testNode = suite('recording requirements and failures', [
     test('merge recording includes debug persistence in the shared session', async function (scope) {
         const fixture = runRecordPolicyFixture('on-demand', false);
         const input = {

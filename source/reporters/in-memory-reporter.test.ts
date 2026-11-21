@@ -1,6 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
-import type { RunResult } from '../engine/run-result.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -18,13 +17,13 @@ const runStartEvent = {
     startedAt: '2026-07-15T00:00:00.000Z'
 } as const;
 
-export const testNode: TestNode = suite('In memory reporter', [
+export const testNode = suite('In memory reporter', [
     test(
         'in-memory real-time reporter records events and final result notification',
         async function (scope) {
             const reporter = createInMemoryRealTimeReporter();
             const runtimeReporter = reporter(reportingContext);
-            const runResult: RunResult = runResultFactory.build();
+            const runResult = runResultFactory.build();
             const { onFinish } = runtimeReporter;
 
             if (onFinish === null) {
@@ -45,7 +44,7 @@ export const testNode: TestNode = suite('In memory reporter', [
     test('in-memory final-result reporter records final results', async function (scope) {
         const reporter = createInMemoryFinalResultReporter();
         const runtimeReporter = reporter(reportingContext);
-        const runResult: RunResult = runResultFactory.build();
+        const runResult = runResultFactory.build();
 
         await runtimeReporter.onResult({
             context: {
@@ -84,7 +83,7 @@ export const testNode: TestNode = suite('In memory reporter', [
     test('in-memory configurable reporter creates a final-result reporter', async function (scope) {
         const reporter = createInMemoryReporter({ mode: 'final-result' });
         const runtimeReporter = reporter(reportingContext);
-        const runResult: RunResult = runResultFactory.build();
+        const runResult = runResultFactory.build();
 
         await runtimeReporter.onResult({
             context: {

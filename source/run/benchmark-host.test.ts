@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { benchmarkHostLimitsSchema } from '../config/benchmark-host.ts';
 import { benchmarkHostSnapshot } from '../test-support/benchmark-host-snapshot.ts';
@@ -16,23 +17,38 @@ import { unavailableHostReading } from './benchmark-host-reading.ts';
 
 const psi = 'some avg10=1.25 avg60=2.50 avg300=3.75 total=1234\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n';
 
-function assertRelativeReadings(scope: TestScope): void {
-    const { capacity } = benchmarkHostSnapshot();
-    scope.assert.partialDeepEqual(availableMemoryPercent(capacity), { availability: 'available', value: 20 });
-    scope.assert.partialDeepEqual(hostLoadPerCpuPercent(capacity), { availability: 'available', value: 50 });
-    const scaled = {
-        ...capacity,
-        logicalCpuCount: { ...capacity.logicalCpuCount, availability: 'available' as const, value: 16 },
-        constrainedMemoryBytes: { ...capacity.constrainedMemoryBytes, availability: 'available' as const, value: 1000 }
-    };
-    scope.assert.partialDeepEqual(availableMemoryPercent(scaled), { availability: 'available', value: 10 });
-    scope.assert.partialDeepEqual(hostLoadPerCpuPercent(scaled), { availability: 'available', value: 25 });
-    const unconstrained = {
-        ...capacity,
-        constrainedMemoryBytes: unavailableHostReading<number>('node', 'process', 'bytes', 'unknown')
-    };
-    scope.assert.partialDeepEqual(availableMemoryPercent(unconstrained), { availability: 'available', value: 10 });
-}
+const assertRelativeReadings = defineCompositeAssertion({
+    name: 'relative readings',
+    assert(check) {
+        const { capacity } = benchmarkHostSnapshot();
+        const initialChecks = check.group([
+            check.partialDeepEqual(availableMemoryPercent(capacity), { availability: 'available', value: 20 }),
+            check.partialDeepEqual(hostLoadPerCpuPercent(capacity), { availability: 'available', value: 50 })
+        ]);
+        const scaled = {
+            ...capacity,
+            logicalCpuCount: { ...capacity.logicalCpuCount, availability: 'available' as const, value: 16 },
+            constrainedMemoryBytes: {
+                ...capacity.constrainedMemoryBytes,
+                availability: 'available' as const,
+                value: 1000
+            }
+        };
+        const intermediateChecks = check.group([
+            check.partialDeepEqual(availableMemoryPercent(scaled), { availability: 'available', value: 10 }),
+            check.partialDeepEqual(hostLoadPerCpuPercent(scaled), { availability: 'available', value: 25 })
+        ]);
+        const unconstrained = {
+            ...capacity,
+            constrainedMemoryBytes: unavailableHostReading<number>('node', 'process', 'bytes', 'unknown')
+        };
+        return check.group([
+            initialChecks,
+            intermediateChecks,
+            check.partialDeepEqual(availableMemoryPercent(unconstrained), { availability: 'available', value: 10 })
+        ]);
+    }
+});
 
 function processSnapshot(value: number): ProcessWindow {
     const captured = readHostProcessWindow();
@@ -54,52 +70,60 @@ type ExpectedProcessMetric = {
     readonly unit: string;
     readonly source: string;
 };
-function assertProcessMetric(scope: TestScope, metrics: HostProcessMetrics, expected: ExpectedProcessMetric): void {
-    const reading = metrics[expected.name];
-    scope.require.defined(reading);
-    scope.assert.partialDeepEqual(reading, {
-        availability: 'available',
-        value: expected.value,
-        unit: expected.unit,
-        scope: 'process',
-        source: expected.source
-    });
-}
+const assertProcessMetric = defineCompositeAssertion({
+    name: 'process metric',
+    assert(check, metrics: HostProcessMetrics, expected: ExpectedProcessMetric) {
+        const reading = metrics[expected.name];
+        if (reading === undefined || reading === null) {
+            return check.defined(reading);
+        }
+        return check.group([
+            check.defined(reading),
+            check.partialDeepEqual(reading, {
+                availability: 'available',
+                value: expected.value,
+                unit: expected.unit,
+                scope: 'process',
+                source: expected.source
+            })
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('benchmark host evidence', [
+export const testNode = suite('benchmark host evidence', [
     test('records native process deltas, memory values, and resource units', function (scope) {
         const metrics = hostProcessMetrics(processSnapshot(10), processSnapshot(20));
-        assertProcessMetric(scope, metrics, {
+        scope.assert(assertProcessMetric, metrics, {
             name: 'processCpuUserMicroseconds',
             value: 10,
             unit: 'microseconds',
             source: 'process.cpuUsage() delta'
         });
-        assertProcessMetric(scope, metrics, {
+        scope.assert(assertProcessMetric, metrics, {
             name: 'processCpuSystemMicroseconds',
             value: 20,
             unit: 'microseconds',
             source: 'process.cpuUsage() delta'
         });
-        assertProcessMetric(scope, metrics, {
+        scope.assert(assertProcessMetric, metrics, {
             name: 'processCpuTotalMicroseconds',
             value: 30,
             unit: 'microseconds',
             source: 'process.cpuUsage() delta'
         });
-        assertProcessMetric(scope, metrics, {
+        scope.assert(assertProcessMetric, metrics, {
             name: 'residentSetBytesDelta',
             value: 10,
             unit: 'bytes',
             source: 'process.memoryUsage() delta'
         });
-        assertProcessMetric(scope, metrics, {
+        scope.assert(assertProcessMetric, metrics, {
             name: 'fsReadDelta',
             value: 30,
             unit: 'count',
             source: 'process.resourceUsage() delta'
         });
-        assertProcessMetric(scope, metrics, {
+        scope.assert(assertProcessMetric, metrics, {
             name: 'processMaximumResidentSetBytes',
             value: 81_920,
             unit: 'bytes',
@@ -117,7 +141,7 @@ export const testNode: TestNode = suite('benchmark host evidence', [
         return scope.assert.collect();
     }),
     test('derives percentages from capacity rather than absolute host sizes', function (scope) {
-        assertRelativeReadings(scope);
+        scope.assert(assertRelativeReadings);
         const before = [ { model: 'cpu', speed: 1, times: { user: 10, sys: 0, nice: 0, idle: 20, irq: 0 } } ];
         const after = [ { model: 'cpu', speed: 1, times: { user: 20, sys: 0, nice: 0, idle: 50, irq: 0 } } ];
         scope.assert.partialDeepEqual(cpuBusyPercent(before, after), { availability: 'available', value: 25 });

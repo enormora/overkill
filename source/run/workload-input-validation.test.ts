@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { workload } from '../packages/bench/bench.entry-point.ts';
 import { defineResource, withResource } from '../packages/test/resources.entry-point.ts';
@@ -92,7 +92,7 @@ function resourceBoundaryKey(testCase: TestPlan['cases'][number], name: string):
     return boundary.key;
 }
 
-export const testNode: TestNode = suite('workload input validation', [
+export const testNode = suite('workload input validation', [
     test(
         'splits every shared scope by full workload identity and preserves independent sharing',
         function (scope) {

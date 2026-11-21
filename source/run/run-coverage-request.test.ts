@@ -1,11 +1,11 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultIntegrationProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 
-const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const passingFixturePath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 
-export const testNode: TestNode = suite('Run coverage request', [
+export const testNode = suite('Run coverage request', [
     test('orchestrator.resolve() rejects integration coverage before discovery', async function (scope) {
         const runOrchestrator = createUnitRunOrchestrator();
 

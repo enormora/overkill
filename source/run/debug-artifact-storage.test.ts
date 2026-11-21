@@ -1,5 +1,6 @@
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import path from 'node:path';
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { TestDebugArtifact } from '../packages/engine/engine.entry-point.ts';
 import { debugArtifactFixture } from '../test-support/debug-artifact-fixture.ts';
@@ -9,20 +10,28 @@ import { mergeDebugArtifacts } from './debug-artifact-results.ts';
 import { executeRecordedRun } from './recorded-run.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 
-function assertStoredArtifact(
-    scope: TestScope,
-    saved: { readonly path: string; readonly content: string; } | undefined,
-    directory: string,
-    artifact: TestDebugArtifact
-): void {
-    scope.require.defined(saved);
-    scope.assert.equal(path.dirname(saved.path), directory);
-    scope.assert.equal(path.basename(saved.path).includes('outside'), false);
-    const savedValue: unknown = JSON.parse(saved.content);
-    scope.assert.equal(JSON.stringify(savedValue), JSON.stringify(artifact));
-}
+const assertStoredArtifact = defineCompositeAssertion({
+    name: 'stored artifact',
+    assert(
+        check,
+        saved: { readonly path: string; readonly content: string; } | undefined,
+        directory: string,
+        artifact: TestDebugArtifact
+    ) {
+        if (saved === undefined || saved === null) {
+            return check.defined(saved);
+        }
+        const initialChecks = check.group([
+            check.defined(saved),
+            check.equal(path.dirname(saved.path), directory),
+            check.equal(path.basename(saved.path).includes('outside'), false)
+        ]);
+        const savedValue: unknown = JSON.parse(saved.content);
+        return check.group([ initialChecks, check.equal(JSON.stringify(savedValue), JSON.stringify(artifact)) ]);
+    }
+});
 
-export const testNode: TestNode = suite('debug artifact persistence', [
+export const testNode = suite('debug artifact persistence', [
     test('exhaustion finalizes a checkpoint while preserving completed evidence', async function (scope) {
         const { artifact } = await debugArtifactFixture('exhausted');
         const checkpoint: TestDebugArtifact = {
@@ -62,7 +71,7 @@ export const testNode: TestNode = suite('debug artifact persistence', [
         scope.assert.deepEqual(await store.persist([ artifact ]), []);
         scope.assert.deepEqual(await store.persist([ artifact ]), []);
         scope.assert.equal(writes.length, 1);
-        assertStoredArtifact(scope, writes[0], directory, artifact);
+        scope.assert(assertStoredArtifact, writes[0], directory, artifact);
         return scope.assert.collect();
     }),
     test('placement attempts get separate files for the same work and retry', async function (scope) {

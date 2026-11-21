@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import { emptyWorkUnitResourceConstraints, type PlacementPlan } from './run-types.ts';
 import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
@@ -240,34 +241,43 @@ function runHedgedStraggler(): HedgedStragglerRun {
     return { dispatcher, duplicate, filler, plan, primary, runtime };
 }
 
-function assertHedgedStraggler(scope: TestScope): void {
-    const { dispatcher, duplicate, filler, plan, primary, runtime } = runHedgedStraggler();
+const assertHedgedStraggler = defineCompositeAssertion({
+    name: 'hedged straggler',
+    assert(check) {
+        const { dispatcher, duplicate, filler, plan, primary, runtime } = runHedgedStraggler();
+        const initialChecks = check.group([
+            check.equal(primary.kind, 'primary'),
+            check.equal(filler.kind, 'primary'),
+            check.equal(duplicate.kind, 'hedged-duplicate'),
+            check.deepEqual(duplicate.unit.work, primary.unit.work)
+        ]);
+        const traceEntry = runtime.placementTraceEntries.find(function isHedgeAssignment(entry) {
+            return entry.kind === 'attempt-assigned' && entry.reason.kind === 'hedge';
+        });
+        if (traceEntry === undefined || traceEntry === null) {
+            return check.group([ initialChecks, check.defined(traceEntry) ]);
+        }
+        const intermediateChecks = check.group([
+            check.defined(traceEntry),
+            check.deepEqual(traceEntry, {
+                attempt: duplicate.members[0].attempt,
+                kind: 'attempt-assigned',
+                lane: secondLane(plan).id,
+                reason: { kind: 'hedge', primaryAttempt: primary.members[0].attempt },
+                unit: primary.traceUnit,
+                work: primary.unit.work
+            })
+        ]);
+        dispatcher.finish(duplicate, {
+            learnWarmth: false,
+            retainReservation: false,
+            workerCrashed: false
+        });
+        return check.group([ initialChecks, intermediateChecks ]);
+    }
+});
 
-    scope.assert.equal(primary.kind, 'primary');
-    scope.assert.equal(filler.kind, 'primary');
-    scope.assert.equal(duplicate.kind, 'hedged-duplicate');
-    scope.assert.deepEqual(duplicate.unit.work, primary.unit.work);
-    const traceEntry = runtime.placementTraceEntries.find(function isHedgeAssignment(entry) {
-        return entry.kind === 'attempt-assigned' && entry.reason.kind === 'hedge';
-    });
-
-    scope.require.defined(traceEntry);
-    scope.assert.deepEqual(traceEntry, {
-        attempt: duplicate.members[0].attempt,
-        kind: 'attempt-assigned',
-        lane: secondLane(plan).id,
-        reason: { kind: 'hedge', primaryAttempt: primary.members[0].attempt },
-        unit: primary.traceUnit,
-        work: primary.unit.work
-    });
-    dispatcher.finish(duplicate, {
-        learnWarmth: false,
-        retainReservation: false,
-        workerCrashed: false
-    });
-}
-
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool dynamic hedging',
     children: [
@@ -275,7 +285,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'hedges explicit idempotent stragglers',
             body(scope) {
-                assertHedgedStraggler(scope);
+                scope.assert(assertHedgedStraggler);
 
                 return scope.assert.collect();
             }

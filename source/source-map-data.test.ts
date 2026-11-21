@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { TraceMap, type SourceMapSegment } from '@jridgewell/trace-mapping';
 
@@ -12,7 +12,7 @@ function mappedSource(segment: Readonly<SourceMapSegment>): TraceMap {
         mappings: [ [ Array.from(segment) ] ]
     });
 }
-export const testNode: TestNode = suite('source map coordinate validation', [
+export const testNode = suite('source map coordinate validation', [
     table({
         title: 'rejects invalid mapping coordinate',
         cases: [ { description: 'negative generated column', input: [ -1, 0, 0, 0 ] }, {

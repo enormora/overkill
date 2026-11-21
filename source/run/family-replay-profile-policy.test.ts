@@ -1,11 +1,11 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { familyReplayProfile } from '../test-support/family-replay-profile.ts';
 import { defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
 
 import { isRecordedFamilyProfile, restoreFamilyReplayProfile } from './replay-family-profile.ts';
 
-export const testNode: TestNode = suite('recorded family profile restoration', [
+export const testNode = suite('recorded family profile restoration', [
     test('restores frozen settings while retaining the configured family', async function (scope) {
         const fixture = familyReplayProfile();
         const restored = await restoreFamilyReplayProfile(fixture.saved, fixture.current);

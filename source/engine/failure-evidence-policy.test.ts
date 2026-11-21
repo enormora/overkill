@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { table, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy, type RunnerError } from '../packages/engine/engine.entry-point.ts';
 
@@ -96,7 +96,7 @@ async function rejectedExecution(error: Error, cleanupErrors: readonly unknown[]
     throw new Error('Expected execution to reject.');
 }
 
-export const testNode: TestNode = suite('failure artifact contexts', [
+export const testNode = suite('failure artifact contexts', [
     table({
         title: 'attributes hard timeouts to active attempts',
         cases: timeoutOwners,

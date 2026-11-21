@@ -1,9 +1,9 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { executionSessionRuntime } from '../test-support/execution-session-runtime.ts';
 import { normalizeExecutionSessionOptions } from './execution-session-schema.ts';
 
-export const testNode: TestNode = suite('memory execution session admission', [
+export const testNode = suite('memory execution session admission', [
     table({
         title: 'rejects persisted session policy',
         cases: [ {

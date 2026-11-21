@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { PerTestResult } from '../engine/run-result.ts';
 
@@ -7,9 +7,9 @@ import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 
 import { retainPropertyWitnessAttachments } from './property-witness-storage.ts';
 
-export const testNode: TestNode = suite('confirmed witness attachment retention', [
+export const testNode = suite('confirmed witness attachment retention', [
     test('retains confirmed witness bytes under their original attempt ownership', async function (scope) {
-        const fixture = witnessAttachmentRetention(scope, null);
+        const fixture = witnessAttachmentRetention(scope.cleanup, null);
         scope.assert.deepEqual(await retainPropertyWitnessAttachments(fixture.execution, fixture.result), []);
         const writes = fixture.operations.filter(function (operation) {
             return operation.kind === 'write';
@@ -42,7 +42,7 @@ export const testNode: TestNode = suite('confirmed witness attachment retention'
         return scope.assert.collect();
     }),
     test('does not retain unconfirmed evidence', async function (scope) {
-        const fixture = witnessAttachmentRetention(scope, null);
+        const fixture = witnessAttachmentRetention(scope.cleanup, null);
         scope.assert.deepEqual(
             await retainPropertyWitnessAttachments(fixture.execution, confirmedWitnessResult(false)),
             []
@@ -51,7 +51,7 @@ export const testNode: TestNode = suite('confirmed witness attachment retention'
         return scope.assert.collect();
     }),
     test('does not retain evidence for cases without property attempts', async function (scope) {
-        const fixture = witnessAttachmentRetention(scope, null);
+        const fixture = witnessAttachmentRetention(scope.cleanup, null);
         const result = {
             ...fixture.result,
             perTest: fixture.result.perTest.map(function removeWitnessEvidence(testCase): PerTestResult {
@@ -75,7 +75,7 @@ export const testNode: TestNode = suite('confirmed witness attachment retention'
     test(
         'reports attachment persistence failures without losing confirmed evidence',
         async function (scope) {
-            const fixture = witnessAttachmentRetention(scope, new Error('Witness backend unavailable.'));
+            const fixture = witnessAttachmentRetention(scope.cleanup, new Error('Witness backend unavailable.'));
             const errors = await retainPropertyWitnessAttachments(fixture.execution, fixture.result);
             scope.assert.equal(errors.length, 1);
             scope.assert.equal(errors[0]?.message, 'Failed to retain property witnesses.');

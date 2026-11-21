@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
@@ -16,24 +17,27 @@ async function committedStore(): Promise<HistoryStorage> {
     return store;
 }
 
-async function leavePendingCompletion(scope: TestScope, store: HistoryStorage): Promise<void> {
-    const record = completedHistoryRecord('pending');
-    await updateCompactHistory(store, { ...record, status: 'started' }, context);
-    const failing = {
-        ...store,
-        async write(filePath: string, content: string) {
-            if (filePath.endsWith('/history/index.json')) {
-                throw new Error('History unavailable');
+const leavePendingCompletion = defineCompositeAssertion({
+    name: 'leave pending completion',
+    async assert(check, store: HistoryStorage) {
+        const record = completedHistoryRecord('pending');
+        await updateCompactHistory(store, { ...record, status: 'started' }, context);
+        const failing = {
+            ...store,
+            async write(filePath: string, content: string) {
+                if (filePath.endsWith('/history/index.json')) {
+                    throw new Error('History unavailable');
+                }
+                await store.write(filePath, content);
             }
-            await store.write(filePath, content);
-        }
-    };
-    await scope.assert.rejects(async function partialCompletion() {
-        await updateCompactHistory(failing, record, context);
-    }, { message: 'History unavailable' });
-}
+        };
+        return await check.rejects(async function partialCompletion() {
+            await updateCompactHistory(failing, record, context);
+        }, { message: 'History unavailable' });
+    }
+});
 
-export const testNode: TestNode = suite('history reader', [
+export const testNode = suite('history reader', [
     test('required history rejects older indexes without overwriting them', async function (scope: TestScope) {
         const store = await committedStore();
         const indexPath = `${directory}/history/index.json`;
@@ -64,7 +68,7 @@ export const testNode: TestNode = suite('history reader', [
         'placement reads completed observations and excludes provisional completions',
         async function (scope: TestScope) {
             const store = await committedStore();
-            await leavePendingCompletion(scope, store);
+            await scope.assert(leavePendingCompletion, store);
             const projection = await readDurationProjection(store, directory);
             scope.require.defined(projection);
             scope.assert.equal(projection.entries[0]?.observations.length, 1);

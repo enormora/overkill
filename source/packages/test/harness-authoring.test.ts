@@ -1,12 +1,4 @@
-import {
-    type TestNode,
-    suite,
-    test,
-    type TestScope,
-    doubleUsage,
-    type TestDouble,
-    testDouble
-} from '@overkill-dev/test';
+import { suite, test, doubleUsage, type TestDouble, testDouble } from '@overkill-dev/test';
 
 import { defineHarness, type DefinedHarness, type HarnessOverrides } from './test.entry-point.ts';
 
@@ -98,19 +90,7 @@ function createAsyncLabelHarness(): DefinedHarness<LabelHarnessOverrides, Promis
     });
 }
 
-function assertFreshHarnesses(
-    scope: TestScope,
-    loadFactoryCalls: number,
-    first: FreshRunnerHarness,
-    second: FreshRunnerHarness
-): void {
-    scope.assert.equal(loadFactoryCalls, 2);
-    scope.assert.notEqual(first.loadValue, second.loadValue);
-    scope.assert.notEqual(first.events, second.events);
-    scope.assert(doubleUsage.calledOnceWith, first.loadValue, [ 'id' ]);
-}
-
-export const testNode: TestNode = suite('Harness authoring', [
+export const testNode = suite('Harness authoring', [
     test('creates fresh object-form harnesses', function (scope) {
         let loadFactoryCalls = 0;
         const runnerHarness = createFreshRunnerHarness(function recordLoadFactoryCall() {
@@ -120,8 +100,10 @@ export const testNode: TestNode = suite('Harness authoring', [
         const second = runnerHarness.create();
 
         first.subject('id');
-
-        assertFreshHarnesses(scope, loadFactoryCalls, first, second);
+        scope.assert.equal(loadFactoryCalls, 2);
+        scope.assert.notEqual(first.loadValue, second.loadValue);
+        scope.assert.notEqual(first.events, second.events);
+        scope.assert(doubleUsage.calledOnceWith, first.loadValue, [ 'id' ]);
 
         return scope.assert.collect();
     }),

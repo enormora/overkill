@@ -1,9 +1,9 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { historyCommandRouting } from '../test-support/history-command-routing.ts';
 import { commandLineExitCodes } from './command-line-command.ts';
 
-export const testNode: TestNode = suite('history command routing and confirmation', [
+export const testNode = suite('history command routing and confirmation', [
     test('lists replay availability and preserves unknown durations', async function (scope) {
         const fixture = await historyCommandRouting(false, 'none');
         const result = await fixture.commands.list(fixture.request);

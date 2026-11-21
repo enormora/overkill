@@ -1,22 +1,31 @@
+import { consumerEnvironment } from './support/consumer-environment.ts';
 import { execFile } from 'node:child_process';
-import { type TestNode, suite, test } from '#tests';
+import { suite } from '@overkill-dev/test';
+import { packageConsumer } from './support/package-consumer.ts';
 
-async function execute(script: string): Promise<string> {
-    return new Promise(function executeConsumer(resolve, reject) {
-        execFile(
-            process.execPath,
-            [ '--input-type=module', '--eval', script ],
-            { cwd: import.meta.dirname },
-            function completed(error, stdout, stderr) {
-                if (error === null) {
-                    resolve(stdout);
-                } else {
-                    reject(new Error(`Linearizability package consumer failed: ${stderr}`, { cause: error }));
-                }
-            }
-        );
-    });
-}
+const consumerFacade = packageConsumer(
+    'packaged linearizability authoring',
+    function consumerFixture(consumerDirectory) {
+        async function execute(script: string): Promise<string> {
+            return new Promise(function executeConsumer(resolve, reject) {
+                execFile(
+                    process.execPath,
+                    [ '--input-type=module', '--eval', script ],
+                    { env: consumerEnvironment(process.env, consumerDirectory), cwd: consumerDirectory },
+                    function completed(error, stdout, stderr) {
+                        if (error === null) {
+                            resolve(stdout);
+                        } else {
+                            reject(new Error(`Linearizability package consumer failed: ${stderr}`, { cause: error }));
+                        }
+                    }
+                );
+            });
+        }
+        return { execute };
+    }
+);
+const { test } = consumerFacade;
 
 const script = `
 import { checkLinearizability, linearizability } from '@overkill-dev/linearizability';
@@ -75,8 +84,10 @@ if (repeated.summary.failed !== 1 || JSON.stringify(repeated).includes('unexpect
 console.log('linearizability package loaded');
 `;
 
-export const testNode: TestNode = suite('packaged linearizability authoring', [
+export const testNode = suite('packaged linearizability authoring', [
     test('checks histories through the installed package', async function (scope) {
+        const { execute } = scope.resources.consumer;
+
         const result = await execute(script);
         scope.assert.equal(result.trim(), 'linearizability package loaded');
         return scope.assert.collect();

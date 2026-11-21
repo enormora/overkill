@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     benchmarkPlacementFactsSchema,
@@ -23,7 +23,7 @@ function withSignals(signals: Partial<BenchmarkHostSnapshot['signals']>): Benchm
     return { ...host, snapshot: { ...host.snapshot, signals: { ...host.snapshot.signals, ...signals } } };
 }
 
-export const testNode: TestNode = suite('adaptive benchmark placement policy', [
+export const testNode = suite('adaptive benchmark placement policy', [
     test(
         'trusts artifact-size returns and does not treat async mode as capacity evidence',
         function (scope) {

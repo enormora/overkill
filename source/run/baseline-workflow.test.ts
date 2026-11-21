@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 import { memoryOrdinaryBaselines } from '../test-support/memory-ordinary-baselines.ts';
@@ -41,7 +41,7 @@ async function workflowFixture(
         }
     };
 }
-export const testNode: TestNode = suite('ordinary baseline event lifecycle', [
+export const testNode = suite('ordinary baseline event lifecycle', [
     test('blocks publication when its retained report exceeds the artifact limit', async function (scope) {
         const fixture = await workflowFixture(async function () {
             return { kind: 'observed', comparison: null, proposal: { kind: 'text', text: '42' } };

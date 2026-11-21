@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createLocalProcessOutput, type LocalProcessOutputWriters } from './local-process-output.ts';
 
@@ -29,7 +29,7 @@ function capturedOutput(maximumBytes: number): CapturedProcessOutput {
     });
     return { ...output, stdout, stderr };
 }
-export const testNode: TestNode = suite('bounded process output', [
+export const testNode = suite('bounded process output', [
     test('retains only the newest bytes independently for each stream', function (scope) {
         const output = createLocalProcessOutput(5, { stdout: null, stderr: null });
         output.appendStdout(Buffer.from('remake'));

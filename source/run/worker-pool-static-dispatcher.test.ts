@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import type { PlacementPlan } from './run-types.ts';
 import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
@@ -92,47 +93,53 @@ function pullRequiredLease(
     return lease;
 }
 
-async function assertStaticRequeue(scope: TestScope): Promise<void> {
-    const unit = firstUnit(placementPlan());
-    const plan = twoLanePlan(unit);
-    const dispatcher = createWorkDispatcher(runtimeWithStaticDispatch(plan), plan);
-    const firstLease = pullRequiredLease(dispatcher, firstLane(plan));
-
-    dispatcher.requeue({
-        previousAttempt: firstLease.members[0].attempt,
-        traceUnit: firstLease.traceUnit,
-        unit: firstLease.unit
-    });
-    scope.assert.equal(pullRequiredLease(dispatcher, firstLane(plan)).unit.id.key, unit.id.key);
-    dispatcher.clear();
-    scope.assert.equal(dispatcher.pull(firstLane(plan)), null);
-    await dispatcher.waitForChange();
-}
-
-function assertStaticDispatcherRejectsUnknownUnits(scope: TestScope): void {
-    const unit = firstUnit(placementPlan());
-    const plan = twoLanePlan(unit);
-
-    scope.assert.throws(function createUnknownStaticAssignment() {
-        createStaticDispatcher({
-            ...plan,
-            assignments: [ {
-                lane: firstLane(plan).id,
-                unit: { ...unit.id, key: 'missing' }
-            } ]
+const assertStaticRequeue = defineCompositeAssertion({
+    name: 'static requeue',
+    async assert(check) {
+        const unit = firstUnit(placementPlan());
+        const plan = twoLanePlan(unit);
+        const dispatcher = createWorkDispatcher(runtimeWithStaticDispatch(plan), plan);
+        const firstLease = pullRequiredLease(dispatcher, firstLane(plan));
+        dispatcher.requeue({
+            previousAttempt: firstLease.members[0].attempt,
+            traceUnit: firstLease.traceUnit,
+            unit: firstLease.unit
         });
-    }, { message: 'Placement assignment referenced an unknown work unit.' });
+        const initialChecks = check.equal(pullRequiredLease(dispatcher, firstLane(plan)).unit.id.key, unit.id.key);
+        dispatcher.clear();
+        const intermediateChecks = check.equal(dispatcher.pull(firstLane(plan)), null);
+        await dispatcher.waitForChange();
+        return check.group([ initialChecks, intermediateChecks ]);
+    }
+});
 
-    scope.assert.throws(function requeueUnassignedStaticUnit() {
-        createStaticDispatcher({ ...plan, assignments: [] }).requeue({
-            previousAttempt: 'attempt-1',
-            traceUnit: unit.id,
-            unit
-        });
-    }, { message: 'Static worker-pool dispatch cannot requeue an unassigned work unit.' });
-}
+const assertStaticDispatcherRejectsUnknownUnits = defineCompositeAssertion({
+    name: 'static dispatcher rejects unknown units',
+    assert(check) {
+        const unit = firstUnit(placementPlan());
+        const plan = twoLanePlan(unit);
+        return check.group([
+            check.throws(function createUnknownStaticAssignment() {
+                createStaticDispatcher({
+                    ...plan,
+                    assignments: [ {
+                        lane: firstLane(plan).id,
+                        unit: { ...unit.id, key: 'missing' }
+                    } ]
+                });
+            }, { message: 'Placement assignment referenced an unknown work unit.' }),
+            check.throws(function requeueUnassignedStaticUnit() {
+                createStaticDispatcher({ ...plan, assignments: [] }).requeue({
+                    previousAttempt: 'attempt-1',
+                    traceUnit: unit.id,
+                    unit
+                });
+            }, { message: 'Static worker-pool dispatch cannot requeue an unassigned work unit.' })
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool static dispatcher',
     children: [
@@ -140,7 +147,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'requeues assigned units',
             async body(scope) {
-                await assertStaticRequeue(scope);
+                await scope.assert(assertStaticRequeue);
 
                 return scope.assert.collect();
             }
@@ -149,7 +156,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'rejects unknown units',
             body(scope) {
-                assertStaticDispatcherRejectsUnknownUnits(scope);
+                scope.assert(assertStaticDispatcherRejectsUnknownUnits);
 
                 return scope.assert.collect();
             }

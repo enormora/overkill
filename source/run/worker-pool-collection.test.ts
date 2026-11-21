@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -187,7 +187,7 @@ async function collectInvalidOwnedPool(timing: RunTimingMeasurement): Promise<In
     return { destroyed, options, thrownError };
 }
 
-export const testNode: TestNode = suite('Worker pool collection', [
+export const testNode = suite('Worker pool collection', [
     test('uses a provided pool without destroying it', async function (scope) {
         let destroyed = false;
         const runState = createSupervisedRunState('first-failure-and-final');

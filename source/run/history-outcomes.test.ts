@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { historyFacts, completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
@@ -6,7 +6,7 @@ import { emptyCompactHistory, ingestCompactRecord } from './compact-history.ts';
 import { historyRunSummary, recordDurationContributions, caseOutcomes } from './history-outcomes.ts';
 
 const context = { policy: defaultHistoryPolicy, now: historyTimestamp, testFamily: 'microtest' };
-export const testNode: TestNode = suite('history outcomes', [
+export const testNode = suite('history outcomes', [
     test(
         'a failed variant wins over a passing variant without adding two case observations',
         function (scope: TestScope) {

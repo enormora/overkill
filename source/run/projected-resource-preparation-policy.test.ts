@@ -1,8 +1,8 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { projectedPreparation } from '../test-support/projected-resource-preparation.ts';
 
-export const testNode: TestNode = suite('remote resource failure preparation', [
+export const testNode = suite('remote resource failure preparation', [
     test(
         'skips remote preparation when no external resources are projected',
         async function (scope) {

@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { type RunnerError, createRoot, createTestPlan } from '../packages/engine/engine.entry-point.ts';
 
@@ -19,15 +19,15 @@ type RunCommandParts = {
     readonly request: RunRequest;
 };
 
-const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
-const defaultConfig: NormalizedConfig = defaultRunConfig({
+const passingFixturePath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
+const defaultConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
             execution: { processModel: 'in-process' }
         })
     }
 });
-const defaultRequest: RunRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
+const defaultRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
 
 function createRunCommand(overrides: RunCommandParts): RunCommand {
     return {
@@ -38,7 +38,7 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
     };
 }
 
-export const testNode: TestNode = suite('Run runtime policy', [
+export const testNode = suite('Run runtime policy', [
     test(
         'runtime capability checkpoints report mutations before attempt completion',
         async function (scope) {

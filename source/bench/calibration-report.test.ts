@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
@@ -7,7 +7,7 @@ import {
     type CalibrationReferenceReport
 } from './calibration-report.ts';
 
-export const testNode: TestNode = suite('calibration operation reporting', [
+export const testNode = suite('calibration operation reporting', [
     test('retains reference changes as typed evidence without attachments', function (scope: TestScope) {
         const result = runResultFactory.build({});
         const report: CalibrationReferenceReport = {

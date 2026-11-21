@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { passingIsolatedWorkerRun } from '../test-support/isolated-worker-run.ts';
 import { observationPlan } from '../test-support/observation-lifetime.ts';
@@ -27,7 +27,7 @@ function collectedContext(): CollectedRunContext {
         moduleBoundary: null
     };
 }
-export const testNode: TestNode = suite('collected invocation selection policy', [
+export const testNode = suite('collected invocation selection policy', [
     test('plans an ordinary local invocation without replacing its selected case', async function (scope) {
         const context = collectedContext();
         const result = await planCollectedInvocation(context, { selection: { kind: 'all' } });

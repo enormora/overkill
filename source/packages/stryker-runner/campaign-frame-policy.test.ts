@@ -1,4 +1,4 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { campaignFrameChannel } from '../../test-support/campaign-frame-channel.ts';
 
@@ -9,7 +9,7 @@ const expectedMessages = {
     'receiver-failure': 'Invalid campaign frame.',
     'zero-header': 'Invalid campaign frame size.'
 };
-export const testNode: TestNode = suite(
+export const testNode = suite(
     'campaign frame admission',
     [ table({
         title: 'closes malformed campaign traffic',

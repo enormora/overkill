@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import type { SimulationWitnessFile } from '../engine/witness-file.ts';
 import { defineResource } from '../resources/resources.ts';
@@ -51,7 +51,7 @@ const testCase = {
     }
 };
 
-export const testNode: TestNode = suite('replay resource restoration', [
+export const testNode = suite('replay resource restoration', [
     test('preserves resources outside replay', async function (scope) {
         scope.assert.equal(replayResourceDefinition(resource, resourceReplayWitness(resource, testCase)), resource);
         await replayAcquiredResource(resource, {}, AbortSignal.any([]), resourceReplayWitness(resource, testCase));

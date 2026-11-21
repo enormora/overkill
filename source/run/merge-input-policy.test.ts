@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { mergeRecordFixture } from '../test-support/merge-record-fixture.ts';
 
@@ -6,7 +6,7 @@ import { mergeInputStorage, mergedInputDocument } from '../test-support/merge-in
 import { RunResolutionError } from './run-errors.ts';
 import { readMergeInput } from './merge-results-input.ts';
 
-export const testNode: TestNode = suite('merge input discovery and decoding', [
+export const testNode = suite('merge input discovery and decoding', [
     test('sorts equal shard indices by canonical path', async function (scope) {
         const fixture = mergeInputStorage();
         fixture.seed('/records/second.json', JSON.stringify(mergeRecordFixture('second', 1, 1)));

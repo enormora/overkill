@@ -25,7 +25,7 @@ type SimulatedHttpFixture = {
     readonly failResponse: (failure: Error) => void;
 };
 export function simulatedHttpRequest<Scenarios extends SimulationScenarioCatalog>(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     simulation: SimulatedHttpServerDefinition<string, Scenarios>
 ): SimulatedHttpFixture {
     const socket = new Socket();
@@ -36,7 +36,7 @@ export function simulatedHttpRequest<Scenarios extends SimulationScenarioCatalog
     const errors: unknown[] = [];
     let responseFailure: Error | null = null;
     const transcript = createHttpTranscriptRecorder<{ readonly scenario: string; }>();
-    scope.cleanup(function () {
+    cleanup(function () {
         request.destroy();
         socket.destroy();
     });

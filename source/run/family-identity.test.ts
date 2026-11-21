@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 
@@ -19,7 +19,7 @@ const neutral = createDefaultWorkId(logical);
 const first = { ...neutral, familyVariant: { family: '@example/checks', key: 'one' } };
 const second = { ...neutral, familyVariant: { family: '@example/checks', key: 'two' } };
 
-export const testNode: TestNode = suite('family identity', [
+export const testNode = suite('family identity', [
     test('retains the exact neutral shard input', function (scope) {
         const unit = caseWorkUnitId(neutral);
         const inputs: string[] = [];

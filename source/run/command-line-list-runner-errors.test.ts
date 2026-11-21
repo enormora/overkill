@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createCommandLineRunner } from './command-line-runner.ts';
 import {
@@ -9,7 +9,7 @@ import {
 } from './command-line-list-runner.test.ts';
 import { RunCollectionError } from './run-errors.ts';
 
-export const testNode: TestNode = suite('CLI list errors', [
+export const testNode = suite('CLI list errors', [
     test(
         'maps collection runner errors without printing the plan',
         async function (scope) {

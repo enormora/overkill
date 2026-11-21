@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import { workIdentityKey } from '../engine/identity.ts';
 import type { DynamicWorkUnitId, PlacementTraceEntry } from './placement-trace.ts';
@@ -290,22 +291,33 @@ function pullRequiredLease(
     return lease;
 }
 
-function assertUnsplitLease(scope: TestScope, plan: PlacementPlan): void {
-    const lease = pullRequiredLease(createWorkDispatcher(fakeWorkerRuntime(plan), plan), firstLane(plan));
+const assertUnsplitLease = defineCompositeAssertion({
+    name: 'unsplit lease',
+    assert(check, plan: PlacementPlan) {
+        const lease = pullRequiredLease(createWorkDispatcher(fakeWorkerRuntime(plan), plan), firstLane(plan));
+        return check.group([ check.equal(lease.unit.work.length, 2), check.deepEqual(lease.traceUnit, lease.unit.id) ]);
+    }
+});
 
-    scope.assert.equal(lease.unit.work.length, 2);
-    scope.assert.deepEqual(lease.traceUnit, lease.unit.id);
-}
+const assertFreshReservation = defineCompositeAssertion({
+    name: 'fresh reservation',
+    assert(check, lease: WorkerPoolUnitLease) {
+        return check.group([
+            check.deepEqual(lease.reservation.faultDomains, [ 'rack' ]),
+            check.deepEqual(lease.reservation.hardKeys, [ 'database' ])
+        ]);
+    }
+});
 
-function assertFreshReservation(scope: TestScope, lease: WorkerPoolUnitLease): void {
-    scope.assert.deepEqual(lease.reservation.faultDomains, [ 'rack' ]);
-    scope.assert.deepEqual(lease.reservation.hardKeys, [ 'database' ]);
-}
-
-function assertRetainedReservation(scope: TestScope, lease: WorkerPoolUnitLease): void {
-    scope.assert.deepEqual(lease.reservation.faultDomains, []);
-    scope.assert.deepEqual(lease.reservation.hardKeys, []);
-}
+const assertRetainedReservation = defineCompositeAssertion({
+    name: 'retained reservation',
+    assert(check, lease: WorkerPoolUnitLease) {
+        return check.group([
+            check.deepEqual(lease.reservation.faultDomains, []),
+            check.deepEqual(lease.reservation.hardKeys, [])
+        ]);
+    }
+});
 
 function finishSuccessfulPrimary(dispatcher: WorkerPoolWorkDispatcher, lease: WorkerPoolUnitLease): void {
     dispatcher.finish(lease, {
@@ -336,38 +348,39 @@ function splitLeaseMembers(expectation: SplitLeaseExpectation): readonly [
     return [ firstMember, secondMember ];
 }
 
-function assertSplitLeases(
-    scope: TestScope,
-    expectation: SplitLeaseExpectation
-): void {
-    const [ firstMember, secondMember ] = splitLeaseMembers(expectation);
-    const traces = [
-        dynamicWorkUnitId(firstMember.traceUnit),
-        dynamicWorkUnitId(secondMember.traceUnit)
-    ];
+const assertSplitLeases = defineCompositeAssertion({
+    name: 'split leases',
+    assert(check, expectation: SplitLeaseExpectation) {
+        const [ firstMember, secondMember ] = splitLeaseMembers(expectation);
+        const traces = [
+            dynamicWorkUnitId(firstMember.traceUnit),
+            dynamicWorkUnitId(secondMember.traceUnit)
+        ];
+        return check.group([
+            check.equal(firstMember.unit.work.length, 1),
+            check.equal(secondMember.unit.work.length, 1),
+            check.deepEqual(
+                traces.map(function toParent(trace) {
+                    return trace.parent;
+                }),
+                [ expectation.unit.id, expectation.unit.id ]
+            ),
+            check.deepEqual(
+                traces.map(function toChild(trace) {
+                    return trace.child;
+                }),
+                [
+                    workIdentityKey(firstWork(expectation.unit)),
+                    workIdentityKey(secondWork(expectation.unit))
+                ]
+            ),
+            check.deepEqual(expectation.traceEntry.children, traces),
+            check.deepEqual(expectation.traceEntry.parent, expectation.unit.id)
+        ]);
+    }
+});
 
-    scope.assert.equal(firstMember.unit.work.length, 1);
-    scope.assert.equal(secondMember.unit.work.length, 1);
-    scope.assert.deepEqual(
-        traces.map(function toParent(trace) {
-            return trace.parent;
-        }),
-        [ expectation.unit.id, expectation.unit.id ]
-    );
-    scope.assert.deepEqual(
-        traces.map(function toChild(trace) {
-            return trace.child;
-        }),
-        [
-            workIdentityKey(firstWork(expectation.unit)),
-            workIdentityKey(secondWork(expectation.unit))
-        ]
-    );
-    scope.assert.deepEqual(expectation.traceEntry.children, traces);
-    scope.assert.deepEqual(expectation.traceEntry.parent, expectation.unit.id);
-}
-
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool work dispatcher',
     children: [
@@ -386,7 +399,7 @@ export const testNode: TestNode = suite({
                     unit: lease.unit
                 });
                 const retry = pullRequiredLease(dispatcher, lane);
-                assertFreshReservation(scope, retry);
+                scope.assert(assertFreshReservation, retry);
                 scope.assert.equal(retry.members[0].attempt, 'attempt-2');
                 return scope.assert.collect();
             }
@@ -415,7 +428,7 @@ export const testNode: TestNode = suite({
                 const dispatcher = createWorkDispatcher(fakeWorkerRuntime(plan), plan);
                 const firstLease = pullRequiredLease(dispatcher, firstLane(plan));
 
-                assertFreshReservation(scope, firstLease);
+                scope.assert(assertFreshReservation, firstLease);
                 finishSuccessfulPrimary(dispatcher, firstLease);
                 dispatcher.requeue({
                     previousAttempt: firstLease.members[0].attempt,
@@ -423,7 +436,7 @@ export const testNode: TestNode = suite({
                     unit: firstLease.unit
                 });
                 scope.assert.equal(dispatcher.pull(secondLane(plan)), null);
-                assertRetainedReservation(scope, pullRequiredLease(dispatcher, firstLane(plan)));
+                scope.assert(assertRetainedReservation, pullRequiredLease(dispatcher, firstLane(plan)));
 
                 return scope.assert.collect();
             }
@@ -440,7 +453,7 @@ export const testNode: TestNode = suite({
                 const secondLease = pullRequiredLease(dispatcher, secondLane(plan));
                 const traceEntry = unitSplitEntry(runtime.placementTraceEntries[0]);
 
-                assertSplitLeases(scope, { firstLease, secondLease, traceEntry, unit });
+                scope.assert(assertSplitLeases, { firstLease, secondLease, traceEntry, unit });
 
                 return scope.assert.collect();
             }
@@ -496,7 +509,7 @@ export const testNode: TestNode = suite({
             title: 'keeps ineligible units whole',
             body(scope) {
                 for (const variant of noSplitVariants()) {
-                    assertUnsplitLease(scope, variant.plan);
+                    scope.assert(assertUnsplitLease, variant.plan);
                 }
 
                 return scope.assert.collect();

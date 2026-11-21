@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 
@@ -13,7 +13,7 @@ const mapDiff = defineNarrowingCompositeAssertion<Diff, Extract<Diff, { readonly
     }
 });
 
-export const testNode: TestNode = suite('Value comparison', [
+export const testNode = suite('Value comparison', [
     test('compareEqualValues() uses Object.is primitive semantics', function (scope) {
         scope.assert.equal(compareEqualValues(Number.NaN, Number.NaN).passed, true);
         scope.assert.equal(compareEqualValues(-0, 0).passed, false);

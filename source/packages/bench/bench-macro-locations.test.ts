@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import type { EngineCaseBody } from '../../test-support/create-test-engine.ts';
 
 import * as subjectAuthoring from '../test/test.entry-point.ts';
@@ -62,22 +63,27 @@ function createNestedMacroPlan(): LocatedMacroPlan {
     };
 }
 
-function assertMacroApplication(scope: TestScope, actual: SourceLocation, expected: SourceLocation): void {
-    scope.assert.equal(actual.file, expected.file);
-    scope.assert.equal(actual.line, (expected.line ?? 0) + 1);
-}
-
-function assertFailureLocation(scope: TestScope, result: RunResult, expected: SourceLocation): void {
-    const outcome = result.perTest[0]?.outcome;
-
-    if (outcome?.kind !== 'fail' || outcome.failures[0].kind !== 'assertion') {
-        throw new TypeError('Expected an assertion failure.');
+const assertMacroApplication = defineCompositeAssertion({
+    name: 'macro application',
+    assert(check, actual: SourceLocation, expected: SourceLocation) {
+        return check.group([
+            check.equal(actual.file, expected.file),
+            check.equal(actual.line, (expected.line ?? 0) + 1)
+        ]);
     }
+});
 
-    const location = outcome.failures[0].checks[0].sourceLocations[0];
-    scope.assert.equal(location.file, expected.file);
-    scope.assert.equal(location.line, expected.line);
-}
+const assertFailureLocation = defineCompositeAssertion({
+    name: 'failure location',
+    assert(check, result: RunResult, expected: SourceLocation) {
+        const outcome = result.perTest[0]?.outcome;
+        if (outcome?.kind !== 'fail' || outcome.failures[0].kind !== 'assertion') {
+            throw new TypeError('Expected an assertion failure.');
+        }
+        const location = outcome.failures[0].checks[0].sourceLocations[0];
+        return check.group([ check.equal(location.file, expected.file), check.equal(location.line, expected.line) ]);
+    }
+});
 
 type LocatedMacroCase = {
     readonly applicationLocation: SourceLocation;
@@ -94,15 +100,15 @@ function subsequentMacroCase(): LocatedMacroCase {
     return { applicationLocation: resolveSourceLocation(callSite), child };
 }
 
-export const testNode: TestNode = suite('Benchmark macro source locations', [
+export const testNode = suite('Benchmark macro source locations', [
     test('preserves nested cross-facade macro definition and assertion locations', async function (scope) {
         const { applicationLocation, plan } = createNestedMacroPlan();
         const result = await execute(plan);
         const actual = resolveSourceLocation(plan.discoveredCases[0].definitionLocations[0]);
 
-        assertMacroApplication(scope, actual, applicationLocation);
+        scope.assert(assertMacroApplication, actual, applicationLocation);
         scope.assert.equal(plan.discoveredCases[0].definitionLocations.length, 3);
-        assertFailureLocation(scope, result, actual);
+        scope.assert(assertFailureLocation, result, actual);
         return scope.assert.collect();
     }),
     test('restores macro locations after a factory throws', function (scope) {
@@ -119,7 +125,7 @@ export const testNode: TestNode = suite('Benchmark macro source locations', [
 
         scope.assert.equal(plain.definitionLocations.length, 1);
         scope.assert.equal(child.definitionLocations.length, 2);
-        assertMacroApplication(scope, resolveSourceLocation(child.definitionLocations[0]), applicationLocation);
+        scope.assert(assertMacroApplication, resolveSourceLocation(child.definitionLocations[0]), applicationLocation);
         return scope.assert.collect();
     })
 ]);

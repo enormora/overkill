@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { baselineCaseResult } from '../test-support/baseline-case-fixture.ts';
 import { performanceFinalization } from '../test-support/performance-finalization.ts';
@@ -8,7 +8,7 @@ import type { BaselineUpdateMode } from '../baselines/performance-baseline.ts';
 import { finalizeBenchmarkBaselines } from './benchmark-baseline-finalization.ts';
 
 const modes: readonly BaselineUpdateMode[] = [ 'none', 'diff', 'update', 'apply', 'bootstrap' ];
-export const testNode: TestNode = suite('benchmark baseline publication', [
+export const testNode = suite('benchmark baseline publication', [
     table({
         title: 'finalizes baseline proposals with inspectable reports',
         cases: modes,

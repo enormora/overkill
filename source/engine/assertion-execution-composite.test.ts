@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import {
     defineCompositeAssertion,
     defineCompositeAssertion as definePublishedCompositeAssertion,
@@ -161,7 +161,7 @@ function firstForeignChild(outcome: FailOutcome): FailedForeignCheck | null {
     return null;
 }
 
-export const testNode: TestNode = suite('Composite assertion execution', [
+export const testNode = suite('Composite assertion execution', [
     test(
         'records callable composite assertion references as one planned boundary',
         async function (scope: TestScope) {

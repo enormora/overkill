@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { mutationInitialization } from '../../test-support/mutation-initialization.ts';
 import { runExecutionFailure } from '../run/run.entry-point.ts';
 import { initializeCampaignRunner } from './mutation-runner-initialization.ts';
 
-export const testNode: TestNode = suite('mutation adapter initialization', [
+export const testNode = suite('mutation adapter initialization', [
     test('registers the campaign before freezing policy and creating execution', async function (scope) {
         const fixture = await mutationInitialization([ { kind: 'registered', campaign: 'campaign' } ], null);
         const result = await initializeCampaignRunner(fixture.input, fixture.runtime);

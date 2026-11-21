@@ -1,8 +1,8 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { processSampling } from '../test-support/process-sampling.ts';
 
-export const testNode: TestNode = suite('process sampling helper ownership', [
+export const testNode = suite('process sampling helper ownership', [
     table({
         title: 'creates a lazy shared helper on supported platforms',
         cases: [ 'linux', 'darwin' ] as const,

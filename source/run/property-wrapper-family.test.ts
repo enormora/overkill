@@ -1,4 +1,4 @@
-import { suite, test, type TestScope, type TestNode } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 import { property, withProperties } from '../packages/test/property.entry-point.ts';
 import {
@@ -39,7 +39,7 @@ function integrationPropertyBody(): EngineCaseBody {
     }
     return selected.execution.body;
 }
-export const testNode: TestNode = suite('Integration property wrapper families', [
+export const testNode = suite('Integration property wrapper families', [
     test(
         'preserves the family and rejects conflicting settings',
         function (scope: TestScope) {

@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import { defineCompositeAssertion as definePublishedCompositeAssertion } from '@overkill-dev/test/assert';
 import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
@@ -71,7 +71,7 @@ function firstFailedCheck(outcome: FailOutcome): FailedCheck | null {
     return firstAssertionFailure(outcome)?.checks.at(0) ?? null;
 }
 
-export const testNode: TestNode = suite('Assertion execution', [
+export const testNode = suite('Assertion execution', [
     test(
         'counts successful requirements once a returned assertion result exists',
         async function (scope) {

@@ -1,40 +1,64 @@
-# Repository Layout
+# Repository layout
 
-Overkill uses a feature-oriented monorepo layout.
+Shared feature folders under `source` contain the implementation. Entry points
+under `source/packages` define the published packages assembled by Packtory.
+Register dynamically loaded runner modules as private roots in `packtory.config.js`.
 
-```text
-source/
-|-- config/                  # shared project policy, loading, normalization, and profile file evaluation
-|-- engine/                  # current engine-owned runtime, contracts, core execution code
-|-- integration-tests/       # integration tests outside the unit-test suite
-|-- reporters/               # current concrete reporter implementations
-|-- authoring/               # shared ordinary test-node constructors
-|-- runtimes/                # future shared resource/runtime code
-|-- feature-a/               # generic example of a reusable feature folder
-`-- packages/
-    |-- engine/
-    |   `-- engine.entry-point.ts   # thin facade for the published @overkill-dev/engine package
-    `-- package-a/
-        `-- package-a.entry-point.ts   # generic example of a publish facade re-exporting feature code
-```
+All generated assets, package builds, installed smoke consumers, coverage, and
+runner state belong under `target`. Test recipes execute TypeScript sources
+directly. Package compilation is needed for package consumers and publication.
 
-Rules:
+## Repository tests
 
-- Shared feature folders are the source of truth.
-- Published packages are assembled by `packtory` from facade entry points in `source/packages/**`.
-- `just compile` separates production package output (`target/package-build/source`) from compiled tests (`target/build/source`). Package analysis uses only production output.
-- `just test-mutation-integration` checks source mutation integration. `just test-mutation-package-smoke` checks packed Stryker packages. The full integration and package smoke recipes include the same scenarios.
-- Production and browser builds skip dependency declaration checks while retaining strict checks for project code.
-- Register dynamically loaded runner modules as private roots in `packtory.config.js` to preserve their runtime exports.
-- Adding a package should usually mean adding a small facade first, not creating a new isolated source tree.
-- A package facade should mainly re-export or lightly adapt code from shared feature folders.
+Install dependencies with `npm ci`. The published `@overkill-dev/test` package
+provides test authoring, assertions, doubles, resources, and the `overkill` CLI.
+Source imports identify the system under test, including fixture programs that
+exercise the source runner. A change to source behavior needs no npm release to
+be tested. CLI coverage checks exercise both execution modes through the same
+source TypeScript executable.
+
+| Profile              | Boundary                                                                 | Command                             |
+| -------------------- | ------------------------------------------------------------------------ | ----------------------------------- |
+| `microtests`         | In-memory behavior, supervised execution                                 | `just test-microtests`              |
+| `runtime`            | Programmatic runtime integration, files, compiler projects, and real I/O | `just test-integration`             |
+| `cli`                | CLI execution and process ownership on Linux and macOS                   | `just test-cli-integration`         |
+| `package-smoke`      | Freshly packed package exports, consumers, and executable startup        | `just test-package-smoke`           |
+| `mutation-campaigns` | Real Stryker campaign matrices                                           | Included in `just test-integration` |
+
+Integration files live under `source/integration-tests/<profile>`. Fixtures are
+excluded from profile discovery. Integration cases share reusable workers; engine
+singleton checks use fresh workers. Pools run one case per worker, with worker
+capacity following Node's available CPU parallelism. Microtests use the same CPU
+limit for concurrent cases in one supervised process.
+
+CI runs microtests once with native coverage using
+`just test-microtests-with-coverage`. Coverage includes production TypeScript and
+excludes tests, executable entry points, integration fixtures, and test support.
+Type tests run separately with `just test-types`. Compilation, static analysis,
+and ESLint are separate checks: `just compile`, `just lint`, and `just eslint`.
+
+Prefer inferred types. Add annotations only when TypeScript or ESLint requires
+them, including TypeScript's explicit annotation requirement for assertion
+narrowing. Use tables for input matrices, macros for reusable test construction,
+and custom assertions for shared domain checks. Do not pass a full test scope to
+helpers. Pass precise fixture capabilities when needed. Tables carry input data;
+separate tests cover distinct behaviors. Memory-only fixtures need no disposal
+unless disposal itself is under test. Name suites and their children so they read together without repeating
+the subject.
+
+Package smoke packs the current build once with Packtory. Per-case resources
+create consumers under `target/package-smoke`. Runtime resolution and compiler
+checks reject dependencies found in ancestor installations.
 
 ## Mutation validation
 
-- `just test-mutation-integration` compares real Stryker campaigns using `perTest`, `all`, and `off`, both process models, and both fresh-state settings. Controlled suites run twice with each fixed campaign seed. A separate cache regression demonstrates the reused-state limitation.
-- `just test-mutation-package-smoke` repeats the accuracy comparison through packed public packages.
-- CI checks two-sample source cost measurements on the small workload. `just benchmark-mutation-cost` compiles the checkout, records five samples for both workloads, and writes `target/mutation-cost/report.html`, including raw evidence and host metadata.
+Campaign matrices compare real Stryker runs using `perTest`, `all`, and `off`, both
+process models, and fresh and reused state. Fixed seeds and repeated campaigns
+check accuracy. A separate cache regression demonstrates the reused-state
+limitation. Package smoke tests run one mutant against a one-line module through
+the packed adapter.
 
-Campaign measurements include Stryker's actual reload behavior. Full-suite modes can require worker replacement, so campaign times do not isolate reuse savings. Public execution-session measurements separately compare first collection, subsequent plan access, case execution, invocation completion, and disposal. Only reused in-process sessions retain a host; supervised sessions create a fresh host for each invocation. Driver startup and fresh-host bootstrap have separate clock boundaries; their durations are not additive.
-
-Cost workloads contain one file with two cases or three files with four cases each. Every sample starts a new validation driver. Multi-file repetitions run in two batches. The native reload and worker replacement workloads have separate case deadlines. Campaign samples mutate each subject. The reload workload also compares the fresh-state adapter with the same adapter reporting no reload capability, forcing Stryker worker replacement. The benchmark records worker starts, config resolutions, reload requests, cases executed, and elapsed time. Execution session samples execute an initial and a subsequent invocation. Graph identities verify reuse or recollection without enabling forbidden capabilities. Reports label source versus compiled checkout measurements and record the Node version, without calibration or speed thresholds. Budgets check observed completion counts; time metrics remain diagnostic.
+`just benchmark-mutation-cost` records source execution and campaign measurements
+in `target/mutation-cost/report.html`. Measurements include Stryker reload and
+worker replacement behavior; timings remain diagnostic. CI does not enforce a
+mutation-score or performance-regression gate for this repository.

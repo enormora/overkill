@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { parseRunFilterExpression } from './run-filter-grammar.ts';
 
@@ -12,7 +12,7 @@ function parseErrorMessage(expression: string): string | null {
     }
 }
 
-export const testNode: TestNode = suite('Run filter grammar', [
+export const testNode = suite('Run filter grammar', [
     test('parses field operators', function (scope) {
         scope.assert.deepEqual(
             parseRunFilterExpression('tag=fast title~"should " file:source/**/*.test.ts'),

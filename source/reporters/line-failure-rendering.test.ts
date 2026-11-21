@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { FailedCompositeCheck, FailedLeafCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { compareDeepValues, compareStringEquality, serializedValueDiff } from '../compare/comparison.ts';
@@ -37,7 +37,7 @@ function assertionFailure(checks: readonly [FailedLeafCheck, ...FailedLeafCheck[
     return { checks, kind: 'assertion' };
 }
 
-export const testNode: TestNode = suite('Line failure rendering', [
+export const testNode = suite('Line failure rendering', [
     test('line failure formatter renders serialized scalar values and locations', function (scope) {
         const lines = formatFailure(assertionFailure([
             failedCheck({

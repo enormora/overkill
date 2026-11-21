@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     generatedCandidate,
@@ -42,7 +42,7 @@ function malformedComposition(method: 'filter' | 'flatMap', callback: () => unkn
     return result;
 }
 
-export const testNode: TestNode = suite('generator lifecycle', [
+export const testNode = suite('generator lifecycle', [
     test('validates predicate results while selecting automatic edges', function (scope) {
         const generator = malformedComposition('filter', function () {
             return null;

@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { runInNewContext } from 'node:vm';
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -76,7 +76,7 @@ function hostFixture(deliveryFailure: Error | null): HostFixture {
 function createForeignDeliveryError(): Error {
     return runInNewContext('new Error("Delivery failed.")') as Error;
 }
-export const testNode: TestNode = suite('worker pool host transport', [
+export const testNode = suite('worker pool host transport', [
     table({
         title: 'delivery failure from errors settles the host transport',
         cases: [ new Error('Delivery failed.'), createForeignDeliveryError() ],

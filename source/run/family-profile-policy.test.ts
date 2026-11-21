@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { defineReporter, defineTestFamily, type TestFamily } from '../packages/engine/engine.entry-point.ts';
 import { normalizeConfig, type RunCommand, type RunRequest } from '../packages/run/run.entry-point.ts';
@@ -99,7 +99,7 @@ const unsupportedAnalysisRequests: readonly {
     }
 ];
 
-export const testNode: TestNode = suite('family runner failure policy', [
+export const testNode = suite('family runner failure policy', [
     table({
         title: 'rejects invalid analysis policies before backend loading',
         cases: unsupportedAnalysisRequests,

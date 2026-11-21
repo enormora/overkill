@@ -1,6 +1,6 @@
 import os from 'node:os';
 import { mock } from 'node:test';
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { HostReading } from '../bench/benchmark-host-snapshot.ts';
 import { benchmarkHostSnapshot } from '../test-support/benchmark-host-snapshot.ts';
@@ -66,7 +66,7 @@ function unavailable(reason: string): HostReading<never> {
     });
 }
 
-export const testNode: TestNode = suite('unavailable benchmark host evidence', [
+export const testNode = suite('unavailable benchmark host evidence', [
     test('marks unsupported Windows load and resource counters unavailable', function (scope) {
         const { capacity, metrics } = windowsHostEvidence();
         scope.assert.partialDeepEqual(capacity.loadAverage, {

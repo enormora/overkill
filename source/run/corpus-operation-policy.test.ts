@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import {
     corpusOperations,
@@ -13,7 +13,7 @@ import { loadCorpusEntries } from './corpus-source.ts';
 const first = 'a'.repeat(64);
 const second = 'b'.repeat(64);
 
-export const testNode: TestNode = suite('fixed corpus operation policy', [
+export const testNode = suite('fixed corpus operation policy', [
     test('inspects a witness without creating output', async function (scope) {
         const fixture = corpusOperations(JSON.stringify(corpusWitness), corpusOperationFaults);
         const result = await fixture.operations.inspect(fixture.request);

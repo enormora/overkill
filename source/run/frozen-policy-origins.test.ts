@@ -1,12 +1,12 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { frozenMicrotestPolicy } from '../test-support/frozen-microtest-policy.ts';
 
 import { validateFrozenPolicyOrigins } from './frozen-policy-origins.ts';
 
-export const testNode: TestNode = suite('frozen policy origin boundaries', [
+export const testNode = suite('frozen policy origin boundaries', [
     table({
         title: 'rejects inconsistent policy descriptors',
         cases: [ { field: 'file', value: '../escape.ts' }, { field: 'file', value: './unnormalized.ts' }, {

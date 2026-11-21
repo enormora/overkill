@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -11,7 +11,7 @@ function createRunCommand(config: NormalizedConfig, profileName: string): RunCom
         cwd: process.cwd(),
         engine: { kind: 'default' },
         request: defaultRunRequest({
-            paths: [ 'source/integration-tests/integration/fixtures/passing.test.ts' ],
+            paths: [ 'source/integration-tests/runtime/fixtures/passing.test.ts' ],
             profile: profileName
         })
     };
@@ -19,7 +19,7 @@ function createRunCommand(config: NormalizedConfig, profileName: string): RunCom
 
 const requiredFamilyMessage = 'testFamily must be one of benchmark, integration, microtest, property.';
 
-export const testNode: TestNode = suite('Run profile discriminator', [
+export const testNode = suite('Run profile discriminator', [
     test('orchestrator.resolve() rejects profiles without a test family', async function (scope) {
         const orchestrator = createDeterministicRunOrchestrator();
         const profile: Record<string, unknown> = { ...defaultMicrotestProfile() };

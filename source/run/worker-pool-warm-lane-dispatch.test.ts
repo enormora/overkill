@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import type { PlacementTraceEntry } from './placement-trace.ts';
 import type { PlacementPlan } from './run-types.ts';
@@ -157,28 +158,31 @@ function warmAffinityTraceEntry(entry: PlacementTraceEntry | undefined): WarmAff
     throw new Error('Expected a warm-lane-affinity-selected trace entry.');
 }
 
-function assertWarmAffinitySelection(
-    scope: TestScope,
-    runtime: WorkerPoolRunRuntime,
-    plan: PlacementPlan,
-    selected: WorkerPoolUnitLease
-): void {
-    const baselineUnit = plan.units[1];
-    const selectedUnit = plan.units[2];
-    const trace = warmAffinityTraceEntry(runtime.placementTraceEntries.find(function isWarmSelection(entry) {
-        return entry.kind === 'warm-lane-affinity-selected';
-    }));
+const assertWarmAffinitySelection = defineCompositeAssertion({
+    name: 'warm affinity selection',
+    assert(check, runtime: WorkerPoolRunRuntime, plan: PlacementPlan, selected: WorkerPoolUnitLease) {
+        const baselineUnit = plan.units[1];
+        const selectedUnit = plan.units[2];
+        const trace = warmAffinityTraceEntry(runtime.placementTraceEntries.find(function isWarmSelection(entry) {
+            return entry.kind === 'warm-lane-affinity-selected';
+        }));
+        if (baselineUnit === undefined || baselineUnit === null) {
+            return check.defined(baselineUnit);
+        }
+        if (selectedUnit === undefined || selectedUnit === null) {
+            return check.defined(selectedUnit);
+        }
+        return check.group([
+            check.equal(selected.unit.id.key, 'warm'),
+            check.deepEqual(trace.baselineUnit, baselineUnit.id),
+            check.deepEqual(trace.selectedUnit, selectedUnit.id),
+            check.deepEqual(trace.matchedWarmKeys, [ 'directory', 'runtime-workload' ]),
+            check.equal(trace.score, 5)
+        ]);
+    }
+});
 
-    scope.require.defined(baselineUnit);
-    scope.require.defined(selectedUnit);
-    scope.assert.equal(selected.unit.id.key, 'warm');
-    scope.assert.deepEqual(trace.baselineUnit, baselineUnit.id);
-    scope.assert.deepEqual(trace.selectedUnit, selectedUnit.id);
-    scope.assert.deepEqual(trace.matchedWarmKeys, [ 'directory', 'runtime-workload' ]);
-    scope.assert.equal(trace.score, 5);
-}
-
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool warm lane dispatch',
     children: [
@@ -195,7 +199,7 @@ export const testNode: TestNode = suite({
                 finishSuccessfulPrimary(dispatcher, warmup);
                 const selected = pullRequiredLease(dispatcher, firstLane(plan));
 
-                assertWarmAffinitySelection(scope, runtime, plan, selected);
+                scope.assert(assertWarmAffinitySelection, runtime, plan, selected);
                 return scope.assert.collect();
             }
         }),

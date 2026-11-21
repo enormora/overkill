@@ -1,6 +1,7 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
-import type { LoadedConfig, ConfiguredRunCommand, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
+import type { LoadedConfig, ConfiguredRunCommand, RunCommand } from '../packages/run/run.entry-point.ts';
 
 import { defaultFailureArtifactPolicy, type TestPlan } from '../packages/engine/engine.entry-point.ts';
 
@@ -42,7 +43,7 @@ const terminalReporter = defineFixedReporter({
     sinks: [ { kind: 'stdout-raw' } ]
 });
 
-const defaultRequest: RunRequest = defaultRunRequest();
+const defaultRequest = defaultRunRequest();
 
 function defaultLoadedConfig(): LoadedConfig {
     return {
@@ -206,58 +207,70 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
     };
 }
 
-function assertProcessUsageCommand(scope: TestScope, suppliedCommand: ConfiguredRunCommand | RunCommand): void {
-    const { command } = snapshotRunCommand(suppliedCommand);
-    const profile = command.config.profiles.microtest;
-
-    scope.require.defined(profile);
-    scope.assert.deepEqual(profile, {
-        failureArtifacts: defaultFailureArtifactPolicy,
-        baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
-        coverage: {
-            outputDirectory: null,
-            outputs: [ 'v8', 'lcov' ],
-            sources: { exclude: [], mode: 'loaded' },
-            thresholds: { branches: null, functions: null, lines: null }
-        },
-        execution: {
-            maxConcurrency: 5,
-            processModel: 'supervised-process',
-            scheduling: 'concurrent'
-        },
-        files: null,
-        reporters: null,
-        processUsage: {
-            budgets: {
-                activeResourceCount: 2,
-                javaScriptEngineHeapBytes: null,
-                residentSetBytes: 200,
-                residentSetGrowthBytesPerSecond: null
-            },
-            measure: true,
-            samplingIntervalMilliseconds: 25
-        },
-        testFamily: 'microtest',
-        runRecords: { persist: 'on-demand' },
-        timings: { collection: 'summary' },
-        timeouts: {
-            collectionMilliseconds: 1000,
-            hardMilliseconds: 1000,
-            softMilliseconds: 500
+const assertProcessUsageCommand = defineCompositeAssertion({
+    name: 'process usage command',
+    assert(check, suppliedCommand: ConfiguredRunCommand | RunCommand) {
+        const { command } = snapshotRunCommand(suppliedCommand);
+        const profile = command.config.profiles.microtest;
+        if (profile === undefined || profile === null) {
+            return check.defined(profile);
         }
-    });
-    const { processBudgetOverrides } = command.request;
+        const initialChecks = check.group([
+            check.defined(profile),
+            check.deepEqual(profile, {
+                failureArtifacts: defaultFailureArtifactPolicy,
+                baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
+                coverage: {
+                    outputDirectory: null,
+                    outputs: [ 'v8', 'lcov' ],
+                    sources: { exclude: [], mode: 'loaded' },
+                    thresholds: { branches: null, functions: null, lines: null }
+                },
+                execution: {
+                    maxConcurrency: 5,
+                    processModel: 'supervised-process',
+                    scheduling: 'concurrent'
+                },
+                files: null,
+                reporters: null,
+                processUsage: {
+                    budgets: {
+                        activeResourceCount: 2,
+                        javaScriptEngineHeapBytes: null,
+                        residentSetBytes: 200,
+                        residentSetGrowthBytesPerSecond: null
+                    },
+                    measure: true,
+                    samplingIntervalMilliseconds: 25
+                },
+                testFamily: 'microtest',
+                runRecords: { persist: 'on-demand' },
+                timings: { collection: 'summary' },
+                timeouts: {
+                    collectionMilliseconds: 1000,
+                    hardMilliseconds: 1000,
+                    softMilliseconds: 500
+                }
+            })
+        ]);
+        const { processBudgetOverrides } = command.request;
+        if (processBudgetOverrides === null) {
+            return check.group([ initialChecks, check.notNull(processBudgetOverrides) ]);
+        }
+        return check.group([
+            initialChecks,
+            check.notNull(processBudgetOverrides),
+            check.deepEqual(processBudgetOverrides, {
+                activeResourceCount: null,
+                javaScriptEngineHeapBytes: 100,
+                residentSetBytes: null,
+                residentSetGrowthBytesPerSecond: null
+            })
+        ]);
+    }
+});
 
-    scope.require.notNull(processBudgetOverrides);
-    scope.assert.deepEqual(processBudgetOverrides, {
-        activeResourceCount: null,
-        javaScriptEngineHeapBytes: 100,
-        residentSetBytes: null,
-        residentSetGrowthBytesPerSecond: null
-    });
-}
-
-export const testNode: TestNode = suite('Command line runner process usage', [
+export const testNode = suite('Command line runner process usage', [
     test(
         'commandLineRunner.runTests() carries process usage config and request values',
         async function (scope: TestScope) {
@@ -280,7 +293,7 @@ export const testNode: TestNode = suite('Command line runner process usage', [
             scope.assert.equal(result.exitCode, 0);
             const receivedCommand = recordedCommands.first();
             scope.require.defined(receivedCommand);
-            assertProcessUsageCommand(scope, receivedCommand);
+            scope.assert(assertProcessUsageCommand, receivedCommand);
 
             return scope.assert.collect();
         }

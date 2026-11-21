@@ -1,5 +1,14 @@
+import { consumerEnvironment } from './support/consumer-environment.ts';
 import { execFile } from 'node:child_process';
-import { type TestNode, test } from '#tests';
+import { packageConsumer } from './support/package-consumer.ts';
+
+const consumerFacade = packageConsumer(
+    'runs packed ESLint examples and generated properties',
+    function consumerFixture(consumerDirectory) {
+        return { consumerDirectory };
+    }
+);
+const { test } = consumerFacade;
 
 const script = `
 import { defineRuleTests, defineConfigTests } from '@overkill-dev/eslint-test';
@@ -35,12 +44,14 @@ if (configExploration?.executed !== policy.newTrials) throw new Error('Packed co
 console.log('ESLint testing package passed');
 `;
 
-export const testNode: TestNode = test('runs packed ESLint examples and generated properties', async function (scope) {
+export const testNode = test('runs packed ESLint examples and generated properties', async function (scope) {
+    const { consumerDirectory } = scope.resources.consumer;
+
     const output = await new Promise<string>(function runConsumer(resolve, reject) {
         execFile(
             process.execPath,
             [ '--input-type=module', '--eval', script ],
-            { cwd: import.meta.dirname },
+            { env: consumerEnvironment(process.env, consumerDirectory), cwd: consumerDirectory },
             function completed(error, stdout, stderr) {
                 if (error === null) {
                     resolve(stdout);

@@ -1,11 +1,11 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { invalidProfileNameMessage } from '../config/profile-patterns.ts';
 import type { RunCommand } from './run-types.ts';
 
-const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const passingFixturePath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 const validProjectProfileNames = [ 'backend-http', 'ui-browser', 'ui.browser', 'unit_fast', 'benchmark' ];
 const invalidProfileSyntaxMessage = 'Invalid profile name "backend/http". ' +
     'Profile names may only contain letters, numbers, dots, underscores, and hyphens.';
@@ -23,7 +23,7 @@ function runCommand(profile: string, config = defaultRunConfig()): RunCommand {
     };
 }
 
-export const testNode: TestNode = suite('Run profile name', [
+export const testNode = suite('Run profile name', [
     test('profile name validation accepts project-owned names', function (scope) {
         for (const profileName of validProjectProfileNames) {
             scope.assert.equal(invalidProfileNameMessage(profileName), null);

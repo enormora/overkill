@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { selectTestProfile } from '../run/test-profile.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
@@ -13,7 +13,7 @@ async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
     return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
-export const testNode: TestNode = suite('Integration profile configuration', [
+export const testNode = suite('Integration profile configuration', [
     test('rejects snapshot enablement in strict profiles', async function (scope) {
         for (const testFamily of [ 'microtest', 'property' ] as const) {
             await scope.assert.rejects(async function strictSnapshotProfile() {

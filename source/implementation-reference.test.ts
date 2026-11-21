@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 
@@ -24,7 +24,7 @@ function reference(): ImplementationReference<{ readonly expected: number; }> {
     });
 }
 
-export const testNode: TestNode = suite('portable implementation references', [
+export const testNode = suite('portable implementation references', [
     test('preserves canonically equivalent object keys in lossless input identity', function (scope) {
         const composed = '\u{E9}';
         const decomposed = 'e\u{301}';

@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import { defineReporter, type DefinedReporter, type ReporterEvent } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
@@ -111,51 +112,55 @@ function createSkippedExecutionPlan(engine: Engine): ReturnType<Engine['createTe
     }));
 }
 
-function assertSkippedExecutionResult(scope: TestScope, result: RunResult): void {
-    const outcome = { kind: 'skip' as const, reason: 'unsupported platform' };
-    const skippedCaseId = {
-        file: null,
-        params: null,
-        suite: [ 'runtime' ],
-        title: 'conditional'
-    };
+const assertSkippedExecutionResult = defineCompositeAssertion({
+    name: 'skipped execution result',
+    assert(check, result: RunResult) {
+        const outcome = { kind: 'skip' as const, reason: 'unsupported platform' };
+        const skippedCaseId = {
+            file: null,
+            params: null,
+            suite: [ 'runtime' ],
+            title: 'conditional'
+        };
+        return check.group([
+            check.deepEqual(result.perTest, [
+                {
+                    property: null,
+                    benchmark: null,
+                    attempts: [ {
+                        property: null,
+                        benchmark: null,
+                        attempt: { index: 0 },
+                        durationMicroseconds: 0,
+                        outcome,
+                        verdict: 'skip'
+                    } ],
+                    retried: null,
+                    definitionLocations: [ { kind: 'unknown' as const } ],
+                    id: skippedCaseId,
+                    outcome,
+                    verdict: 'skip',
+                    workId: { familyVariant: null, case: skippedCaseId, runtimes: [], workload: null },
+                    durationMicroseconds: 0
+                }
+            ]),
+            check.deepEqual(result.summary, {
+                crashed: 0,
+                defined: 2,
+                discovered: 1,
+                failed: 0,
+                inconclusive: 0,
+                passed: 0,
+                planned: 1,
+                processExhausted: 0,
+                runtimePolicy: 0,
+                skipped: 1
+            })
+        ]);
+    }
+});
 
-    scope.assert.deepEqual(result.perTest, [
-        {
-            property: null,
-            benchmark: null,
-            attempts: [ {
-                property: null,
-                benchmark: null,
-                attempt: { index: 0 },
-                durationMicroseconds: 0,
-                outcome,
-                verdict: 'skip'
-            } ],
-            retried: null,
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            id: skippedCaseId,
-            outcome,
-            verdict: 'skip',
-            workId: { familyVariant: null, case: skippedCaseId, runtimes: [], workload: null },
-            durationMicroseconds: 0
-        }
-    ]);
-    scope.assert.deepEqual(result.summary, {
-        crashed: 0,
-        defined: 2,
-        discovered: 1,
-        failed: 0,
-        inconclusive: 0,
-        passed: 0,
-        planned: 1,
-        processExhausted: 0,
-        runtimePolicy: 0,
-        skipped: 1
-    });
-}
-
-export const testNode: TestNode = suite('Skipped test execution', [
+export const testNode = suite('Skipped test execution', [
     test('execute() records skipped cases without running body infrastructure', async function (scope) {
         const engine = createEngine();
         const lifecycle = createLifecycleRecorder();
@@ -171,7 +176,7 @@ export const testNode: TestNode = suite('Skipped test execution', [
             startedAt: epochStart
         });
 
-        assertSkippedExecutionResult(scope, result);
+        scope.assert(assertSkippedExecutionResult, result);
         scope.assert.deepEqual(lifecycle.events(), [
             'run-start',
             'suite-start',

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     defaultFailureArtifactPolicy,
@@ -66,7 +66,7 @@ function firstAssertionFailure(result: RunResult): Extract<TestFailure, { readon
     return failure;
 }
 
-export const testNode: TestNode = suite('failure artifact policy', [
+export const testNode = suite('failure artifact policy', [
     test('legacy reporter contexts retain default failure rendering', async function (scope) {
         const result = await failedComparison(defaultFailureArtifactPolicy, null);
         const failure = firstAssertionFailure(result);

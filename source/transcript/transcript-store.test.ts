@@ -1,4 +1,7 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
+import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     captureErrorHttpTranscript,
@@ -18,83 +21,89 @@ const nonErrorCapture: TranscriptCaptureErrorEntry = [
     { message: 'broken', source: 'custom' }
 ];
 
-function assertRecordedBodies(scope: TestScope): void {
-    scope.assert.deepEqual(recordedHttpBody(null), { kind: 'absent' });
-    scope.assert.deepEqual(recordedHttpBody(new Uint8Array()), { kind: 'absent' });
-    scope.assert.deepEqual(recordedHttpBody(textEncoder.encode('body')), {
-        bytes: textEncoder.encode('body'),
-        kind: 'complete'
-    });
-    scope.assert.deepEqual(
-        recordedHttpBody(new Uint8Array(httpTranscriptBodyByteLimit + 1)),
-        {
-            bytes: new Uint8Array(httpTranscriptBodyByteLimit),
-            kind: 'truncated',
-            originalByteLength: httpTranscriptBodyByteLimit + 1
-        }
-    );
-}
-
-function assertEmptyTranscriptView(
-    scope: TestScope,
-    transcript: TranscriptView
-): void {
-    scope.assert.equal(isTranscriptView(transcript), true);
-    scope.assert.equal(isTranscriptView({ entries: [] }), false);
-    scope.assert.equal(transcript.firstEntry, null);
-    scope.assert.equal(transcript.lastEntry, null);
-    scope.assert.equal(transcript.nthEntry(0), null);
-    scope.assert.equal(transcript.nthEntry(Number.MAX_SAFE_INTEGER + 1), null);
-}
-
-function assertTranscriptPrimitives(scope: TestScope): void {
-    const transcript = emptyTranscriptView();
-    const recorder = createHttpTranscriptRecorder<null>();
-    const captureError = captureErrorHttpTranscript('broken').firstEntry;
-
-    recorder.recordCaptureError('node-http', 'broken', null);
-    scope.require.defined(captureError);
-
-    assertEmptyTranscriptView(scope, transcript);
-    assertRecordedBodies(scope);
-    scope.assert.deepEqual(recordedHttpError('broken'), { message: 'broken', name: 'Error' });
-    scope.assert.deepEqual(captureError, nonErrorCapture);
-    scope.assert.deepEqual(recorder.transcript.entries, [
-        [ 'capture-error', { message: 'broken', source: 'node-http' } ]
+const recordedBodiesChecks = (check: CompositeCheckBuilder<'assert'>): CompositeAssertionReturn<'assert'> => {
+    return check.group([
+        check.deepEqual(recordedHttpBody(null), { kind: 'absent' }),
+        check.deepEqual(recordedHttpBody(new Uint8Array()), { kind: 'absent' }),
+        check.deepEqual(recordedHttpBody(textEncoder.encode('body')), {
+            bytes: textEncoder.encode('body'),
+            kind: 'complete'
+        }),
+        check.deepEqual(
+            recordedHttpBody(new Uint8Array(httpTranscriptBodyByteLimit + 1)),
+            {
+                bytes: new Uint8Array(httpTranscriptBodyByteLimit),
+                kind: 'truncated',
+                originalByteLength: httpTranscriptBodyByteLimit + 1
+            }
+        )
     ]);
-}
+};
 
-async function assertScopedTranscriptStore(scope: TestScope): Promise<void> {
-    const firstScope = {};
-    const emptyScope = {};
-    const store = createTranscriptStore<readonly ['state', number]>();
+const emptyTranscriptViewChecks = (
+    check: CompositeCheckBuilder<'assert'>,
+    transcript: TranscriptView
+): CompositeAssertionReturn<'assert'> => {
+    return check.group([
+        check.equal(isTranscriptView(transcript), true),
+        check.equal(isTranscriptView({ entries: [] }), false),
+        check.equal(transcript.firstEntry, null),
+        check.equal(transcript.lastEntry, null),
+        check.equal(transcript.nthEntry(0), null),
+        check.equal(transcript.nthEntry(Number.MAX_SAFE_INTEGER + 1), null)
+    ]);
+};
 
-    store.recordInScope(firstScope, 'state', 1);
-    store.recordInScope(null, 'state', 2);
-    await runWithTranscriptScope(firstScope, async function assertFirstScope() {
-        scope.assert.deepEqual(store.view.entries, [ [ 'state', 1 ] ]);
-    });
-    await runWithTranscriptScope(emptyScope, async function assertEmptyScope() {
-        scope.assert.deepEqual(store.view.entries, []);
-        await runWithTranscriptScope(null, async function assertLifetimeEvidence() {
-            scope.assert.deepEqual(store.view.entries, [ [ 'state', 1 ], [ 'state', 2 ] ]);
-        });
-        scope.assert.deepEqual(store.view.entries, []);
-    });
-    scope.assert.deepEqual(store.view.entries, [ [ 'state', 1 ], [ 'state', 2 ] ]);
-}
+const assertTranscriptPrimitives = defineCompositeAssertion({
+    name: 'transcript primitives',
+    assert(check) {
+        const transcript = emptyTranscriptView();
+        const recorder = createHttpTranscriptRecorder<null>();
+        const captureError = captureErrorHttpTranscript('broken').firstEntry;
+        recorder.recordCaptureError('node-http', 'broken', null);
+        if (captureError === undefined || captureError === null) {
+            return check.defined(captureError);
+        }
+        return check.group([
+            check.defined(captureError),
+            emptyTranscriptViewChecks(check.annotated('empty transcript view'), transcript),
+            recordedBodiesChecks(check.annotated('recorded bodies')),
+            check.deepEqual(recordedHttpError('broken'), { message: 'broken', name: 'Error' }),
+            check.deepEqual(captureError, nonErrorCapture),
+            check.deepEqual(recorder.transcript.entries, [
+                [ 'capture-error', { message: 'broken', source: 'node-http' } ]
+            ])
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('Transcript store', [
+export const testNode = suite('Transcript store', [
     test('HTTP transcript primitives expose immutable safe values', async function (scope) {
         await runWithTranscriptScope(null, async function assertLifetimePrimitives() {
-            assertTranscriptPrimitives(scope);
+            scope.assert(assertTranscriptPrimitives);
         });
 
         return scope.assert.collect();
     }),
     test('transcript stores isolate entries by active scope', async function (scope) {
         await runWithTranscriptScope(null, async function assertScopeRestoration() {
-            await assertScopedTranscriptStore(scope);
+            const scopedTranscriptStoreFirstScope = {};
+            const scopedTranscriptStoreEmptyScope = {};
+            const scopedTranscriptStoreStore = createTranscriptStore<readonly ['state', number]>();
+
+            scopedTranscriptStoreStore.recordInScope(scopedTranscriptStoreFirstScope, 'state', 1);
+            scopedTranscriptStoreStore.recordInScope(null, 'state', 2);
+            await runWithTranscriptScope(scopedTranscriptStoreFirstScope, async function assertFirstScope() {
+                scope.assert.deepEqual(scopedTranscriptStoreStore.view.entries, [ [ 'state', 1 ] ]);
+            });
+            await runWithTranscriptScope(scopedTranscriptStoreEmptyScope, async function assertEmptyScope() {
+                scope.assert.deepEqual(scopedTranscriptStoreStore.view.entries, []);
+                await runWithTranscriptScope(null, async function assertLifetimeEvidence() {
+                    scope.assert.deepEqual(scopedTranscriptStoreStore.view.entries, [ [ 'state', 1 ], [ 'state', 2 ] ]);
+                });
+                scope.assert.deepEqual(scopedTranscriptStoreStore.view.entries, []);
+            });
+            scope.assert.deepEqual(scopedTranscriptStoreStore.view.entries, [ [ 'state', 1 ], [ 'state', 2 ] ]);
         });
 
         return scope.assert.collect();

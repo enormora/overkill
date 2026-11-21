@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 
@@ -10,7 +10,7 @@ import {
     relativizeSourceLocationPath
 } from './reporting-context.ts';
 
-export const testNode: TestNode = suite('Reporting context', [
+export const testNode = suite('Reporting context', [
     test('run reports accept absent and partial preparation facts', function (scope) {
         const reporting = createRunReportingContext();
         const result = runResultFactory.build();

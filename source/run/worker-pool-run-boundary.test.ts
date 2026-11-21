@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -49,7 +49,7 @@ function workerPoolCommand(hostProcess: WorkerPoolCommand['hostProcess']): Worke
         hardTimeoutMilliseconds: 1000,
         maxConcurrency: 5,
         hostProcess,
-        paths: [ 'source/integration-tests/integration/fixtures/passing.test.ts' ],
+        paths: [ 'source/integration-tests/runtime/fixtures/passing.test.ts' ],
         processBudgets: {
             activeResourceCount: null,
             javaScriptEngineHeapBytes: null,
@@ -118,7 +118,7 @@ function createRecordedPoolDependencies(): RecordedPoolDependencies {
     };
 }
 
-export const testNode: TestNode = suite('Worker pool run boundaries', [
+export const testNode = suite('Worker pool run boundaries', [
     test(
         'executeWorkerPoolRun() creates empty results with default execution state',
         async function (scope) {

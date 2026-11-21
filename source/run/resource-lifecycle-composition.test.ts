@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { CaseRunnerError } from '../engine/run-result.ts';
 
@@ -144,7 +144,7 @@ function invalidResourceContextConstructionError(): unknown {
     }
 }
 
-export const testNode: TestNode = suite('Resource lifecycle composition', [
+export const testNode = suite('Resource lifecycle composition', [
     test('resource wrapper composition maps mixed direct and runtime steps', async function (scope) {
         const trackedSession = trackedResourceSession();
         const composed = composedResourceSession(

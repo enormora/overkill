@@ -1,4 +1,6 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
+import { type CompositeCheckBuilder, defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -20,31 +22,47 @@ function texts(output: unknown): readonly string[] {
         : [];
 }
 
-function assertLocatedFailure(scope: TestScope, output: readonly OutputLineIntent[]): void {
-    scope.assert.equal(output.length, 4);
-    scope.assert.true(output[0]?.text.startsWith('fail source/example.test.ts:7:3 '));
-    scope.assert.true(output[0]?.text.endsWith(': mismatch'));
+const locatedFailureChecks = (
+    check: CompositeCheckBuilder<'assert'>,
+    output: readonly OutputLineIntent[]
+): CompositeAssertionReturn<'assert'> => {
+    const initialChecks = check.group([
+        check.equal(output.length, 4),
+        check.true(output[0]?.text.startsWith('fail source/example.test.ts:7:3 ')),
+        check.true(output[0]?.text.endsWith(': mismatch'))
+    ]);
     const annotation = output[0]?.annotation;
-    scope.require.defined(annotation);
-    scope.assert.deepEqual(
-        annotation,
-        {
-            location: { kind: 'known', file: '/project/source/example.test.ts', line: 7, column: 3 },
-            severity: 'error',
-            title: 'root > passes'
-        } as const
-    );
-}
+    if (annotation === undefined || annotation === null) {
+        return check.group([ initialChecks, check.defined(annotation) ]);
+    }
+    return check.group([
+        initialChecks,
+        check.defined(annotation),
+        check.deepEqual(
+            annotation,
+            {
+                location: { kind: 'known', file: '/project/source/example.test.ts', line: 7, column: 3 },
+                severity: 'error',
+                title: 'root > passes'
+            } as const
+        )
+    ]);
+};
 
-function assertFinalDiagnostics(scope: TestScope, output: readonly OutputLineIntent[]): void {
-    assertLocatedFailure(scope, output);
-    scope.assert.true(output[1]?.text.endsWith(': no assertions'));
-    scope.assert.equal(output[1]?.annotation?.location, null);
-    scope.assert.equal(output[2]?.text, 'runner-error missing shard');
-    scope.assert.true(output[3]?.text.startsWith('done status=failed discovered=10 planned=8 executed=3 '));
-}
+const assertFinalDiagnostics = defineCompositeAssertion({
+    name: 'final diagnostics',
+    assert(check, output: readonly OutputLineIntent[]) {
+        return check.group([
+            locatedFailureChecks(check.annotated('located failure'), output),
+            check.true(output[1]?.text.endsWith(': no assertions')),
+            check.equal(output[1]?.annotation?.location, null),
+            check.equal(output[2]?.text, 'runner-error missing shard'),
+            check.true(output[3]?.text.startsWith('done status=failed discovered=10 planned=8 executed=3 '))
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('brief final-result reporter', [
+export const testNode = suite('brief final-result reporter', [
     test('accepts results from runners without resource checks', async function (scope) {
         const reporter = createBriefFinalResultReporter()(context);
         const { resourceChecks: _resourceChecks, ...legacy } = runResultFactory.build({
@@ -160,7 +178,7 @@ export const testNode: TestNode = suite('brief final-result reporter', [
                 },
                 result
             }) ?? [];
-            assertFinalDiagnostics(scope, output);
+            scope.assert(assertFinalDiagnostics, output);
             scope.assert.deepEqual(
                 await reporter.onResult({
                     context: {

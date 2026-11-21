@@ -1,11 +1,4 @@
-import {
-    type TestNode,
-    type TestScope,
-    suite,
-    test,
-    testDouble as callbackDouble,
-    doubleUsage
-} from '@overkill-dev/test';
+import { type TestScope, suite, test, testDouble as callbackDouble, doubleUsage } from '@overkill-dev/test';
 
 import type { BehaviorRuntime, Invocation } from './double-behavior.ts';
 import { rule } from './double-rule.ts';
@@ -28,7 +21,7 @@ const unusedBehaviorRuntime: BehaviorRuntime = {
     }
 };
 
-export const testNode: TestNode = suite('Test double callback', [
+export const testNode = suite('Test double callback', [
     test('rule.callsCallback() invokes a callback argument synchronously', function (scope) {
         const seen: unknown[] = [];
         const readValue = testDouble<ReadValue>({

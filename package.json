@@ -77,6 +77,7 @@
         "dependency-cruiser": "18.8.0",
         "jscpd": "5.4.3",
         "knip": "6.45.1",
+        "packtory": "0.0.115",
         "rust-just": "1.59.0",
         "typescript-beta": "npm:typescript@7.1.0-beta"
     },
@@ -85,9 +86,5 @@
     },
     "allowScripts": {
         "node-pty@1.2.0-beta.15": true
-    },
-    "imports": {
-        "#tests": "@overkill-dev/test",
-        "#tests/*": "@overkill-dev/test/*"
     }
 }

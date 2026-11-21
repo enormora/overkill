@@ -1,4 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 import { type EngineCaseBody, createTestEngine } from '../../test-support/create-test-engine.ts';
 
 import { benchmarkAuthoringExports } from '../../test-support/benchmark-authoring-exports.ts';
@@ -76,29 +77,39 @@ async function executeMixedTree(): Promise<MixedAuthoringExecution> {
     return { plan, result: await engine.execute(plan), rows };
 }
 
-function assertMixedMetadata(scope: TestScope, plan: TestPlan): void {
-    const first = plan.discoveredCases[0];
-    scope.assert.deepEqual(first.annotations.tags, [ 'suite', 'case' ]);
-    scope.assert.deepEqual(first.annotations.ownership, [ 'performance' ]);
-    scope.assert.equal(first.controls.capture, 'buffered');
-    scope.assert.equal(first.controls.timeoutMilliseconds, 100);
-}
+const assertMixedMetadata = defineCompositeAssertion({
+    name: 'mixed metadata',
+    assert(check, plan: TestPlan) {
+        const first = plan.discoveredCases[0];
+        return check.group([
+            check.deepEqual(first.annotations.tags, [ 'suite', 'case' ]),
+            check.deepEqual(first.annotations.ownership, [ 'performance' ]),
+            check.equal(first.controls.capture, 'buffered'),
+            check.equal(first.controls.timeoutMilliseconds, 100)
+        ]);
+    }
+});
 
-function assertMixedOutcomes(scope: TestScope, execution: MixedAuthoringExecution): void {
-    scope.assert.deepEqual(execution.rows, [ 4, 7 ]);
-    scope.assert.equal(execution.result.summary.passed, 3);
-    scope.assert.equal(execution.result.summary.failed, 1);
-    scope.assert.equal(execution.result.summary.skipped, 1);
-    scope.assert.deepEqual(execution.result.runnerErrors, []);
-    scope.assert.deepEqual(
-        execution.result.perTest.map(function verdict(entry) {
-            return entry.outcome?.kind;
-        }),
-        [ 'pass', 'fail', 'pass', 'pass', 'skip' ]
-    );
-}
+const assertMixedOutcomes = defineCompositeAssertion({
+    name: 'mixed outcomes',
+    assert(check, execution: MixedAuthoringExecution) {
+        return check.group([
+            check.deepEqual(execution.rows, [ 4, 7 ]),
+            check.equal(execution.result.summary.passed, 3),
+            check.equal(execution.result.summary.failed, 1),
+            check.equal(execution.result.summary.skipped, 1),
+            check.deepEqual(execution.result.runnerErrors, []),
+            check.deepEqual(
+                execution.result.perTest.map(function verdict(entry) {
+                    return entry.outcome?.kind;
+                }),
+                [ 'pass', 'fail', 'pass', 'pass', 'skip' ]
+            )
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('Bench entry point', [
+export const testNode = suite('Bench entry point', [
     test('exposes only the focused authoring surface', function (scope) {
         scope.assert.deepEqual(
             Object.keys(bench).toSorted(function compareNames(left, right) {
@@ -128,8 +139,8 @@ export const testNode: TestNode = suite('Bench entry point', [
     }),
     test('executes mixed suites with tables, controls, annotations, and skips', async function (scope) {
         const execution = await executeMixedTree();
-        assertMixedMetadata(scope, execution.plan);
-        assertMixedOutcomes(scope, execution);
+        scope.assert(assertMixedMetadata, execution.plan);
+        scope.assert(assertMixedOutcomes, execution);
         return scope.assert.collect();
     }),
     test('preserves validation errors for malformed authoring', function (scope) {

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 import { test as subjectTest, suite as subjectSuite } from '../packages/test/test.entry-point.ts';
 
 import { readPropertyExecutionHost, type TestNode as SubjectTestNode } from '../packages/engine/engine.entry-point.ts';
@@ -66,7 +66,7 @@ function nestedStreamProperty(recordValue: (value: number) => void, includeEarli
     );
 }
 
-export const testNode: TestNode = suite('property deterministic streams', [
+export const testNode = suite('property deterministic streams', [
     test('unrelated nested calls do not reseed a later invocation', async function (scope) {
         const first: number[] = [];
         const second: number[] = [];

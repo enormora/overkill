@@ -1,6 +1,7 @@
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createVirtualRunDiscovery } from '../test-support/virtual-run-discovery.ts';
 import type { ProfileFiles } from '../config/types.ts';
@@ -33,47 +34,51 @@ function profileFiles(files: ProfileFiles): ProfileFiles {
     return files;
 }
 
-async function rejectMissingInputs(scope: TestScope, filePath: string): Promise<void> {
-    const discovery = createDiscovery([ filePath ]);
+const rejectMissingInputs = defineCompositeAssertion({
+    name: 'reject missing inputs',
+    async assert(check, filePath: string) {
+        const discovery = createDiscovery([ filePath ]);
+        return check.group([
+            await check.rejects(async function discoverEmptyInput() {
+                await discovery.discoverRunFiles({ cwd, paths: [], profileFiles: null });
+            }, { message: 'No run paths were provided and the selected profile has no file discovery policy.' }),
+            await check.rejects(async function discoverMissingCwd() {
+                await discovery.discoverRunFiles({ cwd: '/missing-cwd', paths: [ filePath ], profileFiles: null });
+            }, { message: 'Run cwd does not exist: /missing-cwd' }),
+            await check.rejects(async function discoverEmptyPath() {
+                await discovery.discoverRunFiles({ cwd, paths: [ ' ' ], profileFiles: null });
+            }, { message: 'Run path must not be empty.' }),
+            await check.rejects(async function discoverMissingPath() {
+                await discovery.discoverRunFiles({ cwd, paths: [ 'missing.test.ts' ], profileFiles: null });
+            }, { message: 'Run path does not exist: missing.test.ts' })
+        ]);
+    }
+});
 
-    await scope.assert.rejects(async function discoverEmptyInput() {
-        await discovery.discoverRunFiles({ cwd, paths: [], profileFiles: null });
-    }, { message: 'No run paths were provided and the selected profile has no file discovery policy.' });
-    await scope.assert.rejects(async function discoverMissingCwd() {
-        await discovery.discoverRunFiles({ cwd: '/missing-cwd', paths: [ filePath ], profileFiles: null });
-    }, { message: 'Run cwd does not exist: /missing-cwd' });
-    await scope.assert.rejects(async function discoverEmptyPath() {
-        await discovery.discoverRunFiles({ cwd, paths: [ ' ' ], profileFiles: null });
-    }, { message: 'Run path must not be empty.' });
-    await scope.assert.rejects(async function discoverMissingPath() {
-        await discovery.discoverRunFiles({ cwd, paths: [ 'missing.test.ts' ], profileFiles: null });
-    }, { message: 'Run path does not exist: missing.test.ts' });
-}
+const rejectInvalidFileShapes = defineCompositeAssertion({
+    name: 'reject invalid file shapes',
+    async assert(check, filePath: string, outsideFilePath: string) {
+        const discovery = createVirtualRunDiscovery({
+            cwd,
+            directories: [ '/outside' ],
+            files: [ filePath, outsideFilePath ],
+            realpaths: {}
+        });
+        return check.group([
+            await check.rejects(async function discoverDirectoryPath() {
+                await discovery.discoverRunFiles({ cwd, paths: [ '.' ], profileFiles: null });
+            }, { message: 'Directory run paths require selected profile file discovery.' }),
+            await check.rejects(async function discoverOutsidePath() {
+                await discovery.discoverRunFiles({ cwd, paths: [ outsideFilePath ], profileFiles: null });
+            }, { message: `Run path must stay inside cwd: ${outsideFilePath}` }),
+            await check.rejects(async function discoverDuplicatePath() {
+                await discovery.discoverRunFiles({ cwd, paths: [ 'example.test.ts', filePath ], profileFiles: null });
+            }, { message: 'Run path must not be duplicated: example.test.ts' })
+        ]);
+    }
+});
 
-async function rejectInvalidFileShapes(
-    scope: TestScope,
-    filePath: string,
-    outsideFilePath: string
-): Promise<void> {
-    const discovery = createVirtualRunDiscovery({
-        cwd,
-        directories: [ '/outside' ],
-        files: [ filePath, outsideFilePath ],
-        realpaths: {}
-    });
-
-    await scope.assert.rejects(async function discoverDirectoryPath() {
-        await discovery.discoverRunFiles({ cwd, paths: [ '.' ], profileFiles: null });
-    }, { message: 'Directory run paths require selected profile file discovery.' });
-    await scope.assert.rejects(async function discoverOutsidePath() {
-        await discovery.discoverRunFiles({ cwd, paths: [ outsideFilePath ], profileFiles: null });
-    }, { message: `Run path must stay inside cwd: ${outsideFilePath}` });
-    await scope.assert.rejects(async function discoverDuplicatePath() {
-        await discovery.discoverRunFiles({ cwd, paths: [ 'example.test.ts', filePath ], profileFiles: null });
-    }, { message: 'Run path must not be duplicated: example.test.ts' });
-}
-
-export const testNode: TestNode = suite('Test file discovery', [
+export const testNode = suite('Test file discovery', [
     test('resolves canonical file identities under cwd', async function (scope) {
         const discovery = createDiscovery([ 'nested/example.test.ts' ]);
         const files = await discovery.discoverRunFiles({
@@ -355,8 +360,8 @@ export const testNode: TestNode = suite('Test file discovery', [
         return scope.assert.collect();
     }),
     test('rejects invalid explicit inputs before import', async function (scope) {
-        await rejectMissingInputs(scope, 'example.test.ts');
-        await rejectInvalidFileShapes(scope, 'example.test.ts', '/outside/outside.test.ts');
+        await scope.assert(rejectMissingInputs, 'example.test.ts');
+        await scope.assert(rejectInvalidFileShapes, 'example.test.ts', '/outside/outside.test.ts');
         await scope.assert.rejects(async function discoverSpecialFile() {
             await createDiscovery([ 'example.test.ts' ]).discoverRunFiles({
                 cwd,

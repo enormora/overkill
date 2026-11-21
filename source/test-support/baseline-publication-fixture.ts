@@ -25,10 +25,10 @@ type PublicationFixture = {
     readonly changes: readonly OrdinaryBaselineChange[];
     readonly result: RunResult;
 };
-export async function sessionFixture(scope: TestScope): Promise<PublicationFixture> {
+export async function sessionFixture(cleanup: TestScope['cleanup']): Promise<PublicationFixture> {
     await mkdir('target', { recursive: true });
     const directory = await mkdtemp('target/baseline-publication-');
-    scope.cleanup(async function () {
+    cleanup(async function () {
         await rm(directory, { recursive: true, force: true });
     });
     const store = await createOrdinaryBaselineStore({ directory, projectRoot: process.cwd(), maxBytes: 65_536 });

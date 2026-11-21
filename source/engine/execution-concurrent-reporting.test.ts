@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import { defineFixedReporter } from '../test-support/reporter-definition.ts';
@@ -281,15 +282,20 @@ function createLimitedConcurrencyScenario(): LimitedConcurrencyScenario {
     };
 }
 
-function assertLimitedResult(scope: TestScope, result: RunResult): void {
-    scope.assert.deepEqual(result.runnerErrors, []);
-    scope.assert.deepEqual(
-        result.perTest.map(function toTitle(testResult) {
-            return testResult.id.title;
-        }),
-        [ 'first', 'second', 'third' ]
-    );
-}
+const assertLimitedResult = defineCompositeAssertion({
+    name: 'limited result',
+    assert(check, result: RunResult) {
+        return check.group([
+            check.deepEqual(result.runnerErrors, []),
+            check.deepEqual(
+                result.perTest.map(function toTitle(testResult) {
+                    return testResult.id.title;
+                }),
+                [ 'first', 'second', 'third' ]
+            )
+        ]);
+    }
+});
 
 async function executeFatalLimitedPlan(recordStart: (title: string) => void): Promise<RunResult> {
     const engine = createEngine();
@@ -328,7 +334,7 @@ async function executeFatalLimitedPlan(recordStart: (title: string) => void): Pr
     });
 }
 
-export const testNode: TestNode = suite('Concurrent execution reporting', [
+export const testNode = suite('Concurrent execution reporting', [
     test(
         'runs concurrent in-process cases with plan-ordered starts and results',
         async function (scope) {
@@ -374,7 +380,7 @@ export const testNode: TestNode = suite('Concurrent execution reporting', [
         const result = await scenario.finish();
 
         scope.assert.equal(scenario.state.maximumActiveCases(), 2);
-        assertLimitedResult(scope, result);
+        scope.assert(assertLimitedResult, result);
 
         return scope.assert.collect();
     }),

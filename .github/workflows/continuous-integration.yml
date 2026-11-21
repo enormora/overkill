@@ -73,9 +73,9 @@ jobs:
             - name: Compile TypeScript
               run: npx just compile
 
-    unit-tests:
+    microtests:
         runs-on: ubuntu-latest
-        name: Unit tests
+        name: Microtests
         permissions:
             contents: read
         steps:
@@ -88,13 +88,13 @@ jobs:
                   node-version-file: package.json
             - name: Install dependencies
               run: npm ci
-            - name: Run unit tests with coverage
-              run: npx just test-unit-with-coverage
-            - name: Retain unit coverage report
+            - name: Run microtests with coverage
+              run: npx just test-microtests-with-coverage
+            - name: Retain microtest coverage report
               if: ${{ !cancelled() }}
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
-                  name: unit-test-coverage
+                  name: microtest-coverage
                   path: target/coverage/lcov.info
                   retention-days: 7
 
@@ -113,8 +113,6 @@ jobs:
                   node-version-file: package.json
             - name: Install dependencies
               run: npm ci
-            - name: Assess TypeScript beta public API
-              run: npx just test-type-test-api
             - name: Run integration tests
               run: npx just test-integration
 
@@ -154,12 +152,12 @@ jobs:
             - name: Publish dry run
               run: npx just publish-dry-run
 
-    process-integration-tests:
+    cli-integration-tests:
         strategy:
             matrix:
                 os: [ubuntu-latest, macos-26-intel]
         runs-on: ${{ matrix.os }}
-        name: Process integration tests (${{ matrix.os }})
+        name: CLI integration tests (${{ matrix.os }})
         permissions:
             contents: read
         steps:
@@ -170,7 +168,7 @@ jobs:
               with:
                   node-version-file: package.json
             - run: npm ci
-            - run: npx just test-process-integration
+            - run: npx just test-cli-integration
 
     workflow-security:
         runs-on: ubuntu-latest

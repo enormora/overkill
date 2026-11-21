@@ -15,9 +15,9 @@ export type AttachmentRunFixture = {
     readonly writes: ReadonlyMap<string, string>;
 };
 
-export async function attachmentRunFixture(scope: TestScope): Promise<AttachmentRunFixture> {
-    const fixture = 'source/integration-tests/integration/fixtures/runtime-attachments.test.ts';
-    const { directory } = await attachmentFixture(scope, defaultAttachmentLimits);
+export async function attachmentRunFixture(cleanup: TestScope['cleanup']): Promise<AttachmentRunFixture> {
+    const fixture = 'source/integration-tests/runtime/fixtures/runtime-attachments.test.ts';
+    const { directory } = await attachmentFixture(cleanup, defaultAttachmentLimits);
     const resolved = await orchestrator.resolve({
         config: defaultRunConfig({
             runtimeStateDir: directory,
@@ -49,8 +49,8 @@ export async function attachmentRunFixture(scope: TestScope): Promise<Attachment
     };
 }
 
-export async function localAttachmentRunFixture(scope: TestScope): Promise<AttachmentRunFixture> {
-    const fixture = await attachmentRunFixture(scope);
+export async function localAttachmentRunFixture(cleanup: TestScope['cleanup']): Promise<AttachmentRunFixture> {
+    const fixture = await attachmentRunFixture(cleanup);
     const engine = createTestEngine();
     const service = defineResource({
         name: 'service',
@@ -78,7 +78,9 @@ export async function localAttachmentRunFixture(scope: TestScope): Promise<Attac
         }) ]
     }));
     const firstCase = fixture.resolved.facts.cases[0];
-    scope.require.defined(firstCase);
+    if (firstCase === undefined) {
+        throw new Error('Expected a fixture case.');
+    }
     return {
         ...fixture,
         resolved: {

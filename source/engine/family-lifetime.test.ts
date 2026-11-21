@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, table } from '@overkill-dev/test';
+import { suite, test, table } from '@overkill-dev/test';
 
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
@@ -142,7 +142,7 @@ async function abandonActiveExecution(): Promise<AbandonmentObservation> {
     };
 }
 
-export const testNode: TestNode = suite('family lifetime', [
+export const testNode = suite('family lifetime', [
     test('retains backend and cleanup failures together without repeating disposal', async function (scope) {
         const engine = createTestEngine();
         const failures = [ new Error('execution sentinel'), new Error('cleanup sentinel') ] as const;

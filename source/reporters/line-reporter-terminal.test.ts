@@ -1,12 +1,4 @@
-import {
-    type TestNode,
-    type TestScope,
-    suite,
-    test,
-    doubleUsage,
-    testDouble,
-    type TestDouble
-} from '@overkill-dev/test';
+import { suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -34,20 +26,7 @@ function lineReporterWithLog(log: Log): RealTimeReporter {
     return createLineReporter(fakeDependencies)(createReportingContext({ projectRoot: null }));
 }
 
-function assertTerminalOutput(scope: TestScope, log: Log): void {
-    scope.assert(doubleUsage.callCount, log, 3);
-    scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-        errorSymbol,
-        'fails (12 ms): process exhausted'
-    ]);
-    scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ errorSymbol, 'fails (13 ms): crashed' ]);
-    scope.assert(doubleUsage.nthCallWithExactly, log, 2, [
-        errorSymbol,
-        '[root] nested fails (14 ms): crashed'
-    ]);
-}
-
-export const testNode: TestNode = suite('Line reporter terminal', [
+export const testNode = suite('Line reporter terminal', [
     test('renders terminal test results and empty suite names', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
@@ -98,8 +77,16 @@ export const testNode: TestNode = suite('Line reporter terminal', [
             verdict: 'crashed',
             durationMicroseconds: 14_000
         });
-
-        assertTerminalOutput(scope, log);
+        scope.assert(doubleUsage.callCount, log, 3);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+            errorSymbol,
+            'fails (12 ms): process exhausted'
+        ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ errorSymbol, 'fails (13 ms): crashed' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 2, [
+            errorSymbol,
+            '[root] nested fails (14 ms): crashed'
+        ]);
 
         return scope.assert.collect();
     })

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { executionSessionRuntime } from '../test-support/execution-session-runtime.ts';
 
@@ -8,7 +8,7 @@ import type { RunExecutionReply } from './execution-session-types.ts';
 import type { ExecutionSessionCall } from './execution-session-runtime-types.ts';
 
 const invocation = { data: { value: 42 }, timeoutMilliseconds: 50, signal: null };
-export const testNode: TestNode = suite('execution session ownership', [
+export const testNode = suite('execution session ownership', [
     test('initializes once and reuses its environment for sequential invocations', async function (scope) {
         const fixture = await executionSessionRuntime();
         const session = createManagedExecutionSession(fixture.options, fixture.runtime);

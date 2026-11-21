@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { bodyReferencePlan } from '../test-support/body-reference-plan.ts';
 import { memoryImplementationCatalog } from '../test-support/memory-implementation-catalog.ts';
@@ -18,7 +18,7 @@ import {
 
 const context = { projectRoot: '/project' };
 const state = { admission: 'all', catalog: null } as const;
-export const testNode: TestNode = suite('frozen body reference planning policy', [
+export const testNode = suite('frozen body reference planning policy', [
     test('retains plan state without changing object identity', function (scope) {
         const plan = { name: 'plan' };
         scope.assert.equal(setImplementationPlan(plan, state), plan);

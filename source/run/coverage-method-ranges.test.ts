@@ -1,8 +1,8 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { normalizeCoverageMethodRanges } from './coverage-method-ranges.ts';
 
-export const testNode: TestNode = suite('Coverage method ranges', [
+export const testNode = suite('Coverage method ranges', [
     table({
         title: 'preserves unmatched source ranges',
         cases: [

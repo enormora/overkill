@@ -1,10 +1,10 @@
-import { type TestNode, suite, test, table } from '@overkill-dev/test';
+import { suite, test, table } from '@overkill-dev/test';
 
 import { gen, property, type PropertySampleScope } from '../packages/property/property.entry-point.ts';
 import { differential } from '../packages/differential/differential.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 
-export const testNode: TestNode = suite('differential lifecycle', [
+export const testNode = suite('differential lifecycle', [
     test('require signals stop execution instead of becoming comparable errors', async function (scope) {
         let later = 0;
         const result = await executePropertyNode(

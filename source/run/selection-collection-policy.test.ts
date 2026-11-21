@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createCollectedPlan } from '../test-support/worker-pool-execution-state.ts';
 
@@ -28,7 +28,7 @@ function unexpectedBody(): never {
 function planFor(node: SubjectTestNode): TestPlan {
     return createTestPlan(createRoot({ title: 'root', annotations: {}, controls: {}, children: [ node ] }));
 }
-export const testNode: TestNode = suite('collection policy admission', [
+export const testNode = suite('collection policy admission', [
     test('rejects collected plans without selected cases', function (scope) {
         const plan = { ...createCollectedPlan(), files: [] };
         scope.assert.throws(function () {

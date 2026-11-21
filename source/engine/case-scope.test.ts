@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import type { ExecuteOptions } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -43,7 +43,7 @@ async function sampleScope(input: ExecuteOptions | undefined): Promise<ScopeSamp
     return observation;
 }
 
-export const testNode: TestNode = suite('case scope compatibility', [
+export const testNode = suite('case scope compatibility', [
     test('defaults omitted execution seeds to zero', async function (scope) {
         const explicit = await sampleScope({ ...options, seed: 0n });
         scope.assert.deepEqual(await sampleScope(undefined), explicit);

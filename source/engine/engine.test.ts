@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, doubleUsage, rule, testDouble } from '@overkill-dev/test';
+import { suite, test, doubleUsage, rule, testDouble } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -9,7 +9,7 @@ import type { ExecutionDriver, ExecuteOptions } from './execution.ts';
 import { createPlainOutputRenderer } from './reporter-output.ts';
 import type { RunResult } from './run-result.ts';
 
-export const testNode: TestNode = suite('Engine planning and execution', [
+export const testNode = suite('Engine planning and execution', [
     test('engine.execute() invokes the injected execute dependency', async function (scope) {
         const expectedResult = runResultFactory.build({ totalWallTimeMicroseconds: 42 });
         const execute = testDouble<ExecutionDriver>({

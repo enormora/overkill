@@ -1,4 +1,4 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { emptyPropertyCorpus } from '../engine/property-corpus.ts';
 import type { WitnessFile } from '../engine/witness-file.ts';
@@ -64,7 +64,7 @@ function collectionWithCopies(count: number, resourceCount: number): CollectedRu
 async function selectedWitness(value: WitnessFile, execute: () => Promise<void>): Promise<void> {
     await withReplay({ kind: 'witness', witness: value, sourceRunId: null, moduleGraph: 'current' }, null, execute);
 }
-export const testNode: TestNode = suite('replay target selection', [
+export const testNode = suite('replay target selection', [
     test('restores recorded order and placement with the invocation signal', async function (scope: TestScope) {
         const runtime = fakeWorkerRuntime(createCollectedPlan());
         const record = workerReplayRecord(runtime, null);

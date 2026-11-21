@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { observationPlan } from '../test-support/observation-lifetime.ts';
@@ -6,7 +6,7 @@ import { supervisedChildCommand } from '../test-support/supervised-child-fixture
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import { createHostTestPlan, resolveHostEngine } from './host-test-plan.ts';
 
-export const testNode: TestNode = suite('host collection policy forwarding', [
+export const testNode = suite('host collection policy forwarding', [
     table({
         title: 'forwards collection policy without executing cases',
         cases: [ 'integration', 'property' ] as const,

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { DryRunStatus, MutantRunStatus } from '@stryker-mutator/api/test-runner';
 
@@ -6,10 +6,10 @@ import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fi
 import { mutationInvocations } from '../../test-support/mutation-invocations.ts';
 
 const dry = { coverageAnalysis: 'off', timeout: 50, disableBail: false } as const;
-export const testNode: TestNode = suite('mutation runner invocation orchestration', [
+export const testNode = suite('mutation runner invocation orchestration', [
     test('publishes the first complete dry run as the campaign baseline', async function (scope) {
         const { reply } = mutationCoverageFixture('off');
-        const fixture = mutationInvocations(scope, null, reply);
+        const fixture = mutationInvocations(scope.cleanup, null, reply);
         const result = await fixture.invocations.dry(fixture.runner, dry, fixture.budget);
         scope.assert.equal(result.status, DryRunStatus.Complete);
         scope.assert.deepEqual(fixture.calls, [ 'fetch', 'publish' ]);
@@ -20,7 +20,7 @@ export const testNode: TestNode = suite('mutation runner invocation orchestratio
     }),
     test('reuses a published baseline without republishing it', async function (scope) {
         const coverage = mutationCoverageFixture('off');
-        const fixture = mutationInvocations(scope, coverage.baseline, coverage.reply);
+        const fixture = mutationInvocations(scope.cleanup, coverage.baseline, coverage.reply);
         await fixture.invocations.dry(fixture.runner, dry, fixture.budget);
         await fixture.invocations.dry(fixture.runner, dry, fixture.budget);
         scope.assert.deepEqual(fixture.calls, [ 'fetch' ]);
@@ -28,7 +28,7 @@ export const testNode: TestNode = suite('mutation runner invocation orchestratio
         return scope.assert.collect();
     }),
     test('does not publish a timed out dry run', async function (scope) {
-        const fixture = mutationInvocations(scope, null, { kind: 'timeout', artifacts: [], data: null });
+        const fixture = mutationInvocations(scope.cleanup, null, { kind: 'timeout', artifacts: [], data: null });
         const result = await fixture.invocations.dry(fixture.runner, dry, fixture.budget);
         scope.assert.equal(result.status, DryRunStatus.Timeout);
         scope.assert.deepEqual(fixture.calls, [ 'fetch' ]);
@@ -37,7 +37,7 @@ export const testNode: TestNode = suite('mutation runner invocation orchestratio
     }),
     test('rejects coverage changes before running a dry invocation', async function (scope) {
         const coverage = mutationCoverageFixture('perTest');
-        const fixture = mutationInvocations(scope, coverage.baseline, coverage.reply);
+        const fixture = mutationInvocations(scope.cleanup, coverage.baseline, coverage.reply);
         await scope.assert.rejects(async function () {
             await fixture.invocations.dry(fixture.runner, dry, fixture.budget);
         }, { message: 'Dry run conflicts with the original campaign selection or coverage mode.' });
@@ -47,7 +47,7 @@ export const testNode: TestNode = suite('mutation runner invocation orchestratio
     test(
         'returns timeout before execution when baseline delivery exhausts the budget',
         async function (scope) {
-            const fixture = mutationInvocations(scope, null, mutationCoverageFixture('off').reply);
+            const fixture = mutationInvocations(scope.cleanup, null, mutationCoverageFixture('off').reply);
             const runner = {
                 ...fixture.runner,
                 client: {
@@ -68,7 +68,7 @@ export const testNode: TestNode = suite('mutation runner invocation orchestratio
     ),
     test('requires a dry-run baseline before executing a mutant', async function (scope) {
         const coverage = mutationCoverageFixture('off');
-        const fixture = mutationInvocations(scope, null, coverage.reply);
+        const fixture = mutationInvocations(scope.cleanup, null, coverage.reply);
         await scope.assert.rejects(async function () {
             await fixture.invocations.mutant(fixture.runner, coverage.options, fixture.budget);
         }, { message: 'Campaign dry-run baseline is unavailable.' });
@@ -77,7 +77,7 @@ export const testNode: TestNode = suite('mutation runner invocation orchestratio
     }),
     test('runs a runtime mutant against the frozen campaign selection', async function (scope) {
         const coverage = mutationCoverageFixture('off');
-        const fixture = mutationInvocations(scope, coverage.baseline, coverage.reply);
+        const fixture = mutationInvocations(scope.cleanup, coverage.baseline, coverage.reply);
         const result = await fixture.invocations.mutant(fixture.runner, coverage.options, fixture.budget);
         scope.assert.equal(result.status, MutantRunStatus.Survived);
         scope.assert.deepEqual(fixture.admissions, [ 'runtime:false' ]);
@@ -86,7 +86,7 @@ export const testNode: TestNode = suite('mutation runner invocation orchestratio
     }),
     test('forwards static activation and environment replacement to execution', async function (scope) {
         const coverage = mutationCoverageFixture('off');
-        const fixture = mutationInvocations(scope, coverage.baseline, coverage.reply);
+        const fixture = mutationInvocations(scope.cleanup, coverage.baseline, coverage.reply);
         await fixture.invocations.mutant(fixture.runner, {
             ...coverage.options,
             mutantActivation: 'static',
@@ -97,7 +97,7 @@ export const testNode: TestNode = suite('mutation runner invocation orchestratio
     }),
     test('returns timeout before mutant execution when baseline delivery is late', async function (scope) {
         const coverage = mutationCoverageFixture('off');
-        const fixture = mutationInvocations(scope, coverage.baseline, coverage.reply);
+        const fixture = mutationInvocations(scope.cleanup, coverage.baseline, coverage.reply);
         const runner = {
             ...fixture.runner,
             client: {

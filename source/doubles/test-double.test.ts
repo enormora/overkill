@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     answerFromBehavior,
@@ -63,7 +63,7 @@ function behaviorRuntime(entries: readonly unknown[]): BehaviorRuntime {
     };
 }
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     title: 'Function test doubles',
 
     children: [

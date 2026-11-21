@@ -1,4 +1,4 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { createMutationBaseline } from './mutation-baseline.ts';
@@ -18,7 +18,7 @@ function respondingClient(response: CampaignResponse): CampaignClient {
         }
     };
 }
-export const testNode: TestNode = suite(
+export const testNode = suite(
     'mutation baseline protocol failures',
     [ table({
         title: 'rejects baseline',

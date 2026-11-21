@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -10,7 +10,7 @@ import { updateCompactHistory } from './history-storage.ts';
 import { readLastFailedSelection } from './last-failed-selection.ts';
 import { copyRunSelection, invalidRunSelectionMessage, matchesRunFilter, title } from './run-selection-filters.ts';
 
-export const testNode: TestNode = suite('last-failed selection', [
+export const testNode = suite('last-failed selection', [
     table({
         title: 'intersects title selection with historical identities',
         cases: [ 'example', 'unrelated' ] as const,

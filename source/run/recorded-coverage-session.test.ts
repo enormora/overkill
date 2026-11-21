@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { withMemoryCoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
 import { defaultRunConfig } from '../test-support/run-command-factory.ts';
@@ -6,7 +6,7 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createCoverageRunRecord } from './coverage-run-record.ts';
 import { executeRecordedCoverageSession } from './recorded-coverage-session.ts';
 
-export const testNode: TestNode = suite('Recorded coverage session', [
+export const testNode = suite('Recorded coverage session', [
     test('cleanup failures fail returned results', async function (scope) {
         return await withMemoryCoverageRecordFixture(
             defaultRunConfig(),

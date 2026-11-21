@@ -1,4 +1,5 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { resourceCheckOwnerSession, completeObservation } from '../test-support/resource-check-session.ts';
 import { withResourceCheckCancellation } from '../resource-check-cancellation.ts';
@@ -17,16 +18,21 @@ const attempt = { kind: 'attempt', work, attempt: { index: 0 } } as const;
 function finish(): void {
     return undefined;
 }
-function assertSharedAdmission(scope: TestScope, session: ResourceCheckSession, kind: 'attempt' | 'lifetime'): void {
-    if (kind === 'attempt') {
-        session.assertAdmitted();
-    } else {
-        scope.assert.throws(function () {
-            session.assertAdmitted();
-        }, { message: 'Resource observation is stopped.' });
+const assertSharedAdmission = defineCompositeAssertion({
+    name: 'shared admission',
+    assert(check, session: ResourceCheckSession, kind: 'attempt' | 'lifetime') {
+        if (kind === 'attempt') {
+            return check.fromThrowable('admission remains open', () => {
+                session.assertAdmitted();
+            });
+        } else {
+            return check.throws(function () {
+                session.assertAdmitted();
+            }, { message: 'Resource observation is stopped.' });
+        }
     }
-}
-export const testNode: TestNode = suite('resource observation stop policy', [
+});
+export const testNode = suite('resource observation stop policy', [
     table({
         title: 'standalone stops close admission exactly once',
         cases: [ 'per-case', 'per-run' ] as const,
@@ -77,7 +83,7 @@ export const testNode: TestNode = suite('resource observation stop policy', [
             });
 
             scope.assert.deepEqual(stopped, [ failure ]);
-            assertSharedAdmission(scope, fixture.session, kind);
+            scope.assert(assertSharedAdmission, fixture.session, kind);
             await scope.assert.rejects(async function () {
                 await fixture.session.close(finish);
             }, { message: 'Resource observation closure failed.' });

@@ -1,9 +1,9 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { hostObservation, hostObservationScenario } from '../test-support/host-observation.ts';
 import { observeBenchmarkHost } from './benchmark-host-observer.ts';
 
-export const testNode: TestNode = suite('benchmark host observation ownership', [
+export const testNode = suite('benchmark host observation ownership', [
     test(
         'samples one bounded window and filters garbage collection entries by time',
         async function (scope) {

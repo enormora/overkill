@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
 import type { RunResult, PropertyWitnessFile } from '../packages/engine/engine.entry-point.ts';
@@ -15,7 +15,7 @@ function confirmedWitness(result: RunResult): PropertyWitnessFile {
     return witness;
 }
 
-export const testNode: TestNode = suite('differential comparisons', [
+export const testNode = suite('differential comparisons', [
     test('rejects malformed JavaScript declarations before executing callbacks', function (scope) {
         const run = function (): number {
             return 1;

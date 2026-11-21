@@ -1,9 +1,57 @@
+import { consumerEnvironment } from './support/consumer-environment.ts';
 import { spawn } from 'node:child_process';
 import { chmod, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { text } from 'node:stream/consumers';
-import { fileURLToPath } from 'node:url';
-import { table, type TestNode, suite, type TestScope } from '#tests';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { suite } from '@overkill-dev/test';
+import { packageConsumer } from './support/package-consumer.ts';
+
+const consumerFacade = packageConsumer('shipped CLI permission policies', function consumerFixture(consumerDirectory) {
+    const consumerFolder = fileURLToPath(new URL('./permission-consumer/', pathToFileURL(`${consumerDirectory}/`)));
+    const binaryPath = fileURLToPath(
+        new URL(
+            './node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js',
+            pathToFileURL(`${consumerDirectory}/`)
+        )
+    );
+    async function runBinary(profile: string, file: string): Promise<CliResult> {
+        await mkdir(consumerFolder, { recursive: true });
+        await rm(path.join(consumerFolder, file.replace('.test.mjs', '-output.txt')), { force: true });
+        await Promise.all([
+            writeFile(path.join(consumerFolder, 'package.json'), '{"type":"module"}'),
+            writeFile(path.join(consumerFolder, 'overkill.config.js'), configScript),
+            writeFile(path.join(consumerFolder, 'pure.test.mjs'), pureScript),
+            writeFile(path.join(consumerFolder, 'filesystem.test.mjs'), filesystemScript),
+            writeFile(path.join(consumerFolder, 'subprocess.test.mjs'), subprocessScript)
+        ]);
+        await chmod(binaryPath, 0o755);
+        const environment = readProcessEnvironment(process);
+        const child = spawn(binaryPath, [ 'run', '--config', 'overkill.config.js', '--profile', profile, file ], {
+            cwd: consumerFolder,
+            env: consumerEnvironment({
+                ...environment,
+                PATH: `${path.dirname(process.execPath)}${path.delimiter}${environment.PATH ?? ''}`
+            }, consumerDirectory),
+            stdio: [ 'ignore', 'pipe', 'pipe' ]
+        });
+        const stdout = text(child.stdout);
+        const stderr = text(child.stderr);
+        const code = await new Promise<number | null>(function waitForExit(resolve, reject) {
+            child.once('error', reject);
+            child.once('close', resolve);
+        });
+
+        return {
+            code,
+            stderr: await stderr,
+            stdout: await stdout
+        };
+    }
+
+    return { runBinary, binaryPath, consumerFolder };
+});
+const { table } = consumerFacade;
 
 import { readProcessEnvironment } from '../../run/node-host-readers.ts';
 
@@ -13,13 +61,6 @@ type CliResult = {
     readonly stdout: string;
 };
 
-const consumerFolder = fileURLToPath(new URL('./permission-consumer/', import.meta.url));
-const binaryPath = fileURLToPath(
-    new URL(
-        './node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js',
-        import.meta.url
-    )
-);
 const configScript = `
 import { defineConfig } from '@overkill-dev/test/config';
 export const config = defineConfig({
@@ -58,7 +99,7 @@ export const testNode = test('writes and reads a file', async function (scope) {
         scope.assert.equal(error.permission, 'FileSystemWrite');
         return scope.assert.collect();
     }
-    const folder = await mkdtemp(path.join(tmpdir(), 'overkill-cli-permissions-'));
+    const folder = await mkdtemp(path.join(process.cwd(), 'overkill-cli-permissions-'));
     try {
         const file = path.join(folder, 'example.txt');
         await writeFile(file, 'ok');
@@ -97,70 +138,7 @@ export const testNode = test('asserts without runtime effects', function (scope)
 });
 `;
 
-async function runBinary(profile: string, file: string): Promise<CliResult> {
-    await mkdir(consumerFolder, { recursive: true });
-    await rm(path.join(consumerFolder, file.replace('.test.mjs', '-output.txt')), { force: true });
-    await Promise.all([
-        writeFile(path.join(consumerFolder, 'package.json'), '{"type":"module"}'),
-        writeFile(path.join(consumerFolder, 'overkill.config.js'), configScript),
-        writeFile(path.join(consumerFolder, 'pure.test.mjs'), pureScript),
-        writeFile(path.join(consumerFolder, 'filesystem.test.mjs'), filesystemScript),
-        writeFile(path.join(consumerFolder, 'subprocess.test.mjs'), subprocessScript)
-    ]);
-    await chmod(binaryPath, 0o755);
-    const environment = readProcessEnvironment(process);
-    const child = spawn(binaryPath, [ 'run', '--config', 'overkill.config.js', '--profile', profile, file ], {
-        cwd: consumerFolder,
-        env: { ...environment, PATH: `${path.dirname(process.execPath)}${path.delimiter}${environment.PATH ?? ''}` },
-        stdio: [ 'ignore', 'pipe', 'pipe' ]
-    });
-    const stdout = text(child.stdout);
-    const stderr = text(child.stderr);
-    const code = await new Promise<number | null>(function waitForExit(resolve, reject) {
-        child.once('error', reject);
-        child.once('close', resolve);
-    });
-
-    return {
-        code,
-        stderr: await stderr,
-        stdout: await stdout
-    };
-}
-
-function assertPermissionReport(
-    scope: TestScope,
-    profile: string,
-    permission: string,
-    result: CliResult
-): void {
-    scope.assert.equal(result.code, profile === 'integration' ? 0 : 2);
-    scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
-    if (profile === 'integration') {
-        scope.assert.false(result.stdout.includes('Runner error:'));
-    } else {
-        scope.assert.includes(result.stdout, `Permission denied: ${permission}`);
-        if (profile === 'observed' && permission === 'FileSystemWrite') {
-            scope.assert.includes(result.stdout, 'Permission denied: FileSystemRead');
-        }
-    }
-    scope.assert.equal(result.stderr, '');
-}
-
-async function assertPermissionOutcome(
-    scope: TestScope,
-    profile: string,
-    file: string,
-    permission: string
-): Promise<void> {
-    const outputFile = file.replace('.test.mjs', '-output.txt');
-    const result = await runBinary(profile, file);
-    assertPermissionReport(scope, profile, permission, result);
-    const consumerFiles = await readdir(consumerFolder);
-    scope.assert.equal(consumerFiles.includes(outputFile), profile !== 'microtest');
-}
-
-export const testNode: TestNode = suite('shipped CLI permission policies', [
+export const testNode = suite('shipped CLI permission policies', [
     table({
         title: 'pure microtests pass through the executable shebang',
         cases: [ 'microtest', 'observed' ],
@@ -168,6 +146,8 @@ export const testNode: TestNode = suite('shipped CLI permission policies', [
             return profile;
         },
         async test(scope) {
+            const { runBinary } = scope.resources.consumer;
+
             const profile = scope.parameters;
 
             const result = await runBinary(profile, 'pure.test.mjs');
@@ -192,6 +172,8 @@ export const testNode: TestNode = suite('shipped CLI permission policies', [
             return [ profile, permission ].map(String).join(', ');
         },
         async test(scope) {
+            const { binaryPath, runBinary, consumerFolder } = scope.resources.consumer;
+
             const { profile, file, permission } = scope.parameters;
 
             const binarySource = await readFile(binaryPath, 'utf8');
@@ -199,7 +181,25 @@ export const testNode: TestNode = suite('shipped CLI permission policies', [
                 binarySource.split('\n', 1)[0],
                 '#!/usr/bin/env -S node --permission-audit --allow-inspector --disable-warning=PERM0004'
             );
-            await assertPermissionOutcome(scope, profile, file, permission);
+
+            const outputFile = file.replace('.test.mjs', '-output.txt');
+            const result = await runBinary(profile, file);
+
+            scope.assert.equal(result.code, profile === 'integration' ? 0 : 2);
+            scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
+            if (profile === 'integration') {
+                scope.assert.false(result.stdout.includes('Runner error:'));
+            } else {
+                scope.assert.includes(result.stdout, `Permission denied: ${permission}`);
+                if (profile === 'observed' && permission === 'FileSystemWrite') {
+                    scope.assert.includes(result.stdout, 'Permission denied: FileSystemRead');
+                }
+            }
+            scope.assert.equal(result.stderr, '');
+
+            const consumerFiles = await readdir(consumerFolder);
+            scope.assert.equal(consumerFiles.includes(outputFile), profile !== 'microtest');
+
             return scope.assert.collect();
         }
     })

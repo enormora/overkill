@@ -23,7 +23,7 @@ function incomingRequest(socket: Socket): IncomingMessage {
     return incoming;
 }
 
-export function httpObservationFixture(scope: TestScope): HttpObservationFixture {
+export function httpObservationFixture(cleanup: TestScope['cleanup']): HttpObservationFixture {
     const socket = new Socket();
     const incoming = incomingRequest(socket);
     const server = {};
@@ -35,8 +35,8 @@ export function httpObservationFixture(scope: TestScope): HttpObservationFixture
             return { 'X-Reply': [ 'one', 'two' ], 'X-Count': 3, unused: undefined };
         }
     };
-    scope.cleanup(observer.dispose);
-    scope.cleanup(function disposeRequest() {
+    cleanup(observer.dispose);
+    cleanup(function disposeRequest() {
         incoming.destroy();
         socket.destroy();
     });

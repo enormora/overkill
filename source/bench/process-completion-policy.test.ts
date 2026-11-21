@@ -1,11 +1,11 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { completionProcess } from '../test-support/process-completion.ts';
 import { completeProcess } from './process-interactions.ts';
 import { processCheckpoint, withProcessTimeline, type ProcessCheckpoint } from './process-timeline.ts';
 
 const expectedExit = { kind: 'exit', readiness: null, steps: [], expectedExitCodes: [ 0 ] } as const;
-export const testNode: TestNode = suite('process completion and timeline policy', [
+export const testNode = suite('process completion and timeline policy', [
     test('returns the exit boundary after the complete script', async function (scope) {
         const fixture = completionProcess(0, null);
         fixture.output.append('stdout', Buffer.from('ready'));

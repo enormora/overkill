@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createPlacementTraceRecorder } from './placement-trace.ts';
 
@@ -15,7 +15,7 @@ const testCaseMetadata = {
     definitionLocations: [ { kind: 'unknown' as const } ]
 } as const;
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Placement trace',
     children: [

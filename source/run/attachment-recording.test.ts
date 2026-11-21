@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { attachmentRecording } from '../test-support/attachment-recording.ts';
 import { exchangedAttachment } from '../test-support/attachment-exchange.ts';
@@ -8,7 +8,7 @@ import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { inspectDetailedRecordState } from './history-state-access.ts';
 import { historyRecordSchema } from './history-record.ts';
 
-export const testNode: TestNode = suite('attachment run recording', [
+export const testNode = suite('attachment run recording', [
     test('classifies persisted attachment records by their replay completeness', async function (scope: TestScope) {
         const fixture = await attachmentRecording(null);
         const record = await createAttachmentRecord(fixture.resolved, fixture.dependencies, null);

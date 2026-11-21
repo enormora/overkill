@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { ordinaryBaselineSessionFixture } from '../test-support/ordinary-baseline-session.ts';
 import { baselineCaseEvent, baselineCaseResult, storedBaseline } from '../test-support/baseline-case-fixture.ts';
@@ -9,7 +9,7 @@ import { baselineRunnerError } from './baseline-outcomes.ts';
 import { readOrdinaryBaselineReport } from './baseline-report.ts';
 
 const maxBytes = 65_536;
-export const testNode: TestNode = suite('ordinary baseline session policy', [
+export const testNode = suite('ordinary baseline session policy', [
     table({
         title: 'validates proposals and returns a read-only report',
         cases: [ 'none', 'diff' ] as const,

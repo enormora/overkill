@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { corpusExecution, corpusDiagnostics } from '../test-support/corpus-execution.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
@@ -7,7 +7,7 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { emptyPropertyCorpus } from '../engine/property-corpus.ts';
 import { withReplay } from './replay-context.ts';
 
-export const testNode: TestNode = suite('corpus execution storage policy', [
+export const testNode = suite('corpus execution storage policy', [
     test('loads configured corpus snapshots only for property profiles', async function (scope) {
         const fixture = await corpusExecution('pass', true);
         scope.assert.deepEqual(await fixture.execution.resolve(fixture.run), {

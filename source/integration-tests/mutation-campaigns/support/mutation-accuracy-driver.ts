@@ -1,19 +1,19 @@
 import { z } from 'zod/v4';
-import { executeMutationScript } from '../../integration/support/stryker-script.ts';
+import { executeMutationScript } from '../../runtime/support/stryker-script.ts';
 import {
     campaignEvidenceSchema,
     compareMutationCampaigns,
     type CampaignEvidence,
     type MutationCoverageMode
-} from '../../integration/fixtures/mutation-evidence/mutation-accuracy.test.ts';
+} from '../../runtime/fixtures/mutation-evidence/mutation-accuracy.test.ts';
 import type {
     MutationMode,
     MutationModuleUrls
-} from '../../integration/fixtures/mutation-evidence/mutation-project.test.ts';
+} from '../../runtime/fixtures/mutation-evidence/mutation-project.test.ts';
 
 const extension = import.meta.url.endsWith('.ts') ? 'ts' : 'js';
 const accuracyUrl = new URL(
-    `../../integration/fixtures/mutation-evidence/mutation-accuracy.test.${extension}`,
+    `../../runtime/fixtures/mutation-evidence/mutation-accuracy.test.${extension}`,
     import.meta.url
 );
 const script = `

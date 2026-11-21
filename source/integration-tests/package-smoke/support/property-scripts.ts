@@ -2,7 +2,6 @@ export const propertyAuthoringScript = `
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { findPackageJSON } from 'node:module';
-import { pathToFileURL } from 'node:url';
 import { createRoot, createTestPlan, execute, readTestBodyFamily } from '@overkill-dev/engine';
 import { suite, test, defineMacro } from '@overkill-dev/test';
 import * as leaf from '@overkill-dev/property';
@@ -23,32 +22,6 @@ assert.deepEqual(Object.keys(leaf).sort(), [
 assert.deepEqual(Object.keys(standard).sort(), [
     'defineCodec', 'gen', 'isGenerator', 'property', 'relation', 'sampleGenerator', 'withProperties'
 ]);
-const leafBackend = new URL('../../property/generator.js', import.meta.resolve('@overkill-dev/property'));
-const { prepareGenerator: leafCompiler } = await import(leafBackend);
-const standardManifest = findPackageJSON('@overkill-dev/property', import.meta.resolve('@overkill-dev/test/property'));
-const standardBackend = new URL('./property/generator.js', pathToFileURL(standardManifest));
-const { prepareGenerator: standardCompiler } = await import(standardBackend);
-const { check, property: checkProperty } = await import('fast-check');
-for (const [first, second, compiler] of [[leaf, standard, standardCompiler], [standard, leaf, leafCompiler]]) {
-    let remaining = 10_000;
-    const context = {
-        maxSize: 4, maxDepth: 2,
-        consumeWork() { if (--remaining < 0) throw new Error('Work exhausted.'); },
-        exhaustDomain() { throw new Error('Domain exhausted.'); }
-    };
-    const composed = first.gen.integer({min: 1, max: 5}).flatMap(value => second.gen.record({
-        value: first.gen.constant(value),
-        index: second.gen.integer({min: 0, max: value - 1})
-    }));
-    const domain = compiler(composed, context);
-    const candidates = [];
-    const failing = checkProperty(domain, input => { candidates.push(input); return false; });
-    const result = check(failing, {seed: 42, numRuns: 1});
-    assert.equal(result.failed, true);
-    assert.equal(result.errorInstance?.message, 'Property failed by returning false');
-    assert(candidates.length > 0);
-    assert(candidates.every(input => input.index >= 0 && input.index < input.value));
-}
 const macro = defineMacro(() => leaf.property({ title: 'leaf', generator, test: rejectExecution }));
 const first = macro();
 const second = standard.property({ title: 'standard', generator, test: rejectExecution });
@@ -95,6 +68,26 @@ const policy = {
 const resolveCases = cases => cases.map(selected => ({
     ...selected, execution: {...selected.execution, policy: {kind: 'resolved', policy}}
 }));
+for (const [first, second] of [[leaf, standard], [standard, leaf]]) {
+ const candidates = [];
+ const composed = first.gen.integer({min: 1, max: 5}).flatMap(value => second.gen.record({
+ value: first.gen.constant(value), index: second.gen.integer({min: 0, max: value - 1})
+ }));
+ const failingPlan=createTestPlan(createRoot({title:'cross-package shrinking',annotations:{},controls:{},children:[
+ first.property({title:'retains generator ownership',generator:composed,test(input,sample){
+ candidates.push(input);
+ sample.assert.fail({message:'Exercise shrinking'});
+ return sample.assert.collect();
+ }})
+ ]}));
+ const resolveFailure=cases=>resolveCases(cases).map(selected=>({...selected,execution:{...selected.execution,
+ policy:{kind:'resolved',policy:{...policy,newTrials:1,maxShrinkWork:1000}}}}));
+ const result=await execute({...failingPlan,
+ cases:resolveFailure(failingPlan.cases),discoveredCases:resolveFailure(failingPlan.discoveredCases)});
+ assert.equal(result.summary.failed,1,JSON.stringify(result));
+ assert(candidates.length>1);
+ assert(candidates.every(input=>input.index>=0&&input.index<input.value));
+}
 const executed = await execute({...executable,
     cases: resolveCases(executable.cases), discoveredCases: resolveCases(executable.discoveredCases)
 });

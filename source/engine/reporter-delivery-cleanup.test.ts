@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -135,10 +136,17 @@ function createRunEndFailingReporter(): RealTimeReporter {
     };
 }
 
-function assertRunEndErrorResult(scope: TestScope, result: RunResult | null): void {
-    scope.require.defined(result);
-    scope.assert.deepEqual(resultRunnerErrorMessages(result), [ 'run-end-broken: cannot close run' ]);
-}
+const assertRunEndErrorResult = defineCompositeAssertion({
+    name: 'run end error result',
+    assert(check, result: RunResult | null) {
+        if (result === undefined || result === null) {
+            return check.defined(result);
+        }
+        return check.group([
+            check.deepEqual(resultRunnerErrorMessages(result), [ 'run-end-broken: cannot close run' ])
+        ]);
+    }
+});
 
 async function rejectedValue(promise: Promise<unknown>): Promise<unknown> {
     try {
@@ -223,7 +231,7 @@ function createConcurrentFinishFixture(): ConcurrentFinishFixture {
     };
 }
 
-export const testNode: TestNode = suite('Reporter cleanup after execution', [
+export const testNode = suite('Reporter cleanup after execution', [
     test('times out reporter disposal', async function body(scope) {
         const { disposeSignal, engine, wallClock } = createReporterDeliveryFixture();
         const hangingReporter: RealTimeReporter = {
@@ -420,9 +428,9 @@ export const testNode: TestNode = suite('Reporter cleanup after execution', [
                 runFacts: {},
                 startedAt: '2026-07-15T00:00:00.000Z'
             });
-            assertRunEndErrorResult(scope, result);
-            assertRunEndErrorResult(scope, firstRecordedResult(finalReporter));
-            assertRunEndErrorResult(scope, recordedFinishResult(finishReporter));
+            scope.assert(assertRunEndErrorResult, result);
+            scope.assert(assertRunEndErrorResult, firstRecordedResult(finalReporter));
+            scope.assert(assertRunEndErrorResult, recordedFinishResult(finishReporter));
 
             return scope.assert.collect();
         }

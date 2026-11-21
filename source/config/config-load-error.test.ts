@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createConfigLoader } from './config-loader.ts';
 import { ConfigError } from './config-error.ts';
@@ -12,7 +12,7 @@ const loadConfig = createConfigLoader({
     }
 });
 
-export const testNode: TestNode = suite('Configuration load error', [
+export const testNode = suite('Configuration load error', [
     test('reports explicit config import failures', async function (scope) {
         await scope.assert.rejects(async function loadMissingConfig() {
             await loadConfig({ configPath: 'missing.config.js', cwd: '/project' });

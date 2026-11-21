@@ -1,9 +1,9 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { frozenMicrotestPolicy } from '../../test-support/frozen-microtest-policy.ts';
 import { mutationPolicyRequestSchema, mutationPolicyResponseSchema } from './mutation-policy-protocol.ts';
 
-export const testNode: TestNode = suite('mutation policy protocol validation', [
+export const testNode = suite('mutation policy protocol validation', [
     test('restores a serialized frozen microtest policy', async function (scope) {
         const policy = await frozenMicrotestPolicy();
         const encoded = JSON.stringify({ kind: 'policy', policy });

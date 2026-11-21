@@ -237,7 +237,13 @@ import { defineConfig } from '@overkill-dev/test/config';
 export const config = defineConfig({
     profiles: {
         benchmark: { testFamily: 'microtest' },
-        startup: { testFamily: 'benchmark', files: { include: ['startup.bench.mjs'] } }
+        startup: {
+            testFamily: 'benchmark',
+            execution: {
+                processModel: 'worker-pool', maxWorkers: 1, maxConcurrency: 1, scheduling: 'concurrent'
+            },
+            files: { include: ['startup.bench.mjs'] }
+        }
     }
 });
 `;
@@ -260,9 +266,9 @@ const runRequest = {
 for (const runner of [commandLineRunner, createNodeCommandLineRunner({ defaultEngine: createEngine() })]) {
     for (const profile of [null, 'startup']) {
         const result = await runner.bench.runBenchmarks({
-            configPath: null, cwd, runRequest: { ...runRequest, profile }
+            configPath: null, cwd, runRequest: { ...runRequest, profile, workers: profile === null ? 1 : null }
         });
-        assert.equal(result.exitCode, 0);
+        assert.equal(result.exitCode, 0, JSON.stringify(result));
         assert.equal(result.runResult.summary.passed, 4);
         assert.equal(result.runResult.summary.skipped, 1);
         assert.deepEqual(result.fallbackDiagnostics, []);
@@ -271,7 +277,7 @@ for (const runner of [commandLineRunner, createNodeCommandLineRunner({ defaultEn
             order: 'lexical', paths: [], profile, seed: { value: 42n }, selection: { kind: 'all' },
             shard: { index: 1, total: 1 }, withLocations: false, withOrphans: true
         } });
-        assert.equal(listed.exitCode, 0);
+        assert.equal(listed.exitCode, 0, JSON.stringify(listed));
         assert.equal(listed.runResult, null);
         assert.deepEqual(listed.stdoutLines, [
             'order=lexical seed=42',

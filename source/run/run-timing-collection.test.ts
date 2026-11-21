@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 import type { NormalizedConfig, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
@@ -25,7 +26,7 @@ import {
     resultWithTimingCollection
 } from './run-timing-collection.ts';
 
-const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const passingFixturePath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 
 function runCommand(config: NormalizedConfig, request: RunRequest): RunCommand {
     return {
@@ -48,23 +49,27 @@ function timingSpanByKind(report: RunPreciseTimingReport, kind: RunTimingSpanKin
     return span;
 }
 
-function assertMeasuredParentAndLocalSpans(scope: TestScope, report: RunPreciseTimingReport): void {
-    const parentSpan = timingSpanByKind(report, 'collection.resolve');
-    const localSpan = timingSpanByKind(report, 'worker.import-startup');
-
-    scope.assert.equal(parentSpan.startOffsetMicroseconds, 10);
-    scope.assert.equal(parentSpan.startTimeUnixMicroseconds, 10);
-    scope.assert.equal(parentSpan.durationMicroseconds, 25);
-    scope.assert.equal(localSpan.startOffsetMicroseconds, null);
-    scope.assert.equal(localSpan.startTimeUnixMicroseconds, 999);
-    scope.assert.equal(localSpan.durationMicroseconds, 40);
-    scope.assert.equal(
-        report.aggregates.some(function hasWorkerImportAggregate(aggregate) {
-            return aggregate.kind === 'worker.import-startup' && aggregate.durationMicroseconds === 40;
-        }),
-        true
-    );
-}
+const assertMeasuredParentAndLocalSpans = defineCompositeAssertion({
+    name: 'measured parent and local spans',
+    assert(check, report: RunPreciseTimingReport) {
+        const parentSpan = timingSpanByKind(report, 'collection.resolve');
+        const localSpan = timingSpanByKind(report, 'worker.import-startup');
+        return check.group([
+            check.equal(parentSpan.startOffsetMicroseconds, 10),
+            check.equal(parentSpan.startTimeUnixMicroseconds, 10),
+            check.equal(parentSpan.durationMicroseconds, 25),
+            check.equal(localSpan.startOffsetMicroseconds, null),
+            check.equal(localSpan.startTimeUnixMicroseconds, 999),
+            check.equal(localSpan.durationMicroseconds, 40),
+            check.equal(
+                report.aggregates.some(function hasWorkerImportAggregate(aggregate) {
+                    return aggregate.kind === 'worker.import-startup' && aggregate.durationMicroseconds === 40;
+                }),
+                true
+            )
+        ]);
+    }
+});
 
 function inProcessConfig(profile = defaultMicrotestProfile()): NormalizedConfig {
     return defaultRunConfig({
@@ -81,7 +86,7 @@ function inProcessConfig(profile = defaultMicrotestProfile()): NormalizedConfig 
     });
 }
 
-export const testNode: TestNode = suite('Run timing collection', [
+export const testNode = suite('Run timing collection', [
     test('resolveTimingCollection() applies profile and request policy', function (scope) {
         const request = defaultRunRequest();
 
@@ -177,7 +182,7 @@ export const testNode: TestNode = suite('Run timing collection', [
         });
 
         const report = timing.report();
-        assertMeasuredParentAndLocalSpans(scope, report);
+        scope.assert(assertMeasuredParentAndLocalSpans, report);
         scope.assert.deepEqual(report.observationWindow, {
             durationMicroseconds: 35,
             startTimeUnixMicroseconds: 0

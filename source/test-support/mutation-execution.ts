@@ -22,11 +22,12 @@ type MutationExecutionFixture = MutationInvocationFixture & {
     readonly disposals: readonly string[];
 };
 export async function mutationExecution(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
+    signal: AbortSignal,
     freshState: boolean,
     reply: RunExecutionReply
 ): Promise<MutationExecutionFixture> {
-    const fixture = mutationInvocations(scope, null, reply);
+    const fixture = mutationInvocations(cleanup, null, reply);
     const initialized: RunExecutionSessionOptions[] = [];
     const local: RunExecutionInvocation[] = [];
     const disposals: string[] = [];
@@ -34,7 +35,7 @@ export async function mutationExecution(
         policy: await frozenMicrotestPolicy(),
         seed: '42',
         freshState,
-        signal: scope.signal,
+        signal: signal,
         client: {
             ...fixture.runner.client,
             async request(request) {

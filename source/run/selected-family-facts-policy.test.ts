@@ -1,4 +1,4 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { selectedFamilyCollection } from '../test-support/selected-family-collection.ts';
 import { resolveSelectedFamilyFacts } from './selected-family-facts.ts';
@@ -9,7 +9,7 @@ const sources: readonly FamilyResolutionSource[] = [ {
     configPath: '/project/overkill.config.ts',
     profile: 'unit'
 }, { kind: 'module', module: { moduleUrl: 'file:///project/family.ts', exportName: 'family' } } ];
-export const testNode: TestNode = suite('selected family fact recollection', [
+export const testNode = suite('selected family fact recollection', [
     table({
         title: 'recollects selected facts across host boundaries',
         cases: ([ 'worker-pool', 'supervised' ] as const).flatMap(function (model) {

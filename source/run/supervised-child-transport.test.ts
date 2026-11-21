@@ -1,5 +1,5 @@
 import { runInNewContext } from 'node:vm';
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { table, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { createChildTransportFixture } from '../test-support/child-transport-fixture.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -12,7 +12,7 @@ const caseId = { file: 'fixture.test.ts', params: null, suite: [], title: 'activ
 function createForeignDeliveryError(): Error {
     return runInNewContext('new Error("Delivery failed.")') as Error;
 }
-export const testNode: TestNode = suite('supervised child transport', [
+export const testNode = suite('supervised child transport', [
     table({
         title: 'delivery failure from errors settles the child transport',
         cases: [ new Error('Delivery failed.'), createForeignDeliveryError() ],

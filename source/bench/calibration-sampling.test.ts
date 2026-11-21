@@ -1,5 +1,5 @@
 import { getEventListeners } from 'node:events';
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { BenchmarkScope } from '../engine/test-node.ts';
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
@@ -25,7 +25,7 @@ const reference = calibrationSnapshot(Array.from({ length: 128 }, function () {
 }));
 const policy = { ...reference.sampling, minimumSamples: 16, maximumSamples: 16 };
 type ReferenceContext = BenchmarkMeasureContext<Readonly<Record<string, never>>>;
-function calibrationScope(scope: TestScope): BenchmarkScope {
+function calibrationScope(cleanup: TestScope['cleanup'], signal: AbortSignal): BenchmarkScope {
     const selectedWorkload = { name: 'one', params: {} };
     const workId = {
         ...createDefaultWorkId(createCaseId('reference.bench.ts', [], 'reference', null)),
@@ -35,8 +35,8 @@ function calibrationScope(scope: TestScope): BenchmarkScope {
         workId,
         attemptId: { index: 0 },
         workload: selectedWorkload,
-        signal: scope.signal,
-        cleanup: scope.cleanup,
+        signal: signal,
+        cleanup: cleanup,
         benchmarkEnvironment: {
             profileGarbageCollection: 'off',
             garbageCollection: { kind: 'unavailable', reason: 'GC unavailable' },
@@ -130,9 +130,9 @@ function referenceExecution(input: CalibrationSamplingInput, executionId: string
         }
     };
 }
-export const testNode: TestNode = suite('calibration sampling lifetimes', [
+export const testNode = suite('calibration sampling lifetimes', [
     test('reads historical normalization contexts without an execution ID', function (scope: TestScope) {
-        const environment = calibrationScope(scope).benchmarkEnvironment;
+        const environment = calibrationScope(scope.cleanup, scope.signal).benchmarkEnvironment;
         scope.require.defined(environment);
         const { normalization } = environment;
         scope.require.defined(normalization);
@@ -147,7 +147,7 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
             let samples = 0;
             const sampler = createCalibrationSampler(reference.identity);
             const input = referenceExecution(
-                samplingInput(calibrationScope(scope), function measured(context) {
+                samplingInput(calibrationScope(scope.cleanup, scope.signal), function measured(context) {
                     samples += 1;
                     return measuredReference(context);
                 }, 128),
@@ -166,14 +166,14 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
         async function (scope) {
             let samples = 0;
             const sampler = createCalibrationSampler(reference.identity);
-            const input = samplingInput(calibrationScope(scope), function measured(context) {
+            const input = samplingInput(calibrationScope(scope.cleanup, scope.signal), function measured(context) {
                 samples += 1;
                 return measuredReference(context);
             }, 128);
             const first = await sampler.sample(input);
             scope.assert.equal(await sampler.sample({ ...input }), first);
             scope.assert.equal(samples, 128);
-            await sampler.sample({ ...input, scope: calibrationScope(scope) });
+            await sampler.sample({ ...input, scope: calibrationScope(scope.cleanup, scope.signal) });
             scope.assert.equal(samples, 256);
             return scope.assert.collect();
         }
@@ -187,7 +187,7 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
         async test(scope) {
             const missingEnvironment = scope.parameters;
 
-            const original = calibrationScope(scope);
+            const original = calibrationScope(scope.cleanup, scope.signal);
             const missing = {
                 ...original,
                 benchmarkEnvironment: missingEnvironment ? null : {
@@ -212,13 +212,17 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
         async function (scope) {
             let calls = 0;
             let cleaned = 0;
-            const input = samplingInput(calibrationScope(scope), function collectReference(context: ReferenceContext) {
-                calls += 1;
-                context.sample.cleanup(function () {
-                    cleaned += 1;
-                });
-                return measuredReference(context);
-            }, 16);
+            const input = samplingInput(
+                calibrationScope(scope.cleanup, scope.signal),
+                function collectReference(context: ReferenceContext) {
+                    calls += 1;
+                    context.sample.cleanup(function () {
+                        cleaned += 1;
+                    });
+                    return measuredReference(context);
+                },
+                16
+            );
             const result = await sampleCalibration(reference.identity, {
                 ...input,
                 lifecycle: { ...input.lifecycle, warmupSamples: 2 }
@@ -243,7 +247,7 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
             scope.assert.deepEqual(
                 await sampleCalibration(
                     reference.identity,
-                    samplingInput(calibrationScope(scope), measuredReference, 2)
+                    samplingInput(calibrationScope(scope.cleanup, scope.signal), measuredReference, 2)
                 ),
                 {
                     kind: 'non-comparable',
@@ -266,7 +270,7 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
             let calls = 0;
             let cleaned = 0;
             const input = samplingInput(
-                calibrationScope(scope),
+                calibrationScope(scope.cleanup, scope.signal),
                 function failingReference(context: ReferenceContext) {
                     calls += 1;
                     context.sample.cleanup(function () {
@@ -294,7 +298,11 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
     }),
     test('honors cancellation before taking a reference sample', async function (scope) {
         const controller = new AbortController();
-        const input = samplingInput({ ...calibrationScope(scope), signal: controller.signal }, measuredReference, 16);
+        const input = samplingInput(
+            { ...calibrationScope(scope.cleanup, scope.signal), signal: controller.signal },
+            measuredReference,
+            16
+        );
         controller.abort('calibration cancelled');
         scope.assert.deepEqual(await sampleCalibration(reference.identity, input), {
             kind: 'non-comparable',
@@ -306,7 +314,7 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
     test('disposes process sessions when a reference callback fails', async function (scope) {
         const controller = new AbortController();
         const input = samplingInput(
-            { ...calibrationScope(scope), signal: controller.signal },
+            { ...calibrationScope(scope.cleanup, scope.signal), signal: controller.signal },
             function failedProcessReference() {
                 throw new Error('process reference failed');
             },
@@ -328,7 +336,7 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
         return scope.assert.collect();
     }),
     test('rejects unavailable requested garbage collection before sampling', async function (scope) {
-        const input = samplingInput(calibrationScope(scope), measuredReference, 16);
+        const input = samplingInput(calibrationScope(scope.cleanup, scope.signal), measuredReference, 16);
         scope.assert.deepEqual(
             await sampleCalibration(reference.identity, {
                 ...input,
@@ -354,7 +362,7 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
         await scope.assert.rejects(async function () {
             return await collectBenchmarkNormalization(
                 {
-                    ...calibrationScope(scope),
+                    ...calibrationScope(scope.cleanup, scope.signal),
                     async updateResult(result) {
                         retained.push(result);
                     }
@@ -384,14 +392,19 @@ export const testNode: TestNode = suite('calibration sampling lifetimes', [
             await using resources = await startResources({ resources: { calibration }, signal: scope.signal });
             const handles = { [calibrationResourceKey(rules.value)]: resources.context.calibration };
             if (scope.parameters) {
-                await collectBenchmarkNormalization(calibrationScope(scope), handles, rules, policy);
+                await collectBenchmarkNormalization(
+                    calibrationScope(scope.cleanup, scope.signal),
+                    handles,
+                    rules,
+                    policy
+                );
             }
             const retained: BenchmarkExecutionResult[] = [];
             await scope.assert.rejects(
                 async function () {
                     return await collectBenchmarkNormalization(
                         {
-                            ...calibrationScope(scope),
+                            ...calibrationScope(scope.cleanup, scope.signal),
                             benchmarkEnvironment: null,
                             async updateResult(result) {
                                 retained.push(result);

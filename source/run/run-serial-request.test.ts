@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { normalizeConfig } from '../config/config.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -20,7 +20,7 @@ function serialCommand(): RunCommand {
     };
 }
 
-export const testNode: TestNode = suite('serial request validation', [
+export const testNode = suite('serial request validation', [
     test('rejects unknown execution modes before discovery', async function (scope) {
         const command = serialCommand();
         Object.defineProperty(command.request.execution, 'mode', { value: 'concurrent' });

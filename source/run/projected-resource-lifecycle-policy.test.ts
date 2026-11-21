@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { projectedResourceLifecycle } from '../test-support/projected-resource-lifecycle.ts';
 import { managedCase } from '../test-support/managed-resource-acquisition.ts';
 import { createResourceLifecycleSession, acquireResourceLifecycleScopes } from './resource-lifecycle.ts';
 
-export const testNode: TestNode = suite('projected resource session ownership', [
+export const testNode = suite('projected resource session ownership', [
     test('merges later projections by owner boundary before acquisition', async function (scope) {
         const fixture = projectedResourceLifecycle();
         fixture.session.updateProjectedResources({

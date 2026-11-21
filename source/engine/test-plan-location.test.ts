@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     attachTestBodyFamily,
@@ -89,7 +89,7 @@ function createPlanWithOrphans(
 
 type FamilyConflictAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
 
-export const testNode: TestNode = suite('Test plan location', [
+export const testNode = suite('Test plan location', [
     test('preserves supplied definition locations', function (scope) {
         const engine = createEngine();
         const suiteLocation = { column: 5, file: 'source/suite.test.ts', kind: 'known' as const, line: 10 };

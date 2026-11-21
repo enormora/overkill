@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultRunConfig, defaultRunRequest, defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
@@ -16,7 +16,7 @@ function command(processModel: 'in-process' | 'supervised-process'): RunCommand 
     };
 }
 
-export const testNode: TestNode = suite('public cancellation options', [
+export const testNode = suite('public cancellation options', [
     test(
         'pre-aborted supervised calls return unattributed infrastructure diagnostics',
         async function (scope) {

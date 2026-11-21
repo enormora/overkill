@@ -1,8 +1,8 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { captureSnapshot, snapshotComparisonValue } from './snapshot-value.ts';
 
-export const testNode: TestNode = suite('snapshot value admission', [
+export const testNode = suite('snapshot value admission', [
     table({
         title: 'rejects invalid snapshot values',
         cases: [

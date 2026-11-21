@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../engine/failure-artifact-policy.ts';
 
@@ -88,7 +88,7 @@ const invalidExecutions: readonly { readonly execution: ProfileConfig['execution
     }
 ];
 
-export const testNode: TestNode = suite('benchmark profile configuration', [
+export const testNode = suite('benchmark profile configuration', [
     test('rejects normalized execution policies that invalidate benchmark isolation', function (scope) {
         for (const { execution, message } of invalidExecutions) {
             scope.assert.throws(function validateIncompatibleBenchmark() {

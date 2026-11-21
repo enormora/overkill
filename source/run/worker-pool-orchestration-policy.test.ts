@@ -1,10 +1,10 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { workerPoolOrchestration, workerOrchestrationFaults } from '../test-support/worker-pool-orchestration.ts';
 
 import { executeWorkerPoolRun, collectWorkerPoolRun, runWorkerPoolCommand } from './worker-pool-run.ts';
 
-export const testNode: TestNode = suite('memory worker-pool orchestration', [
+export const testNode = suite('memory worker-pool orchestration', [
     table({
         title: 'executes and releases newly owned pools',
         cases: [ false, true ] as const,

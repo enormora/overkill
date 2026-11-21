@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineTestFamily } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -86,7 +86,7 @@ async function preparation(): Promise<RunnerFamilyPreparation> {
     return { engine, signal, sourcePlan, definition, binding, prepared, projectRoot: '/project' };
 }
 
-export const testNode: TestNode = suite('prepared family record plans', [
+export const testNode = suite('prepared family record plans', [
     test(
         'retains configuration-only provenance and the full catalog alongside selected facts',
         async function (scope: TestScope) {

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { serializeValue, serializeValueWithBudget } from './serialized-value.ts';
 
@@ -10,7 +10,7 @@ function inaccessibleProperties(cause: unknown): Record<string, unknown> {
     });
 }
 
-export const testNode: TestNode = suite('Serialized value edge cases', [
+export const testNode = suite('Serialized value edge cases', [
     test(
         'retains diagnostics when property introspection throws a non-Error value',
         function (scope) {

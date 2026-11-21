@@ -1,4 +1,4 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createClock } from '@enormora/clock';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
@@ -76,7 +76,7 @@ function maintenance(remove: MaintenanceInput['store']['remove']): MaintenanceIn
         }
     };
 }
-export const testNode: TestNode = suite('calibration maintenance failures', [
+export const testNode = suite('calibration maintenance failures', [
     table({
         title: 'retains maintenance reports across modes',
         cases: [ 'apply', 'diff', 'none' ] as const,

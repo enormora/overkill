@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, testDouble } from '@overkill-dev/test';
+import { suite, test, testDouble } from '@overkill-dev/test';
 
 import { createAttachmentStream, type AttachmentOperations } from './attachment-writer.ts';
 import type { AttachmentResponse } from './attachment-protocol.ts';
@@ -14,7 +14,7 @@ function operations(send: AttachmentOperations['send']): AttachmentOperations {
         release: testDouble.returns(undefined)
     };
 }
-export const testNode: TestNode = suite('attachment stream failure admission', [
+export const testNode = suite('attachment stream failure admission', [
     test('rejects text chunks supplied to binary streams', async function (scope) {
         const send = testDouble.rejects(new Error('Invalid chunks must not be sent.'));
         const stream = createAttachmentStream(operations(send), 1, 'binary');

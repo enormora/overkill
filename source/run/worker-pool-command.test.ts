@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createCollectedPlan, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
 import type { PlacementPlan, WorkUnit } from './run-types.ts';
@@ -84,7 +84,7 @@ function leaseMember(unit: WorkUnit): WorkerPoolLeaseMember {
     };
 }
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool command',
     children: [
@@ -101,14 +101,14 @@ export const testNode: TestNode = suite({
                     ...collectedPlan,
                     files: [ file, {
                         ...file,
-                        file: 'source/integration-tests/integration/fixtures/delayed-pass.test.ts'
+                        file: 'source/integration-tests/runtime/fixtures/delayed-pass.test.ts'
                     } ]
                 });
                 const command = createBatchRunCommand(runtime, [ leaseMember(firstUnit(runtime)) ]);
 
                 scope.assert.deepEqual(command.paths, [
-                    'source/integration-tests/integration/fixtures/passing.test.ts',
-                    'source/integration-tests/integration/fixtures/delayed-pass.test.ts'
+                    'source/integration-tests/runtime/fixtures/passing.test.ts',
+                    'source/integration-tests/runtime/fixtures/delayed-pass.test.ts'
                 ]);
 
                 return scope.assert.collect();
@@ -145,7 +145,7 @@ export const testNode: TestNode = suite({
                     nodeArguments: [ '--conditions=fixture' ]
                 });
                 scope.assert.deepEqual(command.paths, [
-                    'source/integration-tests/integration/fixtures/passing.test.ts'
+                    'source/integration-tests/runtime/fixtures/passing.test.ts'
                 ]);
 
                 return scope.assert.collect();

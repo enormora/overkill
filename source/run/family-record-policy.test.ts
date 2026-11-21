@@ -1,10 +1,10 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { isDefinedFamilyProfile, type DefinedFamilyProfile } from '../config/types.ts';
 
 import { defineTestFamily, type TestFamily } from '../packages/engine/engine.entry-point.ts';
 import { normalizeConfig } from '../packages/run/run.entry-point.ts';
-import { family } from '../integration-tests/integration/fixtures/imported-runtime-family.ts';
+import { family } from '../integration-tests/runtime/fixtures/imported-runtime-family.ts';
 import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
 import { historyRecordSchema } from './history-record.ts';
 import { recordedReplayProfile } from './run-record-input.ts';
@@ -28,7 +28,7 @@ function familyProfile(definition: TestFamily<null>): DefinedFamilyProfile {
     return profile;
 }
 
-export const testNode: TestNode = suite('family recording policy', [
+export const testNode = suite('family recording policy', [
     table({
         title: 'rejects unsupported record versions',
         cases: [ 2, 3 ],

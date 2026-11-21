@@ -1,4 +1,4 @@
-import { type TestNode, table, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { MutantRunStatus } from '@stryker-mutator/api/test-runner';
 
@@ -8,7 +8,7 @@ import { createMutationEvidenceFixture } from '../../test-support/mutation-evide
 import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
 import { interruptedMutantResult, hitLimitCollectionReply } from './mutation-interrupted-result.ts';
 
-export const testNode: TestNode = suite('interrupted mutation adapter replies', [
+export const testNode = suite('interrupted mutation adapter replies', [
     table({
         title: 'requires eligible killing evidence for interrupted bail',
         cases: [ false, true ],
@@ -16,7 +16,7 @@ export const testNode: TestNode = suite('interrupted mutation adapter replies', 
         async test(scope) {
             const confirmedKill = scope.parameters;
 
-            const fixture = await createMutationEvidenceFixture(scope, false);
+            const fixture = await createMutationEvidenceFixture(scope.cleanup, false);
             if (confirmedKill) {
                 await fixture.record(fixture.failed, []);
             }

@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 
@@ -88,48 +89,62 @@ function createProtocolFixture(): ProtocolFixture {
     };
 }
 
-function assertErrorProtocol(scope: TestScope, fixture: ProtocolFixture): void {
-    const deserializedFields = fixture.deserializedError as Error & Readonly<Record<string, unknown>>;
+const assertErrorProtocol = defineCompositeAssertion({
+    name: 'error protocol',
+    assert(check, fixture: ProtocolFixture) {
+        const deserializedFields = fixture.deserializedError as Error & Readonly<Record<string, unknown>>;
+        return check.group([
+            check.equal(fixture.serializedError.stack, null),
+            check.equal(fixture.serializedError.code, 'ERR_ACCESS_DENIED'),
+            check.equal(fixture.serializedError.permission, 'FileSystemWrite'),
+            check.equal(fixture.serializedError.resource, '/project/output.txt'),
+            check.equal(fixture.deserializedError.name, 'TypeError'),
+            check.equal(fixture.deserializedError.message, 'boom'),
+            check.equal(deserializedFields.code, 'ERR_ACCESS_DENIED'),
+            check.equal(deserializedFields.permission, 'FileSystemWrite'),
+            check.equal(deserializedFields.resource, '/project/output.txt')
+        ]);
+    }
+});
 
-    scope.assert.equal(fixture.serializedError.stack, null);
-    scope.assert.equal(fixture.serializedError.code, 'ERR_ACCESS_DENIED');
-    scope.assert.equal(fixture.serializedError.permission, 'FileSystemWrite');
-    scope.assert.equal(fixture.serializedError.resource, '/project/output.txt');
-    scope.assert.equal(fixture.deserializedError.name, 'TypeError');
-    scope.assert.equal(fixture.deserializedError.message, 'boom');
-    scope.assert.equal(deserializedFields.code, 'ERR_ACCESS_DENIED');
-    scope.assert.equal(deserializedFields.permission, 'FileSystemWrite');
-    scope.assert.equal(deserializedFields.resource, '/project/output.txt');
-}
+const assertFallbackErrorProtocol = defineCompositeAssertion({
+    name: 'fallback error protocol',
+    assert(check, fixture: ProtocolFixture) {
+        return check.group([
+            check.equal(fixture.deserializedWithoutStack.message, 'no stack'),
+            check.equal(serializeError('plain').message, 'plain'),
+            check.equal(serializeError('plain').code, null)
+        ]);
+    }
+});
 
-function assertFallbackErrorProtocol(scope: TestScope, fixture: ProtocolFixture): void {
-    scope.assert.equal(fixture.deserializedWithoutStack.message, 'no stack');
-    scope.assert.equal(serializeError('plain').message, 'plain');
-    scope.assert.equal(serializeError('plain').code, null);
-}
+const assertWorkerMessageProtocol = defineCompositeAssertion({
+    name: 'worker message protocol',
+    assert(check, fixture: ProtocolFixture) {
+        return check.group([
+            check.equal(fixture.decodedEnvelope?.kind, 'event'),
+            check.equal(
+                envelopeMessage(
+                    childProcessEnvelope('other', {}),
+                    'event-message',
+                    z.strictObject({ kind: z.literal('event') })
+                ),
+                null
+            ),
+            check.equal(serializeWorkerPoolMessage(fixture.workerEventMessage), fixture.workerEventMessage),
+            check.equal(
+                deserializeWorkerPoolMessage(serializeWorkerPoolMessage(fixture.workerEventMessage)),
+                fixture.workerEventMessage
+            ),
+            check.deepEqual(
+                deserializeWorkerPoolMessage(serializeWorkerPoolMessage(fixture.outputMessage)),
+                fixture.outputMessage
+            )
+        ]);
+    }
+});
 
-function assertWorkerMessageProtocol(scope: TestScope, fixture: ProtocolFixture): void {
-    scope.assert.equal(fixture.decodedEnvelope?.kind, 'event');
-    scope.assert.equal(
-        envelopeMessage(
-            childProcessEnvelope('other', {}),
-            'event-message',
-            z.strictObject({ kind: z.literal('event') })
-        ),
-        null
-    );
-    scope.assert.equal(serializeWorkerPoolMessage(fixture.workerEventMessage), fixture.workerEventMessage);
-    scope.assert.equal(
-        deserializeWorkerPoolMessage(serializeWorkerPoolMessage(fixture.workerEventMessage)),
-        fixture.workerEventMessage
-    );
-    scope.assert.deepEqual(
-        deserializeWorkerPoolMessage(serializeWorkerPoolMessage(fixture.outputMessage)),
-        fixture.outputMessage
-    );
-}
-
-export const testNode: TestNode = suite('worker host protocol', [
+export const testNode = suite('worker host protocol', [
     test(
         'closing a worker channel settles completion without a terminal message',
         async function (scope) {
@@ -198,9 +213,9 @@ export const testNode: TestNode = suite('worker host protocol', [
     test('worker-pool host protocol preserves errors and worker messages', function (scope) {
         const fixture = createProtocolFixture();
 
-        assertErrorProtocol(scope, fixture);
-        assertFallbackErrorProtocol(scope, fixture);
-        assertWorkerMessageProtocol(scope, fixture);
+        scope.assert(assertErrorProtocol, fixture);
+        scope.assert(assertFallbackErrorProtocol, fixture);
+        scope.assert(assertWorkerMessageProtocol, fixture);
 
         return scope.assert.collect();
     }),

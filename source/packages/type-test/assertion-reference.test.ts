@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     getCompositeAssertionReferenceRecord,
@@ -6,7 +6,7 @@ import {
 } from '../engine/assertion-protocol.entry-point.ts';
 import { sameType } from './type-test.entry-point.ts';
 
-export const testNode: TestNode = suite('native type assertion references', [
+export const testNode = suite('native type assertion references', [
     test('fails ordinary execution instead of reporting a successful erased check', function (scope) {
         const reference = sameType<string, number>();
         scope.assert.throws(function () {

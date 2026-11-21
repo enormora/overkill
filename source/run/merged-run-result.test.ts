@@ -1,11 +1,11 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { mergeRecordFixture } from '../test-support/merge-record-fixture.ts';
 import { mergeRecordSchema } from './merge-results-schema.ts';
 import { mergedRunResult } from './merged-run-result.ts';
 import { recordedRunResult } from './run-record-result.ts';
 
-export const testNode: TestNode = suite('merged run results', [
+export const testNode = suite('merged run results', [
     test('keeps an empty shard successful when no shard selected work', function (scope) {
         const record = mergeRecordFixture('empty', 1, 0);
         const result = mergedRunResult([ {

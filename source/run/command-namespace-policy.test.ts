@@ -1,10 +1,10 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { commandNamespace } from '../test-support/command-namespace.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 
 const context = { cwd: '/project', configPath: null, arguments: [ 'selected' ] };
-export const testNode: TestNode = suite('lazy command namespace routes', [
+export const testNode = suite('lazy command namespace routes', [
     test('does not load command families while creating routes', function (scope) {
         const fixture = commandNamespace(null);
         scope.assert.deepEqual(fixture.loads, []);

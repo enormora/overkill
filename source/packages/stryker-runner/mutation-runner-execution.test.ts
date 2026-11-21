@@ -1,4 +1,4 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { mutationExecution } from '../../test-support/mutation-execution.ts';
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
@@ -6,9 +6,9 @@ import { createCampaignMutationExecution } from './mutation-runner-execution.ts'
 
 const timeout = { kind: 'timeout', artifacts: [], data: null } as const;
 const activationModes: readonly ('dry' | 'runtime' | 'static')[] = [ 'dry', 'runtime', 'static' ];
-export const testNode: TestNode = suite('mutation execution environment ownership', [
+export const testNode = suite('mutation execution environment ownership', [
     test('creates one local execution session with frozen policy and seed', async function (scope: TestScope) {
-        const fixture = await mutationExecution(scope, false, timeout);
+        const fixture = await mutationExecution(scope.cleanup, scope.signal, false, timeout);
         scope.assert.equal(fixture.execution.environmentLifetime, 'reused');
         scope.assert.equal(fixture.initialized.length, 1);
         const command = fixture.initialized[0]?.command;
@@ -21,7 +21,7 @@ export const testNode: TestNode = suite('mutation execution environment ownershi
     test(
         'forwards invocation data and remaining budget to the local session',
         async function (scope) {
-            const fixture = await mutationExecution(scope, false, timeout);
+            const fixture = await mutationExecution(scope.cleanup, scope.signal, false, timeout);
             fixture.clock.advanceByMilliseconds(10);
             scope.assert.equal(await fixture.execution.run({ value: 42 }, fixture.budget), timeout);
             scope.assert.deepEqual<unknown, unknown>(fixture.local[0]?.data, { value: 42 });
@@ -40,7 +40,7 @@ export const testNode: TestNode = suite('mutation execution environment ownershi
         async test(scope) {
             const mode = scope.parameters;
 
-            const fixture = await mutationExecution(scope, true, timeout);
+            const fixture = await mutationExecution(scope.cleanup, scope.signal, true, timeout);
             fixture.execution.admitEnvironment('runtime', false);
             fixture.execution.admitEnvironment(mode, true);
             scope.assert.equal(fixture.execution.environmentLifetime, 'fresh');
@@ -54,7 +54,7 @@ export const testNode: TestNode = suite('mutation execution environment ownershi
     test(
         'requires worker replacement before reloading a reused environment',
         async function (scope) {
-            const fixture = await mutationExecution(scope, false, timeout);
+            const fixture = await mutationExecution(scope.cleanup, scope.signal, false, timeout);
             fixture.execution.admitEnvironment('dry', false);
             fixture.execution.admitEnvironment('runtime', false);
             scope.assert.throws(function () {
@@ -68,7 +68,7 @@ export const testNode: TestNode = suite('mutation execution environment ownershi
         }
     ),
     test('requires replacement when leaving a loaded static environment', async function (scope) {
-        const fixture = await mutationExecution(scope, false, timeout);
+        const fixture = await mutationExecution(scope.cleanup, scope.signal, false, timeout);
         fixture.execution.admitEnvironment('static', false);
         scope.assert.throws(function () {
             fixture.execution.admitEnvironment('runtime', false);
@@ -79,7 +79,7 @@ export const testNode: TestNode = suite('mutation execution environment ownershi
     test(
         'uses campaign execution for a supervised profile even without fresh-state',
         async function (scope) {
-            const fixture = await mutationExecution(scope, true, timeout);
+            const fixture = await mutationExecution(scope.cleanup, scope.signal, true, timeout);
             const policy = {
                 ...fixture.input.policy,
                 profile: {
@@ -111,7 +111,7 @@ export const testNode: TestNode = suite('mutation execution environment ownershi
         'forwards successful campaign replies without starting a local environment',
         async function (scope) {
             const { reply } = mutationCoverageFixture('off');
-            const fixture = await mutationExecution(scope, true, reply);
+            const fixture = await mutationExecution(scope.cleanup, scope.signal, true, reply);
             scope.assert.equal(await fixture.execution.run(null, fixture.budget), reply);
             scope.assert.deepEqual(fixture.local, []);
             await fixture.execution.dispose();
@@ -119,7 +119,7 @@ export const testNode: TestNode = suite('mutation execution environment ownershi
         }
     ),
     test('rejects invalid campaign execution replies', async function (scope) {
-        const fixture = await mutationExecution(scope, true, timeout);
+        const fixture = await mutationExecution(scope.cleanup, scope.signal, true, timeout);
         const execution = createCampaignMutationExecution({
             ...fixture.input,
             client: {
@@ -136,7 +136,7 @@ export const testNode: TestNode = suite('mutation execution environment ownershi
         return scope.assert.collect();
     }),
     test('does not invoke or release a cancelled campaign connection', async function (scope) {
-        const fixture = await mutationExecution(scope, true, timeout);
+        const fixture = await mutationExecution(scope.cleanup, scope.signal, true, timeout);
         const execution = createCampaignMutationExecution({
             ...fixture.input,
             signal: AbortSignal.abort(new Error('Cancelled.'))

@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { selectTestProfile } from '../run/test-profile.ts';
 
@@ -42,27 +42,35 @@ async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
     return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
-function reporterNames(scope: TestScope, config: LoadedConfig): readonly [string, string] {
+function reporterNames(config: LoadedConfig): readonly [string, string] {
     const globalReporters = config.reporters;
     const profileReporters = selectTestProfile('microtest', config).reporters;
 
-    scope.require.defined(globalReporters);
-    scope.require.defined(profileReporters);
+    if (globalReporters === undefined || globalReporters === null) {
+        throw new Error('Expected globalReporters to satisfy defined.');
+    }
+    if (profileReporters === undefined || profileReporters === null) {
+        throw new Error('Expected profileReporters to satisfy defined.');
+    }
     const globalReporter = globalReporters[0];
     const profileReporter = profileReporters[0];
 
-    scope.require.defined(globalReporter);
-    scope.require.defined(profileReporter);
+    if (globalReporter === undefined || globalReporter === null) {
+        throw new Error('Expected globalReporter to satisfy defined.');
+    }
+    if (profileReporter === undefined || profileReporter === null) {
+        throw new Error('Expected profileReporter to satisfy defined.');
+    }
     const context = createReportingContext({ projectRoot: null });
 
     return [ globalReporter(context).name, profileReporter(context).name ];
 }
 
-export const testNode: TestNode = suite('Configuration reporters', [
+export const testNode = suite('Configuration reporters', [
     test(
         'loadConfig() preserves global reporter fallback and profile reporter overrides',
         async function (scope) {
-            scope.assert.deepEqual(reporterNames(scope, await loadReporterConfig()), [ 'global', 'profile' ]);
+            scope.assert.deepEqual(reporterNames(await loadReporterConfig()), [ 'global', 'profile' ]);
 
             return scope.assert.collect();
         }

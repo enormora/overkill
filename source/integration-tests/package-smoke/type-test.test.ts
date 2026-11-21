@@ -1,8 +1,30 @@
+import { consumerEnvironment } from './support/consumer-environment.ts';
 import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, rm, writeFile, readFile, readdir } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+
 import { join } from 'node:path';
-import { type TestNode, suite, test, type TestScope } from '#tests';
+import { suite } from '@overkill-dev/test';
+import { packageConsumer } from './support/package-consumer.ts';
+
+const consumerFacade = packageConsumer('packaged native type tests', function consumerFixture(consumerDirectory) {
+    async function isolatedConsumer(includeRunner: boolean): Promise<string> {
+        const directory = await mkdtemp(join(consumerDirectory, 'overkill-type-test-consumer-'));
+
+        const destination = join(directory, 'node_modules/@overkill-dev');
+        await mkdir(destination, { recursive: true });
+        const packages = includeRunner ? [ 'engine', 'run', 'type-test' ] : [ 'engine', 'type-test' ];
+        for (const name of packages) {
+            await cp(join(consumerDirectory, 'node_modules/@overkill-dev', name), join(destination, name), {
+                recursive: true
+            });
+        }
+        await provisionCompiler(directory);
+        await writeFile(join(directory, 'package.json'), JSON.stringify({ type: 'module' }));
+        return directory;
+    }
+    return { isolatedConsumer };
+});
+const { test } = consumerFacade;
 
 const engineCaseSource = `import * as engine from '@overkill-dev/engine';
 import { family, sameType } from '@overkill-dev/type-test';
@@ -41,10 +63,10 @@ async function runNode(directory: string, argumentList: readonly string[]): Prom
             Array.from(argumentList),
             {
                 cwd: directory,
-                env: {
+                env: consumerEnvironment({
                     TSTYCHE_NPM_REGISTRY: 'http://127.0.0.1:1',
                     TSTYCHE_STORE_PATH: join(directory, 'checker-store')
-                }
+                }, directory)
             },
             function completed(error, stdout, stderr) {
                 if (error === null) {
@@ -70,24 +92,6 @@ async function provisionCompiler(directory: string): Promise<void> {
     await cp(join(process.cwd(), 'node_modules/@typescript'), join(directory, 'node_modules/@typescript'), {
         recursive: true
     });
-}
-
-async function isolatedConsumer(scope: TestScope, includeRunner: boolean): Promise<string> {
-    const directory = await mkdtemp(join(tmpdir(), 'overkill-type-test-consumer-'));
-    scope.cleanup(async function removeConsumer() {
-        await rm(directory, { recursive: true, force: true });
-    });
-    const destination = join(directory, 'node_modules/@overkill-dev');
-    await mkdir(destination, { recursive: true });
-    const packages = includeRunner ? [ 'engine', 'run', 'type-test' ] : [ 'engine', 'type-test' ];
-    for (const name of packages) {
-        await cp(join(import.meta.dirname, 'node_modules/@overkill-dev', name), join(destination, name), {
-            recursive: true
-        });
-    }
-    await provisionCompiler(directory);
-    await writeFile(join(directory, 'package.json'), JSON.stringify({ type: 'module' }));
-    return directory;
 }
 
 async function writeCheckingProject(directory: string): Promise<void> {
@@ -133,9 +137,11 @@ export const config=defineConfig({profiles:{types:{testFamily:family,
     );
 }
 
-export const testNode: TestNode = suite('packaged native type tests', [
+export const testNode = suite('packaged native type tests', [
     test('checks engine roots without the high-level distribution', async function (scope) {
-        const directory = await isolatedConsumer(scope, false);
+        const { isolatedConsumer } = scope.resources.consumer;
+
+        const directory = await isolatedConsumer(false);
         await writeCheckingProject(directory);
         const result = await runNode(directory, [ 'case.mts' ]);
         scope.assert.equal(result.code, 0, { message: result.stderr });
@@ -148,7 +154,9 @@ export const testNode: TestNode = suite('packaged native type tests', [
     test(
         'runs a registered profile through the public runner without the high-level distribution',
         async function (scope) {
-            const directory = await isolatedConsumer(scope, true);
+            const { isolatedConsumer } = scope.resources.consumer;
+
+            const directory = await isolatedConsumer(true);
             await writeRunnerProject(directory, 'in-process');
             const result = await runNode(directory, [ 'runner.mts' ]);
             scope.assert.equal(result.code, 0, { message: result.stderr });
@@ -157,7 +165,9 @@ export const testNode: TestNode = suite('packaged native type tests', [
         }
     ),
     test('checks installed beta compilers in a supervised profile', async function (scope) {
-        const directory = await isolatedConsumer(scope, true);
+        const { isolatedConsumer } = scope.resources.consumer;
+
+        const directory = await isolatedConsumer(true);
         await writeRunnerProject(directory, 'supervised-process');
         const result = await runNode(directory, [ 'runner.mts' ]);
         scope.assert.equal(result.code, 0, { message: result.stderr });
@@ -165,7 +175,9 @@ export const testNode: TestNode = suite('packaged native type tests', [
         return scope.assert.collect();
     }),
     test('authoring and profile imports do not load the execution backend', async function (scope) {
-        const directory = await isolatedConsumer(scope, false);
+        const { isolatedConsumer } = scope.resources.consumer;
+
+        const directory = await isolatedConsumer(false);
         const backend = join(
             directory,
             'node_modules/@overkill-dev/type-test/packages/type-test/family-backend.entry-point.js'

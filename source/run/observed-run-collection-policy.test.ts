@@ -1,10 +1,10 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { globalErrorObservation } from '../test-support/global-error-observation.ts';
 import { observeCollection } from '../engine/execution-global-error-observer.ts';
 import { createCollectedPlan, workerPoolResolvedRun } from '../test-support/worker-pool-execution-state.ts';
 
-export const testNode: TestNode = suite('collection error observation', [
+export const testNode = suite('collection error observation', [
     test('returns the collected plan and removes process hook ownership', async function (scope) {
         const fixture = globalErrorObservation();
         const expected = workerPoolResolvedRun(createCollectedPlan());

@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { validateHostProcess } from '../config/host-process.ts';
 
 import { hostProcessFacts } from './run-host-process.ts';
 
-export const testNode: TestNode = suite('Run host process', [
+export const testNode = suite('Run host process', [
     test('hostProcessFacts() records direct execution without a host child', function (scope) {
         scope.assert.deepEqual(hostProcessFacts({ kind: 'direct' }), { kind: 'direct' });
 

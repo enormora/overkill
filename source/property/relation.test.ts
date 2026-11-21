@@ -1,27 +1,18 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import type { TestScope } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
-import type { PropertyWitnessFile } from '../engine/witness-file.ts';
-import { serializeValue, type RunResult } from '../packages/engine/engine.entry-point.ts';
+import { serializeValue } from '../packages/engine/engine.entry-point.ts';
 
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property, withProperties } from './property-authoring.ts';
 import { gen } from './generators.ts';
 import { relation } from './relation.ts';
 
-function confirmedRelationWitness(scope: TestScope, result: RunResult): PropertyWitnessFile {
-    const evidence = result.perTest[0]?.property?.invocations[0];
-    scope.assert.equal(result.summary.failed, 1);
-    scope.assert.equal(JSON.stringify(evidence?.retained?.input), JSON.stringify(serializeValue(0)));
-    const witness = evidence?.confirmedWitness;
-    scope.require.defined(witness);
-    return witness;
-}
-
-export const testNode: TestNode = suite('metamorphic relations', [
+export const testNode = suite('metamorphic relations', [
     test(
         'shrinks original inputs and replays the relation without generation',
-        async function (scope) {
+        async function (scope: TestScope) {
             let transformations = 0;
             const node = property({
                 title: 'failing relation',
@@ -43,7 +34,17 @@ export const testNode: TestNode = suite('metamorphic relations', [
                 })
             });
             const result = await executePropertyNode(node, propertyExecutionDefaults);
-            const witness = confirmedRelationWitness(scope, result);
+
+            const confirmedRelationWitnessEvidence = result.perTest[0]?.property?.invocations[0];
+            scope.assert.equal(result.summary.failed, 1);
+            scope.assert.equal(
+                JSON.stringify(confirmedRelationWitnessEvidence?.retained?.input),
+                JSON.stringify(serializeValue(0))
+            );
+            const confirmedRelationWitnessWitness = confirmedRelationWitnessEvidence?.confirmedWitness;
+            scope.require.defined(confirmedRelationWitnessWitness);
+            const witness = confirmedRelationWitnessWitness;
+
             transformations = 0;
             const replayed = await executePropertyNode(node, { ...propertyExecutionDefaults, replay: witness });
             scope.assert.equal(replayed.summary.failed, 1);

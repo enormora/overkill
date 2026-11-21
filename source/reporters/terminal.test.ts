@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import ansiEscapes from 'ansi-escapes';
 
@@ -48,7 +48,7 @@ function createFakeTerminal(columns: number): FakeTerminal {
     };
 }
 
-export const testNode: TestNode = suite('Terminal', [
+export const testNode = suite('Terminal', [
     test(
         'visibleTerminalWidth() ignores ANSI escapes and counts Unicode display width',
         function (scope) {

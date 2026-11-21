@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { gen, property } from '../packages/property/property.entry-point.ts';
 import {
@@ -76,7 +76,7 @@ const definition: LinearizabilityDefinition<number, number, unknown, null> = {
     maxWork: 100
 };
 
-export const testNode: TestNode = suite('linearizability authoring contracts', [
+export const testNode = suite('linearizability authoring contracts', [
     test('preserves non-enumerable model callbacks', async function (scope) {
         const result = await executePropertyNode(
             property({

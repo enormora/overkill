@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
@@ -60,31 +61,46 @@ const anonymousCandidate = {
     workId: createDefaultWorkId(anonymousCaseId)
 };
 
-function assertRuntimeScenarioMatches(scope: TestScope): void {
-    scope.assert.equal(matchesRunFilter(runtimeScenario('api', 'api', 'payments-500'), candidate), true);
-    scope.assert.equal(matchesRunFilter(runtimeScenario('API', 'api', 'payments-500'), candidate), false);
-    scope.assert.equal(matchesRunFilter(runtimeScenario('api', 'api', 'PAYMENTS-500'), candidate), false);
-    scope.assert.equal(matchesRunFilter(runtimeScenario('api', 'missing', 'payments-500'), candidate), false);
-}
+const assertRuntimeScenarioMatches = defineCompositeAssertion({
+    name: 'runtime scenario matches',
+    assert(check) {
+        return check.group([
+            check.equal(matchesRunFilter(runtimeScenario('api', 'api', 'payments-500'), candidate), true),
+            check.equal(matchesRunFilter(runtimeScenario('API', 'api', 'payments-500'), candidate), false),
+            check.equal(matchesRunFilter(runtimeScenario('api', 'api', 'PAYMENTS-500'), candidate), false),
+            check.equal(matchesRunFilter(runtimeScenario('api', 'missing', 'payments-500'), candidate), false)
+        ]);
+    }
+});
 
-function assertRuntimeIdentityMatches(scope: TestScope): void {
-    scope.assert.equal(matchesRunFilter(runtime('browser'), candidate), true);
-    scope.assert.equal(matchesRunFilter(runtime('Browser'), candidate), false);
-    scope.assert.equal(matchesRunFilter(runtimeVariant('browser', 'chromium'), candidate), true);
-    scope.assert.equal(matchesRunFilter(runtimeVariant('browser', 'Chromium'), candidate), false);
-    scope.assert.equal(matchesRunFilter(runtimeDimension('browser', 'engine', 'chromium'), candidate), true);
-    scope.assert.equal(matchesRunFilter(runtimeDimension('browser', 'engine', 'Chromium'), candidate), false);
-    scope.assert.equal(matchesRunFilter(runtimeDimension('browser', 'missing', 'value'), candidate), false);
-}
+const assertRuntimeIdentityMatches = defineCompositeAssertion({
+    name: 'runtime identity matches',
+    assert(check) {
+        return check.group([
+            check.equal(matchesRunFilter(runtime('browser'), candidate), true),
+            check.equal(matchesRunFilter(runtime('Browser'), candidate), false),
+            check.equal(matchesRunFilter(runtimeVariant('browser', 'chromium'), candidate), true),
+            check.equal(matchesRunFilter(runtimeVariant('browser', 'Chromium'), candidate), false),
+            check.equal(matchesRunFilter(runtimeDimension('browser', 'engine', 'chromium'), candidate), true),
+            check.equal(matchesRunFilter(runtimeDimension('browser', 'engine', 'Chromium'), candidate), false),
+            check.equal(matchesRunFilter(runtimeDimension('browser', 'missing', 'value'), candidate), false)
+        ]);
+    }
+});
 
-function assertCompositeFiltersMatch(scope: TestScope): void {
-    scope.assert.equal(matchesRunFilter(not(tag('slow')), candidate), true);
-    scope.assert.equal(matchesRunFilter(all([ tag('FAST'), owner('@PAYMENTS') ]), candidate), true);
-    scope.assert.equal(matchesRunFilter(any([ tag('slow'), owner('@PAYMENTS') ]), candidate), true);
-    scope.assert.equal(matchesRunFilter(tag('slow'), candidate), false);
-}
+const assertCompositeFiltersMatch = defineCompositeAssertion({
+    name: 'composite filters match',
+    assert(check) {
+        return check.group([
+            check.equal(matchesRunFilter(not(tag('slow')), candidate), true),
+            check.equal(matchesRunFilter(all([ tag('FAST'), owner('@PAYMENTS') ]), candidate), true),
+            check.equal(matchesRunFilter(any([ tag('slow'), owner('@PAYMENTS') ]), candidate), true),
+            check.equal(matchesRunFilter(tag('slow'), candidate), false)
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('Run selection filters', [
+export const testNode = suite('Run selection filters', [
     test(
         'work identity selections validate and match complete default work identities',
         function (scope) {
@@ -195,9 +211,9 @@ export const testNode: TestNode = suite('Run selection filters', [
             scope.assert.equal(matchesRunFilter(filter, candidate), true);
         }
 
-        assertCompositeFiltersMatch(scope);
-        assertRuntimeScenarioMatches(scope);
-        assertRuntimeIdentityMatches(scope);
+        scope.assert(assertCompositeFiltersMatch);
+        scope.assert(assertRuntimeScenarioMatches);
+        scope.assert(assertRuntimeIdentityMatches);
         scope.assert.equal(matchesRunFilter({ kind: 'unknown' } as unknown as RunFilter, candidate), false);
 
         return scope.assert.collect();

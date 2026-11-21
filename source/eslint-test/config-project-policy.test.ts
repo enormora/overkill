@@ -1,9 +1,9 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { emptyConfigProject } from '../test-support/eslint-config.ts';
 import { inConfigProject, configLayers, generatedProject, projectPath, validateProject } from './config-project.ts';
 
-export const testNode: TestNode = suite('configuration project and layer policy', [
+export const testNode = suite('configuration project and layer policy', [
     test('runs an existing project callback without creating a temporary project', async function (scope) {
         const context = await inConfigProject(
             { kind: 'existing', root: '/project' },

@@ -1,4 +1,4 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { DryRunStatus, MutantRunStatus, TestStatus, type MutantRunResult } from '@stryker-mutator/api/test-runner';
 
@@ -14,7 +14,7 @@ const killed: MutantRunResult = {
     failureMessage: 'Killed.',
     nrOfTests: 1
 };
-export const testNode: TestNode = suite('mutation diagnostic retention policy', [
+export const testNode = suite('mutation diagnostic retention policy', [
     table({
         title: 'retains timeout diagnostics with or without an explicit reason',
         cases: [ false, true ],

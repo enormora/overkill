@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { memoryImplementationCatalog } from './test-support/memory-implementation-catalog.ts';
 import {
@@ -9,7 +9,7 @@ import {
     assertImplementationAssignments
 } from './implementation-catalog.ts';
 
-export const testNode: TestNode = suite('portable implementation catalog policy', [
+export const testNode = suite('portable implementation catalog policy', [
     test('combines repeated build evidence without duplicating assignments or modules', function (scope) {
         const catalog = memoryImplementationCatalog();
         const combined = combineImplementationBuilds([ ...catalog.builds, ...catalog.builds ]);

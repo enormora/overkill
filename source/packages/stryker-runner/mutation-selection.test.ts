@@ -1,9 +1,9 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { planMutantInvocation } from './mutation-selection.ts';
 
-export const testNode: TestNode = suite('mutation coverage selection', [
+export const testNode = suite('mutation coverage selection', [
     test('rejects a fallback catalog with no runnable cases', function (scope) {
         const { baseline, options } = mutationCoverageFixture('perTest');
         const campaign = {
