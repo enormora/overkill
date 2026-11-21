@@ -12,7 +12,7 @@ import {
     sourceBody,
     sourceCall,
     sourceMember
-} from '../../../../test-support/native-source-fixture.ts';
+} from '../../test-support/native-source-fixture.ts';
 import {
     sourceChildren,
     sourceDeclarations,
@@ -21,10 +21,10 @@ import {
     transparentExpression,
     immutableInitializer,
     validateFunctionBinding
-} from '../../../../packages/type-test/source-analysis.ts';
-import { declaredBody, namedBodyParameter } from '../../../../packages/type-test/source-ownership.ts';
-import { scopeAssertions, assertionAnnotation } from '../../../../packages/type-test/scope-assertions.ts';
-import { nativeReference } from '../../../../packages/type-test/native-reference.ts';
+} from './source-analysis.ts';
+import { declaredBody, namedBodyParameter } from './source-ownership.ts';
+import { scopeAssertions, assertionAnnotation } from './scope-assertions.ts';
+import { nativeReference } from './native-reference.ts';
 
 function aliasedFixture(): SourceFixture & { readonly node: ast.Identifier; } {
     const fixture = sourceFixture();

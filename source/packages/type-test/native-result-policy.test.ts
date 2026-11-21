@@ -2,14 +2,14 @@ import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import * as ast from 'typescript-beta/ast';
 
-import { sourceCall } from '../../../../test-support/native-source-fixture.ts';
-import { observationPlan } from '../../../../test-support/observation-lifetime.ts';
+import { sourceCall } from '../../test-support/native-source-fixture.ts';
+import { observationPlan } from '../../test-support/observation-lifetime.ts';
 import {
     nativeCheckResult,
     type SiteEvidence,
     type NativeCheckEvidence
-} from '../../../../packages/type-test/native-results.ts';
-import type { NativeSite } from '../../../../packages/type-test/original-assertions.ts';
+} from './native-results.ts';
+import type { NativeSite } from './original-assertions.ts';
 
 function evidence(): NativeCheckEvidence {
     return {

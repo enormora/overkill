@@ -12,10 +12,10 @@ import {
     sourceBody,
     sourceCall,
     sourceMember
-} from '../../../../test-support/native-source-fixture.ts';
-import { nativeReference } from '../../../../packages/type-test/native-reference.ts';
-import { scopeAssertions, assertionAnnotation } from '../../../../packages/type-test/scope-assertions.ts';
-import { namedBodyParameter } from '../../../../packages/type-test/source-ownership.ts';
+} from '../../test-support/native-source-fixture.ts';
+import { nativeReference } from './native-reference.ts';
+import { scopeAssertions, assertionAnnotation } from './scope-assertions.ts';
+import { namedBodyParameter } from './source-ownership.ts';
 
 const adapterSource = '/project/packages/type-test/type-test.entry-point.ts';
 function ownedMatcher(declarationPath: string): SourceFixture {
