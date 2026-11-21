@@ -116,7 +116,7 @@ export const testNode: TestNode = suite('compiler planning', [
         const { result, facts } = await collected.execute();
         scope.assert.includes(result.runnerErrors[0]?.message ?? '', 'changed after collection');
         scope.assert.equal(result.perTest[0]?.verdict, 'inconclusive');
-        scope.assert.deepEqual(facts, collected.facts);
+        scope.assert.deepEqual<unknown, unknown>(facts, collected.facts);
         return scope.assert.collect();
     })
 ]);

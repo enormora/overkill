@@ -45,7 +45,7 @@ export const testNode: TestNode = suite('isolated callback source ownership', [
             cases: [ { ...selected, bodyOrigin: { ...origin(fixture), location: { kind: 'unknown' } } } ]
         });
         scope.assert.equal(result.issues.length, 1);
-        scope.assert.deepEqual(result.issues[0]?.owner, selected.workId);
+        scope.assert.deepEqual<unknown, unknown>(result.issues[0]?.owner, selected.workId);
         scope.assert.includes(
             result.issues[0]?.reason ?? '',
             'at unknown source: Type-test checking requires a known callback source location'
@@ -183,7 +183,7 @@ export const testNode: TestNode = suite('isolated callback source ownership', [
         });
         const result = await collectOriginalAssertions(fixture.analysis, fixture.plan);
         scope.assert.equal(result.issues.length, 1);
-        scope.assert.deepEqual(result.issues[0]?.owner, fixture.plan.cases[0].workId);
+        scope.assert.deepEqual<unknown, unknown>(result.issues[0]?.owner, fixture.plan.cases[0].workId);
         scope.assert.includes(result.issues[0]?.reason ?? '', 'case.ts:1:1: Callback construction has no arguments');
         return scope.assert.collect();
     }),

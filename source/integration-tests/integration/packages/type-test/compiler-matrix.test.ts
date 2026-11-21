@@ -107,7 +107,10 @@ export const testNode: TestNode = suite('compiler matrix evidence', [
             [ 'pass', 'inconclusive' ]
         );
         scope.assert.equal(execution.result.runnerErrors[0]?.message, 'Compiler project failed');
-        scope.assert.deepEqual(execution.facts, { version: 3, compilers: [ null, { evidence: 'checked' } ] });
+        scope.assert.deepEqual<unknown, unknown>(execution.facts, {
+            version: 3,
+            compilers: [ null, { evidence: 'checked' } ]
+        });
         return scope.assert.collect();
     }),
     test('preserves shared table ownership for each compiler', async function (scope) {
