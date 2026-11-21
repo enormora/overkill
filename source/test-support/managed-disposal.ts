@@ -95,6 +95,6 @@ export function managedDisposal(scenario: DisposalScenario, observed: boolean): 
             } ]
         }
     };
-    stores.rememberRecord(record.boundary.key, record);
+    stores.publishRecord(record);
     return { testCase: selected, record, stores, calls };
 }

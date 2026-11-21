@@ -161,7 +161,7 @@ const failureScript = [
 async function assertPackagedWitness(
     scope: TestScope,
     artifact: Readonly<z.infer<typeof failureArtifactSchema>>
-): Promise<void> {
+): Promise<string> {
     const { content } = artifact.payload;
     if (content.kind !== 'file') {
         throw new Error('Expected packaged witness file.');
@@ -171,7 +171,28 @@ async function assertPackagedWitness(
     scope.assert.equal(artifact.source, 'native');
     scope.assert.equal(witness.simulation.payload.interactions.length, 1);
     scope.assert.true(content.path.includes('witnesses/'));
+    return content.path;
 }
+async function assertPackagedReplay(scope: TestScope, witnessPath: string): Promise<void> {
+    await writeFile(
+        path.join(directory, failureFixture),
+        failureScript.replace(
+            'await response.json(); scope.assert.fail();',
+            'scope.assert.deepEqual(await response.json(), {ready: true});'
+        )
+    );
+    const replay = await executeNode([
+        binary,
+        'replay-witness',
+        witnessPath,
+        '--profile',
+        'attachments',
+        '--config',
+        failureConfiguration
+    ], 0);
+    scope.assert.equal(reportSchema.parse(JSON.parse(replay)).status, 'passed');
+}
+
 async function assertPackagedFailureEvidence(scope: TestScope): Promise<void> {
     const failureConfigScript = configScript
         .replaceAll(fixture, function () {
@@ -194,7 +215,7 @@ async function assertPackagedFailureEvidence(scope: TestScope): Promise<void> {
         return entry.id.subtype === 'witness';
     });
     scope.require.defined(artifact);
-    await assertPackagedWitness(scope, artifact);
+    await assertPackagedReplay(scope, await assertPackagedWitness(scope, artifact));
 }
 
 export const testNode: TestNode = suite('Test binary attachments', [

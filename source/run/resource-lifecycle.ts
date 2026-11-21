@@ -39,6 +39,7 @@ import {
     type ManagedRunnerError
 } from './resource-lifecycle-state.ts';
 import {
+    managedResourceErrorMessage,
     resourceWrapperErrorFromUnknown,
     resourceWrapperLifecycleError
 } from './resource-lifecycle-error.ts';
@@ -51,6 +52,7 @@ import {
     type ResourceBoundaryUseCount
 } from './resource-lifecycle-boundaries.ts';
 import {
+    awaitResourceAcquisitions,
     createManagedResourceAcquirer,
     createManagedStores,
     resourceProjectionRecordsFromStores,
@@ -154,7 +156,7 @@ async function acquireTopLevelResources(
     testCase: TestPlanCase,
     signal: AbortSignal
 ): Promise<void> {
-    await Promise.all(graph.topLevelEntries.map(async function acquireTopLevel([ , resource ]) {
+    await awaitResourceAcquisitions(graph.topLevelEntries.map(async function acquireTopLevel([ , resource ]) {
         await acquirer.acquire(resource, testCase, signal);
     }));
 }
@@ -249,7 +251,8 @@ async function disposeCaseResources(
                 testCases: options.testCases
             });
         } catch (error: unknown) {
-            stores.recordCaseError(testCase, 'Resource disposal failed.', error);
+            const message = managedResourceErrorMessage('Resource disposal failed', error);
+            stores.recordCaseError(testCase, message, error);
         }
     }
 }
@@ -398,12 +401,35 @@ export function createResourceLifecycleSession(options: ResourceLifecycleOptions
     };
 }
 
+export function resourceOwnerAcquisitionErrorMessage(cause: unknown): string {
+    return managedResourceErrorMessage('Resource acquisition failed', cause);
+}
+
+async function rollbackResourceAcquisition(lifecycle: ManagedLifecycleState, error: unknown): Promise<never> {
+    const cleanupErrors = await lifecycle.disposeAll(freshDisposalSignal());
+    if (cleanupErrors.length > 0) {
+        const causes = [
+            error,
+            ...cleanupErrors.map(function cleanupCause(cleanup) {
+                return cleanup.cause;
+            })
+        ];
+        const details = causes.map(function describeCause(cause) {
+            return cause instanceof Error ? cause.message : String(cause);
+        });
+        throw new AggregateError(causes, `Resource acquisition and cleanup failed: ${details.join(', ')}`, {
+            cause: error
+        });
+    }
+    throw error;
+}
+
 export async function acquireResourceLifecycleScopes(
     request: ResourceLifecycleScopesRequest
 ): Promise<ResourceLifecycleSession> {
     const { lifecycle, stores, updateProjectedResources } = createManagedLifecycleState(request.options);
 
-    await runWithManagedLifecycle(lifecycle, async function acquireSelectedScopes() {
+    async function acquireSelectedScopes(): Promise<void> {
         for (const testCase of request.testCases) {
             await lifecycle.acquireResourceScopes({
                 boundaryKeys: request.boundaryKeys,
@@ -413,7 +439,13 @@ export async function acquireResourceLifecycleScopes(
                 testCase
             });
         }
-    });
+    }
+
+    try {
+        await runWithManagedLifecycle(lifecycle, acquireSelectedScopes);
+    } catch (error: unknown) {
+        return await rollbackResourceAcquisition(lifecycle, error);
+    }
 
     return {
         updateProjectedResources,

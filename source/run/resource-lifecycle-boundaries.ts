@@ -1,3 +1,4 @@
+import type { SimulationWitnessFile } from '../engine/witness-file.ts';
 import { workIdentityKey, type RuntimeId, type WorkloadId } from '../engine/identity.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import type {
@@ -22,6 +23,7 @@ export type LifecycleBoundary = {
 export type ResourceOwnershipBoundary = LifecycleBoundary & {
     readonly handleTransport: TestBodyResourceSummary['handleTransport'];
     readonly resourceName: string;
+    readonly ownerName: string;
 };
 
 export type ResourceBoundaryUseCount = {
@@ -29,7 +31,7 @@ export type ResourceBoundaryUseCount = {
     readonly count: number;
 };
 
-type ResourceBoundaryCase = Pick<TestPlanCase, 'id' | 'resourceAttachments' | 'workId'>;
+export type ResourceBoundaryCase = Pick<TestPlanCase, 'id' | 'resourceAttachments' | 'workId'>;
 
 const resourceScopeValues: readonly ResourceScope[] = [
     'per-case',
@@ -224,7 +226,8 @@ function resourceGraphBoundaries(
         boundaries.push({
             ...resourceBoundary(resourceName(resource), resource.scope, testCase, identity),
             handleTransport: resource.handleTransport,
-            resourceName: resource.name
+            resourceName: resource.name,
+            ownerName: resourceName(resource)
         });
     }
 
@@ -288,6 +291,17 @@ export function caseResourceOwnershipBoundaries(testCase: ResourceBoundaryCase):
     );
 
     return Array.from(boundaries.values());
+}
+
+export function simulationWitnessOwners(
+    testCase: ResourceBoundaryCase,
+    witness: SimulationWitnessFile
+): readonly ResourceOwnershipBoundary[] {
+    return caseResourceOwnershipBoundaries(testCase).filter(function matchesOwner(boundary) {
+        return witness.resource === null
+            ? boundary.resourceName === witness.simulation.name
+            : boundary.ownerName === witness.resource.name;
+    });
 }
 
 function initialBoundaryUseCounts(testCases: readonly TestPlanCase[]): ReadonlyMap<string, number> {

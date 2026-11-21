@@ -1,10 +1,11 @@
 import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
-import type { SimulationWitnessFile } from '../engine/witness-file.ts';
-import { defineResource } from '../resources/resources.ts';
-import { withHttpSimulationWitness } from '../resources/simulated-http-witness.ts';
-import { restoreResourceWitness } from '../resources/witness-replay.ts';
-import { emptyTranscriptView } from '../transcript/http-transcript.ts';
+import { packageVersion } from '../../../package-version.ts';
+import type { SimulationWitnessFile } from '../../../engine/witness-file.ts';
+import { defineResource } from '../../../resources/resources.ts';
+import { withHttpSimulationWitness } from '../../../resources/simulated-http-witness.ts';
+import { restoreResourceWitness } from '../../../resources/witness-replay.ts';
+import { emptyTranscriptView } from '../../../transcript/http-transcript.ts';
 
 const handle = { transcript: emptyTranscriptView() };
 const resource = withHttpSimulationWitness(
@@ -19,9 +20,14 @@ const resource = withHttpSimulationWitness(
     }),
     'api'
 );
+const producer = await packageVersion(import.meta.url);
+if (producer === null) {
+    throw new Error('Expected package metadata.');
+}
+
 const witness: SimulationWitnessFile = {
     version: 1,
-    producedBy: { library: 'http', libraryVersion: '1' },
+    producedBy: { library: producer.name, libraryVersion: '0.0.0-retained' },
     case: { file: 'case.test.ts', suite: [], title: 'http', params: null },
     kind: 'simulation',
     seed: null,
@@ -35,6 +41,12 @@ async function restore(value: SimulationWitnessFile, signal: AbortSignal): Promi
     await restoreResourceWitness(resource, { handle, witness: value, signal, seed: null });
 }
 export const testNode: TestNode = suite('HTTP witness compatibility', [
+    test('rejects a foreign producer with a compatible HTTP payload', async function (scope) {
+        await scope.assert.rejects(async function incompatible() {
+            await restore({ ...witness, producedBy: { library: 'foreign', libraryVersion: '1' } }, AbortSignal.any([]));
+        }, { message: 'HTTP simulation witness producer is incompatible.' });
+        return scope.assert.collect();
+    }),
     table({
         title: 'rejects invalid HTTP witnesses',
         cases: [

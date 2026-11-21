@@ -114,11 +114,11 @@ export async function disposeBoundary(
     request: ResourceDisposalRequest
 ): Promise<void> {
     const record = stores.existingRecord(boundaryKey);
+    stores.deleteRecord(boundaryKey);
+    stores.deleteAcquisition(boundaryKey);
     if (record === undefined) {
         return;
     }
-    stores.deleteRecord(boundaryKey);
-    stores.deleteAcquisition(boundaryKey);
     await disposePreparedResource(record, request);
 }
 
@@ -184,7 +184,7 @@ export async function prepareManagedResources(
     attempt: AttemptId
 ): Promise<void> {
     const boundaries = caseResourceBoundaryKeys(testCase, new Set(resourceScopes));
-    for (const record of stores.records()) {
+    for (const record of stores.readyRecords()) {
         if (boundaries.includes(record.boundary.key)) {
             try {
                 await prepareObservedResource(record, testCase, attempt);

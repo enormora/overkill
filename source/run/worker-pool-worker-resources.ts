@@ -18,6 +18,7 @@ import { resourcePreparationError } from './resource-failure-preparation.ts';
 import {
     acquireResourceLifecycleScopes,
     createResourceLifecycleSession,
+    resourceOwnerAcquisitionErrorMessage,
     type ManagedResourceLifecycleTiming,
     type ResourceLifecycleSession
 } from './resource-lifecycle.ts';
@@ -165,7 +166,7 @@ export async function acquireWorkerRunResources(
     } catch (error: unknown) {
         return {
             projectedResources: { resources: [] },
-            runnerErrors: [ runnerError('Resource acquisition failed.', error) ]
+            runnerErrors: [ runnerError(resourceOwnerAcquisitionErrorMessage(error), error) ]
         };
     }
 }
