@@ -763,20 +763,24 @@ type ThrownMatcher = ExactThrownMatcher | ErrorMatcher;
 one structured field. Multiple fields are conjunctive. A string `message`
 matches by exact equality; use `RegExp` for pattern matching. Structured error
 fields match only `Error` instances.
+Using the base `Error` as `type` requires another matcher field at the same
+level. Specific subclasses can be matched by `type` alone. The assertion
+signatures check the inferred matcher type, and evaluation enforces the rule
+when the constructor type has been widened.
 
 The public assertion signatures should keep sync and async paths distinct:
 
 ```ts
 type Assert = {
-    throws<Body extends () => unknown>(
+    throws<Body extends () => unknown, Matcher extends ThrownMatcher = ThrownMatcher>(
         body: ReturnType<Body> extends PromiseLike<unknown> ? never : Body,
-        matcher: ThrownMatcher,
+        matcher: CheckedThrownMatcher<Matcher>,
         options?: AssertionOptions
     ): void;
 
-    rejects(
+    rejects<Matcher extends ThrownMatcher>(
         thunk: () => PromiseLike<unknown>,
-        matcher: ThrownMatcher,
+        matcher: CheckedThrownMatcher<Matcher>,
         options?: AssertionOptions
     ): Promise<void>;
 };

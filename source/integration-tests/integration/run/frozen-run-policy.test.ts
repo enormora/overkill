@@ -89,23 +89,40 @@ export const testNode: TestNode = suite('frozen microtest policy', [
         });
         const [ descriptor ] = policy.files;
         for (
-            const files of [
-                [],
-                [ descriptor, descriptor ],
-                [ { ...descriptor, path: '/outside.test.ts' } ],
-                [ { ...descriptor, href: 'file:///outside.test.ts' } ],
-                [ { ...descriptor, file: '../outside.test.ts' } ],
-                [ { ...descriptor, file: descriptor.path } ],
-                [ { ...descriptor, fileSet: 'absent' } ]
-            ]
+            const [ files, matcher ] of [
+                [ [], { message: /"path":\s*\[\s*"files",\s*0\s*\]/u } ],
+                [ [ descriptor, descriptor ], {
+                    message: `Duplicate frozen discovery descriptor: ${descriptor.file}`
+                } ],
+                [
+                    [ { ...descriptor, path: '/outside.test.ts' } ],
+                    { message: `Invalid frozen discovery descriptor: ${descriptor.file}` }
+                ],
+                [
+                    [ { ...descriptor, href: 'file:///outside.test.ts' } ],
+                    { message: `Invalid frozen discovery descriptor: ${descriptor.file}` }
+                ],
+                [
+                    [ { ...descriptor, file: '../outside.test.ts' } ],
+                    { message: 'Invalid frozen discovery descriptor: ../outside.test.ts' }
+                ],
+                [
+                    [ { ...descriptor, file: descriptor.path } ],
+                    { message: `Invalid frozen discovery descriptor: ${descriptor.path}` }
+                ],
+                [
+                    [ { ...descriptor, fileSet: 'absent' } ],
+                    { message: `Invalid frozen file-set ownership: ${descriptor.file}` }
+                ]
+            ] as const
         ) {
             scope.assert.throws(function rejectDescriptor() {
                 parseFrozenMicrotestPolicy({ ...policy, files });
-            }, { type: Error });
+            }, matcher);
         }
         scope.assert.throws(function rejectExtraPolicy() {
             parseFrozenMicrotestPolicy({ ...policy, retry: true });
-        }, { type: Error });
+        }, { message: /Unrecognized key: \\"retry\\"/u });
         return scope.assert.collect();
     }),
     test('rejects conflicting supervised permissions before collection', async function (scope) {

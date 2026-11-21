@@ -200,7 +200,7 @@ export const testNode: TestNode = suite('campaign worker authority', [
         fixture.worker.cancel();
         await scope.assert.rejects(async function () {
             await fixture.worker.respond({ kind: 'fetch' }, signal, null);
-        }, { type: Error });
+        }, { name: 'AbortError', message: 'This operation was aborted' });
         scope.assert.deepEqual(await fixture.worker.respond({ kind: 'release' }, signal, null), { kind: 'accepted' });
 
         return scope.assert.collect();

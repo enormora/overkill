@@ -3,8 +3,8 @@ import { type TestNode, table, suite, test, type TestScope } from '@overkill-dev
 
 import { INSTRUMENTER_CONSTANTS, type InstrumenterContext, type MutantCoverage } from '@stryker-mutator/api/core';
 
-import { createInvocationInstrumentation } from './instrumentation-context.entry-point.ts';
-import { createMutationLifecycle } from './mutation-lifecycle.ts';
+import { createInvocationInstrumentation } from '../../../../packages/stryker-runner/instrumentation-context.entry-point.ts';
+import { createMutationLifecycle } from '../../../../packages/stryker-runner/mutation-lifecycle.ts';
 
 const namespace = INSTRUMENTER_CONSTANTS.NAMESPACE;
 const activeEnvironment = INSTRUMENTER_CONSTANTS.ACTIVE_MUTANT_ENV_VARIABLE;

@@ -72,7 +72,7 @@ export const testNode: TestNode = suite('mutation execution environment ownershi
         fixture.execution.admitEnvironment('static', false);
         scope.assert.throws(function () {
             fixture.execution.admitEnvironment('runtime', false);
-        }, { type: Error });
+        }, { message: 'Loaded native ESM requires Stryker worker replacement for reload or static transitions.' });
         await fixture.execution.dispose();
         return scope.assert.collect();
     }),
