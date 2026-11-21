@@ -10,15 +10,21 @@ import {
 } from '../engine/engine.entry-point.ts';
 import { prepare as prepareCompilerPlan } from './compiler-plan.ts';
 import { typeTestSettingsSchema, type TypeTestSettings } from './profile-settings.ts';
-import type { CheckerPreparation, CollectedCheckerRun, PreparedCheckerRun } from './checker-plan.ts';
+import type { CheckerPreparation, CollectedCheckerRun, CheckerExecution } from './checker-plan.ts';
 
 function selectedCheckerPlan(
     preparation: CheckerPreparation,
     workIds: readonly WorkId[]
 ): CheckerPreparation['testPlan'] {
-    const wanted = new Set(workIds.map(workIdentityKey));
-    const cases = preparation.testPlan.cases.filter(function selected(testCase) {
-        return wanted.has(workIdentityKey(testCase.workId));
+    const available = new Map(preparation.testPlan.cases.map(function byIdentity(testCase) {
+        return [ workIdentityKey(testCase.workId), testCase ];
+    }));
+    const cases = workIds.map(function selected(workId) {
+        const testCase = available.get(workIdentityKey(workId));
+        if (testCase === undefined) {
+            throw new TypeError('Unknown selected compiler work.');
+        }
+        return testCase;
     });
     const [ first, ...rest ] = cases;
     if (first === undefined) {
@@ -27,7 +33,7 @@ function selectedCheckerPlan(
     return { ...preparation.testPlan, cases: [ first, ...rest ] };
 }
 
-function checkerFactsArtifact(result: RunResult, facts: PreparedCheckerRun['facts']): RunArtifact {
+function checkerFactsArtifact(result: RunResult, facts: CheckerExecution['facts']): RunArtifact {
     return {
         id: {
             familyVariant: null,
@@ -59,10 +65,9 @@ async function reportCheckerResult(context: FamilyAnalysisContext, result: RunRe
 
 async function executeCheckerCollection(collected: CollectedCheckerRun, context: FamilyAnalysisContext): Promise<void> {
     context.signal.throwIfAborted();
-    const lowered = await collected.lower();
-    const result = await lowered.execute();
+    const { result, facts } = await collected.execute();
     await reportCheckerResult(context, result);
-    await context.report({ kind: 'artifact', artifact: checkerFactsArtifact(result, lowered.facts) });
+    await context.report({ kind: 'artifact', artifact: checkerFactsArtifact(result, facts) });
 }
 
 export async function prepare(input: FamilyPreparationInput<TypeTestSettings>): Promise<FamilyPreparation> {

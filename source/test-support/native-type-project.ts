@@ -9,6 +9,7 @@ import type { TypeTestSettings } from '../packages/type-test/profile-settings.ts
 const readOnlyProjectMode = 0o555;
 const writableProjectMode = 0o755;
 
+const checkerFactsVersion = 3;
 const resultSchema = z
     .object({
         status: z.enum([ 'passed', 'failed' ]),
@@ -19,7 +20,25 @@ const resultSchema = z
         compilerVersions: z.array(z.string()),
         artifactCount: z.number(),
         logicalCaseCount: z.number(),
-        diagnostics: z.array(z.string())
+        diagnostics: z.array(z.string()),
+        completions: z.array(z.object({ title: z.string(), verdict: z.string() })),
+        checkerFacts: z
+            .object({
+                version: z.literal(checkerFactsVersion),
+                identities: z.array(z.object({ case: z.object({ title: z.string() }) })),
+                compilers: z.array(z.object({
+                    issues: z.array(z.object({ reason: z.string(), location: z.object({ kind: z.string() }) })),
+                    evidence: z
+                        .array(z.object({
+                            path: z.string(),
+                            line: z.number(),
+                            column: z.number(),
+                            owners: z.array(z.object({ case: z.object({ title: z.string() }) }))
+                        }))
+                        .optional()
+                }))
+            })
+            .nullable()
     })
     .readonly();
 export type NativeProjectResult = z.infer<typeof resultSchema>;
@@ -36,17 +55,18 @@ type ProjectRequest = {
 function executionSource(request: ProjectRequest): string {
     if (request.change === null) {
         const caseSelection = request.titles === null
-            ? 'true'
-            : `${JSON.stringify(request.titles)}.includes(c.id.title)`;
+            ? 'prepared.testPlan.cases.map(c=>c.workId)'
+            : `${JSON.stringify(request.titles)}.flatMap(title=>prepared.testPlan.cases
+                .filter(c=>c.id.title===title).map(c=>c.workId))`;
         return `let result;
 try {
 const signal = new AbortController().signal;
 await using prepared = await engine.prepareFamily({testPlan:engine.createTestPlan(root),testFamily:family,
     settings:{projectConfigPath:import.meta.dirname+'/tsconfig.json',compiler:${JSON.stringify(request.compiler)}},
     projectRoot:import.meta.dirname,signal});
-const workIds=prepared.testPlan.cases.filter(c=>${caseSelection}).map(c=>c.workId);
+const workIds=${caseSelection};
 const collected=await prepared.collect({workIds,signal});
-result=await engine.execute(collected,{signal,debug:{mode:'off'},retryPolicy:null,reporters:[],
+result=await engine.execute(collected,{signal,debug:{mode:'off'},retryPolicy:null,reporters:[reporter],
     execution:{mode:'serial-in-process'},runFacts:{},startedAt:new Date().toISOString()});
 } catch(error) {
 result=engine.createRunResult(engine.createTestPlan(root),[],[{subtype:'loader',cause:error,message:String(error),
@@ -98,14 +118,33 @@ import { family } from ${profileImport};
 const metadata = { annotations: {}, controls: {}, definitionLocations: [{ kind: 'unknown' }] } as const;
 let bodyCalls = 0;
 ${request.definitions}
+const completions: {title:string;verdict:string}[] = [];
+const reporter = engine.defineReporter(() => ({
+    kind:'real-time',name:'type-test fixture',sinks:[{kind:'memory'}],onFinish:null,dispose:null,
+    onEvent(event) {
+        if(event.kind==='test-end') completions.push({title:event.case.title,verdict:event.verdict});
+    }
+}));
 const root = engine.createRoot({ title: 'native', annotations: {}, controls: {}, children: nodes });
 ${executionSource(request)}
+const checkerArtifact = result.artifacts.find(artifact=>artifact.payload.kind==='adapter'&&
+    artifact.payload.adapter==='@overkill-dev/type-test');
+const facts = checkerArtifact?.payload.kind==='adapter'
+    ? checkerArtifact.payload.facts as {
+        version:number;identities:unknown[];compilers:{issues:unknown[];evidence?:unknown[]}[]
+    }
+    : null;
 console.log(JSON.stringify({
     status: result.status, summary: result.summary, titles: result.perTest.map(r => r.id.title),
     errors: result.runnerErrors.map(r => r.message), bodyCalls,
     compilerVersions: result.perTest.map(r =>
         r.workId.familyVariant?.key.replace('typescript@', '') ?? 'missing'),
     artifactCount: result.artifacts.length,
+    completions,
+    checkerFacts: facts===null ? null : {
+        version:facts.version,identities:facts.identities,
+        compilers:facts.compilers.map(({issues,evidence})=>({issues,evidence}))
+    },
     logicalCaseCount: new Set(result.perTest.map(r => JSON.stringify(r.id))).size,
     diagnostics: result.perTest.flatMap(r => r.outcome?.kind === 'fail'
         ? r.outcome.failures.flatMap(f => f.kind === 'assertion' ? f.checks.map(c => c.summary) : [f.kind]) : [])

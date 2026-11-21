@@ -5,6 +5,7 @@ import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
 import { createEngine, type TestPlan } from '../../../../packages/engine/engine.entry-point.ts';
 
 import { frozenTypeProject } from '../../../../test-support/frozen-type-project.ts';
+import { observationPlan } from '../../../../test-support/observation-lifetime.ts';
 import type { CheckerPreparation } from '../../../../packages/type-test/checker-plan.ts';
 import { prepare } from '../../../../packages/type-test/compiler-plan.ts';
 import { typeTestSettingsSchema, type TypeTestSettings } from '../../../../packages/type-test/profile-settings.ts';
@@ -33,7 +34,7 @@ function skippedPlan(): TestPlan {
     }));
 }
 
-async function preparedProject(scope: TestScope): Promise<PreparedProject> {
+async function preparedProject(scope: TestScope, original: TestPlan): Promise<PreparedProject> {
     const files = Array.from({ length: sourceFileCount }, function (_value, index) {
         return `value${index}.ts`;
     });
@@ -43,7 +44,6 @@ async function preparedProject(scope: TestScope): Promise<PreparedProject> {
         })),
         'tsconfig.json': JSON.stringify({ compilerOptions: { noLib: true, types: [] }, files })
     });
-    const original = skippedPlan();
     const settings: TypeTestSettings = {
         projectConfigPath: join(directory, 'tsconfig.json'),
         compiler: { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' }
@@ -76,7 +76,7 @@ export const testNode: TestNode = suite('compiler planning', [
         return scope.assert.collect();
     }),
     test('preserves complete immutable input facts', async function (scope) {
-        const { preparation, original } = await preparedProject(scope);
+        const { preparation, original } = await preparedProject(scope, skippedPlan());
         const collected = await preparation.collect(preparation.testPlan);
         const json = JSON.stringify(collected.facts);
         scope.assert.includes(json, 'value299.ts');
@@ -88,7 +88,7 @@ export const testNode: TestNode = suite('compiler planning', [
         return scope.assert.collect();
     }),
     test('rejects foreign preparation', async function (scope) {
-        const { preparation, original, settings } = await preparedProject(scope);
+        const { preparation, original, settings } = await preparedProject(scope, skippedPlan());
         const second = await prepare(original, settings, process.cwd());
         scope.cleanup(async function () {
             await second.dispose();
@@ -99,7 +99,7 @@ export const testNode: TestNode = suite('compiler planning', [
         return scope.assert.collect();
     }),
     test('rejects duplicate work and foreign discovery', async function (scope) {
-        const { preparation } = await preparedProject(scope);
+        const { preparation } = await preparedProject(scope, skippedPlan());
         const plan = preparation.testPlan;
         await scope.assert.rejects(async function () {
             return preparation.collect({ ...plan, cases: [ plan.cases[0], plan.cases[0] ] });
@@ -109,13 +109,14 @@ export const testNode: TestNode = suite('compiler planning', [
         }, { message: /Discovery does not match/u });
         return scope.assert.collect();
     }),
-    test('revalidates inputs before lowering', async function (scope) {
-        const { directory, preparation } = await preparedProject(scope);
+    test('revalidates inputs before checking', async function (scope) {
+        const { directory, preparation } = await preparedProject(scope, observationPlan());
         const collected = await preparation.collect(preparation.testPlan);
         await writeFile(join(directory, 'value0.ts'), 'export type Value = number;');
-        await scope.assert.rejects(async function changedAfterCollection() {
-            await collected.lower();
-        }, { message: /changed after collection/u });
+        const { result, facts } = await collected.execute();
+        scope.assert.includes(result.runnerErrors[0]?.message ?? '', 'changed after collection');
+        scope.assert.equal(result.perTest[0]?.verdict, 'inconclusive');
+        scope.assert.deepEqual(facts, collected.facts);
         return scope.assert.collect();
     })
 ]);

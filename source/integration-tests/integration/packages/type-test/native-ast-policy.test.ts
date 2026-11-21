@@ -4,6 +4,7 @@ import * as ast from 'typescript-beta/ast';
 import { SymbolFlags } from 'typescript-beta/async';
 
 import {
+    rejectUnsupportedSite,
     sourceFixture,
     type SourceFixture,
     sourceSymbol as makeSymbol,
@@ -137,7 +138,15 @@ export const testNode: TestNode = suite('isolated native syntax analysis', [
             ast.factory.createExpressionStatement(collect)
         ]);
         const parameter = namedBodyParameter(fixture.analysis, body);
-        scope.assert.deepEqual(await scopeAssertions(fixture.analysis, body, parameter), [ assertion ]);
+        scope.assert.deepEqual(
+            await scopeAssertions(
+                fixture.analysis,
+                body,
+                parameter,
+                rejectUnsupportedSite
+            ),
+            [ assertion ]
+        );
         scope.assert.equal(await assertionAnnotation(fixture.analysis, assertion), null);
         return scope.assert.collect();
     }),
@@ -154,7 +163,12 @@ export const testNode: TestNode = suite('isolated native syntax analysis', [
             const call = sourceCall(sourceMember(ast.factory.createIdentifier('scope'), operation), []);
             const body = sourceBody([ ast.factory.createExpressionStatement(call) ]);
             await scope.assert.rejects(async function () {
-                await scopeAssertions(fixture.analysis, body, namedBodyParameter(fixture.analysis, body));
+                await scopeAssertions(
+                    fixture.analysis,
+                    body,
+                    namedBodyParameter(fixture.analysis, body),
+                    rejectUnsupportedSite
+                );
             }, { message: /Unsupported runtime operation/u });
             return scope.assert.collect();
         }
@@ -164,7 +178,12 @@ export const testNode: TestNode = suite('isolated native syntax analysis', [
         const detached = sourceMember(ast.factory.createIdentifier('scope'), 'assert');
         const body = sourceBody([ ast.factory.createExpressionStatement(detached) ]);
         await scope.assert.rejects(async function () {
-            await scopeAssertions(fixture.analysis, body, namedBodyParameter(fixture.analysis, body));
+            await scopeAssertions(
+                fixture.analysis,
+                body,
+                namedBodyParameter(fixture.analysis, body),
+                rejectUnsupportedSite
+            );
         }, { message: /Detached assertion/u });
         const forwarded = sourceBody([
             ast.factory.createExpressionStatement(sourceCall(
@@ -175,7 +194,12 @@ export const testNode: TestNode = suite('isolated native syntax analysis', [
             ))
         ]);
         await scope.assert.rejects(async function () {
-            await scopeAssertions(fixture.analysis, forwarded, namedBodyParameter(fixture.analysis, forwarded));
+            await scopeAssertions(
+                fixture.analysis,
+                forwarded,
+                namedBodyParameter(fixture.analysis, forwarded),
+                rejectUnsupportedSite
+            );
         }, { message: /Scope forwarding/u });
         return scope.assert.collect();
     }),
@@ -188,7 +212,12 @@ export const testNode: TestNode = suite('isolated native syntax analysis', [
         ]);
         const body = sourceBody([ ast.factory.createExpressionStatement(outer) ]);
         await scope.assert.rejects(async function () {
-            await scopeAssertions(fixture.analysis, body, namedBodyParameter(fixture.analysis, body));
+            await scopeAssertions(
+                fixture.analysis,
+                body,
+                namedBodyParameter(fixture.analysis, body),
+                rejectUnsupportedSite
+            );
         }, { message: /Nested native assertion/u });
         return scope.assert.collect();
     }),

@@ -10,7 +10,7 @@ export async function compareRelation(
     expected: Type
 ): Promise<RelationEvidence> {
     if (actual.isErrorType() || expected.isErrorType()) {
-        throw new Error('Recovery types cannot establish a type relation.');
+        return { kind: 'inconclusive', reason: 'Recovery types cannot establish a type relation.' };
     }
     if (relation === 'sameType') {
         return await compareEquality(analysis, actual, expected);

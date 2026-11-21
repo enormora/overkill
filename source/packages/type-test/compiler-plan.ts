@@ -1,3 +1,4 @@
+import type { JsonValue, ReadonlyDeep } from 'type-fest';
 import type { FamilyPreparationInput } from '../../engine/test-family.ts';
 import {
     createRunResult,
@@ -10,9 +11,10 @@ import {
 import { parseAdapterFacts } from '../../config/adapter-facts.ts';
 import { packageVersion, type PackageVersion } from '../../package-version.ts';
 import { loadProject, disposeProject, verifyFrozenProject, type FrozenProject } from './frozen-project.ts';
-import { collectProject } from './native-execution.ts';
+import { collectProject, type CompilerCheck } from './native-execution.ts';
+import { nativeCheckResult } from './native-results.ts';
 import { typeTestSettingsSchema, type TypeTestSettings, type CompilerSelection } from './profile-settings.ts';
-import type { CheckerPreparation, CollectedCheckerRun, PreparedCheckerRun } from './checker-plan.ts';
+import type { CheckerPreparation, CollectedCheckerRun, CheckerExecution } from './checker-plan.ts';
 
 const microsecondsPerMillisecond = 1000;
 type CompilerPlan = {
@@ -103,56 +105,113 @@ function orderedCompilerResults(plan: TestPlan, results: readonly RunResult[]): 
     });
 }
 
-async function executeCompilerMatrix(
-    plan: TestPlan,
-    projects: CompilerPlan['projects'],
-    groups: readonly PreparedCheckerRun[]
-): Promise<RunResult> {
-    const started = performance.now() * microsecondsPerMillisecond;
-    const results: RunResult[] = [];
+async function checkCompilerGroups(
+    groups: readonly CompilerCheck[],
+    verifyInputs: () => Promise<void>
+): Promise<readonly CheckerExecution[]> {
+    async function verify(): Promise<void> {
+        await verifyInputs();
+        for (const group of groups) {
+            await group.verify();
+        }
+    }
+    await verify();
+    const results: CheckerExecution[] = [];
     for (const group of groups) {
-        results.push(await group.execute());
+        results.push(await group.check());
     }
-    for (const project of projects.values()) {
-        await verifyFrozenProject(project, { modules: [], sites: [], issues: [] });
-    }
+    await verify();
+    return results;
+}
+
+function completeCompilerMatrix(
+    plan: TestPlan,
+    results: readonly CheckerExecution[],
+    planning: Readonly<Record<string, ReadonlyDeep<JsonValue>>>,
+    started: number
+): CheckerExecution {
     const completed = performance.now() * microsecondsPerMillisecond;
+    const runs = results.map(function (execution) {
+        return execution.result;
+    });
     const result = createRunResult(
         plan,
-        orderedCompilerResults(plan, results),
-        results.flatMap(function (entry) {
+        orderedCompilerResults(plan, runs),
+        runs.flatMap(function (entry) {
             return entry.runnerErrors;
         }),
         {
-            startedAtMicroseconds: started,
+            startedAtMicroseconds: started * microsecondsPerMillisecond,
             completedAtMicroseconds: completed,
-            testExecutionWallTimeMicroseconds: completed - started,
+            testExecutionWallTimeMicroseconds: completed - started * microsecondsPerMillisecond,
             processUsage: null,
             planStatus: 'planned'
         }
     );
     return {
-        ...result,
-        artifacts: results.flatMap(function (entry) {
-            return entry.artifacts;
+        result,
+        facts: parseAdapterFacts({
+            ...planning,
+            compilers: results.map(function (execution) {
+                return execution.facts;
+            })
         })
     };
 }
 
-async function collectCompilerGroups(input: CompilerPlan, selected: TestPlan): Promise<readonly CollectedCheckerRun[]> {
-    const groups: CollectedCheckerRun[] = [];
+export async function executeCompilerMatrix(
+    plan: TestPlan,
+    groups: readonly CompilerCheck[],
+    verifyInputs: () => Promise<void>,
+    planning: Readonly<Record<string, ReadonlyDeep<JsonValue>>>
+): Promise<CheckerExecution> {
+    const started = performance.now();
+    try {
+        return completeCompilerMatrix(plan, await checkCompilerGroups(groups, verifyInputs), planning, started);
+    } catch (error: unknown) {
+        const failure = error instanceof Error
+            ? error
+            : new Error('Type-test input validation failed.', { cause: error });
+        return {
+            result: nativeCheckResult({
+                plan,
+                assertionPlan: { modules: [], sites: [], issues: [] },
+                checked: null,
+                error: failure,
+                started
+            }),
+            facts: parseAdapterFacts(planning)
+        };
+    }
+}
+
+async function collectCompilerGroups(input: CompilerPlan, selected: TestPlan): Promise<{
+    readonly groups: readonly CompilerCheck[];
+    readonly verifyUnselected: () => Promise<void>;
+}> {
+    const groups: CompilerCheck[] = [];
+    const unselected: FrozenProject[] = [];
     for (const [ version, project ] of input.projects) {
-        await verifyFrozenProject(project, { modules: [], sites: [], issues: [] });
+        await verifyFrozenProject(project, []);
         const cases = selected.cases.filter(function (entry) {
             const variant = entry.workId.familyVariant;
             return variant?.family === '@overkill-dev/type-test' && variant.key === `typescript@${version}`;
         });
         const first = cases[0];
-        if (first !== undefined) {
+        if (first === undefined) {
+            unselected.push(project);
+        } else {
             groups.push(await collectProject({ ...selected, cases: [ first, ...cases.slice(1) ] }, project));
         }
     }
-    return groups;
+    return {
+        groups,
+        async verifyUnselected() {
+            for (const project of unselected) {
+                await verifyFrozenProject(project, []);
+            }
+        }
+    };
 }
 
 function assertFrozenSelection(input: CompilerPlan, selected: TestPlan): void {
@@ -174,35 +233,22 @@ function assertFrozenSelection(input: CompilerPlan, selected: TestPlan): void {
 
 async function collectCompilerPlan(input: CompilerPlan, selected: TestPlan): Promise<CollectedCheckerRun> {
     assertFrozenSelection(input, selected);
-    const groups = await collectCompilerGroups(input, selected);
+    const { groups, verifyUnselected } = await collectCompilerGroups(input, selected);
     const planning = {
-        version: 2,
+        version: 3,
         versions: input.versions,
         requestedCompilers: input.requestedCompilers,
+        identities: selected.cases.map(function (testCase) {
+            return testCase.workId;
+        }),
         compilers: groups.map(function (group) {
             return group.facts;
         })
     };
     return {
         facts: parseAdapterFacts(planning),
-        async lower() {
-            const lowered: PreparedCheckerRun[] = [];
-            for (const group of groups) {
-                lowered.push(await group.lower());
-            }
-            return {
-                get facts() {
-                    return parseAdapterFacts({
-                        ...planning,
-                        compilers: lowered.map(function (group) {
-                            return group.facts;
-                        })
-                    });
-                },
-                async execute() {
-                    return await executeCompilerMatrix(selected, input.projects, lowered);
-                }
-            };
+        async execute() {
+            return await executeCompilerMatrix(selected, groups, verifyUnselected, planning);
         }
     };
 }

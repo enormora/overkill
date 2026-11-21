@@ -15,7 +15,7 @@ import {
     sourceProperty
 } from '../../../../test-support/native-source-fixture.ts';
 import { resolveBodyOrigin } from '../../../../packages/type-test/source-ownership.ts';
-import { collectOriginalAssertions, caseKey } from '../../../../packages/type-test/original-assertions.ts';
+import { collectOriginalAssertions } from '../../../../packages/type-test/original-assertions.ts';
 import { nativeReference } from '../../../../packages/type-test/native-reference.ts';
 
 function bodyOptions(body: ast.ArrowFunction): ast.ObjectLiteralExpression {
@@ -45,7 +45,7 @@ export const testNode: TestNode = suite('isolated callback source ownership', [
             cases: [ { ...selected, bodyOrigin: { ...origin(fixture), location: { kind: 'unknown' } } } ]
         });
         scope.assert.equal(result.issues.length, 1);
-        scope.assert.equal(result.issues[0]?.owner, caseKey(selected));
+        scope.assert.deepEqual(result.issues[0]?.owner, selected.workId);
         scope.assert.includes(
             result.issues[0]?.reason ?? '',
             'at unknown source: Type-test checking requires a known callback source location'
@@ -165,8 +165,8 @@ export const testNode: TestNode = suite('isolated callback source ownership', [
         const original = observationPlan();
         const plan: TestPlan = { ...original, cases: [ { ...original.cases[0], bodyOrigin: null } ] };
         const result = await collectOriginalAssertions(fixture.analysis, plan);
-        scope.assert.deepEqual(result.issues, [ {
-            owner: caseKey(plan.cases[0]),
+        scope.assert.partialDeepEqual<unknown, unknown>(result.issues, [ {
+            owner: plan.cases[0].workId,
             reason: 'Selected type-test case has no callback source ownership.'
         } ]);
         const selected = { ...plan.cases[0], execution: { kind: 'skip' as const, reason: 'unsupported' } };
@@ -183,7 +183,7 @@ export const testNode: TestNode = suite('isolated callback source ownership', [
         });
         const result = await collectOriginalAssertions(fixture.analysis, fixture.plan);
         scope.assert.equal(result.issues.length, 1);
-        scope.assert.equal(result.issues[0]?.owner, caseKey(fixture.plan.cases[0]));
+        scope.assert.deepEqual(result.issues[0]?.owner, fixture.plan.cases[0].workId);
         scope.assert.includes(result.issues[0]?.reason ?? '', 'case.ts:1:1: Callback construction has no arguments');
         return scope.assert.collect();
     }),

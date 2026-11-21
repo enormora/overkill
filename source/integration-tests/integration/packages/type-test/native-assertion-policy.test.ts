@@ -3,6 +3,7 @@ import { type TestNode, table, suite, test } from '@overkill-dev/test';
 import * as ast from 'typescript-beta/ast';
 
 import {
+    rejectUnsupportedSite,
     sourceFixture,
     type SourceFixture,
     sourceSymbol,
@@ -93,7 +94,12 @@ export const testNode: TestNode = suite('native assertion boundary validation', 
             'equal'
         )) ]);
         await scope.assert.rejects(async function () {
-            return scopeAssertions(fixture.analysis, body, namedBodyParameter(fixture.analysis, body));
+            return scopeAssertions(
+                fixture.analysis,
+                body,
+                namedBodyParameter(fixture.analysis, body),
+                rejectUnsupportedSite
+            );
         }, { message: /Detached assertion methods/u });
         return scope.assert.collect();
     }),
@@ -105,7 +111,12 @@ export const testNode: TestNode = suite('native assertion boundary validation', 
                 ast.factory.createExpressionStatement(sourceMember(ast.factory.createIdentifier('scope'), 'signal'))
             ]);
             scope.assert.deepEqual(
-                await scopeAssertions(fixture.analysis, body, namedBodyParameter(fixture.analysis, body)),
+                await scopeAssertions(
+                    fixture.analysis,
+                    body,
+                    namedBodyParameter(fixture.analysis, body),
+                    rejectUnsupportedSite
+                ),
                 []
             );
             return scope.assert.collect();
@@ -120,7 +131,12 @@ export const testNode: TestNode = suite('native assertion boundary validation', 
         ]);
         const body = sourceBody([ ast.factory.createExpressionStatement(call) ]);
         scope.assert.deepEqual(
-            await scopeAssertions(fixture.analysis, body, namedBodyParameter(fixture.analysis, body)),
+            await scopeAssertions(
+                fixture.analysis,
+                body,
+                namedBodyParameter(fixture.analysis, body),
+                rejectUnsupportedSite
+            ),
             [ call ]
         );
         return scope.assert.collect();
@@ -189,7 +205,12 @@ export const testNode: TestNode = suite('native assertion boundary validation', 
                 ast.factory.createExpressionStatement(ast.factory.createIdentifier('sameType'))
             ]);
             await scope.assert.rejects(async function () {
-                return scopeAssertions(fixture.analysis, body, namedBodyParameter(fixture.analysis, body));
+                return scopeAssertions(
+                    fixture.analysis,
+                    body,
+                    namedBodyParameter(fixture.analysis, body),
+                    rejectUnsupportedSite
+                );
             }, { message: /require a direct scope.assert boundary/u });
             return scope.assert.collect();
         }
@@ -207,7 +228,15 @@ export const testNode: TestNode = suite('native assertion boundary validation', 
                 }
             }
         };
-        scope.assert.deepEqual(await scopeAssertions(analysis, body, namedBodyParameter(analysis, body)), [ call ]);
+        scope.assert.deepEqual(
+            await scopeAssertions(
+                analysis,
+                body,
+                namedBodyParameter(analysis, body),
+                rejectUnsupportedSite
+            ),
+            [ call ]
+        );
         scope.assert.equal(await assertionAnnotation(analysis, call), 'type contract');
         return scope.assert.collect();
     }),
@@ -254,7 +283,12 @@ export const testNode: TestNode = suite('native assertion boundary validation', 
             );
             const body = sourceBody([ ast.factory.createExpressionStatement(nested) ]);
             scope.assert.deepEqual(
-                await scopeAssertions(fixture.analysis, body, namedBodyParameter(fixture.analysis, body)),
+                await scopeAssertions(
+                    fixture.analysis,
+                    body,
+                    namedBodyParameter(fixture.analysis, body),
+                    rejectUnsupportedSite
+                ),
                 []
             );
             return scope.assert.collect();
@@ -272,7 +306,12 @@ export const testNode: TestNode = suite('native assertion boundary validation', 
         );
         const body = sourceBody([ ast.factory.createExpressionStatement(nested) ]);
         await scope.assert.rejects(async function () {
-            return scopeAssertions(fixture.analysis, body, namedBodyParameter(fixture.analysis, body));
+            return scopeAssertions(
+                fixture.analysis,
+                body,
+                namedBodyParameter(fixture.analysis, body),
+                rejectUnsupportedSite
+            );
         }, { message: /Detached assertion methods/u });
         return scope.assert.collect();
     })
