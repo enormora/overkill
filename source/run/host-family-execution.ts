@@ -10,14 +10,11 @@ export type HostExecutionInput = {
         'benchmarkGarbageCollection' | 'benchmarkNormalization' | 'testFamily'
     >;
     readonly processModel: 'direct' | 'hosted-worker' | 'supervised-process';
+    readonly readActiveResourceTypes: ExecuteDependencies['readActiveResourceTypes'];
     readonly sourcePlan: TestPlan;
     readonly reporterDispatcher: ExecuteDependencies['reporterDispatcher'];
     readonly wallClock: ExecuteDependencies['wallClock'];
 };
-
-function readActiveResourceTypes(): readonly string[] {
-    return process.getActiveResourcesInfo();
-}
 
 async function hostBenchmarkEnvironment(
     input: HostExecutionInput
@@ -38,7 +35,7 @@ export async function createHostExecutionDriver(input: HostExecutionInput): Prom
     const execute = createExecute({
         benchmarkEnvironment,
         asyncLeakDiagnostics: 'enabled',
-        readActiveResourceTypes,
+        readActiveResourceTypes: input.readActiveResourceTypes,
         reporterDispatcher: input.reporterDispatcher,
         wallClock: input.wallClock
     });

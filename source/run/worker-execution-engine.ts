@@ -17,6 +17,7 @@ export async function createWorkerExecute(
     const execute = await createHostExecutionDriver({
         command,
         processModel: command.hostProcess.kind === 'child' ? 'hosted-worker' : 'direct',
+        readActiveResourceTypes: process.getActiveResourcesInfo,
         sourcePlan,
         wallClock,
         reporterDispatcher: createReporterDispatcher({ ...silentOutputSinks, wallClock })
