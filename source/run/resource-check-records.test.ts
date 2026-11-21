@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
 import { mergeRecordFixture } from '../test-support/merge-record-fixture.ts';
@@ -21,7 +21,7 @@ const snapshot = {
     errors: [],
     status: { kind: 'complete' }
 } as const;
-export const testNode: TestNode = suite('resource check records', [
+export const testNode = suite('resource check records', [
     test('round trips owner attribution and bounded observation errors', function (scope) {
         const cause: Record<string, unknown> = { detail: 'observation failed' };
         cause.cycle = cause;

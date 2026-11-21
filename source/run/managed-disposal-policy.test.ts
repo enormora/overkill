@@ -1,4 +1,4 @@
-import { type TestNode, table, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { managedDisposal } from '../test-support/managed-disposal.ts';
 import {
@@ -8,7 +8,7 @@ import {
     freshDisposalSignal
 } from './resource-lifecycle-disposal.ts';
 
-export const testNode: TestNode = suite('managed resource cleanup policy', [
+export const testNode = suite('managed resource cleanup policy', [
     table({
         title: 'releases owners after disposal failures',
         cases: [ false, true ].flatMap(function (observed) {

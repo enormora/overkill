@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { ResourceLifecycleError } from '../resources/resource-lifecycle-error.ts';
 import { projectFailure } from './config-errors.ts';
@@ -11,7 +11,7 @@ class ConfigBackendError extends Error {
     }
 }
 
-export const testNode: TestNode = suite('ESLint config failure propagation', [
+export const testNode = suite('ESLint config failure propagation', [
     test('normalizes project paths in error messages and preserved stacks', function (scope: TestScope) {
         const original = new ConfigBackendError();
         const failure = projectFailure(original, '/project', scope.signal);

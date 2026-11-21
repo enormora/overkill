@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 
@@ -132,7 +132,7 @@ function recordRequireNodes(facade: RequireAssertionFacade): void {
     recordTypeRequireNodes(facade);
 }
 
-export const testNode: TestNode = suite('Require assertion facade', [
+export const testNode = suite('Require assertion facade', [
     test('createRecordingRequireFacade() records every built-in requirement node', function (scope: TestScope) {
         const recording = createRequireRecording();
 

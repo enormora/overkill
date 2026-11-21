@@ -1,4 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
@@ -75,33 +76,32 @@ function capturedRetryOutput(): SupervisedRunState {
     return state;
 }
 
-function assertNativeEvidenceRetention(
-    scope: TestScope,
-    failure: BoundaryFailure,
-    nativeMetadata: BoundaryMetadata
-): void {
-    const native = createBoundaryFailureArtifact(
-        failure,
-        nativeMetadata,
-        [ { work, attempt: crashedAttempt } ],
-        0
-    );
-    const state = createSupervisedRunState('all');
-    state.recordArtifact(native);
-    state.recordArtifact(native);
-    state.recordBoundaryFailure(failure);
-    state.recordBoundaryFailure({
-        kind: 'worker-crash',
-        reason: 'parent-exit',
-        exitCode: 9,
-        signal: 'SIGKILL',
-        coreDumpPath: 'artifacts/parent-core',
-        nativeAddons: [ 'parent.node' ]
-    });
-    scope.assert.deepEqual(state.artifacts(), [ native ]);
-}
+const assertNativeEvidenceRetention = defineCompositeAssertion({
+    name: 'native evidence retention',
+    assert(check, failure: BoundaryFailure, nativeMetadata: BoundaryMetadata) {
+        const native = createBoundaryFailureArtifact(
+            failure,
+            nativeMetadata,
+            [ { work, attempt: crashedAttempt } ],
+            0
+        );
+        const state = createSupervisedRunState('all');
+        state.recordArtifact(native);
+        state.recordArtifact(native);
+        state.recordBoundaryFailure(failure);
+        state.recordBoundaryFailure({
+            kind: 'worker-crash',
+            reason: 'parent-exit',
+            exitCode: 9,
+            signal: 'SIGKILL',
+            coreDumpPath: 'artifacts/parent-core',
+            nativeAddons: [ 'parent.node' ]
+        });
+        return check.group([ check.deepEqual(state.artifacts(), [ native ]) ]);
+    }
+});
 
-export const testNode: TestNode = suite('boundary failure artifacts', [
+export const testNode = suite('boundary failure artifacts', [
     test('native completion evidence survives repeated delivery and parent exits', function (scope) {
         const failures: readonly BoundaryFailure[] = [
             {
@@ -129,7 +129,7 @@ export const testNode: TestNode = suite('boundary failure artifacts', [
             timestamp: '1970-01-01T00:00:00.000Z'
         };
         for (const failure of failures) {
-            assertNativeEvidenceRetention(scope, failure, nativeMetadata);
+            scope.assert(assertNativeEvidenceRetention, failure, nativeMetadata);
         }
         return scope.assert.collect();
     }),

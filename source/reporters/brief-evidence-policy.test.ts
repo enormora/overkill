@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { FailedCheck } from '../packages/engine/engine.entry-point.ts';
 import type { RunResult, PropertyCaseEvidence } from '../engine/run-result.ts';
@@ -68,7 +68,7 @@ function summaryEvidence(): RunResult {
         })
     };
 }
-export const testNode: TestNode = suite('brief final evidence rendering', [
+export const testNode = suite('brief final evidence rendering', [
     test('renders property diagnostics and collected unit coverage summaries', function (scope) {
         const lines = briefSummaryIntents(summaryEvidence()).map(function text(intent) {
             return intent.text;

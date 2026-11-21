@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     isAssertionReference,
@@ -81,7 +81,7 @@ function foreignLocations(
     });
 }
 
-export const testNode: TestNode = suite('Custom assertion definitions', [
+export const testNode = suite('Custom assertion definitions', [
     test('creates every built-in composite child node', function (scope) {
         const check = createCompositeCheckBuilder('assert', 'child', [ unknownSourceLocation ]);
         const children = builtInChildren(check);

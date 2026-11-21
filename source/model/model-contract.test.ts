@@ -1,4 +1,5 @@
-import { type TestNode, table, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { table, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { Random } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
@@ -59,19 +60,29 @@ function cyclicTrace(): readonly TraceOperation[] {
     return trace;
 }
 
-function assertEnabledTrace(scope: TestScope, trace: readonly number[]): void {
-    scope.assert.between(trace.length, 1, 4);
-    let state = 0;
-    for (const operation of trace) {
-        state += operation;
-        scope.assert.between(state, 0, 3);
+const assertEnabledTrace = defineCompositeAssertion({
+    name: 'enabled trace',
+    assert(check, trace: readonly number[]) {
+        const initialChecks = check.between(trace.length, 1, 4);
+        let state = 0;
+        return check.group([
+            initialChecks,
+            ...trace.map((operation) => {
+                state += operation;
+                return check.between(state, 0, 3);
+            })
+        ]);
     }
-}
+});
 
-type ShrinkTraceCoverage = { readonly examined: number; readonly shortened: boolean; readonly changed: boolean; };
+type ShrinkTraceCoverage = {
+    readonly values: readonly (readonly number[])[];
+    readonly examined: number;
+    readonly shortened: boolean;
+    readonly changed: boolean;
+};
 
 function inspectShrinkTraces(
-    scope: TestScope,
     generator: PropertyGenerator<readonly number[]>,
     seed: number
 ): ShrinkTraceCoverage {
@@ -88,10 +99,8 @@ function inspectShrinkTraces(
     const traces = [ root, ...descendants ].map(function (candidate) {
         return candidate.reconstruct();
     });
-    traces.forEach(function (trace) {
-        assertEnabledTrace(scope, trace);
-    });
     return {
+        values: traces,
         examined: descendants.length,
         shortened: traces.some(function (trace) {
             return trace.length < original.length;
@@ -104,15 +113,22 @@ function inspectShrinkTraces(
     };
 }
 
-function assertConfirmedShrink(scope: TestScope, evidence: PropertyInvocationEvidence): void {
-    scope.require.defined(evidence.confirmedWitness);
-    scope.assert.equal((evidence.summary?.accounting.phases.shrinking.executed ?? 0) > 0, true);
-    scope.assert.equal((evidence.summary?.accounting.phases.confirmation.executed ?? 0) >= 2, true);
-    scope.assert.equal(evidence.shrinkStatus, 'search-exhausted');
-    scope.assert.deepEqual(evidence.diagnostics, []);
-}
+const assertConfirmedShrink = defineCompositeAssertion({
+    name: 'confirmed shrink',
+    assert(check, evidence: PropertyInvocationEvidence) {
+        if (evidence.confirmedWitness === undefined || evidence.confirmedWitness === null) {
+            return check.defined(evidence.confirmedWitness);
+        }
+        return check.group([
+            check.equal((evidence.summary?.accounting.phases.shrinking.executed ?? 0) > 0, true),
+            check.equal((evidence.summary?.accounting.phases.confirmation.executed ?? 0) >= 2, true),
+            check.equal(evidence.shrinkStatus, 'search-exhausted'),
+            check.deepEqual(evidence.diagnostics, [])
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('model contracts', [
+export const testNode = suite('model contracts', [
     test('rejects a late disabled operation before system callbacks', async function (scope) {
         const events: string[] = [];
         const result = await executePropertyNode(
@@ -155,8 +171,13 @@ export const testNode: TestNode = suite('model contracts', [
             }
         });
         const traces = Array.from({ length: 10 }, function (_value, seed) {
-            return inspectShrinkTraces(scope, scenario.generator, seed);
+            return inspectShrinkTraces(scenario.generator, seed);
         });
+        for (const coverage of traces) {
+            for (const trace of coverage.values) {
+                scope.assert(assertEnabledTrace, trace);
+            }
+        }
         scope.assert.equal(
             traces.some(function (trace) {
                 return trace.examined > 0;
@@ -252,7 +273,7 @@ export const testNode: TestNode = suite('model contracts', [
         );
         const evidence = result.perTest[0]?.property?.invocations[0];
         scope.require.defined(evidence);
-        assertConfirmedShrink(scope, evidence);
+        scope.assert(assertConfirmedShrink, evidence);
         scope.require.defined(evidence.confirmedWitness);
         const replay = await executePropertyNode(
             model({

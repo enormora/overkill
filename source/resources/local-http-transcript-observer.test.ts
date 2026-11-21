@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { httpObservationFixture, type HttpObservationFixture } from '../test-support/local-http-observation-fixture.ts';
 import { httpTranscriptBodyByteLimit, type HttpInteraction } from '../transcript/http-transcript.ts';
@@ -46,9 +46,9 @@ const invalidResponses = [
     }
 ];
 
-export const testNode: TestNode = suite('local HTTP transcript observations', [
+export const testNode = suite('local HTTP transcript observations', [
     test('records server events without requiring an open network connection', function (scope) {
-        const fixture = httpObservationFixture(scope);
+        const fixture = httpObservationFixture(scope.cleanup);
         fixture.start();
         fixture.incoming.emit('data', Buffer.from('request'));
         fixture.finish();
@@ -74,7 +74,7 @@ export const testNode: TestNode = suite('local HTTP transcript observations', [
         return scope.assert.collect();
     }),
     test('joins server requests with Undici response bodies and headers', function (scope) {
-        const fixture = httpObservationFixture(scope);
+        const fixture = httpObservationFixture(scope.cleanup);
         startUndici(fixture);
         completeUndici(
             fixture,
@@ -94,7 +94,7 @@ export const testNode: TestNode = suite('local HTTP transcript observations', [
         return scope.assert.collect();
     }),
     test('uses safe defaults for absent server request metadata', function (scope) {
-        const fixture = httpObservationFixture(scope);
+        const fixture = httpObservationFixture(scope.cleanup);
         fixture.incoming.method = undefined;
         fixture.incoming.url = undefined;
         fixture.start();
@@ -108,7 +108,7 @@ export const testNode: TestNode = suite('local HTTP transcript observations', [
         return scope.assert.collect();
     }),
     test('records an unfinished request when its observer is disposed', function (scope) {
-        const fixture = httpObservationFixture(scope);
+        const fixture = httpObservationFixture(scope.cleanup);
         fixture.start();
         fixture.incoming.emit('data', Buffer.from('partial'));
         fixture.observer.dispose();
@@ -122,7 +122,7 @@ export const testNode: TestNode = suite('local HTTP transcript observations', [
         return scope.assert.collect();
     }),
     test('bounds request and response bodies independently', function (scope) {
-        const fixture = httpObservationFixture(scope);
+        const fixture = httpObservationFixture(scope.cleanup);
         const bytes = new Uint8Array(httpTranscriptBodyByteLimit + 7);
         bytes.fill(65);
         startUndici(fixture);
@@ -158,7 +158,7 @@ export const testNode: TestNode = suite('local HTTP transcript observations', [
         test(scope) {
             const expected = scope.parameters;
 
-            const fixture = httpObservationFixture(scope);
+            const fixture = httpObservationFixture(scope.cleanup);
             startUndici(fixture);
             completeUndici(fixture, expected.response, new Uint8Array());
             scope.assert.partialDeepEqual(observedInteraction(fixture).outcome, {
@@ -177,7 +177,7 @@ export const testNode: TestNode = suite('local HTTP transcript observations', [
         test(scope) {
             const expected = scope.parameters;
 
-            const fixture = httpObservationFixture(scope);
+            const fixture = httpObservationFixture(scope.cleanup);
             startUndici(fixture);
             completeUndici(fixture, expected.response, new Uint8Array());
             scope.assert.deepEqual(captureMessages(fixture), [ expected.message ]);
@@ -185,7 +185,7 @@ export const testNode: TestNode = suite('local HTTP transcript observations', [
         }
     }),
     test('reports an Undici completion without a corresponding server request', function (scope) {
-        const fixture = httpObservationFixture(scope);
+        const fixture = httpObservationFixture(scope.cleanup);
         fixture.publish('undici:request:create', { request: fixture.request });
         completeUndici(fixture, { statusCode: 200, headers: [] }, new Uint8Array());
         scope.assert.deepEqual(captureMessages(fixture), [
@@ -194,7 +194,7 @@ export const testNode: TestNode = suite('local HTTP transcript observations', [
         return scope.assert.collect();
     }),
     test('reports an Undici completion without client response headers', function (scope) {
-        const fixture = httpObservationFixture(scope);
+        const fixture = httpObservationFixture(scope.cleanup);
         startUndici(fixture);
         fixture.publish('undici:request:trailers', { request: fixture.request });
         scope.assert.deepEqual(captureMessages(fixture), [
@@ -203,7 +203,7 @@ export const testNode: TestNode = suite('local HTTP transcript observations', [
         return scope.assert.collect();
     }),
     test('records transport failures and forgets the completed exchange', function (scope) {
-        const fixture = httpObservationFixture(scope);
+        const fixture = httpObservationFixture(scope.cleanup);
         startUndici(fixture);
         fixture.publish('undici:request:error', { request: fixture.request, error: new Error('connection lost') });
         scope.assert.deepEqual(observedInteraction(fixture).outcome, {
@@ -215,7 +215,7 @@ export const testNode: TestNode = suite('local HTTP transcript observations', [
         return scope.assert.collect();
     }),
     test('ignores an error before its server request is observed', function (scope) {
-        const fixture = httpObservationFixture(scope);
+        const fixture = httpObservationFixture(scope.cleanup);
         fixture.publish('undici:request:create', { request: fixture.request });
         fixture.publish('undici:request:error', { request: fixture.request, error: new Error('not connected') });
         scope.assert.deepEqual(fixture.observer.transcript.entries, []);
@@ -232,7 +232,7 @@ export const testNode: TestNode = suite('local HTTP transcript observations', [
         test(scope) {
             const message = scope.parameters;
 
-            const fixture = httpObservationFixture(scope);
+            const fixture = httpObservationFixture(scope.cleanup);
             for (
                 const channel of [
                     'undici:request:create',
@@ -251,7 +251,7 @@ export const testNode: TestNode = suite('local HTTP transcript observations', [
         }
     }),
     test('reports missing Undici methods as capture errors', function (scope) {
-        const fixture = httpObservationFixture(scope);
+        const fixture = httpObservationFixture(scope.cleanup);
         fixture.publish('undici:request:create', { request: { origin: 'https://service.test:42', path: '/value' } });
         scope.assert.deepEqual(captureMessages(fixture), [ 'Undici diagnostics request method is unavailable.' ]);
         return scope.assert.collect();

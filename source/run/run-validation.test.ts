@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -14,15 +14,15 @@ type RunCommandParts = {
     readonly request: RunRequest;
 };
 
-const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
-const defaultConfig: NormalizedConfig = defaultRunConfig({
+const passingFixturePath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
+const defaultConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
             timeouts: { collectionMilliseconds: 5000 }
         })
     }
 });
-const defaultRequest: RunRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
+const defaultRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
 
 function createRunCommand(overrides: RunCommandParts): RunCommand {
     return {
@@ -33,7 +33,7 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
     };
 }
 
-export const testNode: TestNode = suite('Run validation', [
+export const testNode = suite('Run validation', [
     test('programmatic calls can omit debug activation', async function (scope) {
         const orchestrator = createUnitRunOrchestrator();
         const { debug: _debug, ...request } = defaultRequest;

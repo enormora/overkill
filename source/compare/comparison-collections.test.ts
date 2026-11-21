@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 
@@ -17,7 +17,7 @@ const binaryDiff = defineNarrowingCompositeAssertion<Diff, Extract<Diff, { reado
     }
 });
 
-export const testNode: TestNode = suite('Collection comparison', [
+export const testNode = suite('Collection comparison', [
     test(
         'compares Set members order independently with deep values',
         function (scope: TestScope) {

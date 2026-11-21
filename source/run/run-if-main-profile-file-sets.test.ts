@@ -1,4 +1,4 @@
-import { type TestScope, type TestNode, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
 
 import {
@@ -28,7 +28,7 @@ function passingCase(): DirectTestNode {
     });
 }
 
-export const testNode: TestNode = suite('Run if main profile file sets', [
+export const testNode = suite('Run if main profile file sets', [
     test('rejects empty file sets while selecting direct profiles', async function (scope) {
         const fixture = createDirectRunFixture({
             config: {

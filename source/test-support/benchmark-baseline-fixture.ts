@@ -11,7 +11,7 @@ import type { PerformanceBaselineAdapter } from '../baselines/performance-adapte
 import { defaultRunRequest } from './run-command-factory.ts';
 
 export const performanceBaselineFixtureFile =
-    'source/integration-tests/integration/fixtures/performance-baselines.bench.test.ts';
+    'source/integration-tests/runtime/fixtures/performance-baselines.bench.test.ts';
 const fixture = performanceBaselineFixtureFile;
 export type BaselineFixture = {
     readonly command: RunCommand;
@@ -49,12 +49,12 @@ export function durationAdapter(readOffset: () => number): PerformanceBaselineAd
 }
 
 export async function createBenchmarkBaselineFixture(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     execution: BenchmarkExecution
 ): Promise<BaselineFixture> {
     await mkdir('target', { recursive: true });
     const directory = await mkdtemp('target/performance-baselines-');
-    scope.cleanup(async function removeFixture() {
+    cleanup(async function removeFixture() {
         await rm(directory, { recursive: true, force: true });
     });
     let offset = 0;

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
 import { property, gen, withProperties } from '../packages/property/property.entry-point.ts';
@@ -7,7 +7,7 @@ import { executePropertyNode, propertyExecutionDefaults } from '../test-support/
 
 type MutableOperation = { readonly values: ReadonlyMap<string, number>; };
 
-export const testNode: TestNode = suite('linearizability property composition', [
+export const testNode = suite('linearizability property composition', [
     test('stops admission immediately on a synchronous fatal control error', async function (scope) {
         const admitted: number[] = [];
         const result = await executePropertyNode(

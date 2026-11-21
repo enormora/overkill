@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import { type EngineCaseBody, createTestEngine } from '../test-support/create-test-engine.ts';
 
 import type { RunResult } from '../engine/run-result.ts';
@@ -52,7 +52,7 @@ function metadataDisposable(dispose: () => void): MetadataDisposable {
     return disposable;
 }
 
-export const testNode: TestNode = suite('Protocol double assertions', [
+export const testNode = suite('Protocol double assertions', [
     test('testAsyncIterator() tracks rejected protocol methods', async function body(scope) {
         const expected = new Error('expected');
         const values = testAsyncIterator({

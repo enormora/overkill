@@ -12,14 +12,14 @@ type WitnessRunFixture = {
     readonly failure: Error;
 };
 export async function propertyWitnessRun(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     scenario: WitnessRunScenario,
     confirmed: boolean,
     owned: boolean
 ): Promise<WitnessRunFixture> {
     const recording = await attachmentRecording(null);
     const failure = new Error('witness storage failed');
-    const witness = witnessAttachmentRetention(scope, scenario === 'exchange' ? failure : null);
+    const witness = witnessAttachmentRetention(cleanup, scenario === 'exchange' ? failure : null);
     const events: string[] = [];
     const session = {
         ...recording.session,

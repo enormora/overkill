@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { OrdinaryBaselineAdapter, OrdinaryBaselineEvaluation } from '../baselines/ordinary-baseline-adapter.ts';
 import { baselineIdentityKey } from '../baselines/baseline-planning.ts';
@@ -17,7 +17,7 @@ function adapter(evaluation: OrdinaryBaselineEvaluation): OrdinaryBaselineAdapte
     };
 }
 const existing = new Map([ [ baselineIdentityKey(ordinaryBaselineIdentity(storedBaseline)), storedBaseline ] ]);
-export const testNode: TestNode = suite('ordinary baseline evaluation', [
+export const testNode = suite('ordinary baseline evaluation', [
     test('ignores explicitly inapplicable observations', async function (scope) {
         const result = await evaluateBaselineAdapter({
             adapter: adapter({ kind: 'not-applicable' }),

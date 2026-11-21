@@ -1,7 +1,8 @@
 import { createDeterministicClock } from '@enormora/clock';
-import type { TestScope } from '@overkill-dev/test';
+
 import {
     type RunResult,
+    type RunnerError,
     type TestCase,
     type BenchmarkExecutionEnvironment,
     createRoot,
@@ -127,17 +128,19 @@ export function firstBenchmark(result: RunResult): BenchmarkExecutionResult {
     }
     return measured;
 }
+export type MachineRecording = RunResult & { readonly completionErrors: readonly RunnerError[]; };
 export async function recordedMachine(
-    scope: TestScope,
     cost: number,
     machineClass: string,
     value: number
-): Promise<RunResult> {
+): Promise<MachineRecording> {
     const preview = await measuredMachine(cost, machineClass, value, function () {
         return undefined;
     });
     const work = preview.perTest[0]?.workId;
-    scope.require.defined(work);
+    if (work === undefined) {
+        throw new Error('Expected benchmark work.');
+    }
     const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
     const result = await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
         return await fixture.execution.runAttempt(work, { index: 0 }, async function measuredAttempt() {
@@ -146,6 +149,6 @@ export async function recordedMachine(
             });
         });
     });
-    scope.assert.deepEqual(await fixture.execution.finish(), []);
-    return { ...result, artifacts: fixture.store.artifacts() };
+    const completionErrors = await fixture.execution.finish();
+    return { ...result, artifacts: fixture.store.artifacts(), completionErrors };
 }

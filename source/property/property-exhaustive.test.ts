@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
@@ -9,7 +9,7 @@ import { createPropertyWork } from './property-work.ts';
 import { propertyLabels } from './property-targets.ts';
 import { gen } from './generators.ts';
 
-export const testNode: TestNode = suite('exhaustive input coverage', [
+export const testNode = suite('exhaustive input coverage', [
     test('accepts exact percentage boundaries without rounding the observed ratio', function (scope) {
         const coverage = createCoverage([ { label: 'hit', minimumPercent: 29 } ], propertyLabels(1));
         for (let index = 0; index < 100; index += 1) {

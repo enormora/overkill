@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { DryRunStatus } from '@stryker-mutator/api/test-runner';
 import { z } from 'zod/v4';
@@ -9,7 +9,7 @@ import { dryMutationResult } from './dry-run-results.ts';
 
 import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
 
-export const testNode: TestNode = suite('mutation coverage delivery', [
+export const testNode = suite('mutation coverage delivery', [
     table({
         title: 'returns detached counters without mutating raw evidence',
         cases: [ 'perTest', 'all' ] as const,

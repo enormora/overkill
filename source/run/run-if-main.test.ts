@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
 
 import {
@@ -132,7 +132,7 @@ async function runDirect(fixture: DirectRunFixture, testNode: DirectTestNode): P
     return capturedRun;
 }
 
-export const testNode: TestNode = suite('Direct module execution', [
+export const testNode = suite('Direct module execution', [
     test('returns before config loading when imported', async function (scope) {
         const fixture = createDirectRunFixture({
             config: {

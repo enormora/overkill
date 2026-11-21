@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { collectedMutationPlan } from '../../test-support/mutation-plan-fixture.ts';
@@ -8,7 +8,7 @@ import {
     eligibleMutationCatalog
 } from './mutation-catalog.ts';
 
-export const testNode: TestNode = suite('mutation adapter evidence validation', [
+export const testNode = suite('mutation adapter evidence validation', [
     test('rejects duplicate baseline file filters', function (scope) {
         const { baseline } = mutationCoverageFixture('off');
         scope.assert.equal(

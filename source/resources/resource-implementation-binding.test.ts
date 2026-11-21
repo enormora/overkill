@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { resourceImplementationBinding } from '../test-support/resource-implementation-binding.ts';
 
@@ -14,7 +14,7 @@ const resourceDeclaration = {
     scenarios: {},
     workload: null
 } as const;
-export const testNode: TestNode = suite('resource implementation binding', [
+export const testNode = suite('resource implementation binding', [
     test('binds owner acquisition, disposal, projection and scenario exposure', async function (scope: TestScope) {
         const fixture = resourceImplementationBinding();
         const callbacks = fixture.owner.bind(fixture.admission);

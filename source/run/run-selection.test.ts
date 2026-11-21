@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import { subjectTestNode } from '../test-support/create-test-engine.ts';
 
 import type {
@@ -52,9 +52,9 @@ type SelectionScenario = {
     readonly titles: readonly string[];
 };
 
-const selectionFixturePath = 'source/integration-tests/integration/fixtures/selection.test.ts';
+const selectionFixturePath = 'source/integration-tests/runtime/fixtures/selection.test.ts';
 
-const localSelectionConfig: NormalizedConfig = defaultRunConfig({
+const localSelectionConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
             execution: { processModel: 'in-process', scheduling: 'serial' },
@@ -62,7 +62,7 @@ const localSelectionConfig: NormalizedConfig = defaultRunConfig({
         })
     }
 });
-const supervisedSelectionConfig: NormalizedConfig = defaultRunConfig({
+const supervisedSelectionConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
             timeouts: { collectionMilliseconds: 5000 }
@@ -153,7 +153,7 @@ function scenarioRuntimeAttachments(value: string): TestBodyResourceAttachments 
 function testCaseWithAttachments(attachments: TestBodyResourceAttachments): TestCase {
     return subjectTestNode(test(
         'uses metadata',
-        attachTestBodyResourceAttachments(function attachedBody(scope: TestScope) {
+        attachTestBodyResourceAttachments(function attachedBody(scope) {
             scope.assert.true(true);
 
             return scope.assert.collect();
@@ -197,7 +197,7 @@ function selectedCaseTitles(resolvedRun: ResolvedRun): readonly string[] {
     });
 }
 
-export const testNode: TestNode = suite('Run selection', [
+export const testNode = suite('Run selection', [
     test(
         'assertTestPlanMatchesTestFamily() rejects microtest cases with resource descriptors',
         function (scope) {
@@ -298,7 +298,7 @@ export const testNode: TestNode = suite('Run selection', [
 
             const scenarios: readonly SelectionScenario[] = [
                 {
-                    filter: file('source/integration-tests/integration/fixtures/*.test.ts'),
+                    filter: file('source/integration-tests/runtime/fixtures/*.test.ts'),
                     titles: [ 'charges card', 'refunds card', 'query row', 'other query row' ]
                 },
                 { filter: title('CHARGES'), titles: [ 'charges card' ] },

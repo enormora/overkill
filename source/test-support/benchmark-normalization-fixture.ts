@@ -6,11 +6,15 @@ import { normalizeConfig, type RunCommand } from '../packages/run/run.entry-poin
 import { createCalibrationReferenceStore, type CalibrationReferenceStore } from '../baselines/calibration-store.ts';
 import { defaultRunRequest } from './run-command-factory.ts';
 
-const fixture = 'source/integration-tests/integration/fixtures/normalization.bench.test.ts';
+const fixture = 'source/integration-tests/runtime/fixtures/normalization.bench.test.ts';
 export type Boundary = 'fresh-worker-per-unit' | 'reuse' | 'supervised-process';
-export async function normalizationCommand(scope: TestScope, boundary: Boundary, title: string): Promise<RunCommand> {
+export async function normalizationCommand(
+    cleanup: TestScope['cleanup'],
+    boundary: Boundary,
+    title: string
+): Promise<RunCommand> {
     const directory = await mkdtemp(join(process.cwd(), 'target/normalization-'));
-    scope.cleanup(async function removeFixture() {
+    cleanup(async function removeFixture() {
         await rm(directory, { recursive: true, force: true });
     });
     return {

@@ -1,11 +1,11 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createTestEngine as createEngine, type EngineCaseBody } from '../test-support/create-test-engine.ts';
 import { isTestNode, isTestRoot, stampTestNodeFamily } from './test-node.ts';
 
 type TestNodeAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
 
-export const testNode: TestNode = suite('Test node construction', [
+export const testNode = suite('Test node construction', [
     test('createRoot() creates a branded test root', function (scope) {
         const engine = createEngine();
         const testCase = engine.createTestCase({

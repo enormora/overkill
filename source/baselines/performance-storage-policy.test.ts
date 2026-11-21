@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     performanceStorage,
@@ -14,7 +14,7 @@ async function storedValues(store: PerformanceBaselineStore): Promise<readonly S
         return entry.baseline;
     });
 }
-export const testNode: TestNode = suite('performance storage policy', [
+export const testNode = suite('performance storage policy', [
     test('lists an absent store without preparing storage', async function (scope) {
         const fixture = await performanceStorage(performanceStorageScenario);
         scope.assert.deepEqual(await fixture.store.list(), []);

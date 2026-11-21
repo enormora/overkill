@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 import { TestStatus, DryRunStatus, MutantRunStatus } from '@stryker-mutator/api/test-runner';
@@ -130,7 +130,7 @@ function originAliasReply(): ResultReply {
     };
 }
 
-export const testNode: TestNode = suite('Stryker result ownership', [
+export const testNode = suite('Stryker result ownership', [
     table({
         title: 'rejects malformed completed mutation lifecycle',
         cases: [ { description: 'null', input: null }, { description: 'empty record', input: {} } ],

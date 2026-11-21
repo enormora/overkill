@@ -46,7 +46,10 @@ export function confirmedWitnessResult(confirmed: boolean): RunResult {
         })
     };
 }
-export function witnessAttachmentRetention(scope: TestScope, failure: Error | null): WitnessAttachmentRetention {
+export function witnessAttachmentRetention(
+    cleanup: TestScope['cleanup'],
+    failure: Error | null
+): WitnessAttachmentRetention {
     const recorded = recordAttachmentExchange();
     const execution = createAttachmentExecution(async function exchange(operation) {
         if (failure !== null) {
@@ -54,7 +57,7 @@ export function witnessAttachmentRetention(scope: TestScope, failure: Error | nu
         }
         return await recorded.exchange(operation);
     }, defaultAttachmentLimits);
-    scope.cleanup(async function finishWitnessExecution() {
+    cleanup(async function finishWitnessExecution() {
         await execution.finish();
     });
     return { result: confirmedWitnessResult(true), execution, operations: recorded.operations };

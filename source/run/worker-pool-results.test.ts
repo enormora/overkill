@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { PerTestResult, RunResult } from '../packages/engine/engine.entry-point.ts';
 import { summaryRunTimings } from '../engine/run-timings.ts';
@@ -27,7 +27,7 @@ type TraceCapturingRuntime = {
     readonly runtime: WorkerPoolRunRuntime;
 };
 
-const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const integrationPath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 const testCaseMetadata = {
     annotations: {},
     controls: {},
@@ -260,7 +260,7 @@ async function workerPoolFinalizationResults(): Promise<{
     return { emptyResult, placementTrace, result };
 }
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool results',
     children: [

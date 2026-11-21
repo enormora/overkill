@@ -1,21 +1,158 @@
+import {
+    testStandardSubpathExportsChecks,
+    resourcesPackageRootExportChecks,
+    simulationPackageExportsChecks
+} from './support/package-export-assertions.ts';
+import { consumerEnvironment } from './support/consumer-environment.ts';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
-import { fileURLToPath } from 'node:url';
-import { type TestNode, suite, test, type TestScope } from '#tests';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { suite } from '@overkill-dev/test';
+import { packageConsumer } from './support/package-consumer.ts';
+
+const testPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/test');
+const runPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/run');
+const resourcesPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/resources');
+const simulationPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/simulation');
+const overkillBinEntryPointPath = path.join(testPackageFolder, 'packages/test/overkill.entry-point.js');
+const consumerFacade = packageConsumer('Installed CLI and public exports', function consumerFixture(consumerDirectory) {
+    const packageSmokeFolder = fileURLToPath(new URL('./consumer/', pathToFileURL(`${consumerDirectory}/`)));
+
+    async function spawnCommand(command: string, args: readonly string[]): Promise<SpawnOutput> {
+        await fs.mkdir(packageSmokeFolder, { recursive: true });
+        const child = spawn(command, Array.from(args), {
+            env: consumerEnvironment(process.env, consumerDirectory),
+            cwd: packageSmokeFolder,
+            stdio: [ 'ignore', 'pipe', 'pipe' ]
+        });
+        const stdout = collectStream(child.stdout);
+        const stderr = collectStream(child.stderr);
+        const code = await new Promise<number | null>(function wait(resolve, reject) {
+            child.on('error', reject);
+            child.on('close', resolve);
+        });
+
+        return {
+            code,
+            stderr: await stderr,
+            stdout: await stdout
+        };
+    }
+    async function spawnNode(args: readonly string[]): Promise<SpawnOutput> {
+        return await spawnCommand(process.execPath, args);
+    }
+    const assertPackagedReplay = defineCompositeAssertion({
+        name: 'packaged replay',
+        async assert(check) {
+            const id = await recordedRunId(packageSmokeFolder, authoringSmokeFile);
+            const result = await spawnNode([ overkillBinEntryPointPath, 'replay', id ]);
+            return check.group([
+                check.equal(result.code, 0),
+                check.equal(result.stderr, ''),
+                check.equal(result.stdout, '')
+            ]);
+        }
+    });
+    const assertPackagedStandardSubpathImports = defineCompositeAssertion({
+        name: 'packaged standard subpath imports',
+        async assert(check, packageExports: Readonly<Record<string, unknown>>) {
+            const resourcesPackageExports = await readPackageExports(resourcesPackageFolder, '@overkill-dev/resources');
+            const simulationPackageExports = await readPackageExports(
+                simulationPackageFolder,
+                '@overkill-dev/simulation'
+            );
+            const result = await spawnNode([
+                '--input-type=module',
+                '--eval',
+                standardSubpathImportScript
+            ]);
+            return check.group([
+                testStandardSubpathExportsChecks(check.annotated('test standard subpath exports'), packageExports),
+                resourcesPackageRootExportChecks(
+                    check.annotated('resources package root export'),
+                    resourcesPackageExports
+                ),
+                simulationPackageExportsChecks(check.annotated('simulation package exports'), simulationPackageExports),
+                check.equal(result.code, 0),
+                check.equal(result.stderr, ''),
+                check.equal(result.stdout, expectedStandardSubpathImportOutput)
+            ]);
+        }
+    });
+    async function writeAuthoringSmokeFile(): Promise<void> {
+        await fs.writeFile(path.join(packageSmokeFolder, authoringSmokeFile), authoringSmokeScript);
+    }
+    async function writeCustomAuthoringSmokeFiles(): Promise<void> {
+        await fs.mkdir(path.join(packageSmokeFolder, customAuthoringFolder), { recursive: true });
+        await Promise.all([
+            fs.writeFile(path.join(packageSmokeFolder, packageSmokePackageJsonFile), packageSmokePackageJsonScript),
+            fs.writeFile(path.join(packageSmokeFolder, customAuthoringFacadeFile), customAuthoringFacadeScript),
+            fs.writeFile(path.join(packageSmokeFolder, customAuthoringSmokeFile), customAuthoringSmokeScript)
+        ]);
+    }
+    async function writePackageSmokeProject(): Promise<void> {
+        await fs.mkdir(packageSmokeFolder, { recursive: true });
+        await Promise.all([
+            fs.writeFile(path.join(packageSmokeFolder, packageSmokeConfigFile), packageSmokeConfigScript),
+            writeAuthoringSmokeFile(),
+            writeCustomAuthoringSmokeFiles()
+        ]);
+    }
+    async function writeReporterPolicySmokeProject(): Promise<void> {
+        await fs.mkdir(packageSmokeFolder, { recursive: true });
+        await Promise.all([
+            fs.writeFile(path.join(packageSmokeFolder, lineReporterConfigFile), lineReporterConfigScript),
+            fs.writeFile(path.join(packageSmokeFolder, finalOnlyReporterConfigFile), finalOnlyReporterConfigScript),
+            fs.writeFile(path.join(packageSmokeFolder, reporterConsoleConfigFile), reporterConsoleConfigScript),
+            fs.writeFile(path.join(packageSmokeFolder, consolePolicySmokeFile), consolePolicySmokeScript),
+            fs.writeFile(path.join(packageSmokeFolder, reporterConsoleSmokeFile), reporterConsoleSmokeScript),
+            fs.writeFile(path.join(packageSmokeFolder, throwsOnImportSmokeFile), throwsOnImportSmokeScript)
+        ]);
+    }
+    async function writeHistorySmokeConfig(): Promise<void> {
+        await fs.mkdir(packageSmokeFolder, { recursive: true });
+        await fs.writeFile(
+            path.join(packageSmokeFolder, historySmokeConfig),
+            "export const config = { runtimeStateDir: 'history-state' };\n"
+        );
+    }
+    const assertHistoryCommand = defineCompositeAssertion({
+        name: 'history command',
+        async assert(check, args: readonly string[], expected: string) {
+            const result = await spawnNode([
+                overkillBinEntryPointPath,
+                'history',
+                ...args,
+                '--config',
+                historySmokeConfig
+            ]);
+            return check.group([ check.equal(result.code, 0), check.includes(result.stdout, expected) ]);
+        }
+    });
+    return {
+        writeHistorySmokeConfig,
+        assertHistoryCommand,
+        spawnNode,
+        assertPackagedStandardSubpathImports,
+        writeReporterPolicySmokeProject,
+        writePackageSmokeProject,
+        packageSmokeFolder,
+        assertPackagedReplay
+    };
+});
+const { test } = consumerFacade;
 
 import type * as LineReporterPackage from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { resolvePackagedExport } from './support/packaged-module.ts';
+import { packageSmokeNodeModules, resolvePackagedExport } from './support/packaged-module.ts';
 import {
     recordedRunId,
     assertCompletedRunRecord,
     assertPackagedFilters,
-    assertResourcesPackageRootExport,
     assertRunConfigSubpathExport,
     assertRunResourceLifecycleSubpathExport,
-    assertSimulationPackageExports,
-    assertTestStandardSubpathExports,
     importPackagedFilters
 } from './support/package-export-assertions.ts';
 import {
@@ -54,13 +191,6 @@ type SpawnOutput = {
     readonly stdout: string;
 };
 
-const packageSmokeFolder = fileURLToPath(new URL('./consumer/', import.meta.url));
-const packageSmokeNodeModules = fileURLToPath(new URL('./node_modules/', import.meta.url));
-const testPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/test');
-const runPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/run');
-const resourcesPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/resources');
-const simulationPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/simulation');
-const overkillBinEntryPointPath = path.join(testPackageFolder, 'packages/test/overkill.entry-point.js');
 const packageSmokePackageJsonFile = 'package.json';
 const packageSmokeConfigFile = 'overkill.config.js';
 const lineReporterConfigFile = 'line-reporter-overkill.config.js';
@@ -87,37 +217,6 @@ async function collectStream(stream: Readable): Promise<string> {
     });
 }
 
-async function spawnCommand(command: string, args: readonly string[]): Promise<SpawnOutput> {
-    await fs.mkdir(packageSmokeFolder, { recursive: true });
-    const child = spawn(command, Array.from(args), {
-        cwd: packageSmokeFolder,
-        stdio: [ 'ignore', 'pipe', 'pipe' ]
-    });
-    const stdout = collectStream(child.stdout);
-    const stderr = collectStream(child.stderr);
-    const code = await new Promise<number | null>(function wait(resolve, reject) {
-        child.on('error', reject);
-        child.on('close', resolve);
-    });
-
-    return {
-        code,
-        stderr: await stderr,
-        stdout: await stdout
-    };
-}
-
-async function spawnNode(args: readonly string[]): Promise<SpawnOutput> {
-    return await spawnCommand(process.execPath, args);
-}
-
-async function assertPackagedReplay(scope: TestScope): Promise<void> {
-    const id = await recordedRunId(packageSmokeFolder, authoringSmokeFile);
-    const result = await spawnNode([ overkillBinEntryPointPath, 'replay', id ]);
-    scope.assert.equal(result.code, 0);
-    scope.assert.equal(result.stderr, '');
-    scope.assert.equal(result.stdout, '');
-}
 async function readPackageJson(packageFolder: string): Promise<PackageJson> {
     return JSON.parse(await fs.readFile(path.join(packageFolder, 'package.json'), 'utf8')) as PackageJson;
 }
@@ -144,84 +243,26 @@ async function readPackageExports(
     return packageExports;
 }
 
-function assertLineReporterVariants(scope: TestScope): void {
-    scope.assert.equal(typeof createLineProgressReporter, 'function');
-    scope.assert.equal(typeof createLineTreeReporter, 'function');
-}
-
-async function assertPackagedStandardSubpathImports(
-    scope: TestScope,
-    packageExports: Readonly<Record<string, unknown>>
-): Promise<void> {
-    const resourcesPackageExports = await readPackageExports(resourcesPackageFolder, '@overkill-dev/resources');
-    const simulationPackageExports = await readPackageExports(simulationPackageFolder, '@overkill-dev/simulation');
-    const result = await spawnNode([
-        '--input-type=module',
-        '--eval',
-        standardSubpathImportScript
-    ]);
-
-    assertTestStandardSubpathExports(scope, packageExports);
-    assertResourcesPackageRootExport(scope, resourcesPackageExports);
-    assertSimulationPackageExports(scope, simulationPackageExports);
-    scope.assert.equal(result.code, 0);
-    scope.assert.equal(result.stderr, '');
-    scope.assert.equal(result.stdout, expectedStandardSubpathImportOutput);
-}
-
-async function writeAuthoringSmokeFile(): Promise<void> {
-    await fs.writeFile(path.join(packageSmokeFolder, authoringSmokeFile), authoringSmokeScript);
-}
-
-async function writeCustomAuthoringSmokeFiles(): Promise<void> {
-    await fs.mkdir(path.join(packageSmokeFolder, customAuthoringFolder), { recursive: true });
-    await Promise.all([
-        fs.writeFile(path.join(packageSmokeFolder, packageSmokePackageJsonFile), packageSmokePackageJsonScript),
-        fs.writeFile(path.join(packageSmokeFolder, customAuthoringFacadeFile), customAuthoringFacadeScript),
-        fs.writeFile(path.join(packageSmokeFolder, customAuthoringSmokeFile), customAuthoringSmokeScript)
-    ]);
-}
-
-async function writePackageSmokeProject(): Promise<void> {
-    await fs.mkdir(packageSmokeFolder, { recursive: true });
-    await Promise.all([
-        fs.writeFile(path.join(packageSmokeFolder, packageSmokeConfigFile), packageSmokeConfigScript),
-        writeAuthoringSmokeFile(),
-        writeCustomAuthoringSmokeFiles()
-    ]);
-}
-
-async function writeReporterPolicySmokeProject(): Promise<void> {
-    await fs.mkdir(packageSmokeFolder, { recursive: true });
-    await Promise.all([
-        fs.writeFile(path.join(packageSmokeFolder, lineReporterConfigFile), lineReporterConfigScript),
-        fs.writeFile(path.join(packageSmokeFolder, finalOnlyReporterConfigFile), finalOnlyReporterConfigScript),
-        fs.writeFile(path.join(packageSmokeFolder, reporterConsoleConfigFile), reporterConsoleConfigScript),
-        fs.writeFile(path.join(packageSmokeFolder, consolePolicySmokeFile), consolePolicySmokeScript),
-        fs.writeFile(path.join(packageSmokeFolder, reporterConsoleSmokeFile), reporterConsoleSmokeScript),
-        fs.writeFile(path.join(packageSmokeFolder, throwsOnImportSmokeFile), throwsOnImportSmokeScript)
-    ]);
-}
+const assertLineReporterVariants = defineCompositeAssertion({
+    name: 'line reporter variants',
+    assert(check) {
+        return check.group([
+            check.equal(typeof createLineProgressReporter, 'function'),
+            check.equal(typeof createLineTreeReporter, 'function')
+        ]);
+    }
+});
 
 const historySmokeConfig = 'history-overkill.config.js';
-async function writeHistorySmokeConfig(): Promise<void> {
-    await fs.mkdir(packageSmokeFolder, { recursive: true });
-    await fs.writeFile(
-        path.join(packageSmokeFolder, historySmokeConfig),
-        "export const config = { runtimeStateDir: 'history-state' };\n"
-    );
-}
-async function assertHistoryCommand(scope: TestScope, args: readonly string[], expected: string): Promise<void> {
-    const result = await spawnNode([ overkillBinEntryPointPath, 'history', ...args, '--config', historySmokeConfig ]);
-    scope.assert.equal(result.code, 0);
-    scope.assert.includes(result.stdout, expected);
-}
-export const testNode: TestNode = suite('Test binary', [
-    test('packaged history commands support maintenance and clear confirmation', async function (scope) {
+
+export const testNode = suite('Installed CLI and public exports', [
+    test('history commands support maintenance and clear confirmation', async function (scope) {
+        const { writeHistorySmokeConfig, assertHistoryCommand, spawnNode } = scope.resources.consumer;
+
         await writeHistorySmokeConfig();
-        await assertHistoryCommand(scope, [ 'compact' ], 'Compacted');
-        await assertHistoryCommand(scope, [ 'list' ], 'REPLAY');
-        await assertHistoryCommand(scope, [ 'prune', '--dry-run' ], 'Would remove');
+        await scope.assert(assertHistoryCommand, [ 'compact' ], 'Compacted');
+        await scope.assert(assertHistoryCommand, [ 'list' ], 'REPLAY');
+        await scope.assert(assertHistoryCommand, [ 'prune', '--dry-run' ], 'Would remove');
         const unconfirmed = await spawnNode([
             overkillBinEntryPointPath,
             'history',
@@ -231,7 +272,7 @@ export const testNode: TestNode = suite('Test binary', [
         ]);
         scope.assert.equal(unconfirmed.code, 3);
         scope.assert.includes(unconfirmed.stderr, 'requires --yes');
-        await assertHistoryCommand(scope, [ 'clear', '--yes' ], 'History cleared.');
+        await scope.assert(assertHistoryCommand, [ 'clear', '--yes' ], 'History cleared.');
         return scope.assert.collect();
     }),
 
@@ -254,11 +295,13 @@ export const testNode: TestNode = suite('Test binary', [
         return scope.assert.collect();
     }),
     test('@overkill-dev/reporter-line exposes every presentation variant', function (scope) {
-        assertLineReporterVariants(scope);
+        scope.assert(assertLineReporterVariants);
 
         return scope.assert.collect();
     }),
-    test('consumer imports packaged @overkill-dev/test root facade', async function (scope) {
+    test('imports @overkill-dev/test root facade', async function (scope) {
+        const { spawnNode } = scope.resources.consumer;
+
         const testPackageJson = await readPackageJson(testPackageFolder);
         const packageExports = testPackageJson.exports;
         const result = await spawnNode([
@@ -281,7 +324,9 @@ export const testNode: TestNode = suite('Test binary', [
 
         return scope.assert.collect();
     }),
-    test('consumer imports packaged @overkill-dev/test standard subpaths', async function (scope) {
+    test('imports @overkill-dev/test standard subpaths', async function (scope) {
+        const { assertPackagedStandardSubpathImports } = scope.resources.consumer;
+
         const testPackageJson = await readPackageJson(testPackageFolder);
         const packageExports = testPackageJson.exports;
 
@@ -289,11 +334,13 @@ export const testNode: TestNode = suite('Test binary', [
             throw new Error('Expected @overkill-dev/test exports map.');
         }
 
-        await assertPackagedStandardSubpathImports(scope, packageExports);
+        await scope.assert(assertPackagedStandardSubpathImports, packageExports);
 
         return scope.assert.collect();
     }),
-    test('packaged overkill binary prints command help', async function (scope) {
+    test('overkill binary prints command help', async function (scope) {
+        const { spawnNode } = scope.resources.consumer;
+
         const result = await spawnNode([
             overkillBinEntryPointPath,
             '--help'
@@ -305,7 +352,9 @@ export const testNode: TestNode = suite('Test binary', [
 
         return scope.assert.collect();
     }),
-    test('packaged overkill bin entry point prints command help', async function (scope) {
+    test('overkill bin entry point prints command help', async function (scope) {
+        const { spawnNode } = scope.resources.consumer;
+
         const result = await spawnNode([ overkillBinEntryPointPath, '--help' ]);
 
         scope.assert.equal(result.code, 0);
@@ -315,8 +364,10 @@ export const testNode: TestNode = suite('Test binary', [
         return scope.assert.collect();
     }),
     test(
-        'packaged overkill bin entry point default line reporter passes with capability restrictions',
+        'overkill bin entry point default line reporter passes with capability restrictions',
         async function (scope) {
+            const { writeReporterPolicySmokeProject, spawnNode } = scope.resources.consumer;
+
             await writeReporterPolicySmokeProject();
 
             const result = await spawnNode([
@@ -335,8 +386,10 @@ export const testNode: TestNode = suite('Test binary', [
         }
     ),
     test(
-        'packaged overkill bin entry point line reporter shows test console policy violations',
+        'overkill bin entry point line reporter shows test console policy violations',
         async function (scope) {
+            const { writeReporterPolicySmokeProject, spawnNode } = scope.resources.consumer;
+
             await writeReporterPolicySmokeProject();
 
             const result = await spawnNode([
@@ -356,8 +409,10 @@ export const testNode: TestNode = suite('Test binary', [
         }
     ),
     test(
-        'packaged overkill bin entry point falls back for final-only runner errors',
+        'overkill bin entry point falls back for final-only runner errors',
         async function (scope) {
+            const { writeReporterPolicySmokeProject, spawnNode } = scope.resources.consumer;
+
             await writeReporterPolicySmokeProject();
 
             const result = await spawnNode([
@@ -379,8 +434,10 @@ export const testNode: TestNode = suite('Test binary', [
         }
     ),
     test(
-        'packaged overkill bin entry point reports undeclared reporter console usage',
+        'overkill bin entry point reports undeclared reporter console usage',
         async function (scope) {
+            const { writeReporterPolicySmokeProject, spawnNode } = scope.resources.consumer;
+
             await writeReporterPolicySmokeProject();
 
             const result = await spawnNode([
@@ -402,8 +459,12 @@ export const testNode: TestNode = suite('Test binary', [
         }
     ),
     test(
-        'packaged @overkill-dev/test root authoring creates runnable testNode exports',
+        '@overkill-dev/test root authoring creates runnable testNode exports',
         async function (scope) {
+            const { writePackageSmokeProject, spawnNode, packageSmokeFolder, assertPackagedReplay } = scope
+                .resources
+                .consumer;
+
             await writePackageSmokeProject();
 
             const result = await spawnNode([
@@ -417,12 +478,14 @@ export const testNode: TestNode = suite('Test binary', [
             scope.assert.equal(result.stderr, '');
             scope.assert.equal(result.stdout, '');
 
-            await assertCompletedRunRecord(scope, packageSmokeFolder, authoringSmokeFile);
-            await assertPackagedReplay(scope);
+            await scope.assert(assertCompletedRunRecord, packageSmokeFolder, authoringSmokeFile);
+            await scope.assert(assertPackagedReplay);
             return scope.assert.collect();
         }
     ),
-    test('packaged overkill list renders root authoring definition locations', async function (scope) {
+    test('overkill list renders root authoring definition locations', async function (scope) {
+        const { writePackageSmokeProject, spawnNode } = scope.resources.consumer;
+
         await writePackageSmokeProject();
 
         const result = await spawnNode([
@@ -439,7 +502,9 @@ export const testNode: TestNode = suite('Test binary', [
 
         return scope.assert.collect();
     }),
-    test('consumer custom facade alias creates filtered runnable testNode exports', async function (scope) {
+    test('custom facade alias creates filtered runnable testNode exports', async function (scope) {
+        const { writePackageSmokeProject, spawnNode } = scope.resources.consumer;
+
         await writePackageSmokeProject();
 
         const result = await spawnNode([
@@ -456,7 +521,9 @@ export const testNode: TestNode = suite('Test binary', [
 
         return scope.assert.collect();
     }),
-    test('consumer imports packaged @overkill-dev/run subpath helpers', async function (scope) {
+    test('imports @overkill-dev/run subpath helpers', async function (scope) {
+        const { spawnNode } = scope.resources.consumer;
+
         const packageExports = await readPackageExports(runPackageFolder, '@overkill-dev/run');
         const result = await spawnNode([
             '--input-type=module',
@@ -465,12 +532,12 @@ export const testNode: TestNode = suite('Test binary', [
         ]);
         const filters = await importPackagedFilters(runPackageFolder);
 
-        assertRunConfigSubpathExport(scope, packageExports);
-        assertRunResourceLifecycleSubpathExport(scope, packageExports);
+        scope.assert(assertRunConfigSubpathExport, packageExports);
+        scope.assert(assertRunResourceLifecycleSubpathExport, packageExports);
         scope.assert.equal(result.code, 0);
         scope.assert.equal(result.stderr, '');
         scope.assert.equal(result.stdout, expectedRunSubpathImportOutput);
-        assertPackagedFilters(scope, filters);
+        scope.assert(assertPackagedFilters, filters);
 
         return scope.assert.collect();
     })

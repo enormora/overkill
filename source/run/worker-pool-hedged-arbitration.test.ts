@@ -1,4 +1,7 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
+import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     isTestDebugArtifact,
@@ -20,7 +23,7 @@ import {
 } from './worker-pool-hedged-arbitration.ts';
 import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from './worker-pool-runtime.ts';
 
-const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const integrationPath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 const testCaseMetadata = {
     annotations: {},
     controls: {},
@@ -86,18 +89,25 @@ function retriedResult(first: PerTestResult, final: PerTestResult): PerTestResul
     };
 }
 
-function assertConflictArtifactIdentity(
-    scope: TestScope,
+const conflictArtifactIdentityChecks = (
+    check: CompositeCheckBuilder<'assert'>,
     runtime: WorkerPoolRunRuntime,
     result: PerTestResult
-): void {
+): CompositeAssertionReturn<'assert'> => {
     const artifact = runtime.runState.artifacts()[0];
-
-    scope.require.defined(artifact);
-    scope.assert.equal(artifact.payload.kind, 'hedged-conflict');
-    scope.assert.deepEqual(artifact.id.runtimes, result.workId.runtimes);
-    scope.assert.equal(artifact.id.workload, result.workId.workload);
-}
+    if (artifact === undefined || artifact === null) {
+        return check.defined(artifact);
+    }
+    return check.group([
+        check.equal(artifact.payload.kind, 'hedged-conflict'),
+        check.deepEqual(artifact.id.runtimes, result.workId.runtimes),
+        check.equal(artifact.id.workload, result.workId.workload)
+    ]);
+};
+const assertConflictArtifactIdentity = defineCompositeAssertion({
+    name: 'conflict artifact identity',
+    assert: conflictArtifactIdentityChecks
+});
 
 function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
     return {
@@ -365,45 +375,67 @@ function disposableIsolatedUnit(taskRun: WorkerPoolTaskRun): WorkerPoolTaskRun['
     };
 }
 
-function assertConflictChains(scope: TestScope, payload: HedgedConflictArtifactPayload): void {
-    scope.assert.deepEqual(
-        payload.authoritative.attempts.map(function verdict(attempt) {
-            return attempt.verdict;
-        }),
-        [ 'fail', 'pass' ]
-    );
-    scope.assert.deepEqual(
-        payload.conflicting.attempts.map(function verdict(attempt) {
-            return attempt.verdict;
-        }),
-        [ 'fail', 'fail' ]
-    );
-}
-
-function assertRetriedConflict(scope: TestScope, runtime: WorkerPoolRunRuntime): void {
-    const result = flattenPerTest(runtime)[0];
-    scope.require.defined(result);
-    const artifact = runtime.runState.artifacts()[0];
-    scope.require.defined(artifact);
-    if (artifact.payload.kind !== 'hedged-conflict') {
-        throw new Error('Expected hedged conflict evidence.');
-    }
-    scope.assert.deepEqual([ result.verdict, result.retried?.finalVerdict, artifact.id.attempt?.index ], [
-        'fail',
-        'fail',
-        1
+const conflictChainsChecks = (
+    check: CompositeCheckBuilder<'assert'>,
+    payload: HedgedConflictArtifactPayload
+): CompositeAssertionReturn<'assert'> => {
+    return check.group([
+        check.deepEqual(
+            payload.authoritative.attempts.map(function verdict(attempt) {
+                return attempt.verdict;
+            }),
+            [ 'fail', 'pass' ]
+        ),
+        check.deepEqual(
+            payload.conflicting.attempts.map(function verdict(attempt) {
+                return attempt.verdict;
+            }),
+            [ 'fail', 'fail' ]
+        )
     ]);
-    scope.assert.deepEqual(
-        result.attempts.map(function verdict(attempt) {
-            return attempt.verdict;
-        }),
-        [ 'fail', 'pass' ]
-    );
-    assertConflictChains(scope, artifact.payload);
-    assertConflictArtifactIdentity(scope, runtime, result);
-}
+};
 
-export const testNode: TestNode = suite({
+const assertRetriedConflict = defineCompositeAssertion({
+    name: 'retried conflict',
+    assert(check, runtime: WorkerPoolRunRuntime) {
+        const result = flattenPerTest(runtime)[0];
+        if (result === undefined || result === null) {
+            return check.defined(result);
+        }
+        const initialChecks = check.defined(result);
+        const artifact = runtime.runState.artifacts()[0];
+        if (artifact === undefined || artifact === null) {
+            return check.group([ initialChecks, check.defined(artifact) ]);
+        }
+        const intermediateChecks = check.defined(artifact);
+        if (artifact.payload.kind !== 'hedged-conflict') {
+            throw new Error('Expected hedged conflict evidence.');
+        }
+        return check.group([
+            initialChecks,
+            intermediateChecks,
+            check.deepEqual([
+                result.verdict,
+                result.retried?.finalVerdict,
+                artifact.id.attempt?.index
+            ], [
+                'fail',
+                'fail',
+                1
+            ]),
+            check.deepEqual(
+                result.attempts.map(function verdict(attempt) {
+                    return attempt.verdict;
+                }),
+                [ 'fail', 'pass' ]
+            ),
+            conflictChainsChecks(check.annotated('conflict chains'), artifact.payload),
+            conflictArtifactIdentityChecks(check.annotated('conflict artifact identity'), runtime, result)
+        ]);
+    }
+});
+
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool hedged arbitration',
     children: [
@@ -435,7 +467,7 @@ export const testNode: TestNode = suite({
             async body(scope) {
                 const recovered = retriedResult(failResult(), passResult());
                 const exhausted = retriedResult(failResult(), failResult());
-                assertRetriedConflict(scope, await conflictingHedgedResult(recovered, exhausted));
+                scope.assert(assertRetriedConflict, await conflictingHedgedResult(recovered, exhausted));
                 return scope.assert.collect();
             }
         }),
@@ -469,7 +501,7 @@ export const testNode: TestNode = suite({
                 scope.assert.equal(result.verdict, 'fail');
                 scope.require.defined(result.outcome);
                 scope.assert.equal(result.outcome.kind, 'fail');
-                assertConflictArtifactIdentity(scope, runtime, result);
+                scope.assert(assertConflictArtifactIdentity, runtime, result);
                 scope.assert.deepEqual(
                     runtime.placementTraceEntries.slice(2).map(function toKind(entry) {
                         return entry.kind;

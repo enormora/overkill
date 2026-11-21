@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { defineResource, defineRuntime, composeRuntimes } from '../resources/resources.entry-point.ts';
 
@@ -16,7 +16,7 @@ const resource = defineResource({
 const api = defineRuntime({ name: 'api', dimensions: {}, resources: { value: resource }, requirements: [] });
 const worker = defineRuntime({ name: 'worker', dimensions: {}, resources: { value: resource }, requirements: [] });
 const composed = composeRuntimes(api, worker);
-export const testNode: TestNode = suite('runtime wrapper scope composition', [
+export const testNode = suite('runtime wrapper scope composition', [
     test('preserves existing runtime scopes and freezes newly composed contexts', function (scope) {
         const context = composeRuntimeScope({ ...scope, runtimes: { existing: { value: 'original' } } }, api, {
             value: 'api'

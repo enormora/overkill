@@ -1,4 +1,4 @@
-import { type TestNode, table, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { diagnosticRun } from '../test-support/diagnostic-run.ts';
 import { debuggedWork, runHasAttachmentScopes } from './run-diagnostics.ts';
@@ -8,7 +8,7 @@ const debugModes: readonly RunDebugRequest[] = [ { mode: 'off', selectors: [] },
     mode: 'selected',
     selectors: [ 'title~case | title=first' ]
 }, { mode: 'selected', selectors: [ 'title=missing' ] } ];
-export const testNode: TestNode = suite('run diagnostic selection', [
+export const testNode = suite('run diagnostic selection', [
     table({
         title: 'selects debug work according to locality and mode',
         cases: [ false, true ].flatMap(function (local) {

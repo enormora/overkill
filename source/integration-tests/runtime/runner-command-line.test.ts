@@ -1,0 +1,359 @@
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { suite, test, type TestScope } from '@overkill-dev/test';
+
+import {
+    defaultFailureArtifactPolicy,
+    defineOutputRenderer,
+    defineReporter
+} from '../../packages/engine/engine.entry-point.ts';
+
+import type { Reporter } from '../../engine/reporter.ts';
+import {
+    createCommandLineRunner,
+    type CommandLineRunnerDependencies,
+    type CommandLineRunnerResult
+} from '../../run/command-line-runner.ts';
+import type { LoadedConfig } from '../../config/config-loader.ts';
+import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
+import { defaultCoveragePolicy, normalizeHistoryPolicy } from '../../config/defaults.ts';
+import type { RunRequest } from '../../run/run-types.ts';
+import type { NormalizedConfig, MicrotestProcessModel, MicrotestProfileConfig } from '../../config/types.ts';
+
+const emptySuiteFixturePath = 'source/integration-tests/runtime/fixtures/empty-suite.test.ts';
+const missingTestNodeFixturePath = 'source/integration-tests/runtime/fixtures/missing-test-node.test.ts';
+const passingFixturePath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
+const plainTestNodeFixturePath = 'source/integration-tests/runtime/fixtures/plain-test-node.test.ts';
+const throwsOnImportFixturePath = 'source/integration-tests/runtime/fixtures/throws-on-import.test.ts';
+const discoveryFixturePath = 'source/integration-tests/runtime/fixtures/discovery/unit.test.ts';
+
+const memoryReporter = defineReporter(function createMemoryReporter(): Reporter {
+    return {
+        dispose: null,
+        kind: 'real-time',
+        name: 'memory',
+        onEvent() {
+            return undefined;
+        },
+        onFinish: null,
+        sinks: [ { kind: 'memory' } ]
+    };
+});
+
+function createDefaultMicrotestProfile(): MicrotestProfileConfig {
+    return {
+        failureArtifacts: defaultFailureArtifactPolicy,
+        baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
+        coverage: defaultCoveragePolicy,
+        execution: {
+            maxConcurrency: 5,
+            processModel: 'supervised-process',
+            scheduling: 'concurrent'
+        },
+        files: null,
+        reporters: null,
+        processUsage: {
+            budgets: {
+                activeResourceCount: null,
+                javaScriptEngineHeapBytes: null,
+                residentSetBytes: null,
+                residentSetGrowthBytesPerSecond: null
+            },
+            measure: false,
+            samplingIntervalMilliseconds: 100
+        },
+        testFamily: 'microtest',
+        runRecords: { persist: 'on-demand' },
+        timings: { collection: 'summary' },
+        timeouts: {
+            collectionMilliseconds: 5000,
+            hardMilliseconds: 1000,
+            softMilliseconds: 500
+        }
+    };
+}
+
+const defaultConfig: NormalizedConfig = {
+    history: normalizeHistoryPolicy({}),
+    loader: { sourceMaps: false, stripMode: 'strip-only' },
+    outputRenderer: defineOutputRenderer(function createOutputRenderer() {
+        return {
+            render() {
+                return '';
+            }
+        };
+    }),
+    profiles: {
+        microtest: createDefaultMicrotestProfile()
+    },
+    reporters: [],
+    runtimeStateDir: '.overkill'
+};
+
+function createRunRequest(paths: readonly string[]): RunRequest {
+    return {
+        baselineUpdateMode: 'none',
+        capabilityRestrictions: { mode: 'enabled' },
+        capture: 'buffered',
+        record: false,
+        recordForMerge: false,
+        lastFailed: false,
+        coverage: false,
+        debug: { mode: 'off', selectors: [] },
+        execution: { mode: 'profile-default' },
+        measureProcessUsage: null,
+        order: 'seeded',
+        paths,
+        profile: 'microtest',
+        processBudgetOverrides: null,
+        processUsageSamplingIntervalMilliseconds: null,
+        seed: { value: 42n },
+        selection: { kind: 'all' },
+        shard: { index: 1, total: 1 },
+        timingCollection: 'profile-default',
+        verbose: false,
+        workers: null
+    };
+}
+
+function createLoadedRunConfig(config: NormalizedConfig): LoadedConfig {
+    return {
+        history: normalizeHistoryPolicy({}),
+        configPath: null,
+        loader: config.loader,
+        outputRenderer: config.outputRenderer,
+        profiles: config.profiles,
+        reporters: [ memoryReporter ],
+        runtimeStateDir: config.runtimeStateDir
+    };
+}
+
+function createRunnerDependencies(config: NormalizedConfig): CommandLineRunnerDependencies {
+    return {
+        async createDefaultReporter() {
+            return memoryReporter;
+        },
+        async loadReplayCommands() {
+            throw new Error('Replay commands are not configured.');
+        },
+        async loadBaselineCommands() {
+            throw new Error('Baseline commands are not configured.');
+        },
+        async loadBenchmarkCommands() {
+            throw new Error('Benchmark commands are not configured.');
+        },
+        async loadConfig() {
+            return createLoadedRunConfig(config);
+        },
+        orchestrator
+    };
+}
+
+function createDiscoveryConfig(processModel: MicrotestProcessModel): NormalizedConfig {
+    return {
+        ...defaultConfig,
+        profiles: {
+            microtest: {
+                ...createDefaultMicrotestProfile(),
+                execution: {
+                    maxConcurrency: 5,
+                    processModel,
+                    scheduling: 'concurrent'
+                },
+                files: {
+                    exclude: [],
+                    include: [ discoveryFixturePath ]
+                }
+            }
+        }
+    };
+}
+
+async function isolatedRunState(cleanup: TestScope['cleanup']): Promise<string> {
+    await mkdir('target', { recursive: true });
+    const directory = await mkdtemp('target/command-line-state-');
+    cleanup(async function removeRunState() {
+        await rm(directory, { recursive: true, force: true });
+    });
+    return directory;
+}
+
+async function runCommandLine(
+    cleanup: TestScope['cleanup'],
+    paths: readonly string[]
+): Promise<CommandLineRunnerResult> {
+    const runtimeStateDir = await isolatedRunState(cleanup);
+    const runner = createCommandLineRunner(createRunnerDependencies({ ...defaultConfig, runtimeStateDir }));
+
+    return await runner.runTests({
+        configPath: null,
+        cwd: process.cwd(),
+        runRequest: createRunRequest(paths)
+    });
+}
+
+async function runDiscoveryCommandLine(processModel: MicrotestProcessModel): Promise<CommandLineRunnerResult> {
+    const runner = createCommandLineRunner(createRunnerDependencies(createDiscoveryConfig(processModel)));
+
+    return await runner.runTests({
+        configPath: null,
+        cwd: process.cwd(),
+        runRequest: createRunRequest([])
+    });
+}
+
+function listConfig(processModel: MicrotestProcessModel): NormalizedConfig {
+    return {
+        ...defaultConfig,
+        profiles: {
+            microtest: {
+                ...createDefaultMicrotestProfile(),
+                execution: {
+                    maxConcurrency: 5,
+                    processModel,
+                    scheduling: 'concurrent'
+                }
+            }
+        }
+    };
+}
+
+async function listCommandLine(
+    paths: readonly string[],
+    processModel: MicrotestProcessModel,
+    withOrphans: boolean
+): Promise<CommandLineRunnerResult> {
+    const runner = createCommandLineRunner(createRunnerDependencies(listConfig(processModel)));
+
+    return await runner.listTests({
+        configPath: null,
+        cwd: process.cwd(),
+        listRequest: {
+            lastFailed: false,
+            order: 'seeded',
+            paths,
+            profile: 'microtest',
+            seed: { value: 42n },
+            selection: { kind: 'all' },
+            shard: { index: 1, total: 1 },
+            withLocations: false,
+            withOrphans
+        }
+    });
+}
+
+async function listDiscoveryCommandLine(processModel: MicrotestProcessModel): Promise<CommandLineRunnerResult> {
+    const runner = createCommandLineRunner(createRunnerDependencies(createDiscoveryConfig(processModel)));
+
+    return await runner.listTests({
+        configPath: null,
+        cwd: process.cwd(),
+        listRequest: {
+            lastFailed: false,
+            order: 'seeded',
+            paths: [],
+            profile: 'microtest',
+            seed: { value: 42n },
+            selection: { kind: 'all' },
+            shard: { index: 1, total: 1 },
+            withLocations: false,
+            withOrphans: false
+        }
+    });
+}
+
+function selectedEngineRunnerDiagnostic(path: string): string {
+    return `Overkill runner error: Test module testNode must be created by the selected engine: ${path}`;
+}
+
+export const testNode = suite('Command-line runner', [
+    test('lists explicit files without executing them', async function (scope) {
+        const localResult = await listCommandLine([ passingFixturePath ], 'in-process', false);
+        const supervisedResult = await listCommandLine([ passingFixturePath ], 'supervised-process', true);
+
+        scope.assert.equal(localResult.exitCode, 0);
+        scope.assert.deepEqual(localResult.stdoutLines, [
+            'order=seeded seed=42',
+            passingFixturePath,
+            '  fixture',
+            '    passes'
+        ]);
+        scope.assert.equal(supervisedResult.exitCode, 0);
+        scope.assert.deepEqual(supervisedResult.stdoutLines, [
+            'order=seeded seed=42',
+            passingFixturePath,
+            '  fixture',
+            '    passes',
+            'Orphans',
+            '  (none)'
+        ]);
+
+        return scope.assert.collect();
+    }),
+    test('runs and lists profile-discovered files', async function (scope: TestScope) {
+        const runResult = await runDiscoveryCommandLine('supervised-process');
+        const listResult = await listDiscoveryCommandLine('in-process');
+
+        scope.assert.equal(runResult.exitCode, 0);
+        scope.require.notNull(runResult.runResult);
+        scope.assert.deepEqual(runResult.runResult.summary, {
+            crashed: 0,
+            defined: 2,
+            discovered: 1,
+            failed: 0,
+            inconclusive: 0,
+            passed: 1,
+            planned: 1,
+            processExhausted: 0,
+            runtimePolicy: 0,
+            skipped: 0
+        });
+        scope.assert.deepEqual(listResult.stdoutLines, [
+            'order=seeded seed=42',
+            discoveryFixturePath,
+            '  discovery',
+            '    unit passes'
+        ]);
+
+        return scope.assert.collect();
+    }),
+    test('maps invalid module exports to runner errors', async function (scope) {
+        const missingExportResult = await runCommandLine(scope.cleanup, [ missingTestNodeFixturePath ]);
+        const plainExportResult = await runCommandLine(scope.cleanup, [ plainTestNodeFixturePath ]);
+
+        scope.assert.equal(missingExportResult.exitCode, 2);
+        scope.assert.equal(plainExportResult.exitCode, 2);
+        scope.assert.deepEqual(missingExportResult.fallbackDiagnostics, [
+            `Overkill runner error: Test module must export testNode: ${missingTestNodeFixturePath}`
+        ]);
+        scope.assert.deepEqual(plainExportResult.fallbackDiagnostics, [
+            selectedEngineRunnerDiagnostic(plainTestNodeFixturePath)
+        ]);
+
+        return scope.assert.collect();
+    }),
+    test('maps collection failures to runner errors', async function (scope) {
+        const importFailureResult = await runCommandLine(scope.cleanup, [ throwsOnImportFixturePath ]);
+        const emptySuiteResult = await runCommandLine(scope.cleanup, [ emptySuiteFixturePath ]);
+
+        scope.assert.equal(importFailureResult.exitCode, 2);
+        scope.assert.equal(emptySuiteResult.exitCode, 2);
+        scope.assert.deepEqual(importFailureResult.fallbackDiagnostics, [
+            `Overkill runner error: Failed to load test module: ${throwsOnImportFixturePath}`
+        ]);
+        scope.assert.deepEqual(emptySuiteResult.fallbackDiagnostics, [
+            'Overkill runner error: Failed to collect tests from run inputs.'
+        ]);
+
+        return scope.assert.collect();
+    }),
+    test('maps empty explicit input to no tests collected', async function (scope) {
+        const result = await runCommandLine(scope.cleanup, []);
+
+        scope.assert.equal(result.exitCode, 4);
+        scope.assert.deepEqual(result.fallbackDiagnostics, [
+            'Overkill no tests collected: No run paths were provided and the selected profile has no file discovery policy.'
+        ]);
+
+        return scope.assert.collect();
+    })
+]);

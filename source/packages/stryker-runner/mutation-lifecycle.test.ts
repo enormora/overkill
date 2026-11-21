@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 
@@ -48,7 +48,7 @@ function failedMutationCase(): PerTestResult {
         attempts: [ { ...original.attempts[0], verdict: 'fail', outcome } ]
     };
 }
-export const testNode: TestNode = suite('mutation case admission', [
+export const testNode = suite('mutation case admission', [
     test('rejects admission and completion before selection', async function (scope) {
         const [ result ] = mutationCaseResults();
         const lifecycle = await createMutationLifecycle(input);

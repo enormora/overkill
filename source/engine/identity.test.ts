@@ -1,8 +1,8 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { formatCaseId, runtimeIdentityKey, type CaseId } from './identity.ts';
 
-export const testNode: TestNode = suite('Identity', [
+export const testNode = suite('Identity', [
     test('formatCaseId() renders direct engine identities for display', function (scope) {
         const caseId: CaseId = {
             file: null,

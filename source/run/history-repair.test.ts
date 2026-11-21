@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
@@ -12,15 +13,24 @@ const directory = '/project/state';
 const context = { directory, policy: defaultHistoryPolicy, now: historyTimestamp, testFamily: 'microtest' };
 const repair = { ...context, mode: 'explicit' as const };
 
-async function assertPrunedHistory(scope: TestScope, store: HistoryStorage): Promise<void> {
-    const index = await readCompactHistory(store, directory);
-    scope.require.defined(index);
-    const summary = index.summaries[0];
-    scope.require.defined(summary);
-    scope.assert.equal(summary.id, 'pruned');
-    scope.assert.equal(summary.replayable, false);
-    scope.assert.equal(index.cases[0]?.counters.passed, 1);
-}
+const assertPrunedHistory = defineCompositeAssertion({
+    name: 'pruned history',
+    async assert(check, store: HistoryStorage) {
+        const index = await readCompactHistory(store, directory);
+        if (index === undefined || index === null) {
+            return check.defined(index);
+        }
+        const summary = index.summaries[0];
+        if (summary === undefined || summary === null) {
+            return check.defined(summary);
+        }
+        return check.group([
+            check.equal(summary.id, 'pruned'),
+            check.equal(summary.replayable, false),
+            check.equal(index.cases[0]?.counters.passed, 1)
+        ]);
+    }
+});
 
 async function writeMergeHistoryRecords(store: HistoryStorage): Promise<void> {
     const legacy = completedHistoryRecord('legacy');
@@ -47,14 +57,14 @@ async function writeMergeHistoryRecords(store: HistoryStorage): Promise<void> {
     );
 }
 
-export const testNode: TestNode = suite('history schema compatibility', [
+export const testNode = suite('history schema compatibility', [
     test(
         'repair preserves summaries and counters after detailed records are pruned',
         async function (scope) {
             const store = createMemoryHistoryStorage();
             await updateCompactHistory(store, completedHistoryRecord('pruned'), context);
             await repairHistory(store, repair);
-            await assertPrunedHistory(scope, store);
+            await scope.assert(assertPrunedHistory, store);
             return scope.assert.collect();
         }
     ),

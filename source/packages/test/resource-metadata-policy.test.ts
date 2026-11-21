@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     defineResource,
@@ -20,7 +20,7 @@ function fixedValueResource(name: string): AnyResourceDefinition {
         dispose: null
     });
 }
-export const testNode: TestNode = suite('resource wrapper attachment metadata', [
+export const testNode = suite('resource wrapper attachment metadata', [
     test('rejects different resource descriptors sharing a name', function (scope) {
         scope.assert.throws(function () {
             buildStepAttachments([ {

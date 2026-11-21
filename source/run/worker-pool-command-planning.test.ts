@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     defaultIntegrationProfile,
@@ -12,8 +12,8 @@ import type { RunCommand } from './run-types.ts';
 import { configuredFilesRunCollectionSource } from './run-collection-source.ts';
 import { createSupervisedCollectCommand, createWorkerPoolCommand } from './run-isolated-command.ts';
 
-const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
-const secondIntegrationPath = 'source/integration-tests/integration/fixtures/delayed-pass.test.ts';
+const integrationPath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
+const secondIntegrationPath = 'source/integration-tests/runtime/fixtures/delayed-pass.test.ts';
 
 type ProfileConfig = RunCommand['config']['profiles'][string];
 type DiscoveredFile = {
@@ -57,7 +57,7 @@ function discoveredFiles(): DiscoveredFiles {
     ];
 }
 
-export const testNode: TestNode = suite('Worker pool command planning', [
+export const testNode = suite('Worker pool command planning', [
     test('isolated command builders map integration profiles to worker commands', function (scope) {
         const profile = defaultIntegrationProfile({
             execution: { processModel: 'worker-pool', scheduling: 'serial' },

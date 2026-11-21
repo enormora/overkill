@@ -1,5 +1,5 @@
-import { defineCompositeAssertion } from '#tests/assert';
-import { type TestNode, type TestScope, suite, test } from '#tests';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import { P } from 'ts-pattern';
 import { createFactory } from '@enormora/objectory';
@@ -255,20 +255,8 @@ const smokeRuntimeFamily = defineTestFamily({
     }
 });
 
-function assertPatternedDouble(scope: TestScope): void {
-    const patterned = doublesPackage.testDouble<(id: string) => string>({
-        rules: [ doublesPackage.rule.when(matches(P.string)).returns('matched') ]
-    });
-    scope.assert.equal(patterned('id'), 'matched');
-    const { calledOnceWith } = doublesPackage.doubleUsage;
-    requirePublishedCompositeReference(calledOnceWith);
-    scope.assert(calledOnceWith, patterned, [
-        matches(P.string)
-    ]);
-}
-
-export const testNode: TestNode = suite('package smoke', [
-    test('packaged engine prepares and executes a family through top-level exports', async function (scope) {
+export const testNode = suite('Installed engine interoperability', [
+    test('engine prepares and executes a family through top-level exports', async function (scope) {
         const testPlan = createTestPlan(createSmokeRoot([ createSkippedTestCase({
             title: 'planned skip',
             annotations: {},
@@ -298,7 +286,7 @@ export const testNode: TestNode = suite('package smoke', [
         scope.assert.equal(result.summary.skipped, 1);
         return scope.assert.collect();
     }),
-    test('packaged engine parses simulation witnesses', function (scope) {
+    test('engine parses simulation witnesses', function (scope) {
         const witness = parseWitnessFile({
             version: 1,
             kind: 'simulation',
@@ -315,7 +303,7 @@ export const testNode: TestNode = suite('package smoke', [
         return scope.assert.collect();
     }),
     test(
-        'consumer imports top-level @overkill-dev/engine exports and executes a TestPlan',
+        'imports top-level @overkill-dev/engine exports and executes a TestPlan',
         async function (scope) {
             const topLevelEngine: Engine = {
                 createPropertyTestCase,
@@ -367,13 +355,13 @@ export const testNode: TestNode = suite('package smoke', [
 
         return scope.assert.collect();
     }),
-    test('consumer imports createEngine() and executes a TestPlan', async function (scope) {
+    test('imports createEngine() and executes a TestPlan', async function (scope) {
         scope.assert(smokeResult, await executeSmokePlan(createEngine()), 2);
 
         return scope.assert.collect();
     }),
     test(
-        'consumer imports @overkill-dev/assert reference and executes it through @overkill-dev/engine',
+        'imports @overkill-dev/assert reference and executes it through @overkill-dev/engine',
         async function (scope) {
             const testCase = createTestCase({
                 definitionLocations: [ { kind: 'unknown' } ],
@@ -393,7 +381,7 @@ export const testNode: TestNode = suite('package smoke', [
             return scope.assert.collect();
         }
     ),
-    test('consumer imports top-level @overkill-dev/doubles facade', async function (scope) {
+    test('imports top-level @overkill-dev/doubles facade', async function (scope) {
         scope.assert.deepEqual(Object.keys(doublesPackage), [
             'doubleUsage',
             'matches',
@@ -406,7 +394,17 @@ export const testNode: TestNode = suite('package smoke', [
             'testIterable',
             'testIterator'
         ]);
-        assertPatternedDouble(scope);
+
+        const patternedDoublePatterned = doublesPackage.testDouble<(id: string) => string>({
+            rules: [ doublesPackage.rule.when(matches(P.string)).returns('matched') ]
+        });
+        scope.assert.equal(patternedDoublePatterned('id'), 'matched');
+        const { calledOnceWith } = doublesPackage.doubleUsage;
+        requirePublishedCompositeReference(calledOnceWith);
+        scope.assert(calledOnceWith, patternedDoublePatterned, [
+            matches(P.string)
+        ]);
+
         const loadValue = doublesPackage.testDouble.returns('value');
 
         scope.assert.deepEqual(

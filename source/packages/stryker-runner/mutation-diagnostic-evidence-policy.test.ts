@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { runResultFactory } from '../../test-support/run-result-factory.ts';
 import { exchangedAttachment } from '../../test-support/attachment-exchange.ts';
@@ -10,7 +10,7 @@ import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
 const project = '/sandbox/project';
 const caseId = { file: '/sandbox/project/source/failure.test.ts', suite: [], title: 'failure', params: null };
 const workId = { familyVariant: null, case: caseId, runtimes: [], workload: null };
-export const testNode: TestNode = suite('mutation diagnostic evidence identity', [
+export const testNode = suite('mutation diagnostic evidence identity', [
     test('canonicalizes failed case and attributed runner-error identities', function (scope) {
         const result = runResultFactory.build({
             perTest: [ { id: caseId, workId, verdict: 'fail' } ],

@@ -1,4 +1,4 @@
-import { type TestNode, table, type TestScope, suite, test, testDouble } from '@overkill-dev/test';
+import { table, type TestScope, suite, test, testDouble } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -12,7 +12,7 @@ import {
 import { createRunTimingMeasurement } from './run-timing-collection.ts';
 import { createCoverageCollection } from './coverage-collection.ts';
 
-export const testNode: TestNode = suite('coverage collection lifecycle', [
+export const testNode = suite('coverage collection lifecycle', [
     table({
         title: 'accepts covered thresholds for empty reports',
         cases: [ false, true ],

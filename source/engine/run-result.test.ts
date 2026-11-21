@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
@@ -50,22 +51,26 @@ function createFailedCheck(): FailedCheckFixture {
     };
 }
 
-function assertCaseRunnerErrorPredicates(scope: TestScope): void {
-    const branded = new CaseRunnerError('Fixture failed.', {
-        cause: new Error('fixture'),
-        subtype: 'fixture'
-    });
-    const foreignBrand = Symbol.for('@overkill-dev/engine/CaseRunnerError');
-    const invalidForeign = Object.freeze({
-        [foreignBrand]: true,
-        runnerError: null
-    });
-
-    scope.assert.equal(isCaseRunnerError(null), false);
-    scope.assert.equal(isCaseRunnerError('fixture'), false);
-    scope.assert.equal(isCaseRunnerError(invalidForeign), false);
-    scope.assert.equal(isCaseRunnerError(branded), true);
-}
+const assertCaseRunnerErrorPredicates = defineCompositeAssertion({
+    name: 'case runner error predicates',
+    assert(check) {
+        const branded = new CaseRunnerError('Fixture failed.', {
+            cause: new Error('fixture'),
+            subtype: 'fixture'
+        });
+        const foreignBrand = Symbol.for('@overkill-dev/engine/CaseRunnerError');
+        const invalidForeign = Object.freeze({
+            [foreignBrand]: true,
+            runnerError: null
+        });
+        return check.group([
+            check.equal(isCaseRunnerError(null), false),
+            check.equal(isCaseRunnerError('fixture'), false),
+            check.equal(isCaseRunnerError(invalidForeign), false),
+            check.equal(isCaseRunnerError(branded), true)
+        ]);
+    }
+});
 
 const timingSpan = function timingSpan(
     kind: RunTimingSpan['kind'],
@@ -85,18 +90,23 @@ const timingSpan = function timingSpan(
     };
 };
 
-function assertDefaultTimingModelValues(scope: TestScope): void {
-    scope.assert.equal(defaultRunTimingSpanLimit, 5000);
-    scope.assert.equal(defaultRunTimingSlowestSpanLimit, 50);
-    scope.assert.deepEqual(zeroTimingCollectionOverhead, {
-        aggregationMicroseconds: 0,
-        recordingMicroseconds: 0,
-        renderingMicroseconds: 0,
-        serializationMicroseconds: 0
-    });
-    scope.assert.equal(resourceScopes.includes('per-case'), true);
-    scope.assert.equal(runTimingSpanKinds.includes('config.load'), true);
-}
+const assertDefaultTimingModelValues = defineCompositeAssertion({
+    name: 'default timing model values',
+    assert(check) {
+        return check.group([
+            check.equal(defaultRunTimingSpanLimit, 5000),
+            check.equal(defaultRunTimingSlowestSpanLimit, 50),
+            check.deepEqual(zeroTimingCollectionOverhead, {
+                aggregationMicroseconds: 0,
+                recordingMicroseconds: 0,
+                renderingMicroseconds: 0,
+                serializationMicroseconds: 0
+            }),
+            check.equal(resourceScopes.includes('per-case'), true),
+            check.equal(runTimingSpanKinds.includes('config.load'), true)
+        ]);
+    }
+});
 
 const permissionRunnerErrorContext: PermissionDeniedRunnerErrorContext = {
     attributedTo: null,
@@ -119,7 +129,7 @@ function stacklessPermissionDeniedError(): Error {
     return denied;
 }
 
-export const testNode: TestNode = suite('Run result', [
+export const testNode = suite('Run result', [
     test('verdictFromOutcome() returns the outcome kind as the verdict', function (scope) {
         const outcome: TestOutcome = {
             failures: [ { checks: [ createFailedCheck() ], kind: 'assertion' } ],
@@ -131,7 +141,7 @@ export const testNode: TestNode = suite('Run result', [
         return scope.assert.collect();
     }),
     test('isCaseRunnerError() accepts only branded runner errors', function (scope) {
-        assertCaseRunnerErrorPredicates(scope);
+        scope.assert(assertCaseRunnerErrorPredicates);
 
         return scope.assert.collect();
     }),
@@ -275,7 +285,7 @@ export const testNode: TestNode = suite('Run result', [
                 spans: [ configLoadStart, reporterDelivery ],
                 truncated: true
             });
-            assertDefaultTimingModelValues(scope);
+            scope.assert(assertDefaultTimingModelValues);
 
             return scope.assert.collect();
         }

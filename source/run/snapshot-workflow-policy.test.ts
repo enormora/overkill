@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { RunArtifact } from '../engine/run-result.ts';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
@@ -11,7 +11,7 @@ import { baselineFilename } from './baseline-record.ts';
 function isRuntimeAttachment(artifact: RunArtifact): artifact is RuntimeAttachmentArtifact {
     return artifact.payload.kind === 'runtime-attachment';
 }
-export const testNode: TestNode = suite('snapshot baseline workflow', [
+export const testNode = suite('snapshot baseline workflow', [
     test('updates matching snapshot baselines in stable publication order', async function (scope) {
         const { workflow, event, filenames } = await snapshotUpdateFixture();
         const evaluated = await workflow.evaluate(event);

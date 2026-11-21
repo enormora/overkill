@@ -17,9 +17,12 @@ export const replayPropertyUrl = replayPropertyEntryPoint.href;
 export const replayResourcesUrl = replayResourcesEntryPoint.href;
 const binary = fileURLToPath(new URL('../packages/test/overkill.entry-point.ts', import.meta.url));
 export type ReplayProject = { readonly cwd: string; readonly command: RunCommand; };
-export async function replayProject(scope: TestScope, profile: ProjectProfileConfig): Promise<ReplayProject> {
+export async function replayProject(
+    cleanup: TestScope['cleanup'],
+    profile: ProjectProfileConfig
+): Promise<ReplayProject> {
     const cwd = await mkdtemp(path.join(tmpdir(), 'overkill-replay-'));
-    scope.cleanup(async function removeProject() {
+    cleanup(async function removeProject() {
         await rm(cwd, { recursive: true, force: true });
     });
     const source = { profiles: { cases: profile } };

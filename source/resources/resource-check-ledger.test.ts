@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { DiffPathSegment } from '../diff/diff-shape.ts';
 
@@ -42,7 +42,7 @@ function ledger(): ResourceCheckLedger {
         publish
     );
 }
-export const testNode: TestNode = suite('resource observation ledger', [
+export const testNode = suite('resource observation ledger', [
     test('opens each observation interval once', function (scope) {
         const checks = ledger();
         checks.open(lifetime);

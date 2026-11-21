@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { MutantRunStatus, type MutantRunResult } from '@stryker-mutator/api/test-runner';
 
@@ -100,7 +100,7 @@ function hitLimitFailures(): HitLimitFailures {
     return { direct, valid: [ direct, loader ], invalid };
 }
 
-export const testNode: TestNode = suite('mutation result precedence', [
+export const testNode = suite('mutation result precedence', [
     table({
         title: 'native case timeout preserves independent cancellation',
         cases: [ false, true ],

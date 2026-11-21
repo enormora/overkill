@@ -1,9 +1,9 @@
-import { type TestNode, suite, test, testDouble } from '@overkill-dev/test';
+import { suite, test, testDouble } from '@overkill-dev/test';
 
 import { executionHost } from '../test-support/execution-host.ts';
 import { serveExecutionSessionHost } from './execution-session-host.ts';
 
-export const testNode: TestNode = suite('execution host request and reply ownership', [
+export const testNode = suite('execution host request and reply ownership', [
     test('initializes a frozen invocation and sends checkpoints before the result', async function (scope) {
         const fixture = await executionHost('none');
         await serveExecutionSessionHost(fixture.runtime);

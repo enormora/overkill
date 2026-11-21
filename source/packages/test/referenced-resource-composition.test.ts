@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { defineResource, defineRuntime, defineRuntimeMatrix } from '../resources/resources.entry-point.ts';
 import { referencedTestBody } from '../../test-support/referenced-test-body.ts';
@@ -15,7 +15,7 @@ import {
     mapComposedResourceBody
 } from './resource-wrapper-composition.ts';
 
-export const testNode: TestNode = suite('referenced resource composition', [
+export const testNode = suite('referenced resource composition', [
     test('attaches resource metadata before binding a referenced body', function (scope) {
         const fixture = referencedTestBody();
         const resource = defineResource({

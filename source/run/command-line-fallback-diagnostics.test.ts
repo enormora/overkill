@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { DefinedReporter, Reporter } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
@@ -16,7 +16,7 @@ import {
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
-import type { RunRequest, ConfiguredRunOrchestrator, RunnerResult } from './run-types.ts';
+import type { ConfiguredRunOrchestrator, RunnerResult } from './run-types.ts';
 
 const plainOutputRenderer = defineFixedOutputRenderer({
     render(intent): string {
@@ -73,7 +73,7 @@ const terminalFinalResultRuntimeReporter: Reporter = {
 };
 const terminalFinalResultReporter = defineFixedReporter(terminalFinalResultRuntimeReporter);
 
-const defaultRequest: RunRequest = defaultRunRequest();
+const defaultRequest = defaultRunRequest();
 
 function defaultLoadedConfig(reporters: LoadedConfig['reporters']): LoadedConfig {
     return {
@@ -162,7 +162,7 @@ async function runTests(
     });
 }
 
-export const testNode: TestNode = suite('CLI fallback diagnostics', [
+export const testNode = suite('CLI fallback diagnostics', [
     test(
         'maintenance diagnostics reach stderr without failing a passing command',
         async function (scope) {

@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import {
     benchmark,
@@ -55,7 +55,7 @@ const benchmarkDefinition = {
     diagnosticMetrics: [],
     budgets: { one: { value: { maximum: 200 } } }
 };
-export const testNode: TestNode = suite('calibration contracts', [
+export const testNode = suite('calibration contracts', [
     test('rejects repeated raw measurement wrappers', function (scope) {
         scope.assert.throws(function () {
             return rawMeasurement(rawMeasurement(wallClockMeasurement()));

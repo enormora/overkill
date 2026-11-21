@@ -1,11 +1,11 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { isolatedWorkerRun, passingIsolatedWorkerRun } from '../test-support/isolated-worker-run.ts';
 import { workerOrchestrationFaults } from '../test-support/worker-pool-orchestration.ts';
 
 import { createIsolatedResolvedRun, runIsolatedProcessCommand } from './run-isolated-process.ts';
 
-export const testNode: TestNode = suite('isolated worker run planning and execution', [
+export const testNode = suite('isolated worker run planning and execution', [
     table({
         title: 'resolves worker plans from in-memory collection',
         cases: [ false, true ] as const,
@@ -55,7 +55,7 @@ export const testNode: TestNode = suite('isolated worker run planning and execut
             });
             scope.assert.equal(
                 result.perTest[0]?.id.file,
-                'source/integration-tests/integration/fixtures/passing.test.ts'
+                'source/integration-tests/runtime/fixtures/passing.test.ts'
             );
             scope.assert.equal(
                 fixture

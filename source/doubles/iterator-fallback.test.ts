@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createHistoryStore } from './double-history-store.ts';
 import { createSyncTrackedIterator, createAsyncTrackedIterator } from './double-iterator-tracking.ts';
 
 const invocation = { kind: 'call', index: 0, arguments: [] } as const;
-export const testNode: TestNode = suite('iterator protocol fallbacks', [
+export const testNode = suite('iterator protocol fallbacks', [
     test('provides return and throw for synchronous sources without those methods', function (scope) {
         const store = createHistoryStore(function () {
             return undefined;

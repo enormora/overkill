@@ -1,4 +1,7 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
+import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     resolveSourceLocation,
@@ -23,31 +26,37 @@ type SkippedAuthoringExecution = {
 
 const invokeSkippedTest = skippedTest as (...parameters: readonly unknown[]) => unknown;
 
-function assertSourceLocationInThisFile(scope: TestScope, location: SourceLocation): void {
+const sourceLocationInThisFileChecks = (
+    check: CompositeCheckBuilder<'assert'>,
+    location: SourceLocation
+): CompositeAssertionReturn<'assert'> => {
     if (location.kind !== 'known') {
-        scope.assert.equal(location.kind, 'known');
-
-        return;
+        const initialChecks = check.equal(location.kind, 'known');
+        return initialChecks;
     }
-
-    scope.assert.match(
+    return check.match(
         location.file.replaceAll('\\', '/'),
         /source\/packages\/test\/skipped-test-entry-point\.test\.[cm]?[jt]s$/u
     );
-}
+};
 
-function assertDefinitionLocationInThisFile(
-    scope: TestScope,
-    sourceLocations: TestCase['definitionLocations']
-): void {
-    const sourceLocation = sourceLocations[0];
-    scope.require.defined(sourceLocation);
-
-    const resolvedLocation = resolveSourceLocation(sourceLocation);
-    assertSourceLocationInThisFile(scope, resolvedLocation);
-    scope.assert.equal(typeof resolvedLocation.line, 'number');
-    scope.assert.equal(typeof resolvedLocation.column, 'number');
-}
+const assertDefinitionLocationInThisFile = defineCompositeAssertion({
+    name: 'definition location in this file',
+    assert(check, sourceLocations: TestCase['definitionLocations']) {
+        const sourceLocation = sourceLocations[0];
+        if (sourceLocation === undefined || sourceLocation === null) {
+            return check.defined(sourceLocation);
+        }
+        const initialChecks = check.defined(sourceLocation);
+        const resolvedLocation = resolveSourceLocation(sourceLocation);
+        return check.group([
+            initialChecks,
+            sourceLocationInThisFileChecks(check.annotated('source location in this file'), resolvedLocation),
+            check.equal(typeof resolvedLocation.line, 'number'),
+            check.equal(typeof resolvedLocation.column, 'number')
+        ]);
+    }
+});
 
 async function executeRootSkippedNode(): Promise<SkippedAuthoringExecution> {
     const testCase = skippedTest({
@@ -108,99 +117,108 @@ async function executeFacadeSkippedNode(): Promise<SkippedAuthoringExecution> {
     };
 }
 
-function assertSkippedOutcome(
-    scope: TestScope,
-    execution: SkippedAuthoringExecution,
-    reason: string
-): void {
-    const outcome = execution.result.perTest[0]?.outcome;
-
-    scope.require.defined(outcome);
-    scope.assert.equal(outcome.kind, 'skip');
-
-    if (outcome.kind === 'skip') {
-        scope.assert.equal(outcome.reason, reason);
+const assertSkippedOutcome = defineCompositeAssertion({
+    name: 'skipped outcome',
+    assert(check, execution: SkippedAuthoringExecution, reason: string) {
+        const outcome = execution.result.perTest[0]?.outcome;
+        if (outcome === undefined || outcome === null) {
+            return check.defined(outcome);
+        }
+        const initialChecksBeforeNextAction = check.group([
+            check.defined(outcome),
+            check.equal(outcome.kind, 'skip')
+        ]);
+        if (outcome.kind === 'skip') {
+            return check.group([ initialChecksBeforeNextAction, check.equal(outcome.reason, reason) ]);
+        } else {
+            return initialChecksBeforeNextAction;
+        }
     }
-}
+});
 
-function assertRootSkippedCase(scope: TestScope, execution: SkippedAuthoringExecution): void {
-    scope.require.defined(execution.plannedCase);
-    scope.assert.deepEqual(execution.plannedCase.id, {
-        file: null,
-        title: 'skips',
-        params: null,
-        suite: [ 'runtime' ]
-    });
-    scope.assert.deepEqual(execution.plannedCase.execution, { kind: 'skip', reason: 'unsupported platform' });
-    scope.assert.equal(execution.plannedCase.testFamily, null);
-    scope.assert.deepEqual(execution.plannedCase.annotations.tags, [ 'suite', 'case' ]);
-    assertSkippedOutcome(scope, execution, 'unsupported platform');
-}
+const assertFacadeSkippedData = defineCompositeAssertion({
+    name: 'facade skipped data',
+    assert(check, execution: SkippedAuthoringExecution) {
+        if (execution.plannedCase === undefined || execution.plannedCase === null) {
+            return check.defined(execution.plannedCase);
+        }
+        return check.group([
+            check.equal(execution.plannedCase.testFamily, null),
+            check.equal(execution.plannedCase.controls.capture, 'live'),
+            check.deepEqual(execution.plannedCase.annotations.tags, [ 'facade', 'suite', 'case' ])
+        ]);
+    }
+});
 
-function assertFacadeSkippedData(scope: TestScope, execution: SkippedAuthoringExecution): void {
-    scope.require.defined(execution.plannedCase);
-    scope.assert.equal(execution.plannedCase.testFamily, null);
-    scope.assert.equal(execution.plannedCase.controls.capture, 'live');
-    scope.assert.deepEqual(execution.plannedCase.annotations.tags, [ 'facade', 'suite', 'case' ]);
-}
+const assertSkippedSummary = defineCompositeAssertion({
+    name: 'skipped summary',
+    assert(check, summary: Awaited<ReturnType<typeof execute>>['summary']) {
+        return check.group([ check.deepEqual({
+            ...summary,
+            defined: null
+        }, {
+            crashed: 0,
+            defined: null,
+            discovered: 1,
+            failed: 0,
+            inconclusive: 0,
+            passed: 0,
+            planned: 1,
+            processExhausted: 0,
+            runtimePolicy: 0,
+            skipped: 1
+        }) ]);
+    }
+});
 
-function assertFacadeSkippedCase(scope: TestScope, execution: SkippedAuthoringExecution): void {
-    scope.require.defined(execution.plannedCase);
-    scope.assert.deepEqual(execution.plannedCase.id, {
-        file: null,
-        title: 'skips',
-        params: null,
-        suite: [ 'runtime' ]
-    });
-    scope.assert.deepEqual(execution.plannedCase.execution, {
-        kind: 'skip',
-        reason: 'external service unavailable'
-    });
-    assertFacadeSkippedData(scope, execution);
-    assertSkippedOutcome(scope, execution, 'external service unavailable');
-    scope.assert.equal(execution.result.summary.skipped, 1);
-    scope.assert.equal(execution.result.summary.failed, 0);
-}
-
-function assertSkippedSummary(scope: TestScope, summary: Awaited<ReturnType<typeof execute>>['summary']): void {
-    scope.assert.deepEqual({
-        ...summary,
-        defined: null
-    }, {
-        crashed: 0,
-        defined: null,
-        discovered: 1,
-        failed: 0,
-        inconclusive: 0,
-        passed: 0,
-        planned: 1,
-        processExhausted: 0,
-        runtimePolicy: 0,
-        skipped: 1
-    });
-}
-
-export const testNode: TestNode = suite('Skipped test entry point', [
+export const testNode = suite('Skipped test entry point', [
     test(
         '@overkill-dev/test skippedTest() creates visible skipped engine nodes',
-        async function (scope) {
+        async function (scope: TestScope) {
             const execution = await executeRootSkippedNode();
 
             scope.assert.equal(ownsTestNode(execution.testCase), true);
             scope.assert.equal(ownsTestNode(execution.testNode), true);
-            assertRootSkippedCase(scope, execution);
-            assertDefinitionLocationInThisFile(scope, execution.testCase.definitionLocations);
-            assertSkippedSummary(scope, execution.result.summary);
+
+            scope.require.defined(execution.plannedCase);
+            scope.assert.deepEqual(execution.plannedCase.id, {
+                file: null,
+                title: 'skips',
+                params: null,
+                suite: [ 'runtime' ]
+            });
+            scope.assert.deepEqual(execution.plannedCase.execution, { kind: 'skip', reason: 'unsupported platform' });
+            scope.assert.equal(execution.plannedCase.testFamily, null);
+            scope.assert.deepEqual(execution.plannedCase.annotations.tags, [ 'suite', 'case' ]);
+            scope.assert(assertSkippedOutcome, execution, 'unsupported platform');
+
+            scope.assert(assertDefinitionLocationInThisFile, execution.testCase.definitionLocations);
+            scope.assert(assertSkippedSummary, execution.result.summary);
 
             return scope.assert.collect();
         }
     ),
-    test('@overkill-dev/test facade skippedTest() composes family test data', async function (scope) {
+    test('@overkill-dev/test facade skippedTest() composes family test data', async function (scope: TestScope) {
         const execution = await executeFacadeSkippedNode();
 
         scope.assert.equal(ownsTestNode(execution.testCase), true);
         scope.assert.equal(ownsTestNode(execution.testNode), true);
-        assertFacadeSkippedCase(scope, execution);
+
+        scope.require.defined(execution.plannedCase);
+        scope.assert.deepEqual(execution.plannedCase.id, {
+            file: null,
+            title: 'skips',
+            params: null,
+            suite: [ 'runtime' ]
+        });
+        scope.assert.deepEqual(execution.plannedCase.execution, {
+            kind: 'skip',
+            reason: 'external service unavailable'
+        });
+        scope.assert(assertFacadeSkippedData, execution);
+        scope.assert(assertSkippedOutcome, execution, 'external service unavailable');
+        scope.assert.equal(execution.result.summary.skipped, 1);
+        scope.assert.equal(execution.result.summary.failed, 0);
 
         return scope.assert.collect();
     }),

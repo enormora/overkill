@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     ConfigError,
@@ -224,7 +224,7 @@ async function runTests(dependencies: CommandLineRunnerDependencies): Promise<Co
     });
 }
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     title: 'Command line runner',
 
     children: [

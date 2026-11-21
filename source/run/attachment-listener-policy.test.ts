@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { attachmentListener, attachmentListenerScenario } from '../test-support/attachment-listener.ts';
@@ -8,9 +8,9 @@ import { attachmentMaxFrameBytes, attachmentMaxPendingRequests } from './attachm
 function request(token: string, id: number): string {
     return JSON.stringify({ token, request: id, operation: { kind: 'write', writer: id, data: 'YQ==' } });
 }
-export const testNode: TestNode = suite('attachment listener protocol and shutdown', [
+export const testNode = suite('attachment listener protocol and shutdown', [
     test('authenticates requests and acknowledges their original sequence', async function (scope) {
-        const fixture = attachmentListener(scope, attachmentListenerScenario);
+        const fixture = attachmentListener(scope.cleanup, attachmentListenerScenario);
         const server = await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
         const channel = fixture.connect();
         const reply = channel.nextReply();
@@ -21,7 +21,7 @@ export const testNode: TestNode = suite('attachment listener protocol and shutdo
         return scope.assert.collect();
     }),
     test('finishes the listener only once', async function (scope) {
-        const fixture = attachmentListener(scope, attachmentListenerScenario);
+        const fixture = attachmentListener(scope.cleanup, attachmentListenerScenario);
         const server = await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
         await Promise.all([ server.finish(), server.finish() ]);
         scope.assert.deepEqual(fixture.events, [ 'listen', 'close' ]);
@@ -35,7 +35,7 @@ export const testNode: TestNode = suite('attachment listener protocol and shutdo
             return kind;
         },
         async test(scope) {
-            const fixture = attachmentListener(scope, attachmentListenerScenario);
+            const fixture = attachmentListener(scope.cleanup, attachmentListenerScenario);
             const server = await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
             const channel = fixture.connect();
             const lines = { 'invalid-token': request('wrong', 1), 'malformed-json': '{', 'invalid-schema': '{}' };
@@ -57,7 +57,7 @@ export const testNode: TestNode = suite('attachment listener protocol and shutdo
             const stage = scope.parameters;
 
             const failure = new Error('attachment failed');
-            const fixture = attachmentListener(scope, { ...attachmentListenerScenario, [stage]: failure });
+            const fixture = attachmentListener(scope.cleanup, { ...attachmentListenerScenario, [stage]: failure });
             const server = await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
             const channel = fixture.connect();
             channel.deliver(request(server.endpoint.token, 1));
@@ -68,7 +68,7 @@ export const testNode: TestNode = suite('attachment listener protocol and shutdo
         }
     }),
     test('retains abandoned owners when a client disconnects', async function (scope) {
-        const fixture = attachmentListener(scope, { ...attachmentListenerScenario, abandoned: true });
+        const fixture = attachmentListener(scope.cleanup, { ...attachmentListenerScenario, abandoned: true });
         const server = await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
         const channel = fixture.connect();
         channel.socket.destroy();
@@ -81,11 +81,11 @@ export const testNode: TestNode = suite('attachment listener protocol and shutdo
     }),
     test('rejects startup and shutdown failures', async function (scope) {
         const failure = new Error('listener failed');
-        const fixture = attachmentListener(scope, { ...attachmentListenerScenario, start: failure });
+        const fixture = attachmentListener(scope.cleanup, { ...attachmentListenerScenario, start: failure });
         await scope.assert.rejects(async function () {
             return await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
         }, { exact: failure });
-        const closing = attachmentListener(scope, { ...attachmentListenerScenario, close: failure });
+        const closing = attachmentListener(scope.cleanup, { ...attachmentListenerScenario, close: failure });
         const server = await listenForAttachments(closing.store, defaultAttachmentLimits, closing.runtime);
         await scope.assert.rejects(server.finish, { exact: failure });
         return scope.assert.collect();
@@ -99,7 +99,7 @@ export const testNode: TestNode = suite('attachment listener protocol and shutdo
         async test(scope) {
             const address = scope.parameters;
 
-            const fixture = attachmentListener(scope, { ...attachmentListenerScenario, address });
+            const fixture = attachmentListener(scope.cleanup, { ...attachmentListenerScenario, address });
             await scope.assert.rejects(async function () {
                 return await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
             }, { message: 'Attachment server did not obtain an execution address.' });
@@ -107,7 +107,7 @@ export const testNode: TestNode = suite('attachment listener protocol and shutdo
         }
     }),
     test('closes channels exceeding the frame byte limit', async function (scope) {
-        const fixture = attachmentListener(scope, attachmentListenerScenario);
+        const fixture = attachmentListener(scope.cleanup, attachmentListenerScenario);
         const server = await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
         const channel = fixture.connect();
         channel.deliver('x'.repeat(attachmentMaxFrameBytes + 1));
@@ -117,7 +117,7 @@ export const testNode: TestNode = suite('attachment listener protocol and shutdo
         return scope.assert.collect();
     }),
     test('limits pending requests while preserving queued storage order', async function (scope) {
-        const fixture = attachmentListener(scope, attachmentListenerScenario);
+        const fixture = attachmentListener(scope.cleanup, attachmentListenerScenario);
         const server = await listenForAttachments(fixture.store, defaultAttachmentLimits, fixture.runtime);
         const channel = fixture.connect();
         channel.deliver(

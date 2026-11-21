@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -58,7 +58,7 @@ async function captureMeasuredFailure(
     return null;
 }
 
-export const testNode: TestNode = suite('Worker pool worker timing', [
+export const testNode = suite('Worker pool worker timing', [
     test('postWorkerTimingSpan() records worker identity and clamps durations', function (scope) {
         const fixture = createTimingTaskFixture('run');
 

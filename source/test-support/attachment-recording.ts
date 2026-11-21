@@ -27,7 +27,7 @@ export async function attachmentRecording(failure: Error | null): Promise<Attach
         }),
         request: defaultRunRequest({
             profile: 'microtest',
-            paths: [ 'source/integration-tests/integration/fixtures/passing.test.ts' ]
+            paths: [ 'source/integration-tests/runtime/fixtures/passing.test.ts' ]
         })
     });
     const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });

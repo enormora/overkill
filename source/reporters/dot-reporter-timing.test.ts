@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -36,7 +36,7 @@ function capturedOutput(): CapturedOutput {
     };
 }
 
-export const testNode: TestNode = suite('Dot reporter timing', [
+export const testNode = suite('Dot reporter timing', [
     test('dot reporter prints slow runner overhead after the summary', async function (scope: TestScope) {
         const terminal = capturedOutput();
         const reporter = createDotReporter({ interactive: false, stdout: terminal.output })({

@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import type {
     BenchmarkNormalizationEvidence,
@@ -63,7 +63,7 @@ function normalizedEvidence(
         }
     };
 }
-export const testNode: TestNode = suite('performance baseline change planning', [
+export const testNode = suite('performance baseline change planning', [
     test('creates missing expectations only for explicit update modes', function (scope) {
         scope.assert.equal(proposePerformanceBaseline({ ...input, mode: 'none' }), null);
         for (const mode of [ 'update', 'apply', 'bootstrap', 'diff' ] as const) {

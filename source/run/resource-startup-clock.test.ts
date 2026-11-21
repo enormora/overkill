@@ -1,9 +1,9 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { startupClock, startupResource } from '../test-support/resource-startup-clock.ts';
 import { isResourceStartupTimeoutError } from './resource-lifecycle-startup-budget.ts';
 
-export const testNode: TestNode = suite('resource startup clock policy', [
+export const testNode = suite('resource startup clock policy', [
     table({
         title: 'does not schedule invalid or absent budget',
         cases: [ { description: 'no requirements', input: [] }, {

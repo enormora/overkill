@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -128,7 +128,7 @@ async function executeWithPreciseTimings(
     });
 }
 
-export const testNode: TestNode = suite('Reporter timing delivery', [
+export const testNode = suite('Reporter timing delivery', [
     test(
         'execute() delivers complete precise timings through both reporter lifecycles',
         async function (scope) {

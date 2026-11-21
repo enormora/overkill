@@ -29,7 +29,8 @@ type LocalProcessFixture = {
 };
 const graceMilliseconds = 50;
 export function localProcessService(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
+    cancellationSignal: AbortSignal,
     shutdown: ShutdownBehavior,
     readiness: ReadinessBehavior
 ): LocalProcessFixture {
@@ -65,7 +66,7 @@ export function localProcessService(
             return true;
         }
     };
-    scope.cleanup(function () {
+    cleanup(function () {
         exit(0, null);
     });
     const input: ProcessInput = {
@@ -115,7 +116,7 @@ export function localProcessService(
             address: { host: '127.0.0.1', port: 4321 },
             attachments: resourceAttachments('process'),
             dependencies: {},
-            signal: scope.signal,
+            signal: cancellationSignal,
             workload: null
         },
         definition: createLocalProcessServiceDefinition(input, {

@@ -1,4 +1,4 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { supervisedChildCommand } from '../test-support/supervised-child-fixture.ts';
@@ -17,7 +17,7 @@ const family: FrozenFamilyDefinition = {
     selection: null,
     source: { kind: 'module', module: { moduleUrl: 'file:///project/family.ts', exportName: 'family' } }
 };
-export const testNode: TestNode = suite(
+export const testNode = suite(
     'imported family host validation',
     [ table({
         title: 'rejects incompatible imported families',

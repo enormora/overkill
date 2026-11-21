@@ -1,11 +1,11 @@
-import { test, type TestNode, suite } from '@overkill-dev/test';
+import { test, suite } from '@overkill-dev/test';
 
 import { memoryCampaignWorker } from '../../test-support/memory-campaign-worker.ts';
 import { campaignProtocolVersion, campaignRequestSchema } from './campaign-protocol.ts';
 
 const invocation = { kind: 'invoke', data: null } as const;
 
-export const testNode: TestNode = suite('campaign invocation admission', [
+export const testNode = suite('campaign invocation admission', [
     test('rejects execution settings supplied with an invocation', function (scope) {
         const parsed = campaignRequestSchema.safeParse({
             kind: 'request',

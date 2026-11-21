@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 import { createRoot, createTestPlan } from '../packages/engine/engine.entry-point.ts';
@@ -68,18 +69,25 @@ function createTimedBenchmark(): TimedBenchmark {
     };
 }
 
-function assertSoftCancellation(scope: TestScope, result: PerTestResult): void {
-    const measured = result.benchmark;
-    scope.require.defined(measured);
-    scope.assert.partialDeepEqual(measured, {
-        samples: 129,
-        status: 'incomplete',
-        lifecycle: { warmup: { samples: 32 } }
-    });
-    scope.assert.equal(result.verdict, 'fail');
-}
+const assertSoftCancellation = defineCompositeAssertion({
+    name: 'soft cancellation',
+    assert(check, result: PerTestResult) {
+        const measured = result.benchmark;
+        if (measured === undefined || measured === null) {
+            return check.defined(measured);
+        }
+        return check.group([
+            check.partialDeepEqual(measured, {
+                samples: 129,
+                status: 'incomplete',
+                lifecycle: { warmup: { samples: 32 } }
+            }),
+            check.equal(result.verdict, 'fail')
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('benchmark timeout evidence', [
+export const testNode = suite('benchmark timeout evidence', [
     test('soft cancellation retains a completed reading before stopping admission', async function (scope) {
         const timed = createTimedBenchmark();
         scope.cleanup(timed.resume);
@@ -87,7 +95,7 @@ export const testNode: TestNode = suite('benchmark timeout evidence', [
         timed.wallClock.advanceByMilliseconds(10);
         timed.resume();
         const completed = await timed.execution;
-        assertSoftCancellation(scope, completed.result);
+        scope.assert(assertSoftCancellation, completed.result);
         return scope.assert.collect();
     }),
     test(

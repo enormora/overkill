@@ -1,4 +1,4 @@
-import { type TestScope, type TestNode, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
 
 import {
@@ -94,7 +94,7 @@ async function runDirect(fixture: DirectRunFixture, testNode: DirectTestNode): P
     return capturedRun;
 }
 
-export const testNode: TestNode = suite('Run if main selection', [
+export const testNode = suite('Run if main selection', [
     test(
         'falls back when a matching profile excludes the direct file',
         async function (scope) {

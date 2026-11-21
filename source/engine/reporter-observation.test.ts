@@ -1,4 +1,4 @@
-import { type TestNode, test } from '@overkill-dev/test';
+import { test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -8,7 +8,7 @@ import { createReporterDispatcher } from './reporter-dispatcher.ts';
 import { createPlainOutputRenderer } from './reporter-output.ts';
 import { defineReporter } from './reporter.ts';
 
-export const testNode: TestNode = test(
+export const testNode = test(
     'nested reporter callbacks do not leave test-owned watchdog promises',
     async function (scope) {
         const engine = createTestEngine();

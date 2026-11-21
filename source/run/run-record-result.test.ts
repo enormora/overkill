@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { RunResult, TestOutcome } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -152,7 +152,7 @@ function resultWithOpaqueEvidence(): RunResult {
     };
 }
 
-export const testNode: TestNode = suite('Run record result', [
+export const testNode = suite('Run record result', [
     test('round trips bounded diagnostic evidence without serializing it twice', function (scope) {
         const live = resultWithOpaqueEvidence();
         const diagnostics = serializeRunDiagnostics(live);

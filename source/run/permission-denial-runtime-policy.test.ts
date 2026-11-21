@@ -1,5 +1,5 @@
 import diagnosticsChannel from 'node:diagnostics_channel';
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { createExecutionObservation, withExecutionObservation } from '../engine/execution-observation.ts';
 import type { RunnerError } from '../packages/engine/engine.entry-point.ts';
@@ -125,7 +125,7 @@ const diagnosticPolicies = [
     { auditEnabled: false, auditDiagnostics: 'report', expected: enforcedDiagnostics }
 ] as const;
 
-export const testNode: TestNode = suite('Permission denial runtime policy', [
+export const testNode = suite('Permission denial runtime policy', [
     table({
         title: 'permission audit policy',
         cases: diagnosticPolicies,

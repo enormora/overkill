@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { historyTimestamp, historyWork } from '../test-support/history-record-fixture.ts';
@@ -20,7 +20,7 @@ const observation = {
 } as const;
 const context = { now: historyTimestamp, policy: defaultHistoryPolicy };
 
-export const testNode: TestNode = suite('duration history retention', [
+export const testNode = suite('duration history retention', [
     test('placement excludes uncommitted runs while retaining independent observations', function (scope) {
         const pending = ingestDurationState(emptyDurationState(historyTimestamp), [ observation ], {
             ...context,

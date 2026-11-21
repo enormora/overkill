@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { memoryHistoryAccess, idleHistoryScenario } from '../test-support/history-access.ts';
 
@@ -6,7 +6,7 @@ import { RunCollectionError } from './run-errors.ts';
 import { HistoryMaintenanceDeferredError, withinHistoryMaintenanceBudget } from './history-maintenance-budget.ts';
 import { inspectDetailedRecordState, assertHistoryRunId, compareHistoryRuns } from './history-state-access.ts';
 
-export const testNode: TestNode = suite('history access ownership policy', [
+export const testNode = suite('history access ownership policy', [
     test(
         'uses the configured state directory and acquires an idle owner guard',
         async function (scope) {

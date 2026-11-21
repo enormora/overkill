@@ -1,9 +1,9 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { collectionCount } from './collection-count.ts';
 import { isPlainObject, ownKeys, partialDeepEqual } from './partial-matching.ts';
 
-export const testNode: TestNode = suite('Partial value matching', [
+export const testNode = suite('Partial value matching', [
     test('partialDeepEqual() matches nested partial arrays, maps, sets, and objects', function (scope) {
         const symbolKey = Symbol('id');
 

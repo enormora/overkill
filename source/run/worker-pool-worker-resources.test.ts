@@ -1,4 +1,5 @@
-import { type TestBody, type TestNode, type TestScope, suite, test, createTestFacade } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestBody, type TestNode, suite, test, createTestFacade } from '@overkill-dev/test';
 import { defineResource, withResources, type ResourceDefinition } from '@overkill-dev/test/resources';
 import { subjectTestNode } from '../test-support/create-test-engine.ts';
 
@@ -239,91 +240,109 @@ function disposeLaneTask(lifecycle: WorkerPoolLifecycleIdentity): DisposeLaneLif
     };
 }
 
-async function assertRunResourcesAcquireAndDispose(scope: TestScope): Promise<void> {
-    const events = createEventLog();
-    const lifecycle = { endpoint: null, token: 'acquire-dispose' };
-    const database = projectedDatabaseResource(events);
-    const plan = collectedWorkerPlan(withResources({ database }, function testBody(resourceScope) {
-        resourceScope.assert.equal(resourceScope.resources.database.url, 'postgres://localhost');
+const assertRunResourcesAcquireAndDispose = defineCompositeAssertion({
+    name: 'run resources acquire and dispose',
+    async assert(check) {
+        const events = createEventLog();
+        const lifecycle = { endpoint: null, token: 'acquire-dispose' };
+        const database = projectedDatabaseResource(events);
+        const plan = collectedWorkerPlan(withResources({ database }, function testBody(resourceScope) {
+            resourceScope.assert.equal(resourceScope.resources.database.url, 'postgres://localhost');
 
-        return resourceScope.assert.collect();
-    }));
+            return resourceScope.assert.collect();
+        }));
+        return check.group([
+            check.deepEqual(await acquireWorkerRunResources(acquireTask(plan, lifecycle), plan, null), {
+                projectedResources: { resources: [ { boundaryKey: 'run:database', payload: 'postgres://localhost' } ] },
+                runnerErrors: []
+            }),
+            check.deepEqual(await disposeWorkerRunResources(disposeRunTask(lifecycle)), { runnerErrors: [] }),
+            check.deepEqual(events.values(), [ 'acquire', 'dispose:postgres://localhost' ])
+        ]);
+    }
+});
 
-    scope.assert.deepEqual(await acquireWorkerRunResources(acquireTask(plan, lifecycle), plan, null), {
-        projectedResources: { resources: [ { boundaryKey: 'run:database', payload: 'postgres://localhost' } ] },
-        runnerErrors: []
-    });
-    scope.assert.deepEqual(await disposeWorkerRunResources(disposeRunTask(lifecycle)), { runnerErrors: [] });
-    scope.assert.deepEqual(events.values(), [ 'acquire', 'dispose:postgres://localhost' ]);
-}
+const assertRunResourceFailuresBecomeRunnerErrors = defineCompositeAssertion({
+    name: 'run resource failures become runner errors',
+    async assert(check) {
+        const database = failingDatabaseResource();
+        const lifecycle = { endpoint: null, token: 'failing-acquire' };
+        const plan = collectedWorkerPlan(withResources({ database }, function testBody(resourceScope) {
+            return resourceScope.assert.collect();
+        }));
+        const output = await acquireWorkerRunResources(acquireTask(plan, lifecycle), plan, null);
+        return check.group([
+            check.deepEqual(output.projectedResources, { resources: [] }),
+            check.equal(output.runnerErrors[0]?.message, 'Resource acquisition failed.'),
+            check.equal(output.runnerErrors[0]?.subtype, 'runtime-policy')
+        ]);
+    }
+});
 
-async function assertRunResourceFailuresBecomeRunnerErrors(scope: TestScope): Promise<void> {
-    const database = failingDatabaseResource();
-    const lifecycle = { endpoint: null, token: 'failing-acquire' };
-    const plan = collectedWorkerPlan(withResources({ database }, function testBody(resourceScope) {
-        return resourceScope.assert.collect();
-    }));
-    const output = await acquireWorkerRunResources(acquireTask(plan, lifecycle), plan, null);
+const assertPlainBodiesDoNotAcquireRunResources = defineCompositeAssertion({
+    name: 'plain bodies do not acquire run resources',
+    async assert(check) {
+        const lifecycle = { endpoint: null, token: 'plain-body' };
+        const plan = collectedWorkerPlan(function testBody(resourceScope) {
+            return resourceScope.assert.collect();
+        });
+        const output = await acquireWorkerRunResources(acquireTask(plan, lifecycle), plan, null);
+        return check.group([
+            check.deepEqual(output, {
+                projectedResources: { resources: [] },
+                runnerErrors: []
+            }),
+            check.deepEqual(await disposeWorkerRunResources(disposeRunTask({ endpoint: null, token: 'missing-run' })), {
+                runnerErrors: []
+            }),
+            check.deepEqual(await disposeWorkerRunResources(disposeRunTask(lifecycle)), { runnerErrors: [] })
+        ]);
+    }
+});
 
-    scope.assert.deepEqual(output.projectedResources, { resources: [] });
-    scope.assert.equal(output.runnerErrors[0]?.message, 'Resource acquisition failed.');
-    scope.assert.equal(output.runnerErrors[0]?.subtype, 'runtime-policy');
-}
+const assertScopeWrappersDoNotAcquireRunResources = defineCompositeAssertion({
+    name: 'scope wrappers do not acquire run resources',
+    async assert(check) {
+        const lifecycle = { endpoint: null, token: 'scope-wrapper' };
+        const facade = createTestFacade({
+            mapScope() {
+                return { project: 'fixture' };
+            }
+        });
+        const plan = collectedWorkerPlanFromNode(facade.test('uses mapped scope', function testBody(facadeScope) {
+            facadeScope.assert.equal(facadeScope.project, 'fixture');
 
-async function assertPlainBodiesDoNotAcquireRunResources(scope: TestScope): Promise<void> {
-    const lifecycle = { endpoint: null, token: 'plain-body' };
-    const plan = collectedWorkerPlan(function testBody(resourceScope) {
-        return resourceScope.assert.collect();
-    });
-    const output = await acquireWorkerRunResources(acquireTask(plan, lifecycle), plan, null);
+            return facadeScope.assert.collect();
+        }));
+        const output = await acquireWorkerRunResources(acquireTask(plan, lifecycle), plan, null);
+        return check.group([ check.deepEqual(output, {
+            projectedResources: { resources: [] },
+            runnerErrors: []
+        }) ]);
+    }
+});
 
-    scope.assert.deepEqual(output, {
-        projectedResources: { resources: [] },
-        runnerErrors: []
-    });
-    scope.assert.deepEqual(await disposeWorkerRunResources(disposeRunTask({ endpoint: null, token: 'missing-run' })), {
-        runnerErrors: []
-    });
-    scope.assert.deepEqual(await disposeWorkerRunResources(disposeRunTask(lifecycle)), { runnerErrors: [] });
-}
+const assertLaneSessionsAreReusedAndDisposed = defineCompositeAssertion({
+    name: 'lane sessions are reused and disposed',
+    async assert(check) {
+        const events = createEventLog();
+        const lifecycle = { endpoint: null, token: 'lane-session' };
+        const scratch = laneScratchResource(events);
+        const plan = collectedWorkerPlan(withResources({ scratch }, function testBody(resourceScope) {
+            return resourceScope.assert.collect();
+        }));
+        const task = runTask(plan, lifecycle);
+        const firstSession = laneResourceSession(task, plan, null);
+        const secondSession = laneResourceSession(task, plan, null);
+        return check.group([
+            check.equal(firstSession, secondSession),
+            check.deepEqual(await disposeWorkerLaneLifecycle(disposeLaneTask(lifecycle)), { runnerErrors: [] }),
+            check.deepEqual(await disposeWorkerLaneLifecycle(disposeLaneTask(lifecycle)), { runnerErrors: [] })
+        ]);
+    }
+});
 
-async function assertScopeWrappersDoNotAcquireRunResources(scope: TestScope): Promise<void> {
-    const lifecycle = { endpoint: null, token: 'scope-wrapper' };
-    const facade = createTestFacade({
-        mapScope() {
-            return { project: 'fixture' };
-        }
-    });
-    const plan = collectedWorkerPlanFromNode(facade.test('uses mapped scope', function testBody(facadeScope) {
-        facadeScope.assert.equal(facadeScope.project, 'fixture');
-
-        return facadeScope.assert.collect();
-    }));
-    const output = await acquireWorkerRunResources(acquireTask(plan, lifecycle), plan, null);
-
-    scope.assert.deepEqual(output, {
-        projectedResources: { resources: [] },
-        runnerErrors: []
-    });
-}
-
-async function assertLaneSessionsAreReusedAndDisposed(scope: TestScope): Promise<void> {
-    const events = createEventLog();
-    const lifecycle = { endpoint: null, token: 'lane-session' };
-    const scratch = laneScratchResource(events);
-    const plan = collectedWorkerPlan(withResources({ scratch }, function testBody(resourceScope) {
-        return resourceScope.assert.collect();
-    }));
-    const task = runTask(plan, lifecycle);
-    const firstSession = laneResourceSession(task, plan, null);
-    const secondSession = laneResourceSession(task, plan, null);
-
-    scope.assert.equal(firstSession, secondSession);
-    scope.assert.deepEqual(await disposeWorkerLaneLifecycle(disposeLaneTask(lifecycle)), { runnerErrors: [] });
-    scope.assert.deepEqual(await disposeWorkerLaneLifecycle(disposeLaneTask(lifecycle)), { runnerErrors: [] });
-}
-
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool worker resources',
     children: [
@@ -331,7 +350,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'acquire projected run resources',
             async body(scope) {
-                await assertRunResourcesAcquireAndDispose(scope);
+                await scope.assert(assertRunResourcesAcquireAndDispose);
 
                 return scope.assert.collect();
             }
@@ -340,7 +359,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'record acquisition failures',
             async body(scope) {
-                await assertRunResourceFailuresBecomeRunnerErrors(scope);
+                await scope.assert(assertRunResourceFailuresBecomeRunnerErrors);
 
                 return scope.assert.collect();
             }
@@ -349,7 +368,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'ignore plain test bodies',
             async body(scope) {
-                await assertPlainBodiesDoNotAcquireRunResources(scope);
+                await scope.assert(assertPlainBodiesDoNotAcquireRunResources);
 
                 return scope.assert.collect();
             }
@@ -358,7 +377,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'ignore mapped scope wrappers',
             async body(scope) {
-                await assertScopeWrappersDoNotAcquireRunResources(scope);
+                await scope.assert(assertScopeWrappersDoNotAcquireRunResources);
 
                 return scope.assert.collect();
             }
@@ -367,7 +386,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'reuse lane sessions',
             async body(scope) {
-                await assertLaneSessionsAreReusedAndDisposed(scope);
+                await scope.assert(assertLaneSessionsAreReusedAndDisposed);
                 createWorkerProcessUsageTracker(command());
 
                 return scope.assert.collect();

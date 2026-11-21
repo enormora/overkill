@@ -1473,7 +1473,7 @@ without becoming the required production compiler.
 
 ### Executable Compiler API Assessment
 
-Assessment date: 2026-11-16. Run `npx just test-type-test-api` after `npm ci`.
+Assessment date: 2026-11-16. Run `overkill run --profile runtime source/integration-tests/runtime/compiler-api.test.ts` after `npm ci`.
 The only executable target is the development alias `typescript-beta`, pinned
 and integrity-locked to `typescript@7.1.0-beta`. This is an API feasibility
 assessment, not production support or a compiler matrix.

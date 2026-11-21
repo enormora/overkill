@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { rule } from './double-rule.ts';
 import { testDouble, type TestDouble } from './test-double.ts';
@@ -80,7 +80,7 @@ function createRejectedResultRecord(error: Error): RejectedResultRecord {
     return { firstResult, loadValue, promise };
 }
 
-export const testNode: TestNode = suite('Test double history runtime', [
+export const testNode = suite('Test double history runtime', [
     test('doubles expose aggregate counts for returned calls', function body(scope) {
         const { loadValue } = createRecordedScopedLoadValue();
 

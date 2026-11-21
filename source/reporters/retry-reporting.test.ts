@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { table, suite, test, type TestScope } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -66,7 +66,7 @@ function retryEvent(result: RunResult): TestEndEvent {
     };
 }
 
-export const testNode: TestNode = suite('Retry reporting', [
+export const testNode = suite('Retry reporting', [
     table({
         title: 'renders terminal retry verdicts',
         cases: [ 'process-exhausted', 'crashed', 'runtime-policy' ] as const,

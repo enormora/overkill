@@ -1,10 +1,10 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { gen, property } from '../packages/property/property.entry-point.ts';
 import { differential } from '../packages/differential/differential.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 
-export const testNode: TestNode = suite('differential contract', [
+export const testNode = suite('differential contract', [
     test(
         'preserves thrown identity and shallowly freezes observation containers',
         async function (scope) {

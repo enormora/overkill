@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -13,16 +13,16 @@ type BudgetFixture = {
     readonly clock: DeterministicClock;
     readonly budget: InvocationBudget;
 };
-function budgetFixture(scope: TestScope, signal: Readonly<AbortSignal> | null): BudgetFixture {
+function budgetFixture(cleanup: TestScope['cleanup'], signal: Readonly<AbortSignal> | null): BudgetFixture {
     const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
     const budget = createInvocationBudget(10, signal, clock);
-    scope.cleanup(budget.dispose);
+    cleanup(budget.dispose);
     return { clock, budget };
 }
 
-export const testNode: TestNode = suite('invocation budgets', [
+export const testNode = suite('invocation budgets', [
     test('uses elapsed monotonic time despite Unix clock changes', function (scope) {
-        const { clock, budget } = budgetFixture(scope, null);
+        const { clock, budget } = budgetFixture(scope.cleanup, null);
         clock.setCurrentUnixEpochMicroseconds(9_000_000_000n);
         clock.advanceByMilliseconds(4);
         scope.assert.equal(budget.remainingMilliseconds(), 6);
@@ -34,7 +34,7 @@ export const testNode: TestNode = suite('invocation budgets', [
     }),
     test('retains caller cancellation and clears its own timer on disposal', function (scope) {
         const controller = new AbortController();
-        const { clock, budget } = budgetFixture(scope, controller.signal);
+        const { clock, budget } = budgetFixture(scope.cleanup, controller.signal);
         const reason = new Error('caller sentinel');
         controller.abort(reason);
         scope.assert.true(isInvocationCancellation(reason, budget.signal));
@@ -45,7 +45,7 @@ export const testNode: TestNode = suite('invocation budgets', [
         return scope.assert.collect();
     }),
     test('preserves independent failures aggregated with deadline cancellation', function (scope) {
-        const { clock, budget } = budgetFixture(scope, null);
+        const { clock, budget } = budgetFixture(scope.cleanup, null);
         clock.advanceByMilliseconds(10);
         const reason: unknown = budget.signal.reason;
         scope.assert.false(isInvocationCancellation(

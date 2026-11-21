@@ -1,9 +1,9 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { capabilityObservation } from '../test-support/capability-observation.ts';
 import { observationCase } from '../test-support/observation-lifetime.ts';
 
-export const testNode: TestNode = suite('injected capability observation', [
+export const testNode = suite('injected capability observation', [
     test('ignores explicit violations after observation closes', function (scope) {
         const fixture = capabilityObservation();
         fixture.policy.recordViolation('net', 'connection denied', 'blocked');

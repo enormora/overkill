@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createTaskRun } from '../test-support/worker-pool-execution-state.ts';
 import { placementPlan, fakeWorkerRuntime } from './worker-pool-placement-validation.test.ts';
@@ -49,13 +50,18 @@ type CancellationFixture = {
     readonly primaryLane: PlacementLane;
     readonly duplicateLane: PlacementLane;
 };
-function assertCancelledTask(scope: TestScope, task: WorkerPoolTaskRun, blocked: () => boolean): void {
-    scope.assert.true(blocked());
-    scope.assert.true(task.controller.signal.aborted);
-    scope.assert.false(task.includeArtifacts.read());
-    scope.assert.false(task.requeuePendingCases.read());
-    scope.assert.equal(task.interruptionCause.read(), 'hedge-cancelled');
-}
+const assertCancelledTask = defineCompositeAssertion({
+    name: 'cancelled task',
+    assert(check, task: WorkerPoolTaskRun, blocked: () => boolean) {
+        return check.group([
+            check.true(blocked()),
+            check.true(task.controller.signal.aborted),
+            check.false(task.includeArtifacts.read()),
+            check.false(task.requeuePendingCases.read()),
+            check.equal(task.interruptionCause.read(), 'hedge-cancelled')
+        ]);
+    }
+});
 function cancellationFixture(): CancellationFixture {
     const plan = hedgePlan();
     const runtime = fakeWorkerRuntime(plan);
@@ -70,23 +76,22 @@ function cancellationFixture(): CancellationFixture {
     }
     return { runtime, dispatcher, primaryLane, duplicateLane };
 }
-function assertDuplicateCancellation(scope: TestScope): void {
-    const { runtime, dispatcher, primaryLane, duplicateLane } = cancellationFixture();
-    const primary = dispatcher.pull(primaryLane);
-    const duplicate = dispatcher.pull(duplicateLane);
-    scope.require.defined(primary);
-    scope.require.defined(duplicate);
-    const task = { ...createTaskRun(runtime.runState), members: duplicate.members };
-    runtime.activeTasks.add(task);
-    dispatcher.finish(primary, { learnWarmth: false, workerCrashed: false, retainReservation: false });
-    scope.assert.true(dispatcher.blocked(primaryLane));
-    assertCancelledTask(scope, task, function blocked() {
-        return dispatcher.blocked(primaryLane);
-    });
-}
-export const testNode: TestNode = suite('replay dispatcher lifecycle', [
-    test('cancels the recorded duplicate after its authority completes', function (scope) {
-        assertDuplicateCancellation(scope);
+
+export const testNode = suite('replay dispatcher lifecycle', [
+    test('cancels the recorded duplicate after its authority completes', (scope: TestScope) => {
+        const { runtime, dispatcher, primaryLane, duplicateLane } = cancellationFixture();
+        const primary = dispatcher.pull(primaryLane);
+        const duplicate = dispatcher.pull(duplicateLane);
+        scope.require.defined(primary);
+        scope.require.defined(duplicate);
+        const task = { ...createTaskRun(runtime.runState), members: duplicate.members };
+        runtime.activeTasks.add(task);
+        dispatcher.finish(primary, { learnWarmth: false, workerCrashed: false, retainReservation: false });
+        scope.assert.true(dispatcher.blocked(primaryLane));
+        scope.assert(assertCancelledTask, task, function blocked() {
+            return dispatcher.blocked(primaryLane);
+        });
+
         return scope.assert.collect();
     }),
     test('refuses an assignment on the wrong lane', function (scope: TestScope) {

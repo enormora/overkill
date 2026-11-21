@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { benchmarkLifecyclePolicySchema } from '../run/benchmark-policy-schema.ts';
 import { type TestCase, createRoot, createTestPlan, execute } from '../packages/engine/engine.entry-point.ts';
@@ -65,31 +66,43 @@ function failureOutcome(result: RunResult): Extract<TestOutcome, { readonly kind
     return outcome;
 }
 
-function assertAutomaticWarmup(scope: TestScope, result: RunResult): void {
-    const measured = measurementResult(result);
-    scope.assert.partialDeepEqual(measured, {
-        samples: 2,
-        metrics: { value: { maximum: 1 } },
-        lifecycle: { warmup: { samples: 32, metrics: { value: { maximum: 1000 } } } }
-    });
-    scope.assert.deepEqual(measured.lifecycle.policy, { ...defaultBenchmarkLifecyclePolicy, garbageCollection: 'off' });
-    const attempt = result.perTest[0]?.attempts[0].benchmark;
-    scope.require.defined(attempt);
-    scope.assert.deepEqual(attempt, measured);
-}
-
-function assertRuntimeSettling(scope: TestScope, result: RunResult): void {
-    const { cooldown } = measurementResult(result).lifecycle;
-    if (cooldown.mode !== 'runtime') {
-        throw new Error('Expected runtime cooldown evidence.');
+const assertAutomaticWarmup = defineCompositeAssertion({
+    name: 'automatic warmup',
+    assert(check, result: RunResult) {
+        const measured = measurementResult(result);
+        const initialChecks = check.group([
+            check.partialDeepEqual(measured, {
+                samples: 2,
+                metrics: { value: { maximum: 1 } },
+                lifecycle: { warmup: { samples: 32, metrics: { value: { maximum: 1000 } } } }
+            }),
+            check.deepEqual(measured.lifecycle.policy, { ...defaultBenchmarkLifecyclePolicy, garbageCollection: 'off' })
+        ]);
+        const attempt = result.perTest[0]?.attempts[0].benchmark;
+        if (attempt === undefined || attempt === null) {
+            return check.group([ initialChecks, check.defined(attempt) ]);
+        }
+        return check.group([ initialChecks, check.defined(attempt), check.deepEqual(attempt, measured) ]);
     }
-    scope.assert.partialDeepEqual(cooldown, { completed: 2, windows: 4, outcome: 'settled' });
-    scope.assert.true(cooldown.durationMicroseconds >= 200_000);
-    scope.assert.deepEqual(result.runnerErrors, []);
-    scope.assert.equal(benchmarkResultSchema.parse(measurementResult(result)).lifecycle?.cooldown.mode, 'runtime');
-}
+});
 
-export const testNode: TestNode = suite('benchmark invocation lifetimes', [
+const assertRuntimeSettling = defineCompositeAssertion({
+    name: 'runtime settling',
+    assert(check, result: RunResult) {
+        const { cooldown } = measurementResult(result).lifecycle;
+        if (cooldown.mode !== 'runtime') {
+            throw new Error('Expected runtime cooldown evidence.');
+        }
+        return check.group([
+            check.partialDeepEqual(cooldown, { completed: 2, windows: 4, outcome: 'settled' }),
+            check.true(cooldown.durationMicroseconds >= 200_000),
+            check.deepEqual(result.runnerErrors, []),
+            check.equal(benchmarkResultSchema.parse(measurementResult(result)).lifecycle?.cooldown.mode, 'runtime')
+        ]);
+    }
+});
+
+export const testNode = suite('benchmark invocation lifetimes', [
     test(
         'rejects invalid cleanup callbacks while releasing already registered resources',
         async function (scope) {
@@ -200,7 +213,7 @@ export const testNode: TestNode = suite('benchmark invocation lifetimes', [
             }
         ));
         scope.assert.equal(result.summary.passed, 1);
-        assertRuntimeSettling(scope, result);
+        scope.assert(assertRuntimeSettling, result);
         return scope.assert.collect();
     }),
     test(
@@ -224,7 +237,7 @@ export const testNode: TestNode = suite('benchmark invocation lifetimes', [
             const result = await runBenchmark(node);
             scope.assert.equal(result.summary.passed, 1);
             scope.assert.equal(calls, 34);
-            assertAutomaticWarmup(scope, result);
+            scope.assert(assertAutomaticWarmup, result);
             return scope.assert.collect();
         }
     ),

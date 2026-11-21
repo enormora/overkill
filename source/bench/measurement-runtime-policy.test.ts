@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { type TestCase, type RunResult, createRoot, createTestPlan } from '../packages/engine/engine.entry-point.ts';
 
@@ -12,7 +12,7 @@ async function executeWithLeakDetection(node: TestCase): Promise<RunResult> {
     return await createTestEngine().execute(plan);
 }
 
-export const testNode: TestNode = suite('measurement async leak attribution', [
+export const testNode = suite('measurement async leak attribution', [
     test('excludes checkpoint delivery promises from workload leak evidence', async function (scope) {
         const result = await executeWithLeakDetection(benchmark('clean', {
             kind: 'runtime',

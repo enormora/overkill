@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { MutantRunStatus, type MutantRunResult } from '@stryker-mutator/api/test-runner';
 
@@ -55,7 +55,7 @@ function translate(result: PerTestResult, errors: readonly RunnerError[]): Mutan
     });
 }
 
-export const testNode: TestNode = suite('mutant case classification', [
+export const testNode = suite('mutant case classification', [
     table({
         title: 'kills safely attributed failures with structured diagnostics',
         cases: [ 'runtime-policy', 'permission', 'uncaught-exception', 'unhandled-rejection' ] as const,

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -136,7 +136,7 @@ function observeDispatchWake(dispatcher: WorkerPoolWorkDispatcher): DispatchWake
         }
     };
 }
-export const testNode: TestNode = suite('dynamic dispatch hedge timing', [
+export const testNode = suite('dynamic dispatch hedge timing', [
     test('wakes an idle lane when its hedge delay expires', async function (scope) {
         const { clock, dispatcher, lane } = dispatchFixture([]);
         const wake = observeDispatchWake(dispatcher);

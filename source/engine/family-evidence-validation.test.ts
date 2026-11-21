@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
@@ -168,7 +168,7 @@ async function reportInvalidArtifactEvidence(context: FamilyAnalysisContext, wor
     await report({ kind: 'case-end', result: resultFor(workId, { kind: 'pass' }), artifacts: [] });
 }
 
-export const testNode: TestNode = suite('family evidence validation', [
+export const testNode = suite('family evidence validation', [
     test('preserves completed evidence when the backend subsequently cancels', async function (scope) {
         const abort = new AbortController();
         const result = await analyze(async function ({ report }, workId) {

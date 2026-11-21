@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { TestBodyExecutionRequirementSummary } from '../packages/engine/engine.entry-point.ts';
 import type { WorkId } from '../engine/identity.ts';
@@ -86,7 +86,7 @@ function workId(title: string): WorkId {
     };
 }
 
-export const testNode: TestNode = suite('Work unit resource constraints', [
+export const testNode = suite('Work unit resource constraints', [
     test(
         'combines runtime variants and workload-dependent resources',
         function (scope) {

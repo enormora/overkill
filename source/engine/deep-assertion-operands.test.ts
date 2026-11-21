@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import { defineCompositeAssertion, defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 import {
     requireEngineNarrowingReference,
@@ -60,7 +60,7 @@ function expectedInvalidDeepAssertionOperand(
     ];
 }
 
-export const testNode: TestNode = suite('Deep assertion operands', [
+export const testNode = suite('Deep assertion operands', [
     test(
         'rejects primitive facade deep assertion operands at runtime',
         async function (scope: TestScope) {

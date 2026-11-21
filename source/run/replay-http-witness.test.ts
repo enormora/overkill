@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import type { SimulationWitnessFile } from '../engine/witness-file.ts';
 import { defineResource } from '../resources/resources.ts';
@@ -34,7 +34,7 @@ const witness: SimulationWitnessFile = {
 async function restore(value: SimulationWitnessFile, signal: AbortSignal): Promise<void> {
     await restoreResourceWitness(resource, { handle, witness: value, signal, seed: null });
 }
-export const testNode: TestNode = suite('HTTP witness compatibility', [
+export const testNode = suite('HTTP witness compatibility', [
     table({
         title: 'rejects invalid HTTP witnesses',
         cases: [

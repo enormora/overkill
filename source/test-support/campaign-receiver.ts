@@ -20,11 +20,14 @@ type CampaignReceiverChannel = MemoryCampaignSocket & {
     ) => void;
     readonly cancel: (id: number, reason: 'cancelled' | 'deadline') => void;
 };
-export function campaignReceiverChannel(scope: TestScope, worker: CampaignWorker): CampaignReceiverChannel {
+export function campaignReceiverChannel(
+    cleanup: TestScope['cleanup'],
+    worker: CampaignWorker
+): CampaignReceiverChannel {
     const fixture = memoryCampaignSocket();
     const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
     serveCampaignWorker(fixture.socket, memoryCampaignEndpoint.token, worker, clock);
-    scope.cleanup(async function closeReceiverChannel() {
+    cleanup(async function closeReceiverChannel() {
         fixture.socket.destroy();
         await Promise.resolve();
     });

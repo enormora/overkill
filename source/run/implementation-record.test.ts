@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { mergeRecordFixture } from '../test-support/merge-record-fixture.ts';
 
@@ -30,7 +30,7 @@ function implementationEvidence(): NonNullable<ReplayRunRecord['facts']['impleme
         builds: [ { assignments: [], graph: { ...identity, build: implementationFingerprint(identity) } } ]
     };
 }
-export const testNode: TestNode = suite('recorded implementation provenance', [
+export const testNode = suite('recorded implementation provenance', [
     test('reports incompatible implementation catalogs as merge conflicts', function (scope) {
         const current = mergeRecordFixture('current', 1, 1);
         const implementations = implementationEvidence();

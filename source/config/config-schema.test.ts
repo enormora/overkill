@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, defineMacro, suite, table, test } from '@overkill-dev/test';
+import { defineMacro, suite, table, test } from '@overkill-dev/test';
 
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 
@@ -25,17 +25,17 @@ type SchemaValidationFailure = {
     readonly schema: Readonly<$ZodType>;
 };
 
-function assertValidationSuccess(scope: TestScope, schema: Readonly<$ZodType>, data: unknown): void {
-    const result = safeParse(schema, data);
-
-    if (!result.success) {
-        scope.assert.fail({ message: `Validation failed with: ${result.error.message}` });
-
-        return;
+const assertValidationSuccess = defineCompositeAssertion({
+    name: 'validation success',
+    assert(check, schema: Readonly<$ZodType>, data: unknown) {
+        const result = safeParse(schema, data);
+        if (!result.success) {
+            const initialChecks = check.annotated(`Validation failed with: ${result.error.message}`).fail();
+            return initialChecks;
+        }
+        return check.deepEqual(result.data, data);
     }
-
-    scope.assert.deepEqual(result.data, data);
-}
+});
 
 const schemaRejection = defineCompositeAssertion({
     name: 'schema rejection',
@@ -139,9 +139,9 @@ const invalidNestedFields: readonly SchemaValidationFailure[] = [
     }
 ];
 
-export const testNode: TestNode = suite('Project configuration validation', [
+export const testNode = suite('Project configuration validation', [
     test('microtest profile schema accepts the minimal profile', function (scope) {
-        assertValidationSuccess(scope, microtestProfileSchema, {
+        scope.assert(assertValidationSuccess, microtestProfileSchema, {
             testFamily: 'microtest',
             failureArtifacts: defaultFailureArtifactPolicy
         });
@@ -151,7 +151,7 @@ export const testNode: TestNode = suite('Project configuration validation', [
     test('microtest profile schema accepts every current profile field', function (scope) {
         const reporter = createInMemoryRealTimeReporter();
 
-        assertValidationSuccess(scope, microtestProfileSchema, {
+        scope.assert(assertValidationSuccess, microtestProfileSchema, {
             failureArtifacts: defaultFailureArtifactPolicy,
             coverage: { outputs: [] },
             execution: {
@@ -184,7 +184,7 @@ export const testNode: TestNode = suite('Project configuration validation', [
         return scope.assert.collect();
     }),
     test('microtest profile schema accepts profile file sets', function (scope) {
-        assertValidationSuccess(scope, microtestProfileSchema, {
+        scope.assert(assertValidationSuccess, microtestProfileSchema, {
             failureArtifacts: defaultFailureArtifactPolicy,
             files: {
                 sets: {
@@ -205,9 +205,9 @@ export const testNode: TestNode = suite('Project configuration validation', [
     test('microtest execution schema accepts process model and scheduling variants', function (scope) {
         for (const processModel of [ 'in-process', 'supervised-process' ] as const) {
             for (const scheduling of [ 'concurrent', 'serial' ] as const) {
-                assertValidationSuccess(scope, microtestExecutionSchema, { processModel, scheduling });
-                assertValidationSuccess(scope, microtestExecutionSchema, { maxConcurrency: 3, processModel });
-                assertValidationSuccess(scope, microtestExecutionSchema, {
+                scope.assert(assertValidationSuccess, microtestExecutionSchema, { processModel, scheduling });
+                scope.assert(assertValidationSuccess, microtestExecutionSchema, { maxConcurrency: 3, processModel });
+                scope.assert(assertValidationSuccess, microtestExecutionSchema, {
                     maxConcurrency: 'unlimited',
                     processModel
                 });
@@ -219,7 +219,7 @@ export const testNode: TestNode = suite('Project configuration validation', [
     test('integration profile schema accepts supervised profiles with files', function (scope) {
         const reporter = createInMemoryRealTimeReporter();
 
-        assertValidationSuccess(scope, integrationProfileSchema, {
+        scope.assert(assertValidationSuccess, integrationProfileSchema, {
             failureArtifacts: defaultFailureArtifactPolicy,
             attachments: defaultAttachmentLimits,
             execution: {
@@ -244,7 +244,7 @@ export const testNode: TestNode = suite('Project configuration validation', [
         return scope.assert.collect();
     }),
     test('integration profile schema accepts worker-pool profiles with files', function (scope) {
-        assertValidationSuccess(scope, integrationProfileSchema, {
+        scope.assert(assertValidationSuccess, integrationProfileSchema, {
             failureArtifacts: defaultFailureArtifactPolicy,
             attachments: defaultAttachmentLimits,
             execution: {
@@ -263,7 +263,7 @@ export const testNode: TestNode = suite('Project configuration validation', [
     test(
         'integration execution schema accepts worker-pool lifecycle and distribution fields',
         function (scope) {
-            assertValidationSuccess(scope, integrationExecutionSchema, {
+            scope.assert(assertValidationSuccess, integrationExecutionSchema, {
                 assignmentPolicy: 'case-count-balanced',
                 dispatchPolicy: 'dynamic-lease',
                 maxWorkers: 4,
@@ -272,7 +272,7 @@ export const testNode: TestNode = suite('Project configuration validation', [
                 workDistribution: { mode: 'file' },
                 workerLifecycle: 'fresh-worker-per-unit'
             });
-            assertValidationSuccess(scope, integrationExecutionSchema, {
+            scope.assert(assertValidationSuccess, integrationExecutionSchema, {
                 assignmentPolicy: 'stable',
                 dispatchPolicy: 'static-assignment',
                 processModel: 'worker-pool',
@@ -280,7 +280,7 @@ export const testNode: TestNode = suite('Project configuration validation', [
                 workDistribution: { mode: 'case' },
                 workerLifecycle: 'fresh-worker-per-unit'
             });
-            assertValidationSuccess(scope, integrationExecutionSchema, {
+            scope.assert(assertValidationSuccess, integrationExecutionSchema, {
                 processModel: 'worker-pool',
                 scheduling: 'serial',
                 workDistribution: {
@@ -300,7 +300,7 @@ export const testNode: TestNode = suite('Project configuration validation', [
                 workerLifecycle: 'fresh-worker-per-unit'
             });
 
-            assertValidationSuccess(scope, integrationExecutionSchema, {
+            scope.assert(assertValidationSuccess, integrationExecutionSchema, {
                 processModel: 'worker-pool',
                 scheduling: 'serial',
                 workerLifecycle: 'reuse'
@@ -411,8 +411,8 @@ export const testNode: TestNode = suite('Project configuration validation', [
         return scope.assert.collect();
     }),
     test('microtest process usage schema accepts measured and unmeasured policies', function (scope) {
-        assertValidationSuccess(scope, processUsageSchema, { measure: false });
-        assertValidationSuccess(scope, processUsageSchema, {
+        scope.assert(assertValidationSuccess, processUsageSchema, { measure: false });
+        scope.assert(assertValidationSuccess, processUsageSchema, {
             budgets: {
                 activeResourceCount: 1,
                 javaScriptEngineHeapBytes: 2,
@@ -426,7 +426,7 @@ export const testNode: TestNode = suite('Project configuration validation', [
         return scope.assert.collect();
     }),
     test('microtest timeout schema accepts soft and hard timeouts', function (scope) {
-        assertValidationSuccess(scope, timeoutSchema, {
+        scope.assert(assertValidationSuccess, timeoutSchema, {
             hardMilliseconds: 2,
             softMilliseconds: 1
         });

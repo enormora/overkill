@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
 import type { FailedCompositeCheck } from '../assertion-protocol/assertion-node-shape.ts';
@@ -62,7 +62,7 @@ function firstBodyError(outcome: FailOutcome): BodyErrorTestFailure | null {
     return null;
 }
 
-export const testNode: TestNode = suite('Error assertion execution', [
+export const testNode = suite('Error assertion execution', [
     test('counts throws and awaited rejects as assertion boundaries', async function (scope) {
         const result = await executeSingleBody(async function testBody(testScope) {
             testScope.plan(2);

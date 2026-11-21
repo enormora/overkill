@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import {
@@ -20,7 +20,7 @@ function unexpectedCallback(): never {
     throw new Error('Unexpected adapter callback.');
 }
 
-export const testNode: TestNode = suite('ordinary baseline adapters', [
+export const testNode = suite('ordinary baseline adapters', [
     test('rejects blank adapter IDs before invoking callbacks', function (scope) {
         scope.assert.throws(function () {
             return defineBaselineAdapter({

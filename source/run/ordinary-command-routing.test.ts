@@ -1,9 +1,9 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { ordinaryCommandRouting, ordinaryCommandScenario } from '../test-support/ordinary-command-routing.ts';
 import { commandLineExitCodes } from './command-line-command.ts';
 
-export const testNode: TestNode = suite('ordinary baseline command routing', [
+export const testNode = suite('ordinary baseline command routing', [
     table({
         title: 'routes ordinary commands and reports baseline changes',
         cases: [ 'apply', 'bootstrap', 'diff', 'update' ] as const,

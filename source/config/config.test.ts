@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { selectTestProfile } from '../run/test-profile.ts';
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
@@ -31,30 +32,34 @@ async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
     return await loadConfigFromModule('overkill.config.js', configModule(config));
 }
 
-function assertDefaultMicrotestProcessUsage(scope: TestScope, config: LoadedConfig): void {
-    const profile = selectTestProfile('microtest', config);
+const assertDefaultMicrotestProcessUsage = defineCompositeAssertion({
+    name: 'default microtest process usage',
+    assert(check, config: LoadedConfig) {
+        const profile = selectTestProfile('microtest', config);
+        if (profile === undefined || profile === null) {
+            return check.defined(profile);
+        }
+        return check.group([ check.deepEqual(profile.processUsage, defaultMicrotestProfile().processUsage) ]);
+    }
+});
 
-    scope.require.defined(profile);
-    scope.assert.deepEqual(profile.processUsage, defaultMicrotestProfile().processUsage);
-}
-
-function assertProfileTiming(
-    scope: TestScope,
-    config: LoadedConfig,
-    profileName: string,
-    collection: 'precise' | 'summary'
-): void {
-    const profile = selectTestProfile(profileName, config);
-
-    scope.require.defined(profile);
-    scope.assert.deepEqual(profile.timings, { collection });
-}
+const assertProfileTiming = defineCompositeAssertion({
+    name: 'profile timing',
+    assert(check, config: LoadedConfig, profileName: string, collection: 'precise' | 'summary') {
+        const profile = selectTestProfile(profileName, config);
+        if (profile === undefined || profile === null) {
+            return check.defined(profile);
+        }
+        return check.group([ check.deepEqual(profile.timings, { collection }) ]);
+    }
+});
 
 function requireMicrotestProfile(
-    scope: TestScope,
     profile: ProfileConfig | undefined
 ): MicrotestProfileConfig {
-    scope.require.defined(profile);
+    if (profile === undefined || profile === null) {
+        throw new Error('Expected profile to satisfy defined.');
+    }
 
     if (profile.testFamily !== 'microtest') {
         throw new TypeError('Expected a microtest profile.');
@@ -63,7 +68,7 @@ function requireMicrotestProfile(
     return profile;
 }
 
-export const testNode: TestNode = suite('Configuration loading', [
+export const testNode = suite('Configuration loading', [
     test('defineConfig() returns the project config unchanged', function (scope) {
         const projectConfig = { runtimeStateDir: 'target/overkill-state' };
 
@@ -117,9 +122,9 @@ export const testNode: TestNode = suite('Configuration loading', [
                 }
             }
         });
-        const microtestProfile = requireMicrotestProfile(scope, config.profiles.microtest);
-        const loadedProfile = requireMicrotestProfile(scope, config.profiles.loaded);
-        const rawProfile = requireMicrotestProfile(scope, config.profiles.raw);
+        const microtestProfile = requireMicrotestProfile(config.profiles.microtest);
+        const loadedProfile = requireMicrotestProfile(config.profiles.loaded);
+        const rawProfile = requireMicrotestProfile(config.profiles.raw);
 
         scope.assert.deepEqual(microtestProfile.coverage, {
             outputDirectory: resolvedConfigFixturePath('target/coverage'),
@@ -168,9 +173,9 @@ export const testNode: TestNode = suite('Configuration loading', [
                 }
             }
         });
-        assertProfileTiming(scope, config, 'microtest', 'summary');
-        assertProfileTiming(scope, config, 'precise', 'precise');
-        assertProfileTiming(scope, config, 'summary', 'summary');
+        scope.assert(assertProfileTiming, config, 'microtest', 'summary');
+        scope.assert(assertProfileTiming, config, 'precise', 'precise');
+        scope.assert(assertProfileTiming, config, 'summary', 'summary');
 
         return scope.assert.collect();
     }),
@@ -185,7 +190,7 @@ export const testNode: TestNode = suite('Configuration loading', [
 
         scope.assert.equal(config.configPath, resolvedConfigFixturePath('overkill.config.ts'));
         scope.assert.deepEqual(config.loader, { sourceMaps: true, stripMode: 'strip-only' });
-        assertDefaultMicrotestProcessUsage(scope, config);
+        scope.assert(assertDefaultMicrotestProcessUsage, config);
         scope.assert.equal(config.reporters, null);
         scope.assert.equal(config.runtimeStateDir, 'target/overkill-state');
 

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -38,7 +38,7 @@ function createFakeTerminal(): FakeTerminal {
     };
 }
 
-export const testNode: TestNode = suite('Dot reporter interrupted summary', [
+export const testNode = suite('Dot reporter interrupted summary', [
     test('dot reporter prints green summaries and interrupted test details', async function (scope) {
         const terminal = createFakeTerminal();
         const reporter = createDotReporter({

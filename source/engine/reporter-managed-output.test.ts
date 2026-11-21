@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -114,7 +114,7 @@ function errorMessages(errors: readonly RunnerError[]): readonly string[] {
     });
 }
 
-export const testNode: TestNode = suite('Reporter managed output', [
+export const testNode = suite('Reporter managed output', [
     test(
         'reporter dispatcher writes managed output in reporter registration order',
         async function (scope) {

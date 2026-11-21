@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { Hash } from 'node:crypto';
 import { mock } from 'node:test';
-import { type TestNode, suite, test, type TestRandom } from '@overkill-dev/test';
+import { suite, test, type TestRandom } from '@overkill-dev/test';
 
 import type { ExecuteExecution } from '../packages/engine/engine.entry-point.ts';
 
@@ -76,7 +76,7 @@ function randomFromZeroDigest(): TestRandom {
     }
 }
 
-export const testNode: TestNode = suite('case random streams', [
+export const testNode = suite('case random streams', [
     test('recovers from an all-zero hashed generator state', function (scope) {
         const random = randomFromZeroDigest();
         scope.assert.notDeepEqual(draw(random), draw(random));

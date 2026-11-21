@@ -11,7 +11,7 @@ import {
 } from './deterministic-run-fixtures.ts';
 import { createVirtualRunDiscovery } from './virtual-run-discovery.ts';
 
-const file = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const file = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 type MemoryChild = ChildRunFixture & { readonly execute: () => Promise<void>; };
 export function memorySupervisedChild(mode: 'collect' | 'run', selected: boolean, restricted: boolean): MemoryChild {
     const environment = {};

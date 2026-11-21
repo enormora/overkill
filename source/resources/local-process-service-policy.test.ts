@@ -1,13 +1,13 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { serializeProjectedHandle, deserializeProjectedHandle } from '../run/resource-lifecycle-projection.ts';
 
 import { localProcessService, type ProcessConsumer } from '../test-support/local-process-service.ts';
 import { createLocalProcessServiceResource } from './local-process-service-resource.ts';
 
-export const testNode: TestNode = suite('local process service ownership', [
+export const testNode = suite('local process service ownership', [
     test('projects per-run process consumer handles without starting an owner', function (scope) {
-        const fixture = localProcessService(scope, 'graceful', 'ready');
+        const fixture = localProcessService(scope.cleanup, scope.signal, 'graceful', 'ready');
         const resource = createLocalProcessServiceResource({
             ...fixture.input,
             scope: 'per-run',
@@ -37,7 +37,7 @@ export const testNode: TestNode = suite('local process service ownership', [
         test(scope) {
             const missing = scope.parameters;
 
-            const fixture = localProcessService(scope, 'graceful', 'ready');
+            const fixture = localProcessService(scope.cleanup, scope.signal, 'graceful', 'ready');
             const input = {
                 ...fixture.input,
                 scope: 'per-run',
@@ -60,7 +60,7 @@ export const testNode: TestNode = suite('local process service ownership', [
     test(
         'forwards command settings and exposes captured output to readiness',
         async function (scope) {
-            const fixture = localProcessService(scope, 'graceful', 'ready');
+            const fixture = localProcessService(scope.cleanup, scope.signal, 'graceful', 'ready');
             const owner = await fixture.definition.start(fixture.context);
             scope.assert.deepEqual(await fixture.definition.ready(owner, fixture.context), { endpoint: 'ready' });
             scope.assert.deepEqual(fixture.commands, [ {
@@ -79,7 +79,7 @@ export const testNode: TestNode = suite('local process service ownership', [
     test(
         'forces shutdown after the grace budget and waits for process exit',
         async function (scope) {
-            const fixture = localProcessService(scope, 'forced', 'ready');
+            const fixture = localProcessService(scope.cleanup, scope.signal, 'forced', 'ready');
             const owner = await fixture.definition.start(fixture.context);
             await fixture.definition.dispose(owner, fixture.context);
             await fixture.definition.dispose(owner, fixture.context);
@@ -90,7 +90,7 @@ export const testNode: TestNode = suite('local process service ownership', [
         }
     ),
     test('does not signal an already exited process', async function (scope) {
-        const fixture = localProcessService(scope, 'graceful', 'ready');
+        const fixture = localProcessService(scope.cleanup, scope.signal, 'graceful', 'ready');
         const owner = await fixture.definition.start(fixture.context);
         fixture.exit(0, null);
         await fixture.definition.dispose(owner, fixture.context);
@@ -101,7 +101,7 @@ export const testNode: TestNode = suite('local process service ownership', [
     test(
         'rejects readiness when the child already exited before observation began',
         async function (scope) {
-            const fixture = localProcessService(scope, 'graceful', 'ready');
+            const fixture = localProcessService(scope.cleanup, scope.signal, 'graceful', 'ready');
             const owner = await fixture.definition.start(fixture.context);
             fixture.exit(1, null);
             await scope.assert.rejects(async function () {
@@ -112,7 +112,7 @@ export const testNode: TestNode = suite('local process service ownership', [
         }
     ),
     test('preserves process signalling failures', async function (scope) {
-        const fixture = localProcessService(scope, 'throws', 'ready');
+        const fixture = localProcessService(scope.cleanup, scope.signal, 'throws', 'ready');
         const owner = await fixture.definition.start(fixture.context);
         await scope.assert.rejects(async function () {
             await fixture.definition.dispose(owner, fixture.context);
@@ -121,7 +121,7 @@ export const testNode: TestNode = suite('local process service ownership', [
         return scope.assert.collect();
     }),
     test('retains readiness callback failures', async function (scope) {
-        const fixture = localProcessService(scope, 'graceful', 'failed');
+        const fixture = localProcessService(scope.cleanup, scope.signal, 'graceful', 'failed');
         const owner = await fixture.definition.start(fixture.context);
         await scope.assert.rejects(async function () {
             await fixture.definition.ready(owner, fixture.context);
@@ -132,7 +132,7 @@ export const testNode: TestNode = suite('local process service ownership', [
     test(
         'rejects readiness when the process exits and includes stderr evidence',
         async function (scope) {
-            const fixture = localProcessService(scope, 'graceful', 'exit');
+            const fixture = localProcessService(scope.cleanup, scope.signal, 'graceful', 'exit');
             const owner = await fixture.definition.start(fixture.context);
             await scope.assert.rejects(async function () {
                 await fixture.definition.ready(owner, fixture.context);
@@ -142,7 +142,7 @@ export const testNode: TestNode = suite('local process service ownership', [
         }
     ),
     test('rejects readiness when the child reports a process error', async function (scope) {
-        const fixture = localProcessService(scope, 'graceful', 'error');
+        const fixture = localProcessService(scope.cleanup, scope.signal, 'graceful', 'error');
         const owner = await fixture.definition.start(fixture.context);
         await scope.assert.rejects(async function () {
             await fixture.definition.ready(owner, fixture.context);
@@ -157,7 +157,7 @@ export const testNode: TestNode = suite('local process service ownership', [
         test(scope) {
             const value = scope.parameters;
 
-            const fixture = localProcessService(scope, 'graceful', 'ready');
+            const fixture = localProcessService(scope.cleanup, scope.signal, 'graceful', 'ready');
             scope.assert.throws(function () {
                 createLocalProcessServiceResource({ ...fixture.input, outputBufferBytes: value });
             }, { message: 'Local process service outputBufferBytes must be a non-negative integer.' });

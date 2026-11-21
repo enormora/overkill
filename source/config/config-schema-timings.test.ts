@@ -1,51 +1,43 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineMacro, suite, table, test } from '@overkill-dev/test';
 
 import { safeParse } from '@schema-hub/zod-error-formatter';
 
 import { timingProfilePolicySchema } from './schema.ts';
 
-function assertValidationSuccess(scope: TestScope, data: unknown): void {
-    const result = safeParse(timingProfilePolicySchema, data);
+const assertValidationFailure = defineMacro((title: string, data: unknown, expectedIssues: readonly string[]) =>
+    test(title, (scope) => {
+        const result = safeParse(timingProfilePolicySchema, data);
 
-    if (!result.success) {
-        scope.assert.fail({ message: `Validation failed with: ${result.error.message}` });
+        if (result.success) {
+            scope.assert.fail({ message: 'Validation succeeded but a failure was expected' });
 
-        return;
-    }
+            return scope.assert.collect();
+        }
 
-    scope.assert.deepEqual(result.data, data);
-}
-
-function assertValidationFailure(
-    scope: TestScope,
-    data: unknown,
-    expectedIssues: readonly string[]
-): void {
-    const result = safeParse(timingProfilePolicySchema, data);
-
-    if (result.success) {
-        scope.assert.fail({ message: 'Validation succeeded but a failure was expected' });
-
-        return;
-    }
-
-    scope.assert.deepEqual(result.error.issues, expectedIssues);
-}
-
-export const testNode: TestNode = suite('Timing profile schema', [
-    test('accepts collection modes', function (scope) {
-        assertValidationSuccess(scope, { collection: 'summary' });
-        assertValidationSuccess(scope, { collection: 'precise' });
-
-        return scope.assert.collect();
-    }),
-    test('rejects missing collection and extra fields', function (scope) {
-        assertValidationFailure(
-            scope,
-            { extra: true },
-            [ 'at collection: missing property', 'unexpected additional property: "extra"' ]
-        );
+        scope.assert.deepEqual(result.error.issues, expectedIssues);
 
         return scope.assert.collect();
     })
+);
+
+export const testNode = suite('Timing profile schema', [
+    table({
+        title: 'accepts collection modes',
+        cases: [ 'summary', 'precise' ] as const,
+        caseTitle(mode) {
+            return mode;
+        },
+        test(scope) {
+            const result = safeParse(timingProfilePolicySchema, { collection: scope.parameters });
+            scope.assert.true(result.success);
+            if (result.success) {
+                scope.assert.deepEqual(result.data, { collection: scope.parameters });
+            }
+            return scope.assert.collect();
+        }
+    }),
+    assertValidationFailure('rejects missing collection and extra fields', { extra: true }, [
+        'at collection: missing property',
+        'unexpected additional property: "extra"'
+    ])
 ]);

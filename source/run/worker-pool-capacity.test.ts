@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defaultIntegrationProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import type { WorkerLifecycle } from '../config/types.ts';
@@ -64,7 +64,7 @@ function workerCount(
         .resolved;
 }
 
-export const testNode: TestNode = suite('Worker pool capacity', [
+export const testNode = suite('Worker pool capacity', [
     test('worker count resolves defaults and caps in precedence order', function (scope) {
         const units = Array.from({ length: 16 }, function toUnit(_value, index) {
             return workUnit(`reuse-${index + 1}`, 'reuse');

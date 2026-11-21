@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
 import { createHostedWorkerPool } from './worker-pool-host-process.ts';
 
-export const testNode: TestNode = suite('Worker pool host process edge', [
+export const testNode = suite('Worker pool host process edge', [
     test('createHostedWorkerPool() rejects invalid tasks', async function (scope) {
         const controller = new AbortController();
         const pool = createHostedWorkerPool({

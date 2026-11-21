@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
@@ -9,7 +9,7 @@ import { readCompactHistory, updateCompactHistory } from './history-storage.ts';
 const directory = '/project/state';
 const context = { directory, policy: defaultHistoryPolicy, now: historyTimestamp, mode: 'explicit' as const };
 
-export const testNode: TestNode = suite('history repair failures', [
+export const testNode = suite('history repair failures', [
     test(
         'unresolved records retain their known summary family during repair',
         async function (scope) {

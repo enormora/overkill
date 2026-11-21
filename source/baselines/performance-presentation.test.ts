@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test, testDouble } from '@overkill-dev/test';
+import { type TestScope, suite, test, testDouble } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 
@@ -25,7 +25,7 @@ const adapter: PerformanceBaselineAdapter = {
         return input.actual.value;
     }
 };
-export const testNode: TestNode = suite('performance chart presentation', [
+export const testNode = suite('performance chart presentation', [
     test('validates one-sided ranges and rejects empty or duplicate metric identities', function (scope) {
         const metric = { name: 'median', unit: 'ms', scale: { kind: 'raw' }, actual: 2 } as const;
         for (

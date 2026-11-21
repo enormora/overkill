@@ -1,5 +1,6 @@
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import diagnosticsChannel from 'node:diagnostics_channel';
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { NormalizedConfig, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
 import { defineReporter, type RunnerError } from '../packages/engine/engine.entry-point.ts';
@@ -25,8 +26,8 @@ type ExpectedPermissionDiagnosticError = {
 };
 type PermissionDiagnosticChannel = { readonly publish: (message: unknown) => void; };
 
-const loadEnvPolicyFixturePath = 'source/integration-tests/integration/fixtures/load-env-policy.test.ts';
-const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const loadEnvPolicyFixturePath = 'source/integration-tests/runtime/fixtures/load-env-policy.test.ts';
+const passingFixturePath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 const policyAnnotations: PolicyTestCase['annotations'] = {
     ownership: [],
     tags: []
@@ -144,20 +145,23 @@ function errorCapabilityAndStrictness(error: RunnerError): readonly [string | nu
     return [ errorCapability(error), errorStrictness(error) ];
 }
 
-function assertPermissionDiagnosticError(
-    scope: TestScope,
-    error: RunnerError,
-    expected: ExpectedPermissionDiagnosticError
-): void {
-    scope.assert.equal(error.subtype, 'permission');
-    scope.assert.equal(errorCapability(error), expected.capability);
-    scope.assert.equal(errorStringField(error, 'permission'), expected.permission);
-    scope.assert.equal(errorStringField(error, 'resource'), expected.resource);
-    scope.assert.equal(errorStringField(error, 'source'), 'diagnostic-channel');
-    if (expected.message !== null) {
-        scope.assert.equal(error.message, expected.message);
+const assertPermissionDiagnosticError = defineCompositeAssertion({
+    name: 'permission diagnostic error',
+    assert(check, error: RunnerError, expected: ExpectedPermissionDiagnosticError) {
+        const initialChecks = check.group([
+            check.equal(error.subtype, 'permission'),
+            check.equal(errorCapability(error), expected.capability),
+            check.equal(errorStringField(error, 'permission'), expected.permission),
+            check.equal(errorStringField(error, 'resource'), expected.resource),
+            check.equal(errorStringField(error, 'source'), 'diagnostic-channel')
+        ]);
+        if (expected.message !== null) {
+            return check.group([ initialChecks, check.equal(error.message, expected.message) ]);
+        } else {
+            return initialChecks;
+        }
     }
-}
+});
 
 function createStorage(values: ReadonlyMap<string, string>): WebStorageLike {
     return {
@@ -203,7 +207,7 @@ function createSparseStorage(): WebStorageLike {
     };
 }
 
-export const testNode: TestNode = suite('Run capability policy', [
+export const testNode = suite('Run capability policy', [
     test(
         'orchestrator.run() reports load-time capability restrictions outside a test case',
         async function (scope) {
@@ -327,7 +331,7 @@ export const testNode: TestNode = suite('Run capability policy', [
             const error = firstRunnerError(policy.takeAttemptErrors(policyTestCase, { index: 0 }));
             const runErrors = policy.takeRunErrors();
 
-            assertPermissionDiagnosticError(scope, error, {
+            scope.assert(assertPermissionDiagnosticError, error, {
                 capability: 'fs-write',
                 message: 'Permission denied: FileSystemWrite for /project/output.txt.',
                 permission: 'FileSystemWrite',
@@ -369,7 +373,7 @@ export const testNode: TestNode = suite('Run capability policy', [
             const error = firstRunnerError(policy.takeAttemptErrors(policyTestCase, { index: 0 }));
             const runErrors = policy.takeRunErrors();
 
-            assertPermissionDiagnosticError(scope, error, {
+            scope.assert(assertPermissionDiagnosticError, error, {
                 capability: 'fs-read',
                 message: null,
                 permission: 'FileSystemRead',

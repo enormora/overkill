@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { DryRunStatus, TestStatus } from '@stryker-mutator/api/test-runner';
 import { collectedMutationPlan } from '../../test-support/mutation-plan-fixture.ts';
@@ -40,7 +40,7 @@ function withOutcome(reply: ResultReply, outcome: PerTestResult['outcome']): Res
     };
 }
 
-export const testNode: TestNode = suite('structured dry-run results', [
+export const testNode = suite('structured dry-run results', [
     test('returns timeouts for valid interrupted lifecycle evidence', function (scope) {
         const { reply } = mutationCoverageFixture('off');
         scope.assert.deepEqual(

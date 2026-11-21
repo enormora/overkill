@@ -22,13 +22,13 @@ type FixtureCaseBody = Extract<
 >;
 
 const deterministicRunFixturePaths = {
-    emptySuite: 'source/integration-tests/integration/fixtures/empty-suite.test.ts',
-    customEnginePassing: 'source/integration-tests/integration/fixtures/custom-engine-passing.test.ts',
-    loadEnvPolicy: 'source/integration-tests/integration/fixtures/load-env-policy.test.ts',
-    microtestCaptureControls: 'source/integration-tests/integration/fixtures/microtest-capture-controls.test.ts',
-    passing: 'source/integration-tests/integration/fixtures/passing.test.ts',
-    selection: 'source/integration-tests/integration/fixtures/selection.test.ts',
-    throwsOnImport: 'source/integration-tests/integration/fixtures/throws-on-import.test.ts'
+    emptySuite: 'source/integration-tests/runtime/fixtures/empty-suite.test.ts',
+    customEnginePassing: 'source/integration-tests/runtime/fixtures/custom-engine-passing.test.ts',
+    loadEnvPolicy: 'source/integration-tests/runtime/fixtures/load-env-policy.test.ts',
+    microtestCaptureControls: 'source/integration-tests/runtime/fixtures/microtest-capture-controls.test.ts',
+    passing: 'source/integration-tests/runtime/fixtures/passing.test.ts',
+    selection: 'source/integration-tests/runtime/fixtures/selection.test.ts',
+    throwsOnImport: 'source/integration-tests/runtime/fixtures/throws-on-import.test.ts'
 };
 
 export type DeterministicRunCollection = {

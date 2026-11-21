@@ -1,4 +1,4 @@
-import { suite, test, type TestNode } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { Random } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
@@ -25,7 +25,7 @@ function searchSequence(direction: number): number[] {
     });
 }
 
-export const testNode: TestNode = suite('property targeting', [
+export const testNode = suite('property targeting', [
     test('score stagnation completes and coverage remains independent', async function (scope) {
         const make = function (minimumPercent: number): SubjectTestCase {
             return property({

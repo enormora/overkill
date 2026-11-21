@@ -1,4 +1,5 @@
-import type { TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+
 import type { ReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { RunResultSession } from '../run/run-support.ts';
@@ -27,6 +28,11 @@ export function coverageBaselineSession(
         }
         : null;
 }
-export function assertCoverageBaseline(scope: TestScope, result: RunResult, enabled: boolean): void {
-    scope.assert.deepEqual(readOrdinaryBaselineReport(result)?.warnings ?? [], enabled ? warnings : []);
-}
+export const assertCoverageBaseline = defineCompositeAssertion({
+    name: 'coverage baseline',
+    assert(check, result: RunResult, enabled: boolean) {
+        return check.group([
+            check.deepEqual(readOrdinaryBaselineReport(result)?.warnings ?? [], enabled ? warnings : [])
+        ]);
+    }
+});

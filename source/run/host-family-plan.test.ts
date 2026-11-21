@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import {
     createRunResult,
@@ -10,8 +10,8 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { bindFamilySettings, type BoundFamilySettings } from '../engine/test-family.ts';
-import { family as runtimeFamily } from '../integration-tests/integration/fixtures/imported-runtime-family.ts';
-import { family as analysisFamily } from '../integration-tests/integration/fixtures/imported-analysis-family.ts';
+import { family as runtimeFamily } from '../integration-tests/runtime/fixtures/imported-runtime-family.ts';
+import { family as analysisFamily } from '../integration-tests/runtime/fixtures/imported-analysis-family.ts';
 
 import { familyCatalog, type CollectedFamilyMetadata, type FrozenFamilyDefinition } from './family-catalog.ts';
 import {
@@ -116,7 +116,7 @@ const executionOptions: ExecuteOptions = {
     propertyRun: { seed: 0n, projectRoot: null }
 };
 
-export const testNode: TestNode = suite('host family catalogs', [
+export const testNode = suite('host family catalogs', [
     table({
         title: 'admits selected family work to the host driver',
         cases: [ runtimeFamily, analysisFamily ],

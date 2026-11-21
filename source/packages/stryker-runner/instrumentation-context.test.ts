@@ -1,5 +1,6 @@
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import assert from 'node:assert/strict';
-import { type TestNode, table, suite, test, type TestScope } from '@overkill-dev/test';
+import { table, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { INSTRUMENTER_CONSTANTS, type InstrumenterContext, type MutantCoverage } from '@stryker-mutator/api/core';
 
@@ -30,17 +31,17 @@ function restoreContext(previous: Readonly<PropertyDescriptor> | undefined, acti
     }
 }
 
-function installContext(scope: TestScope, context: unknown): void {
+function installContext(cleanup: TestScope['cleanup'], context: unknown): void {
     const previous = Object.getOwnPropertyDescriptor(globalThis, namespace);
     const activeMutant = environment[activeEnvironment];
     Object.defineProperty(globalThis, namespace, { value: context, configurable: true, writable: true });
     environment[activeEnvironment] = 'old-mutant';
-    scope.cleanup(function restoreInstrumentation() {
+    cleanup(function restoreInstrumentation() {
         restoreContext(previous, activeMutant);
     });
 }
 
-function staleContext(scope: TestScope): CoveredContext {
+function staleContext(cleanup: TestScope['cleanup']): CoveredContext {
     const context = {
         activeMutant: 'old-mutant',
         currentTestId: 'old-case',
@@ -48,7 +49,7 @@ function staleContext(scope: TestScope): CoveredContext {
         hitLimit: 1,
         mutantCoverage: { static: { 0: 2 }, perTest: { 'old-case': { 0: 3 } } }
     };
-    installContext(scope, context);
+    installContext(cleanup, context);
     return context;
 }
 
@@ -61,12 +62,17 @@ function captureReferences(context: CoveredContext): CounterReferences {
     };
 }
 
-function assertRetainedReferences(scope: TestScope, references: CounterReferences): void {
-    scope.assert.equal(Reflect.get(globalThis, namespace), references.context);
-    scope.assert.equal(references.context.mutantCoverage, references.coverage);
-    scope.assert.equal(references.coverage.static, references.staticCounters);
-    scope.assert.equal(references.coverage.perTest, references.perTestCounters);
-}
+const assertRetainedReferences = defineCompositeAssertion({
+    name: 'retained references',
+    assert(check, references: CounterReferences) {
+        return check.group([
+            check.equal(Reflect.get(globalThis, namespace), references.context),
+            check.equal(references.context.mutantCoverage, references.coverage),
+            check.equal(references.coverage.static, references.staticCounters),
+            check.equal(references.coverage.perTest, references.perTestCounters)
+        ]);
+    }
+});
 
 function assertBlockedProperties(error: unknown): boolean {
     assert.ok(error instanceof AggregateError);
@@ -82,7 +88,7 @@ function assertBlockedProperties(error: unknown): boolean {
     return true;
 }
 
-function blockedHitPolicy(scope: TestScope): CoveredContext {
+function blockedHitPolicy(cleanup: TestScope['cleanup']): CoveredContext {
     const context = new Proxy({ mutantCoverage: { static: {}, perTest: {} } }, {
         set(target, key, value: unknown) {
             if (key === 'hitLimit') {
@@ -91,7 +97,7 @@ function blockedHitPolicy(scope: TestScope): CoveredContext {
             return Reflect.set(target, key, value);
         }
     });
-    installContext(scope, context);
+    installContext(cleanup, context);
     return context;
 }
 
@@ -109,33 +115,33 @@ async function activateLifecycle(mode: 'runtime' | 'static'): Promise<void> {
     await lifecycle.beforeCases();
 }
 
-export const testNode: TestNode = suite('invocation instrumentation ownership', [
+export const testNode = suite('invocation instrumentation ownership', [
     test('resets counters without assigning or replacing retained objects', function (scope) {
-        const context = staleContext(scope);
+        const context = staleContext(scope.cleanup);
         const references = captureReferences(context);
         Object.defineProperty(context, 'mutantCoverage', { writable: false });
         Object.defineProperty(globalThis, namespace, { writable: false });
         const invocation = createInvocationInstrumentation();
         scope.assert.equal(invocation.context, context);
-        assertRetainedReferences(scope, references);
+        scope.assert(assertRetainedReferences, references);
         scope.assert.deepEqual(structuredClone(context), { mutantCoverage: { static: {}, perTest: {} } });
         invocation.dispose();
         return scope.assert.collect();
     }),
     test('resets subsequent invocations without replacing retained counters', function (scope) {
-        const context = staleContext(scope);
+        const context = staleContext(scope.cleanup);
         const references = captureReferences(context);
         const invocation = createInvocationInstrumentation();
         context.mutantCoverage.static['0'] = 4;
         invocation.dispose();
         const next = createInvocationInstrumentation();
-        assertRetainedReferences(scope, references);
+        scope.assert(assertRetainedReferences, references);
         scope.assert.deepEqual(context.mutantCoverage, { static: {}, perTest: {} });
         next.dispose();
         return scope.assert.collect();
     }),
     test('disposes transient state repeatedly', function (scope) {
-        const context = staleContext(scope);
+        const context = staleContext(scope.cleanup);
         const invocation = createInvocationInstrumentation();
         invocation.activate('next', 0);
         invocation.context.currentTestId = 'case';
@@ -147,7 +153,7 @@ export const testNode: TestNode = suite('invocation instrumentation ownership', 
         return scope.assert.collect();
     }),
     test('retains collected counters after disposal', function (scope) {
-        const context = staleContext(scope);
+        const context = staleContext(scope.cleanup);
         const invocation = createInvocationInstrumentation();
         context.mutantCoverage.static['0'] = 4;
         invocation.dispose();
@@ -159,7 +165,7 @@ export const testNode: TestNode = suite('invocation instrumentation ownership', 
         cases: [ null, 0, 3 ],
         caseTitle: String,
         test(scope) {
-            installContext(scope, undefined);
+            installContext(scope.cleanup, undefined);
             const invocation = createInvocationInstrumentation();
             invocation.activate('mutant', scope.parameters);
             scope.assert.deepEqual(structuredClone(invocation.context), {
@@ -179,7 +185,7 @@ export const testNode: TestNode = suite('invocation instrumentation ownership', 
         }
     }),
     test('continues resetting counters and activation after a counter deletion fails', function (scope) {
-        const context = staleContext(scope);
+        const context = staleContext(scope.cleanup);
         const staticCounters = context.mutantCoverage.static;
         Object.defineProperty(staticCounters, 'blocked', { value: 7, enumerable: true, configurable: false });
         staticCounters.later = 8;
@@ -191,7 +197,7 @@ export const testNode: TestNode = suite('invocation instrumentation ownership', 
         return scope.assert.collect();
     }),
     test('continues clearing activation after one transient property cannot be deleted', function (scope) {
-        const context = staleContext(scope);
+        const context = staleContext(scope.cleanup);
         Object.defineProperty(context, 'currentTestId', { configurable: false });
         scope.assert.throws(createInvocationInstrumentation, {
             message: 'Stryker instrumentation cannot reset "currentTestId".'
@@ -201,7 +207,7 @@ export const testNode: TestNode = suite('invocation instrumentation ownership', 
         return scope.assert.collect();
     }),
     test('rolls back a failed partial activation without replacing the namespace', function (scope) {
-        const context = staleContext(scope);
+        const context = staleContext(scope.cleanup);
         const invocation = createInvocationInstrumentation();
         const failure = new Error('Cannot install hit limit.');
         Object.defineProperty(context, 'hitLimit', {
@@ -222,7 +228,7 @@ export const testNode: TestNode = suite('invocation instrumentation ownership', 
         return scope.assert.collect();
     }),
     test('disposes independent state and reports every blocked property', function (scope) {
-        const context = staleContext(scope);
+        const context = staleContext(scope.cleanup);
         const invocation = createInvocationInstrumentation();
         invocation.activate('mutant', 3);
         Object.defineProperties(context, {
@@ -241,7 +247,7 @@ export const testNode: TestNode = suite('invocation instrumentation ownership', 
     }),
     test('rejects invalid namespaces while cleaning independently removable state', function (scope) {
         const context = { activeMutant: 'old', currentTestId: 'case', mutantCoverage: 'invalid' };
-        installContext(scope, context);
+        installContext(scope.cleanup, context);
         scope.assert.throws(createInvocationInstrumentation, { message: 'Invalid Stryker instrumentation namespace.' });
         scope.assert.deepEqual(context, { mutantCoverage: 'invalid' });
         scope.assert.equal(Reflect.get(globalThis, namespace), context);
@@ -250,7 +256,7 @@ export const testNode: TestNode = suite('invocation instrumentation ownership', 
     }),
     test('cleans activation when a missing coverage object cannot be installed', function (scope) {
         const context = Object.preventExtensions({ activeMutant: 'old' });
-        installContext(scope, context);
+        installContext(scope.cleanup, context);
         scope.assert.throws(createInvocationInstrumentation, {
             message: 'Stryker instrumentation coverage cannot be initialized.'
         });
@@ -259,7 +265,7 @@ export const testNode: TestNode = suite('invocation instrumentation ownership', 
         return scope.assert.collect();
     }),
     test('cleans the environment when a missing namespace cannot be installed', function (scope) {
-        installContext(scope, undefined);
+        installContext(scope.cleanup, undefined);
         Object.defineProperty(globalThis, namespace, { writable: false });
         scope.assert.throws(createInvocationInstrumentation, {
             message: 'Stryker instrumentation namespace cannot be initialized.'
@@ -277,7 +283,7 @@ export const testNode: TestNode = suite('invocation instrumentation ownership', 
         async test(scope) {
             const mode = scope.parameters;
 
-            const context = blockedHitPolicy(scope);
+            const context = blockedHitPolicy(scope.cleanup);
             await scope.assert.rejects(async function () {
                 await activateLifecycle(mode);
             }, { message: 'Cannot install hit limit.' });

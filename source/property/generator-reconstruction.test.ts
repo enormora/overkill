@@ -1,4 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import { Random, configureGlobal, readConfigureGlobal, resetConfigureGlobal } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
@@ -35,17 +36,25 @@ class MutableInput {
     }
 }
 
-function assertFreshClass(scope: TestScope, retained: GeneratedInput<MutableInput>): void {
-    const first = retained.reconstruct();
-    const expected = first.read();
-    scope.assert.equal(first instanceof MutableInput, true);
-    scope.assert.equal(expected !== undefined && expected !== -1, true);
-    first.corrupt();
-    const fresh = retained.reconstruct();
-    scope.assert.equal(fresh instanceof MutableInput, true);
-    scope.assert.equal(fresh.read(), expected);
-    scope.assert.equal(fresh.hasGraphLinks(), true);
-}
+const assertFreshClass = defineCompositeAssertion({
+    name: 'fresh class',
+    assert(check, retained: GeneratedInput<MutableInput>) {
+        const first = retained.reconstruct();
+        const expected = first.read();
+        const initialChecks = check.group([
+            check.equal(first instanceof MutableInput, true),
+            check.equal(expected !== undefined && expected !== -1, true)
+        ]);
+        first.corrupt();
+        const fresh = retained.reconstruct();
+        return check.group([
+            initialChecks,
+            check.equal(fresh instanceof MutableInput, true),
+            check.equal(fresh.read(), expected),
+            check.equal(fresh.hasGraphLinks(), true)
+        ]);
+    }
+});
 
 type GraphKey = { readonly bytes: Uint8Array; };
 type InputGraph = {
@@ -56,27 +65,23 @@ type InputGraph = {
     readonly set: ReadonlySet<GraphKey>;
 };
 
-function assertGraphLinks(scope: TestScope, graph: InputGraph): void {
-    scope.assert.equal(graph.view.buffer === graph.bytes.buffer, true);
-    scope.assert.equal(graph.view.byteOffset, 1);
-    scope.assert.equal(graph.view.byteLength, 2);
-    scope.assert.equal(graph.map.get(graph.key) === graph.bytes, true);
-    scope.assert.equal(graph.set.has(graph.key), true);
-    scope.assert.equal(graph.key.bytes === graph.bytes, true);
-}
+const assertGraphLinks = defineCompositeAssertion({
+    name: 'graph links',
+    assert(check, graph: InputGraph) {
+        return check.group([
+            check.equal(graph.view.buffer === graph.bytes.buffer, true),
+            check.equal(graph.view.byteOffset, 1),
+            check.equal(graph.view.byteLength, 2),
+            check.equal(graph.map.get(graph.key) === graph.bytes, true),
+            check.equal(graph.set.has(graph.key), true),
+            check.equal(graph.key.bytes === graph.bytes, true)
+        ]);
+    }
+});
 
 type StatefulInput = { readonly bytes: Uint8Array; readonly branch: boolean; };
 
-function assertRebuiltState(scope: TestScope, retained: GeneratedInput<StatefulInput>): boolean {
-    const first = retained.reconstruct();
-    const expected = Array.from(first.bytes);
-    first.bytes.fill(255);
-    const fresh = retained.reconstruct();
-    scope.assert.deepEqual(Array.from(fresh.bytes), expected);
-    return fresh.branch;
-}
-
-export const testNode: TestNode = suite('generator reconstruction', [
+export const testNode = suite('generator reconstruction', [
     test('isolates generation and reconstruction from backend global sizing defaults', function (scope) {
         const previous = readConfigureGlobal();
         scope.cleanup(function restoreBackendDefaults() {
@@ -128,7 +133,7 @@ export const testNode: TestNode = suite('generator reconstruction', [
             return candidate.shrink();
         });
         for (const retained of [ root, ...descendants ]) {
-            assertFreshClass(scope, retained);
+            scope.assert(assertFreshClass, retained);
         }
         scope.assert.equal(descendants.length > 3, true);
         scope.assert.equal(root.reconstruct().read() !== -1, true);
@@ -151,7 +156,7 @@ export const testNode: TestNode = suite('generator reconstruction', [
         first.view.setUint8(0, 255);
         const fresh = retained.reconstruct();
         scope.assert.deepEqual(Array.from(fresh.bytes), expected);
-        assertGraphLinks(scope, fresh);
+        scope.assert(assertGraphLinks, fresh);
         scope.assert.equal(fresh.bytes.buffer === first.bytes.buffer, false);
         return scope.assert.collect();
     }),
@@ -209,7 +214,13 @@ export const testNode: TestNode = suite('generator reconstruction', [
                 undefined,
                 generatorContext(1, 1, 1000)
             );
-            expanded += Number(assertRebuiltState(scope, retained));
+
+            const first = retained.reconstruct();
+            const expected = Array.from(first.bytes);
+            first.bytes.fill(255);
+            const fresh = retained.reconstruct();
+            scope.assert.deepEqual(Array.from(fresh.bytes), expected);
+            expanded += Number(fresh.branch);
         }
         scope.assert.equal(expanded > 0, true);
         return scope.assert.collect();

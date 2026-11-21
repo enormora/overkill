@@ -46,14 +46,14 @@ function reporterError(): RunnerError {
     return error;
 }
 export function supervisedMessageRuntime(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     reportingFailure: boolean,
     collected: boolean
 ): SupervisedMessageFixture {
     const original = fakeWorkerRuntime(createCollectedPlan());
     const work = firstCollectedWork(original.collectedPlan);
     const attachments = attachmentCoordinationForWork(null, [ work ]);
-    scope.cleanup(attachments.coordinator.close);
+    cleanup(attachments.coordinator.close);
     const reported: ReporterEvent[] = [];
     const runtime: SupervisedRunRuntime = {
         attachments: attachments.coordinator,

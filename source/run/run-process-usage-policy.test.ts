@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineOutputRenderer } from '../packages/engine/engine.entry-point.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -6,9 +6,9 @@ import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '..
 import type { NormalizedConfig } from '../config/types.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
 
-const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const passingFixturePath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 
-const defaultConfig: NormalizedConfig = defaultRunConfig({
+const defaultConfig = defaultRunConfig({
     outputRenderer: defineOutputRenderer(function createEmptyOutputRenderer() {
         return {
             render() {
@@ -25,7 +25,7 @@ const defaultConfig: NormalizedConfig = defaultRunConfig({
     }
 });
 
-const defaultRequest: RunRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
+const defaultRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
 
 function plainData(value: unknown): unknown {
     return structuredClone(value);
@@ -40,7 +40,7 @@ function createRunCommand(config: NormalizedConfig, request: RunRequest): RunCom
     };
 }
 
-export const testNode: TestNode = suite('Process usage policy resolution', [
+export const testNode = suite('Process usage policy resolution', [
     test(
         'records process usage policy from config and request overrides',
         async function (scope) {

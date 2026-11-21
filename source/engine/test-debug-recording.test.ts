@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { EqualAssertionNode } from '../assertion-protocol/assertions/equality.ts';
 import { createDefaultWorkId } from './identity.ts';
@@ -35,7 +35,7 @@ function completedAttempt(): DebugAttempt {
     return attempt;
 }
 
-export const testNode: TestNode = suite('debug recording boundaries', [
+export const testNode = suite('debug recording boundaries', [
     test('drops oversized timeline labels while preserving body completion', function (scope) {
         const attempt = createDebugAttempt(work);
         attempt.assertion({ ...assertion, message: 'x'.repeat(11 * 1024 * 1024) });

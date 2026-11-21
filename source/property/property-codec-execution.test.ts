@@ -1,11 +1,11 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property } from './property-authoring.ts';
 import { defineCodec } from './property-codec.ts';
 import { gen } from './generators.ts';
 
-export const testNode: TestNode = suite('Property decoder errors', [
+export const testNode = suite('Property decoder errors', [
     test('prevent trial execution', async function (scope) {
         let bodies = 0;
         const codec = defineCodec({

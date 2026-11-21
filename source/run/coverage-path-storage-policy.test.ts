@@ -1,8 +1,8 @@
-import { type TestNode, table, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { coveragePathStorage, coveragePaths } from '../test-support/coverage-path-storage.ts';
 
-export const testNode: TestNode = suite('coverage directory ownership', [
+export const testNode = suite('coverage directory ownership', [
     table({
         title: 'creates coverage within the project',
         cases: [ 'ancestor', 'pass' ] as const,

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { runPlanCollection } from '../test-support/run-plan-collection.ts';
 
@@ -8,7 +8,7 @@ import {
     createRunTestPlanFromDirectEntrypoint
 } from './run-test-plan.ts';
 
-export const testNode: TestNode = suite('run collection boundary classification', [
+export const testNode = suite('run collection boundary classification', [
     test(
         'uses default runtime collection policy for direct, discovered and frozen files',
         async function (scope) {

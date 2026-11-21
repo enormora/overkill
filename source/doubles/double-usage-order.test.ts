@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
 import type { FailedCheck, FailedCompositeCheck } from '../assertion-protocol/assertion-node-shape.ts';
@@ -104,7 +104,7 @@ function failureSummaries(result: RunResult): readonly string[] | null {
     });
 }
 
-export const testNode: TestNode = suite('Double usage order', [
+export const testNode = suite('Double usage order', [
     test(
         'doubleUsage construction argument assertions use construction history',
         async function body(scope) {

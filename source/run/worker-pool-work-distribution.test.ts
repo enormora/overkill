@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { CaseId } from '../packages/engine/engine.entry-point.ts';
 import { caseIdentityKey } from '../engine/identity.ts';
@@ -8,9 +8,9 @@ import { emptyWorkUnitResourceConstraints, type CollectedRunPlan, type WorkUnit 
 import { createWorkerPoolPlacementPlan } from './worker-pool-placement-planning.ts';
 import { type WorkUnitPlanningInput, workUnitsFromCollectedPlan } from './work-unit-planning.ts';
 
-const firstPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
-const secondPath = 'source/integration-tests/integration/fixtures/delayed-pass.test.ts';
-const thirdPath = 'source/integration-tests/integration/fixtures/generated-fast.test.ts';
+const firstPath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
+const secondPath = 'source/integration-tests/runtime/fixtures/delayed-pass.test.ts';
+const thirdPath = 'source/integration-tests/runtime/fixtures/generated-fast.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 const fileSets = new Map([
@@ -71,7 +71,7 @@ function collectedPlanWithEmptyFile(): CollectedRunPlan {
     return {
         ...collectedPlan(),
         files: [
-            { cases: [], file: 'source/integration-tests/integration/fixtures/empty.test.ts' },
+            { cases: [], file: 'source/integration-tests/runtime/fixtures/empty.test.ts' },
             ...collectedPlan().files
         ]
     };
@@ -235,7 +235,7 @@ function planningInput(
     };
 }
 
-export const testNode: TestNode = suite('Worker pool work distribution', [
+export const testNode = suite('Worker pool work distribution', [
     test('worker-pool planning creates case work units', function (scope) {
         scope.assert.deepEqual(
             workUnitsFromCollectedPlan(planningInput(collectedPlan(), { mode: 'case' }, fileSetForFile)),

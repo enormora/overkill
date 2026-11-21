@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     type LoadedConfig,
@@ -199,7 +199,7 @@ async function runWithRunnerErrors(): ReturnType<ConfiguredRunOrchestrator['run'
     });
 }
 
-export const testNode: TestNode = suite('CLI reporter resolution', [
+export const testNode = suite('CLI reporter resolution', [
     test(
         'keeps global reporters as fallback when profile reporters override them',
         async function (scope: TestScope) {

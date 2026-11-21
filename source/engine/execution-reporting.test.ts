@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 
@@ -132,7 +132,7 @@ function firstOutcome(result: RunResult): TestOutcome | undefined {
     return result.perTest.at(0)?.outcome ?? undefined;
 }
 
-export const testNode: TestNode = suite('Execution reporting', [
+export const testNode = suite('Execution reporting', [
     test('records thrown test body errors', async function (scope: TestScope) {
         const engine = createEngine();
         const testPlan = engine.createTestPlan(

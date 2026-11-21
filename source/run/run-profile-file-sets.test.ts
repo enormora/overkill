@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createVirtualRunDiscovery } from '../test-support/virtual-run-discovery.ts';
 import type { ProfileFiles } from '../config/types.ts';
@@ -33,7 +33,7 @@ function profileFiles(files: ProfileFiles): ProfileFiles {
     return files;
 }
 
-export const testNode: TestNode = suite('Profile file discovery', [
+export const testNode = suite('Profile file discovery', [
     test('discovers profile file sets', async function (scope) {
         const discovery = createDiscovery([
             'source/unit/a.test.ts',

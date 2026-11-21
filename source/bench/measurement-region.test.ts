@@ -1,7 +1,7 @@
 import { mock } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { types as runtimeTypes } from 'node:util';
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createAsyncMeasurementSample, createMeasurementSample } from './measurement-region.ts';
 import { asyncMeasurementStrategy, measurementStrategy, wallClockMeasurement } from './measurement-strategy.ts';
@@ -55,7 +55,7 @@ function actionError(action: () => unknown): unknown {
     }
 }
 
-export const testNode: TestNode = suite('measurement regions and collectors', [
+export const testNode = suite('measurement regions and collectors', [
     test('marks throughput unavailable when the wall clock cannot resolve the region', function (scope) {
         const clock = mock.method(process.hrtime, 'bigint', function () {
             return 0n;

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { mergeRecordFixture } from '../test-support/merge-record-fixture.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -7,7 +7,7 @@ import { assessMergeSources } from './merge-results-assessment.ts';
 
 const observed = runResultFactory.build({ perTest: [ {} ] });
 
-export const testNode: TestNode = suite('merge assessment', [
+export const testNode = suite('merge assessment', [
     test('retains duplicate logical outcomes', function (scope) {
         const result = recordedRunResult({
             ...observed,

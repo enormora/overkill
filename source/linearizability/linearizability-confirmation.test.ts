@@ -1,4 +1,5 @@
-import { type TestNode, table, type TestScope, suite } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { table, suite } from '@overkill-dev/test';
 
 import type { RunResult } from '../packages/engine/engine.entry-point.ts';
 
@@ -6,33 +7,55 @@ import { gen, property } from '../packages/property/property.entry-point.ts';
 import { linearizability } from '../packages/linearizability/linearizability.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 
-function assertExhaustedConfirmation(scope: TestScope, result: RunResult, failures: number): void {
-    const evidence = result.perTest[0]?.property?.invocations[0];
-    scope.require.defined(evidence);
-    scope.assert.equal(result.summary.failed, 1);
-    scope.assert.equal(result.summary.inconclusive, 0);
-    scope.assert.equal(evidence.shrinkStatus, 'interrupted');
-    if (failures === 1) {
-        scope.assert.equal(evidence.confirmedWitness, null);
-    } else {
-        scope.assert.notNull(evidence.confirmedWitness);
-        scope.require.notNull(evidence.summary);
-        scope.assert.greaterThan(evidence.summary.accounting.phases.shrinking.executed, 0);
+const assertExhaustedConfirmation = defineCompositeAssertion({
+    name: 'exhausted confirmation',
+    assert(check, result: RunResult, failures: number) {
+        const evidence = result.perTest[0]?.property?.invocations[0];
+        if (evidence === undefined || evidence === null) {
+            return check.defined(evidence);
+        }
+        const initialChecks = check.group([
+            check.defined(evidence),
+            check.equal(result.summary.failed, 1),
+            check.equal(result.summary.inconclusive, 0),
+            check.equal(evidence.shrinkStatus, 'interrupted')
+        ]);
+        if (failures === 1) {
+            return check.group([ initialChecks, check.equal(evidence.confirmedWitness, null) ]);
+        } else {
+            const confirmedWitnessChecks = check.notNull(evidence.confirmedWitness);
+            if (evidence.summary === null) {
+                return check.group([ initialChecks, confirmedWitnessChecks, check.notNull(evidence.summary) ]);
+            }
+            return check.group([
+                initialChecks,
+                confirmedWitnessChecks,
+                check.notNull(evidence.summary),
+                check.greaterThan(evidence.summary.accounting.phases.shrinking.executed, 0)
+            ]);
+        }
     }
-}
-function assertScheduleDisagreement(scope: TestScope, result: RunResult): void {
-    const evidence = result.perTest[0]?.property?.invocations[0];
-    scope.require.defined(evidence);
-    scope.assert.equal(result.summary.failed, 1);
-    scope.assert.equal(result.summary.inconclusive, 0);
-    scope.assert.equal(evidence.shrinkStatus, 'non-reproducible');
-    scope.assert.equal(evidence.confirmedWitness, null);
-    scope.assert.true(evidence.diagnostics.some(function disagreementObserved(diagnostic) {
-        return diagnostic.reason === 'non-reproducible' && diagnostic.observation !== null;
-    }));
-}
+});
+const assertScheduleDisagreement = defineCompositeAssertion({
+    name: 'schedule disagreement',
+    assert(check, result: RunResult) {
+        const evidence = result.perTest[0]?.property?.invocations[0];
+        if (evidence === undefined || evidence === null) {
+            return check.defined(evidence);
+        }
+        return check.group([
+            check.equal(result.summary.failed, 1),
+            check.equal(result.summary.inconclusive, 0),
+            check.equal(evidence.shrinkStatus, 'non-reproducible'),
+            check.equal(evidence.confirmedWitness, null),
+            check.true(evidence.diagnostics.some(function disagreementObserved(diagnostic) {
+                return diagnostic.reason === 'non-reproducible' && diagnostic.observation !== null;
+            }))
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('linearizability confirmation', [
+export const testNode = suite('linearizability confirmation', [
     table({
         title: 'preserves failure when confirmation exhausts checker work',
         cases: [ 1, 2 ],
@@ -72,7 +95,7 @@ export const testNode: TestNode = suite('linearizability confirmation', [
                 }),
                 propertyExecutionDefaults
             );
-            assertExhaustedConfirmation(scope, result, failures);
+            scope.assert(assertExhaustedConfirmation, result, failures);
             return scope.assert.collect();
         }
     }),
@@ -136,7 +159,7 @@ export const testNode: TestNode = suite('linearizability confirmation', [
                 }),
                 propertyExecutionDefaults
             );
-            assertScheduleDisagreement(scope, result);
+            scope.assert(assertScheduleDisagreement, result);
             scope.assert.equal(created, disagreement + 1);
             scope.assert.equal(cleaned, created);
             return scope.assert.collect();

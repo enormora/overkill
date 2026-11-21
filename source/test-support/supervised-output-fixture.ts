@@ -10,7 +10,7 @@ import {
 import { runResultFactory } from './run-result-factory.ts';
 
 const integrationCaptureControlsOutputFixturePath =
-    'source/integration-tests/integration/fixtures/integration-capture-controls-output.test.ts';
+    'source/integration-tests/runtime/fixtures/integration-capture-controls-output.test.ts';
 
 function integrationOutputTestPlan(file: string): TestPlan {
     const testNode = defaultRunEngine.createTestCase({

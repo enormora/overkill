@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -29,7 +29,7 @@ function lineFixture(): LineFixture {
     });
     return { lines, reporter };
 }
-export const testNode: TestNode = suite('line reporter completion policy', [
+export const testNode = suite('line reporter completion policy', [
     test('renders retry completion without presenting it as a final result', async function (scope: TestScope) {
         const { lines, reporter } = lineFixture();
         scope.require.notNull(reporter.onEvent);

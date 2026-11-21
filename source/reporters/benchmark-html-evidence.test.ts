@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { benchmarkHtmlFixture, benchmarkSampleFixture } from '../test-support/benchmark-html-fixture.ts';
 import { runResultSchema } from '../run/run-result-schema.ts';
@@ -24,14 +24,20 @@ function retainedAttachment(result: RunResult): RuntimeAttachmentArtifact {
     }
     return artifact as RuntimeAttachmentArtifact;
 }
-function retainedFixture(scope: TestScope): RetainedFixture {
+function retainedFixture(): RetainedFixture {
     const result = benchmarkHtmlFixture('retention');
     const testResult = result.perTest[0];
-    scope.require.defined(testResult);
+    if (testResult === undefined || testResult === null) {
+        throw new Error('Expected testResult to satisfy defined.');
+    }
     const { benchmark } = testResult;
-    scope.require.defined(benchmark);
+    if (benchmark === undefined || benchmark === null) {
+        throw new Error('Expected benchmark to satisfy defined.');
+    }
     const provenance = benchmark.metrics.latency?.provenance;
-    scope.require.defined(provenance);
+    if (provenance === undefined || provenance === null) {
+        throw new Error('Expected provenance to satisfy defined.');
+    }
     return { result, measured: { ...testResult, benchmark }, artifact: retainedAttachment(result), provenance };
 }
 
@@ -42,9 +48,9 @@ function replaceSamples(
     return { ...artifact, payload: { ...artifact.payload, content } };
 }
 
-export const testNode: TestNode = suite('benchmark HTML retained evidence', [
+export const testNode = suite('benchmark HTML retained evidence', [
     test('keeps indexed process evidence scoped to its owning work', function (scope) {
-        const { result, measured, artifact } = retainedFixture(scope);
+        const { result, measured, artifact } = retainedFixture();
         const owned = { ...artifact, payload: { ...artifact.payload, mediaType: processEvidenceMediaType } };
         const workload = { name: 'large', params: {} };
         const foreign = { ...owned, id: { ...owned.id, workload } };
@@ -65,7 +71,7 @@ export const testNode: TestNode = suite('benchmark HTML retained evidence', [
         return scope.assert.collect();
     }),
     test('reads unavailable samples without requiring a matching metric summary', function (scope) {
-        const { result, measured, artifact, provenance } = retainedFixture(scope);
+        const { result, measured, artifact, provenance } = retainedFixture();
         const samples = replaceSamples(artifact, {
             kind: 'json',
             byteLength: 0,
@@ -79,7 +85,7 @@ export const testNode: TestNode = suite('benchmark HTML retained evidence', [
         return scope.assert.collect();
     }),
     test('retains the first artifact when references have duplicate identities', function (scope) {
-        const { result, measured, artifact } = retainedFixture(scope);
+        const { result, measured, artifact } = retainedFixture();
         const duplicate = replaceSamples(artifact, { kind: 'json', byteLength: 0, value: {} });
         scope.assert.deepEqual(
             readBenchmarkSamples({ ...result, artifacts: [ artifact, duplicate ] }, measured),
@@ -88,7 +94,7 @@ export const testNode: TestNode = suite('benchmark HTML retained evidence', [
         return scope.assert.collect();
     }),
     test('explains omitted and unrecorded samples', function (scope) {
-        const { result, measured } = retainedFixture(scope);
+        const { result, measured } = retainedFixture();
         scope.assert.deepEqual(readBenchmarkSamples(result, { ...measured, benchmark: null }), {
             kind: 'unavailable',
             reason: 'No raw samples recorded.'
@@ -105,7 +111,7 @@ export const testNode: TestNode = suite('benchmark HTML retained evidence', [
         return scope.assert.collect();
     }),
     test('labels partial distributions and excludes unavailable readings', function (scope: TestScope) {
-        const { result, measured, artifact, provenance } = retainedFixture(scope);
+        const { result, measured, artifact, provenance } = retainedFixture();
         const sampleArtifact = replaceSamples(artifact, {
             kind: 'json',
             byteLength: 0,
@@ -143,7 +149,7 @@ export const testNode: TestNode = suite('benchmark HTML retained evidence', [
         return scope.assert.collect();
     }),
     test('rejects changed metric provenance', function (scope) {
-        const { result, measured, artifact } = retainedFixture(scope);
+        const { result, measured, artifact } = retainedFixture();
         const sampleArtifact = replaceSamples(artifact, {
             kind: 'json',
             byteLength: 0,
@@ -157,7 +163,7 @@ export const testNode: TestNode = suite('benchmark HTML retained evidence', [
         return scope.assert.collect();
     }),
     test('explains non-JSON retention and rejects unrelated payloads', function (scope) {
-        const { result, measured, artifact } = retainedFixture(scope);
+        const { result, measured, artifact } = retainedFixture();
         const omitted = replaceSamples(artifact, { kind: 'omitted', reason: 'byte-limit', limit: 1 });
         scope.assert.deepEqual(readBenchmarkSamples({ ...result, artifacts: [ omitted ] }, measured), {
             kind: 'unavailable',
@@ -170,7 +176,7 @@ export const testNode: TestNode = suite('benchmark HTML retained evidence', [
         return scope.assert.collect();
     }),
     test('rejects run-scoped samples even when their reference matches', function (scope) {
-        const { result, measured, artifact } = retainedFixture(scope);
+        const { result, measured, artifact } = retainedFixture();
         const runArtifact = { ...artifact, id: { ...artifact.id, attempt: null, scope: { kind: 'run' as const } } };
         const changed = {
             ...measured,
@@ -188,7 +194,7 @@ export const testNode: TestNode = suite('benchmark HTML retained evidence', [
         return scope.assert.collect();
     }),
     test('retains runtime dimensions and default workload labels', function (scope) {
-        const { measured } = retainedFixture(scope);
+        const { measured } = retainedFixture();
         scope.assert.equal(
             formatBenchmarkWorkload({
                 workId: {

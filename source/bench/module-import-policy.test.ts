@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { moduleImportChannel, importChannelScenario } from '../test-support/module-import-channel.ts';
 
-export const testNode: TestNode = suite('module import channel policy', [
+export const testNode = suite('module import channel policy', [
     test('authenticates readiness and retains import metadata', async (scope) => {
-        const fixture = await moduleImportChannel(scope, importChannelScenario);
+        const fixture = await moduleImportChannel(scope.cleanup, importChannelScenario);
         fixture.session.start();
         fixture.deliver({ kind: 'ready', token: 'unit-import-token' });
         fixture.deliver(fixture.report);
@@ -19,7 +19,7 @@ export const testNode: TestNode = suite('module import channel policy', [
         return scope.assert.collect();
     }),
     test('releases pending reports when the owner closes', async function (scope) {
-        const fixture = await moduleImportChannel(scope, importChannelScenario);
+        const fixture = await moduleImportChannel(scope.cleanup, importChannelScenario);
         const failed = scope.assert.rejects(async function () {
             return fixture.session.report();
         }, {
@@ -30,7 +30,7 @@ export const testNode: TestNode = suite('module import channel policy', [
         return scope.assert.collect();
     }),
     test('rejects replies authenticated for another owner', async function (scope) {
-        const fixture = await moduleImportChannel(scope, importChannelScenario);
+        const fixture = await moduleImportChannel(scope.cleanup, importChannelScenario);
         fixture.deliver({ kind: 'ready', token: 'wrong' });
         await scope.assert.rejects(async function () {
             return fixture.session.report();
@@ -41,7 +41,7 @@ export const testNode: TestNode = suite('module import channel policy', [
         return scope.assert.collect();
     }),
     test('rejects completion before readiness', async function (scope) {
-        const fixture = await moduleImportChannel(scope, importChannelScenario);
+        const fixture = await moduleImportChannel(scope.cleanup, importChannelScenario);
         fixture.deliver(fixture.report);
         await scope.assert.rejects(async function () {
             return fixture.session.report();
@@ -52,7 +52,7 @@ export const testNode: TestNode = suite('module import channel policy', [
         return scope.assert.collect();
     }),
     test('rejects a second readiness command', async function (scope) {
-        const fixture = await moduleImportChannel(scope, importChannelScenario);
+        const fixture = await moduleImportChannel(scope.cleanup, importChannelScenario);
         fixture.deliver({ kind: 'ready', token: 'unit-import-token' });
         fixture.deliver({ kind: 'ready', token: 'unit-import-token' });
         await scope.assert.rejects(async function () {
@@ -64,13 +64,13 @@ export const testNode: TestNode = suite('module import channel policy', [
         return scope.assert.collect();
     }),
     test('fails malformed and oversized frames before admission', async function (scope) {
-        const malformed = await moduleImportChannel(scope, importChannelScenario);
+        const malformed = await moduleImportChannel(scope.cleanup, importChannelScenario);
         malformed.socket.push('not JSON\n');
         await scope.assert.rejects(async function () {
             return malformed.session.report();
         }, { name: 'SyntaxError' });
         await malformed.session.close();
-        const oversized = await moduleImportChannel(scope, importChannelScenario);
+        const oversized = await moduleImportChannel(scope.cleanup, importChannelScenario);
         oversized.socket.push('x'.repeat(65_537));
         await scope.assert.rejects(async function () {
             return oversized.session.report();
@@ -81,7 +81,7 @@ export const testNode: TestNode = suite('module import channel policy', [
         return scope.assert.collect();
     }),
     test('propagates transport failures to report owners', async function (scope) {
-        const fixture = await moduleImportChannel(scope, importChannelScenario);
+        const fixture = await moduleImportChannel(scope.cleanup, importChannelScenario);
         const failure = new Error('Socket failed.');
         fixture.socket.emit('error', failure);
         await scope.assert.rejects(async function () {
@@ -94,17 +94,17 @@ export const testNode: TestNode = suite('module import channel policy', [
         const failure = new Error('Listen failed.');
         await scope.assert.rejects(
             async function () {
-                return moduleImportChannel(scope, { ...importChannelScenario, listenError: failure });
+                return moduleImportChannel(scope.cleanup, { ...importChannelScenario, listenError: failure });
             },
             { exact: failure }
         );
         await scope.assert.rejects(async function () {
-            return moduleImportChannel(scope, { ...importChannelScenario, address: null });
+            return moduleImportChannel(scope.cleanup, { ...importChannelScenario, address: null });
         }, {
             message: 'Module import requires a local socket.'
         });
         const closing = new Error('Close failed.');
-        const fixture = await moduleImportChannel(scope, { ...importChannelScenario, closeError: closing });
+        const fixture = await moduleImportChannel(scope.cleanup, { ...importChannelScenario, closeError: closing });
         await scope.assert.rejects(async function () {
             return fixture.session.close();
         }, { exact: closing });

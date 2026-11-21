@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     shardBySecondPath,
@@ -28,18 +29,64 @@ import {
 import { runStartTimeFromMilliseconds, workerPoolCollectedPlan } from './worker-pool-runtime.ts';
 import { workUnitsFromCollectedPlan } from './work-unit-planning.ts';
 
-function assertWorkerPoolPlanHelpers(scope: TestScope, collectedPlan: CollectedRunPlan): void {
-    scope.assert.equal(runStartTimeFromMilliseconds(0), '1970-01-01T00:00:00.000Z');
-    scope.assert.equal(workerPoolCollectedPlan(workerPoolResolvedRun(collectedPlan)), collectedPlan);
-    scope.assert.throws(function readLocalPlan() {
-        workerPoolCollectedPlan(localResolvedRun());
-    }, { message: 'Worker-pool execution requires a worker-pool collected plan.' });
-}
+const assertWorkerPoolPlanHelpers = defineCompositeAssertion({
+    name: 'worker pool plan helpers',
+    assert(check, collectedPlan: CollectedRunPlan) {
+        return check.group([
+            check.equal(runStartTimeFromMilliseconds(0), '1970-01-01T00:00:00.000Z'),
+            check.equal(workerPoolCollectedPlan(workerPoolResolvedRun(collectedPlan)), collectedPlan),
+            check.throws(function readLocalPlan() {
+                workerPoolCollectedPlan(localResolvedRun());
+            }, { message: 'Worker-pool execution requires a worker-pool collected plan.' })
+        ]);
+    }
+});
 
-function assertWorkUnitPlanning(scope: TestScope, collectedPlan: CollectedRunPlan): void {
-    scope.assert.deepEqual(
-        workUnitsFromCollectedPlan({
+const assertWorkUnitPlanning = defineCompositeAssertion({
+    name: 'work unit planning',
+    assert(check, collectedPlan: CollectedRunPlan) {
+        return check.group([
+            check.deepEqual(
+                workUnitsFromCollectedPlan({
+                    runConstraints: emptyWorkUnitResourceConstraints,
+                    fileSetForFile,
+                    order: 'plan',
+                    seed: { value: 1n },
+                    selectedPlan: collectedPlan,
+                    scheduling: 'concurrent',
+                    workDistribution: { mode: 'file' },
+                    workerLifecycle: 'reuse'
+                }),
+                [ firstWorkUnit(), secondWorkUnit() ]
+            ),
+            check.deepEqual(
+                workUnitsFromCollectedPlan({
+                    runConstraints: emptyWorkUnitResourceConstraints,
+                    fileSetForFile,
+                    order: 'plan',
+                    seed: { value: 1n },
+                    selectedPlan: collectedPlan,
+                    scheduling: 'concurrent',
+                    shard: { index: 2, total: 2 },
+                    shardHasher: shardBySecondPath,
+                    workDistribution: { mode: 'file' },
+                    workerLifecycle: 'reuse'
+                }),
+                [ secondWorkUnit() ]
+            )
+        ]);
+    }
+});
+
+const assertPlacementPlanning = defineCompositeAssertion({
+    name: 'placement planning',
+    assert(check, collectedPlan: CollectedRunPlan) {
+        const input: WorkerPoolPlacementPlanInput = {
             runConstraints: emptyWorkUnitResourceConstraints,
+            assignmentPolicy: 'case-count-balanced',
+            availableParallelism: 3,
+            profileMaximumWorkers: null,
+            requestedWorkers: null,
             fileSetForFile,
             order: 'plan',
             seed: { value: 1n },
@@ -47,74 +94,43 @@ function assertWorkUnitPlanning(scope: TestScope, collectedPlan: CollectedRunPla
             scheduling: 'concurrent',
             workDistribution: { mode: 'file' },
             workerLifecycle: 'reuse'
-        }),
-        [ firstWorkUnit(), secondWorkUnit() ]
-    );
-    scope.assert.deepEqual(
-        workUnitsFromCollectedPlan({
-            runConstraints: emptyWorkUnitResourceConstraints,
-            fileSetForFile,
-            order: 'plan',
-            seed: { value: 1n },
-            selectedPlan: collectedPlan,
-            scheduling: 'concurrent',
-            shard: { index: 2, total: 2 },
-            shardHasher: shardBySecondPath,
-            workDistribution: { mode: 'file' },
-            workerLifecycle: 'reuse'
-        }),
-        [ secondWorkUnit() ]
-    );
-}
+        };
+        return check.group([
+            check.deepEqual(
+                createWorkerPoolPlacementPlan(input),
+                expectedPlacementPlan()
+            ),
+            check.deepEqual(
+                createWorkerPoolPlacementResolution({
+                    ...input,
+                    maximumWorkers: null,
+                    units: workUnitsFromCollectedPlan(input),
+                    assignmentPolicy: 'duration-history-balanced',
+                    durationHistoryIndex: null,
+                    nowMilliseconds: 0
+                }),
+                {
+                    durationHistory: null,
+                    placementPlan: expectedPlacementPlan(),
+                    workerCount: {
+                        hostMaximum: 3,
+                        profileMaximum: null,
+                        requested: null,
+                        resolved: 2
+                    }
+                }
+            )
+        ]);
+    }
+});
 
-function assertPlacementPlanning(scope: TestScope, collectedPlan: CollectedRunPlan): void {
-    const input: WorkerPoolPlacementPlanInput = {
-        runConstraints: emptyWorkUnitResourceConstraints,
-        assignmentPolicy: 'case-count-balanced',
-        availableParallelism: 3,
-        profileMaximumWorkers: null,
-        requestedWorkers: null,
-        fileSetForFile,
-        order: 'plan',
-        seed: { value: 1n },
-        selectedPlan: collectedPlan,
-        scheduling: 'concurrent',
-        workDistribution: { mode: 'file' },
-        workerLifecycle: 'reuse'
-    };
-    scope.assert.deepEqual(
-        createWorkerPoolPlacementPlan(input),
-        expectedPlacementPlan()
-    );
-    scope.assert.deepEqual(
-        createWorkerPoolPlacementResolution({
-            ...input,
-            maximumWorkers: null,
-            units: workUnitsFromCollectedPlan(input),
-            assignmentPolicy: 'duration-history-balanced',
-            durationHistoryIndex: null,
-            nowMilliseconds: 0
-        }),
-        {
-            durationHistory: null,
-            placementPlan: expectedPlacementPlan(),
-            workerCount: {
-                hostMaximum: 3,
-                profileMaximum: null,
-                requested: null,
-                resolved: 2
-            }
-        }
-    );
-}
-
-export const testNode: TestNode = suite('Worker pool placement planning', [
+export const testNode = suite('Worker pool placement planning', [
     test('worker-pool placement planning creates file units and placements', function (scope) {
         const collectedPlan = createCollectedPlan();
 
-        assertWorkerPoolPlanHelpers(scope, collectedPlan);
-        assertWorkUnitPlanning(scope, collectedPlan);
-        assertPlacementPlanning(scope, collectedPlan);
+        scope.assert(assertWorkerPoolPlanHelpers, collectedPlan);
+        scope.assert(assertWorkUnitPlanning, collectedPlan);
+        scope.assert(assertPlacementPlanning, collectedPlan);
 
         return scope.assert.collect();
     }),

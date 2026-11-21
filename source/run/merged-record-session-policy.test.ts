@@ -1,9 +1,9 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { mergedRecordSession } from '../test-support/merged-record-session.ts';
 import { runMergedRecordSession } from './merged-record-session.ts';
 
-export const testNode: TestNode = suite('merged record persistence and delivery', [
+export const testNode = suite('merged record persistence and delivery', [
     test(
         'persists completion, disposes reporters and releases the run before maintenance',
         async function (scope) {

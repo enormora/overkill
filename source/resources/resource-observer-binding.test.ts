@@ -1,13 +1,13 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { resourceObserverBinding } from '../test-support/resource-observer-binding.ts';
 import { defineResource } from './resources.ts';
 import { withResourceChecks } from './resource-checks.ts';
 import { resourceImplementationParticipants } from './resource-implementation-participants.ts';
 
-export const testNode: TestNode = suite('resource observer reference admission', [
+export const testNode = suite('resource observer reference admission', [
     test('admits the observer and forwards its prepared input', async function (scope) {
-        const fixture = await resourceObserverBinding(scope);
+        const fixture = await resourceObserverBinding(scope.cleanup, scope.signal);
         const activation = fixture.participant.bind(
             fixture.admission.namespace,
             fixture.admission.facts,
@@ -21,7 +21,7 @@ export const testNode: TestNode = suite('resource observer reference admission',
         return scope.assert.collect();
     }),
     test('rejects installation outside the admitted scope', async function (scope) {
-        const fixture = await resourceObserverBinding(scope);
+        const fixture = await resourceObserverBinding(scope.cleanup, scope.signal);
         await scope.assert.rejects(async function () {
             return await fixture.observer(fixture.context);
         }, { message: 'Resource observer implementation was not admitted.' });
@@ -39,7 +39,7 @@ export const testNode: TestNode = suite('resource observer reference admission',
         return scope.assert.collect();
     }),
     test('rejects changed observer inputs before installation', async function (scope) {
-        const fixture = await resourceObserverBinding(scope);
+        const fixture = await resourceObserverBinding(scope.cleanup, scope.signal);
         scope.assert.throws(function () {
             return fixture.participant.bind(
                 fixture.admission.namespace,
@@ -51,7 +51,7 @@ export const testNode: TestNode = suite('resource observer reference admission',
         return scope.assert.collect();
     }),
     test('rejects observer exports that are not callable', async function (scope) {
-        const fixture = await resourceObserverBinding(scope);
+        const fixture = await resourceObserverBinding(scope.cleanup, scope.signal);
         scope.assert.throws(function () {
             return fixture.participant.bind(
                 { resource: { version: '1', implementation: 42 } },
@@ -62,7 +62,7 @@ export const testNode: TestNode = suite('resource observer reference admission',
         return scope.assert.collect();
     }),
     test('attaches observer admission to inline resource participants', async function (scope: TestScope) {
-        const fixture = await resourceObserverBinding(scope);
+        const fixture = await resourceObserverBinding(scope.cleanup, scope.signal);
         const resource = withResourceChecks(
             defineResource({
                 name: 'registry',

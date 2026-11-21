@@ -1,4 +1,4 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     witnessReplayInput,
@@ -9,7 +9,7 @@ import {
 } from '../test-support/witness-replay-preparation.ts';
 import { resolveWitnessReplay, resolvePropertyReplay, propertyWitnessCommand } from './witness-replay-preparation.ts';
 
-export const testNode: TestNode = suite('fixed witness replay preparation', [
+export const testNode = suite('fixed witness replay preparation', [
     test('builds exact property work selection and verifies its source', async function (scope) {
         const fixture = witnessReplayAccess(replayPropertyWitness, null);
         const prepared = await resolveWitnessReplay(witnessReplayInput(), fixture.access);

@@ -41,13 +41,13 @@ async function executeWithEvidence(
 }
 
 export async function executeEvidence(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     body: EngineCaseBody,
     attempts: number,
     limits: AttachmentLimits
 ): Promise<EvidenceRun> {
     return await executeWithEvidence(body, attempts, async function (work) {
-        return await attachmentFixtureForWork(scope, limits, work);
+        return await attachmentFixtureForWork(cleanup, limits, work);
     });
 }
 

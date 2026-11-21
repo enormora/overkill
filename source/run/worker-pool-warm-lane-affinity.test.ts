@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { emptyWorkUnitResourceConstraints, type PlacementLane, type WorkUnit } from './run-types.ts';
 import { createWarmLaneAffinity } from './worker-pool-warm-lane-affinity.ts';
@@ -76,7 +76,7 @@ function unitWithWorkload(key: string): WorkUnit {
     };
 }
 
-export const testNode: TestNode = suite('Worker pool warm lane affinity', [
+export const testNode = suite('Worker pool warm lane affinity', [
     test('evicts keys after retained unit limit', function (scope) {
         const affinity = createWarmLaneAffinity();
         const workerLane = lane();

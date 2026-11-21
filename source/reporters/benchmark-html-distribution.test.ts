@@ -1,8 +1,8 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { distributionScale, sampleHistogram, sampleBox } from './benchmark-html-distribution.ts';
 
-export const testNode: TestNode = suite('benchmark HTML distributions', [
+export const testNode = suite('benchmark HTML distributions', [
     test('bins every observation and includes both endpoints', function (scope) {
         const values = [ -10, 0, 10 ];
         const histogram = sampleHistogram(values, distributionScale([ values ]));

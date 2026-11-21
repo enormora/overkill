@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { benchmarkHtmlFixture, benchmarkHtmlTimelineFixture } from '../test-support/benchmark-html-fixture.ts';
 import { readBenchmarkTimeline } from '../bench/timeline-report.ts';
@@ -7,7 +7,7 @@ import { runResultSchema } from '../run/run-result-schema.ts';
 import { createBenchmarkHtmlReport } from './benchmark-html-model.ts';
 import { renderBenchmarkHtml } from './benchmark-html-document.ts';
 
-export const testNode: TestNode = suite('benchmark HTML timeline evidence and deltas', [
+export const testNode = suite('benchmark HTML timeline evidence and deltas', [
     test('decodes historical results with unavailable timeline evidence', function (scope: TestScope) {
         const result = benchmarkHtmlFixture('historical');
         const measured = result.perTest[0];

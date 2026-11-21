@@ -1,8 +1,8 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { supervisedRunOrchestration } from '../test-support/supervised-run-orchestration.ts';
 
-export const testNode: TestNode = suite('memory supervised run orchestration', [
+export const testNode = suite('memory supervised run orchestration', [
     test('retains process samples arriving before collection completes', async function (scope) {
         const fixture = supervisedRunOrchestration('collection-sample', false, 'buffered');
         const result = await fixture.execute();

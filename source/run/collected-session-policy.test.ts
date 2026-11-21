@@ -1,9 +1,9 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { collectedSession, collectedSessionFault } from '../test-support/collected-session.ts';
 import { InvocationDeadlineExceededError } from '../invocation-budget.ts';
 
-export const testNode: TestNode = suite('reused collected session policy', [
+export const testNode = suite('reused collected session policy', [
     test(
         'collects once while selecting and disposing a lifecycle for each invocation',
         async function (scope) {

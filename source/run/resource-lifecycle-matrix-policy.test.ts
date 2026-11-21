@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineResource, defineRuntime } from '../resources/resources.ts';
 import { runtimeMatrixDefinitionApi } from '../resources/runtime-matrix-definition.ts';
@@ -48,7 +48,7 @@ function selectedWork(variantId: string | null): WorkId {
         runtimes: [ { ...runtime.id, name: matrix.name, variantId } ]
     };
 }
-export const testNode: TestNode = suite('runner managed runtime composition', [
+export const testNode = suite('runner managed runtime composition', [
     test('requires runner selection before composing runtime matrix resources', function (scope) {
         scope.assert.throws(function () {
             return combinedResourceEntries(steps, null);

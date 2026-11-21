@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { coverageStartup } from '../test-support/coverage-startup.ts';
 import { coverageCollectionRequest } from '../test-support/coverage-collection-fixture.ts';
@@ -7,7 +7,7 @@ import { defaultMicrotestProfile, defaultIntegrationProfile } from '../test-supp
 
 import { openCoverageSession, coverageExecutionCompleted, microtestCoveragePolicy } from './run-coverage.ts';
 
-export const testNode: TestNode = suite('coverage startup and completion policy', [
+export const testNode = suite('coverage startup and completion policy', [
     test('starts an acquired session before returning ownership', async function (scope) {
         const fixture = coverageStartup(null, null, null);
         const session = await openCoverageSession(coverageCollectionRequest, fixture.load);

@@ -1,11 +1,11 @@
-import { type TestNode, suite, test, testDouble } from '@overkill-dev/test';
+import { suite, test, testDouble } from '@overkill-dev/test';
 
 import { frozenPolicyValidation } from '../test-support/frozen-policy-validation.ts';
 import { ConfigError } from '../packages/run/config.entry-point.ts';
 
 import { revalidateFrozenPolicy } from './frozen-policy-validation.ts';
 
-export const testNode: TestNode = suite('frozen policy source validation', [
+export const testNode = suite('frozen policy source validation', [
     test('accepts identical configured discovery and execution facts', async function (scope) {
         const fixture = await frozenPolicyValidation();
         await revalidateFrozenPolicy(fixture.policy, fixture.dependencies, fixture.load);
@@ -44,7 +44,7 @@ export const testNode: TestNode = suite('frozen policy source validation', [
             }, fixture.load);
         }, {
             message:
-                'Frozen policy revalidation failed: RunResolutionError: Invalid frozen discovery descriptor: source/integration-tests/integration/fixtures/passing.test.ts'
+                'Frozen policy revalidation failed: RunResolutionError: Invalid frozen discovery descriptor: source/integration-tests/runtime/fixtures/passing.test.ts'
         });
         return scope.assert.collect();
     }),

@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { defineTestFamily, type FamilyModuleReference, createSuite } from '../packages/engine/engine.entry-point.ts';
 
@@ -91,7 +91,7 @@ function recordedSource(definition: FrozenFamilyDefinition | null): RunCollectio
     };
 }
 
-export const testNode: TestNode = suite('family transport provenance', [
+export const testNode = suite('family transport provenance', [
     test('retains explicit configuration for direct entrypoints', function (scope) {
         scope.assert.deepEqual(
             transport(moduleReference, {

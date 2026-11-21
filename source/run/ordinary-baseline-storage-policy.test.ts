@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { storedBaseline } from '../test-support/baseline-case-fixture.ts';
 
@@ -12,7 +12,7 @@ import type { StoredOrdinaryBaseline } from './baseline-record.ts';
 import { openOrdinaryBaselineStore } from './baseline-store.ts';
 import { createBaselineStorage } from './baseline-storage.ts';
 
-export const testNode: TestNode = suite('ordinary baseline storage policy', [
+export const testNode = suite('ordinary baseline storage policy', [
     test('creates, updates and removes baselines under a publication lock', async function (scope) {
         const fixture = await ordinaryBaselineStorage(ordinaryStorageScenario);
         const created = await fixture.store.publish([ { kind: 'create', baseline: storedBaseline } ]);

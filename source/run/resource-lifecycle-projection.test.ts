@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 
@@ -26,7 +26,7 @@ const databaseResource = defineResource({
     dispose: null
 });
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Resource lifecycle projection',
     children: [

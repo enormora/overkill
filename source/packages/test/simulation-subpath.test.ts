@@ -1,4 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import * as simulationSubpath from './simulation.entry-point.ts';
 
@@ -8,19 +9,24 @@ function sortedKeys(value: Readonly<Record<string, unknown>>): readonly string[]
     });
 }
 
-function assertSimulationSubpathExports(scope: TestScope): void {
-    scope.assert.deepEqual(sortedKeys(simulationSubpath), [
-        'defineSimulatedHttpServer',
-        'defineSimulation',
-        'isDefinedSimulatedHttpServer',
-        'isDefinedSimulation'
-    ]);
-    scope.assert.equal(typeof simulationSubpath.defineSimulation, 'function');
-}
+const assertSimulationSubpathExports = defineCompositeAssertion({
+    name: 'simulation subpath exports',
+    assert(check) {
+        return check.group([
+            check.deepEqual(sortedKeys(simulationSubpath), [
+                'defineSimulatedHttpServer',
+                'defineSimulation',
+                'isDefinedSimulatedHttpServer',
+                'isDefinedSimulation'
+            ]),
+            check.equal(typeof simulationSubpath.defineSimulation, 'function')
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('Simulation subpath', [
+export const testNode = suite('Simulation subpath', [
     test('@overkill-dev/test/simulation re-exports simulation descriptors', function (scope) {
-        assertSimulationSubpathExports(scope);
+        scope.assert(assertSimulationSubpathExports);
 
         return scope.assert.collect();
     })

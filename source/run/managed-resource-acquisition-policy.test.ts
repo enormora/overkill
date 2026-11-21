@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { managedAcquisition, managedDescriptor, managedRecord } from '../test-support/managed-resource-acquisition.ts';
 import { defineResource } from '../resources/resources.ts';
@@ -7,7 +7,7 @@ import { managedResourceHandle, resourceProjectionRecordsFromStores } from './re
 import { runWithLifecycleCase } from './resource-lifecycle-state.ts';
 
 const noProjections = { resources: [] } as const;
-export const testNode: TestNode = suite('managed resource acquisition policy', [
+export const testNode = suite('managed resource acquisition policy', [
     test('deduplicates acquired handles within the same boundary', async function (scope) {
         const fixture = managedAcquisition(noProjections);
         let acquisitions = 0;

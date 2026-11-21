@@ -1,9 +1,9 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { managedCase } from '../test-support/managed-resource-acquisition.ts';
 import { createDisabledExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
 
-export const testNode: TestNode = suite('disabled global error observation', [
+export const testNode = suite('disabled global error observation', [
     test('preserves boundary, case, and phase results without observing hooks', async function (scope) {
         const observer = createDisabledExecutionGlobalErrorObserver();
         const values = await observer.runBoundary(async function () {

@@ -1,4 +1,4 @@
-import { type TestNode, suite, table, test, type ParameterizedTestScope } from '@overkill-dev/test';
+import { suite, table, test, type ParameterizedTestScope } from '@overkill-dev/test';
 
 import { createSingleConfigModuleLoader, configFixtureCwd } from '../test-support/run-config-module-loader.ts';
 import { integrationProfileSchema, microtestProfileSchema } from './schema.ts';
@@ -13,7 +13,7 @@ async function integrationConfig(retries: unknown): Promise<LoadedConfig> {
     return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
-export const testNode: TestNode = suite('Configuration retries', [
+export const testNode = suite('Configuration retries', [
     table({
         title: 'integration rejects invalid retry policies',
         cases: [

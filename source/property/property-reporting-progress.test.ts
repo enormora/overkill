@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defineReporter, type PropertyCaseEvidence } from '../packages/engine/engine.entry-point.ts';
 
@@ -6,7 +6,7 @@ import { executePropertyNode, propertyExecutionDefaults } from '../test-support/
 import { property } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
-export const testNode: TestNode = suite('property progress', [
+export const testNode = suite('property progress', [
     test('delivers immutable snapshots before trial evaluation', async function (scope) {
         const snapshots: PropertyCaseEvidence[] = [];
         let calls = 0;

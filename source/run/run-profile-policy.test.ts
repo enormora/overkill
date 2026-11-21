@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import { subjectTestNode } from '../test-support/create-test-engine.ts';
 
 import {
@@ -47,7 +47,7 @@ function testPlanForCase(testCase: TestCase): TestPlan {
     return testPlanForChildren([ testCase ]);
 }
 
-export const testNode: TestNode = suite('Run profile policy', [
+export const testNode = suite('Run profile policy', [
     test(
         'assertTestPlanCasesMatchProfilePolicy() rejects selected microtest capture controls',
         function (scope) {

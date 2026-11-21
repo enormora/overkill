@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { completedHistoryRecord, historyWork } from '../test-support/history-record-fixture.ts';
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
@@ -36,9 +36,11 @@ function compactComparisons(reports: readonly unknown[]): CompactRunRecord {
     }));
 }
 
-function benchmarkEvidence(scope: TestScope): BenchmarkExecutionResult {
+function benchmarkEvidence(): BenchmarkExecutionResult {
     const benchmark = benchmarkHtmlFixture('compaction').perTest[0]?.benchmark;
-    scope.require.defined(benchmark);
+    if (benchmark === undefined || benchmark === null) {
+        throw new Error('Expected benchmark fixture evidence.');
+    }
     return {
         ...benchmark,
         timeline: {
@@ -100,10 +102,10 @@ function benchmarkEvidence(scope: TestScope): BenchmarkExecutionResult {
     };
 }
 
-export const testNode: TestNode = suite('compact run evidence', [
+export const testNode = suite('compact run evidence', [
     test('preserves lifecycle summaries when measurement evidence is absent', function (scope: TestScope) {
         const original = completedHistoryRecord('unmeasured');
-        const benchmark = benchmarkEvidence(scope);
+        const benchmark = benchmarkEvidence();
         scope.require.defined(benchmark.lifecycle);
         const record = compactRunRecord({
             ...original,
@@ -130,7 +132,7 @@ export const testNode: TestNode = suite('compact run evidence', [
         'retains benchmark summaries without measurement traces or attachment references',
         function (scope: TestScope) {
             const original = completedHistoryRecord('benchmark');
-            const benchmark = benchmarkEvidence(scope);
+            const benchmark = benchmarkEvidence();
             const record = compactRunRecord({
                 ...original,
                 result: {

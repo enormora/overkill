@@ -1,8 +1,8 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { mutationDiagnosticStorage } from '../../test-support/mutation-diagnostic-storage.ts';
 
-export const testNode: TestNode = suite('mutation diagnostic file retention', [
+export const testNode = suite('mutation diagnostic file retention', [
     test('retains inline evidence without file operations', async function (scope) {
         const fixture = mutationDiagnosticStorage('pass');
         await fixture.save(false);

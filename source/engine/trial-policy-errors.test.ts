@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { observationError } from '../test-support/observation-lifetime.ts';
 import { propertyTrialWithPolicyErrors, propertyBoundary } from './property-trial-outcome.ts';
@@ -13,7 +13,7 @@ const body: ExecutedBody = {
     runnerErrors: [],
     returnedAssertions: []
 };
-export const testNode: TestNode = suite('trial runtime policy completion', [
+export const testNode = suite('trial runtime policy completion', [
     test('converts a passing trial into a terminated trial with its policy error', function (scope) {
         const error = observationError();
         scope.assert.deepEqual(propertyTrialWithPolicyErrors({ kind: 'passed' }, [ error ]), {

@@ -1,4 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     attachTestBodyResourceAttachments,
@@ -94,23 +95,23 @@ function selectedCollectedRuntimeVariants(
     });
 }
 
-function assertSelectedVariants(
-    scope: TestScope,
-    plan: TestPlan,
-    filter: RunFilter,
-    expectedVariants: readonly string[]
-): void {
-    scope.assert.deepEqual(selectedRuntimeVariants(plan, filter), expectedVariants);
-    scope.assert.deepEqual(selectedCollectedRuntimeVariants(plan, filter), expectedVariants);
-}
+const assertSelectedVariants = defineCompositeAssertion({
+    name: 'selected variants',
+    assert(check, plan: TestPlan, filter: RunFilter, expectedVariants: readonly string[]) {
+        return check.group([
+            check.deepEqual(selectedRuntimeVariants(plan, filter), expectedVariants),
+            check.deepEqual(selectedCollectedRuntimeVariants(plan, filter), expectedVariants)
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('Run runtime selection', [
+export const testNode = suite('Run runtime selection', [
     test('runtime filters select expanded plans by public identity', function (scope) {
         const plan = expandedRuntimePlan();
 
-        assertSelectedVariants(scope, plan, runtime('browser'), [ 'chromium', 'firefox' ]);
-        assertSelectedVariants(scope, plan, runtimeVariant('browser', 'chromium'), [ 'chromium' ]);
-        assertSelectedVariants(scope, plan, runtimeDimension('browser', 'engine', 'firefox'), [ 'firefox' ]);
+        scope.assert(assertSelectedVariants, plan, runtime('browser'), [ 'chromium', 'firefox' ]);
+        scope.assert(assertSelectedVariants, plan, runtimeVariant('browser', 'chromium'), [ 'chromium' ]);
+        scope.assert(assertSelectedVariants, plan, runtimeDimension('browser', 'engine', 'firefox'), [ 'firefox' ]);
         scope.assert.throws(function selectInnerRuntimeName() {
             selectedTestPlan(plan, { filter: runtime('chromium-inner'), kind: 'filter' });
         }, { message: 'Run selection matched no test cases.' });

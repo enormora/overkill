@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { processProbeChannel, probeChannelScenario } from '../test-support/process-probe-channel.ts';
 
-export const testNode: TestNode = suite('node process probe ownership', [
+export const testNode = suite('node process probe ownership', [
     test('authenticates the child and requests a live checkpoint', async function (scope) {
-        const fixture = await processProbeChannel(scope, probeChannelScenario);
+        const fixture = await processProbeChannel(scope.cleanup, probeChannelScenario);
         fixture.probe.identify(42);
         fixture.deliver({ token: 'unit-probe-token', pid: 42 });
         const pending = fixture.probe.checkpointSnapshot(Promise.resolve());
@@ -20,7 +20,7 @@ export const testNode: TestNode = suite('node process probe ownership', [
         return scope.assert.collect();
     }),
     test('reads final evidence from report storage', async function (scope) {
-        const fixture = await processProbeChannel(scope, probeChannelScenario);
+        const fixture = await processProbeChannel(scope.cleanup, probeChannelScenario);
         scope.assert.deepEqual(await fixture.probe.finalSnapshot(), fixture.report);
         await fixture.probe.dispose();
         scope.assert.deepEqual(fixture.events, [ 'read', 'close', 'dispose-report' ]);
@@ -29,7 +29,10 @@ export const testNode: TestNode = suite('node process probe ownership', [
     test(
         'falls back to final evidence when the checkpoint deadline expires after child exit',
         async function (scope) {
-            const fixture = await processProbeChannel(scope, { ...probeChannelScenario, snapshotTimeout: true });
+            const fixture = await processProbeChannel(scope.cleanup, {
+                ...probeChannelScenario,
+                snapshotTimeout: true
+            });
             scope.assert.deepEqual(await fixture.probe.checkpointSnapshot(Promise.resolve()), fixture.report);
             await fixture.probe.dispose();
             scope.assert.deepEqual(fixture.events, [ 'read', 'close', 'dispose-report' ]);
@@ -37,7 +40,7 @@ export const testNode: TestNode = suite('node process probe ownership', [
         }
     ),
     test('rejects wrong child identities before admitting probe reports', async function (scope) {
-        const fixture = await processProbeChannel(scope, probeChannelScenario);
+        const fixture = await processProbeChannel(scope.cleanup, probeChannelScenario);
         fixture.probe.identify(42);
         fixture.deliver({ token: 'wrong', pid: 42 });
         await scope.assert.rejects(
@@ -51,7 +54,7 @@ export const testNode: TestNode = suite('node process probe ownership', [
         return scope.assert.collect();
     }),
     test('uses final evidence when an invalid report arrives after child exit', async function (scope) {
-        const fixture = await processProbeChannel(scope, probeChannelScenario);
+        const fixture = await processProbeChannel(scope.cleanup, probeChannelScenario);
         fixture.probe.identify(42);
         fixture.deliver({ token: 'unit-probe-token', pid: 42 });
         fixture.deliver({ version: 'invalid' });
@@ -61,7 +64,7 @@ export const testNode: TestNode = suite('node process probe ownership', [
     }),
     test('finishes report storage cleanup even when closing the listener fails', async function (scope) {
         const failure = new Error('Cannot close listener.');
-        const fixture = await processProbeChannel(scope, { ...probeChannelScenario, closeError: failure });
+        const fixture = await processProbeChannel(scope.cleanup, { ...probeChannelScenario, closeError: failure });
         await scope.assert.rejects(async function () {
             return fixture.probe.dispose();
         }, { exact: failure });
@@ -72,19 +75,19 @@ export const testNode: TestNode = suite('node process probe ownership', [
         const failure = new Error('Cannot listen.');
         await scope.assert.rejects(
             async function () {
-                return processProbeChannel(scope, { ...probeChannelScenario, listenError: failure });
+                return processProbeChannel(scope.cleanup, { ...probeChannelScenario, listenError: failure });
             },
             { exact: failure }
         );
         await scope.assert.rejects(async function () {
-            return processProbeChannel(scope, { ...probeChannelScenario, address: null });
+            return processProbeChannel(scope.cleanup, { ...probeChannelScenario, address: null });
         }, {
             message: 'Node probe requires a loopback endpoint.'
         });
         return scope.assert.collect();
     }),
     test('bounds probe frames and recovers final evidence after transport errors', async function (scope) {
-        const fixture = await processProbeChannel(scope, probeChannelScenario);
+        const fixture = await processProbeChannel(scope.cleanup, probeChannelScenario);
         fixture.socket.push('x'.repeat(65_537));
         scope.assert.deepEqual(await fixture.probe.checkpointSnapshot(Promise.resolve()), fixture.report);
         await fixture.probe.dispose();

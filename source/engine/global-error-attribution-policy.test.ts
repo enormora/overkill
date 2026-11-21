@@ -1,12 +1,12 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { globalErrorObservation } from '../test-support/global-error-observation.ts';
 import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import { observeActiveCaseWork } from './execution-global-error-observer.ts';
 import { executionErrorOwnership } from './execution-error-ownership.ts';
 
-export const testNode: TestNode = suite('global error attribution boundaries', [
+export const testNode = suite('global error attribution boundaries', [
     test('leaves work subscriptions empty outside an execution boundary', function (scope) {
         const observed: string[] = [];
         const storage = executionErrorOwnership().runScopeStorage;

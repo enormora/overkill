@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { FailedForeignCheck, FailedLeafCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
@@ -32,7 +32,7 @@ function failedCheck(diff: Diff | null): FailedLeafCheck {
     };
 }
 
-export const testNode: TestNode = suite('Line failure rendering edge', [
+export const testNode = suite('Line failure rendering edge', [
     test(
         'line failure formatter retains the summary of conflicting duplicate completions',
         function (scope) {

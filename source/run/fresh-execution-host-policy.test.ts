@@ -1,9 +1,9 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { freshExecutionHost } from '../test-support/fresh-execution-host.ts';
 import { executeFreshSession } from './execution-session-process.ts';
 
-export const testNode: TestNode = suite('fresh execution host transport and cleanup', [
+export const testNode = suite('fresh execution host transport and cleanup', [
     test(
         'sends the frozen invocation and closes the child after receiving its result',
         async function (scope) {

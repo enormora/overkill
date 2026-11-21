@@ -1,5 +1,6 @@
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import assert from 'node:assert/strict';
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     type TestCase,
@@ -41,22 +42,18 @@ function firstFailedOutcome(result: Awaited<ReturnType<typeof execute>>): FailOu
     return testResult.outcome;
 }
 
-function assertThrowingTestCase(scope: TestScope, testCase: TestCase): void {
-    scope.assert.equal(ownsTestNode(testCase), true);
-    scope.assert.equal(testCase.execution.kind, 'body');
-
-    if (testCase.execution.kind === 'body') {
-        scope.assert.equal(testCase.execution.bodyMode, 'throwing');
+const assertPlannedCompatibilityCase = defineCompositeAssertion({
+    name: 'planned compatibility case',
+    assert(check, plannedCase: PlannedCase) {
+        return check.group([
+            check.equal(plannedCase.testFamily, null),
+            check.deepEqual(plannedCase.annotations.tags, [ 'compatibility' ]),
+            check.equal(plannedCase.controls.timeoutMilliseconds, 50)
+        ]);
     }
-}
+});
 
-function assertPlannedCompatibilityCase(scope: TestScope, plannedCase: PlannedCase): void {
-    scope.assert.equal(plannedCase.testFamily, null);
-    scope.assert.deepEqual(plannedCase.annotations.tags, [ 'compatibility' ]);
-    scope.assert.equal(plannedCase.controls.timeoutMilliseconds, 50);
-}
-
-export const testNode: TestNode = suite('Compatibility entry point', [
+export const testNode = suite('Compatibility entry point', [
     test('@overkill-dev/test/compatibility exposes throwingTest only', function (scope) {
         scope.assert.deepEqual(Object.keys(compatibilitySubpath), [ 'throwingTest' ]);
         scope.assert.equal(Object.hasOwn(rootSubpath, 'throwingTest'), false);
@@ -84,8 +81,15 @@ export const testNode: TestNode = suite('Compatibility entry point', [
             const plannedCase = plan.discoveredCases[0];
 
             scope.require.defined(plannedCase);
-            assertThrowingTestCase(scope, testCase);
-            assertPlannedCompatibilityCase(scope, plannedCase);
+
+            scope.assert.equal(ownsTestNode(testCase), true);
+            scope.assert.equal(testCase.execution.kind, 'body');
+
+            if (testCase.execution.kind === 'body') {
+                scope.assert.equal(testCase.execution.bodyMode, 'throwing');
+            }
+
+            scope.assert(assertPlannedCompatibilityCase, plannedCase);
             scope.assert.equal(result.summary.passed, 1);
 
             return scope.assert.collect();

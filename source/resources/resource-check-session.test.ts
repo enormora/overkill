@@ -1,10 +1,10 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { resourceCheckSession, completeObservation } from '../test-support/resource-check-session.ts';
 
 const lifetime = { kind: 'lifetime' } as const;
 const signal = AbortSignal.any([]);
-export const testNode: TestNode = suite('resource observer session ownership', [
+export const testNode = suite('resource observer session ownership', [
     test('installs observers once and admits the owner', async function (scope) {
         const fixture = resourceCheckSession(completeObservation);
         scope.assert.throws(fixture.session.assertAdmitted, { message: 'Resource observation is installing.' });

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { implementationFacts } from '../implementation-reference.ts';
 
@@ -25,7 +25,7 @@ function referencedBody(): BodyReference<number, number> {
         }
     });
 }
-export const testNode: TestNode = suite('body forwarding and source ownership', [
+export const testNode = suite('body forwarding and source ownership', [
     test('requires admission before executing a referenced body', function (scope) {
         const reference = referencedBody();
         scope.assert.throws(function () {

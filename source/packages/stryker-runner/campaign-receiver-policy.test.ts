@@ -1,13 +1,13 @@
 import { once } from 'node:events';
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { campaignReceiverChannel, receiverWorker } from '../../test-support/campaign-receiver.ts';
 import { campaignProtocolVersion } from './campaign-protocol.ts';
 
-export const testNode: TestNode = suite('campaign receiver admission', [
+export const testNode = suite('campaign receiver admission', [
     test('serializes and correlates admitted worker responses', async function (scope) {
         const worker = receiverWorker({ kind: 'baseline', baseline: null });
-        const fixture = campaignReceiverChannel(scope, worker.worker);
+        const fixture = campaignReceiverChannel(scope.cleanup, worker.worker);
         const response = fixture.nextSent();
         fixture.send(4, null, { kind: 'fetch' });
         scope.assert.deepEqual<unknown, unknown>(await response, {
@@ -20,7 +20,7 @@ export const testNode: TestNode = suite('campaign receiver admission', [
     }),
     test('cancels the worker before processing release requests', async function (scope) {
         const worker = receiverWorker({ kind: 'accepted' });
-        const fixture = campaignReceiverChannel(scope, worker.worker);
+        const fixture = campaignReceiverChannel(scope.cleanup, worker.worker);
         const response = fixture.nextSent();
         fixture.send(0, 100, { kind: 'release' });
         await response;
@@ -29,7 +29,7 @@ export const testNode: TestNode = suite('campaign receiver admission', [
     }),
     test('serializes worker exceptions into error responses', async function (scope) {
         const worker = receiverWorker({ kind: 'accepted' });
-        const fixture = campaignReceiverChannel(scope, {
+        const fixture = campaignReceiverChannel(scope.cleanup, {
             ...worker.worker,
             async respond() {
                 throw new Error('Worker failed.');
@@ -46,7 +46,7 @@ export const testNode: TestNode = suite('campaign receiver admission', [
     }),
     test('rejects unauthenticated frames by closing their channel', async function (scope) {
         const worker = receiverWorker({ kind: 'accepted' });
-        const fixture = campaignReceiverChannel(scope, worker.worker);
+        const fixture = campaignReceiverChannel(scope.cleanup, worker.worker);
         const closed = new Promise<void>(function (resolve) {
             fixture.socket.once('close', resolve);
         });
@@ -65,7 +65,7 @@ export const testNode: TestNode = suite('campaign receiver admission', [
     }),
     test('expires queued requests before invoking a worker', async function (scope) {
         const worker = receiverWorker({ kind: 'accepted' });
-        const fixture = campaignReceiverChannel(scope, worker.worker);
+        const fixture = campaignReceiverChannel(scope.cleanup, worker.worker);
         const response = fixture.nextSent();
         fixture.send(0, 0, { kind: 'fetch' });
         scope.assert.deepEqual<unknown, unknown>(await response, {
@@ -79,7 +79,7 @@ export const testNode: TestNode = suite('campaign receiver admission', [
     test('delivers deadline cancellation to an active worker', async function (scope) {
         const worker = receiverWorker({ kind: 'accepted' });
         const started = Promise.withResolvers<undefined>();
-        const fixture = campaignReceiverChannel(scope, {
+        const fixture = campaignReceiverChannel(scope.cleanup, {
             ...worker.worker,
             async respond(_request, signal) {
                 started.resolve(undefined);
@@ -102,7 +102,7 @@ export const testNode: TestNode = suite('campaign receiver admission', [
     test('preserves ordinary cancellation as an error response', async function (scope) {
         const worker = receiverWorker({ kind: 'accepted' });
         const started = Promise.withResolvers<undefined>();
-        const fixture = campaignReceiverChannel(scope, {
+        const fixture = campaignReceiverChannel(scope.cleanup, {
             ...worker.worker,
             async respond(_request, signal) {
                 started.resolve(undefined);
@@ -125,7 +125,7 @@ export const testNode: TestNode = suite('campaign receiver admission', [
     test('closes duplicate request identities without concurrent execution', async function (scope) {
         const worker = receiverWorker({ kind: 'accepted' });
         const started = Promise.withResolvers<undefined>();
-        const fixture = campaignReceiverChannel(scope, {
+        const fixture = campaignReceiverChannel(scope.cleanup, {
             ...worker.worker,
             async respond(_request, signal) {
                 started.resolve(undefined);

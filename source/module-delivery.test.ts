@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { moduleLoadingRuntime } from './test-support/module-loading-runtime.ts';
 import { createModuleLoading, type DeliveredModule } from './module-delivery.ts';
@@ -18,7 +18,7 @@ const delivery = { build: 'build', modules, builtins: [ 'node:path' ] };
 const builtEntry = `${entry}?overkill-build=build%3A0`;
 const builtDependency = `${dependency}?overkill-build=build%3A0`;
 
-export const testNode: TestNode = suite('frozen module delivery', [
+export const testNode = suite('frozen module delivery', [
     test('returns the native namespace through a generated facade', async function (scope) {
         const fixture = moduleLoadingRuntime();
         const loading = createModuleLoading(fixture.runtime);

@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     passingFixturePath,
@@ -24,9 +24,9 @@ type RunCommandParts = {
 };
 
 const microtestCaptureControlsFixturePath =
-    'source/integration-tests/integration/fixtures/microtest-capture-controls.test.ts';
+    'source/integration-tests/runtime/fixtures/microtest-capture-controls.test.ts';
 
-const defaultConfig: NormalizedConfig = defaultRunConfig({
+const defaultConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
             timeouts: { collectionMilliseconds: 5000 }
@@ -34,7 +34,7 @@ const defaultConfig: NormalizedConfig = defaultRunConfig({
     }
 });
 
-const defaultRequest: RunRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
+const defaultRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
 
 function createRunCommand(overrides: RunCommandParts): RunCommand {
     return {
@@ -45,7 +45,7 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
     };
 }
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     title: 'Test run orchestration',
 
     children: [

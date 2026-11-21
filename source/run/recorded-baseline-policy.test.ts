@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     defineBaselineAdapter,
@@ -47,7 +47,7 @@ function configuredProfile(baselineAdapter: OrdinaryBaselineAdapter): MicrotestP
     }
     return profile;
 }
-export const testNode: TestNode = suite('recorded ordinary baseline policy', [
+export const testNode = suite('recorded ordinary baseline policy', [
     test('restores adapter references after JSON transport', function (scope) {
         const profile = configuredProfile(adapter({ browser: 'reference', platform: 'test' }));
         const json = JSON.stringify(recordedReplayProfile(profile));

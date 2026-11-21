@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import { type EngineCaseBody, createTestEngine } from '../test-support/create-test-engine.ts';
 
 type PassingBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'collect' | 'true'>; };
@@ -11,7 +11,7 @@ function passingBody(
     return scope.assert.collect();
 }
 
-export const testNode: TestNode = suite('Test plan authoring rules', [
+export const testNode = suite('Test plan authoring rules', [
     test('rejects reachable tables with fewer than two cases', function (scope) {
         const engine = createTestEngine();
         const emptyTableRoot = engine.createRoot({

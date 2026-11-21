@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 
 import {
     captureSourceLocation,
@@ -9,19 +10,21 @@ import {
 import { forwardAssertionSourceLocations, sourceLocationsWithCurrentForwarding } from './source-location-forwarding.ts';
 import type { SourceLocation } from './assertion-node-shape.ts';
 
-function assertCapturedSourceLocation(scope: TestScope, location: SourceLocation): void {
-    if (location.kind !== 'known') {
-        scope.assert.equal(location.kind, 'known');
-
-        return;
+const capturedSourceLocation = defineCompositeAssertion({
+    name: 'captured source location',
+    assert(check, location: SourceLocation) {
+        if (location.kind !== 'known') {
+            return check.equal(location.kind, 'known');
+        }
+        return check.group([
+            check.match(location.file, /source-location\.test\.ts$/u),
+            check.number(location.line),
+            check.number(location.column)
+        ]);
     }
+});
 
-    scope.assert.match(location.file, /source-location\.test\.ts$/u);
-    scope.assert.equal(typeof location.line, 'number');
-    scope.assert.equal(typeof location.column, 'number');
-}
-
-export const testNode: TestNode = suite('Assertion source locations', [
+export const testNode = suite('Assertion source locations', [
     test('sourceLocationFromStack() parses file URL stack frames', function (scope) {
         scope.assert.deepEqual(
             sourceLocationFromStack(
@@ -98,7 +101,7 @@ export const testNode: TestNode = suite('Assertion source locations', [
             const second = location();
 
             scope.assert.equal(first, second);
-            assertCapturedSourceLocation(scope, first);
+            scope.assert(capturedSourceLocation, first);
 
             return scope.assert.collect();
         }

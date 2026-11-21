@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { safeParse } from '@schema-hub/zod-error-formatter';
 
@@ -10,7 +10,7 @@ function validationIssues(data: unknown): readonly string[] {
     return result.success ? [] : result.error.issues;
 }
 
-export const testNode: TestNode = suite('Coverage policy', [
+export const testNode = suite('Coverage policy', [
     test('accepts every output and all-files source policy', function (scope) {
         scope.assert.deepEqual(
             validationIssues({

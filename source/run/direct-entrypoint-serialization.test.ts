@@ -1,4 +1,4 @@
-import { type TestNode, test } from '@overkill-dev/test';
+import { test } from '@overkill-dev/test';
 
 import {
     type TestNode as SubjectTestNode,
@@ -24,7 +24,7 @@ function passingTest(title: string): SubjectTestNode {
     });
 }
 
-export const testNode: TestNode = test(
+export const testNode = test(
     'direct entrypoint collection accepts decoded sibling cases and rejects changed case data',
     function (scope) {
         const expected = defaultRunEngine.createTestPlanFromTestFiles({

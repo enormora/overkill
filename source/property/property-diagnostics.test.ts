@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
 import {
@@ -36,7 +36,7 @@ function diagnosticProperty(expected: number): SubjectTestNode {
     });
 }
 
-export const testNode: TestNode = suite('property diagnostic rendering', [
+export const testNode = suite('property diagnostic rendering', [
     test(
         'reports unavailable coverage when the work budget prevents body evaluation',
         async function (scope) {

@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 
@@ -47,7 +47,7 @@ const collected: CollectedFamilyMetadata = {
     facts: { id: frozen.id, version: frozen.version, settings: null, preparation: null, collection: null }
 };
 
-export const testNode: TestNode = suite('frozen family resolution', [
+export const testNode = suite('frozen family resolution', [
     table({
         title: 'resolves built-in family definitions',
         cases: [ 'builtin', 'config-file' ] as const,

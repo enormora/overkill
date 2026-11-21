@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defaultIntegrationProfile, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
@@ -7,8 +7,8 @@ import { RunExecutionPlanError } from './run-errors.ts';
 import { emptyWorkUnitResourceConstraints, type CollectedRunPlan } from './run-types.ts';
 import { createWorkerPoolPlacementPlan, type WorkerPoolPlacementPlanInput } from './worker-pool-placement-planning.ts';
 
-const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
-const secondIntegrationPath = 'source/integration-tests/integration/fixtures/delayed-pass.test.ts';
+const integrationPath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
+const secondIntegrationPath = 'source/integration-tests/runtime/fixtures/delayed-pass.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 const fileSets = new Map([
@@ -173,7 +173,7 @@ async function captureAsyncPlanError(run: () => Promise<unknown>): Promise<RunEx
     }
 }
 
-export const testNode: TestNode = suite('Execution plan resolution', [
+export const testNode = suite('Execution plan resolution', [
     test('placement resolution aggregates incompatible resource plans', function (scope) {
         const error = capturePlanError(function resolveIncompatiblePlan() {
             createWorkerPoolPlacementPlan(workerPoolPlacementInput(

@@ -53,7 +53,7 @@ function createCollectionOnlyWorkerPool(
         async run() {
             return {
                 collectedPlan: deterministicCollectedRunPlan(
-                    'source/integration-tests/integration/fixtures/passing.test.ts'
+                    'source/integration-tests/runtime/fixtures/passing.test.ts'
                 ),
                 runnerErrors: []
             };

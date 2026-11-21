@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { testDouble } from './test-double.ts';
 
 type ConstructedClient = { readonly name: string; };
 
-export const testNode: TestNode = suite('Double history empty', [
+export const testNode = suite('Double history empty', [
     test(
         'valid history indexes distinguish missing records from recorded constructions',
         function (scope) {

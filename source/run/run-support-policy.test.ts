@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { TestRuntimePolicy } from '../engine/case-execution-context.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -37,7 +37,7 @@ const transparentPolicy: TestRuntimePolicy = {
         return [];
     }
 };
-export const testNode: TestNode = suite('run support policy boundaries', [
+export const testNode = suite('run support policy boundaries', [
     test('preserves a lone runtime policy on either side of composition', function (scope) {
         scope.assert.equal(composeRunRuntimePolicies(transparentPolicy, null), transparentPolicy);
         scope.assert.equal(composeRunRuntimePolicies(null, transparentPolicy), transparentPolicy);

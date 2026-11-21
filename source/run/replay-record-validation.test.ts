@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { workerReplayRecord } from '../test-support/replay-record-fixture.ts';
 import { createCollectedPlan, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
@@ -239,7 +239,7 @@ async function prepareRecord(record: ReplayRunRecord): Promise<PreparedReplay> {
         }
     });
 }
-export const testNode: TestNode = suite('retained replay record validation', [
+export const testNode = suite('retained replay record validation', [
     test('replays baseline write records with comparisons only', async function (scope) {
         const record = retainedRecord();
         for (const mode of [ 'apply', 'bootstrap', 'diff', 'update' ] as const) {

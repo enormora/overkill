@@ -1,10 +1,10 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { supervisedMessageRuntime } from '../test-support/supervised-message-runtime.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { finishSupervisedRuntime } from './supervised-run-runtime.ts';
 
-export const testNode: TestNode = suite('supervised result finalization', [
+export const testNode = suite('supervised result finalization', [
     table({
         title: 'finalizes according to available collection and result evidence',
         cases: [ false, true ].flatMap(function (collected) {
@@ -18,7 +18,7 @@ export const testNode: TestNode = suite('supervised result finalization', [
         async test(scope) {
             const { collected, completed } = scope.parameters;
 
-            const fixture = supervisedMessageRuntime(scope, false, collected);
+            const fixture = supervisedMessageRuntime(scope.cleanup, false, collected);
             if (completed) {
                 fixture.receive({
                     kind: 'result',
@@ -49,7 +49,7 @@ export const testNode: TestNode = suite('supervised result finalization', [
         async test(scope) {
             const { completed, terminal } = scope.parameters;
 
-            const fixture = supervisedMessageRuntime(scope, false, true);
+            const fixture = supervisedMessageRuntime(scope.cleanup, false, true);
             if (completed) {
                 fixture.receive({ kind: 'result', result: runResultFactory.build({}) });
             }

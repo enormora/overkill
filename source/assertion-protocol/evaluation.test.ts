@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createCompositeCheckBuilder } from '../assert/assertion-extension.ts';
@@ -148,7 +148,7 @@ const failingAssertions: readonly EvaluationCase[] = [
     { assertion: check.undefined(null), fails: true }
 ];
 
-export const testNode: TestNode = suite('Assertion evaluation', [
+export const testNode = suite('Assertion evaluation', [
     test(
         'passes built-in catalog assertions with strict semantics',
         function (scope) {

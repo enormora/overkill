@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { RunnerError } from '../packages/engine/engine.entry-point.ts';
 import {
@@ -52,7 +52,7 @@ function runtimeWithEmptyPlacementPlan(): WorkerPoolRunRuntime {
     };
 }
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool process usage tracking',
     children: [

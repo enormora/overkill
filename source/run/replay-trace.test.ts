@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { PlacementPlan, PlacementLane } from './run-types.ts';
 import type { WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
@@ -43,7 +43,7 @@ function recordedDispatcher(): DispatchFixture {
         work: unit.work
     };
 }
-export const testNode: TestNode = suite('recorded scheduling replay', [
+export const testNode = suite('recorded scheduling replay', [
     test('dispatches the recorded lane and waits for actual completion', function (scope: TestScope) {
         const { dispatcher, lane, work } = recordedDispatcher();
         const lease = dispatcher.pull(lane);

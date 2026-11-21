@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { processMeasurement, processMeasurementScenario } from '../test-support/process-measurement.ts';
 
 import { measureProcessCommand } from './process-execution.ts';
 
-export const testNode: TestNode = suite('process measurement ownership', [
+export const testNode = suite('process measurement ownership', [
     test('measures command output and releases the child once', async (scope) => {
         const fixture = processMeasurement(processMeasurementScenario);
         const result = await measureProcessCommand(fixture.request, fixture.runtime);

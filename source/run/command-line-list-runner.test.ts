@@ -1,4 +1,4 @@
-import { defineMacro, type TestBody, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineMacro, type TestBody, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type {
     LoadedConfig,
@@ -295,7 +295,7 @@ export async function listTests(
     });
 }
 
-export const testNode: TestNode = suite('Command line list runner', [
+export const testNode = suite('Command line list runner', [
     listRunnerCase(
         'commandLineRunner.listTests() renders the resolved plan tree without loading reporters',
         async function body(scope: TestScope) {
@@ -388,7 +388,7 @@ export const testNode: TestNode = suite('Command line list runner', [
     ),
     listRunnerCase(
         'commandLineRunner.listTests() renders definition locations when requested',
-        async function body(scope: TestScope) {
+        async function body(scope) {
             const result = await listTests(
                 createListDependencies(resolvePassingCommand, createMemoryReporter),
                 true,
@@ -407,7 +407,7 @@ export const testNode: TestNode = suite('Command line list runner', [
     ),
     listRunnerCase(
         'commandLineRunner.listTests() renders explicit orphan diagnostics',
-        async function body(scope: TestScope) {
+        async function body(scope) {
             const result = await listTests(
                 createListDependencies(resolvePassingCommand, createMemoryReporter),
                 false,
@@ -428,7 +428,7 @@ export const testNode: TestNode = suite('Command line list runner', [
     ),
     listRunnerCase(
         'commandLineRunner.listTests() renders orphan definition locations when requested',
-        async function body(scope: TestScope) {
+        async function body(scope) {
             const result = await listTests(
                 createListDependencies(createResolvedRunWithOrphanLocation, createMemoryReporter),
                 true,

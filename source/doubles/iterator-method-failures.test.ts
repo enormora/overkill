@@ -1,9 +1,9 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { testIterator, testAsyncIterator, testAsyncIterable } from './protocol-double.ts';
 import { protocolIteratorEvents, protocolDisposeMethod } from './protocol-double-metadata.ts';
 
-export const testNode: TestNode = suite('iterator method failure ownership', [
+export const testNode = suite('iterator method failure ownership', [
     table({
         title: 'records synchronous iterator failures',
         cases: [ 'next', 'return' ] as const,

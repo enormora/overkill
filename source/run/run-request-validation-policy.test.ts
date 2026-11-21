@@ -1,4 +1,4 @@
-import { type TestNode, table, type TestScope, suite, test, testDouble } from '@overkill-dev/test';
+import { table, type TestScope, suite, test, testDouble } from '@overkill-dev/test';
 
 import { defineReporter } from '../packages/engine/engine.entry-point.ts';
 
@@ -15,7 +15,7 @@ const propertyProfile = normalizeConfig({
 })
     .profiles
     .laws;
-export const testNode: TestNode = suite('run request validation boundaries', [
+export const testNode = suite('run request validation boundaries', [
     test('rejects ordinary recording combined with merge recording', function (scope) {
         scope.assert.throws(function () {
             validateRunInput({

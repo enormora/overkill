@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { CaseId } from '../engine/identity.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
@@ -191,9 +192,11 @@ function collectionRuntime(
     } as unknown as SupervisedCollectionRuntime<CollectedRunPlan | null>;
 }
 
-function timeoutCallback(scope: TestScope, callbacks: readonly (() => void)[]): () => void {
+function timeoutCallback(callbacks: readonly (() => void)[]): () => void {
     const callback = callbacks.at(-1);
-    scope.require.defined(callback);
+    if (callback === undefined || callback === null) {
+        throw new Error('Expected callback to satisfy defined.');
+    }
 
     return callback;
 }
@@ -221,17 +224,18 @@ function scheduleOverlappingCases(
     timeout.start();
 }
 
-function assertTimedOutChild(
-    scope: TestScope,
-    record: TimeoutRuntimeRecord,
-    child: ChildRecord
-): void {
-    scope.assert.equal(record.clears(), 3);
-    scope.assert.equal(record.runtime.terminalFailure.read(), true);
-    scope.assert.deepEqual(child.signals(), [ 'SIGKILL' ]);
-}
+const assertTimedOutChild = defineCompositeAssertion({
+    name: 'timed out child',
+    assert(check, record: TimeoutRuntimeRecord, child: ChildRecord) {
+        return check.group([
+            check.equal(record.clears(), 3),
+            check.equal(record.runtime.terminalFailure.read(), true),
+            check.deepEqual(child.signals(), [ 'SIGKILL' ])
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('Supervised run runtime', [
+export const testNode = suite('Supervised run runtime', [
     test('supervisedCollectedPlan() accepts only supervised plans', function (scope) {
         const supervisedPlan = { collectedPlan, kind: 'supervised' as const };
         const localPlan = { kind: 'local' as const, testPlan: {} };
@@ -276,10 +280,10 @@ export const testNode: TestNode = suite('Supervised run runtime', [
 
         scheduleOverlappingCases(record, timeout);
         scope.assert.deepEqual(record.delays(), [ 1000, 500, 1000 ]);
-        timeoutCallback(scope, record.callbacks())();
+        timeoutCallback(record.callbacks())();
         timeout.clear();
 
-        assertTimedOutChild(scope, record, live);
+        scope.assert(assertTimedOutChild, record, live);
 
         return scope.assert.collect();
     }),

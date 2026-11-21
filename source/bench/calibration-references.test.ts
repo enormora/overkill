@@ -1,4 +1,4 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
@@ -33,7 +33,7 @@ const scenarios = [
         source: 'canonical'
     }
 ] as const;
-export const testNode: TestNode = suite(
+export const testNode = suite(
     'calibration reference selection',
     [
         test('reads historical saved calibration references', function (scope: TestScope) {

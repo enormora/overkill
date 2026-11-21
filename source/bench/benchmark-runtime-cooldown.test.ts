@@ -1,5 +1,5 @@
 import { mock, type Mock } from 'node:test';
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type Clock, type DeterministicClock } from '@enormora/clock';
 import { defaultRuntimeCooldownPolicy } from '../packages/bench/bench.entry-point.ts';
@@ -60,19 +60,7 @@ function startCooldown(readings: readonly number[], earlyMilliseconds: number): 
     };
 }
 
-async function completeObservationWindow(
-    scope: TestScope,
-    cooldown: CooldownFixture,
-    completed: number
-): Promise<void> {
-    cooldown.clock.advanceByMilliseconds(49);
-    await scope.settleAsyncWork();
-    scope.assert.equal(cooldown.observations(), completed);
-    cooldown.clock.advanceByMilliseconds(1);
-    await scope.settleAsyncWork();
-}
-
-export const testNode: TestNode = suite('bounded runtime cooldown', [
+export const testNode = suite('bounded runtime cooldown', [
     test('requires consecutive quiet windows and accepts threshold equality', async function (scope) {
         const cooldown = startCooldown([ 0.1, 0.8, 0.1, 0.1 ], 0);
         scope.cleanup(function () {
@@ -141,7 +129,11 @@ export const testNode: TestNode = suite('bounded runtime cooldown', [
             cooldown.controller.abort();
         });
         for (const completed of [ 0, 1 ]) {
-            await completeObservationWindow(scope, cooldown, completed);
+            cooldown.clock.advanceByMilliseconds(49);
+            await scope.settleAsyncWork();
+            scope.assert.equal(cooldown.observations(), completed);
+            cooldown.clock.advanceByMilliseconds(1);
+            await scope.settleAsyncWork();
         }
         const result = await cooldown.pending;
         scope.assert.equal(result.error, null);
