@@ -62,8 +62,16 @@ export const testNode: TestNode = suite('replay resource restoration', [
             { kind: 'witness', witness: propertyCorpusEntry, sourceRunId: null, moduleGraph: 'current' },
             null,
             async function propertyReplay() {
-                scope.assert.equal(replayResourceDefinition(resource, resourceReplayWitness(resource, testCase)), resource);
-                await replayAcquiredResource(resource, {}, AbortSignal.any([]), resourceReplayWitness(resource, testCase));
+                scope.assert.equal(
+                    replayResourceDefinition(resource, resourceReplayWitness(resource, testCase)),
+                    resource
+                );
+                await replayAcquiredResource(
+                    resource,
+                    {},
+                    AbortSignal.any([]),
+                    resourceReplayWitness(resource, testCase)
+                );
             }
         );
         return scope.assert.collect();
@@ -81,7 +89,10 @@ export const testNode: TestNode = suite('replay resource restoration', [
             const entry = scope.parameters;
 
             await withWitness(entry.value, async function replay() {
-                scope.assert.equal(replayResourceDefinition(resource, resourceReplayWitness(resource, testCase)), resource);
+                scope.assert.equal(
+                    replayResourceDefinition(resource, resourceReplayWitness(resource, testCase)),
+                    resource
+                );
             });
             return scope.assert.collect();
         }
@@ -121,7 +132,12 @@ export const testNode: TestNode = suite('replay resource restoration', [
     test('requires a restoration callback', async function (scope) {
         await withWitness(witness, async function replay() {
             await scope.assert.rejects(async function restore() {
-                await replayAcquiredResource(resource, {}, AbortSignal.any([]), resourceReplayWitness(resource, testCase));
+                await replayAcquiredResource(
+                    resource,
+                    {},
+                    AbortSignal.any([]),
+                    resourceReplayWitness(resource, testCase)
+                );
             }, { message: 'Resource "counter" does not support simulation witness replay.' });
         });
         return scope.assert.collect();
@@ -166,7 +182,12 @@ export const testNode: TestNode = suite('replay resource restoration', [
                 handle.value = 42;
             });
             await withWitness(selected, async function replay() {
-                await replayAcquiredResource(restorable, handle, controller.signal, resourceReplayWitness(restorable, testCase));
+                await replayAcquiredResource(
+                    restorable,
+                    handle,
+                    controller.signal,
+                    resourceReplayWitness(restorable, testCase)
+                );
             });
             scope.assert.equal(handle.value, 42);
             return scope.assert.collect();
