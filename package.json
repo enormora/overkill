@@ -49,7 +49,7 @@
         "ts-pattern": "5.9.2",
         "tslib": "2.9.1",
         "tstyche": "8.0.0-beta.0",
-        "type-fest": "5.10.0",
+        "type-fest": "6.0.1",
         "typescript": "6.0.3",
         "ulid": "3.0.2",
         "yoctocolors": "2.2.0",
