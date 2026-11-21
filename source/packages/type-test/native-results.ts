@@ -1,5 +1,6 @@
 import {
     createRunResult,
+    workIdentityKey,
     singleAttemptResult,
     serializeValue,
     resolveSourceLocation,
@@ -11,7 +12,7 @@ import {
     type FailedCheck
 } from '../engine/engine.entry-point.ts';
 import type { RelationEvidence } from './relation-evidence.ts';
-import { caseKey, type OriginalAssertionPlan, type NativeSite } from './original-assertions.ts';
+import type { OriginalAssertionPlan, NativeSite } from './original-assertions.ts';
 
 export type SiteEvidence = {
     readonly site: NativeSite;
@@ -22,8 +23,9 @@ export type SiteEvidence = {
 };
 
 function failedCheck(evidence: SiteEvidence, index: number): FailedCheck {
-    const message =
-        `Type relation ${evidence.site.reference.relation} does not hold (TypeScript ${evidence.compilerVersion}).`;
+    const { relation, negated } = evidence.site.reference;
+    const name = negated ? `${relation}.not` : relation;
+    const message = `Type relation ${name} does not hold (TypeScript ${evidence.compilerVersion}).`;
     return {
         kind: 'foreign',
         id: String(index + 1),
@@ -40,7 +42,7 @@ function failedCheck(evidence: SiteEvidence, index: number): FailedCheck {
         expected: serializeValue(evidence.expected),
         diff: null,
         path: [],
-        error: { name: 'TypeAssertionError', message, stack: null, thrown: evidence.site.reference.relation }
+        error: { name: 'TypeAssertionError', message, stack: null, thrown: name }
     };
 }
 
@@ -73,21 +75,16 @@ function noAssertions(): TestOutcome {
 function evidenceOutcome(
     sites: readonly NativeSite[],
     results: readonly SiteEvidence[],
-    issue: string | null
+    issue: string | undefined
 ): TestOutcome {
     const outcome = assertionOutcome(results);
     if (outcome.kind === 'fail') {
         return outcome;
     }
-    const missing = sites.some(function missingSite(site) {
-        return results.every(function matching(entry) {
-            return entry.site !== site;
-        });
-    });
-    if (missing) {
+    if (results.length < sites.length) {
         return { kind: 'inconclusive', reason: 'Missing compiler assertion evidence.' };
     }
-    if (issue !== null) {
+    if (issue !== undefined) {
         return { kind: 'inconclusive', reason: issue };
     }
     const uncertain = results.find(function inconclusive(entry) {
@@ -101,29 +98,20 @@ function evidenceOutcome(
 function caseOutcome(
     testCase: TestPlan['cases'][number],
     sites: readonly NativeSite[],
-    evidence: readonly SiteEvidence[],
-    issues: OriginalAssertionPlan['issues']
+    evidence: ReadonlyMap<NativeSite, SiteEvidence>,
+    issue: string | undefined
 ): TestOutcome {
     if (testCase.execution.kind === 'skip') {
         return { kind: 'skip', reason: testCase.execution.reason };
     }
-    const key = caseKey(testCase);
-    const owned = sites.filter(function owner(site) {
-        return site.owners.includes(key);
-    });
-    const issue = issues.find(function ownedIssue(entry) {
-        return entry.owner === key;
-    });
-    if (owned.length === 0) {
-        return issue === undefined ? noAssertions() : { kind: 'inconclusive', reason: issue.reason };
+    if (sites.length === 0) {
+        return issue === undefined ? noAssertions() : { kind: 'inconclusive', reason: issue };
     }
-    return evidenceOutcome(
-        owned,
-        evidence.filter(function owner(entry) {
-            return entry.site.owners.includes(key);
-        }),
-        issue?.reason ?? null
-    );
+    const results = sites.flatMap(function checkedSite(site) {
+        const checked = evidence.get(site);
+        return checked === undefined ? [] : [ checked ];
+    });
+    return evidenceOutcome(sites, results, issue);
 }
 
 function runError(message: string, cause: unknown): RunnerError {
@@ -145,10 +133,40 @@ export type NativeCheckEvidence = {
     readonly started: number;
 };
 const microsecondsPerMillisecond = 1000;
+function checkerErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Type-test checker failed.';
+}
+
+function sitesByOwner(assertionPlan: OriginalAssertionPlan): ReadonlyMap<string, readonly NativeSite[]> {
+    const sites = new Map<string, NativeSite[]>();
+    for (const site of assertionPlan.sites) {
+        for (const owner of site.owners) {
+            const key = workIdentityKey(owner);
+            const owned = sites.get(key);
+            if (owned === undefined) {
+                sites.set(key, [ site ]);
+            } else {
+                owned.push(site);
+            }
+        }
+    }
+    return sites;
+}
+
 function caseResults(input: NativeCheckEvidence): readonly PerTestResult[] {
-    const evidence = input.checked ?? [];
+    const evidence = new Map((input.checked ?? []).map(function (entry) {
+        return [ entry.site, entry ];
+    }));
+    const sites = sitesByOwner(input.assertionPlan);
+    const issues = Map.groupBy(input.assertionPlan.issues, function owner(issue) {
+        return workIdentityKey(issue.owner);
+    });
+    const failure = input.error === null ? null : checkerErrorMessage(input.error);
     return input.plan.cases.map(function caseResult(testCase) {
-        const outcome = caseOutcome(testCase, input.assertionPlan.sites, evidence, input.assertionPlan.issues);
+        const key = workIdentityKey(testCase.workId);
+        const outcome = failure === null || testCase.execution.kind === 'skip'
+            ? caseOutcome(testCase, sites.get(key) ?? [], evidence, issues.get(key)?.[0]?.reason)
+            : { kind: 'inconclusive' as const, reason: failure };
         const [ firstLocation, ...locations ] = testCase.definitionLocations;
         return singleAttemptResult({
             id: testCase.id,
@@ -163,10 +181,10 @@ function caseResults(input: NativeCheckEvidence): readonly PerTestResult[] {
 
 export function nativeCheckResult(input: NativeCheckEvidence): RunResult {
     const perTest = caseResults(input);
-    const message = input.error instanceof Error ? input.error.message : 'Checker setup failed.';
+    const message = checkerErrorMessage(input.error);
     const errors = Array.from(input.error === null ? [] : [ runError(message, input.error) ]);
     if (
-        perTest.some(function missing(result) {
+        input.error === null && perTest.some(function missing(result) {
             return result.verdict === 'inconclusive';
         })
     ) {

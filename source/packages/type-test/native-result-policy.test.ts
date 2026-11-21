@@ -2,14 +2,14 @@ import { type TestNode, table, suite, test } from '@overkill-dev/test';
 
 import * as ast from 'typescript-beta/ast';
 
-import { sourceCall } from '../../../../test-support/native-source-fixture.ts';
-import { observationPlan } from '../../../../test-support/observation-lifetime.ts';
+import { sourceCall } from '../../test-support/native-source-fixture.ts';
+import { observationPlan } from '../../test-support/observation-lifetime.ts';
 import {
     nativeCheckResult,
     type SiteEvidence,
     type NativeCheckEvidence
-} from '../../../../packages/type-test/native-results.ts';
-import { caseKey, type NativeSite } from '../../../../packages/type-test/original-assertions.ts';
+} from './native-results.ts';
+import type { NativeSite } from './original-assertions.ts';
 
 function evidence(): NativeCheckEvidence {
     return {
@@ -24,7 +24,7 @@ function ownedSite(input: NativeCheckEvidence, message: string | null): NativeSi
     return {
         path: '/project/case.ts',
         range: { start: 0, end: 3 },
-        owners: [ caseKey(input.plan.cases[0]) ],
+        owners: [ input.plan.cases[0].workId ],
         line: 1,
         column: 2,
         message,
@@ -116,11 +116,8 @@ export const testNode: TestNode = suite('native checker completion policy', [
             assertionPlan: {
                 ...input.assertionPlan,
                 issues: [ {
-                    owner: caseKey(
-                        input
-                            .plan
-                            .cases[0]
-                    ),
+                    owner: input.plan.cases[0].workId,
+                    location: { kind: 'unknown' },
                     reason: 'Unsupported callback'
                 } ]
             }
@@ -138,11 +135,8 @@ export const testNode: TestNode = suite('native checker completion policy', [
             assertionPlan: {
                 ...input.assertionPlan,
                 issues: [ {
-                    owner: caseKey(
-                        input
-                            .plan
-                            .cases[0]
-                    ),
+                    owner: input.plan.cases[0].workId,
+                    location: { kind: 'unknown' },
                     reason: 'Unsupported expression'
                 } ]
             },
@@ -173,7 +167,11 @@ export const testNode: TestNode = suite('native checker completion policy', [
             assertionPlan: {
                 ...input.assertionPlan,
                 sites: [ input.site, { ...input.site } ],
-                issues: [ { owner: caseKey(input.plan.cases[0]), reason: 'Unsupported expression' } ]
+                issues: [ {
+                    owner: input.plan.cases[0].workId,
+                    location: { kind: 'unknown' },
+                    reason: 'Unsupported expression'
+                } ]
             },
             checked: [ checkedSite(input.site, { kind: 'established', holds: false }) ]
         });
@@ -192,9 +190,10 @@ export const testNode: TestNode = suite('native checker completion policy', [
             scope.assert.equal(result.status, 'failed');
             scope.assert.equal(
                 result.runnerErrors[0]?.message,
-                error instanceof Error ? error.message : 'Checker setup failed.'
+                error instanceof Error ? error.message : 'Type-test checker failed.'
             );
             scope.assert.equal(result.runnerErrors[0]?.cause, error);
+            scope.assert.equal(result.perTest[0]?.verdict, 'inconclusive');
             return scope.assert.collect();
         }
     })
