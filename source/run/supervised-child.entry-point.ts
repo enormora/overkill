@@ -131,6 +131,7 @@ await runSupervisedChild(
     },
     {
         createProcessUsageTracker: createNodeProcessUsageTracker,
-        createClock
+        createClock,
+        readActiveResourceTypes: process.getActiveResourcesInfo
     }
 );
