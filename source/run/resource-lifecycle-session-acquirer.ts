@@ -16,14 +16,22 @@ import {
     sourceResourceDefinition
 } from '../resources/resource-scenario-binding.ts';
 import { acquireManagedResourceHandle, type ResourceHandleRequest } from './resource-handle-acquisition.ts';
-import { replayAcquiredResource, replayResourceDefinition } from './replay-resource.ts';
+import {
+    replayAcquiredResource,
+    replayOwnerDefinition,
+    resourceReplayWitness
+} from './replay-resource.ts';
 import {
     caseResourceBoundaryKeys,
     boundaryFor,
     initialBoundaryUseCountsFromRecords,
     type LifecycleBoundary
 } from './resource-lifecycle-boundaries.ts';
-import { resourceWrapperLifecycleError, resourceWrapperErrorFromUnknown } from './resource-lifecycle-error.ts';
+import {
+    resourceReplayErrorMessage,
+    resourceWrapperLifecycleError,
+    resourceWrapperErrorFromUnknown
+} from './resource-lifecycle-error.ts';
 import {
     deserializeProjectedHandle,
     projectedHandle,
@@ -51,6 +59,7 @@ export type ManagedResourceRecord = {
     readonly external: boolean;
     readonly consumerHandle: unknown;
     readonly ownerHandle: unknown;
+    readonly replayScenario: { readonly name: string; readonly value: string; } | null;
 };
 
 type ManagedResourceAcquisition = Promise<ManagedResourceRecord>;
@@ -68,6 +77,8 @@ export type ManagedLifecycleStores = {
     readonly takePendingRunErrors: () => readonly ManagedRunnerError[];
     readonly takeRunErrors: () => readonly ManagedRunnerError[];
     readonly checks: ResourceSessionContract<ResourceContext<ResourceMap>>['resourceChecks'];
+    readonly publishRecord: (record: ManagedResourceRecord) => void;
+    readonly readyRecords: () => readonly ManagedResourceRecord[];
     readonly records: () => readonly ManagedResourceRecord[];
 };
 
@@ -103,6 +114,7 @@ export function createManagedStores(options: ResourceLifecycleStoreOptions): Man
     const errorsByCase = new Map<string, ManagedRunnerError[]>();
     const observations = new Set<ResourceCheckSession>();
     const records = new Map<string, ManagedResourceRecord>();
+    const ready = new Map<string, ManagedResourceRecord>();
     const runErrors: ManagedRunnerError[] = [];
 
     return {
@@ -111,6 +123,7 @@ export function createManagedStores(options: ResourceLifecycleStoreOptions): Man
         },
         deleteRecord(boundaryKey) {
             records.delete(boundaryKey);
+            ready.delete(boundaryKey);
         },
         existingAcquisition(boundaryKey): Promise<ManagedResourceRecord> | null {
             return acquisitions.get(boundaryKey) ?? null;
@@ -150,6 +163,13 @@ export function createManagedStores(options: ResourceLifecycleStoreOptions): Man
             }
             records.set(boundaryKey, record);
         },
+        publishRecord(record) {
+            records.set(record.boundary.key, record);
+            ready.set(record.boundary.key, record);
+        },
+        readyRecords() {
+            return Array.from(ready.values());
+        },
         records() {
             return Array.from(records.values());
         },
@@ -179,7 +199,7 @@ export function createManagedStores(options: ResourceLifecycleStoreOptions): Man
 
 export function resourceProjectionRecordsFromStores(stores: ManagedLifecycleStores): ResourceProjectionRecords {
     return {
-        resources: stores.records().flatMap(function toProjectionRecord(record) {
+        resources: stores.readyRecords().flatMap(function toProjectionRecord(record) {
             if (record.external) {
                 return [];
             }
@@ -195,7 +215,7 @@ export function resourceProjectionRecordsFromStores(stores: ManagedLifecycleStor
 
 export function managedResourceHandle(record: ManagedResourceRecord, resource: AnyResourceDefinition): unknown {
     record.checks?.assertAdmitted();
-    return exposeResourceHandle(resource, record.consumerHandle);
+    return exposeResourceHandle(record.replayScenario === null ? resource : record.descriptor, record.consumerHandle);
 }
 
 function assertCompatibleResource(
@@ -245,6 +265,49 @@ async function installManagedObservation(
     };
 }
 
+export async function awaitResourceAcquisitions(acquisitions: readonly Promise<unknown>[]): Promise<void> {
+    const results = await Promise.allSettled(acquisitions);
+    const failure = results.find(function rejected(result) {
+        return result.status === 'rejected';
+    });
+    if (failure !== undefined) {
+        throw failure.reason;
+    }
+}
+
+type ResourceAcquisitionRequest = {
+    readonly resource: AnyResourceDefinition;
+    readonly boundary: LifecycleBoundary;
+    readonly testCase: TestPlanCase;
+    readonly signal: AbortSignal;
+};
+
+async function recordFailedAcquisition(
+    stores: ManagedLifecycleStores,
+    boundary: LifecycleBoundary,
+    acquisition: Promise<ManagedResourceRecord>
+): Promise<ManagedResourceRecord> {
+    try {
+        return await acquisition;
+    } catch (error: unknown) {
+        if (stores.existingRecord(boundary.key) === undefined) {
+            stores.deleteAcquisition(boundary.key);
+        }
+        await currentAttachmentExecution()?.markResourceFailure(boundary.key);
+        throw error;
+    }
+}
+
+function replayScenario(
+    resource: AnyResourceDefinition,
+    testCase: TestPlanCase
+): ManagedResourceRecord['replayScenario'] {
+    const witness = resourceReplayWitness(resource, testCase);
+    return typeof witness?.scenario === 'string'
+        ? { name: witness.simulation.name, value: witness.scenario }
+        : null;
+}
+
 export function createManagedResourceAcquirer(
     stores: ManagedLifecycleStores,
     options: ResourceLifecycleStoreOptions
@@ -261,7 +324,7 @@ export function createManagedResourceAcquirer(
     ): Promise<ResourceContext<ResourceMap>> {
         const context = mutableDependencyContext();
 
-        await Promise.all(
+        await awaitResourceAcquisitions(
             Object.entries(resource.dependencies).map(async function acquireDependency([ key, dependency ]) {
                 const record = await acquireResource(dependency, testCase, signal);
 
@@ -274,24 +337,29 @@ export function createManagedResourceAcquirer(
 
     async function restoreAcquiredResource(
         record: ManagedResourceRecord,
-        signal: AbortSignal
+        signal: AbortSignal,
+        testCase: TestPlanCase
     ): Promise<ManagedResourceRecord> {
+        const witness = resourceReplayWitness(record.descriptor, testCase);
         stores.rememberRecord(record.boundary.key, record);
-        await replayAcquiredResource(record.descriptor, record.ownerHandle, signal);
+        try {
+            await replayAcquiredResource(record.descriptor, record.ownerHandle, signal, witness);
+        } catch (error: unknown) {
+            throw resourceWrapperLifecycleError(
+                resourceReplayErrorMessage('Simulation witness restore failed', error),
+                error
+            );
+        }
         const exposed = {
             ...record,
             consumerHandle: projectedHandle(record.descriptor, record.ownerHandle, record.dependencyContext)
         };
-        stores.rememberRecord(record.boundary.key, exposed);
+        stores.publishRecord(exposed);
         return exposed;
     }
 
-    async function startResource(
-        resource: AnyResourceDefinition,
-        boundary: LifecycleBoundary,
-        testCase: TestPlanCase,
-        signal: AbortSignal
-    ): Promise<ManagedResourceRecord> {
+    async function startResource(request: ResourceAcquisitionRequest): Promise<ManagedResourceRecord> {
+        const { resource, boundary, testCase, signal } = request;
         const dependencyContext = await acquireDependencyContext(resource, testCase, signal);
         const consumers = options
             .testCases
@@ -322,12 +390,13 @@ export function createManagedResourceAcquirer(
             descriptor: resource,
             external: false,
             consumerHandle: acquisition.value,
-            ownerHandle: acquisition.value
+            ownerHandle: acquisition.value,
+            replayScenario: replayScenario(resource, testCase)
         };
 
         stores.rememberRecord(record.boundary.key, record);
         const observed = await installManagedObservation(record, signal);
-        return await restoreAcquiredResource(observed, signal);
+        return await restoreAcquiredResource(observed, signal, testCase);
     }
 
     async function startExternalResource(
@@ -353,31 +422,22 @@ export function createManagedResourceAcquirer(
             external: true,
             consumerHandle: deserializeProjectedHandle(resource, payload, dependencyContext),
             checks: null,
-            ownerHandle: null
+            ownerHandle: null,
+            replayScenario: replayScenario(resource, testCase)
         };
 
         stores.rememberRecord(boundary.key, record);
+        stores.publishRecord(record);
 
         return record;
     }
 
-    async function acquireNewResource(
-        resource: AnyResourceDefinition,
-        boundary: LifecycleBoundary,
-        testCase: TestPlanCase,
-        signal: AbortSignal
-    ): Promise<ManagedResourceRecord> {
-        const acquisition = startResource(resource, boundary, testCase, signal);
-
-        stores.rememberAcquisition(boundary.key, acquisition);
-
-        try {
-            return await acquisition;
-        } catch (error: unknown) {
-            await currentAttachmentExecution()?.markResourceFailure(boundary.key);
-            stores.deleteAcquisition(boundary.key);
-            throw error;
-        }
+    async function startAcquisition(request: ResourceAcquisitionRequest): Promise<ManagedResourceRecord> {
+        const { resource, boundary, testCase, signal } = request;
+        const external = externalProjections.has(boundary.key)
+            ? await startExternalResource(resource, boundary, testCase, signal)
+            : null;
+        return external ?? await startResource(request);
     }
 
     async function acquire(
@@ -385,26 +445,22 @@ export function createManagedResourceAcquirer(
         testCase: TestPlanCase,
         signal: AbortSignal
     ): Promise<ManagedResourceRecord> {
-        const resource = replayResourceDefinition(requestedResource);
-        const boundary = boundaryFor(resource, testCase);
-        const existingRecord = stores.existingRecord(boundary.key);
-
-        assertCompatibleResource(stores, boundary, resource);
-
-        if (existingRecord !== undefined) {
-            return await (stores.existingAcquisition(boundary.key) ?? existingRecord);
+        const resource = replayOwnerDefinition(requestedResource, resourceReplayWitness(requestedResource, testCase));
+        const boundary = boundaryFor(requestedResource, testCase);
+        const pending = stores.existingAcquisition(boundary.key);
+        if (pending !== null) {
+            const record = await pending;
+            assertCompatibleResource(stores, boundary, resource);
+            return record;
         }
 
-        const externalRecord = externalProjections.has(boundary.key)
-            ? await startExternalResource(resource, boundary, testCase, signal)
-            : null;
-
-        if (externalRecord !== null) {
-            return externalRecord;
-        }
-
-        return await (stores.existingAcquisition(boundary.key) ??
-            acquireNewResource(resource, boundary, testCase, signal));
+        const acquisition = recordFailedAcquisition(
+            stores,
+            boundary,
+            startAcquisition({ resource, boundary, testCase, signal })
+        );
+        stores.rememberAcquisition(boundary.key, acquisition);
+        return await acquisition;
     }
 
     acquireResource = acquire;

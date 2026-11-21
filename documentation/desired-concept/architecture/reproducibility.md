@@ -724,7 +724,9 @@ declare one restore callback; absent/ambiguous owning resources or incompatible
 producer/payload state fail before projecting the handle. Disposal follows
 normal ownership rules, including restore failures.
 The built-in HTTP adapter restores scenarios and reruns the current handler;
-transcripts are diagnostics. Unsupported producer inputs fail replay.
+transcripts are diagnostics. The adapter checks the producer package name and
+validates the existing HTTP payload format and inputs. The recorded package
+release is provenance, so a compatible witness can replay after an upgrade.
 
 For the witness schema and versioning rules, see
 [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts).

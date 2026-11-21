@@ -27,6 +27,12 @@ const httpReplayPayload = z.strictObject({
 function unsupportedSimulationState(witness: SimulationWitnessFile): boolean {
     return witness.runtimeSnapshot !== null || witness.faultConfiguration !== null || witness.seed !== null;
 }
+async function assertHttpWitnessProducer(witness: SimulationWitnessFile): Promise<void> {
+    const producer = await packageVersion(import.meta.url);
+    if (producer?.name !== witness.producedBy.library) {
+        throw new TypeError('HTTP simulation witness producer is incompatible.');
+    }
+}
 export function withHttpSimulationWitness<Resource extends HttpWitnessResource>(
     resource: Resource,
     simulation: string
@@ -58,9 +64,10 @@ export function withHttpSimulationWitness<Resource extends HttpWitnessResource>(
             });
         }
     );
-    return withWitnessReplay(capturing, function restoreSimulation(context) {
+    return withWitnessReplay(capturing, async function restoreSimulation(context) {
         context.signal.throwIfAborted();
         const { witness } = context;
+        await assertHttpWitnessProducer(witness);
         if (witness.simulation.name !== simulation || unsupportedSimulationState(witness)) {
             throw new TypeError('HTTP simulation witness contains unsupported replay inputs.');
         }

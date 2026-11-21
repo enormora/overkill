@@ -356,4 +356,5 @@ Resources without this hook reject simulation witness replay.
 
 The built-in HTTP simulation restores its recorded scenario and reruns the
 current handler. Its saved transcript is diagnostic evidence. Unsupported
-payload versions, seeds, runtime snapshots, or fault configurations fail replay.
+producer names, payload versions, seeds, runtime snapshots, or fault configurations
+fail replay. The recorded package release is provenance.

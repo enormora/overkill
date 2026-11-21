@@ -63,6 +63,7 @@ function ownerRecord(scope: TestScope, recordCapture: (kind: string) => void): M
         dependencyContext: {},
         external: false,
         ownerHandle: { secret: 'owner' },
+        replayScenario: null,
         consumerHandle: { public: true }
     };
 }

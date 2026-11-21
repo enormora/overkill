@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { workIdentityKey } from '../engine/identity.ts';
 import type { WitnessFile } from '../engine/witness-file.ts';
 import { RunCollectionError } from './run-errors.ts';
+import { simulationWitnessOwners, type ResourceBoundaryCase } from './resource-lifecycle-boundaries.ts';
 import { availableReplayResourceOwners } from './replay-resource-owners.ts';
 import { collectedRunCaseEntries } from './collected-run-plan.ts';
 import type {
@@ -67,14 +68,10 @@ function assertPropertyTarget(
     }
 }
 function assertSimulationTarget(
-    target: CollectedRunPlan['files'][number]['cases'][number],
+    target: ResourceBoundaryCase,
     witness: Extract<WitnessFile, { readonly kind: 'simulation'; }>
 ): void {
-    const name = witness.resource?.name ?? witness.simulation.name;
-    const matches = target.resourceAttachments.resourceGraph.filter(function owner(resource) {
-        return resource.name === name;
-    });
-    if (matches.length !== 1) {
+    if (simulationWitnessOwners(target, witness).length !== 1) {
         throw new RunCollectionError('Simulation witness resource is missing or ambiguous.', { cause: null }, 'loader');
     }
 }
@@ -87,7 +84,7 @@ function assertWitnessSelection(collection: CollectedRunPlan, witness: WitnessFi
     if (witness.kind === 'property') {
         assertPropertyTarget(target.testCase, witness);
     } else {
-        assertSimulationTarget(target.testCase, witness);
+        assertSimulationTarget({ ...target.testCase, id: target.id, workId: target.workId }, witness);
     }
 }
 export function replayExecutionPlan(collection: CollectedRunPlan): ReplayExecutionPlan | null {

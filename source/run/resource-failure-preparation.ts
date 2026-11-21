@@ -18,9 +18,10 @@ function attemptScenarioBindings(
             return Object.entries(runtime.scenarios);
         })
     );
+    const { replayScenario } = record;
     return Object.fromEntries(
         Object.entries(resolvedResourceScenarioBindings(record.descriptor)).map(function resolvedSlot([ name, value ]) {
-            return [ name, selected[name] ?? value ];
+            return [ name, replayScenario?.name === name ? replayScenario.value : selected[name] ?? value ];
         })
     );
 }
