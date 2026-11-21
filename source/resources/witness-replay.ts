@@ -21,13 +21,26 @@ export function withWitnessReplay<Resource extends ReplayResource>(
     return Object.freeze({ ...resource, [restoreKey]: restore });
 }
 
-export async function restoreResourceWitness(
-    resource: AnyResourceDefinition,
-    context: ResourceWitnessReplay<{ readonly acquire: () => unknown; }>
-): Promise<void> {
+function witnessRestore(
+    resource: AnyResourceDefinition
+): (context: ResourceWitnessReplay<ReplayResource>) => unknown {
     const restore: unknown = Reflect.get(resource, restoreKey);
     if (typeof restore !== 'function') {
         throw new TypeError(`Resource "${resource.name}" does not support simulation witness replay.`);
     }
-    await Reflect.apply(restore, undefined, [ context ]);
+    return function restoreWitness(context) {
+        const result: unknown = Reflect.apply(restore, undefined, [ context ]);
+        return result;
+    };
+}
+
+export function assertWitnessReplaySupported(resource: AnyResourceDefinition): void {
+    witnessRestore(resource);
+}
+
+export async function restoreResourceWitness(
+    resource: AnyResourceDefinition,
+    context: ResourceWitnessReplay<{ readonly acquire: () => unknown; }>
+): Promise<void> {
+    await witnessRestore(resource)(context);
 }

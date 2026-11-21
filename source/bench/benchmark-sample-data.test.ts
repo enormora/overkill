@@ -9,7 +9,7 @@ export const testNode = suite('versioned benchmark samples', [
     test('rejects unversioned attachments instead of guessing attribution', function (scope) {
         scope.assert.throws(function unversionedSamples() {
             readRawBenchmarkSamples({ value: [ reading ] });
-        }, { type: Error });
+        }, { message: /"path":\s*\[\s*"version"\s*\]/u });
         return scope.assert.collect();
     }),
     test('preserves invocation and target identity in current envelopes', function (scope) {
@@ -25,7 +25,7 @@ export const testNode = suite('versioned benchmark samples', [
     test('rejects unsupported formats instead of treating metadata as metrics', function (scope) {
         scope.assert.throws(function () {
             readRawBenchmarkSamples({ version: 3, metrics: {} });
-        }, { type: Error });
+        }, { message: /"path":\s*\[\s*"version"\s*\]/u });
         return scope.assert.collect();
     })
 ]);

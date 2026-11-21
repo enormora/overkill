@@ -74,6 +74,7 @@ export function managedRecord(resource: AnyResourceDefinition, testCase: TestPla
         descriptor: resource,
         external: false,
         ownerHandle: 'owner',
+        replayScenario: null,
         consumerHandle: 'consumer'
     };
 }

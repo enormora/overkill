@@ -397,7 +397,7 @@ describe('Assertion protocol', function () {
         }, { exact: 'raw' });
         expect(assertFacade.rejects).type.toBeCallableWith(async function rejectValue() {
             await Promise.reject(new Error('expected'));
-        }, { type: Error });
+        }, { type: Error, message: 'expected' });
         expect(compositeCheckBuilder.throws).type.toBeCallableWith(function throwValue() {
             throw new Error('expected');
         }, { message: /expected/u });
@@ -406,13 +406,37 @@ describe('Assertion protocol', function () {
         }, { exact: new Error('expected') });
     });
 
+    test('requires another matcher field for the base Error constructor', function () {
+        class RateLimitError extends Error {
+            public constructor() {
+                super('Rate limit exceeded.');
+                this.name = 'RateLimitError';
+            }
+        }
+
+        function throwRateLimit(): never {
+            throw new RateLimitError();
+        }
+
+        async function rejectRateLimit(): Promise<never> {
+            throw new RateLimitError();
+        }
+
+        expect(assertFacade.throws).type.toBeCallableWith(throwRateLimit, { type: RateLimitError });
+        expect(assertFacade.rejects).type.toBeCallableWith(rejectRateLimit, { type: TypeError });
+        expect(assertFacade.throws).type.not.toBeCallableWith(throwRateLimit, { type: Error });
+        expect(assertFacade.rejects).type.not.toBeCallableWith(rejectRateLimit, { type: Error });
+        expect(compositeCheckBuilder.throws).type.not.toBeCallableWith(throwRateLimit, { type: Error });
+        expect(compositeCheckBuilder.rejects).type.not.toBeCallableWith(rejectRateLimit, { cause: { type: Error } });
+    });
+
     test('rejects ambiguous thrown matcher calls', function () {
         expect(assertFacade.throws).type.not.toBeCallableWith(async function rejectValue() {
             await Promise.reject(new Error('expected'));
-        }, { type: Error });
+        }, { type: Error, message: 'expected' });
         expect(assertFacade.rejects).type.not.toBeCallableWith(function returnValue() {
             return undefined;
-        }, { type: Error });
+        }, { type: Error, message: 'expected' });
         expect(assertFacade.throws).type.not.toBeCallableWith(function throwValue() {
             throw new Error('expected');
         }, {});

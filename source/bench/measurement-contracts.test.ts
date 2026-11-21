@@ -10,6 +10,7 @@ import { defaultSamplingPolicy } from './sampling-policy.ts';
 import { workload } from './workload.ts';
 import type { MetricCollector } from './measurement-types.ts';
 
+const schemaError = { name: 'ZodError' };
 const provenance = { collector: 'custom', scope: 'custom' as const, unit: 'bytes' };
 const options = { annotations: {}, controls: {}, sampling: defaultSamplingPolicy };
 const definition = {
@@ -29,18 +30,24 @@ export const testNode = suite('measurement contracts', [
     }),
     test('rejects workloads without a unique budget assignment', function (scope) {
         const invalid = [
-            { ...definition, workloads: [] },
-            { ...definition, workloads: [ workload('one', {}), workload('one', {}) ] },
-            { ...definition, budgets: {} },
-            { ...definition, budgets: { one: {} } },
-            { ...definition, budgets: { ...definition.budgets, unknown: { value: { maximum: 2 } } } },
-            { ...definition, budgets: { one: { value: [] } } },
-            { ...definition, diagnosticMetrics: [ 'value' ] }
-        ];
-        for (const candidate of invalid) {
+            [ { ...definition, workloads: [] }, 'Benchmark requires unique workloads.' ],
+            [
+                { ...definition, workloads: [ workload('one', {}), workload('one', {}) ] },
+                'Benchmark requires unique workloads.'
+            ],
+            [ { ...definition, budgets: {} }, 'Workload one requires at least one budget.' ],
+            [ { ...definition, budgets: { one: {} } }, 'Workload one requires at least one budget.' ],
+            [
+                { ...definition, budgets: { ...definition.budgets, unknown: { value: { maximum: 2 } } } },
+                'Budget references an unknown workload.'
+            ],
+            [ { ...definition, budgets: { one: { value: [] } } }, 'Metric value requires a budget.' ],
+            [ { ...definition, diagnosticMetrics: [ 'value' ] }, 'A budgeted metric cannot also be diagnostic.' ]
+        ] as const;
+        for (const [ candidate, message ] of invalid) {
             scope.assert.throws(function () {
                 return resolveBenchmarkDefinition(candidate, options);
-            }, { type: Error });
+            }, { message });
         }
         return scope.assert.collect();
     }),
@@ -61,20 +68,23 @@ export const testNode = suite('measurement contracts', [
     }),
     test('rejects empty, reversed, unknown, and invalid statistical bounds', function (scope) {
         for (
-            const budget of [
-                {},
-                { maximum: 2, unrelated: true },
-                { minimum: 3, maximum: 2 },
-                { maximum: Number.POSITIVE_INFINITY },
-                { maximum: 2, statistic: { kind: 'quantile', probability: 0 } },
-                { maximum: 2, statistic: { kind: 'quantile', probability: 1 } },
-                { maximum: 2, statistic: { kind: 'mean', range: { minimum: 3, maximum: 2 } } },
-                { maximum: 2, statistic: { kind: 'mean', range: { minimum: -1e308, maximum: 1e308 } } }
-            ]
+            const [ budget, matcher ] of [
+                [ {}, schemaError ],
+                [ { maximum: 2, unrelated: true }, { message: 'Unknown budget field for value.' } ],
+                [ { minimum: 3, maximum: 2 }, schemaError ],
+                [ { maximum: Number.POSITIVE_INFINITY }, schemaError ],
+                [ { maximum: 2, statistic: { kind: 'quantile', probability: 0 } }, schemaError ],
+                [ { maximum: 2, statistic: { kind: 'quantile', probability: 1 } }, schemaError ],
+                [ { maximum: 2, statistic: { kind: 'mean', range: { minimum: 3, maximum: 2 } } }, schemaError ],
+                [
+                    { maximum: 2, statistic: { kind: 'mean', range: { minimum: -1e308, maximum: 1e308 } } },
+                    schemaError
+                ]
+            ] as const
         ) {
             scope.assert.throws(function () {
                 Reflect.apply(normalizeMetricBudget, undefined, [ 'value', budget ]);
-            }, { type: Error });
+            }, matcher);
         }
         const mean = normalizeMetricBudget('value', {
             minimum: 0,
@@ -157,7 +167,7 @@ export const testNode = suite('measurement contracts', [
         for (const metrics of [ { value: Number.NaN }, { value: Number.POSITIVE_INFINITY }, { '': 3 } ]) {
             scope.assert.throws(function () {
                 return normalizeBenchmarkMetrics(metrics);
-            }, { type: Error });
+            }, schemaError);
         }
         scope.assert.throws(function () {
             return availableMetric(Number.NaN, provenance);

@@ -51,7 +51,7 @@ export const testNode = suite('ESLint config expectation evaluation', [
     test('rejects unknown severity names', function (scope) {
         scope.assert.throws(function () {
             normalizedRule('fatal');
-        }, { type: Error });
+        }, { message: /Invalid option: expected one of \\"off\\"\|\\"warn\\"\|\\"error\\"/u });
         return scope.assert.collect();
     }),
     test('accepts matching message fields and text patterns repeatedly', function (scope) {
@@ -103,14 +103,14 @@ export const testNode = suite('ESLint config expectation evaluation', [
                 rules: 'all',
                 expected: [ { message: 'Different.' } ]
             });
-        }, { type: Error });
+        }, { code: 'ERR_ASSERTION', message: /strictly equal:/u });
         scope.assert.throws(function () {
             checkConfigDiagnostics([ message ], {
                 kind: 'messages',
                 rules: 'all',
                 expected: [ { message: /different/u } ]
             });
-        }, { type: Error });
+        }, { code: 'ERR_ASSERTION', message: /did not match the regular expression \/different\/u/u });
         scope.assert.throws(function () {
             checkConfigDiagnostics([ message ], { kind: 'clean' });
         }, { message: /Expected no diagnostics/u });
@@ -178,7 +178,7 @@ export const testNode = suite('ESLint config expectation evaluation', [
         }, { message: /Parser identity differs/u });
         scope.assert.throws(function () {
             checkResolvedConfig(actual, { ...expectation, settings: { domain: 'application' } });
-        }, { type: Error });
+        }, { code: 'ERR_ASSERTION', message: /domain: 'application'/u });
         return scope.assert.collect();
     })
 ]);

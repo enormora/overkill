@@ -152,12 +152,12 @@ jobs:
             - name: Publish dry run
               run: npx just publish-dry-run
 
-    process-integration-tests:
+    cli-integration-tests:
         strategy:
             matrix:
                 os: [ubuntu-latest, macos-26-intel]
         runs-on: ${{ matrix.os }}
-        name: Process integration tests (${{ matrix.os }})
+        name: CLI integration tests (${{ matrix.os }})
         permissions:
             contents: read
         steps:

@@ -66,7 +66,7 @@ export const testNode = suite('measurement comparison identity', [
                 ...baseline,
                 measurement: { ...measurement, target: { ...measurement.target, instance: 'changing-session' } }
             });
-        }, { type: Error });
+        }, { message: /Unrecognized key: \\"instance\\"/u });
         return scope.assert.collect();
     })
 ]);

@@ -244,7 +244,7 @@ export const testNode = suite('process timeline checkpoints', [
                         io: { kind: 'pipes' },
                         completion: { kind: 'ready', marker: { stream: 'stdout', text: 'missing' } }
                     });
-                }, { type: Error });
+                }, { message: 'Process closed before the requested output marker.' });
             },
             'off'
         );

@@ -38,10 +38,27 @@ const consumerFacade = packageConsumer('Installed attachment support', function 
             }
             const value: unknown = JSON.parse(await readFile(path.resolve(directory, content.path), 'utf8'));
             const witness = witnessSchema.parse(value);
+            await writeFile(
+                path.join(directory, failureFixture),
+                failureScript.replace(
+                    'await response.json(); scope.assert.fail();',
+                    'scope.assert.deepEqual(await response.json(), {ready: true});'
+                )
+            );
+            const replay = await executeNode([
+                binary,
+                'replay-witness',
+                content.path,
+                '--profile',
+                'attachments',
+                '--config',
+                failureConfiguration
+            ], 0);
             return check.group([
                 check.equal(artifact.source, 'native'),
                 check.equal(witness.simulation.payload.interactions.length, 1),
-                check.true(content.path.includes('witnesses/'))
+                check.true(content.path.includes('witnesses/')),
+                check.equal(reportSchema.parse(JSON.parse(replay)).status, 'passed')
             ]);
         }
     });

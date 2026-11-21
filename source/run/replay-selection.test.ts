@@ -37,17 +37,23 @@ function collectionWithCopies(count: number, resourceCount: number): CollectedRu
                         ...original,
                         resourceAttachments: {
                             ...original.resourceAttachments,
-                            resourceGraph: Array.from({ length: resourceCount }, function counterResource() {
-                                return {
-                                    name: 'counter',
-                                    dependencies: [],
-                                    handleTransport: 'local' as const,
-                                    scope: 'per-case',
-                                    workload: 'independent' as const,
-                                    requirements: [],
-                                    scenarios: []
-                                };
-                            })
+                            directResources: resourceCount === 0 ? [] : [ { key: 'counter', resourceName: 'counter' } ],
+                            resourceGraph: [ {
+                                name: 'counter',
+                                dependencies: [],
+                                handleTransport: 'local' as const,
+                                scope: 'per-case',
+                                workload: 'independent' as const,
+                                requirements: [],
+                                scenarios: []
+                            } ],
+                            runtimeGraphs: resourceCount < 2 ? [] : [ {
+                                dimensions: {},
+                                name: 'simulation',
+                                requirements: [],
+                                resources: [ { key: 'counter', resourceName: 'counter' } ],
+                                scenarioBindings: []
+                            } ]
                         }
                     };
                 })

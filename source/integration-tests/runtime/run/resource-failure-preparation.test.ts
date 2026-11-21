@@ -63,6 +63,7 @@ function ownerRecord(recordCapture: (capture: OwnerCapture) => void): ManagedRes
         dependencyContext: {},
         external: false,
         ownerHandle: { secret: 'owner' },
+        replayScenario: null,
         consumerHandle: { public: true }
     };
 }

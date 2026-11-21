@@ -37,7 +37,7 @@ export const testNode = suite('campaign invocation admission', [
         await worker.respond({ kind: 'release' }, scope.signal, null);
         await scope.assert.rejects(async function () {
             return await worker.respond(invocation, scope.signal, 50);
-        }, { type: Error });
+        }, { name: 'AbortError', message: 'This operation was aborted' });
         scope.assert.equal(invocations.length, 0);
         return scope.assert.collect();
     })

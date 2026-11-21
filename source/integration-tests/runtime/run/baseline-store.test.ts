@@ -41,7 +41,7 @@ export const testNode = suite('ordinary baseline storage', [
         try {
             await scope.assert.rejects(async function () {
                 return await fixture.store.publish(fixture.changes);
-            }, { type: Error });
+            }, { message: 'Lock file is already being held' });
             scope.assert.deepEqual(await fixture.store.list(), []);
         } finally {
             await heldLockRelease();

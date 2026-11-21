@@ -138,7 +138,7 @@ export const testNode = suite('measurement regions and collectors', [
                 .measure(function () {
                     return 1;
                 });
-        }, { type: Error });
+        }, { exact: failure });
         scope.assert.equal(runtimeHealthReadings([]).gcObservedCount?.availability, 'unavailable');
         return scope.assert.collect();
     }),

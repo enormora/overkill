@@ -6,7 +6,7 @@ import type { AssertAssertionNode, CompositeAssertionChildNode, CompositeAsserti
 import type { FailedCompositeCheck } from './assertion-node-shape.ts';
 import { evaluateAssertion, invalidDeepAssertionOperand } from './evaluation.ts';
 import { unknownSourceLocation } from './source-location.ts';
-import { createThrownMatcherAssertion } from './thrown-matcher.ts';
+import { createThrownMatcherAssertion, type ThrownMatcher } from './thrown-matcher.ts';
 
 function* values(): Generator<number> {
     yield 1;
@@ -273,6 +273,21 @@ export const testNode = suite('Assertion evaluation', [
                 'Expected thrown value name to equal the string.'
             ]
         );
+
+        return scope.assert.collect();
+    }),
+    test('fails base Error matchers without another field even if the error type matches', async function (scope) {
+        const baseErrorMatcher: ThrownMatcher = { type: Error };
+        const thrown = check.throws(function throwTypeError() {
+            throw new TypeError('unexpected');
+        }, baseErrorMatcher);
+        const rejected = await check.rejects(async function rejectWithCause() {
+            throw new Error('request failed', { cause: new TypeError('unexpected') });
+        }, { message: 'request failed', cause: baseErrorMatcher });
+
+        const expected = 'An error matcher with type Error requires another field.';
+        scope.assert.equal(compositeFailure(compositeAssertion(thrown.children)).children[0].summary, expected);
+        scope.assert.equal(compositeFailure(compositeAssertion(rejected.children)).children[0].summary, expected);
 
         return scope.assert.collect();
     }),

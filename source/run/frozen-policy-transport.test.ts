@@ -42,16 +42,25 @@ export const testNode = suite('frozen policy transport', [
     test('rejects inconsistent module roots before importing project code', async function (scope) {
         const policy = await freezePolicy();
         for (
-            const moduleBoundary of [
-                { projectRoot: '.', sharedRoots: [] },
-                { projectRoot: resolve(policy.projectRoot, 'other'), sharedRoots: [] },
-                { projectRoot: policy.projectRoot, sharedRoots: [ '.' ] },
-                { projectRoot: policy.projectRoot, sharedRoots: [ resolve(policy.projectRoot, '..') ] }
-            ]
+            const [ moduleBoundary, message ] of [
+                [ { projectRoot: '.', sharedRoots: [] }, 'Module boundary requires absolute roots.' ],
+                [
+                    { projectRoot: resolve(policy.projectRoot, 'other'), sharedRoots: [] },
+                    'Module boundary conflicts with frozen project root.'
+                ],
+                [
+                    { projectRoot: policy.projectRoot, sharedRoots: [ '.' ] },
+                    'Module boundary requires absolute roots.'
+                ],
+                [
+                    { projectRoot: policy.projectRoot, sharedRoots: [ resolve(policy.projectRoot, '..') ] },
+                    'Shared module roots must not contain the project root.'
+                ]
+            ] as const
         ) {
             scope.assert.throws(function rejectInvalidBoundary() {
                 parseFrozenMicrotestPolicy({ ...policy, moduleBoundary });
-            }, { type: Error });
+            }, { message });
         }
         return scope.assert.collect();
     }),
@@ -73,16 +82,25 @@ export const testNode = suite('frozen policy transport', [
             { kind: 'config-file', request: { cwd: policy.cwd, configPath: null }, resolvedPath: null }
         );
         for (
-            const invalidSource of [
-                { ...source, request: { ...source.request, cwd: 'relative' } },
-                { ...source, request: { ...source.request, cwd: resolve(policy.cwd, 'other') } },
-                { ...source, resolvedPath: 'relative' },
-                { ...source, resolvedPath: resolve(policy.cwd, 'other.config.js') }
-            ]
+            const [ invalidSource, message ] of [
+                [
+                    { ...source, request: { ...source.request, cwd: 'relative' } },
+                    'Frozen policy requires consistent absolute config roots.'
+                ],
+                [
+                    { ...source, request: { ...source.request, cwd: resolve(policy.cwd, 'other') } },
+                    'Frozen policy requires consistent absolute config roots.'
+                ],
+                [ { ...source, resolvedPath: 'relative' }, 'Frozen policy requires consistent absolute config roots.' ],
+                [
+                    { ...source, resolvedPath: resolve(policy.cwd, 'other.config.js') },
+                    'Frozen config identity conflicts with its load request.'
+                ]
+            ] as const
         ) {
             scope.assert.throws(function rejectConfigIdentity() {
                 parseFrozenMicrotestPolicy({ ...policy, source: invalidSource });
-            }, { type: Error });
+            }, { message });
         }
         scope.assert.throws(function rejectRelativeWorkingDirectory() {
             parseFrozenMicrotestPolicy({ ...policy, cwd: 'relative' });
@@ -133,7 +151,7 @@ export const testNode = suite('frozen policy transport', [
         scope.assert.deepEqual(frozenSupervisedCommandSchema.parse(transported), transported);
         scope.assert.throws(function rejectConflictingFiles() {
             frozenSupervisedCommandSchema.parse({ ...command, files: [] });
-        }, { type: Error });
+        }, { message: /Unrecognized key: \\"files\\"/u });
         return scope.assert.collect();
     })
 ]);

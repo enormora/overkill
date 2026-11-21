@@ -1,6 +1,6 @@
 import { mkdir, readFile, symlink, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, table, suite, test } from '@overkill-dev/test';
 
 import type { IntegrationProfileConfig } from '../../../config/types.ts';
 import {
@@ -87,7 +87,7 @@ export const testNode = suite('ordinary baseline file validation', [
         ], [ 'failed', 'blocked', 'artifact' ]);
         await scope.assert.rejects(async function () {
             return await orchestrator.baseline.list({ ...command, request: { profile: 'unit', paths: [] } });
-        }, { type: Error });
+        }, { message: /^Invalid baseline file: [a-f0-9]{64}\.baseline\.json$/u });
         return scope.assert.collect();
     }),
     test('rejects baseline directories outside the project root', async function (scope) {
@@ -108,15 +108,29 @@ export const testNode = suite('ordinary baseline file validation', [
         }, { message: 'Baseline path does not match its identity.' });
         return scope.assert.collect();
     }),
-    test('rejects malformed JSON and oversized stored records', async function (scope) {
-        const fixture = await storedFixture(scope.cleanup);
-        for (const content of [ '{', 'x'.repeat(2048), JSON.stringify({ ...storedBaseline, version: 2 }) ]) {
-            await writeFile(fixture.file, content);
-            await scope.assert.rejects(async function () {
+    table({
+        title: 'rejects invalid stored records',
+        cases: [
+            { kind: 'malformed JSON', content: '{' },
+            { kind: 'oversized', content: 'x'.repeat(2048) },
+            { kind: 'unsupported version', content: JSON.stringify({ ...storedBaseline, version: 2 }) }
+        ] as const,
+        caseTitle({ kind }) {
+            return kind;
+        },
+        async test(scope) {
+            const fixture = await storedFixture(scope.cleanup);
+            const matchers = {
+                'malformed JSON': { type: SyntaxError },
+                oversized: { message: `Invalid baseline file: ${path.basename(fixture.file)}` },
+                'unsupported version': { message: /"path":\s*\[\s*"version"\s*\]/u }
+            } as const;
+            await writeFile(fixture.file, scope.parameters.content);
+            await scope.assert.rejects(async function readInvalidBaseline() {
                 return await fixture.store.list();
-            }, { type: Error });
+            }, matchers[scope.parameters.kind]);
+            return scope.assert.collect();
         }
-        return scope.assert.collect();
     }),
     test('rejects symbolic links in place of baseline records', async function (scope) {
         const fixture = await storedFixture(scope.cleanup);
@@ -126,7 +140,7 @@ export const testNode = suite('ordinary baseline file validation', [
         await symlink(target, fixture.file);
         await scope.assert.rejects(async function () {
             return await fixture.store.list();
-        }, { type: Error });
+        }, { message: `Invalid baseline file: ${path.basename(fixture.file)}` });
         return scope.assert.collect();
     }),
     test(

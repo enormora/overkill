@@ -1,3 +1,4 @@
+import type { IsEqual } from 'type-fest';
 import type {
     CompositeAssertionChildNode,
     CompositeAssertionNode
@@ -45,6 +46,21 @@ export type ErrorMatcher = RequireAtLeastOne<ErrorMatcherFields> & {
 };
 
 export type ThrownMatcher = ErrorMatcher | ExactThrownMatcher;
+
+const errorDetailFields = [ 'cause', 'code', 'message', 'name' ] as const;
+type ErrorMatcherDetails = RequireAtLeastOne<Pick<ErrorMatcherFields, typeof errorDetailFields[number]>>;
+
+type MatchesBaseError<Matcher> = Matcher extends { readonly type: infer Constructor; }
+    ? IsEqual<Constructor, typeof Error>
+    : false;
+
+type UsesBareErrorInBranch<Matcher> = Matcher extends { readonly cause: infer Cause; } ? UsesBareError<Cause>
+    : MatchesBaseError<Exclude<Matcher, ErrorMatcherDetails>>;
+
+type UsesBareError<Matcher> = ThrownMatcher extends Matcher ? false : UsesBareErrorInBranch<Matcher>;
+type RejectsBareError<Matcher> = true extends UsesBareError<Matcher> ? never : unknown;
+
+export type CheckedThrownMatcher<Matcher extends ThrownMatcher> = Matcher & NoInfer<RejectsBareError<Matcher>>;
 
 type NonPromise<Body extends () => unknown> = ReturnType<Body> extends PromiseLike<unknown> ? never : Body;
 
@@ -189,6 +205,12 @@ function matcherHas<MatcherKey extends keyof ErrorMatcherFields>(
     return Object.hasOwn(matcher, key);
 }
 
+function lacksErrorDetails(matcher: ErrorMatcher): boolean {
+    return errorDetailFields.every(function lacksDetail(key) {
+        return !Object.hasOwn(matcher, key) || matcher[key] === undefined;
+    });
+}
+
 function errorInstanceChild<Source extends AssertionSource>(
     input: ThrownAssertionInput<Source>,
     value: unknown,
@@ -308,6 +330,16 @@ function causeMatcherChildren<Source extends AssertionSource>(
 function structuredErrorChildren<Source extends AssertionSource>(
     input: StructuredMatcherInput<Source>
 ): readonly CompositeAssertionChildNode<Source>[] {
+    const { matcher } = input;
+    if (matcher.type === Error && lacksErrorDetails(matcher)) {
+        return [ {
+            check: 'fail',
+            message: 'An error matcher with type Error requires another field.',
+            source: input.assertion.source,
+            sourceLocations: input.assertion.sourceLocations
+        } ];
+    }
+
     if (!(input.value instanceof Error)) {
         return [ errorInstanceChild(input.assertion, input.value, input.label) ];
     }

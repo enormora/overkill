@@ -116,6 +116,8 @@ describe('TestScope', function () {
 
     test('types the in-flight task handle', function () {
         expect<InFlightTask<string>['wait']>().type.toBe<() => Promise<string>>();
-        expect<InFlightTask<string>['rejects']>().type.toBe<(matcher: ThrownMatcher) => Promise<void>>();
+        expect<InFlightTask<string>['rejects']>().type.toBeAssignableTo<(matcher: ThrownMatcher) => Promise<void>>();
+        expect<InFlightTask<string>['rejects']>().type.toBeCallableWith({ type: Error, code: 'ECONNREFUSED' });
+        expect<InFlightTask<string>['rejects']>().type.not.toBeCallableWith({ type: Error });
     });
 });
