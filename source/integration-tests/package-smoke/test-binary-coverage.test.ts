@@ -135,7 +135,7 @@ export const testNode = suite(
             const lcov = await fs.readFile(path.join(packageSmokeFolder, 'coverage-smoke/lcov.info'), 'utf8');
 
             scope.assert(assertCoverageDiagnostics, result.stderr);
-            scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
+            scope.assert.match(result.stdout, /^ {2}1 executed · [\d.]+ (?:µs|ms|s) execution · /mu);
 
             const consumerCoverageFile = coverageSourceFile(sourceKind);
             const consumerCoverageSourceCoverage = lcov.split('end_of_record').find(

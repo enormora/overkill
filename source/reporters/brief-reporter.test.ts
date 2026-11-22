@@ -492,7 +492,7 @@ export const testNode = suite('Brief reporter', [
                     planned: 5,
                     skipped: 1
                 },
-                totalWallTimeMicroseconds: 42_000
+                totalWallTimeMicroseconds: 1_042_000
             })
         }));
 
@@ -501,7 +501,7 @@ export const testNode = suite('Brief reporter', [
                 return intent.text;
             }),
             [
-                'done status=failed discovered=5 planned=5 executed=5 passed=2 failed=1 skipped=1 inconclusive=1 processExhausted=0 runtimePolicy=0 crashed=0 ms=42 timing="total 42 ms, execution 0 ms, overhead 42 ms"'
+                'done status=failed discovered=5 planned=5 executed=5 passed=2 failed=1 skipped=1 inconclusive=1 processExhausted=0 runtimePolicy=0 crashed=0 ms=1042 timing="total 1.04 s, execution 0 ms, overhead 1.04 s"'
             ]
         );
 

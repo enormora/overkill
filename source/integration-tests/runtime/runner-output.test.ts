@@ -76,10 +76,8 @@ export const testNode = suite('Runner output capture', [
                 'probe',
                 ...capture === 'live' ? [ '--no-capture' ] : []
             ]);
-            scope.assert.includes(
-                runOutputProbeResult.stdout,
-                '1 discovered, 1 planned, 1 executed (1 pass, 0 fail, 0 skip)'
-            );
+            scope.assert.match(runOutputProbeResult.stdout, /Run passed · 1 passed · [\d.]+ (?:µs|ms|s)$/mu);
+            scope.assert.match(runOutputProbeResult.stdout, /^ {2}1 executed · [\d.]+ (?:µs|ms|s) execution · /mu);
             scope.assert.equal(runOutputProbeResult.stdout.includes('collection stdout'), capture === 'live');
             scope.assert.equal(runOutputProbeResult.stdout.includes('case stdout'), capture !== 'buffered');
             scope.assert.equal(runOutputProbeResult.stderr, capture === 'buffered' ? '' : 'case stderr\n');

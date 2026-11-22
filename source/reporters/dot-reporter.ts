@@ -4,6 +4,7 @@ import { defineReporter, type DefinedReporter, type RealTimeReporter, type Repor
 import type { RunReport, RunResult, RunnerError, TestVerdict } from '../engine/run-result.ts';
 import {
     formatCoverageSummaryLines,
+    formatDuration,
     formatRunFactSummary,
     formatTimingOffenderLines,
     formatTimingSummary
@@ -28,8 +29,6 @@ const skipMark = colors.cyan('°');
 const inconclusiveMark = colors.cyan('?');
 
 const runnerErrorMark = colors.red(figures.warning);
-
-const microsecondsPerMillisecond = 1000;
 
 function markForVerdict(verdict: TestVerdict): string {
     if (verdict === 'process-exhausted' || verdict === 'crashed') {
@@ -58,10 +57,6 @@ function reportCaseCompletion(
     if (event.completion === 'final') {
         progress.writeMark(markForVerdict(event.verdict));
     }
-}
-
-function formatDuration(durationMicroseconds: number): string {
-    return `${durationMicroseconds / microsecondsPerMillisecond} ms`;
 }
 
 function formatSummary(result: RunResult): string {

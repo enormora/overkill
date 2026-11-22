@@ -132,7 +132,7 @@ export const testNode = suite('benchmark HTML rendering', [
             );
             scope.assert.includes(
                 html,
-                '<td>recorded target</td><td>monotonic</td><td>12</td><td>14</td><td>complete</td>'
+                '<td>recorded target</td><td>monotonic</td><td>12 µs</td><td>14 µs</td><td>complete</td>'
             );
             return scope.assert.collect();
         }
@@ -159,7 +159,7 @@ export const testNode = suite('benchmark HTML rendering', [
             }
         };
         const html = renderBenchmarkHtml({ ...report, cases: [ { ...first, lifecycle } ] }, '');
-        scope.assert.includes(html, '<td>settled</td><td>250</td>');
+        scope.assert.includes(html, '<td>settled</td><td>250 µs</td>');
         return scope.assert.collect();
     }),
     test('identifies recorded timelines that contain no events', function (scope) {

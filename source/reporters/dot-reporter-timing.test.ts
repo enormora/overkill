@@ -81,8 +81,8 @@ export const testNode = suite('Dot reporter timing', [
             terminal.text(),
             [
                 `${colors.red(figures.cross)} 0 discovered, 0 planned, 0 executed ` +
-                '(0 pass, 0 fail, 0 skip) in 2000 ms ' +
-                '(total 2000 ms, execution 1000 ms, overhead 1000 ms)',
+                '(0 pass, 0 fail, 0 skip) in 2 s ' +
+                '(total 2 s, execution 1 s, overhead 1 s)',
                 'Slow runner overhead:',
                 '  config load: 750 ms',
                 ''

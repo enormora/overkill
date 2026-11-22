@@ -27,17 +27,9 @@ function relationOperands(
         .exhaustive();
 }
 
-function validateOperands(site: NativeSite): void {
-    const counts = { typed: 0, withActual: 1, withExpected: 1, expressions: 2 };
-    if (site.call.arguments.length - 1 !== counts[site.reference.form]) {
-        throw new Error('Invalid native relation operand count.');
-    }
-}
-
 async function operandTypes(analysis: TypeAnalysis, site: NativeSite): Promise<readonly [Type, Type]> {
     const { reference, call } = site;
     const operands = call.arguments.slice(1);
-    validateOperands(site);
     const types = await Promise.all(reference.types.map(async function type(node) {
         return await analysis.checker.getTypeFromTypeNode(node);
     }));

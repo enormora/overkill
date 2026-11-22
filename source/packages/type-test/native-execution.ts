@@ -1,14 +1,14 @@
 import type { Diagnostic } from 'typescript-beta/async';
-import type { TestPlan, RunResult } from '../engine/engine.entry-point.ts';
+import type { TestPlan } from '../engine/engine.entry-point.ts';
 import { parseAdapterFacts } from '../../config/adapter-facts.ts';
-import type { CollectedCheckerRun } from './checker-plan.ts';
+import type { CheckerExecution } from './checker-plan.ts';
 import {
     verifyFrozenProject,
     fingerprint,
     typeAnalysis,
     type FrozenProject
 } from './frozen-project.ts';
-import { collectOriginalAssertions, type OriginalAssertionPlan } from './original-assertions.ts';
+import { collectOriginalAssertions, type OriginalAssertionPlan, type NativeSite } from './original-assertions.ts';
 import { nativeCheckResult, type SiteEvidence } from './native-results.ts';
 import { evaluateSite } from './original-evidence.ts';
 
@@ -64,35 +64,42 @@ async function checkOriginalAssertions(
     project: FrozenProject,
     assertionPlan: OriginalAssertionPlan
 ): Promise<readonly SiteEvidence[]> {
-    await validateProject(project);
     const checked: SiteEvidence[] = [];
     const analysis = typeAnalysis(project);
     for (const site of assertionPlan.sites) {
         checked.push(await evaluateSite(analysis, site, project.compiler.version));
     }
-    await verifyFrozenProject(project, assertionPlan);
     return checked;
 }
 
-async function executeNative(
-    plan: TestPlan,
-    project: FrozenProject,
-    assertionPlan: OriginalAssertionPlan
-): Promise<{ readonly result: RunResult; readonly evidence: readonly SiteEvidence[]; }> {
-    const started = performance.now();
-    try {
-        const checked = await checkOriginalAssertions(project, assertionPlan);
-        return { result: nativeCheckResult({ plan, assertionPlan, checked, error: null, started }), evidence: checked };
-    } catch (error: unknown) {
-        return { result: nativeCheckResult({ plan, assertionPlan, checked: null, error, started }), evidence: [] };
-    }
+function assertionFacts(
+    site: NativeSite
+): Pick<NativeSite, 'column' | 'line' | 'message' | 'owners' | 'path' | 'range'> & {
+    readonly relation: NativeSite['reference']['relation'];
+    readonly negated: boolean;
+} {
+    const { path, range, owners, line, column, message, reference } = site;
+    return { path, range, owners, line, column, message, relation: reference.relation, negated: reference.negated };
 }
 
-export async function collectProject(plan: TestPlan, project: FrozenProject): Promise<CollectedCheckerRun> {
-    const assertionPlan = await collectOriginalAssertions(projectSourceAnalysis(project), plan);
-    const compilerOptions = project.project.options;
+export type CompilerCheck = {
+    readonly facts: CheckerExecution['facts'];
+    readonly verify: () => Promise<void>;
+    readonly check: () => Promise<CheckerExecution>;
+};
+
+export async function collectProject(plan: TestPlan, project: FrozenProject): Promise<CompilerCheck> {
+    let assertionPlan: OriginalAssertionPlan = { modules: [], sites: [], issues: [] };
+    let collectionError: Error | null = null;
+    try {
+        assertionPlan = await collectOriginalAssertions(projectSourceAnalysis(project), plan);
+    } catch (error: unknown) {
+        collectionError = error instanceof Error
+            ? error
+            : new Error('Type-test source analysis failed.', { cause: error });
+    }
     const configurationJson = JSON.stringify({
-        options: compilerOptions,
+        options: project.project.options,
         files: project.project.fileNames,
         references: project.project.projectReferences ?? []
     });
@@ -109,47 +116,49 @@ export async function collectProject(plan: TestPlan, project: FrozenProject): Pr
         }),
         inputs: project.inputs,
         issues: assertionPlan.issues,
-        assertions: assertionPlan.sites.map(function describe(site) {
-            return {
-                path: site.path,
-                range: site.range,
-                owners: site.owners,
-                line: site.line,
-                column: site.column,
-                message: site.message
-            };
-        })
+        assertions: assertionPlan.sites.map(assertionFacts)
     };
+    async function checkProject(): Promise<readonly SiteEvidence[]> {
+        await validateProject(project);
+        if (collectionError !== null) {
+            throw collectionError;
+        }
+        return await checkOriginalAssertions(project, assertionPlan);
+    }
     const facts = parseAdapterFacts(sourceFacts);
     return {
         facts,
-        async lower() {
-            await verifyFrozenProject(project, assertionPlan);
-            let evidence: readonly SiteEvidence[] = [];
-            return {
-                get facts() {
-                    return parseAdapterFacts({
+        async verify() {
+            await verifyFrozenProject(project, assertionPlan.modules);
+        },
+        async check() {
+            const started = performance.now();
+            try {
+                const checked = await checkProject();
+                return {
+                    result: nativeCheckResult({ plan, assertionPlan, checked, error: null, started }),
+                    facts: parseAdapterFacts({
                         ...sourceFacts,
-                        evidence: evidence.map(function describe(entry) {
+                        evidence: checked.map(function (entry) {
                             return {
-                                path: entry.site.path,
-                                range: entry.site.range,
-                                owners: entry.site.owners,
+                                ...assertionFacts(entry.site),
                                 actual: entry.actual,
                                 expected: entry.expected,
                                 compilerVersion: entry.compilerVersion,
                                 result: entry.result
                             };
                         })
-                    });
-                },
-                async execute(): Promise<RunResult> {
-                    await verifyFrozenProject(project, assertionPlan);
-                    const execution = await executeNative(plan, project, assertionPlan);
-                    evidence = execution.evidence;
-                    return execution.result;
-                }
-            };
+                    })
+                };
+            } catch (error: unknown) {
+                const failure = error instanceof Error
+                    ? error
+                    : new Error('Type-test checker failed.', { cause: error });
+                return {
+                    result: nativeCheckResult({ plan, assertionPlan, checked: null, error: failure, started }),
+                    facts
+                };
+            }
         }
     };
 }

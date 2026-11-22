@@ -1,7 +1,7 @@
 import { consumerEnvironment } from './support/consumer-environment.ts';
 import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, rm, writeFile, readFile, readdir } from 'node:fs/promises';
-
+import { inspect } from 'node:util';
 import { join } from 'node:path';
 import { suite } from '@overkill-dev/test';
 import { packageConsumer } from './support/package-consumer.ts';
@@ -25,6 +25,8 @@ const consumerFacade = packageConsumer('packaged native type tests', function co
     return { isolatedConsumer };
 });
 const { test } = consumerFacade;
+
+import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 
 const engineCaseSource = `import * as engine from '@overkill-dev/engine';
 import { family, sameType } from '@overkill-dev/type-test';
@@ -164,6 +166,41 @@ export const testNode = suite('packaged native type tests', [
             return scope.assert.collect();
         }
     ),
+    test('checks only the runner selection in source order', async function (scope) {
+        const { isolatedConsumer } = scope.resources.consumer;
+        const directory = await isolatedConsumer(true);
+        await writeRunnerProject(directory, 'in-process');
+        await writeFile(
+            join(directory, 'runner.mts'),
+            `import * as engine from '@overkill-dev/engine';
+import {sameType} from '@overkill-dev/type-test';
+const metadata={annotations:{},controls:{},definitionLocations:[{kind:'unknown'}]} as const;
+function passing(title:string) {
+    return engine.createTestCase({...metadata,title,body(scope){
+        scope.assert(sameType<string,string>());return scope.assert.collect();
+    }});
+}
+const excluded=engine.createTestCase({...metadata,title:'excluded',body(scope){
+    scope.assert(sameType<string,number>());return scope.assert.collect();
+}});
+export const testNode=engine.createSuite({...metadata,title:'root',
+    children:[passing('selected z'),excluded,passing('selected a')]});`
+        );
+        const request = defaultRunRequest({
+            order: 'lexical',
+            profile: 'types',
+            selection: { kind: 'filter', filter: { kind: 'contains', field: 'title', value: 'selected' } }
+        });
+        const program = `import {commandLineRunner} from '@overkill-dev/run/command-line';
+const reply=await commandLineRunner.runTests({cwd:process.cwd(),configPath:null,
+    runRequest:${inspect(request, { depth: null })}});
+if(reply.exitCode!==0)throw new Error(reply.fallbackDiagnostics.join('\\n'));
+console.log(JSON.stringify(reply.runResult?.perTest.map(entry=>entry.id.title)));`;
+        const result = await runNode(directory, [ '--input-type=module', '--eval', program ]);
+        scope.assert.equal(result.code, 0, { message: result.stderr });
+        scope.assert.includes(result.stdout, '["selected z","selected a"]');
+        return scope.assert.collect();
+    }),
     test('checks installed beta compilers in a supervised profile', async function (scope) {
         const { isolatedConsumer } = scope.resources.consumer;
 

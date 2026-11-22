@@ -4,11 +4,11 @@ import {
     type RunResult,
     type TestCase,
     createRoot,
-    createTestPlan,
-    execute
+    createTestPlan
 } from '../packages/engine/engine.entry-point.ts';
 
 import { runResultSchema } from '../run/run-result-schema.ts';
+import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { benchmark } from './benchmark-authoring.ts';
 import { wallClockMeasurement } from './measurement-strategy.ts';
@@ -17,7 +17,7 @@ import { unavailableMetric } from './metric-reading.ts';
 import { workload, workloadIdentity } from './workload.ts';
 
 async function runBenchmark(node: TestCase): Promise<RunResult> {
-    return await execute(
+    return await createTestEngine().execute(
         createTestPlan(createRoot({ title: 'root', children: [ node ], annotations: {}, controls: {} }))
     );
 }
@@ -139,7 +139,7 @@ export const testNode = suite('benchmark evidence contracts', [
         scope.assert.deepEqual(result.perTest[0]?.benchmark?.metrics.counter?.unavailableReasons ?? [], [
             'Unsupported counter.'
         ]);
-        scope.assert.equal(result.runnerErrors.length, 0);
+        scope.assert.deepEqual(result.runnerErrors, []);
         return scope.assert.collect();
     }),
     test('decodes historical results with absent measurement fields', function (scope) {

@@ -169,7 +169,7 @@ export const testNode = suite('Line failure rendering edge', [
             };
             const lines = formatFailure({ checks: [ failedCheck(diff) ], kind: 'assertion' });
 
-            scope.assert.equal(lines.at(-2), 'expected: Object { items: Map(0), [Symbol(id)]: Set(0) }');
+            scope.assert.equal(lines.at(-2), 'expected: { items: Map(0), [Symbol(id)]: Set(0) }');
             scope.assert.equal(lines.at(-1), 'actual: [[Function], Invalid Date]');
 
             return scope.assert.collect();

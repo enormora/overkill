@@ -9,38 +9,47 @@ import { createAssertionRecorder } from './assertion-recorder.ts';
 import { createTestScopeLifecycle } from './test-scope-lifecycle.ts';
 import type { ConcurrentCase } from './execution-supervision.ts';
 
+type RegistrationProbe = {readonly registerCleanup: () => void; readonly startWork: () => void};
+
 type CleanupState = {
     readonly body: PromiseWithResolvers<undefined>;
     readonly cleanup: PromiseWithResolvers<undefined>;
     readonly started: PromiseWithResolvers<undefined>;
     readonly events: readonly string[];
-    readonly scopes: readonly Pick<TestScope, 'cleanup' | 'startInFlight'>[];
+    readonly registrations: readonly RegistrationProbe[];
     readonly returned: StoredValue<boolean>;
     readonly recordEvent: (event: string) => void;
-    readonly captureScope: (scope: Pick<TestScope, 'cleanup' | 'startInFlight'>) => void;
+    readonly observeRegistration: (registration: RegistrationProbe) => void;
 };
 
 type CleanupProbe = CleanupState & { readonly fixture: InterruptedCase; };
 
 function createCleanupProbe(cleanup: TestScope['cleanup']): CleanupProbe {
     const events: string[] = [];
-    const scopes: Pick<TestScope, 'cleanup' | 'startInFlight'>[] = [];
+    const registrations: RegistrationProbe[] = [];
     const state: CleanupState = {
         body: Promise.withResolvers<undefined>(),
         cleanup: Promise.withResolvers<undefined>(),
         started: Promise.withResolvers<undefined>(),
         events,
-        scopes,
+        registrations,
         returned: createStoredValue(false),
         recordEvent(event) {
             events.push(event);
         },
-        captureScope(captured) {
-            scopes.push(captured);
+        observeRegistration(registration) {
+            registrations.push(registration);
         }
     };
     const fixture = createInterruptedCase(async function pendingBody(testScope) {
-        state.captureScope(testScope);
+        state.observeRegistration({
+            registerCleanup() {
+                testScope.cleanup(function lateCleanup() { state.recordEvent('late'); });
+            },
+            startWork() {
+                testScope.startInFlight(async function lateOperation() { state.recordEvent('late operation'); });
+            }
+        });
         testScope.cleanup(function firstCleanup() {
             state.recordEvent('first');
         });
@@ -66,19 +75,11 @@ async function trackedExecution(probe: CleanupProbe): Promise<ConcurrentCase> {
 const assertClosedRegistration = defineCompositeAssertion({
     name: 'closed registration',
     assert(check, probe: CleanupProbe) {
-        const captured = probe.scopes[0];
-        assert.ok(captured !== undefined);
+        const captured = probe.registrations[0];
+        if (captured === undefined) { return check.defined(captured); }
         return check.group([
-            check.throws(function registerLateCleanup() {
-                captured.cleanup(function lateCleanup() {
-                    probe.recordEvent('late');
-                });
-            }, { message: /cannot be called after test cleanup/ }),
-            check.throws(function startLateWork() {
-                captured.startInFlight(async function lateOperation() {
-                    probe.recordEvent('late operation');
-                });
-            }, { message: /cannot be called after test cleanup/ })
+            check.throws(captured.registerCleanup, {message: /cannot be called after test cleanup/}),
+            check.throws(captured.startWork, {message: /cannot be called after test cleanup/})
         ]);
     }
 });

@@ -23,6 +23,8 @@ function lineReporterWithOptions(log: Log, verbose: boolean): RealTimeReporter {
     const fakeDependencies: LineReporterDependencies = {
         columns: 200,
         formatOptions: { color: false, wrap: true },
+        interactive: false,
+        showPassing: true,
         stdoutConsole: { log },
         verbose
     };
@@ -292,7 +294,7 @@ export const testNode = suite('Line reporter artifacts', [
             })
         });
 
-        scope.assert(doubleUsage.callCount, log, 6);
+        scope.assert(doubleUsage.callCount, log, 8);
         scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ 'Problems' ]);
         scope.assert(doubleUsage.nthCallWithExactly, log, 3, [ '  stderr:' ]);
         scope.assert(doubleUsage.nthCallWithExactly, log, 4, [ '  collection error output' ]);

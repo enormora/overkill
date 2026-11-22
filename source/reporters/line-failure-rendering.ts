@@ -1,5 +1,6 @@
 import colors from 'yoctocolors';
 import { currentFailureArtifactPolicy, withFailureArtifactContext } from '../engine/execution-observation.ts';
+import { serializedValueSchema } from '../compare/serialized-value-schema.ts';
 import type { SerializedValue } from '../compare/serialized-value.ts';
 import type {
     ArrayDiffOperation,
@@ -9,10 +10,16 @@ import type {
     ObjectDiffOperation,
     SetDiffOperation
 } from '../diff/diff-shape.ts';
-import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
-import { formatAssertionSourceLocations, type ReportingContext } from '../engine/reporting-context.ts';
+import type { FailedCheck, ResolvableSourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
+import {
+    formatAssertionSourceLocations,
+    formatDefinitionLocations,
+    formatSourceLocation,
+    type ReportingContext
+} from '../engine/reporting-context.ts';
 import type { TestFailure } from '../engine/run-result.ts';
-import { formatSerializedValue, keyText } from './serialized-value-rendering.ts';
+import { primaryFailureSourceLocation } from './failure-location.ts';
+import { formatMultilineSerializedValue, formatSerializedValue, keyText } from './serialized-value-rendering.ts';
 
 type PropertySegment = Extract<DiffPathSegment, { readonly kind: 'property'; }>;
 
@@ -21,6 +28,16 @@ type MapSegment = Extract<DiffPathSegment, { readonly kind: 'map-key' | 'map-val
 type SetSegment = Extract<DiffPathSegment, { readonly kind: 'set-value'; }>;
 
 type KeyedSegment = MapSegment | PropertySegment | SetSegment;
+
+export function formatFailureLocation(
+    failure: TestFailure | undefined,
+    definitionLocations: readonly ResolvableSourceLocation[],
+    context: ReportingContext
+): string | null {
+    const assertion = failure === undefined ? null : primaryFailureSourceLocation(failure);
+    const source = assertion === null ? null : formatSourceLocation(assertion, context);
+    return source ?? formatDefinitionLocations(definitionLocations, context).primary;
+}
 
 function byteLength(value: string): number {
     return Buffer.byteLength(value, 'utf8');
@@ -64,6 +81,39 @@ function truncateLines(value: string): string {
 
 function truncateRenderedValue(value: string): string {
     return truncateLines(truncateBytes(value));
+}
+
+function parseParameterIdentity(parameters: string): unknown {
+    try {
+        return JSON.parse(parameters) as unknown;
+    } catch {
+        return null;
+    }
+}
+
+function renderParameterIdentity(parameters: string): string {
+    const value = serializedValueSchema.safeParse(parseParameterIdentity(parameters));
+    return value.success ? formatMultilineSerializedValue(value.data) : parameters;
+}
+
+export function formatCaseParameterLines(parameters: string | null, context: ReportingContext): readonly string[] {
+    if (parameters === null) {
+        return [];
+    }
+
+    return withFailureArtifactContext(
+        context.failureArtifacts ?? currentFailureArtifactPolicy(),
+        function renderBoundedParameters() {
+            const lines = truncateRenderedValue(renderParameterIdentity(parameters)).split('\n');
+            return [
+                'Parameters',
+                ...lines.map(function indentParameter(line) {
+                    return `  ${line}`;
+                })
+            ];
+        },
+        null
+    );
 }
 
 function formatPropertySegment(segment: PropertySegment): string {

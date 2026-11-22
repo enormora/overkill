@@ -241,7 +241,7 @@ export const testNode = suite('Line failure rendering', [
         scope.assert.deepEqual(formatFailure({ checks: [ composite ], kind: 'assertion' }), [
             'Expected resultOk assertion to pass.',
             'expected: "resultOk"',
-            'actual: Object { ok: false }',
+            'actual: { ok: false }',
             'child check 1',
             '  child detail',
             '  expected: true',

@@ -1,12 +1,12 @@
+import figures from 'figures';
 import colors from 'yoctocolors';
-import { workIdentityKey, formatCaseId, type RuntimeId, type WorkloadId } from '../engine/identity.ts';
+import { formatCaseLabel, workIdentityKey, type RuntimeId, type WorkloadId } from '../engine/identity.ts';
 import { workloadLabel } from '../engine/workload-label.ts';
 import { formatDefinitionLocations, type ReportingContext } from '../engine/reporting-context.ts';
 import { isTestDebugArtifact, type RunResult, type RunnerError, type RunArtifact } from '../engine/run-result.ts';
 import { lifetimeResourceCheckLines } from './resource-check-rendering.ts';
 import { formatPropertyDiagnostics } from './failure-summary.ts';
-import { formatFailure } from './line-failure-rendering.ts';
-import { formatTimingSummary as formatRunTimingSummary } from './run-summary-rendering.ts';
+import { formatCaseParameterLines, formatFailure, formatFailureLocation } from './line-failure-rendering.ts';
 import { witnessReplayLines } from './witness-replay-lines.ts';
 
 const microsecondsPerMillisecond = 1000;
@@ -36,7 +36,6 @@ const colorPalette = [
     colors.blue
 ] as const;
 type ColorFormatter = (value: string) => string;
-type TimingSummaryFormatter = (result: RunResult) => string;
 
 export type HumanReporterFormatOptions = {
     readonly color: boolean;
@@ -47,10 +46,7 @@ export type ProblemDetailOptions = {
     readonly verbose: boolean;
 };
 
-export const formatTimingSummary: TimingSummaryFormatter = formatRunTimingSummary;
-
 type KnownOutcomeProblemInput = {
-    readonly context: ReportingContext;
     readonly heading: string;
     readonly options: ProblemDetailOptions;
     readonly outcome: NonNullable<RunResult['perTest'][number]['outcome']>;
@@ -65,13 +61,17 @@ function executedCount(result: RunResult): number {
         summary.processExhausted + summary.crashed + summary.runtimePolicy;
 }
 
-function formatRetrySummary(result: RunResult): string {
-    const retried = result
+function retriedCount(result: RunResult): number {
+    return result
         .perTest
         .filter(function wasRetried(testResult) {
             return testResult.retried !== null;
         })
         .length;
+}
+
+function formatRetrySummary(result: RunResult): string {
+    const retried = retriedCount(result);
     return retried === 0 ? '' : `, ${retried} retried`;
 }
 
@@ -90,6 +90,39 @@ export function formatCountSummary(result: RunResult): string {
     const orphanSummary = result.orphans.length === 0 ? '' : `, ${result.orphans.length} orphaned`;
     return `${summary.discovered} discovered, ${summary.planned} planned, ${executedCount(result)} executed ` +
         `(${outcomes})${orphanSummary}${formatRetrySummary(result)}`;
+}
+
+export function formatLineVerdicts(result: RunResult): readonly string[] {
+    const { summary } = result;
+    const counts = {
+        failed: summary.failed,
+        passed: summary.passed,
+        skipped: summary.skipped,
+        inconclusive: summary.inconclusive,
+        'process exhausted': summary.processExhausted,
+        'runtime policy': summary.runtimePolicy,
+        crashed: summary.crashed,
+        orphaned: result.orphans.length,
+        retried: retriedCount(result)
+    };
+    return Object.entries(counts).flatMap(function formatNonzeroCount([ label, count ]) {
+        return count === 0 ? [] : [ `${count.toLocaleString('en-US')} ${label}` ];
+    });
+}
+
+export function formatLineExecutionCounts(result: RunResult): string {
+    const { discovered, planned } = result.summary;
+    const executed = executedCount(result);
+    if (executed === planned && planned === discovered) {
+        return `${executed.toLocaleString('en-US')} executed`;
+    }
+
+    return [
+        `${executed.toLocaleString('en-US')} executed`,
+        `${planned.toLocaleString('en-US')} planned`,
+        `${discovered.toLocaleString('en-US')} discovered`
+    ]
+        .join(' · ');
 }
 
 function hashText(value: string): number {
@@ -194,7 +227,7 @@ export function contextPrefix(
 
 function formatRunnerError(error: RunnerError): readonly string[] {
     const attribution = error.attributedTo === null ? [] : [
-        `test: ${formatCaseId(error.attributedTo)}${workloadLabel(error.attributedToWork?.workload ?? null)}`
+        `test: ${formatCaseLabel(error.attributedTo)}${workloadLabel(error.attributedToWork?.workload ?? null)}`
     ];
     const diagnostics = error.diagnostics.map(function formatDiagnostic(diagnostic) {
         return `${diagnostic.label}: ${diagnostic.value}`;
@@ -277,7 +310,7 @@ function artifactLines(artifact: RunArtifact): readonly string[] {
 }
 
 function indentDetail(line: string): string {
-    return `  ${line}`;
+    return line.length === 0 ? line : `  ${line}`;
 }
 
 function unreportedArtifactLines(artifact: RunArtifact): readonly string[] {
@@ -288,7 +321,7 @@ function unreportedArtifactLines(artifact: RunArtifact): readonly string[] {
     const runtimes = artifact.id.runtimes.map(runtimeLabel).join(', ');
     const suffix = runtimes === '' ? '' : ` [${runtimes}]`;
     return [
-        `${formatCaseId(artifact.id.scope.case)}${suffix}${workloadLabel(artifact.id.workload)}`,
+        `${formatCaseLabel(artifact.id.scope.case)}${suffix}${workloadLabel(artifact.id.workload)}`,
         ...details.map(indentDetail)
     ];
 }
@@ -298,21 +331,31 @@ function caseArtifactDetails(result: RunResult, testResult: RunResult['perTest']
     });
 }
 
+function parameterDetails(parameters: string | null, context: ReportingContext): readonly string[] {
+    const lines = formatCaseParameterLines(parameters, context);
+    return lines.length === 0 ? [] : [ '', ...lines.map(indentDetail) ];
+}
+
 function failedTestLines(
     result: RunResult,
     testResult: RunResult['perTest'][number],
-    context: ReportingContext,
-    heading: string
+    context: ReportingContext
 ): readonly string[] {
-    if (testResult.outcome?.kind !== 'fail') {
-        return [];
-    }
+    const failures = testResult.outcome?.kind === 'fail' ? testResult.outcome.failures : [];
+    const location = formatFailureLocation(failures[0], testResult.definitionLocations, context) ?? testResult.id.file;
+    const title = [ ...testResult.id.suite, testResult.id.title ].join(' › ');
+    const details = failures.flatMap(function failureDetails(failure) {
+        return formatFailure(failure, context).filter(function isAdditionalDetail(line) {
+            return line !== `source: ${location}`;
+        });
+    });
 
     return [
-        heading,
-        ...testResult.outcome.failures.flatMap(function formatTestFailure(failure) {
-            return formatFailure(failure, context).map(indentDetail);
-        }),
+        `${colors.red(figures.cross)} ${title}${workloadLabel(testResult.workId.workload)}`,
+        ...location === null ? [] : [ indentDetail(location) ],
+        '',
+        ...details.length === 0 ? [ indentDetail(testResult.verdict) ] : details.map(indentDetail),
+        ...parameterDetails(testResult.id.params, context),
         ...caseArtifactDetails(result, testResult)
     ];
 }
@@ -334,15 +377,11 @@ function testProblemHeading(testResult: RunResult['perTest'][number], context: R
     const location = formatDefinitionLocations(testResult.definitionLocations, context).primary;
     const locationText = location === null ? '' : ` (${location})`;
 
-    return `${formatCaseId(testResult.id)}${workloadLabel(testResult.workId.workload)}${locationText}`;
+    return `${formatCaseLabel(testResult.id)}${workloadLabel(testResult.workId.workload)}${locationText}`;
 }
 
 function knownOutcomeProblemLines(input: KnownOutcomeProblemInput): readonly string[] {
-    const { context, heading, options, outcome, result, testResult } = input;
-
-    if (outcome.kind === 'fail') {
-        return failedTestLines(result, testResult, context, heading);
-    }
+    const { heading, options, outcome, result, testResult } = input;
 
     if (outcome.kind === 'inconclusive') {
         return [ heading, `  ${outcome.reason}`, ...caseArtifactDetails(result, testResult) ];
@@ -361,14 +400,14 @@ function testProblemLines(
     context: ReportingContext,
     options: ProblemDetailOptions
 ): readonly string[] {
-    const heading = testProblemHeading(testResult, context);
     const { outcome } = testResult;
 
-    if (outcome === null) {
-        return [ heading, `  ${testResult.verdict}`, ...caseArtifactDetails(result, testResult) ];
+    if (outcome === null || outcome.kind === 'fail') {
+        return failedTestLines(result, testResult, context);
     }
 
-    return knownOutcomeProblemLines({ context, heading, options, outcome, result, testResult });
+    const heading = testProblemHeading(testResult, context);
+    return knownOutcomeProblemLines({ heading, options, outcome, result, testResult });
 }
 
 function problemTestResult(testResult: RunResult['perTest'][number], verbose: boolean): boolean {
@@ -418,9 +457,7 @@ export function problemLines(
         ...propertyLines,
         ...lines.length === 0 ? [] : [
             'Problems',
-            ...lines.map(function indentProblem(line) {
-                return `  ${line}`;
-            })
+            ...lines.map(indentDetail)
         ]
     ];
 }

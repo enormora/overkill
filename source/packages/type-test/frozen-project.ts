@@ -99,13 +99,16 @@ export async function disposeProject(project: FrozenProject): Promise<void> {
     await project.ownership.disposeAsync();
 }
 
-export async function verifyFrozenProject(project: FrozenProject, assertionPlan: OriginalAssertionPlan): Promise<void> {
+export async function verifyFrozenProject(
+    project: FrozenProject,
+    modules: OriginalAssertionPlan['modules']
+): Promise<void> {
     await verifyInstalledCompiler(project.compiler);
     if (await readFile(project.projectConfigPath, 'utf8') !== project.projectText) {
         throw new Error('Type-test project configuration changed after collection.');
     }
     verifyProjectInputs(project.inputs);
-    for (const module of assertionPlan.modules) {
+    for (const module of modules) {
         if (fingerprint(await readFile(module.path, 'utf8')) !== fingerprint(module.originalText)) {
             throw new Error(`Type-test source changed after collection: ${module.path}`);
         }

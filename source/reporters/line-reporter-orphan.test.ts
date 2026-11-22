@@ -1,4 +1,5 @@
-import { suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test, testDouble, type TestDouble } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -18,12 +19,32 @@ function lineReporterWithLog(log: Log): RealTimeReporter {
     const fakeDependencies: LineReporterDependencies = {
         columns: 200,
         formatOptions: { color: false, wrap: true },
+        interactive: false,
+        showPassing: true,
         stdoutConsole: { log },
         verbose: false
     };
 
     return createLineReporter(fakeDependencies)(createReportingContext({ projectRoot: null }));
 }
+
+const orphanOutput = defineCompositeAssertion({
+    name: 'orphan summary and construction locations',
+    assert(check, log: Log) {
+        return check.deepEqual(
+            log.calls.map(function argumentsForCall(call) {
+                return call.arguments;
+            }),
+            [
+                [ errorSymbol, 'Run failed · 2 orphaned · 0 ms' ],
+                [ '  0 executed · 0 ms execution · 0 ms overhead' ],
+                [ infoSymbol, 'test: unused (<unknown>) (source/macro.test.ts:10)' ],
+                [ '  constructed at source/example.test.ts:20' ],
+                [ infoSymbol, 'suite: detached (source/detached.test.ts)' ]
+            ]
+        );
+    }
+});
 
 export const testNode = suite('Line reporter orphan', [
     test('prints orphan details once the run finishes', async function (scope) {
@@ -61,23 +82,7 @@ export const testNode = suite('Line reporter orphan', [
                 }
             })
         });
-        scope.assert(doubleUsage.callCount, log, 4);
-        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-            errorSymbol,
-            '0 discovered, 0 planned, 0 executed (0 pass, 0 fail, 0 skip), 2 orphaned in 0 ms ' +
-            '(total 0 ms, execution 0 ms, overhead 0 ms)'
-        ]);
-        scope.assert(doubleUsage.nthCallWithExactly, log, 1, [
-            infoSymbol,
-            'test: unused (<unknown>) (source/macro.test.ts:10)'
-        ]);
-        scope.assert(doubleUsage.nthCallWithExactly, log, 2, [
-            '  constructed at source/example.test.ts:20'
-        ]);
-        scope.assert(doubleUsage.nthCallWithExactly, log, 3, [
-            infoSymbol,
-            'suite: detached (source/detached.test.ts)'
-        ]);
+        scope.assert(orphanOutput, log);
 
         return scope.assert.collect();
     })

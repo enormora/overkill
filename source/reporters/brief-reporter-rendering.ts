@@ -1,4 +1,4 @@
-import { formatCaseId, type CaseId } from '../engine/identity.ts';
+import { formatCaseLabel, type CaseId } from '../engine/identity.ts';
 import type { OutputLineIntent } from '../engine/reporter-output.ts';
 import { formatSourceLocation, type ReportingContext } from '../engine/reporting-context.ts';
 import type { RunResult, RunnerError, TestFailure } from '../engine/run-result.ts';
@@ -23,29 +23,20 @@ export function stdout(text: string, annotation: OutputLineIntent['annotation'])
     };
 }
 
-function formatFailureLine(
-    id: CaseId,
-    failure: TestFailure,
-    context: ReportingContext
-): string {
-    const location = primaryFailureSourceLocation(failure);
-    const locationText = location === null ? null : formatSourceLocation(location, context);
-    const origin = locationText === null ? formatCaseId(id) : `${locationText} ${formatCaseId(id)}`;
-
-    return `fail ${origin}: ${formatFailureSummary(failure)}`;
-}
-
 export function failureIntent(
     id: CaseId,
     failure: TestFailure,
     context: ReportingContext
 ): OutputLineIntent {
+    const title = formatCaseLabel(id);
     const location = primaryFailureSourceLocation(failure);
+    const locationText = location === null ? null : formatSourceLocation(location, context);
+    const origin = locationText === null ? title : `${locationText} ${title}`;
 
-    return stdout(formatFailureLine(id, failure, context), {
+    return stdout(`fail ${origin}: ${formatFailureSummary(failure)}`, {
         location,
         severity: 'error',
-        title: formatCaseId(id)
+        title
     });
 }
 

@@ -5,9 +5,9 @@ import type { ReportingContext } from '../engine/reporting-context.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import {
     formatCountSummary,
-    formatTimingSummary,
     problemLines
 } from './human-reporter-rendering.ts';
+import { formatDuration, formatTimingSummary } from './run-summary-rendering.ts';
 
 export type TreeReporterDependencies = {
     readonly stdoutConsole: Pick<typeof console, 'log'>;
@@ -23,12 +23,6 @@ const errorSymbol = colors.red(figures.cross);
 const skipSymbol = colors.cyan('°');
 const inconclusiveSymbol = colors.cyan('?');
 const crashSymbol = colors.red(figures.warning);
-const microsecondsPerMillisecond = 1000;
-
-function formatDuration(durationMicroseconds: number): string {
-    return `${durationMicroseconds / microsecondsPerMillisecond} ms`;
-}
-
 function symbolFor(testResult: RunResult['perTest'][number]): string {
     if (testResult.verdict === 'pass') {
         return successSymbol;
@@ -54,10 +48,9 @@ function resultVisible(testResult: RunResult['perTest'][number], options: TreeRe
 }
 
 function caseLine(testResult: RunResult['perTest'][number]): string {
-    const params = testResult.id.params === null ? '' : ` [${testResult.id.params}]`;
     const retry = testResult.retried === null ? '' : ` [${testResult.retried.attempts} attempts]`;
 
-    return `${symbolFor(testResult)} ${testResult.id.title}${params} ` +
+    return `${symbolFor(testResult)} ${testResult.id.title} ` +
         `(${formatDuration(testResult.durationMicroseconds)})${retry}`;
 }
 

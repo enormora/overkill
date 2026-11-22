@@ -25,17 +25,26 @@ await execute(testPlan, {
 The reporter writes directly to `stdout` and declares `stdout-raw`.
 
 `createLineReporter()` emits completed tests in completion order.
+`createLineReporter({ showPassing: false, verbose: false })` reports progress
+every 100 completed tests and still prints non-passing results.
 `createLineTreeReporter()` prints the logical result tree after the run.
 `createLineProgressReporter()` shows compact live progress, then prints the
 same logical result tree.
 
 Rendering:
 
-- failed test headers show identity and duration only
+- table rows use their titles. Failure details put row parameters in an indented block
+- line wrapping defaults to on for terminals and off for redirected output
+- interactive lines align durations when the result fits. Longer lines and
+  redirected logs keep timings inline
+- failed test details put the test name first and the source location directly
+  below it. The assertion and parameters follow
 - all failure details come from structured `outcome.failures`
 - all failed checks are rendered
 - failed checks include source locations when available, including forwarding
   details when a check carries more than one location
-- run summaries include discovered, planned, executed, pass, fail, and skip
-  counts, with inconclusive, crash, and orphan counts only when non-zero
+- the line reporter puts the run status, nonzero verdict counts, and elapsed
+  time first, followed by execution counts and timing. Planned and discovered
+  counts appear when the counts differ
+- durations use microseconds, milliseconds, or seconds based on their size
 - precise timing summaries list up to five runner overhead spans above 500 ms

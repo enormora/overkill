@@ -5,7 +5,7 @@ import type {
 } from '../engine/benchmark-result.ts';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
 import { createBenchmarkSampleReader, type BenchmarkSampleEvidence } from '../bench/benchmark-sample-report.ts';
-import { caseIdentityKey, formatCaseId, workIdentityKey } from '../engine/identity.ts';
+import { formatCaseLabel, caseIdentityKey, workIdentityKey } from '../engine/identity.ts';
 import type { PerTestResult, RunResult } from '../engine/run-result.ts';
 import { metricNormalizationEvidence } from '../bench/metric-normalization-evidence.ts';
 import type { BenchmarkChartGroup } from './benchmark-html-data.ts';
@@ -124,7 +124,7 @@ export function benchmarkMetricGroups(result: RunResult): readonly BenchmarkChar
             return row.values;
         }));
         return {
-            name: `${formatCaseId(first.test.id)} / ${first.name} (${metricScaleLabel(first)})`,
+            name: `${formatCaseLabel(first.test.id)} / ${first.name} (${metricScaleLabel(first)})`,
             unit: first.summary.provenance.unit,
             bins: histogramLabels(scale),
             rows: rows.map(function chartRow(row) {

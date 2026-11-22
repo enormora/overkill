@@ -2,6 +2,11 @@ import type { MeasurementEvidence } from '../engine/measurement-evidence.ts';
 import type { BenchmarkGarbageCollectionResult } from '../engine/benchmark-result.ts';
 import { difference, percentDifference } from './benchmark-deltas.ts';
 import type { BaselineChartRow, BenchmarkHtmlReport } from './benchmark-html-data.ts';
+import { formatDuration } from './run-summary-rendering.ts';
+
+function optionalDuration(microseconds: number | null): string | null {
+    return microseconds === null ? null : formatDuration(microseconds);
+}
 
 function htmlText(value: unknown): string {
     return String(value)
@@ -124,7 +129,7 @@ function timelineTables(report: BenchmarkHtmlReport): string {
                         'Source',
                         'Event',
                         'Start microseconds',
-                        'Duration microseconds',
+                        'Duration',
                         'Outcome'
                     ],
                     timeline.events.map(function eventRow(event) {
@@ -135,7 +140,7 @@ function timelineTables(report: BenchmarkHtmlReport): string {
                             event.source,
                             event.name,
                             event.startMicroseconds,
-                            event.durationMicroseconds,
+                            optionalDuration(event.durationMicroseconds),
                             event.outcome
                         ];
                     })
@@ -164,8 +169,8 @@ function measurementTable(evidence: MeasurementEvidence | null): string {
                 'Invocation',
                 'Target',
                 'Clock',
-                'Measured microseconds',
-                'Lifecycle microseconds',
+                'Measured duration',
+                'Lifecycle duration',
                 'Status',
                 'Errors'
             ],
@@ -177,8 +182,8 @@ function measurementTable(evidence: MeasurementEvidence | null): string {
                     entry.invocation.index,
                     entry.target.name,
                     entry.target.clock,
-                    entry.durationMicroseconds,
-                    entry.lifecycleMicroseconds,
+                    optionalDuration(entry.durationMicroseconds),
+                    optionalDuration(entry.lifecycleMicroseconds),
                     entry.status,
                     entry.errors.join('; ')
                 ];
@@ -205,7 +210,7 @@ function lifecycleTables(report: BenchmarkHtmlReport): string {
                     'GC completed',
                     'GC failures',
                     'Cooldown',
-                    'Cooldown microseconds'
+                    'Cooldown duration'
                 ],
                 [ [
                     test.label,
@@ -214,7 +219,7 @@ function lifecycleTables(report: BenchmarkHtmlReport): string {
                     cleanup.failures,
                     ...garbageCollectionCells(garbageCollection),
                     cooldown.mode === 'off' ? 'off' : cooldown.outcome,
-                    cooldown.mode === 'off' ? null : cooldown.durationMicroseconds
+                    cooldown.mode === 'off' ? null : formatDuration(cooldown.durationMicroseconds)
                 ] ]
             );
             const metrics = table(

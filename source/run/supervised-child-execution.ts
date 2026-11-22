@@ -41,11 +41,13 @@ type SupervisedExecutionCommand = Pick<
 export async function createSupervisedChildExecute(
     wallClock: Clock,
     command: SupervisedExecutionCommand,
-    sourcePlan: HostExecutionInput['sourcePlan']
+    sourcePlan: HostExecutionInput['sourcePlan'],
+    readActiveResourceTypes: HostExecutionInput['readActiveResourceTypes']
 ): Promise<RuntimeExecute> {
     const execute = await createHostExecutionDriver({
         command,
         processModel: 'supervised-process',
+        readActiveResourceTypes,
         sourcePlan,
         reporterDispatcher: createReporterDispatcher({
             stderr: { writeLine: ignoreLine },

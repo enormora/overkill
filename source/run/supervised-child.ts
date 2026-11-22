@@ -94,6 +94,7 @@ export type SupervisedChildDependencies = {
         options: SupervisedChildProcessUsageOptions
     ) => RunProcessUsageTracker;
     readonly createClock: () => Clock;
+    readonly readActiveResourceTypes: () => readonly string[];
 };
 
 function createForwardingProcessUsageTracker(
@@ -251,7 +252,8 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
         const execute = await createSupervisedChildExecute(
             input.wallClock,
             input.command,
-            input.collectedPlan.familySource
+            input.collectedPlan.familySource,
+            input.dependencies.readActiveResourceTypes
         );
         input.host.dropBodyReadPermission(input.command);
         const testPlan = input.command.kind === 'run-session'
