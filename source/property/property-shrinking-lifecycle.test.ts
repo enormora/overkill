@@ -187,7 +187,7 @@ export const testNode = suite('shrink lifecycle', [
         );
         return scope.assert.collect();
     }),
-    test('failure keys expire when the invocation completes', async function (scope) {
+    test('failure keys expire when the invocation completes', async function (scope: TestScope) {
         let declareFailure: (key: string) => void = function () {
             throw new Error('Key setter was not captured.');
         };

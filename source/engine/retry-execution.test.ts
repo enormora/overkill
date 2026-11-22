@@ -291,7 +291,7 @@ export const testNode = suite('Retry execution', [
         scope.assert.deepEqual(first.retried, { attempts: 3, finalVerdict: 'fail' });
         return scope.assert.collect();
     }),
-    test('does not retry a caught assertion-contract failure', async function (scope) {
+    test('does not retry a caught assertion-contract failure', async function (scope: TestScope) {
         let runs = 0;
         const result = await executeBody(function (attemptScope) {
             runs += 1;

@@ -111,7 +111,7 @@ export const testNode = suite('Assertion execution', [
 
         return scope.assert.collect();
     }),
-    test('retains a caught failed requirement after its operand changes', async function (scope) {
+    test('retains a caught failed requirement after its operand changes', async function (scope: TestScope) {
         const result = await executeSingleBody(function testBody(testScope) {
             const testScopeRequire: typeof testScope.require = testScope.require;
             const user: Record<string, unknown> = {};

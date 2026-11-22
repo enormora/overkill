@@ -113,20 +113,29 @@ const invalidAsyncComposite = defineCompositeAssertion({
     }
 });
 
-function invalidPlanSignal(scope: Parameters<EngineCaseBody>[0], count: number): unknown {
+type CasePlan = Parameters<EngineCaseBody>[0]['plan'];
+
+function invalidPlanSignal(plan: CasePlan, count: number): unknown {
     try {
-        scope.plan(count);
+        plan(count);
     } catch (error: unknown) {
         return error;
     }
     throw new Error('Expected invalid plan to throw.');
 }
 
+function callWithInvalidReference(target: unknown): void {
+    if (typeof target !== 'function') {
+        throw new TypeError('Expected a callable assertion facade.');
+    }
+    Reflect.apply(target, null, [ 'invalid reference' ]);
+}
+
 export const testNode = suite('Error assertion execution', [
-    test('keeps distinct caught contract failures and a later body error', async function (scope) {
+    test('keeps distinct caught contract failures and a later body error', async function (scope: TestScope) {
         const result = await executeSingleBody(function testBody(testScope) {
-            invalidPlanSignal(testScope, 0);
-            invalidPlanSignal(testScope, 0);
+            invalidPlanSignal(testScope.plan, 0);
+            invalidPlanSignal(testScope.plan, 0);
             throw new Error('Application failure.');
         });
         const outcome = firstFailOutcome(result);
@@ -137,11 +146,11 @@ export const testNode = suite('Error assertion execution', [
 
         return scope.assert.collect();
     }),
-    test('retains caught collect, reference, and composite contract failures', async function (scope) {
+    test('retains caught collect, reference, and composite contract failures', async function (scope: TestScope) {
         const result = await executeSingleBody(async function testBody(testScope) {
             const operations = [
                 () => testScope.assert.collect(),
-                () => Reflect.apply(testScope.assert, null, [ 'invalid reference' ]),
+                () => callWithInvalidReference(testScope.assert),
                 () => testScope.assert(invalidComposite),
                 () => testScope.assert(invalidAsyncComposite)
             ];
@@ -163,7 +172,7 @@ export const testNode = suite('Error assertion execution', [
 
         return scope.assert.collect();
     }),
-    test('reports one contract failure when its signal escapes', async function (scope) {
+    test('reports one contract failure when its signal escapes', async function (scope: TestScope) {
         const result = await executeSingleBody(function testBody(testScope) {
             testScope.plan(0);
             return testScope.assert.collect();
@@ -176,9 +185,9 @@ export const testNode = suite('Error assertion execution', [
 
         return scope.assert.collect();
     }),
-    test('propagates controls through assertion adapters and settles pending slots', async function (scope) {
+    test('propagates controls through assertion adapters and settles pending slots', async function (scope: TestScope) {
         const result = await executeSingleBody(async function testBody(testScope) {
-            const control = invalidPlanSignal(testScope, 0);
+            const control = invalidPlanSignal(testScope.plan, 0);
             const operations = [
                 () => testScope.assert.throws(function () {
                     throw control;
