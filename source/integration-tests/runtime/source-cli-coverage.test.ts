@@ -1,20 +1,18 @@
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { join, resolve as resolvePath } from 'node:path';
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
+import { createCoverageCaseProject } from './support/coverage-case-project.ts';
+
 const binary = fileURLToPath(new URL('../../packages/test/overkill.entry-point.ts', import.meta.url));
-const fixture = 'source/integration-tests/runtime/fixtures/coverage.test.ts';
-const source = 'source/integration-tests/runtime/fixtures/coverage-source.ts';
-type CoverageProject = { readonly config: string; readonly output: string; };
+const fixture = 'coverage.test.ts';
+const source = 'coverage-source.ts';
+type CoverageProject = { readonly config: string; readonly directory: string; readonly output: string; };
 
 async function coverageProject(cleanup: TestScope['cleanup']): Promise<CoverageProject> {
-    await mkdir('target', { recursive: true });
-    const directory = await mkdtemp(resolvePath('target/source-cli-coverage-'));
-    cleanup(async function removeProject() {
-        await rm(directory, { recursive: true, force: true });
-    });
+    const directory = await createCoverageCaseProject(cleanup, fixture, source);
     const config = join(directory, 'overkill.config.ts');
     const output = join(directory, 'coverage');
     const definition = {
@@ -25,12 +23,12 @@ async function coverageProject(cleanup: TestScope['cleanup']): Promise<CoverageP
                 execution: { processModel: 'in-process', scheduling: 'concurrent', maxConcurrency: 2 },
                 timeouts: { collectionMilliseconds: 30_000, softMilliseconds: 10_000, hardMilliseconds: 15_000 },
                 files: { include: [ fixture ] },
-                coverage: { sources: { mode: 'loaded', include: [ source ] }, outputs: [ 'lcov' ], outputDir: output }
+                coverage: { sources: { mode: 'loaded' }, outputs: [ 'lcov' ], outputDir: output }
             }
         }
     };
     await writeFile(config, `export const config = ${JSON.stringify(definition)};`);
-    return { config, output };
+    return { config, directory, output };
 }
 
 async function coverageOutput(project: CoverageProject): Promise<string> {
@@ -47,7 +45,7 @@ async function coverageOutput(project: CoverageProject): Promise<string> {
                 '--seed',
                 '42'
             ],
-            { cwd: process.cwd(), timeout: 60_000 },
+            { cwd: project.directory, timeout: 60_000 },
             function captureCoverage(error, stdout, stderr) {
                 if (error === null) {
                     resolve(stdout);
