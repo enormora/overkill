@@ -1,7 +1,10 @@
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import type { RunnerError, RunProcessUsageTracker } from '../packages/engine/engine.entry-point.ts';
-import { defaultRunEngine } from '../run/default-run-engine.ts';
+import {
+    createTestPlanFromTestFiles,
+    type RunnerError,
+    type RunProcessUsageTracker
+} from '../packages/engine/engine.entry-point.ts';
 import { createRunIfMain, type RunIfMain } from '../run/run-if-main.ts';
 import { createDirectProfileResolver } from '../run/run-if-main-profile.ts';
 import { createConfigLoader, type ConfigLoader } from '../config/config-loader.ts';
@@ -13,6 +16,7 @@ import {
     assertTestPlanMatchesTestFamily
 } from '../run/run-selection.ts';
 import type { DirectEntrypointRunner } from '../run/run-operations.ts';
+import { createDeterministicTestExecution } from './create-test-engine.ts';
 
 type FixtureRunCommand = Parameters<DirectEntrypointRunner>[0];
 type FixtureCollectionSource = Parameters<DirectEntrypointRunner>[1];
@@ -156,7 +160,7 @@ function fixtureTestPlan(
         throw new Error('Expected a direct entrypoint path.');
     }
 
-    return createSeededTestPlan(defaultRunEngine.createTestPlanFromTestFiles({
+    return createSeededTestPlan(createTestPlanFromTestFiles({
         files: [ { file, testNode: source.testNode } ],
         root: source.root
     }));
@@ -228,7 +232,8 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
         const { profile } = directProfile;
         const startedAt = new Date(0);
 
-        const result = await defaultRunEngine.execute(seeded.testPlan, {
+        const execute = createDeterministicTestExecution();
+        const result = await execute(seeded.testPlan, {
             debug: { mode: 'off' },
             retryPolicy: null,
             execution: profile.execution.scheduling === 'concurrent'
