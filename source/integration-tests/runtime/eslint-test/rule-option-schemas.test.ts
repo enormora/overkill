@@ -20,17 +20,22 @@ function sampleOptions(schema: RuleSchema): readonly (readonly unknown[])[] {
     );
 }
 
+type Tree = readonly Tree[] | null;
+const tree: z.ZodType<Tree> = z.lazy(function recursiveTree() {
+    return z.union([ z.null(), z.array(tree).max(1) ]);
+});
+
 export const testNode = suite('ESLint option validation', [
     test('passes generated options through native ESLint validation', function (scope) {
         const values = sampleOptions({
             type: 'array',
-            items: { type: 'integer', minimum: 1, maximum: 5, exclusiveMinimum: true, exclusiveMaximum: true },
+            items: { allOf: [ { type: 'integer', minimum: 4, maximum: 8 }, { enum: [ 2, 4, 6, 8 ] } ] },
             minItems: 1,
             maxItems: 1
         });
         scope.assert.equal(values.length, request.count);
         scope.assert.true(values.every(function valid(options) {
-            return z.tuple([ z.number().int().gt(1).lt(5) ]).safeParse(options).success;
+            return z.tuple([ z.union([ z.literal(4), z.literal(6), z.literal(8) ]) ]).safeParse(options).success;
         }));
         return scope.assert.collect();
     }),
@@ -59,6 +64,24 @@ export const testNode = suite('ESLint option validation', [
         }));
         scope.assert.true(values.some(function populated(options) {
             return options.length > 0;
+        }));
+        return scope.assert.collect();
+    }),
+    test('recursive local references remain inside the recursive domain', function (scope) {
+        const values = sampleOptions({
+            type: 'array',
+            items: { $ref: '#/definitions/tree' },
+            minItems: 1,
+            maxItems: 1,
+            definitions: {
+                tree: {
+                    anyOf: [ { type: 'null' }, { type: 'array', items: { $ref: '#/definitions/tree' }, maxItems: 1 } ]
+                }
+            }
+        });
+        scope.assert.equal(values.length, request.count);
+        scope.assert.true(values.every(function valid(options) {
+            return tree.safeParse(options[0]).success;
         }));
         return scope.assert.collect();
     })

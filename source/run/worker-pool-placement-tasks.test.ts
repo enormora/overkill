@@ -1,4 +1,3 @@
-import { setTimeout as sleep } from 'node:timers/promises';
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
@@ -120,11 +119,6 @@ function placementPlanAssignedToSecondLane(): PlacementPlan {
     const unit = firstUnit();
 
     return twoLanePlacement([ { lane: 'worker-2', unit: unit.id } ], [ unit ]);
-}
-
-async function letWorkerLoopsRun(): Promise<void> {
-    await Promise.resolve();
-    await sleep(0);
 }
 
 function runtimeWithDispatchPolicy(
@@ -367,8 +361,7 @@ function startControlledExecution(placement: PlacementPlan): ControlledExecution
 
 const assertOnlyFirstHardKeyLease = defineCompositeAssertion({
     name: 'only first hard key lease',
-    async assert(check, controlledPool: ControlledPool) {
-        await letWorkerLoopsRun();
+    assert(check, controlledPool: ControlledPool) {
         return check.group([
             check.equal(controlledPool.capturedTasks.length, 1),
             check.equal(controlledPool.capturedTasks[0]?.lane, 'worker-1')
@@ -378,8 +371,7 @@ const assertOnlyFirstHardKeyLease = defineCompositeAssertion({
 
 const assertRetainedHardKeyLease = defineCompositeAssertion({
     name: 'retained hard key lease',
-    async assert(check, controlledPool: ControlledPool) {
-        await letWorkerLoopsRun();
+    assert(check, controlledPool: ControlledPool) {
         return check.group([
             check.equal(controlledPool.capturedTasks.length, 2),
             check.equal(controlledPool.capturedTasks[1]?.lane, 'worker-1'),
@@ -529,9 +521,11 @@ export const testNode = suite({
             async body(scope) {
                 const execution = startControlledExecution(hardKeyPlacement());
 
-                await scope.assert(assertOnlyFirstHardKeyLease, execution.controlledPool);
+                await scope.yieldToNextTurn();
+                scope.assert(assertOnlyFirstHardKeyLease, execution.controlledPool);
                 execution.controlledPool.finishNext();
-                await scope.assert(assertRetainedHardKeyLease, execution.controlledPool);
+                await scope.yieldToNextTurn();
+                scope.assert(assertRetainedHardKeyLease, execution.controlledPool);
                 finishPendingTask(execution.controlledPool);
                 const completedRuns = await execution.completed;
                 scope.assert.equal(completedRuns.length, 2);

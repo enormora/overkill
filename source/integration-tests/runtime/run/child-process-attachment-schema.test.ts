@@ -1,15 +1,15 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
-import type { HedgedConflictArtifact } from '../packages/engine/engine.entry-point.ts';
+import type { HedgedConflictArtifact } from '../../../packages/engine/engine.entry-point.ts';
 
-import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { attachmentFixture, attachmentWork } from '../test-support/attachment-fixture.ts';
-import { defaultAttachmentLimits, type RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
-import { childProcessEnvelope, envelopeMessage } from './child-process-protocol.ts';
-import { supervisedParentMessageSchema } from './supervised-parent-message-schema.ts';
-import { supervisedChildMessageSchema } from './supervised-child-message-schema.ts';
-import type { SupervisedChildMessage } from './supervised-protocol.ts';
+import { runResultFactory } from '../../../test-support/run-result-factory.ts';
+import { attachmentFixture, attachmentWork } from '../../../test-support/attachment-fixture.ts';
+import { defaultAttachmentLimits, type RuntimeAttachmentArtifact } from '../../../engine/runtime-attachment.ts';
+import { childProcessEnvelope, envelopeMessage } from '../../../run/child-process-protocol.ts';
+import { supervisedParentMessageSchema } from '../../../run/supervised-parent-message-schema.ts';
+import { supervisedChildMessageSchema } from '../../../run/supervised-child-message-schema.ts';
+import type { SupervisedChildMessage } from '../../../run/supervised-protocol.ts';
 
 function decode(message: unknown): SupervisedChildMessage | null {
     return envelopeMessage(childProcessEnvelope('run', message), 'run', supervisedChildMessageSchema);

@@ -87,11 +87,6 @@ const contracts: readonly SchemaContract[] = [
         expected: z.union([ z.number().int().min(1).max(2), z.literal('off') ])
     },
     {
-        title: 'allOf options satisfy every intersecting constraint',
-        schema: { allOf: [ { type: 'integer', minimum: 4, maximum: 8 }, { enum: [ 2, 4, 6, 8 ] } ] },
-        expected: z.union([ z.literal(4), z.literal(6), z.literal(8) ])
-    },
-    {
         title: 'tuples constrain additional elements with their schema',
         schema: {
             type: 'array',
@@ -152,11 +147,6 @@ const contracts: readonly SchemaContract[] = [
         expected: z.boolean()
     }
 ];
-
-type Tree = readonly Tree[] | null;
-const tree: z.ZodType<Tree> = z.lazy(function recursiveTree() {
-    return z.union([ z.null(), z.array(tree).max(1) ]);
-});
 
 export const testNode = suite('ESLint option schema contracts', [
     test('array minima extend the default maximum when necessary', function (scope) {
@@ -234,24 +224,6 @@ export const testNode = suite('ESLint option schema contracts', [
                 return [ 'resolved' ];
             })
         );
-        return scope.assert.collect();
-    }),
-    test('recursive local references remain inside the recursive domain', function (scope) {
-        const values = sampleOptions({
-            type: 'array',
-            items: { $ref: '#/definitions/tree' },
-            minItems: 1,
-            maxItems: 1,
-            definitions: {
-                tree: {
-                    anyOf: [ { type: 'null' }, { type: 'array', items: { $ref: '#/definitions/tree' }, maxItems: 1 } ]
-                }
-            }
-        });
-        scope.assert.equal(values.length, request.count);
-        scope.assert.true(values.every(function valid(options) {
-            return tree.safeParse(options[0]).success;
-        }));
         return scope.assert.collect();
     })
 ]);

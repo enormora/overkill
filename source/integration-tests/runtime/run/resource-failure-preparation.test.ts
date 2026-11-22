@@ -1,18 +1,18 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test } from '@overkill-dev/test';
 
-import type { TestPlanCase } from '../packages/engine/engine.entry-point.ts';
-import { defineResource, withFailureArtifacts } from '../packages/test/resources.entry-point.ts';
-import { createTestEngine } from '../test-support/create-test-engine.ts';
-import { type AttachmentFixture, attachmentFixtureForWork } from '../test-support/attachment-fixture.ts';
-import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
+import type { TestPlanCase } from '../../../packages/engine/engine.entry-point.ts';
+import { defineResource, withFailureArtifacts } from '../../../packages/test/resources.entry-point.ts';
+import { createTestEngine } from '../../../test-support/create-test-engine.ts';
+import { type AttachmentFixture, attachmentFixtureForWork } from '../../../test-support/attachment-fixture.ts';
+import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
 import {
     type AttachmentContext,
     currentAttachmentContext,
     runWithAttachmentContext
-} from '../attachments/attachment-context.ts';
-import { prepareAttemptResource, prepareLifetimeResource } from './resource-failure-preparation.ts';
-import type { ManagedResourceRecord } from './resource-lifecycle-session-acquirer.ts';
+} from '../../../attachments/attachment-context.ts';
+import { prepareAttemptResource, prepareLifetimeResource } from '../../../run/resource-failure-preparation.ts';
+import type { ManagedResourceRecord } from '../../../run/resource-lifecycle-session-acquirer.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 function selectedCase(): TestPlanCase {

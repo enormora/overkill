@@ -1,16 +1,16 @@
 import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
-import { resourceAttachments } from '../attachments/attachment-context.ts';
+import { resourceAttachments } from '../../../attachments/attachment-context.ts';
 
-import { defineResource, type AnyResourceDefinition } from '../resources/resources.ts';
-import type { RunTimingSpan } from '../engine/run-timings.ts';
-import { acquireResourceWithStartupBudget } from './resource-lifecycle-startup-budget.ts';
+import { defineResource, type AnyResourceDefinition } from '../../../resources/resources.ts';
+import type { RunTimingSpan } from '../../../engine/run-timings.ts';
+import { acquireResourceWithStartupBudget } from '../../../run/resource-lifecycle-startup-budget.ts';
 import {
     createResourceLifecycleTiming,
     type ResourceLifecycleTiming,
     type ResourceLifecycleTimingOperation
-} from './resource-lifecycle-timing.ts';
+} from '../../../run/resource-lifecycle-timing.ts';
 
 const testCaseMetadata = {
     annotations: {},

@@ -1,13 +1,13 @@
 import { table, suite, test } from '@overkill-dev/test';
-import type { EngineCaseBody } from '../../test-support/create-test-engine.ts';
+import type { EngineCaseBody } from '../../../../test-support/create-test-engine.ts';
 
 import {
     attachTestBodyResourceAttachments,
     readTestBodyResourceAttachments
-} from '../engine/engine.entry-point.ts';
-import { mappedResourceScope } from '../../test-support/mapped-resource-scope.ts';
+} from '../../../../packages/engine/engine.entry-point.ts';
+import { mappedResourceScope } from '../../../../test-support/mapped-resource-scope.ts';
 
-import { defineResource, withResource } from './resources.entry-point.ts';
+import { defineResource, withResource } from '../../../../packages/test/resources.entry-point.ts';
 
 const resource = defineResource({
     name: 'value',

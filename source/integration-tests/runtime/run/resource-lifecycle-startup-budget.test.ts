@@ -1,10 +1,10 @@
 import { suite, test } from '@overkill-dev/test';
 
-import { resourceAttachments } from '../attachments/attachment-context.ts';
-import type { RuntimeAttachments } from '../engine/runtime-attachment.ts';
+import { resourceAttachments } from '../../../attachments/attachment-context.ts';
+import type { RuntimeAttachments } from '../../../engine/runtime-attachment.ts';
 
-import { defineResource, type AnyResourceDefinition, type ExecutionRequirement } from '../resources/resources.ts';
-import { acquireResourceWithStartupBudget } from './resource-lifecycle-startup-budget.ts';
+import { defineResource, type AnyResourceDefinition, type ExecutionRequirement } from '../../../resources/resources.ts';
+import { acquireResourceWithStartupBudget } from '../../../run/resource-lifecycle-startup-budget.ts';
 
 type ResourceCreationContext = {
     readonly attachments: RuntimeAttachments;

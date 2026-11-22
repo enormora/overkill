@@ -1,17 +1,17 @@
 import { suite, test } from '@overkill-dev/test';
 
-import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import { createDeterministicRunOrchestrator } from '../../../test-support/create-deterministic-run-orchestrator.ts';
 import {
     isolatedRunStateDirectory,
     defaultMicrotestProfile,
     defaultRunConfig,
     defaultRunRequest
-} from '../test-support/run-command-factory.ts';
-import type { NormalizedConfig } from '../config/types.ts';
-import { executeEmptyShardRun } from './run-empty-shard.ts';
-import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { RunCommand, RunRequest } from './run-types.ts';
-import type { RunOrchestrator } from './run-orchestrator-types.ts';
+} from '../../../test-support/run-command-factory.ts';
+import type { NormalizedConfig } from '../../../config/types.ts';
+import { executeEmptyShardRun } from '../../../run/run-empty-shard.ts';
+import type { RunOrchestratorDependencies } from '../../../run/run-orchestrator-dependencies.ts';
+import type { RunCommand, RunRequest } from '../../../run/run-types.ts';
+import type { RunOrchestrator } from '../../../run/run-orchestrator-types.ts';
 
 type RunCommandParts = {
     readonly config: NormalizedConfig;
