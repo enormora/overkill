@@ -10,10 +10,10 @@ import {
 import { normalizeConfig, orchestrator, type PerTestResult } from '../../packages/run/run.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
-import { mutationModes, type MutationMode } from './fixtures/mutation-evidence/mutation-project.test.ts';
+import { mutationModes, type MutationMode } from '../runtime/fixtures/mutation-evidence/mutation-project.test.ts';
 
 const extension = import.meta.url.endsWith('.ts') ? 'ts' : 'js';
-const benchmarkUrl = new URL(`./fixtures/mutation-evidence/mutation-cost.bench.test.${extension}`, import.meta.url);
+const benchmarkUrl = new URL(`../runtime/fixtures/mutation-evidence/mutation-cost.bench.test.${extension}`, import.meta.url);
 
 async function costFixture(
     cleanup: TestScope['cleanup'],

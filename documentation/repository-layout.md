@@ -23,7 +23,7 @@ source TypeScript executable.
 | `runtime`            | Programmatic runtime integration, files, compiler projects, and real I/O | `just test-integration`             |
 | `cli`                | CLI execution and process ownership on Linux and macOS                   | `just test-cli-integration`         |
 | `package-smoke`      | Freshly packed package exports, consumers, and executable startup        | `just test-package-smoke`           |
-| `mutation-campaigns` | Real Stryker campaign matrices                                           | Included in `just test-integration` |
+| `mutation-campaigns` | Stryker lifecycles, campaign matrices, and mutation-cost evidence        | Included in `just test-integration` |
 
 Integration files live under `source/integration-tests/<profile>`. Fixtures are
 excluded from profile discovery. Integration cases share reusable workers; engine

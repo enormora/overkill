@@ -1,17 +1,17 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite, test, type TestScope } from '@overkill-dev/test';
 
-import { strykerCampaignScript, strykerHitLimitScript } from './support/stryker-campaign-scripts.ts';
-import { strykerCoverageScript } from './support/stryker-coverage-scripts.ts';
-import { strykerIdentityScript } from './support/stryker-identity-scripts.ts';
+import { strykerCampaignScript, strykerHitLimitScript } from '../runtime/support/stryker-campaign-scripts.ts';
+import { strykerCoverageScript } from '../runtime/support/stryker-coverage-scripts.ts';
+import { strykerIdentityScript } from '../runtime/support/stryker-identity-scripts.ts';
 import {
     createMutationProject,
     engineUrl,
     configUrl,
     adapterUrl,
     verifyMutationLifecycle
-} from './support/stryker-lifecycle-fixture.ts';
-import { executeMutationScript } from './support/stryker-script.ts';
+} from '../runtime/support/stryker-lifecycle-fixture.ts';
+import { executeMutationScript } from '../runtime/support/stryker-script.ts';
 
 const processModels = [ 'in-process', 'supervised-process' ] as const;
 type CampaignMode = {
