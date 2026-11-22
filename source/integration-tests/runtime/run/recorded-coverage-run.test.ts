@@ -1,4 +1,5 @@
 import path from 'node:path';
+
 import {
     type CompositeAssertionReturn,
     type CompositeCheckBuilder,
@@ -13,13 +14,20 @@ import {
     writeNativeCoverage,
     type CoverageRecordFixture
 } from '../../../test-support/coverage-record-fixture.ts';
-import { defaultMicrotestProfile, defaultRunConfig } from '../../../test-support/run-command-factory.ts';
+import {
+    isolatedRunStateDirectory,
+    defaultMicrotestProfile,
+    defaultRunConfig
+} from '../../../test-support/run-command-factory.ts';
 import { runResultFactory } from '../../../test-support/run-result-factory.ts';
 import { defineFixedReporter } from '../../../test-support/reporter-definition.ts';
 import { RunCollectionError } from '../../../run/run-errors.ts';
 import { runRecordedCoverage } from '../../../run/recorded-coverage-run.ts';
 
-const config = defaultRunConfig({ profiles: { microtest: defaultMicrotestProfile({ coverage: { outputs: [] } }) } });
+const config = defaultRunConfig({
+    runtimeStateDir: isolatedRunStateDirectory(),
+    profiles: { microtest: defaultMicrotestProfile({ coverage: { outputs: [] } }) }
+});
 
 const finalArtifactsChecks = function (
     check: CompositeCheckBuilder<'assert'>,
@@ -126,6 +134,7 @@ export const testNode = suite('Recorded coverage run', [
 
             return await withCoverageRecordFixture(
                 defaultRunConfig({
+                    runtimeStateDir: isolatedRunStateDirectory(),
                     profiles: {
                         microtest: defaultMicrotestProfile({
                             coverage: {
@@ -201,6 +210,7 @@ export const testNode = suite('Recorded coverage run', [
         async function (scope) {
             return await withCoverageRecordFixture(
                 defaultRunConfig({
+                    runtimeStateDir: isolatedRunStateDirectory(),
                     profiles: {
                         microtest: defaultMicrotestProfile({
                             coverage: { outputDirectory: path.resolve(process.cwd(), '..', 'outside-project') }

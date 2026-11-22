@@ -1,6 +1,7 @@
 import { mkdtempDisposable, readFile, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import {
     type CompositeAssertionReturn,
     type CompositeCheckBuilder,
@@ -12,6 +13,7 @@ import { table, suite } from '@overkill-dev/test';
 import type { IntegrationProfileConfig } from '../../../config/types.ts';
 import { placementRunner } from '../../../test-support/benchmark-placement-fixture.ts';
 import {
+    isolatedRunStateDirectory,
     defaultRunConfig,
     defaultIntegrationProfile,
     defaultRunRequest
@@ -54,7 +56,10 @@ async function runPlacement(
     })
         .run({
             cwd: directory,
-            config: defaultRunConfig({ profiles: { integration: profile } }),
+            config: defaultRunConfig({
+                runtimeStateDir: isolatedRunStateDirectory(),
+                profiles: { integration: profile }
+            }),
             engine: { kind: 'default' },
             request: defaultRunRequest({ profile: 'integration', paths: [ 'portable.test.mjs' ] })
         });

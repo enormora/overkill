@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { resolve } from 'node:path';
 import {
     profileFamilyId,
     type NormalizedConfig,
@@ -20,10 +22,12 @@ import {
     type WorkerLifecycle
 } from '../config/types.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
-import { defaultFailureArtifactPolicy } from '../engine/failure-artifact-policy.ts';
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
-import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
-import type { DefinedReporter } from '../engine/reporter.ts';
+import {
+    createPlainOutputRenderer,
+    defaultFailureArtifactPolicy,
+    type DefinedReporter
+} from '../packages/engine/engine.entry-point.ts';
 import type { BenchmarkOrchestrator, RunCommand, RunExecutionFacts, RunRequest } from '../run/run-types.ts';
 
 import { hostProcessFacts } from '../run/run-host-process.ts';
@@ -400,3 +404,7 @@ export const unexpectedBenchmarkOrchestrator: BenchmarkOrchestrator = {
     run: rejectUnexpectedBenchmark,
     runWithReporterDelivery: rejectUnexpectedBenchmark
 };
+
+export function isolatedRunStateDirectory(): string {
+    return resolve('target/integration-state', randomUUID());
+}

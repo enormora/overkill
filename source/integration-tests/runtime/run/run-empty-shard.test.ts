@@ -2,6 +2,7 @@ import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicRunOrchestrator } from '../../../test-support/create-deterministic-run-orchestrator.ts';
 import {
+    isolatedRunStateDirectory,
     defaultMicrotestProfile,
     defaultRunConfig,
     defaultRunRequest
@@ -32,6 +33,7 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
 
 function inProcessMicrotestConfig(): NormalizedConfig {
     return defaultRunConfig({
+        runtimeStateDir: isolatedRunStateDirectory(),
         profiles: {
             microtest: defaultMicrotestProfile({
                 execution: { processModel: 'in-process' }

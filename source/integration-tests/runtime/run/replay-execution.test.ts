@@ -2,7 +2,11 @@ import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test } from '@overkill-dev/test';
 
 import { withMemoryCoverageRecordFixture } from '../../../test-support/coverage-record-fixture.ts';
-import { defaultMicrotestProfile, defaultRunConfig } from '../../../test-support/run-command-factory.ts';
+import {
+    isolatedRunStateDirectory,
+    defaultMicrotestProfile,
+    defaultRunConfig
+} from '../../../test-support/run-command-factory.ts';
 import { createDeterministicRunTestModuleLoader } from '../../../test-support/deterministic-run-fixtures.ts';
 import type { ReplayRunRecord } from '../../../run/replay-record-types.ts';
 import { startSupervisedChild } from '../../../run/node-child-process-starters.ts';
@@ -12,6 +16,7 @@ import { createRunCoordinator } from '../../../run/run-coordinator.entry-point.t
 
 const sourceFile = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 const config = defaultRunConfig({
+    runtimeStateDir: isolatedRunStateDirectory(),
     profiles: {
         microtest: defaultMicrotestProfile({
             execution: { processModel: 'in-process', scheduling: 'serial' },

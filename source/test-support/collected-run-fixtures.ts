@@ -1,10 +1,16 @@
 import { orchestrator, type CollectedRun, type RunCommand } from '../packages/run/run.entry-point.ts';
 import type { LifecycleFixtureState } from '../integration-tests/runtime/fixtures/collected-lifecycle.test.ts';
-import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from './run-command-factory.ts';
+import {
+    isolatedRunStateDirectory,
+    defaultMicrotestProfile,
+    defaultRunConfig,
+    defaultRunRequest
+} from './run-command-factory.ts';
 
 export function collectedRunCommand(): RunCommand {
     return {
         config: defaultRunConfig({
+            runtimeStateDir: isolatedRunStateDirectory(),
             profiles: {
                 microtest: defaultMicrotestProfile({ execution: { processModel: 'in-process', scheduling: 'serial' } })
             }

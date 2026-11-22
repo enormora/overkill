@@ -4,7 +4,11 @@ import { defaultHistoryPolicy } from '../../../config/history-policy.ts';
 import { defineOutputRenderer, defineReporter } from '../../../packages/engine/engine.entry-point.ts';
 import type { DefinedReporter } from '../../../engine/reporter.ts';
 import { createDeterministicRunOrchestrator } from '../../../test-support/create-deterministic-run-orchestrator.ts';
-import { defaultMicrotestProfile, defaultRunRequest } from '../../../test-support/run-command-factory.ts';
+import {
+    isolatedRunStateDirectory,
+    defaultMicrotestProfile,
+    defaultRunRequest
+} from '../../../test-support/run-command-factory.ts';
 import type { RunnerError } from '../../../engine/run-result.ts';
 import type { NormalizedConfig, MicrotestProfileConfig } from '../../../config/types.ts';
 import type { RunCommand, RunRequest } from '../../../run/run-types.ts';
@@ -86,7 +90,7 @@ function createRunConfig(profile: MicrotestProfileConfig): NormalizedConfig {
             microtest: profile
         },
         reporters: [],
-        runtimeStateDir: '.overkill'
+        runtimeStateDir: isolatedRunStateDirectory()
     };
 }
 

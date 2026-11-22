@@ -7,7 +7,7 @@ export const testNode = createSuite({
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             async body(scope) {
-                await writeFile('source/integration-tests/runtime/fixtures/fs-write-policy-output.txt', 'no');
+                await writeFile('target/fs-write-policy-output.txt', 'no');
 
                 return scope.assert.collect();
             },

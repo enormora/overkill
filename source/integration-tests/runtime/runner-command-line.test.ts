@@ -1,13 +1,14 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import {
+    type Reporter,
     defaultFailureArtifactPolicy,
     defineOutputRenderer,
     defineReporter
 } from '../../packages/engine/engine.entry-point.ts';
 
-import type { Reporter } from '../../engine/reporter.ts';
 import {
     createCommandLineRunner,
     type CommandLineRunnerDependencies,
@@ -18,6 +19,8 @@ import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import { defaultCoveragePolicy, normalizeHistoryPolicy } from '../../config/defaults.ts';
 import type { RunRequest } from '../../run/run-types.ts';
 import type { NormalizedConfig, MicrotestProcessModel, MicrotestProfileConfig } from '../../config/types.ts';
+
+import { isolatedRunStateDirectory } from '../../test-support/run-command-factory.ts';
 
 const emptySuiteFixturePath = 'source/integration-tests/runtime/fixtures/empty-suite.test.ts';
 const missingTestNodeFixturePath = 'source/integration-tests/runtime/fixtures/missing-test-node.test.ts';
@@ -86,7 +89,7 @@ const defaultConfig: NormalizedConfig = {
         microtest: createDefaultMicrotestProfile()
     },
     reporters: [],
-    runtimeStateDir: '.overkill'
+    runtimeStateDir: isolatedRunStateDirectory()
 };
 
 function createRunRequest(paths: readonly string[]): RunRequest {

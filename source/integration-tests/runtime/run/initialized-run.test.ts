@@ -2,7 +2,11 @@ import { suite, test } from '@overkill-dev/test';
 
 import { orchestrator, type RunOrchestrator } from '../../../packages/run/run.entry-point.ts';
 import { collectedRunCommand } from '../../../test-support/collected-run-fixtures.ts';
-import { defaultMicrotestProfile, defaultRunConfig } from '../../../test-support/run-command-factory.ts';
+import {
+    isolatedRunStateDirectory,
+    defaultMicrotestProfile,
+    defaultRunConfig
+} from '../../../test-support/run-command-factory.ts';
 import { createCurrentProcessRunOrchestrator } from '../../../run/current-process-run-orchestrator.entry-point.ts';
 import { defaultRunEngine } from '../../../run/default-run-engine.ts';
 import {
@@ -125,6 +129,7 @@ export const testNode = suite('runner initialization', [
             await observed.orchestrator.initialize({
                 ...command,
                 config: defaultRunConfig({
+                    runtimeStateDir: isolatedRunStateDirectory(),
                     profiles: {
                         microtest: defaultMicrotestProfile({
                             execution: { processModel: 'supervised-process' }

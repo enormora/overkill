@@ -1,28 +1,31 @@
 import { rm } from 'node:fs/promises';
+
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite, test } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../../engine/runtime-attachment.ts';
 import {
+    type DefinedReporter,
+    type Reporter,
     defaultFailureArtifactPolicy,
     defineOutputRenderer,
     defineReporter
 } from '../../packages/engine/engine.entry-point.ts';
 
-import type { DefinedReporter, Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import { defaultCoveragePolicy, normalizeHistoryPolicy } from '../../config/defaults.ts';
 import type { RunCommand, RunRequest } from '../../run/run-types.ts';
 import type { NormalizedConfig, MicrotestProcessModel, Scheduling } from '../../config/types.ts';
 
+import { isolatedRunStateDirectory } from '../../test-support/run-command-factory.ts';
+
 const consolePolicyFixturePath = 'source/integration-tests/runtime/fixtures/console-policy.test.ts';
 const envPolicyFixturePath = 'source/integration-tests/runtime/fixtures/env-policy.test.ts';
 const fsWritePolicyFixturePath = 'source/integration-tests/runtime/fixtures/fs-write-policy.test.ts';
-const fsWritePolicyOutputPath = 'source/integration-tests/runtime/fixtures/fs-write-policy-output.txt';
+const fsWritePolicyOutputPath = 'target/fs-write-policy-output.txt';
 const integrationUnrestrictedRuntimeFixturePath =
     'source/integration-tests/runtime/fixtures/integration-unrestricted-runtime.test.ts';
-const integrationUnrestrictedRuntimeOutputPath =
-    'source/integration-tests/runtime/fixtures/integration-unrestricted-runtime-output.txt';
+const integrationUnrestrictedRuntimeOutputPath = 'target/integration-unrestricted-runtime-output.txt';
 const ipcPolicyFixturePath = 'source/integration-tests/runtime/fixtures/ipc-policy.test.ts';
 const timerPolicyFixturePath = 'source/integration-tests/runtime/fixtures/timer-policy.test.ts';
 
@@ -122,7 +125,7 @@ function createRunConfig(
             }
         },
         reporters: [ reporter ],
-        runtimeStateDir: '.overkill'
+        runtimeStateDir: isolatedRunStateDirectory()
     };
 }
 
@@ -175,7 +178,7 @@ function createIntegrationRunConfig(reporter: DefinedReporter): NormalizedConfig
             }
         },
         reporters: [ reporter ],
-        runtimeStateDir: '.overkill'
+        runtimeStateDir: isolatedRunStateDirectory()
     };
 }
 

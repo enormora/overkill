@@ -1,6 +1,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
@@ -16,6 +17,7 @@ import { defineOutputRenderer, defineReporter } from '../../packages/engine/engi
 import type { DefinedReporter, Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import {
+    isolatedRunStateDirectory,
     defaultMicrotestProfile,
     defaultRunConfig,
     defaultRunRequest
@@ -50,6 +52,7 @@ const memoryReporter = defineReporter(function createMemoryReporter(): Reporter 
 });
 
 const defaultConfig = defaultRunConfig({
+    runtimeStateDir: isolatedRunStateDirectory(),
     outputRenderer: defineOutputRenderer(function createOutputRenderer() {
         return {
             render() {

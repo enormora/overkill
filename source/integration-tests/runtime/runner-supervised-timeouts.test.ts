@@ -2,6 +2,7 @@ import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import {
+    isolatedRunStateDirectory,
     defaultMicrotestProfile,
     defaultRunConfig,
     defaultRunRequest
@@ -19,6 +20,7 @@ function supervisedRunCommand(
 ): RunCommand {
     return {
         config: defaultRunConfig({
+            runtimeStateDir: isolatedRunStateDirectory(),
             profiles: {
                 microtest: defaultMicrotestProfile({
                     execution: {

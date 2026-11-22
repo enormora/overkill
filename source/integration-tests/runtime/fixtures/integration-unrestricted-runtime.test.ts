@@ -2,8 +2,9 @@ import { resourceAttachments } from '../../../attachments/attachment-context.ts'
 import { spawnSync } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
+import { type AddressInfo } from 'node:net';
 import { join } from 'node:path';
+
 import type { TestScope } from '@overkill-dev/test';
 import { createTestFacade } from '../../../packages/test/test.entry-point.ts';
 import { createTemporaryDirectoryResource } from '../../../packages/test/resources.entry-point.ts';
@@ -13,7 +14,7 @@ const integration = createTestFacade({
     controls: {}
 });
 
-const outputPath = 'source/integration-tests/runtime/fixtures/integration-unrestricted-runtime-output.txt';
+const outputPath = 'target/integration-unrestricted-runtime-output.txt';
 const resourceSignal = new AbortController().signal;
 const temporaryDirectoryResource = createTemporaryDirectoryResource('scratch');
 

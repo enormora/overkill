@@ -12,6 +12,7 @@ import {
     createDeterministicWorkerPoolCollectionCoordinator
 } from '../../../test-support/create-deterministic-run-orchestrator.ts';
 import {
+    isolatedRunStateDirectory,
     defaultIntegrationProfile,
     defaultMicrotestProfile,
     defaultRunConfig,
@@ -95,7 +96,10 @@ function directSource(testNode: SubjectTestNode): DirectEntrypointCollectionSour
 
 function directCommand(profile: RunCommand['config']['profiles'][string], profileName: string): RunCommand {
     return {
-        config: defaultRunConfig({ profiles: { [profileName]: profile } }),
+        config: defaultRunConfig({
+            runtimeStateDir: isolatedRunStateDirectory(),
+            profiles: { [profileName]: profile }
+        }),
         cwd: process.cwd(),
         engine: { kind: 'default' },
         request: defaultRunRequest({ paths: [ passingFixturePath ], profile: profileName })

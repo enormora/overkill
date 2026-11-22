@@ -9,6 +9,7 @@ import {
 import type { DefinedReporter } from '../../../engine/reporter.ts';
 import type { RunArtifact } from '../../../engine/run-result.ts';
 import {
+    isolatedRunStateDirectory,
     defaultIntegrationProfile,
     defaultMicrotestProfile,
     defaultRunConfig,
@@ -53,7 +54,7 @@ function createRunConfig(profileName: string, profile: NormalizedConfig['profile
             microtest: defaultMicrotestProfile()
         },
         reporters: [],
-        runtimeStateDir: '.overkill'
+        runtimeStateDir: isolatedRunStateDirectory()
     };
 }
 
@@ -258,6 +259,7 @@ export const testNode = suite('Worker pool execution', [
             await scope.assert.rejects(async function runWithInstanceEngine() {
                 await orchestrator.run({
                     config: defaultRunConfig({
+                        runtimeStateDir: isolatedRunStateDirectory(),
                         profiles: {
                             integration: defaultIntegrationProfile({
                                 files: {

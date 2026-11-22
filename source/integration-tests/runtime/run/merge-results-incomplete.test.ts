@@ -1,10 +1,11 @@
 import { mkdtempDisposable, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import { suite, test } from '@overkill-dev/test';
 
 import { mergeResults } from '../../../packages/run/run.entry-point.ts';
-import { defaultRunConfig } from '../../../test-support/run-command-factory.ts';
+import { isolatedRunStateDirectory, defaultRunConfig } from '../../../test-support/run-command-factory.ts';
 import { mergeRecordFixture } from '../../../test-support/merge-record-fixture.ts';
 import { mergeResultsCommand } from '../../../run/merge-results-command.ts';
 
@@ -14,7 +15,9 @@ export const testNode = suite('incomplete merge results', [
         await writeFile(join(directory.path, 'good.json'), JSON.stringify(mergeRecordFixture('good', 2, 3)));
         await writeFile(join(directory.path, 'broken.json'), '{');
         const merged = await mergeResults({
-            config: defaultRunConfig({}),
+            config: defaultRunConfig({
+                runtimeStateDir: isolatedRunStateDirectory()
+            }),
             cwd: directory.path,
             inputs: [ { kind: 'path', path: '.' }, { kind: 'path', path: 'absent.json' } ]
         });
@@ -50,7 +53,9 @@ export const testNode = suite('incomplete merge results', [
             );
         }
         const command = {
-            config: defaultRunConfig({}),
+            config: defaultRunConfig({
+                runtimeStateDir: isolatedRunStateDirectory()
+            }),
             cwd: directory.path,
             inputs: [ { kind: 'path', path: '.' } ]
         } as const;
@@ -78,7 +83,12 @@ export const testNode = suite('incomplete merge results', [
         };
         await writeFile(join(directory.path, 'record.json'), JSON.stringify(exhausted));
         const result = await mergeResultsCommand(async function config() {
-            return { ...defaultRunConfig({}), configPath: null };
+            return {
+                ...defaultRunConfig({
+                    runtimeStateDir: isolatedRunStateDirectory()
+                }),
+                configPath: null
+            };
         }, { cwd: directory.path, configPath: null, paths: [ 'record.json' ] });
         scope.assert.equal(result.exitCode, 2);
         scope.assert.equal(result.runResult?.summary.processExhausted, 1);

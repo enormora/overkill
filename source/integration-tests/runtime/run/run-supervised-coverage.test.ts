@@ -5,7 +5,7 @@ import {
     withMemoryCoverageRecordFixture,
     type CoverageRecordFixture
 } from '../../../test-support/coverage-record-fixture.ts';
-import { defaultRunConfig } from '../../../test-support/run-command-factory.ts';
+import { isolatedRunStateDirectory, defaultRunConfig } from '../../../test-support/run-command-factory.ts';
 import { runResultFactory } from '../../../test-support/run-result-factory.ts';
 import {
     createFakeSupervisedChildProcess,
@@ -133,7 +133,7 @@ export const testNode = suite(
             const failFacts = scope.parameters;
 
             return await withMemoryCoverageRecordFixture(
-                defaultRunConfig(),
+                defaultRunConfig({ runtimeStateDir: isolatedRunStateDirectory() }),
                 failFacts ? [ 2 ] : [],
                 async function verifySupervisedAttempt(fixture) {
                     await scope.assert(assertSupervisedAttempt, failFacts, fixture);

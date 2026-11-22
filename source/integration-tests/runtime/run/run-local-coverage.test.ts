@@ -2,7 +2,11 @@ import { table, suite } from '@overkill-dev/test';
 
 import type { RunResult } from '../../../packages/engine/engine.entry-point.ts';
 import { withMemoryCoverageRecordFixture } from '../../../test-support/coverage-record-fixture.ts';
-import { defaultMicrotestProfile, defaultRunConfig } from '../../../test-support/run-command-factory.ts';
+import {
+    isolatedRunStateDirectory,
+    defaultMicrotestProfile,
+    defaultRunConfig
+} from '../../../test-support/run-command-factory.ts';
 import { createDeterministicRunTestModuleLoader } from '../../../test-support/deterministic-run-fixtures.ts';
 import { coverageBaselineSession, assertCoverageBaseline } from '../../../test-support/coverage-baseline-fixture.ts';
 import { createCoverageRunRecord } from '../../../run/coverage-run-record.ts';
@@ -50,6 +54,7 @@ export const testNode = suite(
 
             return await withMemoryCoverageRecordFixture(
                 defaultRunConfig({
+                    runtimeStateDir: isolatedRunStateDirectory(),
                     profiles: { microtest: defaultMicrotestProfile({ execution: { processModel: 'in-process' } }) }
                 }),
                 [],

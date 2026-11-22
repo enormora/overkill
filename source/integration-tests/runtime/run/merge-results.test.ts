@@ -1,11 +1,12 @@
 import { mkdtemp, mkdtempDisposable, writeFile, mkdir, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import { suite, test } from '@overkill-dev/test';
 
 import { mergeRecordFixture } from '../../../test-support/merge-record-fixture.ts';
 
-import { defaultRunConfig } from '../../../test-support/run-command-factory.ts';
+import { isolatedRunStateDirectory, defaultRunConfig } from '../../../test-support/run-command-factory.ts';
 import {
     mergeResults,
     RunCollectionError,
@@ -33,13 +34,20 @@ export const testNode = suite('merge results inputs and CLI', [
                 await writeFile(join(directory, 'historical.json'), JSON.stringify(historical));
                 await scope.assert.rejects(async function historicalMerge() {
                     await mergeResults({
-                        config: defaultRunConfig({}),
+                        config: defaultRunConfig({
+                            runtimeStateDir: isolatedRunStateDirectory()
+                        }),
                         cwd: directory,
                         inputs: [ { kind: 'file', path: 'historical.json' } ]
                     });
                 }, { message: /selected-identities: missing-evidence.*Regenerate shard records/u });
                 const result = await mergeResultsCommand(async function config() {
-                    return { ...defaultRunConfig({}), configPath: null };
+                    return {
+                        ...defaultRunConfig({
+                            runtimeStateDir: isolatedRunStateDirectory()
+                        }),
+                        configPath: null
+                    };
                 }, { cwd: directory, configPath: null, paths: [ 'historical.json' ] });
                 scope.assert.deepEqual({
                     exitCode: result.exitCode,
@@ -73,7 +81,9 @@ export const testNode = suite('merge results inputs and CLI', [
             })
         );
         const merged = await mergeResults({
-            config: defaultRunConfig({}),
+            config: defaultRunConfig({
+                runtimeStateDir: isolatedRunStateDirectory()
+            }),
             cwd: directory,
             inputs: [ { kind: 'directory', path: '.' } ]
         });
@@ -82,7 +92,12 @@ export const testNode = suite('merge results inputs and CLI', [
             passed: 1
         });
         const result = await mergeResultsCommand(async function config() {
-            return { ...defaultRunConfig({}), configPath: null };
+            return {
+                ...defaultRunConfig({
+                    runtimeStateDir: isolatedRunStateDirectory()
+                }),
+                configPath: null
+            };
         }, { cwd: directory, configPath: null, paths: [ '.' ] });
         scope.assert.deepEqual({
             exitCode: result.exitCode,
@@ -104,7 +119,9 @@ export const testNode = suite('merge results inputs and CLI', [
         ) {
             await scope.assert.rejects(async function () {
                 return await mergeResults({
-                    config: defaultRunConfig({}),
+                    config: defaultRunConfig({
+                        runtimeStateDir: isolatedRunStateDirectory()
+                    }),
                     cwd: directory.path,
                     inputs: [ input ]
                 });
@@ -120,7 +137,9 @@ export const testNode = suite('merge results inputs and CLI', [
         await writeFile(join(directory.path, 'notes.txt'), 'not a run record');
         await scope.assert.rejects(async function () {
             return await mergeResults({
-                config: defaultRunConfig({}),
+                config: defaultRunConfig({
+                    runtimeStateDir: isolatedRunStateDirectory()
+                }),
                 cwd: directory.path,
                 inputs: [ { kind: 'directory', path: '.' } ]
             });
@@ -136,7 +155,9 @@ export const testNode = suite('merge results inputs and CLI', [
         await writeFile(file, '{');
         await scope.assert.rejects(async function () {
             return await mergeResults({
-                config: defaultRunConfig({}),
+                config: defaultRunConfig({
+                    runtimeStateDir: isolatedRunStateDirectory()
+                }),
                 cwd: directory.path,
                 inputs: [ { kind: 'file', path: 'record.json' } ]
             });
@@ -148,7 +169,9 @@ export const testNode = suite('merge results inputs and CLI', [
         await writeFile(join(directory.path, 'b.json'), JSON.stringify(mergeRecordFixture('second', 1, 3)));
         await writeFile(join(directory.path, 'a.json'), JSON.stringify(mergeRecordFixture('first', 1, 2)));
         const merged = await mergeResults({
-            config: defaultRunConfig({}),
+            config: defaultRunConfig({
+                runtimeStateDir: isolatedRunStateDirectory()
+            }),
             cwd: directory.path,
             inputs: [ { kind: 'file', path: 'b.json' }, { kind: 'file', path: 'a.json' } ]
         });
@@ -165,7 +188,12 @@ export const testNode = suite('merge results inputs and CLI', [
         const loadConfig = async function config(): Promise<
             NormalizedConfig & { readonly configPath: null; }
         > {
-            return { ...defaultRunConfig({}), configPath: null };
+            return {
+                ...defaultRunConfig({
+                    runtimeStateDir: isolatedRunStateDirectory()
+                }),
+                configPath: null
+            };
         };
         const missing = await mergeResultsCommand(loadConfig, {
             cwd: process.cwd(),
@@ -189,7 +217,9 @@ export const testNode = suite('merge results inputs and CLI', [
             try {
                 await populateMergeDirectory(directory);
                 const merged = await mergeResults({
-                    config: defaultRunConfig({}),
+                    config: defaultRunConfig({
+                        runtimeStateDir: isolatedRunStateDirectory()
+                    }),
                     cwd: directory,
                     inputs: [ { kind: 'directory', path: '.' }, { kind: 'file', path: 'first.json' } ]
                 });

@@ -2,7 +2,11 @@ import { suite, test } from '@overkill-dev/test';
 
 import { orchestrator, RunCollectionError, type InitializedRun } from '../../../packages/run/run.entry-point.ts';
 import { collectedRunCommand, collectLifecycleRun } from '../../../test-support/collected-run-fixtures.ts';
-import { defaultMicrotestProfile, defaultRunConfig } from '../../../test-support/run-command-factory.ts';
+import {
+    isolatedRunStateDirectory,
+    defaultMicrotestProfile,
+    defaultRunConfig
+} from '../../../test-support/run-command-factory.ts';
 import { equals } from '../../../run/run-selection-filters.ts';
 
 const all = { selection: { kind: 'all' } } as const;
@@ -51,6 +55,7 @@ export const testNode = suite('collected runner boundaries', [
         const ready = await orchestrator.initialize({
             ...command,
             config: defaultRunConfig({
+                runtimeStateDir: isolatedRunStateDirectory(),
                 profiles: {
                     microtest: defaultMicrotestProfile({
                         execution: { processModel: 'in-process', scheduling: 'serial' },
@@ -136,6 +141,7 @@ export const testNode = suite('collected runner boundaries', [
         const { collected, state } = await collectLifecycleRun({
             ...command,
             config: defaultRunConfig({
+                runtimeStateDir: isolatedRunStateDirectory(),
                 profiles: {
                     microtest: defaultMicrotestProfile({
                         execution: { processModel: 'in-process', scheduling: 'serial' },

@@ -10,12 +10,17 @@ import {
     type CoverageRecordFixture
 } from '../../../test-support/coverage-record-fixture.ts';
 import { createDeterministicRunTestModuleLoader } from '../../../test-support/deterministic-run-fixtures.ts';
-import { defaultMicrotestProfile, defaultRunConfig } from '../../../test-support/run-command-factory.ts';
+import {
+    isolatedRunStateDirectory,
+    defaultMicrotestProfile,
+    defaultRunConfig
+} from '../../../test-support/run-command-factory.ts';
 import { createRunCoordinator, type RunCoordinator } from '../../../run/run-coordinator.entry-point.ts';
 
 const passingFile = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 const importFailure = 'source/integration-tests/runtime/fixtures/throws-on-import.test.ts';
 const config = defaultRunConfig({
+    runtimeStateDir: isolatedRunStateDirectory(),
     profiles: {
         microtest: defaultMicrotestProfile({
             execution: { processModel: 'in-process', scheduling: 'serial' },

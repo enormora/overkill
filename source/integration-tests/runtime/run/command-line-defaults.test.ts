@@ -2,6 +2,7 @@ import { suite, test } from '@overkill-dev/test';
 
 import { defineReporter } from '../../../packages/engine/engine.entry-point.ts';
 import {
+    isolatedRunStateDirectory,
     unexpectedBenchmarkOrchestrator,
     defaultRunConfig,
     defaultRunRequest
@@ -58,7 +59,9 @@ function createPassingOrchestrator(): ConfiguredRunOrchestrator {
 }
 
 function createTestRunner(): CommandLineRunner {
-    const config = defaultRunConfig();
+    const config = defaultRunConfig({
+        runtimeStateDir: isolatedRunStateDirectory()
+    });
 
     return createCommandLineRunner({
         async createDefaultReporter() {
@@ -85,7 +88,10 @@ function createTestRunner(): CommandLineRunner {
         },
         async loadConfig() {
             return {
-                history: defaultRunConfig().history,
+                history: defaultRunConfig({
+                    runtimeStateDir: isolatedRunStateDirectory()
+                })
+                    .history,
                 configPath: null,
                 loader: config.loader,
                 outputRenderer: config.outputRenderer,

@@ -15,6 +15,7 @@ import {
     type RunArtifact
 } from '../../../packages/engine/engine.entry-point.ts';
 import {
+    isolatedRunStateDirectory,
     defaultIntegrationProfile,
     defaultMicrotestProfile,
     defaultRunRequest
@@ -61,7 +62,7 @@ function createRunConfig(profileName: string, profile: NormalizedConfig['profile
             microtest: microtestProfile
         },
         reporters: [],
-        runtimeStateDir: '.overkill'
+        runtimeStateDir: isolatedRunStateDirectory()
     };
 }
 

@@ -13,6 +13,8 @@ import { defaultCoveragePolicy } from '../../config/defaults.ts';
 import type { RunCommand, RunRequest } from '../../run/run-types.ts';
 import type { NormalizedConfig } from '../../config/types.ts';
 
+import { isolatedRunStateDirectory } from '../../test-support/run-command-factory.ts';
+
 const integrationFixturePath = 'source/integration-tests/runtime/fixtures/discovery/integration.test.ts';
 const unitFixturePath = 'source/integration-tests/runtime/fixtures/discovery/unit.test.ts';
 
@@ -117,7 +119,7 @@ function createRunConfig(): NormalizedConfig {
             }
         },
         reporters: [ memoryReporter ],
-        runtimeStateDir: '.overkill'
+        runtimeStateDir: isolatedRunStateDirectory()
     };
 }
 

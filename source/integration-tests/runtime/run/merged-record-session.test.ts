@@ -1,6 +1,7 @@
 import { mkdtempDisposable, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 
 import { suite, test } from '@overkill-dev/test';
@@ -9,12 +10,16 @@ import { defineReporter } from '../../../packages/engine/engine.entry-point.ts';
 
 import { mergeResults, type MergeResultsCommand, type MergedRunRecord } from '../../../packages/run/run.entry-point.ts';
 import { mergeRecordFixture, retainedMergedRecord } from '../../../test-support/merge-record-fixture.ts';
-import { defaultRunConfig } from '../../../test-support/run-command-factory.ts';
+import { isolatedRunStateDirectory, defaultRunConfig } from '../../../test-support/run-command-factory.ts';
 
 async function prepare(directory: string): Promise<MergeResultsCommand> {
     await writeFile(join(directory, 'first.json'), JSON.stringify(mergeRecordFixture('first', 1, 2)));
     await writeFile(join(directory, 'second.json'), JSON.stringify(mergeRecordFixture('second', 2, 3)));
-    return { config: defaultRunConfig({}), cwd: directory, inputs: [ { kind: 'directory', path: '.' } ] };
+    return {
+        config: defaultRunConfig({ runtimeStateDir: isolatedRunStateDirectory() }),
+        cwd: directory,
+        inputs: [ { kind: 'directory', path: '.' } ]
+    };
 }
 const assertDiscovery = defineCompositeAssertion({
     name: 'discovery',

@@ -1,9 +1,14 @@
 import { runInNewContext } from 'node:vm';
+
 import { suite, test } from '@overkill-dev/test';
 
 import { runResultFactory } from '../../../test-support/run-result-factory.ts';
 import { withCoverageRecordFixture } from '../../../test-support/coverage-record-fixture.ts';
-import { defaultRunConfig, defaultIntegrationProfile } from '../../../test-support/run-command-factory.ts';
+import {
+    isolatedRunStateDirectory,
+    defaultRunConfig,
+    defaultIntegrationProfile
+} from '../../../test-support/run-command-factory.ts';
 import { createCoverageRunRecord } from '../../../run/coverage-run-record.ts';
 import { createCoverageSession } from '../../../run/coverage-session.ts';
 import { createRunTimingMeasurement } from '../../../run/run-timing-collection.ts';
@@ -34,7 +39,9 @@ export const testNode = suite('Run coverage', [
         async function (scope) {
             return await withCoverageEnvironment(async function preserveCoverageEnvironment() {
                 return await withCoverageRecordFixture(
-                    defaultRunConfig(),
+                    defaultRunConfig({
+                        runtimeStateDir: isolatedRunStateDirectory()
+                    }),
                     [],
                     async function verifyEnvironment(fixture) {
                         const attempt = await createCoverageRunRecord(
@@ -61,7 +68,7 @@ export const testNode = suite('Run coverage', [
     }),
     test('coverage setup classifies start errors from another realm', async function (scope) {
         return await withCoverageRecordFixture(
-            defaultRunConfig(),
+            defaultRunConfig({ runtimeStateDir: isolatedRunStateDirectory() }),
             [],
             async function verifySetupFailure(fixture) {
                 const timing = createRunTimingMeasurement(fixture.request.dependencies.wallClock);
@@ -90,23 +97,27 @@ export const testNode = suite('Run coverage', [
     test(
         'supervised coverage tolerates repeated starts and disposal without reporting interrupted execution',
         async function (scope) {
-            return await withCoverageRecordFixture(defaultRunConfig(), [], async function verifyLifecycle(fixture) {
-                const timing = createRunTimingMeasurement(fixture.request.dependencies.wallClock);
-                const attempt = await createCoverageRunRecord(
-                    process.cwd(),
-                    fixture.request.input,
-                    fixture.request.dependencies,
-                    timing
-                );
-                const session = await createCoverageSession(attempt.sessionRequest);
-                const result = runResultFactory.build({ summary: { crashed: 1 } });
-                await session.start();
-                await session.start();
-                scope.assert.equal(await session.finalize(result, false), result);
-                await session.dispose();
-                await session.dispose();
-                return scope.assert.collect();
-            });
+            return await withCoverageRecordFixture(
+                defaultRunConfig({ runtimeStateDir: isolatedRunStateDirectory() }),
+                [],
+                async function verifyLifecycle(fixture) {
+                    const timing = createRunTimingMeasurement(fixture.request.dependencies.wallClock);
+                    const attempt = await createCoverageRunRecord(
+                        process.cwd(),
+                        fixture.request.input,
+                        fixture.request.dependencies,
+                        timing
+                    );
+                    const session = await createCoverageSession(attempt.sessionRequest);
+                    const result = runResultFactory.build({ summary: { crashed: 1 } });
+                    await session.start();
+                    await session.start();
+                    scope.assert.equal(await session.finalize(result, false), result);
+                    await session.dispose();
+                    await session.dispose();
+                    return scope.assert.collect();
+                }
+            );
         }
     ),
     test('coverageExecutionCompleted() rejects interrupted runs', function (scope) {
