@@ -1,7 +1,11 @@
 import { spawn } from 'node:child_process';
 import { type TestNode, suite, test } from '@overkill-dev/test';
 
-import { createCompilerLifetime, runCompilerOperation, type CompilerLifetime } from '../../../../packages/type-test/compiler-lifetime.ts';
+import {
+    createCompilerLifetime,
+    runCompilerOperation,
+    type CompilerLifetime
+} from '../../../../packages/type-test/compiler-lifetime.ts';
 
 const waitsForClose = test(
     'compiler cleanup waits for the owned process to close',

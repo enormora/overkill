@@ -40,8 +40,10 @@ function ignoreLine(): void {
 }
 
 type SupervisedExecutionCommand = {
-    readonly command: Pick<SupervisedRunCommand,
-        'benchmarkGarbageCollection' | 'benchmarkNormalization' | 'replay' | 'snapshots' | 'testFamily'>;
+    readonly command: Pick<
+        SupervisedRunCommand,
+        'benchmarkGarbageCollection' | 'benchmarkNormalization' | 'replay' | 'snapshots' | 'testFamily'
+    >;
     readonly assignment: SupervisedAssignmentCommand;
 };
 
