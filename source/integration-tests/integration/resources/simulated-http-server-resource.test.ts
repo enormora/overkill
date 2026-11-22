@@ -54,7 +54,7 @@ async function assertSimulatedHttpResourceResponses(
 
 function assertSimulatedHttpTranscript(
     scope: TestScope,
-    transcript: HttpTranscript<{ readonly scenario: string; }>
+    transcript: HttpTranscript<{ readonly scenario: string | null; }>
 ): void {
     const outageEntry = transcript.lastEntry;
 

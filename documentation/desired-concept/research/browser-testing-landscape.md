@@ -317,20 +317,13 @@ version during execution or invalidate the affected collected work.
 
 The existing [simulation contract](../authoring/deterministic-simulation.md#scenario-timing)
 already distinguishes startup-bound and request-routed scenarios. Its HTTP
-adapter's `scenarioUrl(...)` selects an individual request; it does not establish
-automatic propagation through the browser application. Query parameters on a
-page URL do not automatically reach script, navigation, fetch, worker, or
-WebSocket requests. Cookies have different sharing boundaries. Any adapter
-must define how the selected scenario reaches every relevant dependency and
-how concurrent sessions remain independent.
-
-Candidate approaches are separate server instances with a fixed scenario,
-scenario-specific API base URLs, or explicit session routing. The application
-must construct requests that preserve the scenario selector; assigning a
-query-selected URL as an API base alone is insufficient. Path/session routing
-would require an explicitly defined adapter rather than an assumed feature of
-the current HTTP adapter. The application
-should be able to consume ordinary configuration without importing Overkill.
+adapter's `scenarioUrl(...)` selects an individual request. Relative URLs
+can keep the scenario prefix. Root-relative URLs and references that leave the
+scenario directory require explicit construction or a fixed-scenario server.
+Cookies have different sharing boundaries. Any adapter must define how the
+selected scenario reaches each dependency and how concurrent sessions remain
+independent. The application should be able to consume ordinary configuration
+without importing Overkill.
 Avoid hidden global scenario switches or browser API interception as the
 default mechanism. Remote app, asset, and service URLs must remain reachable
 from the selected browser environment.

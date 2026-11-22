@@ -500,10 +500,10 @@ options. Application code need not import Overkill.
 Compose build commands/APIs, dev servers, or prebuilt assets as resources.
 Share immutable artifacts while isolating mutable session state. Freeze the
 exercised asset/module version; changes require invalidation/recollection.
-App-page query parameters do not propagate automatically to fetch, assets,
-navigation, workers, or sockets. Use explicit construction, defined session/path
-routing, or fixed-scenario servers; no global mutable scenario switch. Existing
-query-based `scenarioUrl` is not automatic app routing.
+A scenario-prefixed app URL preserves identity for relative references within
+its scenario directory. Fetches, assets, navigation, workers, and sockets can
+use root-relative or independent URLs. Use explicit construction, defined
+session routing, or fixed-scenario servers for those requests.
 
 Record logical configuration, scenario, simulation seed/version, build identity,
 and environment. Temporary ports/session credentials are not stable identity.

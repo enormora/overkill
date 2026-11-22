@@ -6,6 +6,7 @@ import { type HttpTranscript, createHttpTranscriptRecorder } from '../transcript
 import { currentTranscriptScope } from '../transcript/transcript-store.ts';
 
 import type { SimulatedHttpServerDefinition, SimulationScenarioCatalog } from '../simulation/simulation.ts';
+import { requestRoutedScenario } from '../simulation/simulated-http-routing.ts';
 import { serveSimulatedHttpRequest } from '../simulation/simulated-http-server.ts';
 
 type ResponseState = {
@@ -20,7 +21,7 @@ type SimulatedHttpFixture = {
     readonly request: IncomingMessage;
     readonly response: ResponseState;
     readonly errors: readonly unknown[];
-    readonly transcript: HttpTranscript<{ readonly scenario: string; }>;
+    readonly transcript: HttpTranscript<{ readonly scenario: string | null; }>;
     readonly serve: () => Promise<void>;
     readonly failResponse: (failure: Error) => void;
 };
@@ -31,11 +32,11 @@ export function simulatedHttpRequest<Scenarios extends SimulationScenarioCatalog
     const socket = new Socket();
     const request = new IncomingMessage(socket);
     request.method = 'GET';
-    request.url = '/resource';
+    request.url = '/default/resource';
     const response = createStoredValue<ResponseState>({ status: null, statusText: null, headers: {}, body: null });
     const errors: unknown[] = [];
     let responseFailure: Error | null = null;
-    const transcript = createHttpTranscriptRecorder<{ readonly scenario: string; }>();
+    const transcript = createHttpTranscriptRecorder<{ readonly scenario: string | null; }>();
     scope.cleanup(function () {
         request.destroy();
         socket.destroy();
@@ -59,7 +60,7 @@ export function simulatedHttpRequest<Scenarios extends SimulationScenarioCatalog
                     headers: request.headers,
                     on: request.on.bind(request)
                 },
-                simulation,
+                route: requestRoutedScenario(simulation),
                 transcript,
                 scope: currentTranscriptScope(),
                 recordError(error) {

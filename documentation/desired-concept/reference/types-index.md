@@ -2758,9 +2758,25 @@ type SimulatedHttpServerHandle<Scenario extends string> = {
     readonly baseUrl: string;
     readonly dispose: () => Promise<void>;
     readonly scenarioUrl: (scenario: Scenario, path: string) => string;
+    readonly transcript: HttpTranscript<{ readonly scenario: string | null; }>;
+    readonly [Symbol.asyncDispose]: () => Promise<void>;
+};
+
+type FixedSimulatedHttpServerHandle = {
+    readonly baseUrl: string;
+    readonly dispose: () => Promise<void>;
     readonly transcript: HttpTranscript<{ readonly scenario: string; }>;
     readonly [Symbol.asyncDispose]: () => Promise<void>;
 };
+
+declare function startFixedSimulatedHttpServer<const Scenario extends string>(
+    options: {
+        readonly host?: string;
+        readonly port?: number;
+        readonly simulation: SimulatedHttpServerDefinition<Scenario>;
+        readonly scenario: NoInfer<Scenario>;
+    }
+): Promise<FixedSimulatedHttpServerHandle>;
 
 type RecordedHttpBody =
     | { readonly kind: 'absent'; }
