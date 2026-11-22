@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { z } from 'zod';
 import type { Linter } from 'eslint';
 import type { ConfigDiagnostics, ConfigFileExpectation } from './config-definition.ts';
-import { fatalDiagnostics, type ResolvedConfig } from './config-execution.ts';
+import type { ResolvedConfig } from './config-execution.ts';
+import { fatalDiagnostics } from './diagnostic-expectations.ts';
 
 function selectedMessages(
     messages: readonly Linter.LintMessage[],

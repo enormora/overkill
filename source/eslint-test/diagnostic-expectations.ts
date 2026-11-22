@@ -54,6 +54,12 @@ function errorLocation(actual: Linter.LintMessage, expected: Readonly<RuleTester
     }
 }
 
+export function fatalDiagnostics(messages: readonly Linter.LintMessage[]): readonly Linter.LintMessage[] {
+    return messages.filter(function fatal(message) {
+        return message.fatal === true;
+    });
+}
+
 export function checkError(rule: Rule.RuleModule, actual: Linter.LintMessage, expected: ExpectedError): void {
     if (typeof expected === 'string' || expected instanceof RegExp) {
         messageMatches(actual.message, expected);

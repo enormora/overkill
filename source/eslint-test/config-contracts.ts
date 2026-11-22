@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import type { ConfigContract, ConfigInput, ConfigObservation } from './config-definition.ts';
 import {
-    fatalDiagnostics,
     lintConfigSource,
     collectConfigObservation,
     type ConfigSourceLint,
     type ConfigExecution
 } from './config-execution.ts';
+import { fatalDiagnostics } from './diagnostic-expectations.ts';
 import { applyRuleEdits } from './rule-fixes.ts';
 import { projectFailure } from './config-errors.ts';
 

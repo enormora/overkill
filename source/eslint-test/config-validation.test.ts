@@ -1,7 +1,7 @@
 import { table, suite, test } from '@overkill-dev/test';
 
-import { validateConfigDefinition } from './config-validation.ts';
 import { configDefinition, emptyConfigProject } from '../test-support/eslint-config.ts';
+import { validateConfigDefinition } from './config-validation.ts';
 
 export const testNode = suite('config definition validation', [
     test('rejects inventory exclusions for rules outside the catalog', function (scope) {
