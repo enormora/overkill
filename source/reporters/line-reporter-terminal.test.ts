@@ -27,6 +27,8 @@ function lineReporterWithLog(log: Log): RealTimeReporter {
     const fakeDependencies: LineReporterDependencies = {
         columns: 80,
         formatOptions: { color: false, wrap: true },
+        interactive: false,
+        showPassing: true,
         stdoutConsole: { log },
         verbose: false
     };

@@ -26,6 +26,8 @@ function lineReporterWithLog(log: Log): RealTimeReporter {
     const fakeDependencies: LineReporterDependencies = {
         columns: 200,
         formatOptions: { color: false, wrap: true },
+        interactive: false,
+        showPassing: true,
         stdoutConsole: { log },
         verbose: false
     };
@@ -34,20 +36,20 @@ function lineReporterWithLog(log: Log): RealTimeReporter {
 }
 
 function assertOrphanOutput(scope: TestScope, log: Log): void {
-    scope.assert(doubleUsage.callCount, log, 4);
+    scope.assert(doubleUsage.callCount, log, 5);
     scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
         errorSymbol,
-        '0 discovered, 0 planned, 0 executed (0 pass, 0 fail, 0 skip), 2 orphaned in 0 ms ' +
-        '(total 0 ms, execution 0 ms, overhead 0 ms)'
+        'Run failed · 2 orphaned · 0 ms'
     ]);
-    scope.assert(doubleUsage.nthCallWithExactly, log, 1, [
+    scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  0 executed · 0 ms execution · 0 ms overhead' ]);
+    scope.assert(doubleUsage.nthCallWithExactly, log, 2, [
         infoSymbol,
         'test: unused (<unknown>) (source/macro.test.ts:10)'
     ]);
-    scope.assert(doubleUsage.nthCallWithExactly, log, 2, [
+    scope.assert(doubleUsage.nthCallWithExactly, log, 3, [
         '  constructed at source/example.test.ts:20'
     ]);
-    scope.assert(doubleUsage.nthCallWithExactly, log, 3, [
+    scope.assert(doubleUsage.nthCallWithExactly, log, 4, [
         infoSymbol,
         'suite: detached (source/detached.test.ts)'
     ]);

@@ -18,12 +18,15 @@ type LongCaseId = {
 
 const definitionLocation = { kind: 'unknown' as const };
 const errorSymbol = colors.red(figures.cross);
+const infoSymbol = colors.cyan(figures.info);
 const successSymbol = colors.green(figures.tick);
 
-function lineReporterWithLog(log: Log): RealTimeReporter {
+function lineReporterWithLog(log: Log, showPassing: boolean, interactive: boolean): RealTimeReporter {
     const fakeDependencies: LineReporterDependencies = {
         columns: 80,
         formatOptions: { color: false, wrap: true },
+        interactive,
+        showPassing,
         stdoutConsole: { log },
         verbose: false
     };
@@ -40,6 +43,8 @@ function narrowLineReporterWithLog(log: Log, wrap: boolean): RealTimeReporter {
     const fakeDependencies: LineReporterDependencies = {
         columns: 32,
         formatOptions: { color: false, wrap },
+        interactive: wrap,
+        showPassing: true,
         stdoutConsole: { log },
         verbose: false
     };
@@ -69,32 +74,55 @@ function longCaseId(): LongCaseId {
     };
 }
 
-async function reportLongCase(reporter: RealTimeReporter): Promise<void> {
+async function reportLongCase(reporter: RealTimeReporter, completion: 'final' | 'retry'): Promise<void> {
     const id = longCaseId();
+    const retry = completion === 'retry';
 
     await reporter.onEvent({
         property: null,
         benchmark: null,
-        completion: 'final',
+        completion,
         attempt: 0,
         case: id,
         workId: { familyVariant: null, case: id, runtimes: [], workload: null },
         definitionLocations: [ definitionLocation ],
         artifacts: [],
         kind: 'test-end',
-        outcome: { kind: 'pass' },
+        outcome: retry
+            ? {
+                kind: 'fail',
+                failures: [ {
+                    kind: 'body-error',
+                    error: { name: 'Error', message: 'try again', stack: null, thrown: null }
+                } ]
+            }
+            : { kind: 'pass' },
         suitePath: suitePathFromTitles(id.suite),
-        verdict: 'pass',
+        verdict: retry ? 'fail' : 'pass',
         durationMicroseconds: 6000
     });
 }
 
 export const testNode: TestNode = suite('Line reporter progress', [
+    test('aligns durations to the right when a test fits in the terminal', async function (scope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log, true, true);
+
+        await reportLongCase(reporter, 'final');
+
+        scope.assert(doubleUsage.callCount, log, 1);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+            successSymbol,
+            '[top level suite > nested area] renders very long title'.padEnd(72) + '(6 ms)'
+        ]);
+
+        return scope.assert.collect();
+    }),
     test('wraps long progress lines under the message column', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = narrowLineReporterWithLog(log, true);
 
-        await reportLongCase(reporter);
+        await reportLongCase(reporter, 'final');
 
         scope.assert(doubleUsage.callCount, log, 3);
         scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
@@ -110,7 +138,7 @@ export const testNode: TestNode = suite('Line reporter progress', [
         const log = testDouble<LogFunction>();
         const reporter = narrowLineReporterWithLog(log, false);
 
-        await reportLongCase(reporter);
+        await reportLongCase(reporter, 'final');
 
         scope.assert(doubleUsage.callCount, log, 1);
         scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
@@ -120,9 +148,25 @@ export const testNode: TestNode = suite('Line reporter progress', [
 
         return scope.assert.collect();
     }),
+    test('prints periodic progress without listing passing tests or counting retries', async function (scope) {
+        const log = testDouble<LogFunction>();
+        const reporter = lineReporterWithLog(log, false, false);
+
+        for (let index = 0; index < 99; index += 1) {
+            await reportLongCase(reporter, 'final');
+        }
+        await reportLongCase(reporter, 'retry');
+        scope.assert(doubleUsage.callCount, log, 1);
+
+        await reportLongCase(reporter, 'final');
+        scope.assert(doubleUsage.callCount, log, 2);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ infoSymbol, '100 tests completed' ]);
+
+        return scope.assert.collect();
+    }),
     test('prints runner errors', async function (scope) {
         const log = testDouble<LogFunction>();
-        const reporter = lineReporterWithLog(log);
+        const reporter = lineReporterWithLog(log, true, false);
 
         await reporter.onEvent({
             error: {

@@ -9,6 +9,7 @@ const defaultColumns = 80;
 
 export type LineReporterOptions = {
     readonly color?: boolean;
+    readonly showPassing?: boolean;
     readonly verbose: boolean;
     readonly wrap?: boolean;
 };
@@ -43,7 +44,7 @@ function colorOption(options: LineReporterOptions | undefined): boolean {
 }
 
 function wrapOption(options: LineReporterOptions | undefined): boolean {
-    return options?.wrap ?? true;
+    return options?.wrap ?? isInteractive({ stream: process.stdout });
 }
 
 function verboseOption(options: LineReporterOptions | undefined): boolean {
@@ -56,11 +57,15 @@ function currentColumns(): number {
 
 export function createLineReporter(options?: LineReporterOptions): DefinedReporter<RealTimeReporter> {
     return createLineReporterInstance({
-        columns: currentColumns(),
+        get columns() {
+            return currentColumns();
+        },
         formatOptions: {
             color: colorOption(options),
             wrap: wrapOption(options)
         },
+        interactive: isInteractive({ stream: process.stdout }),
+        showPassing: options?.showPassing ?? true,
         stdoutConsole: console,
         verbose: verboseOption(options)
     });

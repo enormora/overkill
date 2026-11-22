@@ -3,7 +3,7 @@ import { canonicalIdentityJson } from '../canonical-identity.ts';
 import { readBenchmarkRunMetadata } from '../bench/benchmark-run-report.ts';
 import type { PerformanceBaselineEvidence } from '../baselines/performance-presentation.ts';
 import { readPerformanceBaselineReport, type PerformanceBaselineReport } from '../baselines/performance-report.ts';
-import { formatCaseId, workIdentityKey } from '../engine/identity.ts';
+import { formatCaseLabel, workIdentityKey } from '../engine/identity.ts';
 import { createProcessEvidenceReader } from '../bench/process-evidence-query.ts';
 import { readBenchmarkTimeline } from '../bench/timeline-report.ts';
 import type { BenchmarkHtmlReport, BaselineChartRow } from './benchmark-html-data.ts';
@@ -45,7 +45,7 @@ function baselineRows(baseline: PerformanceBaselineReport | null): readonly Base
                     metric.unit,
                     metric.scale
                 ]),
-                label: `${formatCaseId(comparison.work.case)} / ${
+                label: `${formatCaseLabel(comparison.work.case)} / ${
                     formatBenchmarkWorkload({ workId: comparison.work })
                 } / ${comparison.adapter}`,
                 outcome: baselineOutcome(comparison, baseline)
@@ -71,7 +71,7 @@ export function createBenchmarkHtmlReport(report: RunReport): BenchmarkHtmlRepor
             baselines: baselineRows(baseline),
             timelines: result.perTest.map(function timeline(test) {
                 return {
-                    label: `${formatCaseId(test.id)} / ${formatBenchmarkWorkload(test)}`,
+                    label: `${formatCaseLabel(test.id)} / ${formatBenchmarkWorkload(test)}`,
                     evidence: test.benchmark?.timeline ?? null,
                     events: readBenchmarkTimeline(result, test)?.events ?? []
                 };
@@ -85,7 +85,7 @@ export function createBenchmarkHtmlReport(report: RunReport): BenchmarkHtmlRepor
         cases: result.perTest.map(function caseDetails(test) {
             return {
                 lifecycle: test.benchmark?.lifecycle ?? null,
-                label: `${formatCaseId(test.id)} / ${formatBenchmarkWorkload(test)}`,
+                label: `${formatCaseLabel(test.id)} / ${formatBenchmarkWorkload(test)}`,
                 verdict: test.verdict,
                 details: JSON.stringify(
                     {

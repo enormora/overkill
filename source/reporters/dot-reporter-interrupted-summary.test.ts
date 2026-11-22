@@ -98,9 +98,13 @@ export const testNode: TestNode = suite('Dot reporter interrupted summary', [
                 '(0 pass, 0 fail, 0 skip, 1 process-exhausted, 1 crash) in 9 ms ' +
                 '(total 9 ms, execution 0 ms, overhead 9 ms)',
                 'Problems',
-                '  root > heap ceiling (source/example.test.ts)',
+                `  ${colors.red(figures.cross)} root › heap ceiling`,
+                '    source/example.test.ts',
+                '',
                 '    process-exhausted',
-                '  root > worker death (source/example.test.ts)',
+                `  ${colors.red(figures.cross)} root › worker death`,
+                '    source/example.test.ts',
+                '',
                 '    crashed',
                 ''
             ]

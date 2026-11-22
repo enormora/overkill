@@ -19,6 +19,8 @@ function lineReporterWithLog(log: Log): RealTimeReporter {
     const fakeDependencies: LineReporterDependencies = {
         columns: 200,
         formatOptions: { color: false, wrap: true },
+        interactive: false,
+        showPassing: true,
         stdoutConsole: { log },
         verbose: false
     };
@@ -86,10 +88,10 @@ export const testNode: TestNode = suite('Line reporter summary', [
             result: legacy,
             context: { id: null, startedAt: null, facts: null }
         } ]);
-        scope.assert(doubleUsage.callCount, log, 1);
+        scope.assert(doubleUsage.callCount, log, 2);
         scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
             colors.green(figures.tick),
-            '1 discovered, 1 planned, 1 executed (1 pass, 0 fail, 0 skip) in 0 ms (total 0 ms, execution 0 ms, overhead 0 ms)'
+            'Run passed · 1 passed · 0 ms'
         ]);
         return scope.assert.collect();
     }),
@@ -133,9 +135,9 @@ export const testNode: TestNode = suite('Line reporter summary', [
             }
         });
 
-        scope.assert(doubleUsage.callCount, log, 3);
-        scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ 'Slow runner overhead:' ]);
-        scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  config load: 750 ms' ]);
+        scope.assert(doubleUsage.callCount, log, 4);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ 'Slow runner overhead:' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 3, [ '  config load: 750 ms' ]);
 
         return scope.assert.collect();
     }),
@@ -145,14 +147,14 @@ export const testNode: TestNode = suite('Line reporter summary', [
         const runResult: RunResult = runResultFactory.build({
             summary: {
                 defined: 3,
-                discovered: 3,
-                failed: 1,
+                discovered: 4219,
+                failed: 2,
                 inconclusive: 0,
-                passed: 2,
-                planned: 3,
+                passed: 4216,
+                planned: 4219,
                 skipped: 0
             },
-            totalWallTimeMicroseconds: 10_000
+            totalWallTimeMicroseconds: 10_120_000
         });
 
         await requireFinish(reporter)({
@@ -164,11 +166,13 @@ export const testNode: TestNode = suite('Line reporter summary', [
             }
         });
 
-        scope.assert(doubleUsage.callCount, log, 1);
+        scope.assert(doubleUsage.callCount, log, 2);
         scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
             errorSymbol,
-            '3 discovered, 3 planned, 3 executed (2 pass, 1 fail, 0 skip) in 10 ms ' +
-            '(total 10 ms, execution 0 ms, overhead 10 ms)'
+            'Run failed · 2 failed · 4,216 passed · 10.12 s'
+        ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 1, [
+            '  4,218 executed · 4,219 planned · 4,219 discovered · 0 ms execution · 10.12 s overhead'
         ]);
 
         return scope.assert.collect();
@@ -204,13 +208,8 @@ export const testNode: TestNode = suite('Line reporter summary', [
 
             scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
                 errorSymbol,
-                [
-                    '4 discovered, 4 planned, 7 executed',
-                    '(1 pass, 1 fail, 1 skip, 1 inconclusive, 1 process-exhausted, 1 runtime-policy, 1 crash) ' +
-                    'in 15 ms',
-                    '(total 15 ms, execution 0 ms, overhead 15 ms)'
-                ]
-                    .join(' ')
+                'Run failed · 1 failed · 1 passed · 1 skipped · 1 inconclusive · ' +
+                '1 process exhausted · 1 runtime policy · 1 crashed · 15 ms'
             ]);
 
             return scope.assert.collect();
