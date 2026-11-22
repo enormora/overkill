@@ -20,6 +20,10 @@ const compilerSyntax = {
     isStringLiteralLike: syntax.isStringLiteralLikeNode,
     isFunctionLike: syntax.isFunctionLikeDeclaration
 };
+export function rejectUnsupportedSite(_node: syntax.Node, error: Error): never {
+    throw error;
+}
+
 export function sourceTree<Node extends syntax.Node>(node: Node): Node {
     node.forEachChild(function attach(child) {
         Reflect.set(child, 'parent', node);

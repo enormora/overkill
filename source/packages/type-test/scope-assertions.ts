@@ -19,15 +19,15 @@ function annotatedReceiver(analysis: SourceAnalysis, initial: TypeScript.Express
 async function isScope(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
-    scope: TypeScript.Identifier
+    scope: TypeScript.Identifier | null
 ): Promise<boolean> {
-    return analysis.compiler.isIdentifier(node) && node.text === scope.text &&
+    return scope !== null && analysis.compiler.isIdentifier(node) && node.text === scope.text &&
         await sourceSymbol(analysis, node) === await sourceSymbol(analysis, scope);
 }
 async function scopeTarget(
     analysis: SourceAnalysis,
     initial: TypeScript.Expression,
-    scope: TypeScript.Identifier
+    scope: TypeScript.Identifier | null
 ): Promise<string | null> {
     let expression = annotatedReceiver(analysis, initial);
     const members: string[] = [];
@@ -40,7 +40,7 @@ async function scopeTarget(
 async function assertionCall(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
-    scope: TypeScript.Identifier
+    scope: TypeScript.Identifier | null
 ): Promise<TypeScript.CallExpression | null> {
     if (!analysis.compiler.isCallExpression(node)) {
         return null;
@@ -68,9 +68,16 @@ async function rejectUnownedReference(analysis: SourceAnalysis, node: TypeScript
         );
     }
 }
-function allowedScopeUse(analysis: SourceAnalysis, node: TypeScript.Node, scope: TypeScript.Identifier): boolean {
+function allowedScopeUse(
+    analysis: SourceAnalysis,
+    node: TypeScript.Node,
+    scope: TypeScript.Identifier | null
+): boolean {
     const { compiler } = analysis;
-    if (node === scope || compiler.isTypeQueryNode(node.parent) || compiler.isQualifiedName(node.parent)) {
+    if (
+        compiler.isIdentifier(node) && node === scope || compiler.isTypeQueryNode(node.parent) ||
+        compiler.isQualifiedName(node.parent)
+    ) {
         return true;
     }
     return compiler.isPropertyAccessExpression(node.parent) && node.parent.expression === node;
@@ -83,7 +90,7 @@ function boundAssertionUse(analysis: SourceAnalysis, node: TypeScript.Node): boo
 async function rejectDetachedAssertion(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
-    scope: TypeScript.Identifier
+    scope: TypeScript.Identifier | null
 ): Promise<void> {
     if (!analysis.compiler.isPropertyAccessExpression(node)) {
         return;
@@ -103,7 +110,7 @@ async function rejectDetachedAssertion(
 async function rejectScopeForwarding(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
-    scope: TypeScript.Identifier
+    scope: TypeScript.Identifier | null
 ): Promise<void> {
     if (await isScope(analysis, node, scope) && !allowedScopeUse(analysis, node, scope)) {
         throw new UnsupportedEvidenceError('Scope forwarding is unsupported in checker-backed bodies.', undefined);
@@ -113,7 +120,7 @@ async function rejectScopeForwarding(
 async function rejectNestedAssertions(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
-    scope: TypeScript.Identifier
+    scope: TypeScript.Identifier | null
 ): Promise<void> {
     if (await assertionCall(analysis, node, scope) !== null) {
         throw new UnsupportedEvidenceError('Nested native assertion boundaries are unsupported.', undefined);
@@ -127,44 +134,67 @@ async function rejectNestedAssertions(
 async function validateOperands(
     analysis: SourceAnalysis,
     call: TypeScript.CallExpression,
-    scope: TypeScript.Identifier
+    scope: TypeScript.Identifier | null
 ): Promise<void> {
     for (const operand of call.arguments.slice(1)) {
         await rejectNestedAssertions(analysis, operand, scope);
     }
 }
-async function visitScopeInputs(
+async function checkedScopeNode(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
-    scope: TypeScript.Identifier,
-    visit: (child: TypeScript.Node) => Promise<void>
-): Promise<void> {
-    await rejectScopeForwarding(analysis, node, scope);
-    await rejectUnownedReference(analysis, node);
-    for (const child of sourceChildren(node)) {
-        await visit(child);
+    scope: TypeScript.Identifier | null,
+    nested: boolean
+): Promise<TypeScript.CallExpression | null> {
+    const call = await assertionCall(analysis, node, scope);
+    if (call === null) {
+        await rejectScopeForwarding(analysis, node, scope);
+        await rejectUnownedReference(analysis, node);
+        return null;
     }
+    if (nested) {
+        throw new UnsupportedEvidenceError('Nested native assertion boundaries are unsupported.', undefined);
+    }
+    await validateOperands(analysis, call, scope);
+    return call;
 }
+
 export async function scopeAssertions(
     analysis: SourceAnalysis,
     body: SourceBody,
-    scope: TypeScript.Identifier
+    scope: TypeScript.Identifier | null,
+    unsupported: (node: TypeScript.Node, error: UnsupportedEvidenceError) => void
 ): Promise<readonly TypeScript.CallExpression[]> {
     const calls: TypeScript.CallExpression[] = [];
-    async function visit(node: TypeScript.Node): Promise<void> {
-        if (node !== body && analysis.compiler.isFunctionLike(node)) {
-            await rejectNestedAssertions(analysis, node, scope);
+    async function inspect(
+        node: TypeScript.Node,
+        nested: boolean
+    ): Promise<TypeScript.CallExpression | null | undefined> {
+        try {
+            return await checkedScopeNode(analysis, node, scope, nested);
+        } catch (error: unknown) {
+            if (!(error instanceof UnsupportedEvidenceError)) {
+                throw error;
+            }
+            unsupported(node, error);
+            return undefined;
+        }
+    }
+    async function visit(node: TypeScript.Node, nested: boolean): Promise<void> {
+        const insideNested = nested || node !== body && analysis.compiler.isFunctionLike(node);
+        const call = await inspect(node, insideNested);
+        if (call === undefined) {
             return;
         }
-        const call = await assertionCall(analysis, node, scope);
         if (call !== null) {
             calls.push(call);
-            await validateOperands(analysis, call, scope);
             return;
         }
-        await visitScopeInputs(analysis, node, scope, visit);
+        for (const child of sourceChildren(node)) {
+            await visit(child, insideNested);
+        }
     }
-    await visit(body);
+    await visit(body, false);
     return calls;
 }
 export async function assertionAnnotation(

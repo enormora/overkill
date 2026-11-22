@@ -112,3 +112,18 @@ failures. Dedicated deadline and watch behavior remain separate lifecycle work.
 
 Equality returns inconclusive evidence when recursive expansion exceeds 256
 comparison levels.
+
+Only selected cases contribute assertion evidence. Shared table or generic bodies
+are checked once per compiler, with each selected owner receiving the result.
+Authored skips bypass body inspection. A resolved body with no assertion sites
+fails with `no-assertions`. A false relation fails at its original call site.
+Unsupported ownership, syntax, or relation evidence yields an inconclusive
+case unless another relation already failed it. The run's adapter artifact
+retains diagnostics for every site, including those in an already failing case.
+
+Project diagnostics and checker errors make the affected compiler's selected
+cases inconclusive. Results are published after frozen input validation. Input
+drift invalidates all selected executable work and requires fresh preparation.
+TypeScript still diagnoses the original project, including unselected code.
+`@ts-expect-error` retains its TypeScript meaning. The catalog has no dedicated
+JSX, decorator, or precise expected-diagnostic assertions.

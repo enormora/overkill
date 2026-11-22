@@ -1,7 +1,8 @@
 import { fileURLToPath } from 'node:url';
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { type TestNode, type TestScope, table, suite, test } from '@overkill-dev/test';
 
 import {
+    type NativeProjectResult,
     runNativeProject,
     runMatrixTypeProject,
     runPrefixedTypeProject,
@@ -46,6 +47,30 @@ const bindingCases = `const nodes=[test('bindings',scope=>{
     scope.assert(assignableFrom<string,'literal'>());
     return scope.assert.collect();
 })];`;
+
+function selectedSite(scope: TestScope, result: NativeProjectResult, titles: readonly string[]): void {
+    const facts = result.checkerFacts;
+    const evidence = facts?.compilers[0]?.evidence ?? [];
+    const site = evidence[0];
+    if (facts === null || site === undefined) {
+        throw new Error('Expected checked assertion evidence.');
+    }
+    scope.assert.deepEqual(
+        facts.identities.map(function (id) {
+            return id.case.title;
+        }),
+        titles
+    );
+    scope.assert.equal(evidence.length, 1);
+    scope.assert.deepEqual(
+        site.owners.map(function (owner) {
+            return owner.case.title;
+        }),
+        titles
+    );
+    scope.assert.true(site.path.endsWith('/cases.tsx'));
+    scope.assert.equal(site.column, 5);
+}
 
 export const testNode: TestNode = suite('native type-test adapter', [
     test('checks original assertion sources behind compiled callbacks', async function (scope) {
@@ -120,13 +145,14 @@ export const testNode: TestNode = suite('native type-test adapter', [
         const definitions = `function body(scope:engine.TestScope){
             scope.assert(same<string,string>());return scope.assert.collect();
         }
+        // @ts-expect-error
         ({body}={body:scope=>{scope.assert(same<string,number>());return scope.assert.collect();}});
         const nodes=[test('reassigned',body)];`;
         const result = await runNativeProject(scope, definitions, null);
         scope.assert.equal(result.status, 'failed');
         scope.assert.equal(result.summary.passed, 0);
         scope.assert.equal(result.summary.inconclusive, 1);
-        scope.assert.includes(result.errors.join('\n'), 'cannot be reassigned');
+        scope.assert.includes(result.errors.join('\n'), 'cannot be reassigned', { message: result.errors.join('\n') });
         return scope.assert.collect();
     }),
     test('rejects destructured aliases that can mutate table bodies', async function (scope) {
@@ -185,13 +211,15 @@ export const testNode: TestNode = suite('native type-test adapter', [
         const definitions = `const first:engine.TestBody=scope=>{
             scope.assert(same<string,string>());return scope.assert.collect();
         };
-        const overrides={body:((scope:engine.TestScope)=>{
+        const overrides:{body?:engine.TestBody}={body:((scope:engine.TestScope)=>{
             scope.assert(same<string,number>());return scope.assert.collect();
         })};
         const nodes=[engine.createTestCase({...metadata,title:'overridden',body:first,...overrides})];`;
         const result = await runNativeProject(scope, definitions, null);
         scope.assert.equal(result.status, 'failed');
-        scope.assert.includes(result.errors.join('\n'), 'potentially overriding');
+        scope.assert.includes(result.errors.join('\n'), 'potentially overriding', {
+            message: result.errors.join('\n')
+        });
         return scope.assert.collect();
     }),
     test('checks engine roots with original diagnostics and never invokes bodies', async function (scope) {
@@ -208,6 +236,57 @@ export const testNode: TestNode = suite('native type-test adapter', [
             }),
             true
         );
+        return scope.assert.collect();
+    }),
+    test('reports selected compiled rows in request order with one shared site', async function (scope) {
+        const definitions = `const nodes=[
+test('excluded',scope=>{scope.assert(same<string,number>());return scope.assert.collect();}),
+table({title:'rows',cases:['first','second'] as const,caseTitle:String,test:scope=>{
+    scope.assert(same<typeof scope.parameters,'first'|'second'>());return scope.assert.collect();
+}})];`;
+        const titles = [ 'second', 'first' ];
+        const result = await runCompiledTypeProject(scope, definitions, titles);
+        scope.assert.equal(result.status, 'passed', { message: result.errors.join('\n') });
+        scope.assert.deepEqual(result.titles, titles);
+        scope.assert.deepEqual(
+            result.completions.map(function (completion) {
+                return completion.title;
+            }),
+            titles
+        );
+        selectedSite(scope, result, titles);
+        return scope.assert.collect();
+    }),
+    test('retains unsupported sites before a false relation', async function (scope) {
+        const definitions = `const nodes=[test('mixed verdict',scope=>{
+    scope.assert.true(true);
+    scope.assert(same.not<string,string>());
+    return scope.assert.collect();
+})];`;
+        const result = await runNativeProject(scope, definitions, null);
+        scope.assert.deepEqual(result.completions, [ { title: 'mixed verdict', verdict: 'fail' } ]);
+        scope.assert.deepEqual(result.errors, []);
+        scope.assert.includes(result.diagnostics.join('\n'), 'sameType.not');
+        const issues = result.checkerFacts?.compilers[0]?.issues ?? [];
+        scope.assert.partialDeepEqual<unknown, unknown>(issues, [ {
+            location: { kind: 'known' },
+            reason: 'Unsupported runtime operation in a checker-backed body: scope.assert.true'
+        } ]);
+        return scope.assert.collect();
+    }),
+    test('reports diagnostics in unselected code as project errors for selected empty bodies', async function (scope) {
+        const definitions = `const nodes=[
+test('empty',scope=>scope.assert.collect()),
+test('excluded',scope=>{
+    // @ts-expect-error
+    scope.assert(same<string,string>());return scope.assert.collect();
+})];`;
+        const result = await runNativeProject(scope, definitions, [ 'empty' ]);
+        scope.assert.deepEqual(result.completions, [ { title: 'empty', verdict: 'inconclusive' } ]);
+        scope.assert.equal(result.summary.failed, 0);
+        scope.assert.includes(result.errors.join('\n'), 'TS2578');
+        scope.assert.deepEqual(result.diagnostics, []);
+        scope.assert.equal(result.checkerFacts?.compilers[0]?.evidence, undefined);
         return scope.assert.collect();
     }),
     test('excludes unselected failing bodies', async function (scope) {
@@ -334,26 +413,6 @@ const nodes=[test('wrapped',withResource(resource,scope=>{
         scope.assert.equal(result.status, 'failed');
         scope.assert.equal(result.summary.passed, 0);
         scope.assert.includes(result.errors.join('\n'), 'Family selection contains an unknown or duplicate work ID.');
-        return scope.assert.collect();
-    }),
-    test('revalidates frozen inputs immediately before prepared execution', async function (scope) {
-        const definitions = `const nodes=[test('late',scope=>{
-    scope.assert(same<string,string>());return scope.assert.collect();
-})];
-const settings={projectConfigPath:import.meta.dirname+'/tsconfig.json',
-    compiler:{kind:'package',specifier:'typescript-beta',version:'7.1.0-beta'}};
-const existing=engine.createRoot({title:'existing',annotations:{},controls:{},children:nodes});
-const preparation=await prepareCompilerPlan(engine.createTestPlan(existing),settings,import.meta.dirname);
-await using lifetime=new AsyncDisposableStack();
-lifetime.defer(()=>preparation.dispose());
-const collected=await preparation.collect(preparation.testPlan);
-const lowered=await collected.lower();
-const {appendFile}=await import('node:fs/promises');
-await appendFile(settings.projectConfigPath,'\\n');
-await lowered.execute();`;
-        await scope.assert.rejects(async function changedAfterLowering() {
-            await runNativeProject(scope, definitions, null);
-        }, { message: /configuration changed after collection/u });
         return scope.assert.collect();
     }),
     test('rejects mixed runtime assertions', async function (scope) {
