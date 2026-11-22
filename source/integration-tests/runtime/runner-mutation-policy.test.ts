@@ -1,5 +1,7 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { table, suite } from '@overkill-dev/test';
+import { createTestFacade, suite } from '@overkill-dev/test';
 
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
 
@@ -13,9 +15,22 @@ import {
 } from '../../packages/run/run.entry-point.ts';
 import { createMutationRunCommand } from '../../packages/stryker-runner/mutation-execution-policy.ts';
 
-const fixture = 'source/integration-tests/runtime/fixtures/mutation-policy.test.ts';
+import { testWorkspace } from '../../test-support/test-workspace.ts';
 
-function mutationCommand(processModel: MicrotestProfileConfig['execution']['processModel']): RunCommand {
+const fixture = 'mutation-policy.test.ts';
+const { table } = createTestFacade({ resources: { workspace: testWorkspace } });
+
+async function prepareMutationProject(directory: string): Promise<void> {
+    await Promise.all([ fixture, 'mutation-excluded.test.ts' ].map(async function copyFixture(file) {
+        const source = await readFile(new URL(`./fixtures/${file}`, import.meta.url));
+        await writeFile(join(directory, file), source);
+    }));
+}
+
+function mutationCommand(
+    processModel: MicrotestProfileConfig['execution']['processModel'],
+    directory: string
+): RunCommand {
     const config = normalizeConfig({
         loader: { sourceMaps: true, stripMode: 'strip-only' },
         profiles: {
@@ -24,21 +39,21 @@ function mutationCommand(processModel: MicrotestProfileConfig['execution']['proc
                 files: {
                     sets: {
                         policy: {
-                            include: [ 'source/integration-tests/runtime/fixtures/mutation-*.test.ts' ],
-                            exclude: [ 'source/integration-tests/runtime/fixtures/mutation-excluded.test.ts' ]
+                            include: [ 'mutation-*.test.ts' ],
+                            exclude: [ 'mutation-excluded.test.ts' ]
                         }
                     }
                 },
                 execution: { processModel, scheduling: 'concurrent', maxConcurrency: 3 },
                 coverage: { outputs: [ 'json' ] },
                 processUsage: { measure: true },
-                timeouts: { collectionMilliseconds: 5000, softMilliseconds: 1000, hardMilliseconds: 2000 }
+                timeouts: { collectionMilliseconds: 30_000, softMilliseconds: 1000, hardMilliseconds: 2000 }
             }
         },
-        runtimeStateDir: 'target/mutation-policy-state'
+        runtimeStateDir: join(directory, 'state')
     });
 
-    return createMutationRunCommand({ config, cwd: process.cwd(), profile: 'unit' });
+    return createMutationRunCommand({ config, cwd: directory, profile: 'unit' });
 }
 
 const assertDiscoveredPolicy = defineCompositeAssertion({
@@ -105,7 +120,8 @@ export const testNode = suite(
         async test(scope) {
             const { processModel, frozen } = scope.parameters;
 
-            const command = mutationCommand(processModel);
+            await prepareMutationProject(scope.resources.workspace);
+            const command = mutationCommand(processModel, scope.resources.workspace);
             const input = await mutationInput(
                 { ...command, request: { ...command.request, order: 'lexical' } },
                 frozen

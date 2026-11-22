@@ -1,5 +1,4 @@
-import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
     type CompositeAssertionReturn,
@@ -7,7 +6,7 @@ import {
     defineCompositeAssertion
 } from '@overkill-dev/test/assert';
 
-import { table, suite } from '@overkill-dev/test';
+import { createTestFacade, suite } from '@overkill-dev/test';
 
 import { defineReporter, type ReporterEvent } from '../../packages/engine/engine.entry-point.ts';
 
@@ -20,8 +19,28 @@ import {
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { artifactReferenceKey } from '../../engine/run-artifact.ts';
 
-const fixture = 'source/integration-tests/runtime/fixtures/measurement.bench.test.ts';
-const lifecycleFile = 'target/measurement-lifecycle.txt';
+import { testWorkspace } from '../../test-support/test-workspace.ts';
+
+const { table } = createTestFacade({ resources: { workspace: testWorkspace } });
+const fixtureUrl = new URL('./fixtures/measurement.bench.test.ts', import.meta.url);
+type MeasurementProject = { readonly directory: string; readonly lifecycleFile: string; };
+
+async function measurementProject(directory: string): Promise<MeasurementProject> {
+    const lifecycleFile = join(directory, 'measurement-lifecycle.txt');
+    const fixture = join(directory, 'measurement.bench.test.ts');
+    const original = await readFile(fixtureUrl, 'utf8');
+    const script = original
+        .replaceAll("'target/measurement-lifecycle.txt'", function () {
+            return JSON.stringify(lifecycleFile);
+        })
+        .replaceAll(/from '(?<specifier>\.\.?\/[^']+)'/gu, function sourceImport(_match, specifier: string) {
+            const resolved = new URL(specifier, fixtureUrl);
+            return `from ${JSON.stringify(resolved.href)}`;
+        });
+    await writeFile(fixture, script);
+    await mkdir(join(directory, 'state'));
+    return { directory, lifecycleFile };
+}
 
 const executions: readonly BenchmarkExecution[] = [
     { processModel: 'supervised-process', maxConcurrency: 1, scheduling: 'serial' },
@@ -41,7 +60,7 @@ const executions: readonly BenchmarkExecution[] = [
 
 function measurementCommand(
     execution: BenchmarkExecution,
-    directory: string,
+    project: MeasurementProject,
     record: (event: ReporterEvent) => void
 ): RunCommand {
     const reporter = defineReporter(function () {
@@ -57,9 +76,15 @@ function measurementCommand(
         };
     });
     const config = normalizeConfig({
-        profiles: { measurements: { testFamily: 'benchmark', files: { include: [ fixture ] } } },
+        profiles: {
+            measurements: {
+                testFamily: 'benchmark',
+                files: { include: [ 'measurement.bench.test.ts' ] },
+                timeouts: { collectionMilliseconds: 30_000 }
+            }
+        },
         reporters: [ reporter ],
-        runtimeStateDir: directory
+        runtimeStateDir: join(project.directory, 'state')
     });
     const profile = config.profiles.measurements;
     if (profile?.testFamily !== 'benchmark') {
@@ -67,7 +92,7 @@ function measurementCommand(
     }
     return {
         config: { ...config, profiles: { measurements: { ...profile, execution } } },
-        cwd: process.cwd(),
+        cwd: project.directory,
         engine: { kind: 'default' },
         request: defaultRunRequest({ profile: 'measurements', order: 'lexical' })
     };
@@ -76,7 +101,8 @@ function measurementCommand(
 const listedMeasurementsChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     command: RunCommand,
-    events: readonly ReporterEvent[]
+    events: readonly ReporterEvent[],
+    lifecycleFile: string
 ): Promise<CompositeAssertionReturn<'assert'>> {
     const listed = await orchestrator.bench.list(command, { timing: null });
     return check.group([
@@ -90,7 +116,8 @@ const listedMeasurementsChecks = async function (
 };
 
 const measurementLifecycleChecks = async function (
-    check: CompositeCheckBuilder<'assert'>
+    check: CompositeCheckBuilder<'assert'>,
+    lifecycleFile: string
 ): Promise<CompositeAssertionReturn<'assert'>> {
     const lifecycleText = await readFile(lifecycleFile, 'utf8');
     const lifecycle = lifecycleText.trim().split('\n').toSorted(function (left, right) {
@@ -181,8 +208,13 @@ const measurementProgressChecks = function (
 
 const assertMeasurements = defineCompositeAssertion({
     name: 'measurements',
-    async assert(check, command: RunCommand, events: readonly ReporterEvent[]) {
-        const initialChecks = await listedMeasurementsChecks(check.annotated('listed measurements'), command, events);
+    async assert(check, command: RunCommand, events: readonly ReporterEvent[], lifecycleFile: string) {
+        const initialChecks = await listedMeasurementsChecks(
+            check.annotated('listed measurements'),
+            command,
+            events,
+            lifecycleFile
+        );
         const result = await orchestrator.bench.run(command, { timing: null });
         return check.group([
             initialChecks,
@@ -208,7 +240,7 @@ const assertMeasurements = defineCompositeAssertion({
             ),
             measurementProgressChecks(check.annotated('measurement progress'), events),
             warmupEvidenceChecks(check.annotated('warmup evidence'), result),
-            await measurementLifecycleChecks(check.annotated('measurement lifecycle'))
+            await measurementLifecycleChecks(check.annotated('measurement lifecycle'), lifecycleFile)
         ]);
     }
 });
@@ -222,20 +254,13 @@ export const testNode = suite(
             return execution.processModel;
         },
         async test(scope) {
-            const directory = await mkdtemp(join(tmpdir(), 'overkill-measurement-'));
+            const project = await measurementProject(scope.resources.workspace);
             const events: ReporterEvent[] = [];
-            const command = measurementCommand(scope.parameters, directory, function (event) {
+            const command = measurementCommand(scope.parameters, project, function (event) {
                 events.push(event);
             });
-            await mkdir('target', { recursive: true });
-            await rm(lifecycleFile, { force: true });
-            try {
-                await scope.assert(assertMeasurements, command, events);
-                return scope.assert.collect();
-            } finally {
-                await rm(lifecycleFile, { force: true });
-                await rm(directory, { recursive: true, force: true });
-            }
+            await scope.assert(assertMeasurements, command, events, project.lifecycleFile);
+            return scope.assert.collect();
         }
     }) ]
 );
