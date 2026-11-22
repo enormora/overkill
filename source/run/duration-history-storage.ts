@@ -16,10 +16,19 @@ const storedObservationSchema = z.strictObject({
     runId: z.string().nullable(),
     value: durationObservationSchema
 });
+export const caseHistoryStatusSchema = z.enum([ 'failed', 'inconclusive', 'passed', 'skipped' ]);
+const familyVerdictSchema = z.strictObject({
+    runId: z.string(),
+    observedAt: timestamp,
+    status: caseHistoryStatusSchema
+});
+export type CaseHistoryStatus = z.output<typeof caseHistoryStatusSchema>;
+
 export const durationHistoryStateSchema = z.strictObject({
     updatedAt: timestamp,
     entries: z.array(z.strictObject({
         work: workIdSchema,
+        familyVerdicts: z.array(familyVerdictSchema).default([]),
         observations: z.array(storedObservationSchema),
         count: counter.int(),
         totalDurationMicroseconds: counter
@@ -53,7 +62,10 @@ export type DurationContribution = {
     readonly observation: DurationHistoryObservation;
 };
 
+export type FamilyVerdictContribution = { readonly work: WorkId; readonly status: CaseHistoryStatus; };
+
 type DurationIngestion = {
+    readonly familyVerdicts: readonly FamilyVerdictContribution[];
     readonly run: { readonly id: string; readonly startedAt: string; } | null;
     readonly policy: HistoryPolicy;
     readonly now: string;
@@ -85,7 +97,11 @@ function appendContribution(
     };
 }
 
-function retainDurationEntries(
+function emptyWorkEntry(work: WorkId): DurationEntry {
+    return { work, count: 0, totalDurationMicroseconds: 0, observations: [], familyVerdicts: [] };
+}
+
+function retainWorkEntries(
     entries: readonly DurationEntry[],
     context: DurationIngestion
 ): readonly DurationEntry[] {
@@ -98,26 +114,56 @@ function retainDurationEntries(
                 return timeOrder === 0 ? (left.runId ?? '').localeCompare(right.runId ?? '') : timeOrder;
             })
             .slice(0, context.policy.observationsPerIdentity);
+        const familyVerdicts = entry
+            .familyVerdicts
+            .filter(function recentVerdict(verdict) {
+                return Date.parse(verdict.observedAt) >= cutoff;
+            })
+            .toSorted(function latest(left, right) {
+                const timeOrder = Date.parse(right.observedAt) - Date.parse(left.observedAt);
+                return timeOrder === 0 ? left.runId.localeCompare(right.runId) : timeOrder;
+            })
+            .slice(0, context.policy.observationsPerIdentity);
         const latest = observations[0];
-        return latest === undefined || Date.parse(latest.value.observedAt) < cutoff
-            ? []
-            : [ { ...entry, observations } ];
+        if (latest !== undefined && Date.parse(latest.value.observedAt) >= cutoff) {
+            return [ { ...entry, observations, familyVerdicts } ];
+        }
+        return familyVerdicts.length === 0 ? [] : [ { ...emptyWorkEntry(entry.work), familyVerdicts } ];
     });
 }
 
-function mergedDurationEntries(
-    state: DurationHistoryState,
-    observations: readonly DurationContribution[],
-    runId: string | null
-): readonly DurationEntry[] {
-    const entries = new Map(state.entries.map(function workEntry(entry) {
+function workEntriesWithVerdicts(
+    entries: readonly DurationEntry[],
+    context: DurationIngestion
+): Map<string, DurationEntry> {
+    const next = new Map(entries.map(function workEntry(entry) {
         return [ workIdentityKey(entry.work), entry ];
     }));
+    const { run, familyVerdicts } = context;
+    if (run === null) {
+        return next;
+    }
+    for (const { work, status } of familyVerdicts) {
+        const key = workIdentityKey(work);
+        const previous = next.get(key) ?? emptyWorkEntry(work);
+        next.set(key, {
+            ...previous,
+            familyVerdicts: [ ...previous.familyVerdicts, { runId: run.id, observedAt: run.startedAt, status } ]
+        });
+    }
+    return next;
+}
+
+function mergedWorkEntries(
+    state: DurationHistoryState,
+    observations: readonly DurationContribution[],
+    context: DurationIngestion
+): readonly DurationEntry[] {
+    const entries = workEntriesWithVerdicts(state.entries, context);
     for (const contribution of observations) {
         const key = workIdentityKey(contribution.work);
-        const previous = entries.get(key) ??
-            { work: contribution.work, count: 0, totalDurationMicroseconds: 0, observations: [] };
-        entries.set(key, appendContribution(previous, contribution, runId));
+        const previous = entries.get(key) ?? emptyWorkEntry(contribution.work);
+        entries.set(key, appendContribution(previous, contribution, context.run?.id ?? null));
     }
     return Array.from(entries.values());
 }
@@ -130,10 +176,10 @@ export function ingestDurationState(
     if (shouldSkipRun(context)) {
         return state;
     }
-    const entries = mergedDurationEntries(state, observations, context.run?.id ?? null);
+    const entries = mergedWorkEntries(state, observations, context);
     return {
         ...state,
         updatedAt: context.now,
-        entries: retainDurationEntries(entries, context)
+        entries: retainWorkEntries(entries, context)
     };
 }

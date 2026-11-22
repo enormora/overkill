@@ -2,7 +2,12 @@ import { caseIdentityKey } from '../engine/identity.ts';
 import type { HistoryPolicy } from '../config/history-policy.ts';
 import { emptyDurationState, ingestDurationState } from './duration-history-storage.ts';
 import type { CompactHistory } from './compact-history-schema.ts';
-import { historyRunSummary, caseOutcomes, recordDurationContributions } from './history-outcomes.ts';
+import {
+    historyRunSummary,
+    caseOutcomes,
+    recordDurationContributions,
+    recordFamilyVerdicts
+} from './history-outcomes.ts';
 import type { HistoryRecord } from './history-record.ts';
 
 const millisecondsPerDay = 86_400_000;
@@ -108,6 +113,7 @@ export function ingestCompactRecord(
             ...index,
             durations: contributes
                 ? ingestDurationState(index.durations, recordDurationContributions(record), {
+                    familyVerdicts: recordFamilyVerdicts(record),
                     run: { id: record.id, startedAt: record.startedAt },
                     policy,
                     now

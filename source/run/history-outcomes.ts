@@ -1,7 +1,7 @@
-import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
-import type { DurationContribution } from './duration-history-storage.ts';
+import { caseIdentityKey, workIdentityKey, type CaseId } from '../engine/identity.ts';
+import type { CaseHistoryStatus, DurationContribution, FamilyVerdictContribution } from './duration-history-storage.ts';
 import type { HistoryRecord } from './history-record.ts';
-import type { CaseHistoryStatus, HistoryRunSummary } from './compact-history-schema.ts';
+import type { HistoryRunSummary } from './compact-history-schema.ts';
 
 type CaseOutcome = { readonly identity: CaseId; readonly status: CaseHistoryStatus; };
 const precedence: Readonly<Record<CaseHistoryStatus, number>> = { failed: 4, inconclusive: 3, passed: 2, skipped: 1 };
@@ -58,6 +58,22 @@ export function caseOutcomes(record: HistoryRecord): ReadonlyMap<string, CaseOut
         }
     }
     return outcomes;
+}
+
+export function recordFamilyVerdicts(record: HistoryRecord): readonly FamilyVerdictContribution[] {
+    const verdicts = new Map<string, FamilyVerdictContribution>();
+    const results = record.result?.perTest.filter(function familyVariant(result) {
+        return result.workId.familyVariant !== null;
+    }) ?? [];
+    for (const { workId, verdict } of results) {
+        const key = workIdentityKey(workId);
+        const previous = verdicts.get(key);
+        const status = verdictStatus[verdict];
+        if (previous === undefined || precedence[status] > precedence[previous.status]) {
+            verdicts.set(key, { work: workId, status });
+        }
+    }
+    return Array.from(verdicts.values());
 }
 
 export function recordDurationContributions(

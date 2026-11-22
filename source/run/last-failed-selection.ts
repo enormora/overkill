@@ -25,5 +25,29 @@ export async function readLastFailedSelection(
         .map(function identity(entry) {
             return entry.identity;
         });
-    return resolveLastFailedSelection(selection, failedCases);
+    const completed = new Set(
+        retained
+            .receipts
+            .filter(function committed(receipt) {
+                return receipt.state === 'completed';
+            })
+            .map(function runId(receipt) {
+                return receipt.id;
+            })
+    );
+    const failedWork = retained
+        .durations
+        .entries
+        .filter(function lastOutcomeFailed(entry) {
+            return entry
+                .familyVerdicts
+                .find(function committed(verdict) {
+                    return completed.has(verdict.runId);
+                })
+                ?.status === 'failed';
+        })
+        .map(function identity(entry) {
+            return entry.work;
+        });
+    return resolveLastFailedSelection(selection, failedCases, failedWork);
 }

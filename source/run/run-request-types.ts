@@ -56,6 +56,10 @@ export type RunRuntimeDimensionFilter = {
 };
 
 type RunFilterByKind = {
+    readonly 'family-variant': {
+        readonly kind: 'family-variant';
+        readonly variant: WorkId['familyVariant'];
+    };
     readonly 'work-id': {
         readonly id: WorkId;
         readonly kind: 'work-id';
