@@ -5,9 +5,9 @@ import type {
     CommandLineListTestsRequest,
     CommandLineRunTestsRequest,
     CommandLineRunnerResult
-} from '../../run/command-line-command.ts';
-import type { CommandLineRunner } from '../../run/command-line-runner.ts';
-import { runOverkillCommandLine } from './command-line-runner.ts';
+} from '../../../../run/command-line-command.ts';
+import type { CommandLineRunner } from '../../../../run/command-line-runner.ts';
+import { runOverkillCommandLine } from '../../../../packages/test/command-line-runner.ts';
 
 type CapturedOutput = {
     readonly chunks: readonly string[];

@@ -1,6 +1,6 @@
 import { table, suite, test } from '@overkill-dev/test';
 
-import { commandParser } from '../../test-support/command-parser.ts';
+import { commandParser } from '../../../../test-support/command-parser.ts';
 
 export const testNode = suite('command parser dispatch policy', [
     table({

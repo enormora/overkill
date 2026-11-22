@@ -3,9 +3,9 @@ import { suite, test } from '@overkill-dev/test';
 import {
     commandLineRunner,
     type CommandLineWitnessReplayRequest
-} from '../run/command-line.entry-point.ts';
+} from '../../../../packages/run/command-line.entry-point.ts';
 
-import { dispatchOverkillCommand } from './command-line-commands.ts';
+import { dispatchOverkillCommand } from '../../../../packages/test/command-line-commands.ts';
 
 export const testNode = suite('witness replay command', [
     test('maps witness replay options to typed runner intent', async function (scope) {

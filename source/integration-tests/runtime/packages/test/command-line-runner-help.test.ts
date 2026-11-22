@@ -1,6 +1,6 @@
 import { suite, test } from '@overkill-dev/test';
 
-import { passingResult, runCommandLine } from '../../test-support/command-line-test-driver.ts';
+import { passingResult, runCommandLine } from '../../../../test-support/command-line-test-driver.ts';
 
 export const testNode = suite({
     title: 'Overkill CLI help',

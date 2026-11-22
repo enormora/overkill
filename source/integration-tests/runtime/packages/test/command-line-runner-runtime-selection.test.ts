@@ -1,8 +1,8 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
-import { passingResult, runCommandLine } from '../../test-support/command-line-test-driver.ts';
-import { parseRuntimeSelector } from './run-runtime-selector.ts';
+import { passingResult, runCommandLine } from '../../../../test-support/command-line-test-driver.ts';
+import { parseRuntimeSelector } from '../../../../packages/test/run-runtime-selector.ts';
 
 const assertRunRuntimeSelection = defineCompositeAssertion({
     name: 'run runtime selection',

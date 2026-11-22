@@ -1,6 +1,6 @@
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
-import { passingResult, runCommandLine } from '../../test-support/command-line-test-driver.ts';
+import { passingResult, runCommandLine } from '../../../../test-support/command-line-test-driver.ts';
 
 export const testNode = suite('Overkill CLI coverage', [
     test('carries last-failed through run and list requests', async function (scope: TestScope) {

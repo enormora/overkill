@@ -1,7 +1,7 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite, test, type TestScope } from '@overkill-dev/test';
 
-import { passingResult, runCommandLine } from '../../test-support/command-line-test-driver.ts';
+import { passingResult, runCommandLine } from '../../../../test-support/command-line-test-driver.ts';
 
 type CapturedCommandLineRun = Awaited<ReturnType<typeof runCommandLine>>;
 type BenchmarkVerb = 'list' | 'run';

@@ -1,6 +1,6 @@
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
-import { passingResult, runCommandLine } from '../../test-support/command-line-test-driver.ts';
+import { passingResult, runCommandLine } from '../../../../test-support/command-line-test-driver.ts';
 
 export const testNode = suite('Overkill CLI baseline', [
     test('parses executing verbs with ordinary run selection and lifecycle flags', async function (scope: TestScope) {
