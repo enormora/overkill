@@ -96,7 +96,7 @@ export const testNode = suite('Stryker execution lifecycle', [
         async test(scope) {
             const { processModel, freshState } = scope.parameters;
 
-            await scope.assert(verifyMutationLifecycle, scope.cleanup, processModel, freshState);
+            await scope.assert(verifyMutationLifecycle, processModel, freshState);
             return scope.assert.collect();
         }
     }),

@@ -1,14 +1,11 @@
 import { execFile } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
-export async function executeMutationScript(
-    script: string,
-    scriptArguments: readonly string[],
-    cwd: string
-): Promise<string> {
+async function executeNode(args: readonly string[], cwd: string): Promise<string> {
     return await new Promise<string>(function receiveScriptOutput(resolve, reject) {
         execFile(
             process.execPath,
-            [ '--input-type=module', '--eval', script, ...scriptArguments ],
+            [ '--disable-warning=PERM0004', ...args ],
             { cwd, timeout: 120_000 },
             function completeScript(error, stdout, stderr) {
                 if (error === null) {
@@ -19,4 +16,16 @@ export async function executeMutationScript(
             }
         );
     });
+}
+
+export async function executeMutationScript(
+    script: string,
+    scriptArguments: readonly string[],
+    cwd: string
+): Promise<string> {
+    return await executeNode([ '--input-type=module', '--eval', script, ...scriptArguments ], cwd);
+}
+
+export async function executeMutationModule(module: URL, args: readonly string[], cwd: string): Promise<string> {
+    return await executeNode([ fileURLToPath(module), ...args ], cwd);
 }

@@ -11,7 +11,7 @@ import {
 } from '@stryker-mutator/api/test-runner';
 import type { TestScope } from '@overkill-dev/test';
 import { createOverkillTestRunner } from '../../../packages/stryker-runner/overkill-test-runner.ts';
-import { executeMutationScript } from './stryker-script.ts';
+import { executeMutationModule, executeMutationScript } from './stryker-script.ts';
 
 const originalRoot = process.cwd();
 const extension = extname(import.meta.url);
@@ -71,10 +71,8 @@ export const testNode = createSuite({ ...metadata, title: 'structural > suite / 
 }
 
 export async function createMutationProject(cleanup: TestScope['cleanup'], prefix: string): Promise<string> {
-    process.chdir(originalRoot);
     const cwd = await realpath(await mkdtemp(join(tmpdir(), prefix)));
     cleanup(async function removeMutationProject() {
-        process.chdir(originalRoot);
         await rm(cwd, { recursive: true, force: true });
     });
     return cwd;
@@ -213,18 +211,32 @@ async function assertCatalogDrift(
     await writeFile(join(fixture.cwd, 'case.test.mjs'), original);
 }
 
+export async function performMutationLifecycle(
+    cleanup: TestScope['cleanup'],
+    processModel: ProcessModel,
+    freshState: boolean
+): Promise<boolean> {
+    const fixture = await createMutationFixture(cleanup, processModel, freshState);
+    await assertCapabilities(fixture);
+    const dry = await assertDryRun(fixture);
+    const options = mutantOptions(fixture);
+    await assertKills(fixture, options, dry);
+    await assertReloads(fixture, options);
+    await assertRejectedSelection(fixture, options);
+    await assertCatalogDrift(fixture, options, dry);
+    const files = await readdir(fixture.cwd);
+    return !files.includes('.overkill');
+}
+
 export const verifyMutationLifecycle = defineCompositeAssertion({
     name: 'mutation lifecycle',
-    async assert(check, cleanup: TestScope['cleanup'], processModel: ProcessModel, freshState: boolean) {
-        const fixture = await createMutationFixture(cleanup, processModel, freshState);
-        await assertCapabilities(fixture);
-        const dry = await assertDryRun(fixture);
-        const options = mutantOptions(fixture);
-        await assertKills(fixture, options, dry);
-        await assertReloads(fixture, options);
-        await assertRejectedSelection(fixture, options);
-        await assertCatalogDrift(fixture, options, dry);
-        const files = await readdir(fixture.cwd);
-        return check.false(files.includes('.overkill'));
+    async assert(check, processModel: ProcessModel, freshState: boolean) {
+        const output = await executeMutationModule(
+            new URL(`./stryker-lifecycle.entry-point${extension}`, import.meta.url),
+            [ processModel, String(freshState) ],
+            originalRoot
+        );
+        const clean: unknown = JSON.parse(output);
+        return check.equal(clean, true);
     }
 });
