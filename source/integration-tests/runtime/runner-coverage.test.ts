@@ -250,8 +250,8 @@ const assertCompactOutcomeWithoutCoverage = defineCompositeAssertion({
     }
 });
 
-async function latestCrashRawDirectory(): Promise<string> {
-    const entries = await readdir('target/coverage-crash-integration/runs', { withFileTypes: true });
+async function latestCrashRawDirectory(runtimeStateDir: string): Promise<string> {
+    const entries = await readdir(path.join(runtimeStateDir, 'runs'), { withFileTypes: true });
     const runDirectories = entries
         .filter(function isDirectory(entry) {
             return entry.isDirectory();
@@ -269,7 +269,7 @@ async function latestCrashRawDirectory(): Promise<string> {
         throw new Error('Coverage run directory was not created.');
     }
 
-    return path.join('target/coverage-crash-integration/runs', latestRunDirectory, 'coverage/raw');
+    return path.join(runtimeStateDir, 'runs', latestRunDirectory, 'coverage/raw');
 }
 
 const assertCompletedCrashRecord = defineCompositeAssertion({
@@ -277,7 +277,11 @@ const assertCompletedCrashRecord = defineCompositeAssertion({
     async assert(check, rawDirectory: string) {
         const recordPath = `${path.resolve(rawDirectory, '../..')}.json`;
         const record = JSON.parse(await readFile(recordPath, 'utf8')) as SingleRunRecord;
-        const initialChecksBeforeNextAction = check.equal(record.status, 'completed');
+        const rawDirectoryStat = await stat(rawDirectory);
+        const initialChecksBeforeNextAction = check.group([
+            check.equal(record.status, 'completed'),
+            check.equal(rawDirectoryStat.isDirectory(), true)
+        ]);
         if (record.result === null) {
             return check.group([ initialChecksBeforeNextAction, check.defined(record.result) ]);
         }
@@ -381,11 +385,9 @@ export const testNode = suite('Runner coverage', [
         return scope.assert.collect();
     }),
     test('crashed supervised runs retain raw storage without publishing a coverage artifact', async function (scope) {
+        const config = coverageConfig('supervised-process', 100, defaultCoveragePolicy, 'concurrent');
         const result = await coverageSubject.run({
-            config: {
-                ...coverageConfig('supervised-process', 100, defaultCoveragePolicy, 'concurrent'),
-                runtimeStateDir: isolatedRunStateDirectory()
-            },
+            config,
             cwd: process.cwd(),
             engine: { kind: 'default' },
             request: {
@@ -396,14 +398,12 @@ export const testNode = suite('Runner coverage', [
         const coverageArtifacts = result.artifacts.filter(function isCoverageArtifact(artifact) {
             return artifact.payload.kind === 'coverage';
         });
-        const rawDirectory = await latestCrashRawDirectory();
-        const rawDirectoryStat = await stat(rawDirectory);
+        const rawDirectory = await latestCrashRawDirectory(config.runtimeStateDir);
         await scope.assert(assertCompletedCrashRecord, rawDirectory);
 
         scope.assert.equal(result.status, 'failed');
         scope.assert.equal(result.summary.crashed, 1);
         scope.assert.equal(coverageArtifacts.length, 0);
-        scope.assert.equal(rawDirectoryStat.isDirectory(), true);
 
         return scope.assert.collect();
     }),
