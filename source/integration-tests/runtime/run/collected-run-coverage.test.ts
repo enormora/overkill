@@ -5,7 +5,11 @@ async function verifyCoveredInvocations(): Promise<string> {
     return new Promise(function launchCoverageProbe(resolve, reject) {
         execFile(
             process.execPath,
-            [ '--allow-inspector', 'source/integration-tests/runtime/fixtures/collected-coverage-probe.test.ts' ],
+            [
+                '--disable-warning=PERM0004',
+                '--allow-inspector',
+                'source/integration-tests/runtime/fixtures/collected-coverage-probe.test.ts'
+            ],
             {
                 cwd: process.cwd(),
                 timeout: 30_000

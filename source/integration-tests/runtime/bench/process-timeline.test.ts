@@ -71,7 +71,12 @@ export const testNode = suite('process timeline checkpoints', [
                 await using disposal = new AsyncDisposableStack();
                 disposal.defer(sample.dispose);
                 const result = await sample.sample.process({
-                    command: [ process.execPath, '-e', "process.stdout.write('ready>'); setInterval(() => {}, 100);" ],
+                    command: [
+                        process.execPath,
+                        '--disable-warning=PERM0004',
+                        '-e',
+                        "process.stdout.write('ready>'); setInterval(() => {}, 100);"
+                    ],
                     cwd: process.cwd(),
                     env: null,
                     io: { kind: 'pipes' },
@@ -96,6 +101,7 @@ export const testNode = suite('process timeline checkpoints', [
             await sample.sample.process({
                 command: [
                     process.execPath,
+                    '--disable-warning=PERM0004',
                     '-e',
                     "process.stdout.write('ready>'); process.stdin.once('data', () => process.stdout.write('done>'));"
                 ],
@@ -128,7 +134,7 @@ export const testNode = suite('process timeline checkpoints', [
             await using disposal = new AsyncDisposableStack();
             disposal.defer(sample.dispose);
             const result = await sample.sample.process({
-                command: [ process.execPath, '-e', "process.stdout.write('exit');" ],
+                command: [ process.execPath, '--disable-warning=PERM0004', '-e', "process.stdout.write('exit');" ],
                 cwd: process.cwd(),
                 env: null,
                 io: { kind: 'pipes' },
@@ -152,6 +158,7 @@ export const testNode = suite('process timeline checkpoints', [
                 await sample.sample.process({
                     command: [
                         process.execPath,
+                        '--disable-warning=PERM0004',
                         '-e',
                         "process.stdin.on('data', () => process.stdout.write('received>')); process.stdin.resume();"
                     ],
@@ -193,6 +200,7 @@ export const testNode = suite('process timeline checkpoints', [
                 const result = await sample.sample.process({
                     command: [
                         process.execPath,
+                        '--disable-warning=PERM0004',
                         '-e',
                         "process.stdout.write('ready>'); process.stdin.on('data', () => process.stdout.write('received>'));"
                     ],
@@ -238,7 +246,12 @@ export const testNode = suite('process timeline checkpoints', [
                 disposal.defer(sample.dispose);
                 await scope.assert.rejects(async function awaitReadiness() {
                     await sample.sample.process({
-                        command: [ process.execPath, '-e', "process.stdout.write('unexpected');" ],
+                        command: [
+                            process.execPath,
+                            '--disable-warning=PERM0004',
+                            '-e',
+                            "process.stdout.write('unexpected');"
+                        ],
                         cwd: process.cwd(),
                         env: null,
                         io: { kind: 'pipes' },
@@ -261,7 +274,7 @@ export const testNode = suite('process timeline checkpoints', [
                 await using disposal = new AsyncDisposableStack();
                 disposal.defer(sample.dispose);
                 const request = {
-                    command: [ process.execPath, '-e', '' ],
+                    command: [ process.execPath, '--disable-warning=PERM0004', '-e', '' ],
                     cwd: process.cwd(),
                     env: null,
                     io: { kind: 'pipes' },
@@ -314,7 +327,7 @@ export const testNode = suite('process timeline checkpoints', [
             async function abandonedCommand(processes) {
                 const sample = processes.sample('measured');
                 const pending = sample.sample.process({
-                    command: [ process.execPath, '-e', 'setInterval(() => {}, 100);' ],
+                    command: [ process.execPath, '--disable-warning=PERM0004', '-e', 'setInterval(() => {}, 100);' ],
                     cwd: process.cwd(),
                     env: null,
                     io: { kind: 'pipes' },
@@ -346,7 +359,7 @@ export const testNode = suite('process timeline checkpoints', [
                 disposal.defer(sample.dispose);
                 await scope.assert.rejects(async function reuseClosedSession() {
                     return await sample.sample.process({
-                        command: [ process.execPath, '-e', '' ],
+                        command: [ process.execPath, '--disable-warning=PERM0004', '-e', '' ],
                         cwd: process.cwd(),
                         env: null,
                         io: { kind: 'pipes' },

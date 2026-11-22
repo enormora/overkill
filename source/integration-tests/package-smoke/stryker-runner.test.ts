@@ -50,7 +50,7 @@ const consumerFacade = packageConsumer(
             return await new Promise(function collectCampaign(resolve, reject) {
                 execFile(
                     process.execPath,
-                    [ '--input-type=module', '--eval', campaign, cwd ],
+                    [ '--disable-warning=PERM0004', '--input-type=module', '--eval', campaign, cwd ],
                     {
                         env: consumerEnvironment(consumerDirectory),
                         cwd: consumerDirectory,

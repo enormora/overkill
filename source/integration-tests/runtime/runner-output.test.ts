@@ -16,13 +16,17 @@ const executions = [
 
 async function runNode(args: readonly string[]): Promise<{ readonly stdout: string; readonly stderr: string; }> {
     return new Promise(function runProbe(resolve, reject) {
-        execFile(process.execPath, args, function probeCompleted(error, stdout, stderr) {
-            if (error !== null) {
-                reject(new Error(`${error.message}\n${stdout}\n${stderr}`, { cause: error }));
-                return;
+        execFile(
+            process.execPath,
+            [ '--disable-warning=PERM0004', ...args ],
+            function probeCompleted(error, stdout, stderr) {
+                if (error !== null) {
+                    reject(new Error(`${error.message}\n${stdout}\n${stderr}`, { cause: error }));
+                    return;
+                }
+                resolve({ stdout, stderr });
             }
-            resolve({ stdout, stderr });
-        });
+        );
     });
 }
 

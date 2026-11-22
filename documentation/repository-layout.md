@@ -64,3 +64,8 @@ the packed adapter.
 in `target/mutation-cost/report.html`. Measurements include Stryker reload and
 worker replacement behavior; timings remain diagnostic. CI does not enforce a
 mutation-score or performance-regression gate for this repository.
+
+Shared fixtures in `source/test-support` use the test-support lint preset,
+which permits fixture casts and literal sample data. Child fixtures with exact
+output assertions retain permission auditing and disable Node's `PERM0004`
+startup warning.

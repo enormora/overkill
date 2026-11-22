@@ -15,7 +15,12 @@ async function fetchFromExternalProcess(baseUrl: string): Promise<void> {
     await new Promise<void>(function fetchOutsideRunner(resolve, reject) {
         execFile(
             process.execPath,
-            [ '-e', 'fetch(process.argv[1]).then(response => response.text());', baseUrl ],
+            [
+                '--disable-warning=PERM0004',
+                '-e',
+                'fetch(process.argv[1]).then(response => response.text());',
+                baseUrl
+            ],
             function fetched(error) {
                 if (error === null) {
                     resolve();

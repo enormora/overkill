@@ -67,7 +67,7 @@ const consumerFacade = packageConsumer(
             return new Promise(function executeConsumer(resolve, reject) {
                 execFile(
                     process.execPath,
-                    [ '--input-type=module', '--eval', source ],
+                    [ '--disable-warning=PERM0004', '--input-type=module', '--eval', source ],
                     { env: consumerEnvironment(consumerDirectory), cwd: consumerDirectory },
                     function completed(error, stdout, stderr) {
                         if (error === null) {

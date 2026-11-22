@@ -40,7 +40,13 @@ async function executeProbe(directory: string, signal: Readonly<AbortSignal>): P
     return await new Promise<string>(function runProbe(resolve, reject) {
         execFile(
             process.execPath,
-            [ '--enable-source-maps', '--input-type=module', '--eval', probeScript(directory) ],
+            [
+                '--disable-warning=PERM0004',
+                '--enable-source-maps',
+                '--input-type=module',
+                '--eval',
+                probeScript(directory)
+            ],
             { timeout: probeTimeoutMilliseconds, signal },
             function completed(error, stdout) {
                 if (error === null) {

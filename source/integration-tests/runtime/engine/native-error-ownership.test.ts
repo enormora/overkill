@@ -35,6 +35,7 @@ function rejectInfrastructure(): void {
 async function executeOwnershipProbe(script: string, modules: readonly URL[]): Promise<string> {
     return await new Promise<string>(function runProbe(resolve, reject) {
         execFile(process.execPath, [
+            '--disable-warning=PERM0004',
             '--input-type=module',
             '--eval',
             script,

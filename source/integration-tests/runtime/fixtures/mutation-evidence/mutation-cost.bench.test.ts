@@ -124,7 +124,7 @@ const measure = withResource<typeof project, Context, BenchmarkMetrics>(project,
     const parameters = mutationCostParametersSchema.parse(context.workload.parameters);
     const run = await context.sample.process({
         command: [
-            process.execPath,
+            process.execPath, '--disable-warning=PERM0004',
             '--input-type=module',
             '--eval',
             driver,

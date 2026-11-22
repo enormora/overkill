@@ -4,7 +4,12 @@ import { processMeasurement, type ProcessRequest } from '../../packages/bench/be
 import { createProcessSamplingSession } from '../../bench/process-sampling.ts';
 
 const request: ProcessRequest = {
-    command: [ process.execPath, '-e', 'process.stdout.write("Ready");setInterval(()=>{},1000)' ],
+    command: [
+        process.execPath,
+        '--disable-warning=PERM0004',
+        '-e',
+        'process.stdout.write("Ready");setInterval(()=>{},1000)'
+    ],
     cwd: process.cwd(),
     env: null,
     io: { kind: 'pipes' },

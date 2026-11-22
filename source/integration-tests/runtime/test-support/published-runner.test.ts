@@ -79,7 +79,16 @@ export const config = {
 
 async function executePublishedTests(cwd: string): Promise<string> {
     return await new Promise(function launchPublishedTests(resolve, reject) {
-        execFile(process.execPath, [ '--permission-audit', binary, 'run', '--profile', 'check', '--seed', '42' ], {
+        execFile(process.execPath, [
+            '--disable-warning=PERM0004',
+            '--permission-audit',
+            binary,
+            'run',
+            '--profile',
+            'check',
+            '--seed',
+            '42'
+        ], {
             cwd,
             timeout: 10_000
         }, function (error, stdout, stderr) {

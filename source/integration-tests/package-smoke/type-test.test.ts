@@ -42,7 +42,7 @@ async function runNode(directory: string, argumentList: readonly string[]): Prom
     return await new Promise(function execute(resolve, reject) {
         execFile(
             process.execPath,
-            Array.from(argumentList),
+            [ '--disable-warning=PERM0004', ...Array.from(argumentList) ],
             {
                 cwd: directory,
                 timeout: 120_000,

@@ -76,7 +76,7 @@ export const testNode = integration.test('uses unrestricted runtime effects', as
     await writeFile(outputPath, 'integration');
     await exerciseTemporaryDirectoryResource(scope);
 
-    const child = spawnSync(process.execPath, [ '-e', 'process.stdout.write("child")' ], {
+    const child = spawnSync(process.execPath, [ '--disable-warning=PERM0004',  '-e', 'process.stdout.write("child")' ], {
         encoding: 'utf8'
     });
 

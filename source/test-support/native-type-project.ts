@@ -155,7 +155,7 @@ async function executeProject(path: string): Promise<string> {
     return new Promise(function execute(resolve, reject) {
         execFile(
             process.execPath,
-            [ '--enable-source-maps', path ],
+            [ '--disable-warning=PERM0004', '--enable-source-maps', path ],
             { timeout: 90_000 },
             function completed(error, stdout, stderr) {
                 if (error !== null) {

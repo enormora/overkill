@@ -161,7 +161,7 @@ async function collectStream(stream: Readable): Promise<string> {
 }
 
 async function runObserverScript(script: string): Promise<SpawnOutput> {
-    const child = spawn(process.execPath, [ '--input-type=module', '--eval', script ], {
+    const child = spawn(process.execPath, [ '--disable-warning=PERM0004', '--input-type=module', '--eval', script ], {
         cwd: process.cwd(),
         stdio: [ 'ignore', 'pipe', 'pipe' ]
     });

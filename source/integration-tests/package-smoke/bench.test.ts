@@ -32,7 +32,7 @@ type ScriptOutput = {
 
 async function executeNode(nodeArguments: readonly string[], cwd: string): Promise<ScriptOutput> {
     return await new Promise(function executeScript(resolve, reject) {
-        execFile(process.execPath, Array.from(nodeArguments), {
+        execFile(process.execPath, [ '--disable-warning=PERM0004', ...Array.from(nodeArguments) ], {
             env: consumerEnvironment(cwd),
             cwd,
             encoding: 'utf8'

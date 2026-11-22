@@ -12,16 +12,17 @@ async function importConsumerDependency(directory: string, specifier: string): P
         execFile(
             process.execPath,
             [
+                '--disable-warning=PERM0004',
                 '--input-type=module',
                 '--eval',
                 `await import(${JSON.stringify(specifier)})`
             ],
             { cwd: directory, env: consumerEnvironment(directory) },
-            function completed(error) {
+            function completed(error: Error | null) {
                 if (error === null) {
                     resolve();
                 } else {
-                    reject(new Error('Cannot import consumer dependency.', { cause: error }));
+                    reject(error);
                 }
             }
         );

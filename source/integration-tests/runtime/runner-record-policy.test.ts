@@ -61,7 +61,7 @@ const recordFiles = readdirSync(recordFolder);
 if (recordFiles.length !== 1) throw new Error('Expected a record before importing tests.');
 const record = JSON.parse(readFileSync(new URL(recordFiles[0], recordFolder), 'utf8'));
 if (record.status !== 'started') throw new Error('Expected an active record while importing tests.');
-export const testNode = test('persisted case', (scope) => {
+export const testNode = test('persisted case', ({ assert }) => {
     assert.equal(4, 4);
     return assert.collect();
 });
@@ -72,7 +72,7 @@ export const testNode = test('persisted case', (scope) => {
 
 async function executeOverkill(directory: string): Promise<void> {
     await new Promise<void>(function execute(resolve, reject) {
-        execFile(process.execPath, [ binary, 'run', '--profile', 'tests', '--record' ], {
+        execFile(process.execPath, [ '--disable-warning=PERM0004', binary, 'run', '--profile', 'tests', '--record' ], {
             cwd: directory,
             timeout: 60_000
         }, function completed(error: Error | null) {
@@ -121,7 +121,7 @@ const assertCompletedRecord = defineCompositeAssertion({
 
 async function executeRunCommand(directory: string, args: readonly string[]): Promise<number> {
     return await new Promise<number>(function execute(resolve, reject) {
-        execFile(process.execPath, [ binary, ...args, '--profile', 'tests' ], {
+        execFile(process.execPath, [ '--disable-warning=PERM0004', binary, ...args, '--profile', 'tests' ], {
             cwd: directory,
             timeout: 60_000
         }, function completed(error) {
@@ -141,7 +141,7 @@ async function writeLastFailedCase(directory: string, passing: boolean): Promise
         path.join(directory, 'case.test.ts'),
         `
 import { test } from ${JSON.stringify(authoringUrl.href)};
-export const testNode = test('persisted case', (scope) => {
+export const testNode = test('persisted case', ({ assert }) => {
     assert.equal(${String(passing)}, true);
     return assert.collect();
 });

@@ -61,6 +61,7 @@ export const testNode = createSuite({...metadata, title: 'bootstrap', children: 
 async function staleErrorProbe(): Promise<string> {
     return new Promise(function executeProbe(resolve, reject) {
         execFile(process.execPath, [
+            '--disable-warning=PERM0004',
             'source/integration-tests/runtime/fixtures/collected-stale-error-probe.test.ts'
         ], {
             cwd: process.cwd(),

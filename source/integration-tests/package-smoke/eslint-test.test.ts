@@ -50,7 +50,7 @@ export const testNode = test('runs packed ESLint examples and generated properti
     const output = await new Promise<string>(function runConsumer(resolve, reject) {
         execFile(
             process.execPath,
-            [ '--input-type=module', '--eval', script ],
+            [ '--disable-warning=PERM0004', '--input-type=module', '--eval', script ],
             { env: consumerEnvironment(consumerDirectory), cwd: consumerDirectory },
             function completed(error, stdout, stderr) {
                 if (error === null) {

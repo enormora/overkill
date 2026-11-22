@@ -48,6 +48,7 @@ export const testNode = test(
     async function (scope) {
         const output = await new Promise<string>(function restrictedChild(resolve, reject) {
             execFile(process.execPath, [
+                '--disable-warning=PERM0004',
                 '--permission',
                 '--no-permission-audit',
                 '--allow-fs-read=*',

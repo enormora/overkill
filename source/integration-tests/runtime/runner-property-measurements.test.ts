@@ -8,17 +8,22 @@ import { propertyWorkloads, type PropertyWorkload } from '../../test-support/pro
 
 async function execute(args: readonly string[]): Promise<string> {
     return await new Promise(function executeDriver(resolve, reject) {
-        execFile(process.execPath, Array.from(args), { timeout: 60_000 }, function completed(error, stdout, stderr) {
-            if (error !== null) {
-                reject(new Error('Measurement process failed.', { cause: error }));
-                return;
+        execFile(
+            process.execPath,
+            [ '--disable-warning=PERM0004', ...Array.from(args) ],
+            { timeout: 60_000 },
+            function completed(error, stdout, stderr) {
+                if (error !== null) {
+                    reject(new Error('Measurement process failed.', { cause: error }));
+                    return;
+                }
+                if (stderr !== '') {
+                    reject(new Error(stderr));
+                    return;
+                }
+                resolve(stdout);
             }
-            if (stderr !== '') {
-                reject(new Error(stderr));
-                return;
-            }
-            resolve(stdout);
-        });
+        );
     });
 }
 const count = z.number().int().nonnegative();

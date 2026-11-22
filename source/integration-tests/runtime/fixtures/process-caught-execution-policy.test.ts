@@ -6,7 +6,7 @@ export const testNode = createTestCase({
     title: 'process policy case',
     async body(scope) {
         try {
-            process.execve?.(process.execPath, [ process.execPath, '-e', 'process.exit(0)' ]);
+            process.execve?.(process.execPath, [ process.execPath, '--disable-warning=PERM0004', '-e', 'process.exit(0)' ]);
         } catch {}
         return scope.assert.collect();
     }

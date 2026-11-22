@@ -25,7 +25,7 @@ export const testNode = suite(guardOwnershipTestNode.title, [
         const output = await new Promise<string>(function runGuardProbe(resolve, reject) {
             execFile(
                 process.execPath,
-                [ '--input-type=module', '--eval', script ],
+                [ '--disable-warning=PERM0004', '--input-type=module', '--eval', script ],
                 { timeout: 5000 },
                 function (error, stdout, stderr) {
                     if (error === null) {

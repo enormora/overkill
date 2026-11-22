@@ -13,7 +13,7 @@ const waitsForClose = test(
         await using ownership = new AsyncDisposableStack();
         const lifetime = ownership.use(createCompilerLifetime());
         const child = lifetime.run(function startCompiler() {
-            return spawn(process.execPath, [ '--eval', 'process.stdin.resume();' ], {
+            return spawn(process.execPath, [ '--disable-warning=PERM0004', '--eval', 'process.stdin.resume();' ], {
                 stdio: [ 'pipe', 'ignore', 'ignore' ]
             });
         });

@@ -49,7 +49,7 @@ const consumerFacade = packageConsumer('packaged differential authoring', functi
         return new Promise(function executeConsumer(resolve, reject) {
             execFile(
                 process.execPath,
-                [ '--input-type=module', '--eval', source ],
+                [ '--disable-warning=PERM0004', '--input-type=module', '--eval', source ],
                 { env: consumerEnvironment(consumerDirectory), cwd: consumerDirectory },
                 function completed(error, stdout) {
                     if (error === null) {

@@ -38,6 +38,7 @@ export const testNode = suite('external process benchmarks', [
             const run = await sample.process({
                 command: [
                     process.execPath,
+                    '--disable-warning=PERM0004',
                     '-e',
                     'process.stdout.write(String(process.pid)); process.stderr.write("diagnostic"); process.exit(0)'
                 ],
@@ -57,7 +58,7 @@ export const testNode = suite('external process benchmarks', [
         measurement: rawMeasurement(processMeasurement({ instrumentation: 'node' })),
         async measure({ sample }) {
             const run = await sample.process({
-                command: [ process.execPath, '-e', terminalProgram ],
+                command: [process.execPath, '--disable-warning=PERM0004', '-e', terminalProgram],
                 cwd: process.cwd(),
                 env: null,
                 io: { kind: 'pty', name: 'xterm-256color', columns: 80, rows: 24 },

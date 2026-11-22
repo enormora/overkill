@@ -49,7 +49,7 @@ const consumerFacade = packageConsumer(
     function consumerFixture(consumerDirectory) {
         async function executeConsumer(file: string): Promise<string> {
             return new Promise(function executeSnapshotConsumer(resolve, reject) {
-                execFile(process.execPath, [ file ], {
+                execFile(process.execPath, [ '--disable-warning=PERM0004', file ], {
                     env: consumerEnvironment(consumerDirectory),
                     cwd: consumerDirectory,
                     timeout: 180_000

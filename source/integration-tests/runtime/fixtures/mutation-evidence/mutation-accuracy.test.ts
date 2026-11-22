@@ -134,7 +134,7 @@ export const strykerPlugins = [declareFactoryPlugin(PluginKind.Reporter, 'catalo
     const output = await new Promise<string>(function executeCampaign(resolve, reject) {
         execFile(
             process.execPath,
-            [
+            [ '--disable-warning=PERM0004',
                 '--input-type=module',
                 '--eval',
                 campaignScript,

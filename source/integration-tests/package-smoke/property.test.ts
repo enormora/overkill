@@ -25,7 +25,7 @@ async function runNode(argumentsList: readonly string[], cwd: string): Promise<S
     return await new Promise(function executeScript(resolve, reject) {
         execFile(
             process.execPath,
-            Array.from(argumentsList),
+            [ '--disable-warning=PERM0004', ...Array.from(argumentsList) ],
             { env: consumerEnvironment(cwd), cwd, encoding: 'utf8' },
             function (error, stdout, stderr) {
                 if (error === null) {

@@ -160,7 +160,12 @@ try {
 const consumerFacade = packageConsumer('packaged public runner lifecycle', function consumerFixture(consumerDirectory) {
     async function executeLifecycleScript(): Promise<string> {
         return new Promise(function launchConsumer(resolve, reject) {
-            execFile(process.execPath, [ '--input-type=module', '--eval', lifecycleScript ], {
+            execFile(process.execPath, [
+                '--disable-warning=PERM0004',
+                '--input-type=module',
+                '--eval',
+                lifecycleScript
+            ], {
                 env: consumerEnvironment(consumerDirectory),
                 cwd: consumerDirectory,
                 timeout: 30_000

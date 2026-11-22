@@ -12,7 +12,7 @@ import type { ProcessExecution } from '../../bench/process-protocol.ts';
 function command(signal: AbortSignal, source: string): ProcessExecutionInput {
     return {
         request: parseProcessRequest({
-            command: [ process.execPath, '-e', source ],
+            command: [ process.execPath, '--disable-warning=PERM0004', '-e', source ],
             cwd: process.cwd(),
             env: null,
             io: { kind: 'pipes' },

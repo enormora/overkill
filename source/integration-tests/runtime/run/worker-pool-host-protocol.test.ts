@@ -72,7 +72,7 @@ export const testNode = suite('worker host entrypoint integration', [
         const output = await new Promise<string>(function runHostProbe(resolve, reject) {
             execFile(
                 process.execPath,
-                [ '--input-type=module', '--eval', script ],
+                [ '--disable-warning=PERM0004', '--input-type=module', '--eval', script ],
                 { timeout: 5000 },
                 function (error, stdout) {
                     if (error === null) {

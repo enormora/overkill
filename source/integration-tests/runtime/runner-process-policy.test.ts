@@ -20,6 +20,7 @@ async function runProcess(
         execFile(
             process.execPath,
             [
+                '--disable-warning=PERM0004',
                 'source/integration-tests/runtime/fixtures/process-policy-launcher.test.ts',
                 operation,
                 processModel

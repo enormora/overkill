@@ -112,7 +112,7 @@ const consumerFacade = packageConsumer('Installed attachment support', function 
     const directory = fileURLToPath(pathToFileURL(`${consumerDirectory}/`));
     async function executeNode(nodeArguments: readonly string[], expectedExit: 0 | 1): Promise<string> {
         return new Promise(function runPackagedCli(resolve, reject) {
-            execFile(process.execPath, nodeArguments, {
+            execFile(process.execPath, [ '--disable-warning=PERM0004', ...nodeArguments ], {
                 env: consumerEnvironment(directory),
                 cwd: directory
             }, function cliCompleted(error, stdout, stderr) {

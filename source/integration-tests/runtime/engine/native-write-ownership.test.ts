@@ -28,7 +28,7 @@ export const testNode = suite(nativeWriteOwnershipTestNode.title, [
         const output = await new Promise<string>(function runWriteProbe(resolve, reject) {
             execFile(
                 process.execPath,
-                [ '--input-type=module', '--eval', script ],
+                [ '--disable-warning=PERM0004', '--input-type=module', '--eval', script ],
                 { timeout: 5000 },
                 function (error, stdout, stderr) {
                     if (error === null) {

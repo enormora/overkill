@@ -8,6 +8,7 @@ async function runExitProbe(operation: string): Promise<ExitResult> {
         execFile(
             process.execPath,
             [
+                '--disable-warning=PERM0004',
                 'source/integration-tests/runtime/fixtures/process-exit-observer-probe.test.ts',
                 operation
             ],

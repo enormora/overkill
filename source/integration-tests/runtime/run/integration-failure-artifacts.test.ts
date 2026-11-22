@@ -54,6 +54,7 @@ const daemon = createLocalProcessServiceResource({
         return {
             command: process.execPath,
             arguments: [
+                '--disable-warning=PERM0004',
                 '-e',
                 'process.stdout.write("ready 🌍"); process.stderr.write("warning"); setInterval(() => {}, 1000);'
             ],

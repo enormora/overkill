@@ -124,6 +124,7 @@ async function runExposedGarbageCollectionProbe(): Promise<string> {
         execFile(
             process.execPath,
             [
+                '--disable-warning=PERM0004',
                 '--expose-gc',
                 'source/integration-tests/runtime/fixtures/direct-garbage-collection.test.ts'
             ],

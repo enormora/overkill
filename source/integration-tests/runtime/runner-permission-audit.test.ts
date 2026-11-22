@@ -11,6 +11,7 @@ type AuditProbeOutput = { readonly stdout: string; readonly stderr: string; };
 async function runAuditProbe(mode: 'argv' | 'environment'): Promise<AuditProbeOutput> {
     return new Promise(function captureAuditProbe(resolve, reject) {
         execFile(process.execPath, [
+            '--disable-warning=PERM0004',
             ...mode === 'argv' ? [ '--permission-audit' ] : [],
             fixturePath
         ], {

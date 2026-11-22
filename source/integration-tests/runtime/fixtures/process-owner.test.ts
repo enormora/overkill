@@ -8,7 +8,7 @@ const session = createProcessSamplingSession(
 );
 await session.sample('measured').sample.process({
     command: [
-        process.execPath,
+        process.execPath, '--disable-warning=PERM0004',
         '-e',
         'const fs=require("node:fs");fs.writeFileSync(process.argv[1]+".pending",String(process.pid));fs.renameSync(process.argv[1]+".pending",process.argv[1]);setInterval(()=>{},1000)',
         String(isMainThread ? process.argv[2] : workerData)

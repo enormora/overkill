@@ -344,6 +344,7 @@ export const testNode = suite('Local service resource', [
                 return {
                     command: process.execPath,
                     arguments: [
+                        '--disable-warning=PERM0004',
                         '-e',
                         'process.stdout.write("ready"); setInterval(function keepAlive() {}, 1000);'
                     ],
@@ -386,7 +387,11 @@ export const testNode = suite('Local service resource', [
             command() {
                 return {
                     command: process.execPath,
-                    arguments: [ '-e', 'process.stderr.write("startup failed"); process.exit(7);' ],
+                    arguments: [
+                        '--disable-warning=PERM0004',
+                        '-e',
+                        'process.stderr.write("startup failed"); process.exit(7);'
+                    ],
                     environment: {},
                     workingDirectory: null
                 };

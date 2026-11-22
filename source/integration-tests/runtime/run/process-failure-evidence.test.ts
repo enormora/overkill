@@ -43,6 +43,7 @@ export const testNode = suite(
                     return {
                         command: process.execPath,
                         arguments: [
+                            '--disable-warning=PERM0004',
                             '-e',
                             'process.on("SIGTERM", () => {}); process.stdout.write(Buffer.from([114,101,97,100,121,240])); process.stderr.write(Buffer.from([119,97,114,110,105,110,103,195])); setInterval(() => {}, 1000);'
                         ],

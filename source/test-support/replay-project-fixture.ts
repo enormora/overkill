@@ -67,7 +67,7 @@ export async function executeReplayCli(
     return await new Promise(function execute(resolve, reject) {
         execFile(
             process.execPath,
-            [ binary, ...args ],
+            [ '--disable-warning=PERM0004', binary, ...args ],
             { cwd: project.cwd, timeout: 60_000 },
             function completed(error, stdout, stderr) {
                 if (error === null) {

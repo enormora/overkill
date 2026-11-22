@@ -125,6 +125,7 @@ async function coveredBaselines(directory: string): Promise<CoveredBaselineResul
         execFile(
             process.execPath,
             [
+                '--disable-warning=PERM0004',
                 '--allow-inspector',
                 fileURLToPath(new URL('./support/baseline-coverage-subject.ts', import.meta.url)),
                 directory
