@@ -128,7 +128,7 @@ export const testNode = suite('compact run evidence', [
             }
         });
         scope.assert.deepEqual<unknown, unknown>(compact.facts?.family, family);
-        scope.assert.deepEqual(compact.result?.perTest[0]?.workId, workId);
+        scope.assert.deepEqual<unknown, unknown>(compact.result?.perTest[0]?.workId, workId);
         scope.assert.equal(compact.result?.perTest[0]?.verdict, 'fail');
         return scope.assert.collect();
     }),

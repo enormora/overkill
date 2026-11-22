@@ -104,13 +104,11 @@ export const testNode = suite('duration history retention', [
             familyVerdicts: [ { work, status: 'failed' } ],
             run: { id: 'verdict-only', startedAt: historyTimestamp }
         });
-        scope.assert.deepEqual(state.entries[0]?.familyVerdicts, [
+        scope.assert.deepEqual<unknown, unknown>(state.entries[0]?.familyVerdicts, [
             { runId: 'verdict-only', observedAt: historyTimestamp, status: 'failed' }
         ]);
-        scope.assert.deepEqual(
-            durationIndexProjection(state, new Set([ 'verdict-only' ])).entries[0]?.observations,
-            []
-        );
+        const [ duration ] = durationIndexProjection(state, new Set([ 'verdict-only' ])).entries;
+        scope.assert.equal(duration?.observations.length, 0);
         return scope.assert.collect();
     }),
     test('stale work entries are pruned', function (scope) {
