@@ -2,9 +2,11 @@ import { execFile } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite } from '@overkill-dev/test';
 
+import { z } from 'zod/v4';
 import type { Config } from '../../config/config.ts';
 
 const captureModes = [ 'buffered', 'live', 'authored' ] as const;
@@ -19,6 +21,12 @@ async function runNode(args: readonly string[]): Promise<{ readonly stdout: stri
         execFile(
             process.execPath,
             [ '--disable-warning=PERM0004', ...args ],
+            {
+                env: {
+                    ...z.record(z.string(), z.string()).parse(Reflect.get(process, 'env')),
+                    NODE_OPTIONS: '--disable-warning=PERM0004'
+                }
+            },
             function probeCompleted(error, stdout, stderr) {
                 if (error !== null) {
                     reject(new Error(`${error.message}\n${stdout}\n${stderr}`, { cause: error }));
