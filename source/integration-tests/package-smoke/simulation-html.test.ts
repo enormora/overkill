@@ -14,7 +14,9 @@ type PageRequest = {
 
 async function assertStartupModule(scope: TestScope, pageUrl: string, html: string): Promise<void> {
     const reference = /<script type="module" src="(?<reference>[^"]+)"><\/script>/u.exec(html)?.groups?.reference;
-    scope.require.defined(reference);
+    if (reference === undefined) {
+        throw new Error('The installed HTML response omitted the startup module.');
+    }
     const module = await fetch(new URL(reference, pageUrl));
     scope.assert.equal(module.headers.get('content-type'), 'text/javascript');
     scope.assert.equal(await module.text(), startupSource);

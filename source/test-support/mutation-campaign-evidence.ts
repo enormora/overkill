@@ -61,8 +61,8 @@ function expectedKillerIds(tests: readonly CampaignTest[], titles: readonly stri
         const matching = tests.filter(function matchesTitle(test) {
             return test.name.split(' > ').includes(title);
         });
-        assert.equal(matching.length, 1, `Ambiguous expected killer: ${title}`);
         const [ test ] = matching;
+        assert.ok(test !== undefined && matching.length === 1, `Ambiguous expected killer: ${title}`);
         return test.id;
     });
 }
@@ -82,17 +82,22 @@ function expectedCompletedCases(
     return expectedStatus(expected, coverage) === 'NoCoverage' ? 0 : successfulTests;
 }
 
+function matchingMutant(mutants: readonly Mutant[], expected: ExpectedMutant): Mutant {
+    const matches = mutants.filter(function matchesExpected(mutant) {
+        return mutant.file === expected.file && mutant.location.start.line === expected.line;
+    });
+    const [ mutant ] = matches;
+    assert.ok(mutant !== undefined && matches.length === 1, `Missing or repeated mutant: ${expected.file}:${expected.line}`);
+    return mutant;
+}
+
 function validateMutant(
     evidence: CampaignEvidence,
     expected: ExpectedMutant,
     successfulTests: number,
     testIds: ReadonlySet<string>
 ): void {
-    const matches = evidence.mutants.filter(function matchesExpected(mutant) {
-        return mutant.file === expected.file && mutant.location.start.line === expected.line;
-    });
-    assert.equal(matches.length, 1, `Missing or repeated mutant: ${expected.file}:${expected.line}`);
-    const [ mutant ] = matches;
+    const mutant = matchingMutant(evidence.mutants, expected);
     const key = mutantKey(mutant);
     assert.equal(mutant.mutator, 'BooleanLiteral');
     assert.equal(mutant.replacement, 'false');
